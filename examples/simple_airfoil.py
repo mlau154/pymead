@@ -5,21 +5,20 @@ from core.base_airfoil_params import BaseAirfoilParams
 
 
 def main():
-    c = 1.0
 
-    base_airfoil_params = BaseAirfoilParams(c=Param(c),
+    base_airfoil_params = BaseAirfoilParams(c=Param(4.0),
                                             alf=Param(np.deg2rad(5.0)),
-                                            R_le=Param(0.03, 'length', c=c),
-                                            L_le=Param(0.08, 'length', c=c),
+                                            R_le=Param(0.03, 'length'),
+                                            L_le=Param(0.08, 'length'),
                                             r_le=Param(0.6),
                                             phi_le=Param(np.deg2rad(10.0)),
                                             psi1_le=Param(np.deg2rad(10.0)),
                                             psi2_le=Param(np.deg2rad(15.0)),
-                                            L1_te=Param(0.25, 'length', c=c),
-                                            L2_te=Param(0.3, 'length', c=c),
+                                            L1_te=Param(0.25, 'length'),
+                                            L2_te=Param(0.3, 'length'),
                                             theta1_te=Param(np.deg2rad(2.0)),
                                             theta2_te=Param(np.deg2rad(2.0)),
-                                            t_te=Param(0.01, 'length', c=c),
+                                            t_te=Param(0.01, 'length'),
                                             r_te=Param(0.4),
                                             phi_te=Param(np.deg2rad(3.0))
                                             )

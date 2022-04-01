@@ -7,12 +7,13 @@ class SymmetricBaseAirfoilParams:
     def __init__(self,
                  c: Param = Param(1.0),                         # chord length
                  alf: Param = Param(0.0),                       # angle of attack (rad)
-                 R_le: Param = Param(0.1, 'length', c=1.0),     # leading edge radius
-                 L_le: Param = Param(0.1, 'length', c=1.0),     # leading edge length
+                 R_le: Param = Param(0.1, 'length'),            # leading edge radius
+                 L_le: Param = Param(0.1, 'length'),            # leading edge length
                  psi1_le: Param = Param(0.0),                   # leading edge upper curvature control angle
-                 L1_te: Param = Param(0.1, 'length', c=1.0),    # trailing edge upper length
+                 L1_te: Param = Param(0.1, 'length'),           # trailing edge upper length
                  theta1_te: Param = Param(np.deg2rad(10.0)),    # trailing edge upper angle
-                 t_te: Param = Param(0.0, 'length', c=1.0)):     # blunt trailing edge thickness
+                 t_te: Param = Param(0.0, 'length'),            # blunt trailing edge thickness
+                 non_dim_by_chord: bool = True):                # Non-dimensionalize by chord length?
 
         self.c = c
         self.alf = alf
@@ -29,3 +30,30 @@ class SymmetricBaseAirfoilParams:
         self.t_te = t_te
         self.r_te = Param(0.5)
         self.phi_te = Param(0.0)
+        self.non_dim_by_chord = non_dim_by_chord
+        self.n_overrideable_parameters = self.count_overrideable_variables()
+        self.scale_vars()
+
+    def scale_vars(self):
+        if self.non_dim_by_chord:  # only scale if the anchor point has a length scale dimension
+            for param in [var for var in vars(self).values()  # For each parameter in the anchor point,
+                          if isinstance(var, Param) and var.units == 'length']:
+                if param.length_scale_dimension is None:  # only scale if the parameter has not yet been scaled
+                    param.value = param.value * self.c.value
+
+    def count_overrideable_variables(self):
+        n_overrideable_variables = len([var for var in vars(self).values()
+                                        if isinstance(var, Param) and var.active and not var.linked])
+        return n_overrideable_variables
+
+    def override(self, parameters: list):
+        override_param_obj_list = [var for var in vars(self).values()
+                                   if isinstance(var, Param) and var.active and not var.linked]
+        if len(parameters) != len(override_param_obj_list):
+            raise Exception('Number of symmetric base airfoil parameters does not match length of input override '
+                            'parameter list')
+        param_idx = 0
+        for param in override_param_obj_list:
+            setattr(param, 'value', parameters[param_idx])
+            param_idx += 1
+        self.scale_vars()
