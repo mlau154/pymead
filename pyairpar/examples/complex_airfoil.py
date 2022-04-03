@@ -1,9 +1,9 @@
 import numpy as np
-from core.param import Param
-from core.anchor_point import AnchorPoint
-from core.free_point import FreePoint
-from core.airfoil import Airfoil
-from core.base_airfoil_params import BaseAirfoilParams
+from pyairpar.core.param import Param
+from pyairpar.core.anchor_point import AnchorPoint
+from pyairpar.core.free_point import FreePoint
+from pyairpar.core.airfoil import Airfoil
+from pyairpar.core.base_airfoil_params import BaseAirfoilParams
 
 
 def main():

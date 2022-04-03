@@ -1,7 +1,7 @@
 import numpy as np
-from core.param import Param
-from core.airfoil import Airfoil
-from core.base_airfoil_params import BaseAirfoilParams
+from pyairpar.core.param import Param
+from pyairpar.core.airfoil import Airfoil
+from pyairpar.core.base_airfoil_params import BaseAirfoilParams
 
 
 def main():

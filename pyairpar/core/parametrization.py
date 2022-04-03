@@ -1,5 +1,5 @@
 import numpy as np
-from airfoil import Airfoil
+from pyairpar.core.airfoil import Airfoil
 
 
 class AirfoilParametrization:

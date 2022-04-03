@@ -1,5 +1,5 @@
 import numpy as np
-from core.param import Param
+from pyairpar.core.param import Param
 
 
 class FreePoint:
