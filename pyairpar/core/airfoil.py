@@ -499,13 +499,53 @@ class Airfoil:
 
 
 def bezier(P: np.ndarray, nt: int) -> dict:
+    """
+    ### Description:
+
+    Computes the Bezier curve through the control points `P` according to
+    $$\\vec{C}(t)=\\sum_{i=0}^n \\vec{P}_i B_{i,n}(t)$$, where the Bernstein polynomial is given by
+    $$B_{i,n}=n \\choose i t^i (1-t)^{n-i}$$
+
+    Also included are first derivative, second derivative, and curvature information. These are given by
+    $$\\vec{C}'(t)=n \\sum_{i=0}^{n-1} (\\vec{P}_{i+1} - \\vec{P}_i B_{i,n-1}(t)$$
+    $$\\vec{C}''(t)=n(n-1) \\sum_{i=0}^{n-2} (\\vec{P}_{i+2}-2\\vec{P}_{i+1}+\\vec{P}_i) B_{i,n-2}(t)$$
+    $$\\kappa(t)=\\frac{C'_x(t) C''_y(t) - C'_y(t) C''_x(t)}{[(C'_x)^2(t) + (C'_y)^2(t)]^{3/2}}$$
+
+    ### Args:
+
+    `P`: `np.ndarray` of `shape=(n+1, 2)`, where `n` is the order of the Bezier curve and `n+1` is the number of
+    control points in the Bezier curve. The two columns represent the `x` and `y` components of the control points.
+
+    'nt': number of points in the `t` vector (defines the resolution of the curve)
+
+    ### Returns:
+
+    A dictionary of `numpy` arrays of `shape=nt` containing information related to the created Bezier curve:
+
+    $$C_x(t), C_y(t), C'_x(t), C'_y(t), C''_x(t), C''_y(t), \\kappa(t)$$
+    where the `x` and `y` subscripts represent the `x` and `y` components of the vector-valued function.
+    """
 
     def nCr(n_, r):
+        """
+        ### Description:
+
+        Simple function that computes the mathematical combination $$n \\choose r$$
+
+        ### Args:
+
+        `n_`: `n` written with a trailing underscore to avoid conflation with the order `n` of the Bezier curve
+
+        `r'
+
+        ### Returns
+
+        $$n \\choose r$$
+        """
         f = np.math.factorial
         return f(n_) / f(r) / f(n_ - r)
 
-    t = np.linspace(0, 1, nt)  # Parameter "t" (type: np.ndarray) is an evenly-spaced vector from 0 to 1 with nt total
-    # points
+    t = np.linspace(0, 1, nt)
     C = {
         't': t,
         'x': 0,
