@@ -512,7 +512,6 @@ def bezier(P: np.ndarray, nt: int) -> dict:
     $$\\kappa(t)=\\frac{C'_x(t) C''_y(t) - C'_y(t) C''_x(t)}{[(C'_x)^2(t) + (C'_y)^2(t)]^{3/2}}$$
 
     .. image:: bezier_curve.png
-       :align: center
 
     ### Args:
 
