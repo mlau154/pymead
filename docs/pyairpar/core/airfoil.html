@@ -541,7 +541,6 @@ def bezier(P: np.ndarray, nt: int) -&gt; dict:
     $$\\kappa(t)=\\frac{C&#39;_x(t) C&#39;&#39;_y(t) - C&#39;_y(t) C&#39;&#39;_x(t)}{[(C&#39;_x)^2(t) + (C&#39;_y)^2(t)]^{3/2}}$$
 
     .. image:: bezier_curve.png
-       :align: center
 
     ### Args:
 
@@ -719,7 +718,7 @@ if __name__ == &#39;__main__&#39;:
 <span><span class="MathJax_Preview">\vec{C}'(t)=n \sum_{i=0}^{n-1} (\vec{P}_{i+1} - \vec{P}_i B_{i,n-1}(t)</span><script type="math/tex; mode=display">\vec{C}'(t)=n \sum_{i=0}^{n-1} (\vec{P}_{i+1} - \vec{P}_i B_{i,n-1}(t)</script></span>
 <span><span class="MathJax_Preview">\vec{C}''(t)=n(n-1) \sum_{i=0}^{n-2} (\vec{P}_{i+2}-2\vec{P}_{i+1}+\vec{P}_i) B_{i,n-2}(t)</span><script type="math/tex; mode=display">\vec{C}''(t)=n(n-1) \sum_{i=0}^{n-2} (\vec{P}_{i+2}-2\vec{P}_{i+1}+\vec{P}_i) B_{i,n-2}(t)</script></span>
 <span><span class="MathJax_Preview">\kappa(t)=\frac{C'_x(t) C''_y(t) - C'_y(t) C''_x(t)}{[(C'_x)^2(t) + (C'_y)^2(t)]^{3/2}}</span><script type="math/tex; mode=display">\kappa(t)=\frac{C'_x(t) C''_y(t) - C'_y(t) C''_x(t)}{[(C'_x)^2(t) + (C'_y)^2(t)]^{3/2}}</script></span></p>
-<p><img alt=":align: center" src="bezier_curve.png"></p>
+<p><img alt="" src="bezier_curve.png"></p>
 <h3 id="args">Args:</h3>
 <p><code>P</code>: <code>np.ndarray</code> of <code>shape=(n+1, 2)</code>, where <code>n</code> is the order of the Bezier curve and <code>n+1</code> is the number of
 control points in the Bezier curve. The two columns represent the <code>x</code> and <code>y</code> components of the control points.</p>
@@ -746,7 +745,6 @@ where the <span><span class="MathJax_Preview">x</span><script type="math/tex">x<
     $$\\kappa(t)=\\frac{C&#39;_x(t) C&#39;&#39;_y(t) - C&#39;_y(t) C&#39;&#39;_x(t)}{[(C&#39;_x)^2(t) + (C&#39;_y)^2(t)]^{3/2}}$$
 
     .. image:: bezier_curve.png
-       :align: center
 
     ### Args:
 
