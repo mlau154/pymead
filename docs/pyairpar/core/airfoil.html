@@ -580,8 +580,9 @@ def bezier(P: np.ndarray, nt: int) -&gt; dict:
 
     ### Args:
 
-    `P`: `np.ndarray` of `shape=(n+1, 2)`, where `n` is the order of the Bézier curve and `n+1` is the number of
-    control points in the Bézier curve. The two columns represent the `x` and `y` components of the control points.
+    `P`: The control point `np.ndarray` of `shape=(n+1, 2)`, where `n` is the order of the Bézier curve and `n+1` is
+    the number of control points in the Bézier curve. The two columns represent the \\(x\\)- and \\(y\\) -components of
+    the control points.
 
     `nt`: number of points in the `t` vector (defines the resolution of the curve)
 
@@ -762,8 +763,9 @@ and <span><span class="MathJax_Preview">P_1</span><script type="math/tex">P_1</s
 continuity at Bézier curve "joints" (common endpoints of connected Bézier curves).</p>
 <p><img alt="" src="bezier_curve.png"></p>
 <h3 id="args">Args:</h3>
-<p><code>P</code>: <code>np.ndarray</code> of <code>shape=(n+1, 2)</code>, where <code>n</code> is the order of the Bézier curve and <code>n+1</code> is the number of
-control points in the Bézier curve. The two columns represent the <code>x</code> and <code>y</code> components of the control points.</p>
+<p><code>P</code>: The control point <code>np.ndarray</code> of <code>shape=(n+1, 2)</code>, where <code>n</code> is the order of the Bézier curve and <code>n+1</code> is
+the number of control points in the Bézier curve. The two columns represent the <span><span class="MathJax_Preview">x</span><script type="math/tex">x</script></span>- and <span><span class="MathJax_Preview">y</span><script type="math/tex">y</script></span> -components of
+the control points.</p>
 <p><code>nt</code>: number of points in the <code>t</code> vector (defines the resolution of the curve)</p>
 <h3 id="returns">Returns:</h3>
 <p>A dictionary of <code>numpy</code> arrays of <code>shape=nt</code> containing information related to the created Bézier curve:</p>
@@ -797,8 +799,9 @@ where the <span><span class="MathJax_Preview">x</span><script type="math/tex">x<
 
     ### Args:
 
-    `P`: `np.ndarray` of `shape=(n+1, 2)`, where `n` is the order of the Bézier curve and `n+1` is the number of
-    control points in the Bézier curve. The two columns represent the `x` and `y` components of the control points.
+    `P`: The control point `np.ndarray` of `shape=(n+1, 2)`, where `n` is the order of the Bézier curve and `n+1` is
+    the number of control points in the Bézier curve. The two columns represent the \\(x\\)- and \\(y\\) -components of
+    the control points.
 
     `nt`: number of points in the `t` vector (defines the resolution of the curve)
 

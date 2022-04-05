@@ -29,9 +29,63 @@ class BaseAirfoilParams:
 
         The most fundamental parameters required for the generation of any `pyairpar.core.airfoil.Airfoil`.
         A geometric description of an example airfoil generated (from `pyairpar.examples.simple_airfoil.main`) is
-        shown below (it may be necessary to open the image in a new tab to adequately view the details):
+        shown below (it may be helpful to open the image in a new tab to adequately view the details):
 
         .. image:: simple_airfoil_annotated.png
+
+        ### Args:
+
+        `c`: ( \\(c\\) ) chord length `pyairpar.core.param.Param`: Default value: `1.0`.
+
+        `alf`: ( \\(\\alpha\\) ) angle of attack (rad): `pyairpar.core.param.Param`. Default value: `0.0`.
+
+        `R_LE`: ( \\(R_{LE}\\) ) leading-edge radius: `pyairpar.core.param.Param`. Default value: `0.1`.
+
+        `L_LE`: ( \\(L_{LE}\\) ) distance between the control points immediately before and after the leading-edge
+        anchor point: `pyairpar.core.param.Param`. Default value: `0.1`.
+
+        `r_LE`: ( \\(r_{LE}\\) ) ratio of the distance from the leading-edge anchor point to the control point before to
+        the distance between the control points immediately before and after the leading-edge
+        anchor point ( \\( r_{LE} = L_{LE,upper} / L_{LE} \\) ): `pyairpar.core.param.Param`. Default value: `0.5`.
+
+        `phi_LE`: ( \\(\\phi_{LE}\\) ) leading-edge tilt (rad), referenced counter-clockwise from the perpendicular to
+        the chordline: `pyairpar.core.param.Param`. Default value: `0.0`.
+
+        `psi1_LE`: ( \\(\\psi_{LE,1}\\) ) leading-edge upper curvature control angle (rad), referenced counter-clockwise
+        from the chordline: `pyairpar.core.param.Param`. Default value: `0.0`.
+
+        `psi2_LE`: ( \\(\\psi_{LE,2}\\) ) leading-edge lower curvature control angle (rad), referenced clockwise
+        from the chordline: `pyairpar.core.param.Param`. Default value: `0.0`.
+
+        `L1_TE`: ( \\(L_{TE,1}\\) ) trailing edge upper length: `pyairpar.core.param.Param`. Default value: `0.1`.
+
+        `L2_TE`: ( \\(L_{TE,2}\\) ) trailing edge lower length: `pyairpar.core.param.Param`. Default value: `0.1`.
+
+        `theta1_TE`: ( \\(\\theta_{TE,1}\\) ) trailing edge upper angle (rad), referenced clockwise from the chordline:
+        `pyairpar.core.param.Param`. Default value: `np.deg2rad(10.0)`.
+
+        `theta2_TE`: ( \\(\\theta_{TE,2}\\) ) trailing edge lower angle (rad), referenced counter-clockwise from the
+        chordline: `pyairpar.core.param.Param`. Default value: `np.deg2rad(10.0)`.
+
+        `t_TE`: ( \\( t_{TE}\\) ) blunt trailing edge thickness: `pyairpar.core.param.Param`. Default value: `0.0`.
+
+        `r_TE`: ( \\(r_{TE}\\) ) ratio of the distance from the chordline's endpoint at the trailing edge to the
+        first control point of the airfoil to the distance between the first and last control points of the airfoil
+        ( \\( r_{TE} = L_{TE,upper} / L_{TE} \\) ): `pyairpar.core.param.Param`. Default value: `0.5`.
+
+        `phi_TE`: ( \\( \\phi_{TE}\\) ) blunt trailing-edge tilt (rad), referenced counter-clockwise from the
+        perpendicular to the chordline (same as `phi_LE`): `pyairpar.core.param.Param`. Default value: `0.0`.
+
+        `dx`: ( \\( \\Delta x\\) ) distance to translate the airfoil in the \\(x\\)-direction:
+        `pyairpar.core.param.Param`. Default value: `0.0`. The translation operation follows the rotation operation
+        such that the rotation operation can be performed about the origin. Inactive by default.
+
+        `dy`: ( \\( \\Delta y\\) ) distance to translate the airfoil in the \\(y\\)-direction:
+        `pyairpar.core.param.Param`. Default value: `0.0`. The translation operation follows the rotation operation
+        such that the rotation operation can be performed about the origin. Inactive by default.
+
+        `non_dim_by_chord`: a `bool` that determines whether the `pyairpar.core.param.Param`s with `units == length`
+        should be non-dimensionalized by the chord (`c`). Default value: `True`.
         """
 
         self.c = c

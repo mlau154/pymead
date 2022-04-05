@@ -551,8 +551,9 @@ def bezier(P: np.ndarray, nt: int) -> dict:
 
     ### Args:
 
-    `P`: `np.ndarray` of `shape=(n+1, 2)`, where `n` is the order of the Bézier curve and `n+1` is the number of
-    control points in the Bézier curve. The two columns represent the `x` and `y` components of the control points.
+    `P`: The control point `np.ndarray` of `shape=(n+1, 2)`, where `n` is the order of the Bézier curve and `n+1` is
+    the number of control points in the Bézier curve. The two columns represent the \\(x\\)- and \\(y\\) -components of
+    the control points.
 
     `nt`: number of points in the `t` vector (defines the resolution of the curve)
 

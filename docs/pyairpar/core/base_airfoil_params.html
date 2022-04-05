@@ -58,9 +58,63 @@ class BaseAirfoilParams:
 
         The most fundamental parameters required for the generation of any `pyairpar.core.airfoil.Airfoil`.
         A geometric description of an example airfoil generated (from `pyairpar.examples.simple_airfoil.main`) is
-        shown below
+        shown below (it may be helpful to open the image in a new tab to adequately view the details):
 
         .. image:: simple_airfoil_annotated.png
+
+        ### Args:
+
+        `c`: ( \\(c\\) ) chord length `pyairpar.core.param.Param`: Default value: `1.0`.
+
+        `alf`: ( \\(\\alpha\\) ) angle of attack (rad): `pyairpar.core.param.Param`. Default value: `0.0`.
+
+        `R_LE`: ( \\(R_{LE}\\) ) leading-edge radius: `pyairpar.core.param.Param`. Default value: `0.1`.
+
+        `L_LE`: ( \\(L_{LE}\\) ) distance between the control points immediately before and after the leading-edge
+        anchor point: `pyairpar.core.param.Param`. Default value: `0.1`.
+
+        `r_LE`: ( \\(r_{LE}\\) ) ratio of the distance from the leading-edge anchor point to the control point before to
+        the distance between the control points immediately before and after the leading-edge
+        anchor point ( \\( r_{LE} = L_{LE,upper} / L_{LE} \\) ): `pyairpar.core.param.Param`. Default value: `0.5`.
+
+        `phi_LE`: ( \\(\\phi_{LE}\\) ) leading-edge tilt (rad), referenced counter-clockwise from the perpendicular to
+        the chordline: `pyairpar.core.param.Param`. Default value: `0.0`.
+
+        `psi1_LE`: ( \\(\\psi_{LE,1}\\) ) leading-edge upper curvature control angle (rad), referenced counter-clockwise
+        from the chordline: `pyairpar.core.param.Param`. Default value: `0.0`.
+
+        `psi2_LE`: ( \\(\\psi_{LE,2}\\) ) leading-edge lower curvature control angle (rad), referenced clockwise
+        from the chordline: `pyairpar.core.param.Param`. Default value: `0.0`.
+
+        `L1_TE`: ( \\(L_{TE,1}\\) ) trailing edge upper length: `pyairpar.core.param.Param`. Default value: `0.1`.
+
+        `L2_TE`: ( \\(L_{TE,2}\\) ) trailing edge lower length: `pyairpar.core.param.Param`. Default value: `0.1`.
+
+        `theta1_TE`: ( \\(\\theta_{TE,1}\\) ) trailing edge upper angle (rad), referenced clockwise from the chordline:
+        `pyairpar.core.param.Param`. Default value: `np.deg2rad(10.0)`.
+
+        `theta2_TE`: ( \\(\\theta_{TE,2}\\) ) trailing edge lower angle (rad), referenced counter-clockwise from the
+        chordline: `pyairpar.core.param.Param`. Default value: `np.deg2rad(10.0)`.
+
+        `t_TE`: ( \\( t_{TE}\\) ) blunt trailing edge thickness: `pyairpar.core.param.Param`. Default value: `0.0`.
+
+        `r_TE`: ( \\(r_{TE}\\) ) ratio of the distance from the chordline&#39;s endpoint at the trailing edge to the
+        first control point of the airfoil to the distance between the first and last control points of the airfoil
+        ( \\( r_{TE} = L_{TE,upper} / L_{TE} \\) ): `pyairpar.core.param.Param`. Default value: `0.5`.
+
+        `phi_TE`: ( \\( \\phi_{TE}\\) ) blunt trailing-edge tilt (rad), referenced counter-clockwise from the
+        perpendicular to the chordline (same as `phi_LE`): `pyairpar.core.param.Param`. Default value: `0.0`.
+
+        `dx`: ( \\( \\Delta x\\) ) distance to translate the airfoil in the \\(x\\)-direction:
+        `pyairpar.core.param.Param`. Default value: `0.0`. The translation operation follows the rotation operation
+        such that the rotation operation can be performed about the origin. Inactive by default.
+
+        `dy`: ( \\( \\Delta y\\) ) distance to translate the airfoil in the \\(y\\)-direction:
+        `pyairpar.core.param.Param`. Default value: `0.0`. The translation operation follows the rotation operation
+        such that the rotation operation can be performed about the origin. Inactive by default.
+
+        `non_dim_by_chord`: a `bool` that determines whether the `pyairpar.core.param.Param`s with `units == length`
+        should be non-dimensionalized by the chord (`c`). Default value: `True`.
         &#34;&#34;&#34;
 
         self.c = c
@@ -154,8 +208,43 @@ class BaseAirfoilParams:
 <div class="desc"><h3 id="description">Description:</h3>
 <p>The most fundamental parameters required for the generation of any <code><a title="pyairpar.core.airfoil.Airfoil" href="airfoil.html#pyairpar.core.airfoil.Airfoil">Airfoil</a></code>.
 A geometric description of an example airfoil generated (from <code><a title="pyairpar.examples.simple_airfoil.main" href="../examples/simple_airfoil.html#pyairpar.examples.simple_airfoil.main">main()</a></code>) is
-shown below</p>
-<p><img alt="" src="simple_airfoil_annotated.png"></p></div>
+shown below (it may be helpful to open the image in a new tab to adequately view the details):</p>
+<p><img alt="" src="simple_airfoil_annotated.png"></p>
+<h3 id="args">Args:</h3>
+<p><code>c</code>: ( <span><span class="MathJax_Preview">c</span><script type="math/tex">c</script></span> ) chord length <code><a title="pyairpar.core.param.Param" href="param.html#pyairpar.core.param.Param">Param</a></code>: Default value: <code>1.0</code>.</p>
+<p><code>alf</code>: ( <span><span class="MathJax_Preview">\alpha</span><script type="math/tex">\alpha</script></span> ) angle of attack (rad): <code><a title="pyairpar.core.param.Param" href="param.html#pyairpar.core.param.Param">Param</a></code>. Default value: <code>0.0</code>.</p>
+<p><code>R_LE</code>: ( <span><span class="MathJax_Preview">R_{LE}</span><script type="math/tex">R_{LE}</script></span> ) leading-edge radius: <code><a title="pyairpar.core.param.Param" href="param.html#pyairpar.core.param.Param">Param</a></code>. Default value: <code>0.1</code>.</p>
+<p><code>L_LE</code>: ( <span><span class="MathJax_Preview">L_{LE}</span><script type="math/tex">L_{LE}</script></span> ) distance between the control points immediately before and after the leading-edge
+anchor point: <code><a title="pyairpar.core.param.Param" href="param.html#pyairpar.core.param.Param">Param</a></code>. Default value: <code>0.1</code>.</p>
+<p><code>r_LE</code>: ( <span><span class="MathJax_Preview">r_{LE}</span><script type="math/tex">r_{LE}</script></span> ) ratio of the distance from the leading-edge anchor point to the control point before to
+the distance between the control points immediately before and after the leading-edge
+anchor point ( <span><span class="MathJax_Preview"> r_{LE} = L_{LE,upper} / L_{LE} </span><script type="math/tex"> r_{LE} = L_{LE,upper} / L_{LE} </script></span> ): <code><a title="pyairpar.core.param.Param" href="param.html#pyairpar.core.param.Param">Param</a></code>. Default value: <code>0.5</code>.</p>
+<p><code>phi_LE</code>: ( <span><span class="MathJax_Preview">\phi_{LE}</span><script type="math/tex">\phi_{LE}</script></span> ) leading-edge tilt (rad), referenced counter-clockwise from the perpendicular to
+the chordline: <code><a title="pyairpar.core.param.Param" href="param.html#pyairpar.core.param.Param">Param</a></code>. Default value: <code>0.0</code>.</p>
+<p><code>psi1_LE</code>: ( <span><span class="MathJax_Preview">\psi_{LE,1}</span><script type="math/tex">\psi_{LE,1}</script></span> ) leading-edge upper curvature control angle (rad), referenced counter-clockwise
+from the chordline: <code><a title="pyairpar.core.param.Param" href="param.html#pyairpar.core.param.Param">Param</a></code>. Default value: <code>0.0</code>.</p>
+<p><code>psi2_LE</code>: ( <span><span class="MathJax_Preview">\psi_{LE,2}</span><script type="math/tex">\psi_{LE,2}</script></span> ) leading-edge lower curvature control angle (rad), referenced clockwise
+from the chordline: <code><a title="pyairpar.core.param.Param" href="param.html#pyairpar.core.param.Param">Param</a></code>. Default value: <code>0.0</code>.</p>
+<p><code>L1_TE</code>: ( <span><span class="MathJax_Preview">L_{TE,1}</span><script type="math/tex">L_{TE,1}</script></span> ) trailing edge upper length: <code><a title="pyairpar.core.param.Param" href="param.html#pyairpar.core.param.Param">Param</a></code>. Default value: <code>0.1</code>.</p>
+<p><code>L2_TE</code>: ( <span><span class="MathJax_Preview">L_{TE,2}</span><script type="math/tex">L_{TE,2}</script></span> ) trailing edge lower length: <code><a title="pyairpar.core.param.Param" href="param.html#pyairpar.core.param.Param">Param</a></code>. Default value: <code>0.1</code>.</p>
+<p><code>theta1_TE</code>: ( <span><span class="MathJax_Preview">\theta_{TE,1}</span><script type="math/tex">\theta_{TE,1}</script></span> ) trailing edge upper angle (rad), referenced clockwise from the chordline:
+<code><a title="pyairpar.core.param.Param" href="param.html#pyairpar.core.param.Param">Param</a></code>. Default value: <code>np.deg2rad(10.0)</code>.</p>
+<p><code>theta2_TE</code>: ( <span><span class="MathJax_Preview">\theta_{TE,2}</span><script type="math/tex">\theta_{TE,2}</script></span> ) trailing edge lower angle (rad), referenced counter-clockwise from the
+chordline: <code><a title="pyairpar.core.param.Param" href="param.html#pyairpar.core.param.Param">Param</a></code>. Default value: <code>np.deg2rad(10.0)</code>.</p>
+<p><code>t_TE</code>: ( <span><span class="MathJax_Preview"> t_{TE}</span><script type="math/tex"> t_{TE}</script></span> ) blunt trailing edge thickness: <code><a title="pyairpar.core.param.Param" href="param.html#pyairpar.core.param.Param">Param</a></code>. Default value: <code>0.0</code>.</p>
+<p><code>r_TE</code>: ( <span><span class="MathJax_Preview">r_{TE}</span><script type="math/tex">r_{TE}</script></span> ) ratio of the distance from the chordline's endpoint at the trailing edge to the
+first control point of the airfoil to the distance between the first and last control points of the airfoil
+( <span><span class="MathJax_Preview"> r_{TE} = L_{TE,upper} / L_{TE} </span><script type="math/tex"> r_{TE} = L_{TE,upper} / L_{TE} </script></span> ): <code><a title="pyairpar.core.param.Param" href="param.html#pyairpar.core.param.Param">Param</a></code>. Default value: <code>0.5</code>.</p>
+<p><code>phi_TE</code>: ( <span><span class="MathJax_Preview"> \phi_{TE}</span><script type="math/tex"> \phi_{TE}</script></span> ) blunt trailing-edge tilt (rad), referenced counter-clockwise from the
+perpendicular to the chordline (same as <code>phi_LE</code>): <code><a title="pyairpar.core.param.Param" href="param.html#pyairpar.core.param.Param">Param</a></code>. Default value: <code>0.0</code>.</p>
+<p><code>dx</code>: ( <span><span class="MathJax_Preview"> \Delta x</span><script type="math/tex"> \Delta x</script></span> ) distance to translate the airfoil in the <span><span class="MathJax_Preview">x</span><script type="math/tex">x</script></span>-direction:
+<code><a title="pyairpar.core.param.Param" href="param.html#pyairpar.core.param.Param">Param</a></code>. Default value: <code>0.0</code>. The translation operation follows the rotation operation
+such that the rotation operation can be performed about the origin. Inactive by default.</p>
+<p><code>dy</code>: ( <span><span class="MathJax_Preview"> \Delta y</span><script type="math/tex"> \Delta y</script></span> ) distance to translate the airfoil in the <span><span class="MathJax_Preview">y</span><script type="math/tex">y</script></span>-direction:
+<code><a title="pyairpar.core.param.Param" href="param.html#pyairpar.core.param.Param">Param</a></code>. Default value: <code>0.0</code>. The translation operation follows the rotation operation
+such that the rotation operation can be performed about the origin. Inactive by default.</p>
+<p><code>non_dim_by_chord</code>: a <code>bool</code> that determines whether the <code><a title="pyairpar.core.param.Param" href="param.html#pyairpar.core.param.Param">Param</a></code>s with <code>units == length</code>
+should be non-dimensionalized by the chord (<code>c</code>). Default value: <code>True</code>.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
@@ -187,9 +276,63 @@ shown below</p>
 
         The most fundamental parameters required for the generation of any `pyairpar.core.airfoil.Airfoil`.
         A geometric description of an example airfoil generated (from `pyairpar.examples.simple_airfoil.main`) is
-        shown below
+        shown below (it may be helpful to open the image in a new tab to adequately view the details):
 
         .. image:: simple_airfoil_annotated.png
+
+        ### Args:
+
+        `c`: ( \\(c\\) ) chord length `pyairpar.core.param.Param`: Default value: `1.0`.
+
+        `alf`: ( \\(\\alpha\\) ) angle of attack (rad): `pyairpar.core.param.Param`. Default value: `0.0`.
+
+        `R_LE`: ( \\(R_{LE}\\) ) leading-edge radius: `pyairpar.core.param.Param`. Default value: `0.1`.
+
+        `L_LE`: ( \\(L_{LE}\\) ) distance between the control points immediately before and after the leading-edge
+        anchor point: `pyairpar.core.param.Param`. Default value: `0.1`.
+
+        `r_LE`: ( \\(r_{LE}\\) ) ratio of the distance from the leading-edge anchor point to the control point before to
+        the distance between the control points immediately before and after the leading-edge
+        anchor point ( \\( r_{LE} = L_{LE,upper} / L_{LE} \\) ): `pyairpar.core.param.Param`. Default value: `0.5`.
+
+        `phi_LE`: ( \\(\\phi_{LE}\\) ) leading-edge tilt (rad), referenced counter-clockwise from the perpendicular to
+        the chordline: `pyairpar.core.param.Param`. Default value: `0.0`.
+
+        `psi1_LE`: ( \\(\\psi_{LE,1}\\) ) leading-edge upper curvature control angle (rad), referenced counter-clockwise
+        from the chordline: `pyairpar.core.param.Param`. Default value: `0.0`.
+
+        `psi2_LE`: ( \\(\\psi_{LE,2}\\) ) leading-edge lower curvature control angle (rad), referenced clockwise
+        from the chordline: `pyairpar.core.param.Param`. Default value: `0.0`.
+
+        `L1_TE`: ( \\(L_{TE,1}\\) ) trailing edge upper length: `pyairpar.core.param.Param`. Default value: `0.1`.
+
+        `L2_TE`: ( \\(L_{TE,2}\\) ) trailing edge lower length: `pyairpar.core.param.Param`. Default value: `0.1`.
+
+        `theta1_TE`: ( \\(\\theta_{TE,1}\\) ) trailing edge upper angle (rad), referenced clockwise from the chordline:
+        `pyairpar.core.param.Param`. Default value: `np.deg2rad(10.0)`.
+
+        `theta2_TE`: ( \\(\\theta_{TE,2}\\) ) trailing edge lower angle (rad), referenced counter-clockwise from the
+        chordline: `pyairpar.core.param.Param`. Default value: `np.deg2rad(10.0)`.
+
+        `t_TE`: ( \\( t_{TE}\\) ) blunt trailing edge thickness: `pyairpar.core.param.Param`. Default value: `0.0`.
+
+        `r_TE`: ( \\(r_{TE}\\) ) ratio of the distance from the chordline&#39;s endpoint at the trailing edge to the
+        first control point of the airfoil to the distance between the first and last control points of the airfoil
+        ( \\( r_{TE} = L_{TE,upper} / L_{TE} \\) ): `pyairpar.core.param.Param`. Default value: `0.5`.
+
+        `phi_TE`: ( \\( \\phi_{TE}\\) ) blunt trailing-edge tilt (rad), referenced counter-clockwise from the
+        perpendicular to the chordline (same as `phi_LE`): `pyairpar.core.param.Param`. Default value: `0.0`.
+
+        `dx`: ( \\( \\Delta x\\) ) distance to translate the airfoil in the \\(x\\)-direction:
+        `pyairpar.core.param.Param`. Default value: `0.0`. The translation operation follows the rotation operation
+        such that the rotation operation can be performed about the origin. Inactive by default.
+
+        `dy`: ( \\( \\Delta y\\) ) distance to translate the airfoil in the \\(y\\)-direction:
+        `pyairpar.core.param.Param`. Default value: `0.0`. The translation operation follows the rotation operation
+        such that the rotation operation can be performed about the origin. Inactive by default.
+
+        `non_dim_by_chord`: a `bool` that determines whether the `pyairpar.core.param.Param`s with `units == length`
+        should be non-dimensionalized by the chord (`c`). Default value: `True`.
         &#34;&#34;&#34;
 
         self.c = c
