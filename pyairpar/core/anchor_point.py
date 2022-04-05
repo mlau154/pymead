@@ -21,20 +21,47 @@ class AnchorPoint:
 
         The `AnchorPoint` in `pyairpar` is the way to split a Bézier curve within an `pyairpar.core.airfoil.Airfoil`
         into two Bézier curves and satisfy \\(G^0\\), \\(G^1\\), and \\(G^2\\) continuity at the joint between the
-        curves
+        curves. Examples of implemented `AnchorPoint`s in an unnecessarily strange airfoil shape are shown in the
+        image below. It may be helpful to enlarge the image by opening it in a new tab.
+
+        .. image:: complex_airfoil_anchor_points.png
 
         ### Args:
 
-        `x`: `pyairpar.core.param.Param` describing the x-location of the `AnchorPoint`
+        `x`: ( \\(x\\) ) `pyairpar.core.param.Param` describing the x-location of the `AnchorPoint`
 
-        `y`: `pyairpar.core.param.Param` describing the y-location of the `AnchorPoint`
+        `y`: ( \\(y\\) ) `pyairpar.core.param.Param` describing the y-location of the `AnchorPoint`
 
         `previous_anchor_point`: a `str` representing the previous `AnchorPoint` (counter-clockwise ordering)
 
-        `L`: `pyairpar.core.param.Param` describing the distance between the control points on either side of the
-        `pyairpar.core.anchor_point.AnchorPoint`
+        `L`: ( \\(L\\) ) `pyairpar.core.param.Param` describing the distance between the control points on either
+        side of the `pyairpar.core.anchor_point.AnchorPoint`
 
-        .. WARNING:: Need to fill out rest of parameters
+        `R`: ( \\(R\\) ) `pyairpar.core.param.Param` representing the radius of curvature at the \\(x\\) - \\(y\\)
+        location of the `AnchorPoint`. A positive value makes the airfoil convex at the `AnchorPoint` location,
+        and a negative value makes the airfoil concave at the `AnchorPoint` location.
+
+        `r`: ( \\(r\\) ) `pyairpar.core.param.Param` representing the ratio of the distance from the `AnchorPoint`
+        location to the neighboring control point closest to the trailing edge to the distance between the
+        `AnchorPoint`'s neighboring control points ( \\(L_{fore} / L\\) ).
+
+        `phi`: ( \\(\\phi\\) ) `pyairpar.core.param.Param` representing the angle of the line passing through the
+        `AnchorPoint`'s neighboring control points, referenced counter-clockwise from the chordline if the
+        `AnchorPoint` is on the upper airfoil surface and clockwise from the chordline if the `AnchorPoint` is on the
+        lower airfoil surface.
+
+        `psi1`: ( \\(\\psi_1\\) ) `pyairpar.core.param.Param` representing the angle of the aft curvature control "arm."
+        Regardless of the sign of \\(R\\) or which surface the `AnchorPoint` lies on, an angle of \\(90^{\\circ}\\)
+        always means that the curvature control arm points perpendicular to the line passing through the
+        neighboring control points of the `AnchorPoint`. Angles below \\(90^{\\circ}\\) "tuck" the arms in, and angles
+        above \\(90^{\\circ}\\) "spread" the arms out. The valid range is \\(\\psi_1 \\in (0^{\\circ},180^{\\circ})\\).
+
+        `psi2`: ( \\(\\psi_2\\) ) `pyairpar.core.param.Param` representing the angle of the fore curvature control
+        "arm." Regardless of the sign of \\(R\\) or which surface the `AnchorPoint` lies on, an angle of \\(90^{
+        \\circ}\\) always means that the curvature control arm points perpendicular to the line passing through the
+        neighboring control points of the `AnchorPoint`. Angles below \\(90^{\\circ}\\) "tuck" the arms in,
+        and angles above \\(90^{\\circ}\\) "spread" the arms out. The valid range is \\(\\psi_2 \\in (0^{\\circ},
+        180^{\\circ})\\).
 
         `length_scale_dimension`: a `float` giving the length scale by which to non-dimensionalize the `x` and `y`
         values (optional)

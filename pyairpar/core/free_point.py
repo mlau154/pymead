@@ -16,7 +16,9 @@ class FreePoint:
         The `FreePoint` in `pyairpar` is the way to add a control point to a Bézier curve within an `Airfoil`
         without requiring the Bézier curve to pass through that particular point. In other words, a FreePoint allows
         an \\(x\\) - \\(y\\) coordinate pair to be added to the `P` matrix (see `pyairpar.core.airfoil.bezier` for
-        usage).
+        usage). An example showing some possible locations of `FreePoint`s is shown below.
+
+        .. image:: complex_airfoil_free_points.png
 
         ### Args:
 

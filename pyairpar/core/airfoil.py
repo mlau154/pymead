@@ -25,6 +25,8 @@ class Airfoil:
 
         `pyairpar.core.airfoil.Airfoil` is the base class for Bézier-parametrized airfoil creation.
 
+        .. image:: complex_airfoil-3.png
+
         ### Args:
 
         `number_coordinates`: an `int` representing the number of discrete \\(x\\) - \\(y\\) coordinate pairs in each
@@ -175,16 +177,17 @@ class Airfoil:
         return g2_minus_points, g2_plus_points
 
     def set_slope(self, anchor_point: AnchorPoint):
-        phi = anchor_point.phi.value
         r = anchor_point.r.value
         L = anchor_point.L.value
 
         if self.anchor_point_order.index(anchor_point.name) < self.anchor_point_order.index('le'):
+            phi = anchor_point.phi.value
             self.g1_minus_points[anchor_point.name] = \
-                self.anchor_points[anchor_point.name] + r * L * np.array([np.cos(phi), np.sin(phi)])
+                self.anchor_points[anchor_point.name] + (1 - r) * L * np.array([np.cos(phi), np.sin(phi)])
             self.g1_plus_points[anchor_point.name] = \
-                self.anchor_points[anchor_point.name] - (1 - r) * L * np.array([np.cos(phi), np.sin(phi)])
+                self.anchor_points[anchor_point.name] - r * L * np.array([np.cos(phi), np.sin(phi)])
         else:
+            phi = -anchor_point.phi.value
             self.g1_minus_points[anchor_point.name] = \
                 self.anchor_points[anchor_point.name] - r * L * np.array([np.cos(phi), np.sin(phi)])
             self.g1_plus_points[anchor_point.name] = \
@@ -222,23 +225,45 @@ class Airfoil:
         else:
             n1, n2 = self.N[self.anchor_point_order[self.anchor_point_order.index(anchor_point.name) - 1]], \
                      self.N[anchor_point.name]
-            if R > 0:
-                theta1, theta2 = anchor_point.psi1.value, -anchor_point.psi2.value
-            else:
-                theta1, theta2 = np.pi - anchor_point.psi1.value, np.pi + anchor_point.psi2.value
+            if R > 0:  # If the radius of curvature is positive,
+                if self.anchor_point_order.index(anchor_point.name) < self.anchor_point_order.index('le'):
+                    theta1, theta2 = anchor_point.psi1.value + anchor_point.phi.value, \
+                                     -anchor_point.psi2.value + anchor_point.phi.value
+                else:
+                    theta2, theta1 = np.pi - anchor_point.psi1.value - anchor_point.phi.value, \
+                                     - anchor_point.psi2.value - anchor_point.phi.value
+            else:  # If the radius of curvature is negative,
+                if self.anchor_point_order.index(anchor_point.name) < self.anchor_point_order.index('le'):
+                    theta1, theta2 = np.pi - anchor_point.psi1.value + anchor_point.phi.value, \
+                                     np.pi + anchor_point.psi2.value + anchor_point.phi.value
+                else:
+                    theta2, theta1 = anchor_point.psi1.value - anchor_point.phi.value, \
+                                     -anchor_point.psi2.value - anchor_point.phi.value
             x0, y0 = anchor_point.xy[0], anchor_point.xy[1]
 
             x_m1, y_m1 = self.g1_minus_points[anchor_point.name][0], self.g1_minus_points[anchor_point.name][1]
             g2_minus_point = np.zeros(2)
-            g2_minus_point[0] = x_m1 - 1 / R * ((x0 - x_m1) ** 2 + (y0 - y_m1) ** 2) ** (3 / 2) / (
-                    1 - 1 / n1) / ((x_m1 - x0) * np.tan(theta1) + y0 - y_m1)
-            g2_minus_point[1] = np.tan(theta1) * (g2_minus_point[0] - x_m1) + y_m1
+            a = - 1 / R * ((x0 - x_m1) ** 2 + (y0 - y_m1) ** 2) ** (3 / 2)
+            b = 1 - 1 / n1
+            c = x_m1 - x0
+            if theta1 != np.deg2rad(90.0):
+                g2_minus_point[0] = x_m1 + a / b / (c * np.tan(theta1) + y0 - y_m1)
+                g2_minus_point[1] = np.tan(theta1) * (g2_minus_point[0] - x_m1) + y_m1
+            else:
+                g2_minus_point[0] = x_m1
+                g2_minus_point[1] = y_m1 + a / b / c
 
             x_p1, y_p1 = self.g1_plus_points[anchor_point.name][0], self.g1_plus_points[anchor_point.name][1]
             g2_plus_point = np.zeros(2)
-            g2_plus_point[0] = x_p1 - 1 / R * ((x_p1 - x0) ** 2 + (y_p1 - y0) ** 2) ** (3 / 2) / (
-                    1 - 1 / n2) / ((x0 - x_p1) * np.tan(theta2) + y_p1 - y0)
-            g2_plus_point[1] = np.tan(theta2) * (g2_plus_point[0] - x_p1) + y_p1
+            a = - 1 / R * ((x_p1 - x0) ** 2 + (y_p1 - y0) ** 2) ** (3 / 2)
+            b = 1 - 1 / n2
+            c = x0 - x_p1
+            if theta2 != np.deg2rad(90.0):
+                g2_plus_point[0] = x_p1 + a / b / (c * np.tan(theta2) + y_p1 - y0)
+                g2_plus_point[1] = np.tan(theta2) * (g2_plus_point[0] - x_p1) + y_p1
+            else:
+                g2_plus_point[0] = x_p1
+                g2_plus_point[1] = y_p1 + a / b / c
 
             self.g2_minus_points[anchor_point.name] = g2_minus_point
             self.g2_plus_points[anchor_point.name] = g2_plus_point
@@ -487,19 +512,36 @@ class Airfoil:
                     axs.plot(self.control_points[:, 0], self.control_points[:, 1], **plot_kwargs)
             if what_to_plot == 'chordline':
                 if plot_kwargs is None:
-                    axs.plot(np.array([0, self.c.value * np.cos(self.alf.value)]),
-                             np.array([0, -self.c.value * np.sin(self.alf.value)]), '-.', color='indianred',
-                             label='chordline')
+                    axs.plot(np.array([0 + self.dx.value, self.c.value * np.cos(self.alf.value) + self.dx.value]),
+                             np.array([0 + self.dy.value, -self.c.value * np.sin(self.alf.value) + self.dy.value]),
+                             '-.', color='indianred', label='chordline')
                 else:
                     axs.plot(np.array([0, self.c.value * np.cos(self.alf.value)]),
                              np.array([0, -self.c.value * np.sin(self.alf.value)]), **plot_kwargs)
             if what_to_plot == 'R-circles':
-                line = [[0, self.R_le.value * np.cos(self.phi_le.value - self.alf.value)],
-                        [0, self.R_le.value * np.sin(self.phi_le.value - self.alf.value)]]
+                line = [[0 + self.dx.value, self.R_le.value *
+                         np.cos(self.phi_le.value - self.alf.value) + self.dx.value],
+                        [0 + self.dy.value, self.R_le.value *
+                         np.sin(self.phi_le.value - self.alf.value) + self.dy.value]]
                 circle = plt.Circle((line[0][1], line[1][1]), self.R_le.value, fill=False, color='gold',
                                     label='R circle')
                 axs.plot(line[0], line[1], color='gold')
                 axs.add_patch(circle)
+                for anchor_point in self.anchor_point_tuple:
+                    xy = self.anchor_point_array[self.anchor_point_order.index(anchor_point.name), :]
+                    if self.anchor_point_order.index(anchor_point.name) > self.anchor_point_order.index('le'):
+                        perp_angle = np.pi / 2
+                        phi = -anchor_point.phi.value
+                    else:
+                        perp_angle = -np.pi / 2
+                        phi = anchor_point.phi.value
+                    line = np.array([xy, xy + anchor_point.R.value *
+                                     np.array([np.cos(phi - self.alf.value + perp_angle),
+                                               np.sin(phi - self.alf.value + perp_angle)])])
+                    print(line)
+                    circle = plt.Circle((line[1, 0], line[1, 1]), anchor_point.R.value, fill=False, color='gold')
+                    axs.plot(line[:, 0], line[:, 1], color='gold')
+                    axs.add_patch(circle)
             if what_to_plot == 'curvature':
                 if plot_kwargs is None:
                     axs.plot(self.curvature[:, 0], self.curvature[:, 1], color='cornflowerblue', label='curvature')
@@ -619,90 +661,3 @@ def bezier(P: np.ndarray, nt: int) -> dict:
         C['k'] = (C['px'] * C['ppy'] - C['py'] * C['ppx']) / (C['px'] ** 2 + C['py'] ** 2) ** (3 / 2)
 
     return C
-
-
-def main():
-
-    base_airfoil_params = BaseAirfoilParams(c=Param(5.0),
-                                            alf=Param(np.deg2rad(5.0)),
-                                            R_le=Param(0.06, 'length'),
-                                            L_le=Param(0.08, 'length'),
-                                            r_le=Param(0.6),
-                                            phi_le=Param(np.deg2rad(5.0)),
-                                            psi1_le=Param(np.deg2rad(10.0)),
-                                            psi2_le=Param(np.deg2rad(15.0)),
-                                            L1_te=Param(0.25, 'length'),
-                                            L2_te=Param(0.3, 'length'),
-                                            theta1_te=Param(np.deg2rad(2.0)),
-                                            theta2_te=Param(np.deg2rad(2.0)),
-                                            t_te=Param(0.0, 'length'),
-                                            r_te=Param(0.5),
-                                            phi_te=Param(np.deg2rad(0.0)),
-                                            non_dim_by_chord=True
-                                            )
-
-    anchor_point1 = AnchorPoint(x=Param(0.55, units='length'),
-                                y=Param(0.05, units='length'),
-                                name='anchor-top',
-                                previous_anchor_point='te_1',
-                                L=Param(0.1, units='length'),
-                                R=Param(-0.3, units='length'),
-                                r=Param(0.5),
-                                phi=Param(np.deg2rad(0.0)),
-                                psi1=Param(np.deg2rad(45.0)),
-                                psi2=Param(np.deg2rad(45.0)),
-                                length_scale_dimension=base_airfoil_params.c.value
-                                )
-
-    anchor_point2 = AnchorPoint(x=Param(0.35, units='length'),
-                                y=Param(-0.02, units='length'),
-                                name='anchor-bottom',
-                                previous_anchor_point='le',
-                                L=Param(0.13, units='length'),
-                                R=Param(0.4, units='length'),
-                                r=Param(0.7),
-                                phi=Param(np.deg2rad(0.0)),
-                                psi1=Param(np.deg2rad(75.0)),
-                                psi2=Param(np.deg2rad(75.0)),
-                                length_scale_dimension=base_airfoil_params.c.value
-                                )
-
-    anchor_point_tuple = (anchor_point1, anchor_point2)
-
-    free_point1 = FreePoint(x=Param(0.15, units='length'),
-                            y=Param(0.015, units='length'),
-                            previous_anchor_point='le',
-                            length_scale_dimension=base_airfoil_params.c.value)
-
-    free_point2 = FreePoint(x=Param(0.58, units='length'),
-                            y=Param(0.0, units='length'),
-                            previous_anchor_point='anchor-bottom',
-                            length_scale_dimension=base_airfoil_params.c.value)
-
-    free_point3 = FreePoint(x=Param(0.3, units='length'),
-                            y=Param(0.07, units='length'),
-                            previous_anchor_point='anchor-top',
-                            length_scale_dimension=base_airfoil_params.c.value)
-
-    free_point_tuple = (free_point1, free_point2, free_point3)
-
-    airfoil = Airfoil(number_coordinates=100,
-                      base_airfoil_params=base_airfoil_params,
-                      anchor_point_tuple=anchor_point_tuple,
-                      free_point_tuple=free_point_tuple)
-
-    parameters = [5.0, 0.08726646259971647, 0.06, 0.08, 0.6, 0.08726646259971647, 0.17453292519943295,
-                  0.2617993877991494, 0.25, 0.3, 0.03490658503988659, 0.03490658503988659, 0.0, 0.5, 0.0, 0.55, 0.05,
-                  0.1, -0.3, 0.5, 0.0, 0.7853981633974483, 0.7853981633974483, 0.35, -0.02, 0.13, 0.4, 0.7, 0.0,
-                  1.3089969389957472, 1.3089969389957472, 0.15, 0.015, 0.58, 0.0, 0.3, 0.07]
-
-    # airfoil.override(parameters)
-
-    self_intersecting = airfoil.check_self_intersection()
-    print(f"Self-intersecting? {self_intersecting}")
-
-    airfoil.plot(('airfoil', 'control-point-skeleton'))
-
-
-if __name__ == '__main__':
-    main()
