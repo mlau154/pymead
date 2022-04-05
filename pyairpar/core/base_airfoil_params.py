@@ -20,8 +20,19 @@ class BaseAirfoilParams:
                  t_te: Param = Param(0.0, 'length'),            # blunt trailing edge thickness
                  r_te: Param = Param(0.5),                      # blunt trailing edge thickness length ratio
                  phi_te: Param = Param(0.0),                    # blunt trailing edge 'tilt' angle
+                 dx: Param = Param(0.0, active=False),          # dx to translate
+                 dy: Param = Param(0.0, active=False),          # dy to translate
                  non_dim_by_chord: bool = True,
                  ):
+        """
+        ### Description:
+
+        The most fundamental parameters required for the generation of any `pyairpar.core.airfoil.Airfoil`.
+        A geometric description of an example airfoil generated (from `pyairpar.examples.simple_airfoil.main`) is
+        shown below (it may be necessary to open the image in a new tab to adequately view the details):
+
+        .. image:: simple_airfoil_annotated.png
+        """
 
         self.c = c
         self.alf = alf
@@ -38,11 +49,20 @@ class BaseAirfoilParams:
         self.t_te = t_te
         self.r_te = r_te
         self.phi_te = phi_te
+        self.dx = dx
+        self.dy = dy
         self.non_dim_by_chord = non_dim_by_chord
         self.n_overrideable_parameters = self.count_overrideable_variables()
         self.scale_vars()
 
     def scale_vars(self):
+        """
+        ### Description:
+
+        Scales all of the `pyairpar.core.param.Param`s in the `BaseAirfoilParams` with `units == 'length'` by the
+        `length_scale_dimension`. Scaling only occurs for each parameter if the `pyairpar.core.param.Param` has not yet
+        been scaled.
+        """
         if self.non_dim_by_chord:  # only scale if the anchor point has a length scale dimension
             for param in [var for var in vars(self).values()  # For each parameter in the anchor point,
                           if isinstance(var, Param) and var.units == 'length']:
@@ -50,11 +70,33 @@ class BaseAirfoilParams:
                     param.value = param.value * self.c.value
 
     def count_overrideable_variables(self):
+        """
+        ### Description:
+
+        Counts all the overrideable `pyairpar.core.param.Param`s in the `BaseAirfoilParams` (criteria:
+        `pyairpar.core.param.Param().active == True`, `pyairpar.core.param.Param().linked == False`)
+
+        ### Returns:
+
+        Number of overrideable variables (`int`)
+        """
         n_overrideable_variables = len([var for var in vars(self).values()
                                         if isinstance(var, Param) and var.active and not var.linked])
         return n_overrideable_variables
 
     def override(self, parameters: list):
+        """
+        ### Description:
+
+        Overrides all the `pyairpar.core.param.Param`s in `BaseAirfoilParams` which are active and not linked using a
+        list of parameters. This list of parameters is likely a subset of parameters passed to either
+        `pyairpar.core.airfoil.Airfoil` or `pyairpar.core.parametrization.AirfoilParametrization`. This function is
+        useful whenever iteration over only the relevant parameters is required.
+
+        ### Args:
+
+        `parameters`: a `list` of parameters
+        """
         override_param_obj_list = [var for var in vars(self).values()
                                    if isinstance(var, Param) and var.active and not var.linked]
         if len(parameters) != len(override_param_obj_list):

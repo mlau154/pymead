@@ -20,6 +20,30 @@ class Airfoil:
                  free_point_tuple: typing.Tuple[FreePoint, ...] = (),
                  override_parameters: list = None
                  ):
+        """
+        ### Description:
+
+        `pyairpar.core.airfoil.Airfoil` is the base class for Bézier-parametrized airfoil creation.
+
+        ### Args:
+
+        `number_coordinates`: an `int` representing the number of discrete \\(x\\) - \\(y\\) coordinate pairs in each
+        Bézier curve. Gets passed to the `bezier` function.
+
+        `base_airfoil_params`: an instance of either the `pyairpar.core.base_airfoil_params.BaseAirfoilParams` class or
+        the `pyairpar.symmetric.symmetric_base_airfoil_params.SymmetricBaseAirfoilParams` class which defines the base
+        set of parameters to be used
+
+        `anchor_point_tuple`: a `tuple` of `pyairpar.core.anchor_point.AnchorPoint` objects. To specify a single
+        anchor point, use `(pyairpar.core.anchor_point.AnchorPoint(),)`. Default: `()`
+
+        `free_point_tuple`: a `tuple` of `pyairpar.core.free_point.FreePoint` objects. To specify a single free
+        point, use `(pyairpar.core.free_point.FreePoint(),)`. Default: `()`
+
+        ### Returns:
+
+        An instance of the `Airfoil` class
+        """
 
         self.nt = number_coordinates
         self.params = []
@@ -49,6 +73,13 @@ class Airfoil:
         self.t_te = base_airfoil_params.t_te
         self.r_te = base_airfoil_params.r_te
         self.phi_te = base_airfoil_params.phi_te
+        self.dx = base_airfoil_params.dx
+        self.dy = base_airfoil_params.dy
+
+        # Ensure that all the trailing edge parameters are no longer active if the trailing edge thickness is set to 0.0
+        if self.t_te.value == 0.0:
+            self.r_te.active = False
+            self.phi_te.active = False
 
         self.C = []
         self.free_points = {}
@@ -238,37 +269,6 @@ class Airfoil:
             self.bounds.extend([[var.bounds[0], var.bounds[1]] for var in vars(free_point).values()
                                 if isinstance(var, Param) and var.active and not var.linked])
 
-    # def inject_parameters(self):
-    #
-    #     param_idx = 0
-    #
-    #     # for obj in [var for var in vars(self.base_airfoil_params).values()
-    #     #             if isinstance(var, Param) and var.active and not var.linked]:
-    #     for key, var in vars(self.base_airfoil_params).items():
-    #         if isinstance(var, Param) and var.active and not var.linked:
-    #             print(f"params[param_idx] = {self.override_parameters[param_idx]}")
-    #             setattr(var, 'value', self.override_parameters[param_idx])
-    #             print(var.value)
-    #             param_idx += 1
-    #
-    #     # print(f"c.value = {getattr(self.c, 'value')}")
-    #     #
-    #     # for anchor_point in self.anchor_point_tuple:
-    #     #
-    #     #     for obj in [var for var in vars(anchor_point).values()
-    #     #                 if isinstance(var, Param) and var.active and not var.linked]:
-    #     #         obj.value = self.override_parameters[param_idx]
-    #     #         print(obj.value)
-    #     #         param_idx += 1
-    #     #
-    #     # for free_point in self.free_point_tuple:
-    #     #
-    #     #     for obj in [var for var in vars(free_point).values()
-    #     #                 if isinstance(var, Param) and var.active and not var.linked]:
-    #     #         obj.value = self.override_parameters[param_idx]
-    #     #         print(obj.value)
-    #     #         param_idx += 1
-
     def order_control_points(self):
         self.control_points = np.array([])
         for idx, anchor_point in enumerate(self.anchor_point_order):
@@ -358,6 +358,7 @@ class Airfoil:
         self.order_control_points()
         self.update_anchor_point_array()
         self.rotate(-self.alf.value)
+        self.translate(self.dx.value, self.dy.value)
         self.generate_airfoil_coordinates()
         self.needs_update = False
 
@@ -365,20 +366,49 @@ class Airfoil:
         self.__init__(self.nt, self.base_airfoil_params, self.anchor_point_tuple, self.free_point_tuple,
                       override_parameters=parameters)
 
-    # Need to incorporate into Airfoil().update() method
     def translate(self, dx: float, dy: float):
+        """
+        ### Description:
+
+        Translates all the control points and anchor points by \\(\\Delta x\\) and \\(\\Delta y\\).
+
+        ### Args:
+
+        `dx`: \\(x\\)-direction translation magnitude
+
+        `dy`: \\(y\\)-direction translation magnitude
+
+        ### Returns:
+
+        The translated control point and anchor point arrays
+        """
         self.control_points[:, 0] += dx
         self.control_points[:, 1] += dy
+        self.anchor_point_array[:, 0] += dx
+        self.anchor_point_array[:, 1] += dy
         self.needs_update = True
-        return self.control_points
+        return self.control_points, self.anchor_point_array
 
     def rotate(self, angle: float):
+        """
+        ### Description:
+
+        Rotates all the control points and anchor points by a specified angle. Used to implement the angle of attack.
+
+        ### Args:
+
+        `angle`: Angle (in radians) by which to rotate the airfoil.
+
+        ### Returns:
+
+        The rotated control point and anchor point arrays
+        """
         rot_mat = np.array([[np.cos(angle), -np.sin(angle)],
                             [np.sin(angle), np.cos(angle)]])
         self.control_points = (rot_mat @ self.control_points.T).T
         self.anchor_point_array = (rot_mat @ self.anchor_point_array.T).T
         self.needs_update = True
-        return self.control_points
+        return self.control_points, self.anchor_point_array
 
     def generate_airfoil_coordinates(self):
         if self.C:
@@ -502,7 +532,7 @@ def bezier(P: np.ndarray, nt: int) -> dict:
     """
     ### Description:
 
-    Computes the Bezier curve through the control points `P` according to
+    Computes the Bézier curve through the control points `P` according to
     $$\\vec{C}(t)=\\sum_{i=0}^n \\vec{P}_i B_{i,n}(t)$$ where \\(B_{i,n}(t)\\) is the Bernstein polynomial, given by
     $$B_{i,n}={n \\choose i} t^i (1-t)^{n-i}$$
 
@@ -511,21 +541,28 @@ def bezier(P: np.ndarray, nt: int) -> dict:
     $$\\vec{C}''(t)=n(n-1) \\sum_{i=0}^{n-2} (\\vec{P}_{i+2}-2\\vec{P}_{i+1}+\\vec{P}_i) B_{i,n-2}(t)$$
     $$\\kappa(t)=\\frac{C'_x(t) C''_y(t) - C'_y(t) C''_x(t)}{[(C'_x)^2(t) + (C'_y)^2(t)]^{3/2}}$$
 
+    An example cubic Bézier curve (order \\(n=3\\)) is shown below. Note that the curve passes through the first and
+    last control points and has a local slope at \\(P_0\\) equal to the slope of the line passing through \\(P_0\\)
+    and \\(P_1\\). Similarly, the local slope at \\(P_3\\) is equal to the slope of the line passing through
+    \\(P_2\\) and \\(P_3\\). These properties of Bézier curves allow us to easily enforce \\(G^0\\) and \\(G^1\\)
+    continuity at Bézier curve "joints" (common endpoints of connected Bézier curves).
+
     .. image:: bezier_curve.png
 
     ### Args:
 
-    `P`: `np.ndarray` of `shape=(n+1, 2)`, where `n` is the order of the Bezier curve and `n+1` is the number of
-    control points in the Bezier curve. The two columns represent the `x` and `y` components of the control points.
+    `P`: `np.ndarray` of `shape=(n+1, 2)`, where `n` is the order of the Bézier curve and `n+1` is the number of
+    control points in the Bézier curve. The two columns represent the `x` and `y` components of the control points.
 
     `nt`: number of points in the `t` vector (defines the resolution of the curve)
 
     ### Returns:
 
-    A dictionary of `numpy` arrays of `shape=nt` containing information related to the created Bezier curve:
+    A dictionary of `numpy` arrays of `shape=nt` containing information related to the created Bézier curve:
 
     $$C_x(t), C_y(t), C'_x(t), C'_y(t), C''_x(t), C''_y(t), \\kappa(t)$$
-    where the \\(x\\) and \\(y\\) subscripts represent the \\(x\\) and \\(y\\) components of the vector-valued function.
+    where the \\(x\\) and \\(y\\) subscripts represent the \\(x\\) and \\(y\\) components of the vector-valued functions
+    \\(\\vec{C}(t)\\), \\(\\vec{C}'(t)\\), and \\(\\vec{C}''(t)\\).
     """
 
     def nCr(n_, r):
@@ -536,7 +573,7 @@ def bezier(P: np.ndarray, nt: int) -> dict:
 
         ### Args:
 
-        `n_`: `n` written with a trailing underscore to avoid conflation with the order `n` of the Bezier curve
+        `n_`: `n` written with a trailing underscore to avoid conflation with the order `n` of the Bézier curve
 
         `r'
 

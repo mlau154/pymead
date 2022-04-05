@@ -153,7 +153,20 @@ class SymmetricAirfoil(Airfoil):
 <span>(</span><span>number_coordinates: int = 100, base_airfoil_params: <a title="pyairpar.symmetric.symmetric_base_airfoil_params.SymmetricBaseAirfoilParams" href="symmetric_base_airfoil_params.html#pyairpar.symmetric.symmetric_base_airfoil_params.SymmetricBaseAirfoilParams">SymmetricBaseAirfoilParams</a> = &lt;pyairpar.symmetric.symmetric_base_airfoil_params.SymmetricBaseAirfoilParams object&gt;, anchor_point_tuple: Tuple[<a title="pyairpar.core.anchor_point.AnchorPoint" href="../core/anchor_point.html#pyairpar.core.anchor_point.AnchorPoint">AnchorPoint</a>, ...] = (), free_point_tuple: Tuple[<a title="pyairpar.core.free_point.FreePoint" href="../core/free_point.html#pyairpar.core.free_point.FreePoint">FreePoint</a>, ...] = ())</span>
 </code></dt>
 <dd>
-<div class="desc"></div>
+<div class="desc"><h3 id="description">Description:</h3>
+<p><code><a title="pyairpar.core.airfoil.Airfoil" href="../core/airfoil.html#pyairpar.core.airfoil.Airfoil">Airfoil</a></code> is the base class for Bézier-parametrized airfoil creation.</p>
+<h3 id="args">Args:</h3>
+<p><code>number_coordinates</code>: an <code>int</code> representing the number of discrete <span><span class="MathJax_Preview">x</span><script type="math/tex">x</script></span> - <span><span class="MathJax_Preview">y</span><script type="math/tex">y</script></span> coordinate pairs in each
+Bézier curve. Gets passed to the <code>bezier</code> function.</p>
+<p><code>base_airfoil_params</code>: an instance of either the <code><a title="pyairpar.core.base_airfoil_params.BaseAirfoilParams" href="../core/base_airfoil_params.html#pyairpar.core.base_airfoil_params.BaseAirfoilParams">BaseAirfoilParams</a></code> class or
+the <code><a title="pyairpar.symmetric.symmetric_base_airfoil_params.SymmetricBaseAirfoilParams" href="symmetric_base_airfoil_params.html#pyairpar.symmetric.symmetric_base_airfoil_params.SymmetricBaseAirfoilParams">SymmetricBaseAirfoilParams</a></code> class which defines the base
+set of parameters to be used</p>
+<p><code>anchor_point_tuple</code>: a <code>tuple</code> of <code><a title="pyairpar.core.anchor_point.AnchorPoint" href="../core/anchor_point.html#pyairpar.core.anchor_point.AnchorPoint">AnchorPoint</a></code> objects. To specify a single
+anchor point, use <code>(<a title="pyairpar.core.anchor_point.AnchorPoint" href="../core/anchor_point.html#pyairpar.core.anchor_point.AnchorPoint">AnchorPoint</a>,)</code>. Default: <code>()</code></p>
+<p><code>free_point_tuple</code>: a <code>tuple</code> of <code><a title="pyairpar.core.free_point.FreePoint" href="../core/free_point.html#pyairpar.core.free_point.FreePoint">FreePoint</a></code> objects. To specify a single free
+point, use <code>(<a title="pyairpar.core.free_point.FreePoint" href="../core/free_point.html#pyairpar.core.free_point.FreePoint">FreePoint</a>,)</code>. Default: <code>()</code></p>
+<h3 id="returns">Returns:</h3>
+<p>An instance of the <code>Airfoil</code> class</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
@@ -383,6 +396,8 @@ class SymmetricAirfoil(Airfoil):
 <ul class="hlist">
 <li><code><a title="pyairpar.core.airfoil.Airfoil.add_anchor_point" href="../core/airfoil.html#pyairpar.core.airfoil.Airfoil.add_anchor_point">add_anchor_point</a></code></li>
 <li><code><a title="pyairpar.core.airfoil.Airfoil.add_free_point" href="../core/airfoil.html#pyairpar.core.airfoil.Airfoil.add_free_point">add_free_point</a></code></li>
+<li><code><a title="pyairpar.core.airfoil.Airfoil.rotate" href="../core/airfoil.html#pyairpar.core.airfoil.Airfoil.rotate">rotate</a></code></li>
+<li><code><a title="pyairpar.core.airfoil.Airfoil.translate" href="../core/airfoil.html#pyairpar.core.airfoil.Airfoil.translate">translate</a></code></li>
 </ul>
 </li>
 </ul>
