@@ -42,7 +42,7 @@ def main():
                                             R_le=Param(0.06, &#39;length&#39;),
                                             L_le=Param(0.08, &#39;length&#39;),
                                             r_le=Param(0.6),
-                                            phi_le=Param(np.deg2rad(5.0)),
+                                            phi_le=Param(np.deg2rad(12.0)),
                                             psi1_le=Param(np.deg2rad(10.0)),
                                             psi2_le=Param(np.deg2rad(15.0)),
                                             L1_te=Param(0.25, &#39;length&#39;),
@@ -52,6 +52,8 @@ def main():
                                             t_te=Param(0.0, &#39;length&#39;),
                                             r_te=Param(0.5),
                                             phi_te=Param(np.deg2rad(0.0)),
+                                            dx=Param(0.5, linked=True),
+                                            dy=Param(0.5, linked=True),
                                             non_dim_by_chord=True
                                             )
 
@@ -60,28 +62,41 @@ def main():
                                 name=&#39;anchor-top&#39;,
                                 previous_anchor_point=&#39;te_1&#39;,
                                 L=Param(0.1, units=&#39;length&#39;),
-                                R=Param(-0.3, units=&#39;length&#39;),
-                                r=Param(0.5),
-                                phi=Param(np.deg2rad(0.0)),
-                                psi1=Param(np.deg2rad(45.0)),
-                                psi2=Param(np.deg2rad(45.0)),
+                                R=Param(-0.15, units=&#39;length&#39;),
+                                r=Param(0.55),
+                                phi=Param(np.deg2rad(14.0)),
+                                psi1=Param(np.deg2rad(80.0)),
+                                psi2=Param(np.deg2rad(40.0)),
                                 length_scale_dimension=base_airfoil_params.c.value
                                 )
 
-    anchor_point2 = AnchorPoint(x=Param(0.35, units=&#39;length&#39;),
+    anchor_point2 = AnchorPoint(x=Param(0.2, units=&#39;length&#39;),
+                                y=Param(0.05, units=&#39;length&#39;),
+                                name=&#39;anchor-top2&#39;,
+                                previous_anchor_point=&#39;anchor-top&#39;,
+                                L=Param(0.04, units=&#39;length&#39;),
+                                R=Param(0.1, units=&#39;length&#39;),
+                                r=Param(0.5),
+                                phi=Param(np.deg2rad(0.0)),
+                                psi1=Param(np.deg2rad(60.0)),
+                                psi2=Param(np.deg2rad(60.0)),
+                                length_scale_dimension=base_airfoil_params.c.value
+                                )
+
+    anchor_point3 = AnchorPoint(x=Param(0.35, units=&#39;length&#39;),
                                 y=Param(-0.02, units=&#39;length&#39;),
                                 name=&#39;anchor-bottom&#39;,
                                 previous_anchor_point=&#39;le&#39;,
                                 L=Param(0.13, units=&#39;length&#39;),
-                                R=Param(0.4, units=&#39;length&#39;),
+                                R=Param(0.2, units=&#39;length&#39;),
                                 r=Param(0.7),
-                                phi=Param(np.deg2rad(0.0)),
-                                psi1=Param(np.deg2rad(75.0)),
-                                psi2=Param(np.deg2rad(75.0)),
+                                phi=Param(np.deg2rad(8.0)),
+                                psi1=Param(np.deg2rad(110.0)),
+                                psi2=Param(np.deg2rad(90.0)),
                                 length_scale_dimension=base_airfoil_params.c.value
                                 )
 
-    anchor_point_tuple = (anchor_point1, anchor_point2)
+    anchor_point_tuple = (anchor_point1, anchor_point2, anchor_point3)
 
     free_point1 = FreePoint(x=Param(0.15, units=&#39;length&#39;),
                             y=Param(0.015, units=&#39;length&#39;),
@@ -139,7 +154,7 @@ if __name__ == &#39;__main__&#39;:
                                             R_le=Param(0.06, &#39;length&#39;),
                                             L_le=Param(0.08, &#39;length&#39;),
                                             r_le=Param(0.6),
-                                            phi_le=Param(np.deg2rad(5.0)),
+                                            phi_le=Param(np.deg2rad(12.0)),
                                             psi1_le=Param(np.deg2rad(10.0)),
                                             psi2_le=Param(np.deg2rad(15.0)),
                                             L1_te=Param(0.25, &#39;length&#39;),
@@ -149,6 +164,8 @@ if __name__ == &#39;__main__&#39;:
                                             t_te=Param(0.0, &#39;length&#39;),
                                             r_te=Param(0.5),
                                             phi_te=Param(np.deg2rad(0.0)),
+                                            dx=Param(0.5, linked=True),
+                                            dy=Param(0.5, linked=True),
                                             non_dim_by_chord=True
                                             )
 
@@ -157,28 +174,41 @@ if __name__ == &#39;__main__&#39;:
                                 name=&#39;anchor-top&#39;,
                                 previous_anchor_point=&#39;te_1&#39;,
                                 L=Param(0.1, units=&#39;length&#39;),
-                                R=Param(-0.3, units=&#39;length&#39;),
-                                r=Param(0.5),
-                                phi=Param(np.deg2rad(0.0)),
-                                psi1=Param(np.deg2rad(45.0)),
-                                psi2=Param(np.deg2rad(45.0)),
+                                R=Param(-0.15, units=&#39;length&#39;),
+                                r=Param(0.55),
+                                phi=Param(np.deg2rad(14.0)),
+                                psi1=Param(np.deg2rad(80.0)),
+                                psi2=Param(np.deg2rad(40.0)),
                                 length_scale_dimension=base_airfoil_params.c.value
                                 )
 
-    anchor_point2 = AnchorPoint(x=Param(0.35, units=&#39;length&#39;),
+    anchor_point2 = AnchorPoint(x=Param(0.2, units=&#39;length&#39;),
+                                y=Param(0.05, units=&#39;length&#39;),
+                                name=&#39;anchor-top2&#39;,
+                                previous_anchor_point=&#39;anchor-top&#39;,
+                                L=Param(0.04, units=&#39;length&#39;),
+                                R=Param(0.1, units=&#39;length&#39;),
+                                r=Param(0.5),
+                                phi=Param(np.deg2rad(0.0)),
+                                psi1=Param(np.deg2rad(60.0)),
+                                psi2=Param(np.deg2rad(60.0)),
+                                length_scale_dimension=base_airfoil_params.c.value
+                                )
+
+    anchor_point3 = AnchorPoint(x=Param(0.35, units=&#39;length&#39;),
                                 y=Param(-0.02, units=&#39;length&#39;),
                                 name=&#39;anchor-bottom&#39;,
                                 previous_anchor_point=&#39;le&#39;,
                                 L=Param(0.13, units=&#39;length&#39;),
-                                R=Param(0.4, units=&#39;length&#39;),
+                                R=Param(0.2, units=&#39;length&#39;),
                                 r=Param(0.7),
-                                phi=Param(np.deg2rad(0.0)),
-                                psi1=Param(np.deg2rad(75.0)),
-                                psi2=Param(np.deg2rad(75.0)),
+                                phi=Param(np.deg2rad(8.0)),
+                                psi1=Param(np.deg2rad(110.0)),
+                                psi2=Param(np.deg2rad(90.0)),
                                 length_scale_dimension=base_airfoil_params.c.value
                                 )
 
-    anchor_point_tuple = (anchor_point1, anchor_point2)
+    anchor_point_tuple = (anchor_point1, anchor_point2, anchor_point3)
 
     free_point1 = FreePoint(x=Param(0.15, units=&#39;length&#39;),
                             y=Param(0.015, units=&#39;length&#39;),

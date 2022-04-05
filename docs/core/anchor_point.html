@@ -50,20 +50,47 @@ class AnchorPoint:
 
         The `AnchorPoint` in `pyairpar` is the way to split a Bézier curve within an `pyairpar.core.airfoil.Airfoil`
         into two Bézier curves and satisfy \\(G^0\\), \\(G^1\\), and \\(G^2\\) continuity at the joint between the
-        curves
+        curves. Examples of implemented `AnchorPoint`s in an unnecessarily strange airfoil shape are shown in the
+        image below. It may be helpful to enlarge the image by opening it in a new tab.
+
+        .. image:: complex_airfoil_anchor_points.png
 
         ### Args:
 
-        `x`: `pyairpar.core.param.Param` describing the x-location of the `AnchorPoint`
+        `x`: ( \\(x\\) ) `pyairpar.core.param.Param` describing the x-location of the `AnchorPoint`
 
-        `y`: `pyairpar.core.param.Param` describing the y-location of the `AnchorPoint`
+        `y`: ( \\(y\\) ) `pyairpar.core.param.Param` describing the y-location of the `AnchorPoint`
 
         `previous_anchor_point`: a `str` representing the previous `AnchorPoint` (counter-clockwise ordering)
 
-        `L`: `pyairpar.core.param.Param` describing the distance between the control points on either side of the
-        `pyairpar.core.anchor_point.AnchorPoint`
+        `L`: ( \\(L\\) ) `pyairpar.core.param.Param` describing the distance between the control points on either
+        side of the `pyairpar.core.anchor_point.AnchorPoint`
 
-        .. WARNING:: Need to fill out rest of parameters
+        `R`: ( \\(R\\) ) `pyairpar.core.param.Param` representing the radius of curvature at the \\(x\\) - \\(y\\)
+        location of the `AnchorPoint`. A positive value makes the airfoil convex at the `AnchorPoint` location,
+        and a negative value makes the airfoil concave at the `AnchorPoint` location.
+
+        `r`: ( \\(r\\) ) `pyairpar.core.param.Param` representing the ratio of the distance from the `AnchorPoint`
+        location to the neighboring control point closest to the trailing edge to the distance between the
+        `AnchorPoint`&#39;s neighboring control points ( \\(L_{fore} / L\\) ).
+
+        `phi`: ( \\(\\phi\\) ) `pyairpar.core.param.Param` representing the angle of the line passing through the
+        `AnchorPoint`&#39;s neighboring control points, referenced counter-clockwise from the chordline if the
+        `AnchorPoint` is on the upper airfoil surface and clockwise from the chordline if the `AnchorPoint` is on the
+        lower airfoil surface.
+
+        `psi1`: ( \\(\\psi_1\\) ) `pyairpar.core.param.Param` representing the angle of the aft curvature control &#34;arm.&#34;
+        Regardless of the sign of \\(R\\) or which surface the `AnchorPoint` lies on, an angle of \\(90^{\\circ}\\)
+        always means that the curvature control arm points perpendicular to the line passing through the
+        neighboring control points of the `AnchorPoint`. Angles below \\(90^{\\circ}\\) &#34;tuck&#34; the arms in, and angles
+        above \\(90^{\\circ}\\) &#34;spread&#34; the arms out. The valid range is \\(\\psi_1 \\in (0^{\\circ},180^{\\circ})\\).
+
+        `psi2`: ( \\(\\psi_2\\) ) `pyairpar.core.param.Param` representing the angle of the fore curvature control
+        &#34;arm.&#34; Regardless of the sign of \\(R\\) or which surface the `AnchorPoint` lies on, an angle of \\(90^{
+        \\circ}\\) always means that the curvature control arm points perpendicular to the line passing through the
+        neighboring control points of the `AnchorPoint`. Angles below \\(90^{\\circ}\\) &#34;tuck&#34; the arms in,
+        and angles above \\(90^{\\circ}\\) &#34;spread&#34; the arms out. The valid range is \\(\\psi_2 \\in (0^{\\circ},
+        180^{\\circ})\\).
 
         `length_scale_dimension`: a `float` giving the length scale by which to non-dimensionalize the `x` and `y`
         values (optional)
@@ -168,16 +195,38 @@ class AnchorPoint:
 <div class="desc"><h3 id="description">Description:</h3>
 <p>The <code><a title="pyairpar.core.anchor_point.AnchorPoint" href="#pyairpar.core.anchor_point.AnchorPoint">AnchorPoint</a></code> in <code><a title="pyairpar" href="../index.html">pyairpar</a></code> is the way to split a Bézier curve within an <code><a title="pyairpar.core.airfoil.Airfoil" href="airfoil.html#pyairpar.core.airfoil.Airfoil">Airfoil</a></code>
 into two Bézier curves and satisfy <span><span class="MathJax_Preview">G^0</span><script type="math/tex">G^0</script></span>, <span><span class="MathJax_Preview">G^1</span><script type="math/tex">G^1</script></span>, and <span><span class="MathJax_Preview">G^2</span><script type="math/tex">G^2</script></span> continuity at the joint between the
-curves</p>
+curves. Examples of implemented <code><a title="pyairpar.core.anchor_point.AnchorPoint" href="#pyairpar.core.anchor_point.AnchorPoint">AnchorPoint</a></code>s in an unnecessarily strange airfoil shape are shown in the
+image below. It may be helpful to enlarge the image by opening it in a new tab.</p>
+<p><img alt="" src="complex_airfoil_anchor_points.png"></p>
 <h3 id="args">Args:</h3>
-<p><code>x</code>: <code><a title="pyairpar.core.param.Param" href="param.html#pyairpar.core.param.Param">Param</a></code> describing the x-location of the <code><a title="pyairpar.core.anchor_point.AnchorPoint" href="#pyairpar.core.anchor_point.AnchorPoint">AnchorPoint</a></code></p>
-<p><code>y</code>: <code><a title="pyairpar.core.param.Param" href="param.html#pyairpar.core.param.Param">Param</a></code> describing the y-location of the <code><a title="pyairpar.core.anchor_point.AnchorPoint" href="#pyairpar.core.anchor_point.AnchorPoint">AnchorPoint</a></code></p>
+<p><code>x</code>: ( <span><span class="MathJax_Preview">x</span><script type="math/tex">x</script></span> ) <code><a title="pyairpar.core.param.Param" href="param.html#pyairpar.core.param.Param">Param</a></code> describing the x-location of the <code><a title="pyairpar.core.anchor_point.AnchorPoint" href="#pyairpar.core.anchor_point.AnchorPoint">AnchorPoint</a></code></p>
+<p><code>y</code>: ( <span><span class="MathJax_Preview">y</span><script type="math/tex">y</script></span> ) <code><a title="pyairpar.core.param.Param" href="param.html#pyairpar.core.param.Param">Param</a></code> describing the y-location of the <code><a title="pyairpar.core.anchor_point.AnchorPoint" href="#pyairpar.core.anchor_point.AnchorPoint">AnchorPoint</a></code></p>
 <p><code>previous_anchor_point</code>: a <code>str</code> representing the previous <code><a title="pyairpar.core.anchor_point.AnchorPoint" href="#pyairpar.core.anchor_point.AnchorPoint">AnchorPoint</a></code> (counter-clockwise ordering)</p>
-<p><code>L</code>: <code><a title="pyairpar.core.param.Param" href="param.html#pyairpar.core.param.Param">Param</a></code> describing the distance between the control points on either side of the
-<code><a title="pyairpar.core.anchor_point.AnchorPoint" href="#pyairpar.core.anchor_point.AnchorPoint">AnchorPoint</a></code></p>
-<div class="admonition warning">
-<p class="admonition-title">Warning:&ensp;Need to fill out rest of parameters</p>
-</div>
+<p><code>L</code>: ( <span><span class="MathJax_Preview">L</span><script type="math/tex">L</script></span> ) <code><a title="pyairpar.core.param.Param" href="param.html#pyairpar.core.param.Param">Param</a></code> describing the distance between the control points on either
+side of the <code><a title="pyairpar.core.anchor_point.AnchorPoint" href="#pyairpar.core.anchor_point.AnchorPoint">AnchorPoint</a></code></p>
+<p><code>R</code>: ( <span><span class="MathJax_Preview">R</span><script type="math/tex">R</script></span> ) <code><a title="pyairpar.core.param.Param" href="param.html#pyairpar.core.param.Param">Param</a></code> representing the radius of curvature at the <span><span class="MathJax_Preview">x</span><script type="math/tex">x</script></span> - <span><span class="MathJax_Preview">y</span><script type="math/tex">y</script></span>
+location of the <code><a title="pyairpar.core.anchor_point.AnchorPoint" href="#pyairpar.core.anchor_point.AnchorPoint">AnchorPoint</a></code>. A positive value makes the airfoil convex at the <code><a title="pyairpar.core.anchor_point.AnchorPoint" href="#pyairpar.core.anchor_point.AnchorPoint">AnchorPoint</a></code> location,
+and a negative value makes the airfoil concave at the <code><a title="pyairpar.core.anchor_point.AnchorPoint" href="#pyairpar.core.anchor_point.AnchorPoint">AnchorPoint</a></code> location.</p>
+<p><code>r</code>: ( <span><span class="MathJax_Preview">r</span><script type="math/tex">r</script></span> ) <code><a title="pyairpar.core.param.Param" href="param.html#pyairpar.core.param.Param">Param</a></code> representing the ratio of the distance from the <code><a title="pyairpar.core.anchor_point.AnchorPoint" href="#pyairpar.core.anchor_point.AnchorPoint">AnchorPoint</a></code>
+location to the neighboring control point closest to the trailing edge to the distance between the
+<code><a title="pyairpar.core.anchor_point.AnchorPoint" href="#pyairpar.core.anchor_point.AnchorPoint">AnchorPoint</a></code>'s neighboring control points ( <span><span class="MathJax_Preview">L_{fore} / L</span><script type="math/tex">L_{fore} / L</script></span> ).</p>
+<p><code>phi</code>: ( <span><span class="MathJax_Preview">\phi</span><script type="math/tex">\phi</script></span> ) <code><a title="pyairpar.core.param.Param" href="param.html#pyairpar.core.param.Param">Param</a></code> representing the angle of the line passing through the
+<code><a title="pyairpar.core.anchor_point.AnchorPoint" href="#pyairpar.core.anchor_point.AnchorPoint">AnchorPoint</a></code>'s neighboring control points, referenced counter-clockwise from the chordline if the
+<code><a title="pyairpar.core.anchor_point.AnchorPoint" href="#pyairpar.core.anchor_point.AnchorPoint">AnchorPoint</a></code> is on the upper airfoil surface and clockwise from the chordline if the <code><a title="pyairpar.core.anchor_point.AnchorPoint" href="#pyairpar.core.anchor_point.AnchorPoint">AnchorPoint</a></code> is on the
+lower airfoil surface.</p>
+<p><code>psi1</code>: ( <span><span class="MathJax_Preview">\psi_1</span><script type="math/tex">\psi_1</script></span> ) <code><a title="pyairpar.core.param.Param" href="param.html#pyairpar.core.param.Param">Param</a></code> representing the angle of the aft curvature control "arm."
+Regardless of the sign of <span><span class="MathJax_Preview">R</span><script type="math/tex">R</script></span> or which surface the <code><a title="pyairpar.core.anchor_point.AnchorPoint" href="#pyairpar.core.anchor_point.AnchorPoint">AnchorPoint</a></code> lies on, an angle of <span><span class="MathJax_Preview">90^{\circ}</span><script type="math/tex">90^{\circ}</script></span>
+always means that the curvature control arm points perpendicular to the line passing through the
+neighboring control points of the <code><a title="pyairpar.core.anchor_point.AnchorPoint" href="#pyairpar.core.anchor_point.AnchorPoint">AnchorPoint</a></code>. Angles below <span><span class="MathJax_Preview">90^{\circ}</span><script type="math/tex">90^{\circ}</script></span> "tuck" the arms in, and angles
+above <span><span class="MathJax_Preview">90^{\circ}</span><script type="math/tex">90^{\circ}</script></span> "spread" the arms out. The valid range is <span><span class="MathJax_Preview">\psi_1 \in (0^{\circ},180^{\circ})</span><script type="math/tex">\psi_1 \in (0^{\circ},180^{\circ})</script></span>.</p>
+<p><code>psi2</code>: ( <span><span class="MathJax_Preview">\psi_2</span><script type="math/tex">\psi_2</script></span> ) <code><a title="pyairpar.core.param.Param" href="param.html#pyairpar.core.param.Param">Param</a></code> representing the angle of the fore curvature control
+"arm." Regardless of the sign of <span><span class="MathJax_Preview">R</span><script type="math/tex">R</script></span> or which surface the <code><a title="pyairpar.core.anchor_point.AnchorPoint" href="#pyairpar.core.anchor_point.AnchorPoint">AnchorPoint</a></code> lies on, an angle of <span><span class="MathJax_Preview">90^{
+\circ}</span><script type="math/tex">90^{
+\circ}</script></span> always means that the curvature control arm points perpendicular to the line passing through the
+neighboring control points of the <code><a title="pyairpar.core.anchor_point.AnchorPoint" href="#pyairpar.core.anchor_point.AnchorPoint">AnchorPoint</a></code>. Angles below <span><span class="MathJax_Preview">90^{\circ}</span><script type="math/tex">90^{\circ}</script></span> "tuck" the arms in,
+and angles above <span><span class="MathJax_Preview">90^{\circ}</span><script type="math/tex">90^{\circ}</script></span> "spread" the arms out. The valid range is <span><span class="MathJax_Preview">\psi_2 \in (0^{\circ},
+180^{\circ})</span><script type="math/tex">\psi_2 \in (0^{\circ},
+180^{\circ})</script></span>.</p>
 <p><code>length_scale_dimension</code>: a <code>float</code> giving the length scale by which to non-dimensionalize the <code>x</code> and <code>y</code>
 values (optional)</p>
 <h3 id="returns">Returns:</h3>
@@ -205,20 +254,47 @@ values (optional)</p>
 
         The `AnchorPoint` in `pyairpar` is the way to split a Bézier curve within an `pyairpar.core.airfoil.Airfoil`
         into two Bézier curves and satisfy \\(G^0\\), \\(G^1\\), and \\(G^2\\) continuity at the joint between the
-        curves
+        curves. Examples of implemented `AnchorPoint`s in an unnecessarily strange airfoil shape are shown in the
+        image below. It may be helpful to enlarge the image by opening it in a new tab.
+
+        .. image:: complex_airfoil_anchor_points.png
 
         ### Args:
 
-        `x`: `pyairpar.core.param.Param` describing the x-location of the `AnchorPoint`
+        `x`: ( \\(x\\) ) `pyairpar.core.param.Param` describing the x-location of the `AnchorPoint`
 
-        `y`: `pyairpar.core.param.Param` describing the y-location of the `AnchorPoint`
+        `y`: ( \\(y\\) ) `pyairpar.core.param.Param` describing the y-location of the `AnchorPoint`
 
         `previous_anchor_point`: a `str` representing the previous `AnchorPoint` (counter-clockwise ordering)
 
-        `L`: `pyairpar.core.param.Param` describing the distance between the control points on either side of the
-        `pyairpar.core.anchor_point.AnchorPoint`
+        `L`: ( \\(L\\) ) `pyairpar.core.param.Param` describing the distance between the control points on either
+        side of the `pyairpar.core.anchor_point.AnchorPoint`
 
-        .. WARNING:: Need to fill out rest of parameters
+        `R`: ( \\(R\\) ) `pyairpar.core.param.Param` representing the radius of curvature at the \\(x\\) - \\(y\\)
+        location of the `AnchorPoint`. A positive value makes the airfoil convex at the `AnchorPoint` location,
+        and a negative value makes the airfoil concave at the `AnchorPoint` location.
+
+        `r`: ( \\(r\\) ) `pyairpar.core.param.Param` representing the ratio of the distance from the `AnchorPoint`
+        location to the neighboring control point closest to the trailing edge to the distance between the
+        `AnchorPoint`&#39;s neighboring control points ( \\(L_{fore} / L\\) ).
+
+        `phi`: ( \\(\\phi\\) ) `pyairpar.core.param.Param` representing the angle of the line passing through the
+        `AnchorPoint`&#39;s neighboring control points, referenced counter-clockwise from the chordline if the
+        `AnchorPoint` is on the upper airfoil surface and clockwise from the chordline if the `AnchorPoint` is on the
+        lower airfoil surface.
+
+        `psi1`: ( \\(\\psi_1\\) ) `pyairpar.core.param.Param` representing the angle of the aft curvature control &#34;arm.&#34;
+        Regardless of the sign of \\(R\\) or which surface the `AnchorPoint` lies on, an angle of \\(90^{\\circ}\\)
+        always means that the curvature control arm points perpendicular to the line passing through the
+        neighboring control points of the `AnchorPoint`. Angles below \\(90^{\\circ}\\) &#34;tuck&#34; the arms in, and angles
+        above \\(90^{\\circ}\\) &#34;spread&#34; the arms out. The valid range is \\(\\psi_1 \\in (0^{\\circ},180^{\\circ})\\).
+
+        `psi2`: ( \\(\\psi_2\\) ) `pyairpar.core.param.Param` representing the angle of the fore curvature control
+        &#34;arm.&#34; Regardless of the sign of \\(R\\) or which surface the `AnchorPoint` lies on, an angle of \\(90^{
+        \\circ}\\) always means that the curvature control arm points perpendicular to the line passing through the
+        neighboring control points of the `AnchorPoint`. Angles below \\(90^{\\circ}\\) &#34;tuck&#34; the arms in,
+        and angles above \\(90^{\\circ}\\) &#34;spread&#34; the arms out. The valid range is \\(\\psi_2 \\in (0^{\\circ},
+        180^{\\circ})\\).
 
         `length_scale_dimension`: a `float` giving the length scale by which to non-dimensionalize the `x` and `y`
         values (optional)

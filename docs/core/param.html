@@ -35,6 +35,37 @@ class Param:
     def __init__(self, value: float, units: str or None = None,
                  bounds: list or np.ndarray = np.array([-np.inf, np.inf]),
                  length_scale_dimension: float or None = None, active: bool = True, linked: bool = False):
+        &#34;&#34;&#34;
+        ### Description:
+
+        This is the class used to define parameters used for the airfoil and airfoil parametrization definitions
+        in `pyairpar`.
+
+        ### Args:
+
+        `value`: a `float` representing the value of the parameter
+
+        `units`: a `str` where, if not set to `None`, scales the parameters by the value contained in
+        `length_scale_dimension`. Must be one of `&#34;length&#34;`, `&#34;inverse-length&#34;`, or `None`. Default: `None`.
+
+        `bounds`: a `list` or 1D `np.ndarray` with two elements of the form `[&lt;lower bound&gt;, &lt;upper bound&gt;]`. Used in
+        `pyairpar.utils.airfoil_matching` and for normalization during parameter extraction. Default:
+        `np.array([-np.inf, np.inf])` (no normalization).
+
+        `length_scale_dimension`: length scale used to non-dimensionalize the parameter if `units` is not `None`.
+        Default value: `None`.
+
+        `active`: a `bool` stating whether the parameter is active (used in parameter extraction: if inactive,
+        the parameter will not be extracted). Default: `True`.
+
+        `linked`: a `bool` stating whether the parameter is linked to/set by another parameter. If `True`, the
+        parameter will not be extracted). Default: `False`.
+
+        ### Returns:
+
+        An instance of the `pyairpar.core.param.Param` class.
+        &#34;&#34;&#34;
+
         self.units = units
         self.length_scale_dimension = length_scale_dimension
 
@@ -65,7 +96,24 @@ class Param:
 inf]), length_scale_dimension: float = None, active: bool = True, linked: bool = False)</span>
 </code></dt>
 <dd>
-<div class="desc"></div>
+<div class="desc"><h3 id="description">Description:</h3>
+<p>This is the class used to define parameters used for the airfoil and airfoil parametrization definitions
+in <code><a title="pyairpar" href="../index.html">pyairpar</a></code>.</p>
+<h3 id="args">Args:</h3>
+<p><code>value</code>: a <code>float</code> representing the value of the parameter</p>
+<p><code>units</code>: a <code>str</code> where, if not set to <code>None</code>, scales the parameters by the value contained in
+<code>length_scale_dimension</code>. Must be one of <code>"length"</code>, <code>"inverse-length"</code>, or <code>None</code>. Default: <code>None</code>.</p>
+<p><code>bounds</code>: a <code>list</code> or 1D <code>np.ndarray</code> with two elements of the form <code>[&lt;lower bound&gt;, &lt;upper bound&gt;]</code>. Used in
+<code><a title="pyairpar.utils.airfoil_matching" href="../utils/airfoil_matching.html">pyairpar.utils.airfoil_matching</a></code> and for normalization during parameter extraction. Default:
+<code>np.array([-np.inf, np.inf])</code> (no normalization).</p>
+<p><code>length_scale_dimension</code>: length scale used to non-dimensionalize the parameter if <code>units</code> is not <code>None</code>.
+Default value: <code>None</code>.</p>
+<p><code>active</code>: a <code>bool</code> stating whether the parameter is active (used in parameter extraction: if inactive,
+the parameter will not be extracted). Default: <code>True</code>.</p>
+<p><code>linked</code>: a <code>bool</code> stating whether the parameter is linked to/set by another parameter. If <code>True</code>, the
+parameter will not be extracted). Default: <code>False</code>.</p>
+<h3 id="returns">Returns:</h3>
+<p>An instance of the <code><a title="pyairpar.core.param.Param" href="#pyairpar.core.param.Param">Param</a></code> class.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
@@ -75,6 +123,37 @@ inf]), length_scale_dimension: float = None, active: bool = True, linked:�
     def __init__(self, value: float, units: str or None = None,
                  bounds: list or np.ndarray = np.array([-np.inf, np.inf]),
                  length_scale_dimension: float or None = None, active: bool = True, linked: bool = False):
+        &#34;&#34;&#34;
+        ### Description:
+
+        This is the class used to define parameters used for the airfoil and airfoil parametrization definitions
+        in `pyairpar`.
+
+        ### Args:
+
+        `value`: a `float` representing the value of the parameter
+
+        `units`: a `str` where, if not set to `None`, scales the parameters by the value contained in
+        `length_scale_dimension`. Must be one of `&#34;length&#34;`, `&#34;inverse-length&#34;`, or `None`. Default: `None`.
+
+        `bounds`: a `list` or 1D `np.ndarray` with two elements of the form `[&lt;lower bound&gt;, &lt;upper bound&gt;]`. Used in
+        `pyairpar.utils.airfoil_matching` and for normalization during parameter extraction. Default:
+        `np.array([-np.inf, np.inf])` (no normalization).
+
+        `length_scale_dimension`: length scale used to non-dimensionalize the parameter if `units` is not `None`.
+        Default value: `None`.
+
+        `active`: a `bool` stating whether the parameter is active (used in parameter extraction: if inactive,
+        the parameter will not be extracted). Default: `True`.
+
+        `linked`: a `bool` stating whether the parameter is linked to/set by another parameter. If `True`, the
+        parameter will not be extracted). Default: `False`.
+
+        ### Returns:
+
+        An instance of the `pyairpar.core.param.Param` class.
+        &#34;&#34;&#34;
+
         self.units = units
         self.length_scale_dimension = length_scale_dimension
 
