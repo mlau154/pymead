@@ -29,22 +29,133 @@
 </summary>
 <pre><code class="python">import numpy as np
 from pyairpar.core.airfoil import Airfoil
+import typing
+from copy import deepcopy
 
 
 class AirfoilParametrization:
 
-    def __init__(self, n_airfoils: int):
-        if not isinstance(n_airfoils, int):
-            raise TypeError(f&#39;n_airfoils must be of type int, not type {type(n_airfoils)}&#39;)
-        elif n_airfoils &lt; 1:
-            raise ValueError(f&#39;n_airfoils must be a positive integer (input: n_airfoils={n_airfoils})&#39;)
-        else:
-            self.n_airfoils = n_airfoils
-        self.airfoil_system = [Airfoil() for _ in range(self.n_airfoils)]
+    def __init__(self, airfoil_tuple: typing.Tuple[Airfoil, ...]):
+        &#34;&#34;&#34;
+        ### Description:
 
-    def init_default_parameters(self):
-        for idx in range(self.n_airfoils):
-            pass</code></pre>
+        `AirfoilParametrization` is `pyairpar`&#39;s way of linking the shape, position, or angle of one or more `Airfoil`s
+        to an external set of parameters. For example, an `Airfoil` could be placed a certain distance from another
+        `Airfoil` by the value contained in a `Param`. See `pyairpar.examples` for example implementations.
+
+        ### Args:
+
+        `airfoil_tuple`: a `tuple` of `Airfoil`s. To specify a single airfoil, use `(Airfoil(),)`. At least one airfoil
+        must be specified.
+
+        ### Returns:
+
+        An instance of the `AirfoilParametrization` class
+        &#34;&#34;&#34;
+        if len(airfoil_tuple) == 0:
+            raise Exception(&#39;At least one airfoil must be specified in the airfoil_tuple&#39;)
+        else:
+            self.airfoil_tuple = airfoil_tuple
+
+        self.n_mirrors = 0
+
+    def mirror(self, axis: np.ndarray or tuple, fixed_airfoil_idx: int, linked_airfoil_idx: int,
+               fixed_anchor_point_range: tuple):
+        &#34;&#34;&#34;
+        ### Description:
+
+        Sets a portion of a linked `pyairpar.core.airfoil.Airfoil` as the mirror across a specified axis of a portion
+        of a fixed `pyairpar.core.airfoil.Airfoil`.
+
+        ### Args:
+
+        `axis`: **Option 1**: input a `np.ndarray` of `shape=(2, 2)` where the first row is comprised of the \\(x\\)-
+        and \\(y\\)-coordinates of the &#34;head&#34; (first point) of a line, and the second row is comprised of the \\(x\\)-
+        and  \\(y\\)-coordinates of the &#34;tail&#34; (second point) of a line. **Option 2**: input a `tuple` where the first
+        item is a `float` value representing the angle of the line in radians, and the second line is a `np.ndarray` of
+        `shape=(2)` representing the \\(x\\)- and \\(y\\)-coordinates of a point that lies along the line representing
+        the axis. **Option 3** input a `tuple` where the first item is a `float` value representing the slope of the
+        line, and the second item is a `float` value representing the y-intercept of the line.
+
+        `fixed_airfoil_idx`: index, within the `airfoil_tuple`, of the airfoil whose portion is to be mirrored
+
+        `linked_airfoil_idx`: index, within the `airfoil_tuple`, of the airfoil to which control points are to be
+        added by a mirroring operation
+
+        `fixed_anchor_point_range`: a 2-item `tuple` representing the range of `pyairpar.core.anchor_point.AnchorPoint`s
+        to be mirrored. The first item should be a `str` representing the name of the first
+        `pyairpar.core.anchor_point.AnchorPoint` in the fixed airfoil, and the second item should be a `str`
+        representing the name of the final `pyairpar.core.anchor_point.AnchorPoint` in the fixed airfoil
+        (counter-clockwise ordering)
+
+        ### Returns:
+        &#34;&#34;&#34;
+
+        self.n_mirrors += 1
+
+        # Calculate the slope (m) and y-intercept (b) of the axis line from the input axis
+        if isinstance(axis, np.ndarray):
+            # Option 1        y - y_1 = m * (x - x_1) =&gt; b - y_1 = -m * x_1 =&gt; b = -m * x_1 + y_1
+            x1, x2, y1, y2 = axis[0, 0], axis[0, 1], axis[1, 0], axis[1, 1]
+            m = (y2 - y1) / (x2 - x1)
+            b = -m * x1 + y1
+        elif isinstance(axis, tuple):
+            if len(axis[1]) == 2:
+                # Option 2
+                theta = axis[0],
+                x1, y1 = axis[0][0], axis[0][1]
+                m = np.tan(theta)
+                b = -m * x1 + y1
+            elif len(axis[1]) == 1:
+                # Option 3
+                m, b = axis[0], axis[1]
+            else:
+                raise ValueError(&#39;input \&#39;axis\&#39; was a tuple where the second element was of an invalid length. The&#39;
+                                 &#39;length of the second element should be either 1 or 2.&#39;)
+        else:
+            raise Exception(&#39;Invalid reflection axis input&#39;)
+
+        # Calculate the reflection matrix
+        reflect_mat = 1 / (1 + m ** 2) * np.array([[1 - m ** 2, 2 * m, -2 * m * b],
+                                                   [2 * m, m ** 2 - 1, 2 * b],
+                                                   [0, 0, 1 + m ** 2]])
+
+        # Reflect the relevant anchor points and free points about the input axis
+        fixed_airfoil = self.airfoil_tuple[fixed_airfoil_idx]
+        linked_airfoil = self.airfoil_tuple[linked_airfoil_idx]
+        linked_airfoil_anchor_points = []
+        start_idx = fixed_airfoil.anchor_point_order.index(fixed_anchor_point_range[0])
+        end_idx = fixed_airfoil.anchor_point_order.index(fixed_anchor_point_range[1])
+        previous_anchor_point_strings = []
+        for anchor_point_idx in range(end_idx - 1, start_idx - 1, -1):
+            previous_anchor_point_strings.append(fixed_airfoil.anchor_point_order[anchor_point_idx])
+        for anchor_point_idx in range(start_idx, end_idx):
+            fixed_anchor_point_str = fixed_airfoil.anchor_point_order[anchor_point_idx]
+            # If not a trailing edge or leading edge anchor point (treat these separately):
+            if fixed_airfoil.anchor_point_order[anchor_point_idx] not in [&#39;te_1&#39;, &#39;le&#39;, &#39;te_2&#39;]:
+                linked_airfoil_anchor_point = deepcopy(fixed_airfoil.anchor_points[fixed_anchor_point_str])
+                x = fixed_airfoil.anchor_points.xy[0]
+                y = fixed_airfoil.anchor_points.xy[1]
+                xy = (reflect_mat @ np.array([[x, y, 1]]).T).T[0, 0:1]
+                linked_airfoil_anchor_point.name = fixed_anchor_point_str + &#39;_mirror_&#39; + self.n_mirrors
+                linked_airfoil_anchor_point.previous_anchor_point = previous_anchor_point_strings[anchor_point_idx]
+                linked_airfoil_anchor_point.x.value = xy[0]
+                linked_airfoil_anchor_point.y.value = xy[1]
+                linked_airfoil_anchor_point.xy = xy
+                linked_airfoil_anchor_point.set_all_as_linked()
+                linked_airfoil_anchor_points.append(linked_airfoil_anchor_point)
+        linked_airfoil.anchor_point_tuple = list(linked_airfoil.anchor_point_tuple)
+        linked_airfoil.anchor_point_tuple.append(linked_airfoil_anchor_points)
+        linked_airfoil.anchor_point_tuple = tuple(linked_airfoil.anchor_point_tuple)
+        linked_airfoil.update()
+
+    def clone(self):
+        &#34;&#34;&#34;
+        ### Description:
+
+        Clones an `pyairpar.core.airfoil.Airfoil`
+        &#34;&#34;&#34;
+        pass</code></pre>
 </details>
 </section>
 <section>
@@ -58,43 +169,285 @@ class AirfoilParametrization:
 <dl>
 <dt id="pyairpar.core.parametrization.AirfoilParametrization"><code class="flex name class">
 <span>class <span class="ident">AirfoilParametrization</span></span>
-<span>(</span><span>n_airfoils: int)</span>
+<span>(</span><span>airfoil_tuple: Tuple[<a title="pyairpar.core.airfoil.Airfoil" href="airfoil.html#pyairpar.core.airfoil.Airfoil">Airfoil</a>, ...])</span>
 </code></dt>
 <dd>
-<div class="desc"></div>
+<div class="desc"><h3 id="description">Description:</h3>
+<p><code><a title="pyairpar.core.parametrization.AirfoilParametrization" href="#pyairpar.core.parametrization.AirfoilParametrization">AirfoilParametrization</a></code> is <code><a title="pyairpar" href="../index.html">pyairpar</a></code>'s way of linking the shape, position, or angle of one or more <code>Airfoil</code>s
+to an external set of parameters. For example, an <code>Airfoil</code> could be placed a certain distance from another
+<code>Airfoil</code> by the value contained in a <code>Param</code>. See <code><a title="pyairpar.examples" href="../examples/index.html">pyairpar.examples</a></code> for example implementations.</p>
+<h3 id="args">Args:</h3>
+<p><code>airfoil_tuple</code>: a <code>tuple</code> of <code>Airfoil</code>s. To specify a single airfoil, use <code>(Airfoil(),)</code>. At least one airfoil
+must be specified.</p>
+<h3 id="returns">Returns:</h3>
+<p>An instance of the <code><a title="pyairpar.core.parametrization.AirfoilParametrization" href="#pyairpar.core.parametrization.AirfoilParametrization">AirfoilParametrization</a></code> class</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">class AirfoilParametrization:
 
-    def __init__(self, n_airfoils: int):
-        if not isinstance(n_airfoils, int):
-            raise TypeError(f&#39;n_airfoils must be of type int, not type {type(n_airfoils)}&#39;)
-        elif n_airfoils &lt; 1:
-            raise ValueError(f&#39;n_airfoils must be a positive integer (input: n_airfoils={n_airfoils})&#39;)
-        else:
-            self.n_airfoils = n_airfoils
-        self.airfoil_system = [Airfoil() for _ in range(self.n_airfoils)]
+    def __init__(self, airfoil_tuple: typing.Tuple[Airfoil, ...]):
+        &#34;&#34;&#34;
+        ### Description:
 
-    def init_default_parameters(self):
-        for idx in range(self.n_airfoils):
-            pass</code></pre>
+        `AirfoilParametrization` is `pyairpar`&#39;s way of linking the shape, position, or angle of one or more `Airfoil`s
+        to an external set of parameters. For example, an `Airfoil` could be placed a certain distance from another
+        `Airfoil` by the value contained in a `Param`. See `pyairpar.examples` for example implementations.
+
+        ### Args:
+
+        `airfoil_tuple`: a `tuple` of `Airfoil`s. To specify a single airfoil, use `(Airfoil(),)`. At least one airfoil
+        must be specified.
+
+        ### Returns:
+
+        An instance of the `AirfoilParametrization` class
+        &#34;&#34;&#34;
+        if len(airfoil_tuple) == 0:
+            raise Exception(&#39;At least one airfoil must be specified in the airfoil_tuple&#39;)
+        else:
+            self.airfoil_tuple = airfoil_tuple
+
+        self.n_mirrors = 0
+
+    def mirror(self, axis: np.ndarray or tuple, fixed_airfoil_idx: int, linked_airfoil_idx: int,
+               fixed_anchor_point_range: tuple):
+        &#34;&#34;&#34;
+        ### Description:
+
+        Sets a portion of a linked `pyairpar.core.airfoil.Airfoil` as the mirror across a specified axis of a portion
+        of a fixed `pyairpar.core.airfoil.Airfoil`.
+
+        ### Args:
+
+        `axis`: **Option 1**: input a `np.ndarray` of `shape=(2, 2)` where the first row is comprised of the \\(x\\)-
+        and \\(y\\)-coordinates of the &#34;head&#34; (first point) of a line, and the second row is comprised of the \\(x\\)-
+        and  \\(y\\)-coordinates of the &#34;tail&#34; (second point) of a line. **Option 2**: input a `tuple` where the first
+        item is a `float` value representing the angle of the line in radians, and the second line is a `np.ndarray` of
+        `shape=(2)` representing the \\(x\\)- and \\(y\\)-coordinates of a point that lies along the line representing
+        the axis. **Option 3** input a `tuple` where the first item is a `float` value representing the slope of the
+        line, and the second item is a `float` value representing the y-intercept of the line.
+
+        `fixed_airfoil_idx`: index, within the `airfoil_tuple`, of the airfoil whose portion is to be mirrored
+
+        `linked_airfoil_idx`: index, within the `airfoil_tuple`, of the airfoil to which control points are to be
+        added by a mirroring operation
+
+        `fixed_anchor_point_range`: a 2-item `tuple` representing the range of `pyairpar.core.anchor_point.AnchorPoint`s
+        to be mirrored. The first item should be a `str` representing the name of the first
+        `pyairpar.core.anchor_point.AnchorPoint` in the fixed airfoil, and the second item should be a `str`
+        representing the name of the final `pyairpar.core.anchor_point.AnchorPoint` in the fixed airfoil
+        (counter-clockwise ordering)
+
+        ### Returns:
+        &#34;&#34;&#34;
+
+        self.n_mirrors += 1
+
+        # Calculate the slope (m) and y-intercept (b) of the axis line from the input axis
+        if isinstance(axis, np.ndarray):
+            # Option 1        y - y_1 = m * (x - x_1) =&gt; b - y_1 = -m * x_1 =&gt; b = -m * x_1 + y_1
+            x1, x2, y1, y2 = axis[0, 0], axis[0, 1], axis[1, 0], axis[1, 1]
+            m = (y2 - y1) / (x2 - x1)
+            b = -m * x1 + y1
+        elif isinstance(axis, tuple):
+            if len(axis[1]) == 2:
+                # Option 2
+                theta = axis[0],
+                x1, y1 = axis[0][0], axis[0][1]
+                m = np.tan(theta)
+                b = -m * x1 + y1
+            elif len(axis[1]) == 1:
+                # Option 3
+                m, b = axis[0], axis[1]
+            else:
+                raise ValueError(&#39;input \&#39;axis\&#39; was a tuple where the second element was of an invalid length. The&#39;
+                                 &#39;length of the second element should be either 1 or 2.&#39;)
+        else:
+            raise Exception(&#39;Invalid reflection axis input&#39;)
+
+        # Calculate the reflection matrix
+        reflect_mat = 1 / (1 + m ** 2) * np.array([[1 - m ** 2, 2 * m, -2 * m * b],
+                                                   [2 * m, m ** 2 - 1, 2 * b],
+                                                   [0, 0, 1 + m ** 2]])
+
+        # Reflect the relevant anchor points and free points about the input axis
+        fixed_airfoil = self.airfoil_tuple[fixed_airfoil_idx]
+        linked_airfoil = self.airfoil_tuple[linked_airfoil_idx]
+        linked_airfoil_anchor_points = []
+        start_idx = fixed_airfoil.anchor_point_order.index(fixed_anchor_point_range[0])
+        end_idx = fixed_airfoil.anchor_point_order.index(fixed_anchor_point_range[1])
+        previous_anchor_point_strings = []
+        for anchor_point_idx in range(end_idx - 1, start_idx - 1, -1):
+            previous_anchor_point_strings.append(fixed_airfoil.anchor_point_order[anchor_point_idx])
+        for anchor_point_idx in range(start_idx, end_idx):
+            fixed_anchor_point_str = fixed_airfoil.anchor_point_order[anchor_point_idx]
+            # If not a trailing edge or leading edge anchor point (treat these separately):
+            if fixed_airfoil.anchor_point_order[anchor_point_idx] not in [&#39;te_1&#39;, &#39;le&#39;, &#39;te_2&#39;]:
+                linked_airfoil_anchor_point = deepcopy(fixed_airfoil.anchor_points[fixed_anchor_point_str])
+                x = fixed_airfoil.anchor_points.xy[0]
+                y = fixed_airfoil.anchor_points.xy[1]
+                xy = (reflect_mat @ np.array([[x, y, 1]]).T).T[0, 0:1]
+                linked_airfoil_anchor_point.name = fixed_anchor_point_str + &#39;_mirror_&#39; + self.n_mirrors
+                linked_airfoil_anchor_point.previous_anchor_point = previous_anchor_point_strings[anchor_point_idx]
+                linked_airfoil_anchor_point.x.value = xy[0]
+                linked_airfoil_anchor_point.y.value = xy[1]
+                linked_airfoil_anchor_point.xy = xy
+                linked_airfoil_anchor_point.set_all_as_linked()
+                linked_airfoil_anchor_points.append(linked_airfoil_anchor_point)
+        linked_airfoil.anchor_point_tuple = list(linked_airfoil.anchor_point_tuple)
+        linked_airfoil.anchor_point_tuple.append(linked_airfoil_anchor_points)
+        linked_airfoil.anchor_point_tuple = tuple(linked_airfoil.anchor_point_tuple)
+        linked_airfoil.update()
+
+    def clone(self):
+        &#34;&#34;&#34;
+        ### Description:
+
+        Clones an `pyairpar.core.airfoil.Airfoil`
+        &#34;&#34;&#34;
+        pass</code></pre>
 </details>
 <h3>Methods</h3>
 <dl>
-<dt id="pyairpar.core.parametrization.AirfoilParametrization.init_default_parameters"><code class="name flex">
-<span>def <span class="ident">init_default_parameters</span></span>(<span>self)</span>
+<dt id="pyairpar.core.parametrization.AirfoilParametrization.clone"><code class="name flex">
+<span>def <span class="ident">clone</span></span>(<span>self)</span>
 </code></dt>
 <dd>
-<div class="desc"></div>
+<div class="desc"><h3 id="description">Description:</h3>
+<p>Clones an <code><a title="pyairpar.core.airfoil.Airfoil" href="airfoil.html#pyairpar.core.airfoil.Airfoil">Airfoil</a></code></p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def init_default_parameters(self):
-    for idx in range(self.n_airfoils):
-        pass</code></pre>
+<pre><code class="python">def clone(self):
+    &#34;&#34;&#34;
+    ### Description:
+
+    Clones an `pyairpar.core.airfoil.Airfoil`
+    &#34;&#34;&#34;
+    pass</code></pre>
+</details>
+</dd>
+<dt id="pyairpar.core.parametrization.AirfoilParametrization.mirror"><code class="name flex">
+<span>def <span class="ident">mirror</span></span>(<span>self, axis: numpy.ndarray, fixed_airfoil_idx: int, linked_airfoil_idx: int, fixed_anchor_point_range: tuple)</span>
+</code></dt>
+<dd>
+<div class="desc"><h3 id="description">Description:</h3>
+<p>Sets a portion of a linked <code><a title="pyairpar.core.airfoil.Airfoil" href="airfoil.html#pyairpar.core.airfoil.Airfoil">Airfoil</a></code> as the mirror across a specified axis of a portion
+of a fixed <code><a title="pyairpar.core.airfoil.Airfoil" href="airfoil.html#pyairpar.core.airfoil.Airfoil">Airfoil</a></code>.</p>
+<h3 id="args">Args:</h3>
+<p><code>axis</code>: <strong>Option 1</strong>: input a <code>np.ndarray</code> of <code>shape=(2, 2)</code> where the first row is comprised of the <span><span class="MathJax_Preview">x</span><script type="math/tex">x</script></span>-
+and <span><span class="MathJax_Preview">y</span><script type="math/tex">y</script></span>-coordinates of the "head" (first point) of a line, and the second row is comprised of the <span><span class="MathJax_Preview">x</span><script type="math/tex">x</script></span>-
+and
+<span><span class="MathJax_Preview">y</span><script type="math/tex">y</script></span>-coordinates of the "tail" (second point) of a line. <strong>Option 2</strong>: input a <code>tuple</code> where the first
+item is a <code>float</code> value representing the angle of the line in radians, and the second line is a <code>np.ndarray</code> of
+<code>shape=(2)</code> representing the <span><span class="MathJax_Preview">x</span><script type="math/tex">x</script></span>- and <span><span class="MathJax_Preview">y</span><script type="math/tex">y</script></span>-coordinates of a point that lies along the line representing
+the axis. <strong>Option 3</strong> input a <code>tuple</code> where the first item is a <code>float</code> value representing the slope of the
+line, and the second item is a <code>float</code> value representing the y-intercept of the line.</p>
+<p><code>fixed_airfoil_idx</code>: index, within the <code>airfoil_tuple</code>, of the airfoil whose portion is to be mirrored</p>
+<p><code>linked_airfoil_idx</code>: index, within the <code>airfoil_tuple</code>, of the airfoil to which control points are to be
+added by a mirroring operation</p>
+<p><code>fixed_anchor_point_range</code>: a 2-item <code>tuple</code> representing the range of <code><a title="pyairpar.core.anchor_point.AnchorPoint" href="anchor_point.html#pyairpar.core.anchor_point.AnchorPoint">AnchorPoint</a></code>s
+to be mirrored. The first item should be a <code>str</code> representing the name of the first
+<code><a title="pyairpar.core.anchor_point.AnchorPoint" href="anchor_point.html#pyairpar.core.anchor_point.AnchorPoint">AnchorPoint</a></code> in the fixed airfoil, and the second item should be a <code>str</code>
+representing the name of the final <code><a title="pyairpar.core.anchor_point.AnchorPoint" href="anchor_point.html#pyairpar.core.anchor_point.AnchorPoint">AnchorPoint</a></code> in the fixed airfoil
+(counter-clockwise ordering)</p>
+<h3 id="returns">Returns:</h3></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def mirror(self, axis: np.ndarray or tuple, fixed_airfoil_idx: int, linked_airfoil_idx: int,
+           fixed_anchor_point_range: tuple):
+    &#34;&#34;&#34;
+    ### Description:
+
+    Sets a portion of a linked `pyairpar.core.airfoil.Airfoil` as the mirror across a specified axis of a portion
+    of a fixed `pyairpar.core.airfoil.Airfoil`.
+
+    ### Args:
+
+    `axis`: **Option 1**: input a `np.ndarray` of `shape=(2, 2)` where the first row is comprised of the \\(x\\)-
+    and \\(y\\)-coordinates of the &#34;head&#34; (first point) of a line, and the second row is comprised of the \\(x\\)-
+    and  \\(y\\)-coordinates of the &#34;tail&#34; (second point) of a line. **Option 2**: input a `tuple` where the first
+    item is a `float` value representing the angle of the line in radians, and the second line is a `np.ndarray` of
+    `shape=(2)` representing the \\(x\\)- and \\(y\\)-coordinates of a point that lies along the line representing
+    the axis. **Option 3** input a `tuple` where the first item is a `float` value representing the slope of the
+    line, and the second item is a `float` value representing the y-intercept of the line.
+
+    `fixed_airfoil_idx`: index, within the `airfoil_tuple`, of the airfoil whose portion is to be mirrored
+
+    `linked_airfoil_idx`: index, within the `airfoil_tuple`, of the airfoil to which control points are to be
+    added by a mirroring operation
+
+    `fixed_anchor_point_range`: a 2-item `tuple` representing the range of `pyairpar.core.anchor_point.AnchorPoint`s
+    to be mirrored. The first item should be a `str` representing the name of the first
+    `pyairpar.core.anchor_point.AnchorPoint` in the fixed airfoil, and the second item should be a `str`
+    representing the name of the final `pyairpar.core.anchor_point.AnchorPoint` in the fixed airfoil
+    (counter-clockwise ordering)
+
+    ### Returns:
+    &#34;&#34;&#34;
+
+    self.n_mirrors += 1
+
+    # Calculate the slope (m) and y-intercept (b) of the axis line from the input axis
+    if isinstance(axis, np.ndarray):
+        # Option 1        y - y_1 = m * (x - x_1) =&gt; b - y_1 = -m * x_1 =&gt; b = -m * x_1 + y_1
+        x1, x2, y1, y2 = axis[0, 0], axis[0, 1], axis[1, 0], axis[1, 1]
+        m = (y2 - y1) / (x2 - x1)
+        b = -m * x1 + y1
+    elif isinstance(axis, tuple):
+        if len(axis[1]) == 2:
+            # Option 2
+            theta = axis[0],
+            x1, y1 = axis[0][0], axis[0][1]
+            m = np.tan(theta)
+            b = -m * x1 + y1
+        elif len(axis[1]) == 1:
+            # Option 3
+            m, b = axis[0], axis[1]
+        else:
+            raise ValueError(&#39;input \&#39;axis\&#39; was a tuple where the second element was of an invalid length. The&#39;
+                             &#39;length of the second element should be either 1 or 2.&#39;)
+    else:
+        raise Exception(&#39;Invalid reflection axis input&#39;)
+
+    # Calculate the reflection matrix
+    reflect_mat = 1 / (1 + m ** 2) * np.array([[1 - m ** 2, 2 * m, -2 * m * b],
+                                               [2 * m, m ** 2 - 1, 2 * b],
+                                               [0, 0, 1 + m ** 2]])
+
+    # Reflect the relevant anchor points and free points about the input axis
+    fixed_airfoil = self.airfoil_tuple[fixed_airfoil_idx]
+    linked_airfoil = self.airfoil_tuple[linked_airfoil_idx]
+    linked_airfoil_anchor_points = []
+    start_idx = fixed_airfoil.anchor_point_order.index(fixed_anchor_point_range[0])
+    end_idx = fixed_airfoil.anchor_point_order.index(fixed_anchor_point_range[1])
+    previous_anchor_point_strings = []
+    for anchor_point_idx in range(end_idx - 1, start_idx - 1, -1):
+        previous_anchor_point_strings.append(fixed_airfoil.anchor_point_order[anchor_point_idx])
+    for anchor_point_idx in range(start_idx, end_idx):
+        fixed_anchor_point_str = fixed_airfoil.anchor_point_order[anchor_point_idx]
+        # If not a trailing edge or leading edge anchor point (treat these separately):
+        if fixed_airfoil.anchor_point_order[anchor_point_idx] not in [&#39;te_1&#39;, &#39;le&#39;, &#39;te_2&#39;]:
+            linked_airfoil_anchor_point = deepcopy(fixed_airfoil.anchor_points[fixed_anchor_point_str])
+            x = fixed_airfoil.anchor_points.xy[0]
+            y = fixed_airfoil.anchor_points.xy[1]
+            xy = (reflect_mat @ np.array([[x, y, 1]]).T).T[0, 0:1]
+            linked_airfoil_anchor_point.name = fixed_anchor_point_str + &#39;_mirror_&#39; + self.n_mirrors
+            linked_airfoil_anchor_point.previous_anchor_point = previous_anchor_point_strings[anchor_point_idx]
+            linked_airfoil_anchor_point.x.value = xy[0]
+            linked_airfoil_anchor_point.y.value = xy[1]
+            linked_airfoil_anchor_point.xy = xy
+            linked_airfoil_anchor_point.set_all_as_linked()
+            linked_airfoil_anchor_points.append(linked_airfoil_anchor_point)
+    linked_airfoil.anchor_point_tuple = list(linked_airfoil.anchor_point_tuple)
+    linked_airfoil.anchor_point_tuple.append(linked_airfoil_anchor_points)
+    linked_airfoil.anchor_point_tuple = tuple(linked_airfoil.anchor_point_tuple)
+    linked_airfoil.update()</code></pre>
 </details>
 </dd>
 </dl>
@@ -118,7 +471,8 @@ class AirfoilParametrization:
 <li>
 <h4><code><a title="pyairpar.core.parametrization.AirfoilParametrization" href="#pyairpar.core.parametrization.AirfoilParametrization">AirfoilParametrization</a></code></h4>
 <ul class="">
-<li><code><a title="pyairpar.core.parametrization.AirfoilParametrization.init_default_parameters" href="#pyairpar.core.parametrization.AirfoilParametrization.init_default_parameters">init_default_parameters</a></code></li>
+<li><code><a title="pyairpar.core.parametrization.AirfoilParametrization.clone" href="#pyairpar.core.parametrization.AirfoilParametrization.clone">clone</a></code></li>
+<li><code><a title="pyairpar.core.parametrization.AirfoilParametrization.mirror" href="#pyairpar.core.parametrization.AirfoilParametrization.mirror">mirror</a></code></li>
 </ul>
 </li>
 </ul>
