@@ -4,7 +4,7 @@ from pyairpar.core.airfoil import Airfoil
 from pyairpar.core.base_airfoil_params import BaseAirfoilParams
 
 
-def main():
+def run():
     """
     ### Description:
 
@@ -44,4 +44,4 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    run()

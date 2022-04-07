@@ -6,7 +6,7 @@ from pyairpar.core.airfoil import Airfoil
 from pyairpar.core.base_airfoil_params import BaseAirfoilParams
 
 
-def main():
+def run():
 
     base_airfoil_params = BaseAirfoilParams(c=Param(10.0),
                                             alf=Param(np.deg2rad(5.0)),
@@ -33,7 +33,7 @@ def main():
                                 name='anchor-top',
                                 previous_anchor_point='te_1',
                                 L=Param(0.1, units='length'),
-                                R=Param(-0.15, units='length'),
+                                R=Param(0.15, units='length'),
                                 r=Param(0.55),
                                 phi=Param(np.deg2rad(14.0)),
                                 psi1=Param(np.deg2rad(80.0)),
@@ -62,8 +62,8 @@ def main():
                                 R=Param(0.2, units='length'),
                                 r=Param(0.7),
                                 phi=Param(np.deg2rad(8.0)),
-                                psi1=Param(np.deg2rad(110.0)),
-                                psi2=Param(np.deg2rad(90.0)),
+                                psi1=Param(np.deg2rad(100.0)),
+                                psi2=Param(np.deg2rad(100.0)),
                                 length_scale_dimension=base_airfoil_params.c.value
                                 )
 
@@ -99,4 +99,4 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    run()

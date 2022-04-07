@@ -31,7 +31,7 @@ class AirfoilParametrization:
         self.n_mirrors = 0
 
     def mirror(self, axis: np.ndarray or tuple, fixed_airfoil_idx: int, linked_airfoil_idx: int,
-               fixed_anchor_point_range: tuple):
+               fixed_anchor_point_range: tuple, starting_prev_anchor_point_str_linked: str):
         """
         ### Description:
 
@@ -59,6 +59,8 @@ class AirfoilParametrization:
         representing the name of the final `pyairpar.core.anchor_point.AnchorPoint` in the fixed airfoil
         (counter-clockwise ordering)
 
+        `starting_prev_anchor_point_str_linked`:
+
         ### Returns:
         """
 
@@ -71,13 +73,13 @@ class AirfoilParametrization:
             m = (y2 - y1) / (x2 - x1)
             b = -m * x1 + y1
         elif isinstance(axis, tuple):
-            if len(axis[1]) == 2:
+            if isinstance(axis[1], np.ndarray):
                 # Option 2
                 theta = axis[0],
                 x1, y1 = axis[0][0], axis[0][1]
                 m = np.tan(theta)
                 b = -m * x1 + y1
-            elif len(axis[1]) == 1:
+            elif isinstance(axis[1], float):
                 # Option 3
                 m, b = axis[0], axis[1]
             else:
@@ -97,28 +99,59 @@ class AirfoilParametrization:
         linked_airfoil_anchor_points = []
         start_idx = fixed_airfoil.anchor_point_order.index(fixed_anchor_point_range[0])
         end_idx = fixed_airfoil.anchor_point_order.index(fixed_anchor_point_range[1])
-        previous_anchor_point_strings = []
-        for anchor_point_idx in range(end_idx - 1, start_idx - 1, -1):
-            previous_anchor_point_strings.append(fixed_airfoil.anchor_point_order[anchor_point_idx])
-        for anchor_point_idx in range(start_idx, end_idx):
+        previous_anchor_point_strings = [starting_prev_anchor_point_str_linked]
+        for anchor_point_idx in range(end_idx + 1, start_idx + 1, -1):
+            previous_anchor_point_strings.append(fixed_airfoil.anchor_point_order[anchor_point_idx - 1])
+        str_count = 0
+        for anchor_point_idx in range(end_idx, start_idx - 1, -1):  # start_idx, end_idx + 1
             fixed_anchor_point_str = fixed_airfoil.anchor_point_order[anchor_point_idx]
             # If not a trailing edge or leading edge anchor point (treat these separately):
             if fixed_airfoil.anchor_point_order[anchor_point_idx] not in ['te_1', 'le', 'te_2']:
-                linked_airfoil_anchor_point = deepcopy(fixed_airfoil.anchor_points[fixed_anchor_point_str])
-                x = fixed_airfoil.anchor_points.xy[0]
-                y = fixed_airfoil.anchor_points.xy[1]
-                xy = (reflect_mat @ np.array([[x, y, 1]]).T).T[0, 0:1]
-                linked_airfoil_anchor_point.name = fixed_anchor_point_str + '_mirror_' + self.n_mirrors
-                linked_airfoil_anchor_point.previous_anchor_point = previous_anchor_point_strings[anchor_point_idx]
+                linked_airfoil_anchor_point = \
+                    deepcopy(next((anchor_point for anchor_point in fixed_airfoil.anchor_point_tuple
+                                   if anchor_point.name == fixed_anchor_point_str), None))
+                x = fixed_airfoil.anchor_points[fixed_anchor_point_str][0]
+                y = fixed_airfoil.anchor_points[fixed_anchor_point_str][1]
+                new_x, new_y = rotate(x, y, -fixed_airfoil.alf.value)
+                new_x += fixed_airfoil.dx.value
+                new_y += fixed_airfoil.dy.value
+                xy = (reflect_mat @ np.array([[new_x, new_y, 1]]).T).T[0, :2]
+                linked_airfoil_anchor_point.name = fixed_anchor_point_str + '_mirror_' + str(self.n_mirrors)
+                previous_string = previous_anchor_point_strings[str_count]
+                if previous_string in ['le', 'te_1', 'te_2']:
+                    linked_airfoil_anchor_point.previous_anchor_point = previous_string
+                else:
+                    linked_airfoil_anchor_point.previous_anchor_point = previous_string + \
+                                                                        '_mirror_' + str(self.n_mirrors)
+                xy[0] -= linked_airfoil.dx.value
+                xy[1] -= linked_airfoil.dy.value
+                x, y = rotate(xy[0], xy[1], linked_airfoil.alf.value)
+                xy = np.array([x, y])
                 linked_airfoil_anchor_point.x.value = xy[0]
                 linked_airfoil_anchor_point.y.value = xy[1]
                 linked_airfoil_anchor_point.xy = xy
                 linked_airfoil_anchor_point.set_all_as_linked()
                 linked_airfoil_anchor_points.append(linked_airfoil_anchor_point)
+            str_count += 1
+        # temp_anchor_point_tuple = deepcopy(linked_airfoil.anchor_point_tuple)
+        # temp_anchor_point_tuple = list(temp_anchor_point_tuple)
+        # temp_anchor_point_tuple.extend(linked_airfoil_anchor_points)
+        # temp_anchor_point_tuple = tuple(temp_anchor_point_tuple)
         linked_airfoil.anchor_point_tuple = list(linked_airfoil.anchor_point_tuple)
-        linked_airfoil.anchor_point_tuple.append(linked_airfoil_anchor_points)
+        linked_airfoil.anchor_point_tuple.extend(linked_airfoil_anchor_points)
         linked_airfoil.anchor_point_tuple = tuple(linked_airfoil.anchor_point_tuple)
         linked_airfoil.update()
+        pass
+
+    def extract_parameters(self):
+        """
+        ### Description:
+
+        This function extracts every parameter from the each `pyairpar.core.airfoil.Airfoil` in the `airfoil_tuple`, as
+        well as every parameter in the `AirfoilParametrization` with `active=True` and `linked=False` as a single
+        `list` of parameter values.
+        """
+        pass
 
     def clone(self):
         """
@@ -127,4 +160,14 @@ class AirfoilParametrization:
         Clones an `pyairpar.core.airfoil.Airfoil`
         """
         pass
+
+
+def rotate(x, y, theta):
+    xy = np.array([[x, y]]).T
+    rotation_mat = np.array([[np.cos(theta), -np.sin(theta)],
+                             [np.sin(theta), np.cos(theta)]])
+    new_xy = (rotation_mat @ xy).T.flatten()
+    new_x = new_xy[0]
+    new_y = new_xy[1]
+    return new_x, new_y
 

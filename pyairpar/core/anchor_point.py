@@ -39,16 +39,17 @@ class AnchorPoint:
 
         `R`: ( \\(R\\) ) `pyairpar.core.param.Param` representing the radius of curvature at the \\(x\\) - \\(y\\)
         location of the `AnchorPoint`. A positive value makes the airfoil convex at the `AnchorPoint` location,
-        and a negative value makes the airfoil concave at the `AnchorPoint` location.
+        and a negative value makes the airfoil concave at the `AnchorPoint` location. The valid range is
+        \\( \\{R \\in \\mathbb{R} \\, | \\, R \\neq 0 \\} \\).
 
         `r`: ( \\(r\\) ) `pyairpar.core.param.Param` representing the ratio of the distance from the `AnchorPoint`
         location to the neighboring control point closest to the trailing edge to the distance between the
-        `AnchorPoint`'s neighboring control points ( \\(L_{fore} / L\\) ).
+        `AnchorPoint`'s neighboring control points ( \\(L_{fore} / L\\) ). The valid range is \\(r \\in (0,1)\\).
 
         `phi`: ( \\(\\phi\\) ) `pyairpar.core.param.Param` representing the angle of the line passing through the
         `AnchorPoint`'s neighboring control points, referenced counter-clockwise from the chordline if the
         `AnchorPoint` is on the upper airfoil surface and clockwise from the chordline if the `AnchorPoint` is on the
-        lower airfoil surface.
+        lower airfoil surface. The valid range is \\(\\psi_1 \\in (-90^{\\circ},90^{\\circ})\\).
 
         `psi1`: ( \\(\\psi_1\\) ) `pyairpar.core.param.Param` representing the angle of the aft curvature control "arm."
         Regardless of the sign of \\(R\\) or which surface the `AnchorPoint` lies on, an angle of \\(90^{\\circ}\\)

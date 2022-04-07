@@ -39,6 +39,11 @@ One utility provided in this software package which may be useful in the start-u
 to any public airfoil geometry on [airfoiltools.com](http://airfoiltools.com/) using the gradient-based "SLSQP"
 optimizer.
 
+## Acknowledgments
+
+This work was supported by NASA under award number 80NSSC19M0125 as part of the Center for High-Efficiency Electrical
+Technologies for Aircraft (CHEETA).
+
 ## Contact Information
 
 **Author**: Matthew G Lauer

@@ -6,7 +6,7 @@ from pyairpar.symmetric.symmetric_airfoil import SymmetricAirfoil
 from pyairpar.symmetric.symmetric_base_airfoil_params import SymmetricBaseAirfoilParams
 
 
-def main():
+def run():
     c = 10.0
 
     base_airfoil_params = SymmetricBaseAirfoilParams(c=Param(c),
@@ -52,4 +52,4 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    run()
