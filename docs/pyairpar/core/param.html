@@ -33,8 +33,8 @@
 class Param:
 
     def __init__(self, value: float, units: str or None = None,
-                 bounds: list or np.ndarray = np.array([-np.inf, np.inf]),
-                 length_scale_dimension: float or None = None, active: bool = True, linked: bool = False):
+                 bounds: list or np.ndarray = np.array([-np.inf, np.inf]), scale_value: float or None = None,
+                 active: bool = True, linked: bool = False):
         &#34;&#34;&#34;
         ### Description:
 
@@ -67,7 +67,7 @@ class Param:
         &#34;&#34;&#34;
 
         self.units = units
-        self.length_scale_dimension = length_scale_dimension
+        self.length_scale_dimension = scale_value
 
         if self.units == &#39;length&#39; and self.length_scale_dimension is not None:
             self.value = value * self.length_scale_dimension
@@ -93,7 +93,7 @@ class Param:
 <dt id="pyairpar.core.param.Param"><code class="flex name class">
 <span>class <span class="ident">Param</span></span>
 <span>(</span><span>value: float, units: str = None, bounds: list = array([-inf,
-inf]), length_scale_dimension: float = None, active: bool = True, linked: bool = False)</span>
+inf]), scale_value: float = None, active: bool = True, linked: bool = False)</span>
 </code></dt>
 <dd>
 <div class="desc"><h3 id="description">Description:</h3>
@@ -121,8 +121,8 @@ parameter will not be extracted). Default: <code>False</code>.</p>
 <pre><code class="python">class Param:
 
     def __init__(self, value: float, units: str or None = None,
-                 bounds: list or np.ndarray = np.array([-np.inf, np.inf]),
-                 length_scale_dimension: float or None = None, active: bool = True, linked: bool = False):
+                 bounds: list or np.ndarray = np.array([-np.inf, np.inf]), scale_value: float or None = None,
+                 active: bool = True, linked: bool = False):
         &#34;&#34;&#34;
         ### Description:
 
@@ -155,7 +155,7 @@ parameter will not be extracted). Default: <code>False</code>.</p>
         &#34;&#34;&#34;
 
         self.units = units
-        self.length_scale_dimension = length_scale_dimension
+        self.length_scale_dimension = scale_value
 
         if self.units == &#39;length&#39; and self.length_scale_dimension is not None:
             self.value = value * self.length_scale_dimension

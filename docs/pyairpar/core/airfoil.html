@@ -37,6 +37,7 @@ from matplotlib.axes import Axes
 from matplotlib.figure import Figure
 import matplotlib.pyplot as plt
 import typing
+import itertools
 from shapely.geometry import Polygon, LineString
 
 
@@ -556,11 +557,7 @@ class Airfoil:
                                        anchor_point.name)
         self.anchor_points[anchor_point.name] = anchor_point.xy
         self.set_slope(anchor_point)
-        if self.anchor_point_order.index(anchor_point.name) &gt; self.anchor_point_order.index(&#39;le&#39;):
-            self.N[&#39;le&#39;] = 5  # Set the order of the Bezier curve after the leading edge to 5
-            self.N[self.anchor_point_order[-2]] = 4  # Set the order of the last Bezier curve to 4
-        else:
-            self.N[anchor_point.name] = 5  # Set the order of the Bezier curve after the anchor point to 5
+        self.N[anchor_point.name] = 5
         self.set_curvature(anchor_point)
         self.needs_update = True
 
@@ -571,16 +568,30 @@ class Airfoil:
         This function executes `pyairpar.core.airfoil.Airfoil.add_anchor_point` for all the anchor points in the
         `anchor_point_tuple`. `needs_update` is set to `True`.
         &#34;&#34;&#34;
-        for anchor_point in self.anchor_point_tuple:
+        inf_iterator = itertools.cycle(self.anchor_point_tuple)  # Cycling object (infinite iterator)
+        stop = len(self.anchor_point_tuple)  # Stop once we have gone added every anchor point to the anchor_point_order
+        successes = 0
+        while successes &lt; stop:
+            anchor_point = next(inf_iterator)
             if anchor_point.name not in self.anchor_point_order:
-                self.add_anchor_point(anchor_point)
+                if anchor_point.previous_anchor_point in self.anchor_point_order:
+                    self.add_anchor_point(anchor_point)
+                    successes += 1
+            if successes &gt; 1000:
+                break
+        if self.anchor_point_order.index(&#39;te_2&#39;) - self.anchor_point_order.index(&#39;le&#39;) != 1:
+            self.N[&#39;le&#39;] = 5  # Set the order of the Bezier curve after the leading edge to 5
+            self.N[self.anchor_point_order[-2]] = 4  # Set the order of the last Bezier curve to 4
+        # for anchor_point in self.anchor_point_tuple:
+        #     if anchor_point.name not in self.anchor_point_order:
+        #         self.add_anchor_point(anchor_point)
         self.needs_update = True
 
     def add_free_points(self):
         &#34;&#34;&#34;
         ### Description:
 
-        This function executes `pyairpar.core.free_point.FreePoint` for all the anchor points in the
+        This function executes `pyairpar.core.free_point.FreePoint.add_free_point` for all the anchor points in the
         `free_point_tuple`. `needs_update` is set to `True`.
         &#34;&#34;&#34;
         for free_point in self.free_point_tuple:
@@ -1568,11 +1579,7 @@ point, use <code>(<a title="pyairpar.core.free_point.FreePoint" href="free_point
                                        anchor_point.name)
         self.anchor_points[anchor_point.name] = anchor_point.xy
         self.set_slope(anchor_point)
-        if self.anchor_point_order.index(anchor_point.name) &gt; self.anchor_point_order.index(&#39;le&#39;):
-            self.N[&#39;le&#39;] = 5  # Set the order of the Bezier curve after the leading edge to 5
-            self.N[self.anchor_point_order[-2]] = 4  # Set the order of the last Bezier curve to 4
-        else:
-            self.N[anchor_point.name] = 5  # Set the order of the Bezier curve after the anchor point to 5
+        self.N[anchor_point.name] = 5
         self.set_curvature(anchor_point)
         self.needs_update = True
 
@@ -1583,16 +1590,30 @@ point, use <code>(<a title="pyairpar.core.free_point.FreePoint" href="free_point
         This function executes `pyairpar.core.airfoil.Airfoil.add_anchor_point` for all the anchor points in the
         `anchor_point_tuple`. `needs_update` is set to `True`.
         &#34;&#34;&#34;
-        for anchor_point in self.anchor_point_tuple:
+        inf_iterator = itertools.cycle(self.anchor_point_tuple)  # Cycling object (infinite iterator)
+        stop = len(self.anchor_point_tuple)  # Stop once we have gone added every anchor point to the anchor_point_order
+        successes = 0
+        while successes &lt; stop:
+            anchor_point = next(inf_iterator)
             if anchor_point.name not in self.anchor_point_order:
-                self.add_anchor_point(anchor_point)
+                if anchor_point.previous_anchor_point in self.anchor_point_order:
+                    self.add_anchor_point(anchor_point)
+                    successes += 1
+            if successes &gt; 1000:
+                break
+        if self.anchor_point_order.index(&#39;te_2&#39;) - self.anchor_point_order.index(&#39;le&#39;) != 1:
+            self.N[&#39;le&#39;] = 5  # Set the order of the Bezier curve after the leading edge to 5
+            self.N[self.anchor_point_order[-2]] = 4  # Set the order of the last Bezier curve to 4
+        # for anchor_point in self.anchor_point_tuple:
+        #     if anchor_point.name not in self.anchor_point_order:
+        #         self.add_anchor_point(anchor_point)
         self.needs_update = True
 
     def add_free_points(self):
         &#34;&#34;&#34;
         ### Description:
 
-        This function executes `pyairpar.core.free_point.FreePoint` for all the anchor points in the
+        This function executes `pyairpar.core.free_point.FreePoint.add_free_point` for all the anchor points in the
         `free_point_tuple`. `needs_update` is set to `True`.
         &#34;&#34;&#34;
         for free_point in self.free_point_tuple:
@@ -1843,11 +1864,7 @@ control point branch into the set of control points. <code>needs_update</code> i
                                    anchor_point.name)
     self.anchor_points[anchor_point.name] = anchor_point.xy
     self.set_slope(anchor_point)
-    if self.anchor_point_order.index(anchor_point.name) &gt; self.anchor_point_order.index(&#39;le&#39;):
-        self.N[&#39;le&#39;] = 5  # Set the order of the Bezier curve after the leading edge to 5
-        self.N[self.anchor_point_order[-2]] = 4  # Set the order of the last Bezier curve to 4
-    else:
-        self.N[anchor_point.name] = 5  # Set the order of the Bezier curve after the anchor point to 5
+    self.N[anchor_point.name] = 5
     self.set_curvature(anchor_point)
     self.needs_update = True</code></pre>
 </details>
@@ -1870,9 +1887,23 @@ control point branch into the set of control points. <code>needs_update</code> i
     This function executes `pyairpar.core.airfoil.Airfoil.add_anchor_point` for all the anchor points in the
     `anchor_point_tuple`. `needs_update` is set to `True`.
     &#34;&#34;&#34;
-    for anchor_point in self.anchor_point_tuple:
+    inf_iterator = itertools.cycle(self.anchor_point_tuple)  # Cycling object (infinite iterator)
+    stop = len(self.anchor_point_tuple)  # Stop once we have gone added every anchor point to the anchor_point_order
+    successes = 0
+    while successes &lt; stop:
+        anchor_point = next(inf_iterator)
         if anchor_point.name not in self.anchor_point_order:
-            self.add_anchor_point(anchor_point)
+            if anchor_point.previous_anchor_point in self.anchor_point_order:
+                self.add_anchor_point(anchor_point)
+                successes += 1
+        if successes &gt; 1000:
+            break
+    if self.anchor_point_order.index(&#39;te_2&#39;) - self.anchor_point_order.index(&#39;le&#39;) != 1:
+        self.N[&#39;le&#39;] = 5  # Set the order of the Bezier curve after the leading edge to 5
+        self.N[self.anchor_point_order[-2]] = 4  # Set the order of the last Bezier curve to 4
+    # for anchor_point in self.anchor_point_tuple:
+    #     if anchor_point.name not in self.anchor_point_order:
+    #         self.add_anchor_point(anchor_point)
     self.needs_update = True</code></pre>
 </details>
 </dd>
@@ -1916,7 +1947,7 @@ control point branch into the set of control points. <code>needs_update</code> i
 </code></dt>
 <dd>
 <div class="desc"><h3 id="description">Description:</h3>
-<p>This function executes <code><a title="pyairpar.core.free_point.FreePoint" href="free_point.html#pyairpar.core.free_point.FreePoint">FreePoint</a></code> for all the anchor points in the
+<p>This function executes <code>pyairpar.core.free_point.FreePoint.add_free_point</code> for all the anchor points in the
 <code>free_point_tuple</code>. <code>needs_update</code> is set to <code>True</code>.</p></div>
 <details class="source">
 <summary>
@@ -1926,7 +1957,7 @@ control point branch into the set of control points. <code>needs_update</code> i
     &#34;&#34;&#34;
     ### Description:
 
-    This function executes `pyairpar.core.free_point.FreePoint` for all the anchor points in the
+    This function executes `pyairpar.core.free_point.FreePoint.add_free_point` for all the anchor points in the
     `free_point_tuple`. `needs_update` is set to `True`.
     &#34;&#34;&#34;
     for free_point in self.free_point_tuple:
