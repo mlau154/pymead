@@ -4,8 +4,8 @@ import numpy as np
 class Param:
 
     def __init__(self, value: float, units: str or None = None,
-                 bounds: list or np.ndarray = np.array([-np.inf, np.inf]),
-                 length_scale_dimension: float or None = None, active: bool = True, linked: bool = False):
+                 bounds: list or np.ndarray = np.array([-np.inf, np.inf]), scale_value: float or None = None,
+                 active: bool = True, linked: bool = False):
         """
         ### Description:
 
@@ -38,7 +38,7 @@ class Param:
         """
 
         self.units = units
-        self.length_scale_dimension = length_scale_dimension
+        self.length_scale_dimension = scale_value
 
         if self.units == 'length' and self.length_scale_dimension is not None:
             self.value = value * self.length_scale_dimension

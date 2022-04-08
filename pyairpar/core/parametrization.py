@@ -1,5 +1,6 @@
 import numpy as np
 from pyairpar.core.airfoil import Airfoil
+from pyairpar.core.param import Param
 import typing
 from copy import deepcopy
 
@@ -29,6 +30,9 @@ class AirfoilParametrization:
             self.airfoil_tuple = airfoil_tuple
 
         self.n_mirrors = 0
+        self.extra_params = []
+        self.params = []
+        self.bounds = []
 
     def mirror(self, axis: np.ndarray or tuple, fixed_airfoil_idx: int, linked_airfoil_idx: int,
                fixed_anchor_point_range: tuple, starting_prev_anchor_point_str_linked: str):
@@ -132,14 +136,47 @@ class AirfoilParametrization:
                 linked_airfoil_anchor_point.xy = xy
                 linked_airfoil_anchor_point.set_all_as_linked()
                 linked_airfoil_anchor_points.append(linked_airfoil_anchor_point)
+            elif fixed_airfoil.anchor_point_order[anchor_point_idx] == 'le':
+                pass
+            elif fixed_airfoil.anchor_point_order[anchor_point_idx] == 'te_1':
+                pass
+            elif fixed_airfoil.anchor_point_order[anchor_point_idx] == 'te_2':
+                pass
             str_count += 1
-        # temp_anchor_point_tuple = deepcopy(linked_airfoil.anchor_point_tuple)
-        # temp_anchor_point_tuple = list(temp_anchor_point_tuple)
-        # temp_anchor_point_tuple.extend(linked_airfoil_anchor_points)
-        # temp_anchor_point_tuple = tuple(temp_anchor_point_tuple)
         linked_airfoil.anchor_point_tuple = list(linked_airfoil.anchor_point_tuple)
         linked_airfoil.anchor_point_tuple.extend(linked_airfoil_anchor_points)
         linked_airfoil.anchor_point_tuple = tuple(linked_airfoil.anchor_point_tuple)
+
+        # Add free points - exclude the free points that have a previous_anchor_string equal to the end of the
+        # fixed_anchor_point_range
+        free_points_to_add = deepcopy([free_point for free_point in fixed_airfoil.free_point_tuple
+                                       if free_point.previous_anchor_point + '_mirror_' + str(self.n_mirrors) in
+                                       [anchor_point.name for anchor_point in linked_airfoil_anchor_points
+                                        if anchor_point.name != fixed_anchor_point_range[1]]])
+        fixed_anchor_point_str_list = fixed_airfoil.anchor_point_order[
+                                      fixed_airfoil.anchor_point_order.index(fixed_anchor_point_range[0]):
+                                      fixed_airfoil.anchor_point_order.index(fixed_anchor_point_range[1]) + 1]
+        linked_anchor_point_str_list = [string + '_mirror_' + str(self.n_mirrors)
+                                        if string not in ['le', 'te_1', 'te_2']
+                                        else string for string in fixed_anchor_point_str_list[::-1]]
+        for idx, free_point in reversed(list(enumerate(free_points_to_add))):
+            free_point.previous_anchor_point = linked_anchor_point_str_list[fixed_anchor_point_str_list.index(free_point.previous_anchor_point)]
+            free_point.x.value, free_point.y.value = rotate(
+                free_point.x.value, free_point.y.value, -fixed_airfoil.alf.value)
+            free_point.x.value += fixed_airfoil.dx.value
+            free_point.y.value += fixed_airfoil.dy.value
+            xy = (reflect_mat @ np.array([[free_point.x.value, free_point.y.value, 1]]).T).T[0, :2]
+            free_point.x.value = xy[0]
+            free_point.y.value = xy[1]
+            free_point.x.value -= linked_airfoil.dx.value
+            free_point.y.value -= linked_airfoil.dy.value
+            free_point.x.value, free_point.y.value = rotate(
+                free_point.x.value, free_point.y.value, linked_airfoil.alf.value)
+            free_point.xy = np.array([free_point.x.value, free_point.y.value])
+            free_point.set_all_as_linked()
+        linked_airfoil.free_point_tuple = list(linked_airfoil.free_point_tuple)
+        linked_airfoil.free_point_tuple.extend(free_points_to_add[::-1])
+        linked_airfoil.free_point_tuple = tuple(linked_airfoil.free_point_tuple)
         linked_airfoil.update()
         pass
 
@@ -151,7 +188,16 @@ class AirfoilParametrization:
         well as every parameter in the `AirfoilParametrization` with `active=True` and `linked=False` as a single
         `list` of parameter values.
         """
-        pass
+        self.params = []
+        self.bounds = []
+        for airfoil in self.airfoil_tuple:
+            airfoil.extract_parameters()
+            self.params.extend(airfoil.params)
+            self.bounds.extend(airfoil.bounds)
+        self.params.extend([parameter.value for parameter in self.extra_params
+                            if parameter.active and not parameter.linked])
+        self.bounds.extend([[parameter.bounds[0], parameter.bounds[1]] for parameter in self.extra_params
+                            if parameter.active and not parameter.linked])
 
     def clone(self):
         """
@@ -160,6 +206,21 @@ class AirfoilParametrization:
         Clones an `pyairpar.core.airfoil.Airfoil`
         """
         pass
+
+    def include(self, parameters: typing.List[Param]):
+        """
+        ### Description:
+
+        This function provides a way to pass the external parameters added to the parametrization to the global list of
+        parameters. Useful for parameter extraction.
+
+        ### Args:
+
+        `parameters`: a `list` of `pyairpar.core.param.Param`s to add do the global parameter list. Typically, all
+        global parameters in the setup script for the particular parametrization should be included. See
+        `pyairpar.examples.propulsion_airframe_integration` for an example.
+        """
+        self.extra_params.extend(parameters)
 
 
 def rotate(x, y, theta):
@@ -170,4 +231,3 @@ def rotate(x, y, theta):
     new_x = new_xy[0]
     new_y = new_xy[1]
     return new_x, new_y
-

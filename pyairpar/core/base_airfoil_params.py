@@ -5,23 +5,23 @@ import numpy as np
 class BaseAirfoilParams:
 
     def __init__(self,
-                 c: Param = Param(1.0),                         # chord length
-                 alf: Param = Param(0.0),                       # angle of attack (rad)
-                 R_le: Param = Param(0.1, 'length'),            # leading edge radius
-                 L_le: Param = Param(0.1, 'length'),            # leading edge length
-                 r_le: Param = Param(0.5),                      # leading edge length ratio
-                 phi_le: Param = Param(0.0),                    # leading edge 'tilt' angle
-                 psi1_le: Param = Param(0.0),                   # leading edge upper curvature control angle
-                 psi2_le: Param = Param(0.0),                   # leading edge lower curvature control angle
-                 L1_te: Param = Param(0.1, 'length'),           # trailing edge upper length
-                 L2_te: Param = Param(0.1, 'length'),           # trailing edge lower length
-                 theta1_te: Param = Param(np.deg2rad(10.0)),    # trailing edge upper angle
-                 theta2_te: Param = Param(np.deg2rad(10.0)),    # trailing edge lower angle
-                 t_te: Param = Param(0.0, 'length'),            # blunt trailing edge thickness
-                 r_te: Param = Param(0.5),                      # blunt trailing edge thickness length ratio
-                 phi_te: Param = Param(0.0),                    # blunt trailing edge 'tilt' angle
-                 dx: Param = Param(0.0, active=False),          # dx to translate
-                 dy: Param = Param(0.0, active=False),          # dy to translate
+                 c: Param = Param(1.0),  # chord length
+                 alf: Param = Param(0.0),  # angle of attack (rad)
+                 R_le: Param = Param(0.1, 'length'),  # leading edge radius
+                 L_le: Param = Param(0.1, 'length'),  # leading edge length
+                 r_le: Param = Param(0.5),  # leading edge length ratio
+                 phi_le: Param = Param(0.0),  # leading edge 'tilt' angle
+                 psi1_le: Param = Param(0.0),  # leading edge upper curvature control angle
+                 psi2_le: Param = Param(0.0),  # leading edge lower curvature control angle
+                 L1_te: Param = Param(0.1, 'length'),  # trailing edge upper length
+                 L2_te: Param = Param(0.1, 'length'),  # trailing edge lower length
+                 theta1_te: Param = Param(np.deg2rad(10.0)),  # trailing edge upper angle
+                 theta2_te: Param = Param(np.deg2rad(10.0)),  # trailing edge lower angle
+                 t_te: Param = Param(0.0, 'length'),  # blunt trailing edge thickness
+                 r_te: Param = Param(0.5),  # blunt trailing edge thickness length ratio
+                 phi_te: Param = Param(0.0),  # blunt trailing edge 'tilt' angle
+                 dx: Param = Param(0.0, active=False),  # dx to translate
+                 dy: Param = Param(0.0, active=False),  # dy to translate
                  non_dim_by_chord: bool = True,
                  ):
         """

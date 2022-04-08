@@ -5,16 +5,16 @@ import numpy as np
 class SymmetricBaseAirfoilParams:
 
     def __init__(self,
-                 c: Param = Param(1.0),                         # chord length
-                 alf: Param = Param(0.0),                       # angle of attack (rad)
-                 R_le: Param = Param(0.1, 'length'),            # leading edge radius
-                 L_le: Param = Param(0.1, 'length'),            # leading edge length
-                 psi1_le: Param = Param(0.0),                   # leading edge upper curvature control angle
-                 L1_te: Param = Param(0.1, 'length'),           # trailing edge upper length
-                 theta1_te: Param = Param(np.deg2rad(10.0)),    # trailing edge upper angle
-                 t_te: Param = Param(0.0, 'length'),            # blunt trailing edge thickness
-                 dx: Param = Param(0.0, active=False),          # dx to translate
-                 dy: Param = Param(0.0, active=False),          # dy to translate
+                 c: Param = Param(1.0),  # chord length
+                 alf: Param = Param(0.0),  # angle of attack (rad)
+                 R_le: Param = Param(0.1, 'length'),  # leading edge radius
+                 L_le: Param = Param(0.1, 'length'),  # leading edge length
+                 psi1_le: Param = Param(0.0),  # leading edge upper curvature control angle
+                 L1_te: Param = Param(0.1, 'length'),  # trailing edge upper length
+                 theta1_te: Param = Param(np.deg2rad(10.0)),  # trailing edge upper angle
+                 t_te: Param = Param(0.0, 'length'),  # blunt trailing edge thickness
+                 dx: Param = Param(0.0, active=False),  # dx to translate
+                 dy: Param = Param(0.0, active=False),  # dy to translate
                  non_dim_by_chord: bool = True):                # Non-dimensionalize by chord length?
 
         self.c = c
@@ -26,7 +26,7 @@ class SymmetricBaseAirfoilParams:
         self.psi1_le = psi1_le
         self.psi2_le = Param(psi1_le.value, active=False, linked=True)
         self.L1_te = L1_te
-        self.L2_te = Param(L1_te.value, active=False, linked=True)
+        self.L2_te = Param(L1_te.value, 'length', active=False, linked=True)
         self.theta1_te = theta1_te
         self.theta2_te = Param(theta1_te.value, active=False, linked=True)
         self.t_te = t_te
