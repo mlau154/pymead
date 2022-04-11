@@ -870,6 +870,10 @@ def bezier(P: np.ndarray, nt: int) -> dict:
     $$\\vec{C}''(t)=n(n-1) \\sum_{i=0}^{n-2} (\\vec{P}_{i+2}-2\\vec{P}_{i+1}+\\vec{P}_i) B_{i,n-2}(t)$$
     $$\\kappa(t)=\\frac{C'_x(t) C''_y(t) - C'_y(t) C''_x(t)}{[(C'_x)^2(t) + (C'_y)^2(t)]^{3/2}}$$
 
+    Here, the \\('\\) and \\(''\\) are the first and second derivatives with respect to \\(x\\) and \\(y\\), not the
+    parameter \\(t\\). The result of \\(\\vec{C}''(t)\\), for example, is a vector with two components, \\(C''_x(t)\\)
+    and \\(C''_y(t)\\).
+
     An example cubic Bézier curve (order \\(n=3\\)) is shown below. Note that the curve passes through the first and
     last control points and has a local slope at \\(P_0\\) equal to the slope of the line passing through \\(P_0\\)
     and \\(P_1\\). Similarly, the local slope at \\(P_3\\) is equal to the slope of the line passing through

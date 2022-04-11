@@ -1,13 +1,16 @@
 import numpy as np
-from pyairpar.core.airfoil import Airfoil
-from pyairpar.core.param import Param
 import typing
 from copy import deepcopy
+
+from pyairpar.core.airfoil import Airfoil
+from pyairpar.core.param import Param
+from pyairpar.utils.transformations import rotate, translate
+from pyairpar.core.param_setup import ParamSetup
 
 
 class AirfoilParametrization:
 
-    def __init__(self, airfoil_tuple: typing.Tuple[Airfoil, ...]):
+    def __init__(self, param_setup: ParamSetup, _generate_airfoils: callable, args=None):
         """
         ### Description:
 
@@ -24,14 +27,20 @@ class AirfoilParametrization:
 
         An instance of the `AirfoilParametrization` class
         """
-        if len(airfoil_tuple) == 0:
-            raise Exception('At least one airfoil must be specified in the airfoil_tuple')
-        else:
-            self.airfoil_tuple = airfoil_tuple
+        self.param_setup = param_setup
+        self._generate_airfoils = _generate_airfoils
+        self.args = args
+
+        self.airfoil_tuple = None
 
         self.n_mirrors = 0
-        self.params = None
-        self.parameter_info = None
+
+    def generate_airfoils(self, *args, **kwargs):
+        airfoil_tuple = self._generate_airfoils(self.param_setup.param_dict, *args, **kwargs)
+        if isinstance(airfoil_tuple, tuple):
+            self.airfoil_tuple = airfoil_tuple
+        else:
+            raise Exception(f'_generate_airfoils must return a tuple. Return type was {type(airfoil_tuple)}')
 
     def mirror(self, axis: np.ndarray or tuple, fixed_airfoil_idx: int, linked_airfoil_idx: int,
                fixed_anchor_point_range: tuple, starting_prev_anchor_point_str_linked: str):
@@ -91,7 +100,9 @@ class AirfoilParametrization:
             raise Exception('Invalid reflection axis input')
 
         # Calculate the reflection matrix
-        reflect_mat = 1 / (1 + m ** 2) * np.array([[1 - m ** 2, 2 * m, -2 * m * b], [2 * m, m ** 2 - 1, 2 * b], [0, 0, 1 + m ** 2]])
+        reflect_mat = 1 / (1 + m ** 2) * np.array([[1 - m ** 2, 2 * m, -2 * m * b],
+                                                   [2 * m, m ** 2 - 1, 2 * b],
+                                                   [0, 0, 1 + m ** 2]])
         # Reflect the relevant anchor points and free points about the input axis
         fixed_airfoil = self.airfoil_tuple[fixed_airfoil_idx]
         linked_airfoil = self.airfoil_tuple[linked_airfoil_idx]
@@ -109,11 +120,12 @@ class AirfoilParametrization:
                 linked_airfoil_anchor_point = \
                     deepcopy(next((anchor_point for anchor_point in fixed_airfoil.anchor_point_tuple
                                    if anchor_point.name == fixed_anchor_point_str), None))
+
                 x = fixed_airfoil.anchor_points[fixed_anchor_point_str][0]
                 y = fixed_airfoil.anchor_points[fixed_anchor_point_str][1]
                 new_x, new_y = rotate(x, y, -fixed_airfoil.alf.value)
-                new_x += fixed_airfoil.dx.value
-                new_y += fixed_airfoil.dy.value
+                new_x, new_y = translate(new_x, new_y, fixed_airfoil.dx.value, fixed_airfoil.dy.value)
+
                 xy = (reflect_mat @ np.array([[new_x, new_y, 1]]).T).T[0, :2]
                 linked_airfoil_anchor_point.name = fixed_anchor_point_str + '_mirror_' + str(self.n_mirrors)
                 previous_string = previous_anchor_point_strings[str_count]
@@ -122,13 +134,15 @@ class AirfoilParametrization:
                 else:
                     linked_airfoil_anchor_point.previous_anchor_point = previous_string + \
                                                                         '_mirror_' + str(self.n_mirrors)
-                xy[0] -= linked_airfoil.dx.value
-                xy[1] -= linked_airfoil.dy.value
-                x, y = rotate(xy[0], xy[1], linked_airfoil.alf.value)
-                xy = np.array([x, y])
-                linked_airfoil_anchor_point.x.value = xy[0]
-                linked_airfoil_anchor_point.y.value = xy[1]
-                linked_airfoil_anchor_point.xy = xy
+
+                x, y = translate(xy[0], xy[1], -linked_airfoil.dx.value, -linked_airfoil.dy.value)
+                x, y = rotate(x, y, linked_airfoil.alf.value)
+
+                linked_airfoil_anchor_point.x.value = x
+                linked_airfoil_anchor_point.y.value = y
+                linked_airfoil_anchor_point.xy = np.array([x, y])
+                linked_airfoil_anchor_point.phi.value -= theta
+
                 linked_airfoil_anchor_point.set_all_as_linked()
                 linked_airfoil_anchor_points.append(linked_airfoil_anchor_point)
             elif fixed_airfoil.anchor_point_order[anchor_point_idx] == 'le':
@@ -175,46 +189,9 @@ class AirfoilParametrization:
         linked_airfoil.free_point_tuple = tuple(linked_airfoil.free_point_tuple)
         linked_airfoil.update()
 
-    def extract_parameters(self, parameters: typing.List[Param] or typing.Dict[Param]):
-        """
-        ### Description:
-
-        This function extracts every parameter from the each `pyairpar.core.airfoil.Airfoil` in the `airfoil_tuple`, as
-        well as every parameter in the `AirfoilParametrization` with `active=True` and `linked=False` as a single
-        `list` of parameter values.
-
-        ### Args:
-
-        `parameters`: a `list` or `dict` of parameters used in the parametrization
-
-        ### Returns:
-
-        The list of parameters and a dictionary contain parameter information
-        """
-        if isinstance(parameters, list):
-            self.params = parameters
-        elif isinstance(parameters, dict):
-            for key, value in parameters.items():
-                if isinstance(value, Param):
-                    value.name = key
-            self.params = [param for param in parameters.values()
-                           if isinstance(param, Param) and param.active and not param.linked]
-        else:
-            raise TypeError('Invalid type input for extra_parameters. Must be a list or dictionary of Params.')
-        self.parameter_info = {
-            'values': [param.value for param in self.params],
-            'bounds_normalized_values': [np.divide(param.value - param.bounds[0], param.bounds[1] - param.bounds[0])
-                                         for param in self.params],
-            'bounds': [param.bounds for param in self.params],
-            'names': [param.name for param in self.params],
-            'units': [param.units for param in self.params],
-            'scale_value': [param.scale_value for param in self.params],
-            'n_params': len(self.params),
-        }
-        return self.params, self.parameter_info
-
-    def override_parameters(self, parameters: list):
-        pass
+    def override_parameters(self, parameter_info_values: list, normalized: bool = False, *args, **kwargs):
+        self.param_setup.override_parameters(parameter_info_values, normalized)
+        self.generate_airfoils(*args, **kwargs)
 
     def clone(self):
         """
@@ -223,13 +200,3 @@ class AirfoilParametrization:
         Clones an `pyairpar.core.airfoil.Airfoil`
         """
         pass
-
-
-def rotate(x, y, theta):
-    xy = np.array([[x, y]]).T
-    rotation_mat = np.array([[np.cos(theta), -np.sin(theta)],
-                             [np.sin(theta), np.cos(theta)]])
-    new_xy = (rotation_mat @ xy).T.flatten()
-    new_x = new_xy[0]
-    new_y = new_xy[1]
-    return new_x, new_y

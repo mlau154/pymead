@@ -899,6 +899,10 @@ def bezier(P: np.ndarray, nt: int) -&gt; dict:
     $$\\vec{C}&#39;&#39;(t)=n(n-1) \\sum_{i=0}^{n-2} (\\vec{P}_{i+2}-2\\vec{P}_{i+1}+\\vec{P}_i) B_{i,n-2}(t)$$
     $$\\kappa(t)=\\frac{C&#39;_x(t) C&#39;&#39;_y(t) - C&#39;_y(t) C&#39;&#39;_x(t)}{[(C&#39;_x)^2(t) + (C&#39;_y)^2(t)]^{3/2}}$$
 
+    Here, the \\(&#39;\\) and \\(&#39;&#39;\\) are the first and second derivatives with respect to \\(x\\) and \\(y\\), not the
+    parameter \\(t\\). The result of \\(\\vec{C}&#39;&#39;(t)\\), for example, is a vector with two components, \\(C&#39;&#39;_x(t)\\)
+    and \\(C&#39;&#39;_y(t)\\).
+
     An example cubic Bézier curve (order \\(n=3\\)) is shown below. Note that the curve passes through the first and
     last control points and has a local slope at \\(P_0\\) equal to the slope of the line passing through \\(P_0\\)
     and \\(P_1\\). Similarly, the local slope at \\(P_3\\) is equal to the slope of the line passing through
@@ -998,6 +1002,9 @@ def bezier(P: np.ndarray, nt: int) -&gt; dict:
 <span><span class="MathJax_Preview">\vec{C}'(t)=n \sum_{i=0}^{n-1} (\vec{P}_{i+1} - \vec{P}_i B_{i,n-1}(t)</span><script type="math/tex; mode=display">\vec{C}'(t)=n \sum_{i=0}^{n-1} (\vec{P}_{i+1} - \vec{P}_i B_{i,n-1}(t)</script></span>
 <span><span class="MathJax_Preview">\vec{C}''(t)=n(n-1) \sum_{i=0}^{n-2} (\vec{P}_{i+2}-2\vec{P}_{i+1}+\vec{P}_i) B_{i,n-2}(t)</span><script type="math/tex; mode=display">\vec{C}''(t)=n(n-1) \sum_{i=0}^{n-2} (\vec{P}_{i+2}-2\vec{P}_{i+1}+\vec{P}_i) B_{i,n-2}(t)</script></span>
 <span><span class="MathJax_Preview">\kappa(t)=\frac{C'_x(t) C''_y(t) - C'_y(t) C''_x(t)}{[(C'_x)^2(t) + (C'_y)^2(t)]^{3/2}}</span><script type="math/tex; mode=display">\kappa(t)=\frac{C'_x(t) C''_y(t) - C'_y(t) C''_x(t)}{[(C'_x)^2(t) + (C'_y)^2(t)]^{3/2}}</script></span></p>
+<p>Here, the <span><span class="MathJax_Preview">'</span><script type="math/tex">'</script></span> and <span><span class="MathJax_Preview">''</span><script type="math/tex">''</script></span> are the first and second derivatives with respect to <span><span class="MathJax_Preview">x</span><script type="math/tex">x</script></span> and <span><span class="MathJax_Preview">y</span><script type="math/tex">y</script></span>, not the
+parameter <span><span class="MathJax_Preview">t</span><script type="math/tex">t</script></span>. The result of <span><span class="MathJax_Preview">\vec{C}''(t)</span><script type="math/tex">\vec{C}''(t)</script></span>, for example, is a vector with two components, <span><span class="MathJax_Preview">C''_x(t)</span><script type="math/tex">C''_x(t)</script></span>
+and <span><span class="MathJax_Preview">C''_y(t)</span><script type="math/tex">C''_y(t)</script></span>.</p>
 <p>An example cubic Bézier curve (order <span><span class="MathJax_Preview">n=3</span><script type="math/tex">n=3</script></span>) is shown below. Note that the curve passes through the first and
 last control points and has a local slope at <span><span class="MathJax_Preview">P_0</span><script type="math/tex">P_0</script></span> equal to the slope of the line passing through <span><span class="MathJax_Preview">P_0</span><script type="math/tex">P_0</script></span>
 and <span><span class="MathJax_Preview">P_1</span><script type="math/tex">P_1</script></span>. Similarly, the local slope at <span><span class="MathJax_Preview">P_3</span><script type="math/tex">P_3</script></span> is equal to the slope of the line passing through
@@ -1030,6 +1037,10 @@ where the <span><span class="MathJax_Preview">x</span><script type="math/tex">x<
     $$\\vec{C}&#39;(t)=n \\sum_{i=0}^{n-1} (\\vec{P}_{i+1} - \\vec{P}_i B_{i,n-1}(t)$$
     $$\\vec{C}&#39;&#39;(t)=n(n-1) \\sum_{i=0}^{n-2} (\\vec{P}_{i+2}-2\\vec{P}_{i+1}+\\vec{P}_i) B_{i,n-2}(t)$$
     $$\\kappa(t)=\\frac{C&#39;_x(t) C&#39;&#39;_y(t) - C&#39;_y(t) C&#39;&#39;_x(t)}{[(C&#39;_x)^2(t) + (C&#39;_y)^2(t)]^{3/2}}$$
+
+    Here, the \\(&#39;\\) and \\(&#39;&#39;\\) are the first and second derivatives with respect to \\(x\\) and \\(y\\), not the
+    parameter \\(t\\). The result of \\(\\vec{C}&#39;&#39;(t)\\), for example, is a vector with two components, \\(C&#39;&#39;_x(t)\\)
+    and \\(C&#39;&#39;_y(t)\\).
 
     An example cubic Bézier curve (order \\(n=3\\)) is shown below. Note that the curve passes through the first and
     last control points and has a local slope at \\(P_0\\) equal to the slope of the line passing through \\(P_0\\)
