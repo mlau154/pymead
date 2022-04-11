@@ -1,16 +1,14 @@
 # pyairpar
 
-### Author: Matthew G Lauer
+## Author: Matthew G Lauer
 
-Source code can be found [here](https://github.com/mlau154/pyairpar).
-
-Documentation can be found [here](https://mlau154.github.io/pyairpar/).
+Source code can be found [here](https://github.com/mlau154/pyairpar). Documentation can be found [here](https://mlau154.github.io/pyairpar/).
 
 ## Welcome
 To the documentation page for `pyairpar`, an object-oriented Python 3 package for single- and multi-element
 Bézier-parametrized airfoil design.
 
-![Image](docs/complex_airfoil-3.png)
+![Image](https://github.com/mlau154/pyairpar/raw/master/docs/complex_airfoil-3.png)
 
 ## Motivation
 
