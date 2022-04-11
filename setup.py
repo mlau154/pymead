@@ -22,7 +22,7 @@ setup(
         "License :: OSI Approved :: MIT License",
         "Programming Language :: Python :: 3",
     ],
-    packages=["pyairpar"],
+    packages=["pyairpar", "pyairpar/core", "pyairpar/symmetric", "pyairpar/examples", "pyairpar/utils"],
     include_package_data=True,
     install_requires=["scipy", "numpy", "shapely", "matplotlib", "requests"],
 )
