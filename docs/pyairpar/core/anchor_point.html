@@ -127,7 +127,7 @@ class AnchorPoint:
         if self.length_scale_dimension is not None:  # only scale if the anchor point has a length scale dimension
             for param in [var for var in vars(self).values()  # For each parameter in the anchor point,
                           if isinstance(var, Param) and var.units == &#39;length&#39;]:
-                if param.length_scale_dimension is None:  # only scale if the parameter has not yet been scaled
+                if param.scale_value is None:  # only scale if the parameter has not yet been scaled
                     param.value = param.value * self.length_scale_dimension
 
     def count_overrideable_variables(self):
@@ -333,7 +333,7 @@ values (optional)</p>
         if self.length_scale_dimension is not None:  # only scale if the anchor point has a length scale dimension
             for param in [var for var in vars(self).values()  # For each parameter in the anchor point,
                           if isinstance(var, Param) and var.units == &#39;length&#39;]:
-                if param.length_scale_dimension is None:  # only scale if the parameter has not yet been scaled
+                if param.scale_value is None:  # only scale if the parameter has not yet been scaled
                     param.value = param.value * self.length_scale_dimension
 
     def count_overrideable_variables(self):
@@ -478,7 +478,7 @@ been scaled.</p></div>
     if self.length_scale_dimension is not None:  # only scale if the anchor point has a length scale dimension
         for param in [var for var in vars(self).values()  # For each parameter in the anchor point,
                       if isinstance(var, Param) and var.units == &#39;length&#39;]:
-            if param.length_scale_dimension is None:  # only scale if the parameter has not yet been scaled
+            if param.scale_value is None:  # only scale if the parameter has not yet been scaled
                 param.value = param.value * self.length_scale_dimension</code></pre>
 </details>
 </dd>

@@ -78,7 +78,6 @@ class Airfoil:
 
         self.nt = number_coordinates
         self.params = []
-        self.bounds = []
         self.base_airfoil_params = base_airfoil_params
         self.override_parameters = override_parameters
 
@@ -169,6 +168,18 @@ class Airfoil:
         self.update()
 
     def init_g1_points(self):
+        &#34;&#34;&#34;
+        ### Description:
+
+        Initializes the &#34;g1_minus&#34; and &#34;g1_plus&#34; points for the leading edge (the neighboring control points to
+        the leading edge anchor point). These points are used to enforce \\(G^1\\) continuity. &#34;Minus&#34; points refer to
+        control points which occur before the anchor point in the path of the Bézier curve, and &#34;plus&#34; points refer to
+        control points which occur before the anchor point.
+
+        ### Returns:
+
+        The neighboring control points to the leading edge anchor point as dictionaries.
+        &#34;&#34;&#34;
 
         g1_minus_points = {
             &#39;te_2&#39;: self.anchor_points[&#39;te_2&#39;] +
@@ -193,6 +204,18 @@ class Airfoil:
         return g1_minus_points, g1_plus_points
 
     def init_g2_points(self):
+        &#34;&#34;&#34;
+        ### Description:
+
+        Initializes the &#34;g2_minus&#34; and &#34;g2_plus&#34; points for the leading edge (the control points two points from the
+        leading edge control point). These points are used to enforce \\(G^2\\) continuity. &#34;Minus&#34; points refer to
+        control points which occur before the anchor point in the path of the Bézier curve, and &#34;plus&#34; points refer to
+        control points which occur before the anchor point.
+
+        ### Returns:
+
+        The neighboring control points to the leading edge anchor point as dictionaries.
+        &#34;&#34;&#34;
         g2_minus_point_le, g2_plus_point_le = self.set_curvature_le()
 
         g2_minus_points = {
@@ -206,25 +229,75 @@ class Airfoil:
         return g2_minus_points, g2_plus_points
 
     def set_slope(self, anchor_point: AnchorPoint):
+        r&#34;&#34;&#34;
+        ### Description:
+
+        This is the function which enforces \(G^1\) continuity for all `pyairpar.core.anchor_point.AnchorPoint`s
+        which are added. To keep the length ratios and angles defined in a &#34;nice&#34; way, the neighboring control points
+        to the anchor point are defined as follows: For anchor points on the upper surface (where \((x_0,
+        y_0)\) precedes the leading edge point):
+
+        $$\begin{align*}
+        \begin{bmatrix} x_{-1} \\ y_{-1} \end{bmatrix} &amp;= \begin{bmatrix} x_0 \\ y_0 \end{bmatrix} +
+        (1-r)L \begin{bmatrix} \cos{\phi} \\ \sin{\phi} \end{bmatrix} \\
+        \begin{bmatrix} x_{+1} \\ y_{+1} \end{bmatrix} &amp;= \begin{bmatrix} x_0 \\ y_0 \end{bmatrix} -
+        rL \begin{bmatrix} \cos{\phi} \\ \sin{\phi} \end{bmatrix}
+        \end{align*}$$
+
+        For anchor points on the lower surface (where \((x_0,y_0)\) occurs further down the Bézier curve path than
+        the leading edge point):
+
+        $$\begin{align*}
+        \begin{bmatrix} x_{-1} \\ y_{-1} \end{bmatrix} &amp;= \begin{bmatrix} x_0 \\ y_0 \end{bmatrix} -
+        rL \begin{bmatrix} \cos{(-\phi)} \\ \sin{(-\phi)} \end{bmatrix} \\
+        \begin{bmatrix} x_{+1} \\ y_{+1} \end{bmatrix} &amp;= \begin{bmatrix} x_0 \\ y_0 \end{bmatrix} +
+        (1-r)L \begin{bmatrix} \cos{(-\phi)} \\ \sin{(-\phi)} \end{bmatrix}
+        \end{align*}$$
+
+        Here, \((x_{-1},y_{-1})\) represents the coordinates of the &#34;minus&#34; point (the control point before the
+        leading edge point), and \((x_{+1},y_{+1})\) represents the coordinates of the &#34;plus&#34; point (the control
+        point after the leading edge point). The coordinates of the anchor point itself are \((x_0,y_0)\). With
+        these definitions, a ratio \(r&gt;0.5\) biases the neighboring control points toward the leading edge, and
+        a ratio \(r&lt;0.5\) biases the neighboring control points toward the leading edge. A positive value of \(\phi\)
+        angles the neighboring control points toward the trailing edge, and a negative value of \(\phi\) angles the
+        neighboring control points toward the trailing edge. See the diagram for
+        `pyairpar.core.anchor_point.AnchorPoint` for a visual description of these definitions.
+
+        ### Returns:
+
+        The generated neighboring control point \(x\) - \(y\) locations as `np.ndarray`s of `shape=2`.
+        &#34;&#34;&#34;
         r = anchor_point.r.value
         L = anchor_point.L.value
+        phi = anchor_point.phi.value
 
         if self.anchor_point_order.index(anchor_point.name) &lt; self.anchor_point_order.index(&#39;le&#39;):
-            phi = anchor_point.phi.value
             self.g1_minus_points[anchor_point.name] = \
                 self.anchor_points[anchor_point.name] + (1 - r) * L * np.array([np.cos(phi), np.sin(phi)])
             self.g1_plus_points[anchor_point.name] = \
                 self.anchor_points[anchor_point.name] - r * L * np.array([np.cos(phi), np.sin(phi)])
         else:
-            phi = -anchor_point.phi.value
             self.g1_minus_points[anchor_point.name] = \
-                self.anchor_points[anchor_point.name] - r * L * np.array([np.cos(phi), np.sin(phi)])
+                self.anchor_points[anchor_point.name] - r * L * np.array([np.cos(-phi), np.sin(-phi)])
             self.g1_plus_points[anchor_point.name] = \
-                self.anchor_points[anchor_point.name] + (1 - r) * L * np.array([np.cos(phi), np.sin(phi)])
-        return self.g1_minus_points, self.g1_plus_points
+                self.anchor_points[anchor_point.name] + (1 - r) * L * np.array([np.cos(-phi), np.sin(-phi)])
+        return self.g1_minus_points[anchor_point.name], self.g1_plus_points[anchor_point.name]
 
     def set_curvature_le(self):
-        if self.R_le.value == np.inf:
+        r&#34;&#34;&#34;
+        ### Description:
+
+        See the description of `pyairpar.core.airfoil.Airfoil.set_curvature()`. This is just a special case of that
+        function tailored for the leading edge of the airfoil. Here, \(\psi_1\) defines the angle of the upper
+        curvature control arm, and \(\psi_2\) defines the angle of the lower curvature control arm. See also
+        `pyairpar.core.base_airfoil_params.BaseAirfoilParams` for more details on the definitions of the attribute
+        parameters input to this function.
+
+        ### Returns:
+
+        The generated curvature control point \(x\) - \(y\) locations as `np.ndarray`s of `shape=2`.
+        &#34;&#34;&#34;
+        if self.R_le.value == np.inf or self.R_le.value == -np.inf:
             g2_minus_point = self.g1_minus_points[&#39;le&#39;]
             g2_plus_point = self.g1_plus_points[&#39;le&#39;]
         else:
@@ -247,10 +320,89 @@ class Airfoil:
         return g2_minus_point, g2_plus_point
 
     def set_curvature(self, anchor_point: AnchorPoint):
+        r&#34;&#34;&#34;
+        ### Description:
+
+        This is the function which enforces \(G^2\) continuity for all `pyairpar.core.anchor_point.AnchorPoint`s
+        which are added. To keep the length ratios and angles defined in a &#34;nice&#34; way, the neighboring control points
+        to the anchor point are defined as follows:
+
+        $$
+        \begin{align*}
+            \begin{bmatrix} x_{-2} \\ y_{-2} \end{bmatrix} &amp;=
+            \begin{cases}
+                \begin{bmatrix} x_{-1} + \frac{c_1}{c_2[c_3(\tan{(\theta_1)} + y_0 - y_{-1})]}
+                                \\ \tan{(\theta_1)} (x_{-2} - x_{-1}) + y_{-1} \end{bmatrix}
+                                ,&amp; \mod{\left(\theta_1, \frac{\pi}{2}\right) \neq 0} \wedge R \in (-\infty,0) \cup (0, \infty) \\
+                \begin{bmatrix} x_{-1} \\ y_{-1} + \frac{c_1}{c_2 c_3}  \end{bmatrix},&amp; \mod{\left(\theta_1, \frac{\pi}{2}\right) = 0} \wedge
+                                                                                                    R \in (-\infty,0)
+                                                                                                    \cup (0,\infty) \\
+                \begin{bmatrix} x_{-1} \\ y_{-1} \end{bmatrix},&amp; \theta_1 \in \mathbb{R} \wedge R =
+                                                                                                            \pm \infty
+            \end{cases} \\
+            \begin{bmatrix} x_{+2} \\ y_{+2} \end{bmatrix} &amp;=
+            \begin{cases}
+                \begin{bmatrix} x_{+1} + \frac{c_4}{c_5[c_6(\tan{(\theta_2)} + y_{+1} - y_0)]}
+                                \\ \tan{(\theta_2)} (x_{+2} - x_{+1}) + y_{+1} \end{bmatrix}
+                                ,&amp; \mod{\left(\theta_2, \frac{\pi}{2}\right) \neq 0} \wedge R \in (-\infty,0) \cup (0, \infty) \\
+                \begin{bmatrix} x_{+1} \\ y_{+1} + \frac{c_4}{c_5 c_6}  \end{bmatrix},&amp; \mod{\left(\theta_1, \frac{\pi}{2}\right) = 0} \wedge
+                                                                                                    R \in (-\infty,0)
+                                                                                                    \cup (0,\infty) \\
+                \begin{bmatrix} x_{+1} \\ y_{+1} \end{bmatrix},&amp; \theta_2 \in \mathbb{R} \wedge R =
+                                                                                                            \pm \infty
+            \end{cases}
+        \end{align*}
+        $$
+        where
+        $$
+        \begin{align*}
+        c_1 &amp;= \frac{-1}{R}[(x_0-x_{-1})^2 + (y_0-y_{-1})^2]^{3/2} \\
+        c_2 &amp;= 1 - \frac{1}{n_1} \\
+        c_3 &amp;= x_{-1} - x_0 \\
+        c_4 &amp;= \frac{-1}{R}[(x_{+1}-x_0)^2 + (y_{+1}-y_0)^2]^{3/2} \\
+        c_5 &amp;= 1 - \frac{1}{n_2} \\
+        c_6 &amp;= x_0 - x_{+1}
+        \end{align*}
+        $$
+
+        Here, \(n_1\) is the order of the Bézier curve preceding the anchor point, and \(n_2\) is the order of the
+        Bézier curve following the anchor point. \((x_0,y_0)\) is the anchor point location, \((x_{-1},y_{-1})\)
+        and \((x_{+1},y_{+1})\) are the neighboring control points, and \((x_{-2},y_{-2})\) and \((x_{+2},y_{+2})\)
+        are the curvature control points. \(\theta_1\) and \(\theta_2\) are governed by the following relationships:
+
+        $$
+        \begin{align*}
+            \theta_1 &amp;=
+            \begin{cases}
+                \psi_1 + \phi,&amp; R &gt; 0,\,\text{upper surface} \\
+                \pi + \psi_2 - \phi,&amp; R &gt; 0,\,\text{lower surface} \\
+                \pi - \psi_1 + \phi,&amp; R &lt; 0,\,\text{upper surface} \\
+                -\psi_2 - \phi,&amp; R &lt; 0,\,\text{lower surface}
+            \end{cases} \\
+            \theta_2 &amp;=
+            \begin{cases}
+                -\psi_2 + \phi,&amp; R &gt; 0,\,\text{upper surface} \\
+                \psi_1 - \phi,&amp; R &gt; 0,\,\text{lower surface} \\
+                \pi + \psi_2 + \phi,&amp; R &lt; 0,\,\text{upper surface} \\
+                \psi_1 - \phi,&amp; R &lt; 0,\,\text{lower surface}
+            \end{cases}
+        \end{align*}
+        $$
+        By these definitions of the curvature control arm angles, decreasing \(\psi_1\) or \(\psi_2\) from
+        \(90^{\circ}\) has the effect of &#34;tucking&#34; the arms in, and increasing \(\psi_1\) or \(\psi_2\) from
+        \(90^{\circ}\) has the effect of &#34;spreading&#34; the arms out. See the documentation for
+        `pyairpar.core.anchor_point.AnchorPoint` for further description and a visual.
+
+        ### Returns:
+
+        The generated curvature control point \(x\) - \(y\) locations as `np.ndarray`s of `shape=2`.
+        &#34;&#34;&#34;
         R = anchor_point.R.value
-        if R == np.inf:
+        if R == np.inf or R == -np.inf:
             self.g2_minus_points[anchor_point.name] = self.g1_minus_points[anchor_point.name]
             self.g2_plus_points[anchor_point.name] = self.g1_plus_points[anchor_point.name]
+            g2_minus_point = self.g2_minus_points[anchor_point.name]
+            g2_plus_point = self.g2_plus_points[anchor_point.name]
         else:
             n1, n2 = self.N[self.anchor_point_order[self.anchor_point_order.index(anchor_point.name) - 1]], \
                      self.N[anchor_point.name]
@@ -259,8 +411,8 @@ class Airfoil:
                     theta1, theta2 = anchor_point.psi1.value + anchor_point.phi.value, \
                                      -anchor_point.psi2.value + anchor_point.phi.value
                 else:
-                    theta2, theta1 = np.pi - anchor_point.psi1.value - anchor_point.phi.value, \
-                                     - anchor_point.psi2.value - anchor_point.phi.value
+                    theta2, theta1 = - anchor_point.psi1.value - anchor_point.phi.value, \
+                                     np.pi + anchor_point.psi2.value - anchor_point.phi.value
             else:  # If the radius of curvature is negative,
                 if self.anchor_point_order.index(anchor_point.name) &lt; self.anchor_point_order.index(&#39;le&#39;):
                     theta1, theta2 = np.pi - anchor_point.psi1.value + anchor_point.phi.value, \
@@ -272,58 +424,66 @@ class Airfoil:
 
             x_m1, y_m1 = self.g1_minus_points[anchor_point.name][0], self.g1_minus_points[anchor_point.name][1]
             g2_minus_point = np.zeros(2)
-            a = - 1 / R * ((x0 - x_m1) ** 2 + (y0 - y_m1) ** 2) ** (3 / 2)
-            b = 1 - 1 / n1
-            c = x_m1 - x0
-            if theta1 != np.deg2rad(90.0):
-                g2_minus_point[0] = x_m1 + a / b / (c * np.tan(theta1) + y0 - y_m1)
+            c1 = - 1 / R * ((x0 - x_m1) ** 2 + (y0 - y_m1) ** 2) ** (3 / 2)
+            c2 = 1 - 1 / n1
+            c3 = x_m1 - x0
+            if theta1 % (np.pi / 2) != 0:
+                g2_minus_point[0] = x_m1 + c1 / c2 / (c3 * np.tan(theta1) + y0 - y_m1)
                 g2_minus_point[1] = np.tan(theta1) * (g2_minus_point[0] - x_m1) + y_m1
             else:
                 g2_minus_point[0] = x_m1
-                g2_minus_point[1] = y_m1 + a / b / c
+                g2_minus_point[1] = y_m1 + c1 / c2 / c3
 
             x_p1, y_p1 = self.g1_plus_points[anchor_point.name][0], self.g1_plus_points[anchor_point.name][1]
             g2_plus_point = np.zeros(2)
-            a = - 1 / R * ((x_p1 - x0) ** 2 + (y_p1 - y0) ** 2) ** (3 / 2)
-            b = 1 - 1 / n2
-            c = x0 - x_p1
-            if theta2 != np.deg2rad(90.0):
-                g2_plus_point[0] = x_p1 + a / b / (c * np.tan(theta2) + y_p1 - y0)
+            c4 = - 1 / R * ((x_p1 - x0) ** 2 + (y_p1 - y0) ** 2) ** (3 / 2)
+            c5 = 1 - 1 / n2
+            c6 = x0 - x_p1
+            if theta2 % (np.pi / 2) != 0:
+                g2_plus_point[0] = x_p1 + c4 / c5 / (c6 * np.tan(theta2) + y_p1 - y0)
                 g2_plus_point[1] = np.tan(theta2) * (g2_plus_point[0] - x_p1) + y_p1
             else:
                 g2_plus_point[0] = x_p1
-                g2_plus_point[1] = y_p1 + a / b / c
+                g2_plus_point[1] = y_p1 + c4 / c5 / c6
 
             self.g2_minus_points[anchor_point.name] = g2_minus_point
             self.g2_plus_points[anchor_point.name] = g2_plus_point
 
-        return self.g2_minus_points, self.g2_plus_points
+        return g2_minus_point, g2_plus_point
 
     def extract_parameters(self):
+        &#34;&#34;&#34;
+        ### Description:
 
-        self.params = [var.value for var in vars(self.base_airfoil_params).values()
-                       if isinstance(var, Param) and var.active and not var.linked]
+        This function extracts every parameter from the `pyairpar.core.base_airfoil_params.BaseAirfoilParams`, all the
+        `pyairpar.core.anchor_point.AnchorPoint`s, and all the `pyairpar.core.free_point.FreePoint`s with
+        `active=True` and `linked=False` as a `list` of parameter values.
+        &#34;&#34;&#34;
 
-        self.bounds = [[var.bounds[0], var.bounds[1]] for var in vars(self.base_airfoil_params).values()
+        self.params = [var for var in vars(self.base_airfoil_params).values()
                        if isinstance(var, Param) and var.active and not var.linked]
 
         for anchor_point in self.anchor_point_tuple:
 
-            self.params.extend([var.value for var in vars(anchor_point).values()
-                                if isinstance(var, Param) and var.active and not var.linked])
-
-            self.bounds.extend([[var.bounds[0], var.bounds[1]] for var in vars(anchor_point).values()
+            self.params.extend([var for var in vars(anchor_point).values()
                                 if isinstance(var, Param) and var.active and not var.linked])
 
         for free_point in self.free_point_tuple:
 
-            self.params.extend([var.value for var in vars(free_point).values()
-                                if isinstance(var, Param) and var.active and not var.linked])
-
-            self.bounds.extend([[var.bounds[0], var.bounds[1]] for var in vars(free_point).values()
+            self.params.extend([var for var in vars(free_point).values()
                                 if isinstance(var, Param) and var.active and not var.linked])
 
     def order_control_points(self):
+        &#34;&#34;&#34;
+        ### Description:
+
+        This function creates an array of control points based on the anchor, neighboring, and curvature control
+        point dictionaries based on the `string`-based `anchor_point_order`.
+
+        ### Returns:
+
+        The control point array and the length of the control point array (number of control points)
+        &#34;&#34;&#34;
         self.control_points = np.array([])
         for idx, anchor_point in enumerate(self.anchor_point_order):
 
@@ -351,9 +511,13 @@ class Airfoil:
 
     def add_free_point(self, free_point: FreePoint):
         &#34;&#34;&#34;
-        Adds a free point (and 2 degrees of freedom) to a given Bezier curve (defined by the previous_anchor_point)
-        :param free_point:
-        :return:
+        ### Description:
+
+        Adds a free point (and 2 degrees of freedom) to a given Bézier curve (defined by the `previous_anchor_point`)
+
+        ### Args:
+
+        `free_point`: a `pyairpar.core.free_point.FreePoint` to add to a Bézier curve
         &#34;&#34;&#34;
         if free_point.previous_anchor_point not in self.free_points.keys():
             self.free_points[free_point.previous_anchor_point] = np.array([])
@@ -369,35 +533,58 @@ class Airfoil:
 
     def add_anchor_point(self, anchor_point: AnchorPoint):
         &#34;&#34;&#34;
+        ### Description:
+
         Adds an anchor point between two anchor points, builds the associated control point branch, and inserts the
-        control point branch into the set of control points.
-        :param anchor_point:
-        :return:
+        control point branch into the set of control points. `needs_update` is set to `True`.
+
+        ### Args:
+
+        `anchor_point`: an `pyairpar.core.anchor_point.AnchorPoint` from which to build a control point branch
         &#34;&#34;&#34;
         self.anchor_point_order.insert(self.anchor_point_order.index(anchor_point.previous_anchor_point) + 1,
                                        anchor_point.name)
         self.anchor_points[anchor_point.name] = anchor_point.xy
         self.set_slope(anchor_point)
-        if self.anchor_point_order.index(anchor_point.name) &gt; self.anchor_point_order.index(&#39;le&#39;):
-            self.N[&#39;le&#39;] = 5  # Set the order of the Bezier curve after the leading edge to 5
-            self.N[self.anchor_point_order[-2]] = 4  # Set the order of the last Bezier curve to 4
-        else:
-            self.N[anchor_point.name] = 5  # Set the order of the Bezier curve after the anchor point to 5
+        self.N[anchor_point.name] = 5
         self.set_curvature(anchor_point)
         self.needs_update = True
 
     def add_anchor_points(self):
+        &#34;&#34;&#34;
+        ### Description:
+
+        This function executes `pyairpar.core.airfoil.Airfoil.add_anchor_point()` for all the anchor points in the
+        `anchor_point_tuple`. Enforces leading edge and trailing edge Bézier curve orders.
+        `needs_update` is set to `True`.
+        &#34;&#34;&#34;
         for anchor_point in self.anchor_point_tuple:
             if anchor_point.name not in self.anchor_point_order:
                 self.add_anchor_point(anchor_point)
+        if self.anchor_point_order.index(&#39;te_2&#39;) - self.anchor_point_order.index(&#39;le&#39;) != 1:
+            self.N[&#39;le&#39;] = 5  # Set the order of the Bezier curve after the leading edge to 5
+            self.N[self.anchor_point_order[-2]] = 4  # Set the order of the last Bezier curve to 4
         self.needs_update = True
 
     def add_free_points(self):
+        &#34;&#34;&#34;
+        ### Description:
+
+        This function executes `pyairpar.core.airfoil.Airfoil.add_free_point()` for all the anchor points in the
+        `free_point_tuple`. `needs_update` is set to `True`.
+        &#34;&#34;&#34;
         for free_point in self.free_point_tuple:
             self.add_free_point(free_point)
         self.needs_update = True
 
     def update_anchor_point_array(self):
+        r&#34;&#34;&#34;
+        ### Description:
+
+        This function updates the `anchor_point_array` attribute of `pyairpar.core.airfoil.Airfoil`, which is a
+        `np.ndarray` of `shape=(N, 2)`, where `N` is the number of anchor points in the airfoil, and the columns
+        represent the \(x\) and \(y\) coordinates.
+        &#34;&#34;&#34;
         for key in self.anchor_point_order:
             xy = self.anchor_points[key]
             if key == &#39;te_1&#39;:
@@ -406,6 +593,16 @@ class Airfoil:
                 self.anchor_point_array = np.row_stack((self.anchor_point_array, xy))
 
     def update(self):
+        r&#34;&#34;&#34;
+        ### Description:
+
+        The `update` function adds first all of the anchor points in the `anchor_point_tuple` and then all of the free
+        points in the `free_point_tuple`. The parameter information is extracted. The control points are ordered
+        based on the `anchor_point_order`, `name` attributes, and `previous_anchor_point` attributes. The
+        `anchor_point_array` is updated based on the anchor points added. Rotation to the specified angle of attack
+        and translation by the specified \(\Delta x\), \(\Delta y\) are applied, in that order. Finally, the Bézier
+        curves are generated through the control points and the airfoil coordinates produced.
+        &#34;&#34;&#34;
         self.add_anchor_points()
         self.add_free_points()
         self.extract_parameters()
@@ -417,6 +614,15 @@ class Airfoil:
         self.needs_update = False
 
     def override(self, parameters):
+        &#34;&#34;&#34;
+        ### Description:
+
+        This function re-initializes the `Airfoil` object using the list of `override_parameters`
+
+        ### Args:
+
+        `parameters`: a list of `override_parameters` generated by `extract_parameters` and possibly modified.
+        &#34;&#34;&#34;
         self.__init__(self.nt, self.base_airfoil_params, self.anchor_point_tuple, self.free_point_tuple,
                       override_parameters=parameters)
 
@@ -465,6 +671,17 @@ class Airfoil:
         return self.control_points, self.anchor_point_array
 
     def generate_airfoil_coordinates(self):
+        &#34;&#34;&#34;
+        ### Description:
+
+        Generates the Bézier curves through the control points. Also re-casts the Bézier curve points in terms of
+        airfoil coordinates by removing the points shared by joined Bézier curves. Curvature information is extracted
+        from the `C` dictionary.
+
+        ### Returns:
+
+        The airfoil coordinates, the `C` dictionary of Bézier curve information, and the curvature.
+        &#34;&#34;&#34;
         if self.C:
             self.C = []
         P_start_idx = 0
@@ -486,9 +703,18 @@ class Airfoil:
                 curvature = np.row_stack((curvature, np.column_stack((self.C[idx][&#39;x&#39;][1:], self.C[idx][&#39;k&#39;][1:]))))
         self.coords = coords
         self.curvature = curvature
-        return self.coords, self.C
+        return self.coords, self.C, self.curvature
 
     def compute_area(self):
+        &#34;&#34;&#34;
+        ### Description:
+
+        Computes the area of the airfoil as the area of a many-sided polygon enclosed by the airfoil coordinates using
+        the [shapely](https://shapely.readthedocs.io/en/stable/manual.html) library.
+
+        ### Returns:
+        The area of the airfoil
+        &#34;&#34;&#34;
         if self.needs_update:
             self.update()
         points_shapely = list(map(tuple, self.coords))
@@ -498,6 +724,16 @@ class Airfoil:
         return area
 
     def check_self_intersection(self):
+        &#34;&#34;&#34;
+        ### Description:
+
+        Determines whether the airfoil intersects itself using the `is_simple()` function of the
+        [`shapely`](https://shapely.readthedocs.io/en/stable/manual.html) library.
+
+        ### Returns:
+
+        A `bool` value describing whether the airfoil intersects itself
+        &#34;&#34;&#34;
         if self.needs_update:
             self.update()
         points_shapely = list(map(tuple, self.coords))
@@ -509,6 +745,57 @@ class Airfoil:
              save_plot: bool = False, save_path: str = None, plot_kwargs: typing.List[dict] = None,
              show_title: bool = True, show_legend: bool = True, figwidth: float = 10.0, figheight: float = 2.5,
              tight_layout: bool = True, axis_equal: bool = True):
+        r&#34;&#34;&#34;
+        ### Description:
+
+        A variety of airfoil plotting options using [`matplotlib`](https://matplotlib.org/). Many wrapper options
+        are available here, but custom plots can also be created directly from the `coords`, `curvature`, `C`,
+        `control_points`, and `anchor_point_array` attributes of the `Airfoil` class.
+
+        ### Args:
+
+        `plot_what`: One or more of `&#34;airfoil&#34;`, `&#34;anchor-point-skeleton&#34;`, `&#34;control-point-skeleton&#34;`,
+        `&#34;chordline&#34;`, `&#34;R-circles&#34;`, or `&#34;curvature&#34;`.
+
+        `fig`: The
+        [`matplotlib.figure.Figure`](https://matplotlib.org/stable/api/figure_api.html?highlight=figure%20figure#matplotlib.figure.Figure)
+        object as a canvas input. New `Figure` is created if `None`. Default: `None`.
+
+        `axs`: The
+        [`matplotlib.axes.Axes`](https://matplotlib.org/stable/api/axes_api.html?highlight=axes%20axes#the-axes-class)
+        object as a axes input. New `Axes` is created if `None`. Default: `None`.
+
+        `show_plot`: Whether to show the plot (`bool`). Default: `True`.
+
+        `save_plot`: Whether to save the plot (`bool`). Default: `False`.
+
+        `save_path`: A `str` describing the root directory, filename, and image extension of the path to save. Only
+        used if `save_plot` is `True`. Default: `None`.
+
+        `plot_kwargs`: A list of dictionaries with [`matplotlib`](https://matplotlib.org/) keyword arguments to be
+        unpacked and applied to each Bézier curve element-by-element. Default: `None`.
+
+        `show_title`: Whether to show a title describing the airfoil chord length, angle of attack, and area (`bool`).
+        Default: `True`.
+
+        `show_legend`: Whether to show the legend (`bool`). Default: `True`.
+
+        `figwidth`: The width of the figure, in inches (`float`). Default: `10.0`.
+
+        `figheight`: The height of the figure, in inches (`float`). Default: `2.5`.
+
+        `tight_layout`: Whether to tighten the margins around the plot (`bool`). Default: `True`.
+
+        `axis_equal`: Whether to set the aspect ratio of the plot to equal \(x\) and \(y\) (`bool`). Default: `True`.
+
+        ### Returns:
+
+        A tuple of the
+        [`matplotlib.figure.Figure`](https://matplotlib.org/stable/api/figure_api.html?highlight=figure%20figure#matplotlib.figure.Figure)
+        object and the
+        [`matplotlib.axes.Axes`](https://matplotlib.org/stable/api/axes_api.html?highlight=axes%20axes#the-axes-class)
+        object used for plotting
+        &#34;&#34;&#34;
         if self.needs_update:
             self.update()
         if fig is None and axs is None:
@@ -891,7 +1178,6 @@ point, use <code>(<a title="pyairpar.core.free_point.FreePoint" href="free_point
 
         self.nt = number_coordinates
         self.params = []
-        self.bounds = []
         self.base_airfoil_params = base_airfoil_params
         self.override_parameters = override_parameters
 
@@ -982,6 +1268,18 @@ point, use <code>(<a title="pyairpar.core.free_point.FreePoint" href="free_point
         self.update()
 
     def init_g1_points(self):
+        &#34;&#34;&#34;
+        ### Description:
+
+        Initializes the &#34;g1_minus&#34; and &#34;g1_plus&#34; points for the leading edge (the neighboring control points to
+        the leading edge anchor point). These points are used to enforce \\(G^1\\) continuity. &#34;Minus&#34; points refer to
+        control points which occur before the anchor point in the path of the Bézier curve, and &#34;plus&#34; points refer to
+        control points which occur before the anchor point.
+
+        ### Returns:
+
+        The neighboring control points to the leading edge anchor point as dictionaries.
+        &#34;&#34;&#34;
 
         g1_minus_points = {
             &#39;te_2&#39;: self.anchor_points[&#39;te_2&#39;] +
@@ -1006,6 +1304,18 @@ point, use <code>(<a title="pyairpar.core.free_point.FreePoint" href="free_point
         return g1_minus_points, g1_plus_points
 
     def init_g2_points(self):
+        &#34;&#34;&#34;
+        ### Description:
+
+        Initializes the &#34;g2_minus&#34; and &#34;g2_plus&#34; points for the leading edge (the control points two points from the
+        leading edge control point). These points are used to enforce \\(G^2\\) continuity. &#34;Minus&#34; points refer to
+        control points which occur before the anchor point in the path of the Bézier curve, and &#34;plus&#34; points refer to
+        control points which occur before the anchor point.
+
+        ### Returns:
+
+        The neighboring control points to the leading edge anchor point as dictionaries.
+        &#34;&#34;&#34;
         g2_minus_point_le, g2_plus_point_le = self.set_curvature_le()
 
         g2_minus_points = {
@@ -1019,25 +1329,75 @@ point, use <code>(<a title="pyairpar.core.free_point.FreePoint" href="free_point
         return g2_minus_points, g2_plus_points
 
     def set_slope(self, anchor_point: AnchorPoint):
+        r&#34;&#34;&#34;
+        ### Description:
+
+        This is the function which enforces \(G^1\) continuity for all `pyairpar.core.anchor_point.AnchorPoint`s
+        which are added. To keep the length ratios and angles defined in a &#34;nice&#34; way, the neighboring control points
+        to the anchor point are defined as follows: For anchor points on the upper surface (where \((x_0,
+        y_0)\) precedes the leading edge point):
+
+        $$\begin{align*}
+        \begin{bmatrix} x_{-1} \\ y_{-1} \end{bmatrix} &amp;= \begin{bmatrix} x_0 \\ y_0 \end{bmatrix} +
+        (1-r)L \begin{bmatrix} \cos{\phi} \\ \sin{\phi} \end{bmatrix} \\
+        \begin{bmatrix} x_{+1} \\ y_{+1} \end{bmatrix} &amp;= \begin{bmatrix} x_0 \\ y_0 \end{bmatrix} -
+        rL \begin{bmatrix} \cos{\phi} \\ \sin{\phi} \end{bmatrix}
+        \end{align*}$$
+
+        For anchor points on the lower surface (where \((x_0,y_0)\) occurs further down the Bézier curve path than
+        the leading edge point):
+
+        $$\begin{align*}
+        \begin{bmatrix} x_{-1} \\ y_{-1} \end{bmatrix} &amp;= \begin{bmatrix} x_0 \\ y_0 \end{bmatrix} -
+        rL \begin{bmatrix} \cos{(-\phi)} \\ \sin{(-\phi)} \end{bmatrix} \\
+        \begin{bmatrix} x_{+1} \\ y_{+1} \end{bmatrix} &amp;= \begin{bmatrix} x_0 \\ y_0 \end{bmatrix} +
+        (1-r)L \begin{bmatrix} \cos{(-\phi)} \\ \sin{(-\phi)} \end{bmatrix}
+        \end{align*}$$
+
+        Here, \((x_{-1},y_{-1})\) represents the coordinates of the &#34;minus&#34; point (the control point before the
+        leading edge point), and \((x_{+1},y_{+1})\) represents the coordinates of the &#34;plus&#34; point (the control
+        point after the leading edge point). The coordinates of the anchor point itself are \((x_0,y_0)\). With
+        these definitions, a ratio \(r&gt;0.5\) biases the neighboring control points toward the leading edge, and
+        a ratio \(r&lt;0.5\) biases the neighboring control points toward the leading edge. A positive value of \(\phi\)
+        angles the neighboring control points toward the trailing edge, and a negative value of \(\phi\) angles the
+        neighboring control points toward the trailing edge. See the diagram for
+        `pyairpar.core.anchor_point.AnchorPoint` for a visual description of these definitions.
+
+        ### Returns:
+
+        The generated neighboring control point \(x\) - \(y\) locations as `np.ndarray`s of `shape=2`.
+        &#34;&#34;&#34;
         r = anchor_point.r.value
         L = anchor_point.L.value
+        phi = anchor_point.phi.value
 
         if self.anchor_point_order.index(anchor_point.name) &lt; self.anchor_point_order.index(&#39;le&#39;):
-            phi = anchor_point.phi.value
             self.g1_minus_points[anchor_point.name] = \
                 self.anchor_points[anchor_point.name] + (1 - r) * L * np.array([np.cos(phi), np.sin(phi)])
             self.g1_plus_points[anchor_point.name] = \
                 self.anchor_points[anchor_point.name] - r * L * np.array([np.cos(phi), np.sin(phi)])
         else:
-            phi = -anchor_point.phi.value
             self.g1_minus_points[anchor_point.name] = \
-                self.anchor_points[anchor_point.name] - r * L * np.array([np.cos(phi), np.sin(phi)])
+                self.anchor_points[anchor_point.name] - r * L * np.array([np.cos(-phi), np.sin(-phi)])
             self.g1_plus_points[anchor_point.name] = \
-                self.anchor_points[anchor_point.name] + (1 - r) * L * np.array([np.cos(phi), np.sin(phi)])
-        return self.g1_minus_points, self.g1_plus_points
+                self.anchor_points[anchor_point.name] + (1 - r) * L * np.array([np.cos(-phi), np.sin(-phi)])
+        return self.g1_minus_points[anchor_point.name], self.g1_plus_points[anchor_point.name]
 
     def set_curvature_le(self):
-        if self.R_le.value == np.inf:
+        r&#34;&#34;&#34;
+        ### Description:
+
+        See the description of `pyairpar.core.airfoil.Airfoil.set_curvature()`. This is just a special case of that
+        function tailored for the leading edge of the airfoil. Here, \(\psi_1\) defines the angle of the upper
+        curvature control arm, and \(\psi_2\) defines the angle of the lower curvature control arm. See also
+        `pyairpar.core.base_airfoil_params.BaseAirfoilParams` for more details on the definitions of the attribute
+        parameters input to this function.
+
+        ### Returns:
+
+        The generated curvature control point \(x\) - \(y\) locations as `np.ndarray`s of `shape=2`.
+        &#34;&#34;&#34;
+        if self.R_le.value == np.inf or self.R_le.value == -np.inf:
             g2_minus_point = self.g1_minus_points[&#39;le&#39;]
             g2_plus_point = self.g1_plus_points[&#39;le&#39;]
         else:
@@ -1060,10 +1420,89 @@ point, use <code>(<a title="pyairpar.core.free_point.FreePoint" href="free_point
         return g2_minus_point, g2_plus_point
 
     def set_curvature(self, anchor_point: AnchorPoint):
+        r&#34;&#34;&#34;
+        ### Description:
+
+        This is the function which enforces \(G^2\) continuity for all `pyairpar.core.anchor_point.AnchorPoint`s
+        which are added. To keep the length ratios and angles defined in a &#34;nice&#34; way, the neighboring control points
+        to the anchor point are defined as follows:
+
+        $$
+        \begin{align*}
+            \begin{bmatrix} x_{-2} \\ y_{-2} \end{bmatrix} &amp;=
+            \begin{cases}
+                \begin{bmatrix} x_{-1} + \frac{c_1}{c_2[c_3(\tan{(\theta_1)} + y_0 - y_{-1})]}
+                                \\ \tan{(\theta_1)} (x_{-2} - x_{-1}) + y_{-1} \end{bmatrix}
+                                ,&amp; \mod{\left(\theta_1, \frac{\pi}{2}\right) \neq 0} \wedge R \in (-\infty,0) \cup (0, \infty) \\
+                \begin{bmatrix} x_{-1} \\ y_{-1} + \frac{c_1}{c_2 c_3}  \end{bmatrix},&amp; \mod{\left(\theta_1, \frac{\pi}{2}\right) = 0} \wedge
+                                                                                                    R \in (-\infty,0)
+                                                                                                    \cup (0,\infty) \\
+                \begin{bmatrix} x_{-1} \\ y_{-1} \end{bmatrix},&amp; \theta_1 \in \mathbb{R} \wedge R =
+                                                                                                            \pm \infty
+            \end{cases} \\
+            \begin{bmatrix} x_{+2} \\ y_{+2} \end{bmatrix} &amp;=
+            \begin{cases}
+                \begin{bmatrix} x_{+1} + \frac{c_4}{c_5[c_6(\tan{(\theta_2)} + y_{+1} - y_0)]}
+                                \\ \tan{(\theta_2)} (x_{+2} - x_{+1}) + y_{+1} \end{bmatrix}
+                                ,&amp; \mod{\left(\theta_2, \frac{\pi}{2}\right) \neq 0} \wedge R \in (-\infty,0) \cup (0, \infty) \\
+                \begin{bmatrix} x_{+1} \\ y_{+1} + \frac{c_4}{c_5 c_6}  \end{bmatrix},&amp; \mod{\left(\theta_1, \frac{\pi}{2}\right) = 0} \wedge
+                                                                                                    R \in (-\infty,0)
+                                                                                                    \cup (0,\infty) \\
+                \begin{bmatrix} x_{+1} \\ y_{+1} \end{bmatrix},&amp; \theta_2 \in \mathbb{R} \wedge R =
+                                                                                                            \pm \infty
+            \end{cases}
+        \end{align*}
+        $$
+        where
+        $$
+        \begin{align*}
+        c_1 &amp;= \frac{-1}{R}[(x_0-x_{-1})^2 + (y_0-y_{-1})^2]^{3/2} \\
+        c_2 &amp;= 1 - \frac{1}{n_1} \\
+        c_3 &amp;= x_{-1} - x_0 \\
+        c_4 &amp;= \frac{-1}{R}[(x_{+1}-x_0)^2 + (y_{+1}-y_0)^2]^{3/2} \\
+        c_5 &amp;= 1 - \frac{1}{n_2} \\
+        c_6 &amp;= x_0 - x_{+1}
+        \end{align*}
+        $$
+
+        Here, \(n_1\) is the order of the Bézier curve preceding the anchor point, and \(n_2\) is the order of the
+        Bézier curve following the anchor point. \((x_0,y_0)\) is the anchor point location, \((x_{-1},y_{-1})\)
+        and \((x_{+1},y_{+1})\) are the neighboring control points, and \((x_{-2},y_{-2})\) and \((x_{+2},y_{+2})\)
+        are the curvature control points. \(\theta_1\) and \(\theta_2\) are governed by the following relationships:
+
+        $$
+        \begin{align*}
+            \theta_1 &amp;=
+            \begin{cases}
+                \psi_1 + \phi,&amp; R &gt; 0,\,\text{upper surface} \\
+                \pi + \psi_2 - \phi,&amp; R &gt; 0,\,\text{lower surface} \\
+                \pi - \psi_1 + \phi,&amp; R &lt; 0,\,\text{upper surface} \\
+                -\psi_2 - \phi,&amp; R &lt; 0,\,\text{lower surface}
+            \end{cases} \\
+            \theta_2 &amp;=
+            \begin{cases}
+                -\psi_2 + \phi,&amp; R &gt; 0,\,\text{upper surface} \\
+                \psi_1 - \phi,&amp; R &gt; 0,\,\text{lower surface} \\
+                \pi + \psi_2 + \phi,&amp; R &lt; 0,\,\text{upper surface} \\
+                \psi_1 - \phi,&amp; R &lt; 0,\,\text{lower surface}
+            \end{cases}
+        \end{align*}
+        $$
+        By these definitions of the curvature control arm angles, decreasing \(\psi_1\) or \(\psi_2\) from
+        \(90^{\circ}\) has the effect of &#34;tucking&#34; the arms in, and increasing \(\psi_1\) or \(\psi_2\) from
+        \(90^{\circ}\) has the effect of &#34;spreading&#34; the arms out. See the documentation for
+        `pyairpar.core.anchor_point.AnchorPoint` for further description and a visual.
+
+        ### Returns:
+
+        The generated curvature control point \(x\) - \(y\) locations as `np.ndarray`s of `shape=2`.
+        &#34;&#34;&#34;
         R = anchor_point.R.value
-        if R == np.inf:
+        if R == np.inf or R == -np.inf:
             self.g2_minus_points[anchor_point.name] = self.g1_minus_points[anchor_point.name]
             self.g2_plus_points[anchor_point.name] = self.g1_plus_points[anchor_point.name]
+            g2_minus_point = self.g2_minus_points[anchor_point.name]
+            g2_plus_point = self.g2_plus_points[anchor_point.name]
         else:
             n1, n2 = self.N[self.anchor_point_order[self.anchor_point_order.index(anchor_point.name) - 1]], \
                      self.N[anchor_point.name]
@@ -1072,8 +1511,8 @@ point, use <code>(<a title="pyairpar.core.free_point.FreePoint" href="free_point
                     theta1, theta2 = anchor_point.psi1.value + anchor_point.phi.value, \
                                      -anchor_point.psi2.value + anchor_point.phi.value
                 else:
-                    theta2, theta1 = np.pi - anchor_point.psi1.value - anchor_point.phi.value, \
-                                     - anchor_point.psi2.value - anchor_point.phi.value
+                    theta2, theta1 = - anchor_point.psi1.value - anchor_point.phi.value, \
+                                     np.pi + anchor_point.psi2.value - anchor_point.phi.value
             else:  # If the radius of curvature is negative,
                 if self.anchor_point_order.index(anchor_point.name) &lt; self.anchor_point_order.index(&#39;le&#39;):
                     theta1, theta2 = np.pi - anchor_point.psi1.value + anchor_point.phi.value, \
@@ -1085,58 +1524,66 @@ point, use <code>(<a title="pyairpar.core.free_point.FreePoint" href="free_point
 
             x_m1, y_m1 = self.g1_minus_points[anchor_point.name][0], self.g1_minus_points[anchor_point.name][1]
             g2_minus_point = np.zeros(2)
-            a = - 1 / R * ((x0 - x_m1) ** 2 + (y0 - y_m1) ** 2) ** (3 / 2)
-            b = 1 - 1 / n1
-            c = x_m1 - x0
-            if theta1 != np.deg2rad(90.0):
-                g2_minus_point[0] = x_m1 + a / b / (c * np.tan(theta1) + y0 - y_m1)
+            c1 = - 1 / R * ((x0 - x_m1) ** 2 + (y0 - y_m1) ** 2) ** (3 / 2)
+            c2 = 1 - 1 / n1
+            c3 = x_m1 - x0
+            if theta1 % (np.pi / 2) != 0:
+                g2_minus_point[0] = x_m1 + c1 / c2 / (c3 * np.tan(theta1) + y0 - y_m1)
                 g2_minus_point[1] = np.tan(theta1) * (g2_minus_point[0] - x_m1) + y_m1
             else:
                 g2_minus_point[0] = x_m1
-                g2_minus_point[1] = y_m1 + a / b / c
+                g2_minus_point[1] = y_m1 + c1 / c2 / c3
 
             x_p1, y_p1 = self.g1_plus_points[anchor_point.name][0], self.g1_plus_points[anchor_point.name][1]
             g2_plus_point = np.zeros(2)
-            a = - 1 / R * ((x_p1 - x0) ** 2 + (y_p1 - y0) ** 2) ** (3 / 2)
-            b = 1 - 1 / n2
-            c = x0 - x_p1
-            if theta2 != np.deg2rad(90.0):
-                g2_plus_point[0] = x_p1 + a / b / (c * np.tan(theta2) + y_p1 - y0)
+            c4 = - 1 / R * ((x_p1 - x0) ** 2 + (y_p1 - y0) ** 2) ** (3 / 2)
+            c5 = 1 - 1 / n2
+            c6 = x0 - x_p1
+            if theta2 % (np.pi / 2) != 0:
+                g2_plus_point[0] = x_p1 + c4 / c5 / (c6 * np.tan(theta2) + y_p1 - y0)
                 g2_plus_point[1] = np.tan(theta2) * (g2_plus_point[0] - x_p1) + y_p1
             else:
                 g2_plus_point[0] = x_p1
-                g2_plus_point[1] = y_p1 + a / b / c
+                g2_plus_point[1] = y_p1 + c4 / c5 / c6
 
             self.g2_minus_points[anchor_point.name] = g2_minus_point
             self.g2_plus_points[anchor_point.name] = g2_plus_point
 
-        return self.g2_minus_points, self.g2_plus_points
+        return g2_minus_point, g2_plus_point
 
     def extract_parameters(self):
+        &#34;&#34;&#34;
+        ### Description:
 
-        self.params = [var.value for var in vars(self.base_airfoil_params).values()
-                       if isinstance(var, Param) and var.active and not var.linked]
+        This function extracts every parameter from the `pyairpar.core.base_airfoil_params.BaseAirfoilParams`, all the
+        `pyairpar.core.anchor_point.AnchorPoint`s, and all the `pyairpar.core.free_point.FreePoint`s with
+        `active=True` and `linked=False` as a `list` of parameter values.
+        &#34;&#34;&#34;
 
-        self.bounds = [[var.bounds[0], var.bounds[1]] for var in vars(self.base_airfoil_params).values()
+        self.params = [var for var in vars(self.base_airfoil_params).values()
                        if isinstance(var, Param) and var.active and not var.linked]
 
         for anchor_point in self.anchor_point_tuple:
 
-            self.params.extend([var.value for var in vars(anchor_point).values()
-                                if isinstance(var, Param) and var.active and not var.linked])
-
-            self.bounds.extend([[var.bounds[0], var.bounds[1]] for var in vars(anchor_point).values()
+            self.params.extend([var for var in vars(anchor_point).values()
                                 if isinstance(var, Param) and var.active and not var.linked])
 
         for free_point in self.free_point_tuple:
 
-            self.params.extend([var.value for var in vars(free_point).values()
-                                if isinstance(var, Param) and var.active and not var.linked])
-
-            self.bounds.extend([[var.bounds[0], var.bounds[1]] for var in vars(free_point).values()
+            self.params.extend([var for var in vars(free_point).values()
                                 if isinstance(var, Param) and var.active and not var.linked])
 
     def order_control_points(self):
+        &#34;&#34;&#34;
+        ### Description:
+
+        This function creates an array of control points based on the anchor, neighboring, and curvature control
+        point dictionaries based on the `string`-based `anchor_point_order`.
+
+        ### Returns:
+
+        The control point array and the length of the control point array (number of control points)
+        &#34;&#34;&#34;
         self.control_points = np.array([])
         for idx, anchor_point in enumerate(self.anchor_point_order):
 
@@ -1164,9 +1611,13 @@ point, use <code>(<a title="pyairpar.core.free_point.FreePoint" href="free_point
 
     def add_free_point(self, free_point: FreePoint):
         &#34;&#34;&#34;
-        Adds a free point (and 2 degrees of freedom) to a given Bezier curve (defined by the previous_anchor_point)
-        :param free_point:
-        :return:
+        ### Description:
+
+        Adds a free point (and 2 degrees of freedom) to a given Bézier curve (defined by the `previous_anchor_point`)
+
+        ### Args:
+
+        `free_point`: a `pyairpar.core.free_point.FreePoint` to add to a Bézier curve
         &#34;&#34;&#34;
         if free_point.previous_anchor_point not in self.free_points.keys():
             self.free_points[free_point.previous_anchor_point] = np.array([])
@@ -1182,35 +1633,58 @@ point, use <code>(<a title="pyairpar.core.free_point.FreePoint" href="free_point
 
     def add_anchor_point(self, anchor_point: AnchorPoint):
         &#34;&#34;&#34;
+        ### Description:
+
         Adds an anchor point between two anchor points, builds the associated control point branch, and inserts the
-        control point branch into the set of control points.
-        :param anchor_point:
-        :return:
+        control point branch into the set of control points. `needs_update` is set to `True`.
+
+        ### Args:
+
+        `anchor_point`: an `pyairpar.core.anchor_point.AnchorPoint` from which to build a control point branch
         &#34;&#34;&#34;
         self.anchor_point_order.insert(self.anchor_point_order.index(anchor_point.previous_anchor_point) + 1,
                                        anchor_point.name)
         self.anchor_points[anchor_point.name] = anchor_point.xy
         self.set_slope(anchor_point)
-        if self.anchor_point_order.index(anchor_point.name) &gt; self.anchor_point_order.index(&#39;le&#39;):
-            self.N[&#39;le&#39;] = 5  # Set the order of the Bezier curve after the leading edge to 5
-            self.N[self.anchor_point_order[-2]] = 4  # Set the order of the last Bezier curve to 4
-        else:
-            self.N[anchor_point.name] = 5  # Set the order of the Bezier curve after the anchor point to 5
+        self.N[anchor_point.name] = 5
         self.set_curvature(anchor_point)
         self.needs_update = True
 
     def add_anchor_points(self):
+        &#34;&#34;&#34;
+        ### Description:
+
+        This function executes `pyairpar.core.airfoil.Airfoil.add_anchor_point()` for all the anchor points in the
+        `anchor_point_tuple`. Enforces leading edge and trailing edge Bézier curve orders.
+        `needs_update` is set to `True`.
+        &#34;&#34;&#34;
         for anchor_point in self.anchor_point_tuple:
             if anchor_point.name not in self.anchor_point_order:
                 self.add_anchor_point(anchor_point)
+        if self.anchor_point_order.index(&#39;te_2&#39;) - self.anchor_point_order.index(&#39;le&#39;) != 1:
+            self.N[&#39;le&#39;] = 5  # Set the order of the Bezier curve after the leading edge to 5
+            self.N[self.anchor_point_order[-2]] = 4  # Set the order of the last Bezier curve to 4
         self.needs_update = True
 
     def add_free_points(self):
+        &#34;&#34;&#34;
+        ### Description:
+
+        This function executes `pyairpar.core.airfoil.Airfoil.add_free_point()` for all the anchor points in the
+        `free_point_tuple`. `needs_update` is set to `True`.
+        &#34;&#34;&#34;
         for free_point in self.free_point_tuple:
             self.add_free_point(free_point)
         self.needs_update = True
 
     def update_anchor_point_array(self):
+        r&#34;&#34;&#34;
+        ### Description:
+
+        This function updates the `anchor_point_array` attribute of `pyairpar.core.airfoil.Airfoil`, which is a
+        `np.ndarray` of `shape=(N, 2)`, where `N` is the number of anchor points in the airfoil, and the columns
+        represent the \(x\) and \(y\) coordinates.
+        &#34;&#34;&#34;
         for key in self.anchor_point_order:
             xy = self.anchor_points[key]
             if key == &#39;te_1&#39;:
@@ -1219,6 +1693,16 @@ point, use <code>(<a title="pyairpar.core.free_point.FreePoint" href="free_point
                 self.anchor_point_array = np.row_stack((self.anchor_point_array, xy))
 
     def update(self):
+        r&#34;&#34;&#34;
+        ### Description:
+
+        The `update` function adds first all of the anchor points in the `anchor_point_tuple` and then all of the free
+        points in the `free_point_tuple`. The parameter information is extracted. The control points are ordered
+        based on the `anchor_point_order`, `name` attributes, and `previous_anchor_point` attributes. The
+        `anchor_point_array` is updated based on the anchor points added. Rotation to the specified angle of attack
+        and translation by the specified \(\Delta x\), \(\Delta y\) are applied, in that order. Finally, the Bézier
+        curves are generated through the control points and the airfoil coordinates produced.
+        &#34;&#34;&#34;
         self.add_anchor_points()
         self.add_free_points()
         self.extract_parameters()
@@ -1230,6 +1714,15 @@ point, use <code>(<a title="pyairpar.core.free_point.FreePoint" href="free_point
         self.needs_update = False
 
     def override(self, parameters):
+        &#34;&#34;&#34;
+        ### Description:
+
+        This function re-initializes the `Airfoil` object using the list of `override_parameters`
+
+        ### Args:
+
+        `parameters`: a list of `override_parameters` generated by `extract_parameters` and possibly modified.
+        &#34;&#34;&#34;
         self.__init__(self.nt, self.base_airfoil_params, self.anchor_point_tuple, self.free_point_tuple,
                       override_parameters=parameters)
 
@@ -1278,6 +1771,17 @@ point, use <code>(<a title="pyairpar.core.free_point.FreePoint" href="free_point
         return self.control_points, self.anchor_point_array
 
     def generate_airfoil_coordinates(self):
+        &#34;&#34;&#34;
+        ### Description:
+
+        Generates the Bézier curves through the control points. Also re-casts the Bézier curve points in terms of
+        airfoil coordinates by removing the points shared by joined Bézier curves. Curvature information is extracted
+        from the `C` dictionary.
+
+        ### Returns:
+
+        The airfoil coordinates, the `C` dictionary of Bézier curve information, and the curvature.
+        &#34;&#34;&#34;
         if self.C:
             self.C = []
         P_start_idx = 0
@@ -1299,9 +1803,18 @@ point, use <code>(<a title="pyairpar.core.free_point.FreePoint" href="free_point
                 curvature = np.row_stack((curvature, np.column_stack((self.C[idx][&#39;x&#39;][1:], self.C[idx][&#39;k&#39;][1:]))))
         self.coords = coords
         self.curvature = curvature
-        return self.coords, self.C
+        return self.coords, self.C, self.curvature
 
     def compute_area(self):
+        &#34;&#34;&#34;
+        ### Description:
+
+        Computes the area of the airfoil as the area of a many-sided polygon enclosed by the airfoil coordinates using
+        the [shapely](https://shapely.readthedocs.io/en/stable/manual.html) library.
+
+        ### Returns:
+        The area of the airfoil
+        &#34;&#34;&#34;
         if self.needs_update:
             self.update()
         points_shapely = list(map(tuple, self.coords))
@@ -1311,6 +1824,16 @@ point, use <code>(<a title="pyairpar.core.free_point.FreePoint" href="free_point
         return area
 
     def check_self_intersection(self):
+        &#34;&#34;&#34;
+        ### Description:
+
+        Determines whether the airfoil intersects itself using the `is_simple()` function of the
+        [`shapely`](https://shapely.readthedocs.io/en/stable/manual.html) library.
+
+        ### Returns:
+
+        A `bool` value describing whether the airfoil intersects itself
+        &#34;&#34;&#34;
         if self.needs_update:
             self.update()
         points_shapely = list(map(tuple, self.coords))
@@ -1322,6 +1845,57 @@ point, use <code>(<a title="pyairpar.core.free_point.FreePoint" href="free_point
              save_plot: bool = False, save_path: str = None, plot_kwargs: typing.List[dict] = None,
              show_title: bool = True, show_legend: bool = True, figwidth: float = 10.0, figheight: float = 2.5,
              tight_layout: bool = True, axis_equal: bool = True):
+        r&#34;&#34;&#34;
+        ### Description:
+
+        A variety of airfoil plotting options using [`matplotlib`](https://matplotlib.org/). Many wrapper options
+        are available here, but custom plots can also be created directly from the `coords`, `curvature`, `C`,
+        `control_points`, and `anchor_point_array` attributes of the `Airfoil` class.
+
+        ### Args:
+
+        `plot_what`: One or more of `&#34;airfoil&#34;`, `&#34;anchor-point-skeleton&#34;`, `&#34;control-point-skeleton&#34;`,
+        `&#34;chordline&#34;`, `&#34;R-circles&#34;`, or `&#34;curvature&#34;`.
+
+        `fig`: The
+        [`matplotlib.figure.Figure`](https://matplotlib.org/stable/api/figure_api.html?highlight=figure%20figure#matplotlib.figure.Figure)
+        object as a canvas input. New `Figure` is created if `None`. Default: `None`.
+
+        `axs`: The
+        [`matplotlib.axes.Axes`](https://matplotlib.org/stable/api/axes_api.html?highlight=axes%20axes#the-axes-class)
+        object as a axes input. New `Axes` is created if `None`. Default: `None`.
+
+        `show_plot`: Whether to show the plot (`bool`). Default: `True`.
+
+        `save_plot`: Whether to save the plot (`bool`). Default: `False`.
+
+        `save_path`: A `str` describing the root directory, filename, and image extension of the path to save. Only
+        used if `save_plot` is `True`. Default: `None`.
+
+        `plot_kwargs`: A list of dictionaries with [`matplotlib`](https://matplotlib.org/) keyword arguments to be
+        unpacked and applied to each Bézier curve element-by-element. Default: `None`.
+
+        `show_title`: Whether to show a title describing the airfoil chord length, angle of attack, and area (`bool`).
+        Default: `True`.
+
+        `show_legend`: Whether to show the legend (`bool`). Default: `True`.
+
+        `figwidth`: The width of the figure, in inches (`float`). Default: `10.0`.
+
+        `figheight`: The height of the figure, in inches (`float`). Default: `2.5`.
+
+        `tight_layout`: Whether to tighten the margins around the plot (`bool`). Default: `True`.
+
+        `axis_equal`: Whether to set the aspect ratio of the plot to equal \(x\) and \(y\) (`bool`). Default: `True`.
+
+        ### Returns:
+
+        A tuple of the
+        [`matplotlib.figure.Figure`](https://matplotlib.org/stable/api/figure_api.html?highlight=figure%20figure#matplotlib.figure.Figure)
+        object and the
+        [`matplotlib.axes.Axes`](https://matplotlib.org/stable/api/axes_api.html?highlight=axes%20axes#the-axes-class)
+        object used for plotting
+        &#34;&#34;&#34;
         if self.needs_update:
             self.update()
         if fig is None and axs is None:
@@ -1421,30 +1995,31 @@ point, use <code>(<a title="pyairpar.core.free_point.FreePoint" href="free_point
 <span>def <span class="ident">add_anchor_point</span></span>(<span>self, anchor_point: <a title="pyairpar.core.anchor_point.AnchorPoint" href="anchor_point.html#pyairpar.core.anchor_point.AnchorPoint">AnchorPoint</a>)</span>
 </code></dt>
 <dd>
-<div class="desc"><p>Adds an anchor point between two anchor points, builds the associated control point branch, and inserts the
-control point branch into the set of control points.
-:param anchor_point:
-:return:</p></div>
+<div class="desc"><h3 id="description">Description:</h3>
+<p>Adds an anchor point between two anchor points, builds the associated control point branch, and inserts the
+control point branch into the set of control points. <code>needs_update</code> is set to <code>True</code>.</p>
+<h3 id="args">Args:</h3>
+<p><code>anchor_point</code>: an <code><a title="pyairpar.core.anchor_point.AnchorPoint" href="anchor_point.html#pyairpar.core.anchor_point.AnchorPoint">AnchorPoint</a></code> from which to build a control point branch</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">def add_anchor_point(self, anchor_point: AnchorPoint):
     &#34;&#34;&#34;
+    ### Description:
+
     Adds an anchor point between two anchor points, builds the associated control point branch, and inserts the
-    control point branch into the set of control points.
-    :param anchor_point:
-    :return:
+    control point branch into the set of control points. `needs_update` is set to `True`.
+
+    ### Args:
+
+    `anchor_point`: an `pyairpar.core.anchor_point.AnchorPoint` from which to build a control point branch
     &#34;&#34;&#34;
     self.anchor_point_order.insert(self.anchor_point_order.index(anchor_point.previous_anchor_point) + 1,
                                    anchor_point.name)
     self.anchor_points[anchor_point.name] = anchor_point.xy
     self.set_slope(anchor_point)
-    if self.anchor_point_order.index(anchor_point.name) &gt; self.anchor_point_order.index(&#39;le&#39;):
-        self.N[&#39;le&#39;] = 5  # Set the order of the Bezier curve after the leading edge to 5
-        self.N[self.anchor_point_order[-2]] = 4  # Set the order of the last Bezier curve to 4
-    else:
-        self.N[anchor_point.name] = 5  # Set the order of the Bezier curve after the anchor point to 5
+    self.N[anchor_point.name] = 5
     self.set_curvature(anchor_point)
     self.needs_update = True</code></pre>
 </details>
@@ -1453,15 +2028,28 @@ control point branch into the set of control points.
 <span>def <span class="ident">add_anchor_points</span></span>(<span>self)</span>
 </code></dt>
 <dd>
-<div class="desc"></div>
+<div class="desc"><h3 id="description">Description:</h3>
+<p>This function executes <code><a title="pyairpar.core.airfoil.Airfoil.add_anchor_point" href="#pyairpar.core.airfoil.Airfoil.add_anchor_point">Airfoil.add_anchor_point()</a></code> for all the anchor points in the
+<code>anchor_point_tuple</code>. Enforces leading edge and trailing edge Bézier curve orders.
+<code>needs_update</code> is set to <code>True</code>.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">def add_anchor_points(self):
+    &#34;&#34;&#34;
+    ### Description:
+
+    This function executes `pyairpar.core.airfoil.Airfoil.add_anchor_point()` for all the anchor points in the
+    `anchor_point_tuple`. Enforces leading edge and trailing edge Bézier curve orders.
+    `needs_update` is set to `True`.
+    &#34;&#34;&#34;
     for anchor_point in self.anchor_point_tuple:
         if anchor_point.name not in self.anchor_point_order:
             self.add_anchor_point(anchor_point)
+    if self.anchor_point_order.index(&#39;te_2&#39;) - self.anchor_point_order.index(&#39;le&#39;) != 1:
+        self.N[&#39;le&#39;] = 5  # Set the order of the Bezier curve after the leading edge to 5
+        self.N[self.anchor_point_order[-2]] = 4  # Set the order of the last Bezier curve to 4
     self.needs_update = True</code></pre>
 </details>
 </dd>
@@ -1469,18 +2057,23 @@ control point branch into the set of control points.
 <span>def <span class="ident">add_free_point</span></span>(<span>self, free_point: <a title="pyairpar.core.free_point.FreePoint" href="free_point.html#pyairpar.core.free_point.FreePoint">FreePoint</a>)</span>
 </code></dt>
 <dd>
-<div class="desc"><p>Adds a free point (and 2 degrees of freedom) to a given Bezier curve (defined by the previous_anchor_point)
-:param free_point:
-:return:</p></div>
+<div class="desc"><h3 id="description">Description:</h3>
+<p>Adds a free point (and 2 degrees of freedom) to a given Bézier curve (defined by the <code>previous_anchor_point</code>)</p>
+<h3 id="args">Args:</h3>
+<p><code>free_point</code>: a <code><a title="pyairpar.core.free_point.FreePoint" href="free_point.html#pyairpar.core.free_point.FreePoint">FreePoint</a></code> to add to a Bézier curve</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">def add_free_point(self, free_point: FreePoint):
     &#34;&#34;&#34;
-    Adds a free point (and 2 degrees of freedom) to a given Bezier curve (defined by the previous_anchor_point)
-    :param free_point:
-    :return:
+    ### Description:
+
+    Adds a free point (and 2 degrees of freedom) to a given Bézier curve (defined by the `previous_anchor_point`)
+
+    ### Args:
+
+    `free_point`: a `pyairpar.core.free_point.FreePoint` to add to a Bézier curve
     &#34;&#34;&#34;
     if free_point.previous_anchor_point not in self.free_points.keys():
         self.free_points[free_point.previous_anchor_point] = np.array([])
@@ -1499,12 +2092,20 @@ control point branch into the set of control points.
 <span>def <span class="ident">add_free_points</span></span>(<span>self)</span>
 </code></dt>
 <dd>
-<div class="desc"></div>
+<div class="desc"><h3 id="description">Description:</h3>
+<p>This function executes <code><a title="pyairpar.core.airfoil.Airfoil.add_free_point" href="#pyairpar.core.airfoil.Airfoil.add_free_point">Airfoil.add_free_point()</a></code> for all the anchor points in the
+<code>free_point_tuple</code>. <code>needs_update</code> is set to <code>True</code>.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">def add_free_points(self):
+    &#34;&#34;&#34;
+    ### Description:
+
+    This function executes `pyairpar.core.airfoil.Airfoil.add_free_point()` for all the anchor points in the
+    `free_point_tuple`. `needs_update` is set to `True`.
+    &#34;&#34;&#34;
     for free_point in self.free_point_tuple:
         self.add_free_point(free_point)
     self.needs_update = True</code></pre>
@@ -1514,12 +2115,26 @@ control point branch into the set of control points.
 <span>def <span class="ident">check_self_intersection</span></span>(<span>self)</span>
 </code></dt>
 <dd>
-<div class="desc"></div>
+<div class="desc"><h3 id="description">Description:</h3>
+<p>Determines whether the airfoil intersects itself using the <code>is_simple()</code> function of the
+<a href="https://shapely.readthedocs.io/en/stable/manual.html"><code>shapely</code></a> library.</p>
+<h3 id="returns">Returns:</h3>
+<p>A <code>bool</code> value describing whether the airfoil intersects itself</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">def check_self_intersection(self):
+    &#34;&#34;&#34;
+    ### Description:
+
+    Determines whether the airfoil intersects itself using the `is_simple()` function of the
+    [`shapely`](https://shapely.readthedocs.io/en/stable/manual.html) library.
+
+    ### Returns:
+
+    A `bool` value describing whether the airfoil intersects itself
+    &#34;&#34;&#34;
     if self.needs_update:
         self.update()
     points_shapely = list(map(tuple, self.coords))
@@ -1532,12 +2147,25 @@ control point branch into the set of control points.
 <span>def <span class="ident">compute_area</span></span>(<span>self)</span>
 </code></dt>
 <dd>
-<div class="desc"></div>
+<div class="desc"><h3 id="description">Description:</h3>
+<p>Computes the area of the airfoil as the area of a many-sided polygon enclosed by the airfoil coordinates using
+the <a href="https://shapely.readthedocs.io/en/stable/manual.html">shapely</a> library.</p>
+<h3 id="returns">Returns:</h3>
+<p>The area of the airfoil</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">def compute_area(self):
+    &#34;&#34;&#34;
+    ### Description:
+
+    Computes the area of the airfoil as the area of a many-sided polygon enclosed by the airfoil coordinates using
+    the [shapely](https://shapely.readthedocs.io/en/stable/manual.html) library.
+
+    ### Returns:
+    The area of the airfoil
+    &#34;&#34;&#34;
     if self.needs_update:
         self.update()
     points_shapely = list(map(tuple, self.coords))
@@ -1551,33 +2179,34 @@ control point branch into the set of control points.
 <span>def <span class="ident">extract_parameters</span></span>(<span>self)</span>
 </code></dt>
 <dd>
-<div class="desc"></div>
+<div class="desc"><h3 id="description">Description:</h3>
+<p>This function extracts every parameter from the <code><a title="pyairpar.core.base_airfoil_params.BaseAirfoilParams" href="base_airfoil_params.html#pyairpar.core.base_airfoil_params.BaseAirfoilParams">BaseAirfoilParams</a></code>, all the
+<code><a title="pyairpar.core.anchor_point.AnchorPoint" href="anchor_point.html#pyairpar.core.anchor_point.AnchorPoint">AnchorPoint</a></code>s, and all the <code><a title="pyairpar.core.free_point.FreePoint" href="free_point.html#pyairpar.core.free_point.FreePoint">FreePoint</a></code>s with
+<code>active=True</code> and <code>linked=False</code> as a <code>list</code> of parameter values.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">def extract_parameters(self):
+    &#34;&#34;&#34;
+    ### Description:
 
-    self.params = [var.value for var in vars(self.base_airfoil_params).values()
-                   if isinstance(var, Param) and var.active and not var.linked]
+    This function extracts every parameter from the `pyairpar.core.base_airfoil_params.BaseAirfoilParams`, all the
+    `pyairpar.core.anchor_point.AnchorPoint`s, and all the `pyairpar.core.free_point.FreePoint`s with
+    `active=True` and `linked=False` as a `list` of parameter values.
+    &#34;&#34;&#34;
 
-    self.bounds = [[var.bounds[0], var.bounds[1]] for var in vars(self.base_airfoil_params).values()
+    self.params = [var for var in vars(self.base_airfoil_params).values()
                    if isinstance(var, Param) and var.active and not var.linked]
 
     for anchor_point in self.anchor_point_tuple:
 
-        self.params.extend([var.value for var in vars(anchor_point).values()
-                            if isinstance(var, Param) and var.active and not var.linked])
-
-        self.bounds.extend([[var.bounds[0], var.bounds[1]] for var in vars(anchor_point).values()
+        self.params.extend([var for var in vars(anchor_point).values()
                             if isinstance(var, Param) and var.active and not var.linked])
 
     for free_point in self.free_point_tuple:
 
-        self.params.extend([var.value for var in vars(free_point).values()
-                            if isinstance(var, Param) and var.active and not var.linked])
-
-        self.bounds.extend([[var.bounds[0], var.bounds[1]] for var in vars(free_point).values()
+        self.params.extend([var for var in vars(free_point).values()
                             if isinstance(var, Param) and var.active and not var.linked])</code></pre>
 </details>
 </dd>
@@ -1585,12 +2214,28 @@ control point branch into the set of control points.
 <span>def <span class="ident">generate_airfoil_coordinates</span></span>(<span>self)</span>
 </code></dt>
 <dd>
-<div class="desc"></div>
+<div class="desc"><h3 id="description">Description:</h3>
+<p>Generates the Bézier curves through the control points. Also re-casts the Bézier curve points in terms of
+airfoil coordinates by removing the points shared by joined Bézier curves. Curvature information is extracted
+from the <code>C</code> dictionary.</p>
+<h3 id="returns">Returns:</h3>
+<p>The airfoil coordinates, the <code>C</code> dictionary of Bézier curve information, and the curvature.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">def generate_airfoil_coordinates(self):
+    &#34;&#34;&#34;
+    ### Description:
+
+    Generates the Bézier curves through the control points. Also re-casts the Bézier curve points in terms of
+    airfoil coordinates by removing the points shared by joined Bézier curves. Curvature information is extracted
+    from the `C` dictionary.
+
+    ### Returns:
+
+    The airfoil coordinates, the `C` dictionary of Bézier curve information, and the curvature.
+    &#34;&#34;&#34;
     if self.C:
         self.C = []
     P_start_idx = 0
@@ -1612,19 +2257,37 @@ control point branch into the set of control points.
             curvature = np.row_stack((curvature, np.column_stack((self.C[idx][&#39;x&#39;][1:], self.C[idx][&#39;k&#39;][1:]))))
     self.coords = coords
     self.curvature = curvature
-    return self.coords, self.C</code></pre>
+    return self.coords, self.C, self.curvature</code></pre>
 </details>
 </dd>
 <dt id="pyairpar.core.airfoil.Airfoil.init_g1_points"><code class="name flex">
 <span>def <span class="ident">init_g1_points</span></span>(<span>self)</span>
 </code></dt>
 <dd>
-<div class="desc"></div>
+<div class="desc"><h3 id="description">Description:</h3>
+<p>Initializes the "g1_minus" and "g1_plus" points for the leading edge (the neighboring control points to
+the leading edge anchor point). These points are used to enforce <span><span class="MathJax_Preview">G^1</span><script type="math/tex">G^1</script></span> continuity. "Minus" points refer to
+control points which occur before the anchor point in the path of the Bézier curve, and "plus" points refer to
+control points which occur before the anchor point.</p>
+<h3 id="returns">Returns:</h3>
+<p>The neighboring control points to the leading edge anchor point as dictionaries.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">def init_g1_points(self):
+    &#34;&#34;&#34;
+    ### Description:
+
+    Initializes the &#34;g1_minus&#34; and &#34;g1_plus&#34; points for the leading edge (the neighboring control points to
+    the leading edge anchor point). These points are used to enforce \\(G^1\\) continuity. &#34;Minus&#34; points refer to
+    control points which occur before the anchor point in the path of the Bézier curve, and &#34;plus&#34; points refer to
+    control points which occur before the anchor point.
+
+    ### Returns:
+
+    The neighboring control points to the leading edge anchor point as dictionaries.
+    &#34;&#34;&#34;
 
     g1_minus_points = {
         &#39;te_2&#39;: self.anchor_points[&#39;te_2&#39;] +
@@ -1653,12 +2316,30 @@ control point branch into the set of control points.
 <span>def <span class="ident">init_g2_points</span></span>(<span>self)</span>
 </code></dt>
 <dd>
-<div class="desc"></div>
+<div class="desc"><h3 id="description">Description:</h3>
+<p>Initializes the "g2_minus" and "g2_plus" points for the leading edge (the control points two points from the
+leading edge control point). These points are used to enforce <span><span class="MathJax_Preview">G^2</span><script type="math/tex">G^2</script></span> continuity. "Minus" points refer to
+control points which occur before the anchor point in the path of the Bézier curve, and "plus" points refer to
+control points which occur before the anchor point.</p>
+<h3 id="returns">Returns:</h3>
+<p>The neighboring control points to the leading edge anchor point as dictionaries.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">def init_g2_points(self):
+    &#34;&#34;&#34;
+    ### Description:
+
+    Initializes the &#34;g2_minus&#34; and &#34;g2_plus&#34; points for the leading edge (the control points two points from the
+    leading edge control point). These points are used to enforce \\(G^2\\) continuity. &#34;Minus&#34; points refer to
+    control points which occur before the anchor point in the path of the Bézier curve, and &#34;plus&#34; points refer to
+    control points which occur before the anchor point.
+
+    ### Returns:
+
+    The neighboring control points to the leading edge anchor point as dictionaries.
+    &#34;&#34;&#34;
     g2_minus_point_le, g2_plus_point_le = self.set_curvature_le()
 
     g2_minus_points = {
@@ -1676,12 +2357,26 @@ control point branch into the set of control points.
 <span>def <span class="ident">order_control_points</span></span>(<span>self)</span>
 </code></dt>
 <dd>
-<div class="desc"></div>
+<div class="desc"><h3 id="description">Description:</h3>
+<p>This function creates an array of control points based on the anchor, neighboring, and curvature control
+point dictionaries based on the <code>string</code>-based <code>anchor_point_order</code>.</p>
+<h3 id="returns">Returns:</h3>
+<p>The control point array and the length of the control point array (number of control points)</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">def order_control_points(self):
+    &#34;&#34;&#34;
+    ### Description:
+
+    This function creates an array of control points based on the anchor, neighboring, and curvature control
+    point dictionaries based on the `string`-based `anchor_point_order`.
+
+    ### Returns:
+
+    The control point array and the length of the control point array (number of control points)
+    &#34;&#34;&#34;
     self.control_points = np.array([])
     for idx, anchor_point in enumerate(self.anchor_point_order):
 
@@ -1712,12 +2407,24 @@ control point branch into the set of control points.
 <span>def <span class="ident">override</span></span>(<span>self, parameters)</span>
 </code></dt>
 <dd>
-<div class="desc"></div>
+<div class="desc"><h3 id="description">Description:</h3>
+<p>This function re-initializes the <code><a title="pyairpar.core.airfoil.Airfoil" href="#pyairpar.core.airfoil.Airfoil">Airfoil</a></code> object using the list of <code>override_parameters</code></p>
+<h3 id="args">Args:</h3>
+<p><code>parameters</code>: a list of <code>override_parameters</code> generated by <code>extract_parameters</code> and possibly modified.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">def override(self, parameters):
+    &#34;&#34;&#34;
+    ### Description:
+
+    This function re-initializes the `Airfoil` object using the list of `override_parameters`
+
+    ### Args:
+
+    `parameters`: a list of `override_parameters` generated by `extract_parameters` and possibly modified.
+    &#34;&#34;&#34;
     self.__init__(self.nt, self.base_airfoil_params, self.anchor_point_tuple, self.free_point_tuple,
                   override_parameters=parameters)</code></pre>
 </details>
@@ -1726,7 +2433,38 @@ control point branch into the set of control points.
 <span>def <span class="ident">plot</span></span>(<span>self, plot_what: Tuple[str, ...], fig: matplotlib.figure.Figure = None, axs: matplotlib.axes._axes.Axes = None, show_plot: bool = True, save_plot: bool = False, save_path: str = None, plot_kwargs: List[dict] = None, show_title: bool = True, show_legend: bool = True, figwidth: float = 10.0, figheight: float = 2.5, tight_layout: bool = True, axis_equal: bool = True)</span>
 </code></dt>
 <dd>
-<div class="desc"></div>
+<div class="desc"><h3 id="description">Description:</h3>
+<p>A variety of airfoil plotting options using <a href="https://matplotlib.org/"><code>matplotlib</code></a>. Many wrapper options
+are available here, but custom plots can also be created directly from the <code>coords</code>, <code>curvature</code>, <code>C</code>,
+<code>control_points</code>, and <code>anchor_point_array</code> attributes of the <code><a title="pyairpar.core.airfoil.Airfoil" href="#pyairpar.core.airfoil.Airfoil">Airfoil</a></code> class.</p>
+<h3 id="args">Args:</h3>
+<p><code>plot_what</code>: One or more of <code>"airfoil"</code>, <code>"anchor-point-skeleton"</code>, <code>"control-point-skeleton"</code>,
+<code>"chordline"</code>, <code>"R-circles"</code>, or <code>"curvature"</code>.</p>
+<p><code>fig</code>: The
+<a href="https://matplotlib.org/stable/api/figure_api.html?highlight=figure%20figure#matplotlib.figure.Figure"><code>matplotlib.figure.Figure</code></a>
+object as a canvas input. New <code>Figure</code> is created if <code>None</code>. Default: <code>None</code>.</p>
+<p><code>axs</code>: The
+<a href="https://matplotlib.org/stable/api/axes_api.html?highlight=axes%20axes#the-axes-class"><code>matplotlib.axes.Axes</code></a>
+object as a axes input. New <code>Axes</code> is created if <code>None</code>. Default: <code>None</code>.</p>
+<p><code>show_plot</code>: Whether to show the plot (<code>bool</code>). Default: <code>True</code>.</p>
+<p><code>save_plot</code>: Whether to save the plot (<code>bool</code>). Default: <code>False</code>.</p>
+<p><code>save_path</code>: A <code>str</code> describing the root directory, filename, and image extension of the path to save. Only
+used if <code>save_plot</code> is <code>True</code>. Default: <code>None</code>.</p>
+<p><code>plot_kwargs</code>: A list of dictionaries with <a href="https://matplotlib.org/"><code>matplotlib</code></a> keyword arguments to be
+unpacked and applied to each Bézier curve element-by-element. Default: <code>None</code>.</p>
+<p><code>show_title</code>: Whether to show a title describing the airfoil chord length, angle of attack, and area (<code>bool</code>).
+Default: <code>True</code>.</p>
+<p><code>show_legend</code>: Whether to show the legend (<code>bool</code>). Default: <code>True</code>.</p>
+<p><code>figwidth</code>: The width of the figure, in inches (<code>float</code>). Default: <code>10.0</code>.</p>
+<p><code>figheight</code>: The height of the figure, in inches (<code>float</code>). Default: <code>2.5</code>.</p>
+<p><code>tight_layout</code>: Whether to tighten the margins around the plot (<code>bool</code>). Default: <code>True</code>.</p>
+<p><code>axis_equal</code>: Whether to set the aspect ratio of the plot to equal <span><span class="MathJax_Preview">x</span><script type="math/tex">x</script></span> and <span><span class="MathJax_Preview">y</span><script type="math/tex">y</script></span> (<code>bool</code>). Default: <code>True</code>.</p>
+<h3 id="returns">Returns:</h3>
+<p>A tuple of the
+<a href="https://matplotlib.org/stable/api/figure_api.html?highlight=figure%20figure#matplotlib.figure.Figure"><code>matplotlib.figure.Figure</code></a>
+object and the
+<a href="https://matplotlib.org/stable/api/axes_api.html?highlight=axes%20axes#the-axes-class"><code>matplotlib.axes.Axes</code></a>
+object used for plotting</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
@@ -1735,6 +2473,57 @@ control point branch into the set of control points.
          save_plot: bool = False, save_path: str = None, plot_kwargs: typing.List[dict] = None,
          show_title: bool = True, show_legend: bool = True, figwidth: float = 10.0, figheight: float = 2.5,
          tight_layout: bool = True, axis_equal: bool = True):
+    r&#34;&#34;&#34;
+    ### Description:
+
+    A variety of airfoil plotting options using [`matplotlib`](https://matplotlib.org/). Many wrapper options
+    are available here, but custom plots can also be created directly from the `coords`, `curvature`, `C`,
+    `control_points`, and `anchor_point_array` attributes of the `Airfoil` class.
+
+    ### Args:
+
+    `plot_what`: One or more of `&#34;airfoil&#34;`, `&#34;anchor-point-skeleton&#34;`, `&#34;control-point-skeleton&#34;`,
+    `&#34;chordline&#34;`, `&#34;R-circles&#34;`, or `&#34;curvature&#34;`.
+
+    `fig`: The
+    [`matplotlib.figure.Figure`](https://matplotlib.org/stable/api/figure_api.html?highlight=figure%20figure#matplotlib.figure.Figure)
+    object as a canvas input. New `Figure` is created if `None`. Default: `None`.
+
+    `axs`: The
+    [`matplotlib.axes.Axes`](https://matplotlib.org/stable/api/axes_api.html?highlight=axes%20axes#the-axes-class)
+    object as a axes input. New `Axes` is created if `None`. Default: `None`.
+
+    `show_plot`: Whether to show the plot (`bool`). Default: `True`.
+
+    `save_plot`: Whether to save the plot (`bool`). Default: `False`.
+
+    `save_path`: A `str` describing the root directory, filename, and image extension of the path to save. Only
+    used if `save_plot` is `True`. Default: `None`.
+
+    `plot_kwargs`: A list of dictionaries with [`matplotlib`](https://matplotlib.org/) keyword arguments to be
+    unpacked and applied to each Bézier curve element-by-element. Default: `None`.
+
+    `show_title`: Whether to show a title describing the airfoil chord length, angle of attack, and area (`bool`).
+    Default: `True`.
+
+    `show_legend`: Whether to show the legend (`bool`). Default: `True`.
+
+    `figwidth`: The width of the figure, in inches (`float`). Default: `10.0`.
+
+    `figheight`: The height of the figure, in inches (`float`). Default: `2.5`.
+
+    `tight_layout`: Whether to tighten the margins around the plot (`bool`). Default: `True`.
+
+    `axis_equal`: Whether to set the aspect ratio of the plot to equal \(x\) and \(y\) (`bool`). Default: `True`.
+
+    ### Returns:
+
+    A tuple of the
+    [`matplotlib.figure.Figure`](https://matplotlib.org/stable/api/figure_api.html?highlight=figure%20figure#matplotlib.figure.Figure)
+    object and the
+    [`matplotlib.axes.Axes`](https://matplotlib.org/stable/api/axes_api.html?highlight=axes%20axes#the-axes-class)
+    object used for plotting
+    &#34;&#34;&#34;
     if self.needs_update:
         self.update()
     if fig is None and axs is None:
@@ -1865,16 +2654,218 @@ control point branch into the set of control points.
 <span>def <span class="ident">set_curvature</span></span>(<span>self, anchor_point: <a title="pyairpar.core.anchor_point.AnchorPoint" href="anchor_point.html#pyairpar.core.anchor_point.AnchorPoint">AnchorPoint</a>)</span>
 </code></dt>
 <dd>
-<div class="desc"></div>
+<div class="desc"><h3 id="description">Description:</h3>
+<p>This is the function which enforces <span><span class="MathJax_Preview">G^2</span><script type="math/tex">G^2</script></span> continuity for all <code><a title="pyairpar.core.anchor_point.AnchorPoint" href="anchor_point.html#pyairpar.core.anchor_point.AnchorPoint">AnchorPoint</a></code>s
+which are added. To keep the length ratios and angles defined in a "nice" way, the neighboring control points
+to the anchor point are defined as follows:</p>
+<p><span><span class="MathJax_Preview">
+\begin{align*}
+\begin{bmatrix} x_{-2} \\ y_{-2} \end{bmatrix} &amp;=
+\begin{cases}
+\begin{bmatrix} x_{-1} + \frac{c_1}{c_2[c_3(\tan{(\theta_1)} + y_0 - y_{-1})]}
+\\ \tan{(\theta_1)} (x_{-2} - x_{-1}) + y_{-1} \end{bmatrix}
+,&amp; \mod{\left(\theta_1, \frac{\pi}{2}\right) \neq 0} \wedge R \in (-\infty,0) \cup (0, \infty) \\
+\begin{bmatrix} x_{-1} \\ y_{-1} + \frac{c_1}{c_2 c_3}
+\end{bmatrix},&amp; \mod{\left(\theta_1, \frac{\pi}{2}\right) = 0} \wedge
+R \in (-\infty,0)
+\cup (0,\infty) \\
+\begin{bmatrix} x_{-1} \\ y_{-1} \end{bmatrix},&amp; \theta_1 \in \mathbb{R} \wedge R =
+\pm \infty
+\end{cases} \\
+\begin{bmatrix} x_{+2} \\ y_{+2} \end{bmatrix} &amp;=
+\begin{cases}
+\begin{bmatrix} x_{+1} + \frac{c_4}{c_5[c_6(\tan{(\theta_2)} + y_{+1} - y_0)]}
+\\ \tan{(\theta_2)} (x_{+2} - x_{+1}) + y_{+1} \end{bmatrix}
+,&amp; \mod{\left(\theta_2, \frac{\pi}{2}\right) \neq 0} \wedge R \in (-\infty,0) \cup (0, \infty) \\
+\begin{bmatrix} x_{+1} \\ y_{+1} + \frac{c_4}{c_5 c_6}
+\end{bmatrix},&amp; \mod{\left(\theta_1, \frac{\pi}{2}\right) = 0} \wedge
+R \in (-\infty,0)
+\cup (0,\infty) \\
+\begin{bmatrix} x_{+1} \\ y_{+1} \end{bmatrix},&amp; \theta_2 \in \mathbb{R} \wedge R =
+\pm \infty
+\end{cases}
+\end{align*}
+</span><script type="math/tex; mode=display">
+\begin{align*}
+\begin{bmatrix} x_{-2} \\ y_{-2} \end{bmatrix} &=
+\begin{cases}
+\begin{bmatrix} x_{-1} + \frac{c_1}{c_2[c_3(\tan{(\theta_1)} + y_0 - y_{-1})]}
+\\ \tan{(\theta_1)} (x_{-2} - x_{-1}) + y_{-1} \end{bmatrix}
+,& \mod{\left(\theta_1, \frac{\pi}{2}\right) \neq 0} \wedge R \in (-\infty,0) \cup (0, \infty) \\
+\begin{bmatrix} x_{-1} \\ y_{-1} + \frac{c_1}{c_2 c_3}
+\end{bmatrix},& \mod{\left(\theta_1, \frac{\pi}{2}\right) = 0} \wedge
+R \in (-\infty,0)
+\cup (0,\infty) \\
+\begin{bmatrix} x_{-1} \\ y_{-1} \end{bmatrix},& \theta_1 \in \mathbb{R} \wedge R =
+\pm \infty
+\end{cases} \\
+\begin{bmatrix} x_{+2} \\ y_{+2} \end{bmatrix} &=
+\begin{cases}
+\begin{bmatrix} x_{+1} + \frac{c_4}{c_5[c_6(\tan{(\theta_2)} + y_{+1} - y_0)]}
+\\ \tan{(\theta_2)} (x_{+2} - x_{+1}) + y_{+1} \end{bmatrix}
+,& \mod{\left(\theta_2, \frac{\pi}{2}\right) \neq 0} \wedge R \in (-\infty,0) \cup (0, \infty) \\
+\begin{bmatrix} x_{+1} \\ y_{+1} + \frac{c_4}{c_5 c_6}
+\end{bmatrix},& \mod{\left(\theta_1, \frac{\pi}{2}\right) = 0} \wedge
+R \in (-\infty,0)
+\cup (0,\infty) \\
+\begin{bmatrix} x_{+1} \\ y_{+1} \end{bmatrix},& \theta_2 \in \mathbb{R} \wedge R =
+\pm \infty
+\end{cases}
+\end{align*}
+</script></span>
+where
+<span><span class="MathJax_Preview">
+\begin{align*}
+c_1 &amp;= \frac{-1}{R}[(x_0-x_{-1})^2 + (y_0-y_{-1})^2]^{3/2} \\
+c_2 &amp;= 1 - \frac{1}{n_1} \\
+c_3 &amp;= x_{-1} - x_0 \\
+c_4 &amp;= \frac{-1}{R}[(x_{+1}-x_0)^2 + (y_{+1}-y_0)^2]^{3/2} \\
+c_5 &amp;= 1 - \frac{1}{n_2} \\
+c_6 &amp;= x_0 - x_{+1}
+\end{align*}
+</span><script type="math/tex; mode=display">
+\begin{align*}
+c_1 &= \frac{-1}{R}[(x_0-x_{-1})^2 + (y_0-y_{-1})^2]^{3/2} \\
+c_2 &= 1 - \frac{1}{n_1} \\
+c_3 &= x_{-1} - x_0 \\
+c_4 &= \frac{-1}{R}[(x_{+1}-x_0)^2 + (y_{+1}-y_0)^2]^{3/2} \\
+c_5 &= 1 - \frac{1}{n_2} \\
+c_6 &= x_0 - x_{+1}
+\end{align*}
+</script></span></p>
+<p>Here, <span><span class="MathJax_Preview">n_1</span><script type="math/tex">n_1</script></span> is the order of the Bézier curve preceding the anchor point, and <span><span class="MathJax_Preview">n_2</span><script type="math/tex">n_2</script></span> is the order of the
+Bézier curve following the anchor point. <span><span class="MathJax_Preview">(x_0,y_0)</span><script type="math/tex">(x_0,y_0)</script></span> is the anchor point location, <span><span class="MathJax_Preview">(x_{-1},y_{-1})</span><script type="math/tex">(x_{-1},y_{-1})</script></span>
+and <span><span class="MathJax_Preview">(x_{+1},y_{+1})</span><script type="math/tex">(x_{+1},y_{+1})</script></span> are the neighboring control points, and <span><span class="MathJax_Preview">(x_{-2},y_{-2})</span><script type="math/tex">(x_{-2},y_{-2})</script></span> and <span><span class="MathJax_Preview">(x_{+2},y_{+2})</span><script type="math/tex">(x_{+2},y_{+2})</script></span>
+are the curvature control points. <span><span class="MathJax_Preview">\theta_1</span><script type="math/tex">\theta_1</script></span> and <span><span class="MathJax_Preview">\theta_2</span><script type="math/tex">\theta_2</script></span> are governed by the following relationships:</p>
+<p><span><span class="MathJax_Preview">
+\begin{align*}
+\theta_1 &amp;=
+\begin{cases}
+\psi_1 + \phi,&amp; R &gt; 0,\,\text{upper surface} \\
+\pi + \psi_2 - \phi,&amp; R &gt; 0,\,\text{lower surface} \\
+\pi - \psi_1 + \phi,&amp; R &lt; 0,\,\text{upper surface} \\
+-\psi_2 - \phi,&amp; R &lt; 0,\,\text{lower surface}
+\end{cases} \\
+\theta_2 &amp;=
+\begin{cases}
+-\psi_2 + \phi,&amp; R &gt; 0,\,\text{upper surface} \\
+\psi_1 - \phi,&amp; R &gt; 0,\,\text{lower surface} \\
+\pi + \psi_2 + \phi,&amp; R &lt; 0,\,\text{upper surface} \\
+\psi_1 - \phi,&amp; R &lt; 0,\,\text{lower surface}
+\end{cases}
+\end{align*}
+</span><script type="math/tex; mode=display">
+\begin{align*}
+\theta_1 &=
+\begin{cases}
+\psi_1 + \phi,& R > 0,\,\text{upper surface} \\
+\pi + \psi_2 - \phi,& R > 0,\,\text{lower surface} \\
+\pi - \psi_1 + \phi,& R < 0,\,\text{upper surface} \\
+-\psi_2 - \phi,& R < 0,\,\text{lower surface}
+\end{cases} \\
+\theta_2 &=
+\begin{cases}
+-\psi_2 + \phi,& R > 0,\,\text{upper surface} \\
+\psi_1 - \phi,& R > 0,\,\text{lower surface} \\
+\pi + \psi_2 + \phi,& R < 0,\,\text{upper surface} \\
+\psi_1 - \phi,& R < 0,\,\text{lower surface}
+\end{cases}
+\end{align*}
+</script></span>
+By these definitions of the curvature control arm angles, decreasing <span><span class="MathJax_Preview">\psi_1</span><script type="math/tex">\psi_1</script></span> or <span><span class="MathJax_Preview">\psi_2</span><script type="math/tex">\psi_2</script></span> from
+<span><span class="MathJax_Preview">90^{\circ}</span><script type="math/tex">90^{\circ}</script></span> has the effect of "tucking" the arms in, and increasing <span><span class="MathJax_Preview">\psi_1</span><script type="math/tex">\psi_1</script></span> or <span><span class="MathJax_Preview">\psi_2</span><script type="math/tex">\psi_2</script></span> from
+<span><span class="MathJax_Preview">90^{\circ}</span><script type="math/tex">90^{\circ}</script></span> has the effect of "spreading" the arms out. See the documentation for
+<code><a title="pyairpar.core.anchor_point.AnchorPoint" href="anchor_point.html#pyairpar.core.anchor_point.AnchorPoint">AnchorPoint</a></code> for further description and a visual.</p>
+<h3 id="returns">Returns:</h3>
+<p>The generated curvature control point <span><span class="MathJax_Preview">x</span><script type="math/tex">x</script></span> - <span><span class="MathJax_Preview">y</span><script type="math/tex">y</script></span> locations as <code>np.ndarray</code>s of <code>shape=2</code>.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">def set_curvature(self, anchor_point: AnchorPoint):
+    r&#34;&#34;&#34;
+    ### Description:
+
+    This is the function which enforces \(G^2\) continuity for all `pyairpar.core.anchor_point.AnchorPoint`s
+    which are added. To keep the length ratios and angles defined in a &#34;nice&#34; way, the neighboring control points
+    to the anchor point are defined as follows:
+
+    $$
+    \begin{align*}
+        \begin{bmatrix} x_{-2} \\ y_{-2} \end{bmatrix} &amp;=
+        \begin{cases}
+            \begin{bmatrix} x_{-1} + \frac{c_1}{c_2[c_3(\tan{(\theta_1)} + y_0 - y_{-1})]}
+                            \\ \tan{(\theta_1)} (x_{-2} - x_{-1}) + y_{-1} \end{bmatrix}
+                            ,&amp; \mod{\left(\theta_1, \frac{\pi}{2}\right) \neq 0} \wedge R \in (-\infty,0) \cup (0, \infty) \\
+            \begin{bmatrix} x_{-1} \\ y_{-1} + \frac{c_1}{c_2 c_3}  \end{bmatrix},&amp; \mod{\left(\theta_1, \frac{\pi}{2}\right) = 0} \wedge
+                                                                                                R \in (-\infty,0)
+                                                                                                \cup (0,\infty) \\
+            \begin{bmatrix} x_{-1} \\ y_{-1} \end{bmatrix},&amp; \theta_1 \in \mathbb{R} \wedge R =
+                                                                                                        \pm \infty
+        \end{cases} \\
+        \begin{bmatrix} x_{+2} \\ y_{+2} \end{bmatrix} &amp;=
+        \begin{cases}
+            \begin{bmatrix} x_{+1} + \frac{c_4}{c_5[c_6(\tan{(\theta_2)} + y_{+1} - y_0)]}
+                            \\ \tan{(\theta_2)} (x_{+2} - x_{+1}) + y_{+1} \end{bmatrix}
+                            ,&amp; \mod{\left(\theta_2, \frac{\pi}{2}\right) \neq 0} \wedge R \in (-\infty,0) \cup (0, \infty) \\
+            \begin{bmatrix} x_{+1} \\ y_{+1} + \frac{c_4}{c_5 c_6}  \end{bmatrix},&amp; \mod{\left(\theta_1, \frac{\pi}{2}\right) = 0} \wedge
+                                                                                                R \in (-\infty,0)
+                                                                                                \cup (0,\infty) \\
+            \begin{bmatrix} x_{+1} \\ y_{+1} \end{bmatrix},&amp; \theta_2 \in \mathbb{R} \wedge R =
+                                                                                                        \pm \infty
+        \end{cases}
+    \end{align*}
+    $$
+    where
+    $$
+    \begin{align*}
+    c_1 &amp;= \frac{-1}{R}[(x_0-x_{-1})^2 + (y_0-y_{-1})^2]^{3/2} \\
+    c_2 &amp;= 1 - \frac{1}{n_1} \\
+    c_3 &amp;= x_{-1} - x_0 \\
+    c_4 &amp;= \frac{-1}{R}[(x_{+1}-x_0)^2 + (y_{+1}-y_0)^2]^{3/2} \\
+    c_5 &amp;= 1 - \frac{1}{n_2} \\
+    c_6 &amp;= x_0 - x_{+1}
+    \end{align*}
+    $$
+
+    Here, \(n_1\) is the order of the Bézier curve preceding the anchor point, and \(n_2\) is the order of the
+    Bézier curve following the anchor point. \((x_0,y_0)\) is the anchor point location, \((x_{-1},y_{-1})\)
+    and \((x_{+1},y_{+1})\) are the neighboring control points, and \((x_{-2},y_{-2})\) and \((x_{+2},y_{+2})\)
+    are the curvature control points. \(\theta_1\) and \(\theta_2\) are governed by the following relationships:
+
+    $$
+    \begin{align*}
+        \theta_1 &amp;=
+        \begin{cases}
+            \psi_1 + \phi,&amp; R &gt; 0,\,\text{upper surface} \\
+            \pi + \psi_2 - \phi,&amp; R &gt; 0,\,\text{lower surface} \\
+            \pi - \psi_1 + \phi,&amp; R &lt; 0,\,\text{upper surface} \\
+            -\psi_2 - \phi,&amp; R &lt; 0,\,\text{lower surface}
+        \end{cases} \\
+        \theta_2 &amp;=
+        \begin{cases}
+            -\psi_2 + \phi,&amp; R &gt; 0,\,\text{upper surface} \\
+            \psi_1 - \phi,&amp; R &gt; 0,\,\text{lower surface} \\
+            \pi + \psi_2 + \phi,&amp; R &lt; 0,\,\text{upper surface} \\
+            \psi_1 - \phi,&amp; R &lt; 0,\,\text{lower surface}
+        \end{cases}
+    \end{align*}
+    $$
+    By these definitions of the curvature control arm angles, decreasing \(\psi_1\) or \(\psi_2\) from
+    \(90^{\circ}\) has the effect of &#34;tucking&#34; the arms in, and increasing \(\psi_1\) or \(\psi_2\) from
+    \(90^{\circ}\) has the effect of &#34;spreading&#34; the arms out. See the documentation for
+    `pyairpar.core.anchor_point.AnchorPoint` for further description and a visual.
+
+    ### Returns:
+
+    The generated curvature control point \(x\) - \(y\) locations as `np.ndarray`s of `shape=2`.
+    &#34;&#34;&#34;
     R = anchor_point.R.value
-    if R == np.inf:
+    if R == np.inf or R == -np.inf:
         self.g2_minus_points[anchor_point.name] = self.g1_minus_points[anchor_point.name]
         self.g2_plus_points[anchor_point.name] = self.g1_plus_points[anchor_point.name]
+        g2_minus_point = self.g2_minus_points[anchor_point.name]
+        g2_plus_point = self.g2_plus_points[anchor_point.name]
     else:
         n1, n2 = self.N[self.anchor_point_order[self.anchor_point_order.index(anchor_point.name) - 1]], \
                  self.N[anchor_point.name]
@@ -1883,8 +2874,8 @@ control point branch into the set of control points.
                 theta1, theta2 = anchor_point.psi1.value + anchor_point.phi.value, \
                                  -anchor_point.psi2.value + anchor_point.phi.value
             else:
-                theta2, theta1 = np.pi - anchor_point.psi1.value - anchor_point.phi.value, \
-                                 - anchor_point.psi2.value - anchor_point.phi.value
+                theta2, theta1 = - anchor_point.psi1.value - anchor_point.phi.value, \
+                                 np.pi + anchor_point.psi2.value - anchor_point.phi.value
         else:  # If the radius of curvature is negative,
             if self.anchor_point_order.index(anchor_point.name) &lt; self.anchor_point_order.index(&#39;le&#39;):
                 theta1, theta2 = np.pi - anchor_point.psi1.value + anchor_point.phi.value, \
@@ -1896,45 +2887,65 @@ control point branch into the set of control points.
 
         x_m1, y_m1 = self.g1_minus_points[anchor_point.name][0], self.g1_minus_points[anchor_point.name][1]
         g2_minus_point = np.zeros(2)
-        a = - 1 / R * ((x0 - x_m1) ** 2 + (y0 - y_m1) ** 2) ** (3 / 2)
-        b = 1 - 1 / n1
-        c = x_m1 - x0
-        if theta1 != np.deg2rad(90.0):
-            g2_minus_point[0] = x_m1 + a / b / (c * np.tan(theta1) + y0 - y_m1)
+        c1 = - 1 / R * ((x0 - x_m1) ** 2 + (y0 - y_m1) ** 2) ** (3 / 2)
+        c2 = 1 - 1 / n1
+        c3 = x_m1 - x0
+        if theta1 % (np.pi / 2) != 0:
+            g2_minus_point[0] = x_m1 + c1 / c2 / (c3 * np.tan(theta1) + y0 - y_m1)
             g2_minus_point[1] = np.tan(theta1) * (g2_minus_point[0] - x_m1) + y_m1
         else:
             g2_minus_point[0] = x_m1
-            g2_minus_point[1] = y_m1 + a / b / c
+            g2_minus_point[1] = y_m1 + c1 / c2 / c3
 
         x_p1, y_p1 = self.g1_plus_points[anchor_point.name][0], self.g1_plus_points[anchor_point.name][1]
         g2_plus_point = np.zeros(2)
-        a = - 1 / R * ((x_p1 - x0) ** 2 + (y_p1 - y0) ** 2) ** (3 / 2)
-        b = 1 - 1 / n2
-        c = x0 - x_p1
-        if theta2 != np.deg2rad(90.0):
-            g2_plus_point[0] = x_p1 + a / b / (c * np.tan(theta2) + y_p1 - y0)
+        c4 = - 1 / R * ((x_p1 - x0) ** 2 + (y_p1 - y0) ** 2) ** (3 / 2)
+        c5 = 1 - 1 / n2
+        c6 = x0 - x_p1
+        if theta2 % (np.pi / 2) != 0:
+            g2_plus_point[0] = x_p1 + c4 / c5 / (c6 * np.tan(theta2) + y_p1 - y0)
             g2_plus_point[1] = np.tan(theta2) * (g2_plus_point[0] - x_p1) + y_p1
         else:
             g2_plus_point[0] = x_p1
-            g2_plus_point[1] = y_p1 + a / b / c
+            g2_plus_point[1] = y_p1 + c4 / c5 / c6
 
         self.g2_minus_points[anchor_point.name] = g2_minus_point
         self.g2_plus_points[anchor_point.name] = g2_plus_point
 
-    return self.g2_minus_points, self.g2_plus_points</code></pre>
+    return g2_minus_point, g2_plus_point</code></pre>
 </details>
 </dd>
 <dt id="pyairpar.core.airfoil.Airfoil.set_curvature_le"><code class="name flex">
 <span>def <span class="ident">set_curvature_le</span></span>(<span>self)</span>
 </code></dt>
 <dd>
-<div class="desc"></div>
+<div class="desc"><h3 id="description">Description:</h3>
+<p>See the description of <code><a title="pyairpar.core.airfoil.Airfoil.set_curvature" href="#pyairpar.core.airfoil.Airfoil.set_curvature">Airfoil.set_curvature()</a></code>. This is just a special case of that
+function tailored for the leading edge of the airfoil. Here, <span><span class="MathJax_Preview">\psi_1</span><script type="math/tex">\psi_1</script></span> defines the angle of the upper
+curvature control arm, and <span><span class="MathJax_Preview">\psi_2</span><script type="math/tex">\psi_2</script></span> defines the angle of the lower curvature control arm. See also
+<code><a title="pyairpar.core.base_airfoil_params.BaseAirfoilParams" href="base_airfoil_params.html#pyairpar.core.base_airfoil_params.BaseAirfoilParams">BaseAirfoilParams</a></code> for more details on the definitions of the attribute
+parameters input to this function.</p>
+<h3 id="returns">Returns:</h3>
+<p>The generated curvature control point <span><span class="MathJax_Preview">x</span><script type="math/tex">x</script></span> - <span><span class="MathJax_Preview">y</span><script type="math/tex">y</script></span> locations as <code>np.ndarray</code>s of <code>shape=2</code>.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">def set_curvature_le(self):
-    if self.R_le.value == np.inf:
+    r&#34;&#34;&#34;
+    ### Description:
+
+    See the description of `pyairpar.core.airfoil.Airfoil.set_curvature()`. This is just a special case of that
+    function tailored for the leading edge of the airfoil. Here, \(\psi_1\) defines the angle of the upper
+    curvature control arm, and \(\psi_2\) defines the angle of the lower curvature control arm. See also
+    `pyairpar.core.base_airfoil_params.BaseAirfoilParams` for more details on the definitions of the attribute
+    parameters input to this function.
+
+    ### Returns:
+
+    The generated curvature control point \(x\) - \(y\) locations as `np.ndarray`s of `shape=2`.
+    &#34;&#34;&#34;
+    if self.R_le.value == np.inf or self.R_le.value == -np.inf:
         g2_minus_point = self.g1_minus_points[&#39;le&#39;]
         g2_plus_point = self.g1_plus_points[&#39;le&#39;]
     else:
@@ -1961,28 +2972,104 @@ control point branch into the set of control points.
 <span>def <span class="ident">set_slope</span></span>(<span>self, anchor_point: <a title="pyairpar.core.anchor_point.AnchorPoint" href="anchor_point.html#pyairpar.core.anchor_point.AnchorPoint">AnchorPoint</a>)</span>
 </code></dt>
 <dd>
-<div class="desc"></div>
+<div class="desc"><h3 id="description">Description:</h3>
+<p>This is the function which enforces <span><span class="MathJax_Preview">G^1</span><script type="math/tex">G^1</script></span> continuity for all <code><a title="pyairpar.core.anchor_point.AnchorPoint" href="anchor_point.html#pyairpar.core.anchor_point.AnchorPoint">AnchorPoint</a></code>s
+which are added. To keep the length ratios and angles defined in a "nice" way, the neighboring control points
+to the anchor point are defined as follows: For anchor points on the upper surface (where <span><span class="MathJax_Preview">(x_0,
+y_0)</span><script type="math/tex">(x_0,
+y_0)</script></span> precedes the leading edge point):</p>
+<p><span><span class="MathJax_Preview">\begin{align*}
+\begin{bmatrix} x_{-1} \\ y_{-1} \end{bmatrix} &amp;= \begin{bmatrix} x_0 \\ y_0 \end{bmatrix} +
+(1-r)L \begin{bmatrix} \cos{\phi} \\ \sin{\phi} \end{bmatrix} \\
+\begin{bmatrix} x_{+1} \\ y_{+1} \end{bmatrix} &amp;= \begin{bmatrix} x_0 \\ y_0 \end{bmatrix} -
+rL \begin{bmatrix} \cos{\phi} \\ \sin{\phi} \end{bmatrix}
+\end{align*}</span><script type="math/tex; mode=display">\begin{align*}
+\begin{bmatrix} x_{-1} \\ y_{-1} \end{bmatrix} &= \begin{bmatrix} x_0 \\ y_0 \end{bmatrix} +
+(1-r)L \begin{bmatrix} \cos{\phi} \\ \sin{\phi} \end{bmatrix} \\
+\begin{bmatrix} x_{+1} \\ y_{+1} \end{bmatrix} &= \begin{bmatrix} x_0 \\ y_0 \end{bmatrix} -
+rL \begin{bmatrix} \cos{\phi} \\ \sin{\phi} \end{bmatrix}
+\end{align*}</script></span></p>
+<p>For anchor points on the lower surface (where <span><span class="MathJax_Preview">(x_0,y_0)</span><script type="math/tex">(x_0,y_0)</script></span> occurs further down the Bézier curve path than
+the leading edge point):</p>
+<p><span><span class="MathJax_Preview">\begin{align*}
+\begin{bmatrix} x_{-1} \\ y_{-1} \end{bmatrix} &amp;= \begin{bmatrix} x_0 \\ y_0 \end{bmatrix} -
+rL \begin{bmatrix} \cos{(-\phi)} \\ \sin{(-\phi)} \end{bmatrix} \\
+\begin{bmatrix} x_{+1} \\ y_{+1} \end{bmatrix} &amp;= \begin{bmatrix} x_0 \\ y_0 \end{bmatrix} +
+(1-r)L \begin{bmatrix} \cos{(-\phi)} \\ \sin{(-\phi)} \end{bmatrix}
+\end{align*}</span><script type="math/tex; mode=display">\begin{align*}
+\begin{bmatrix} x_{-1} \\ y_{-1} \end{bmatrix} &= \begin{bmatrix} x_0 \\ y_0 \end{bmatrix} -
+rL \begin{bmatrix} \cos{(-\phi)} \\ \sin{(-\phi)} \end{bmatrix} \\
+\begin{bmatrix} x_{+1} \\ y_{+1} \end{bmatrix} &= \begin{bmatrix} x_0 \\ y_0 \end{bmatrix} +
+(1-r)L \begin{bmatrix} \cos{(-\phi)} \\ \sin{(-\phi)} \end{bmatrix}
+\end{align*}</script></span></p>
+<p>Here, <span><span class="MathJax_Preview">(x_{-1},y_{-1})</span><script type="math/tex">(x_{-1},y_{-1})</script></span> represents the coordinates of the "minus" point (the control point before the
+leading edge point), and <span><span class="MathJax_Preview">(x_{+1},y_{+1})</span><script type="math/tex">(x_{+1},y_{+1})</script></span> represents the coordinates of the "plus" point (the control
+point after the leading edge point). The coordinates of the anchor point itself are <span><span class="MathJax_Preview">(x_0,y_0)</span><script type="math/tex">(x_0,y_0)</script></span>. With
+these definitions, a ratio <span><span class="MathJax_Preview">r&gt;0.5</span><script type="math/tex">r>0.5</script></span> biases the neighboring control points toward the leading edge, and
+a ratio <span><span class="MathJax_Preview">r&lt;0.5</span><script type="math/tex">r<0.5</script></span> biases the neighboring control points toward the leading edge. A positive value of <span><span class="MathJax_Preview">\phi</span><script type="math/tex">\phi</script></span>
+angles the neighboring control points toward the trailing edge, and a negative value of <span><span class="MathJax_Preview">\phi</span><script type="math/tex">\phi</script></span> angles the
+neighboring control points toward the trailing edge. See the diagram for
+<code><a title="pyairpar.core.anchor_point.AnchorPoint" href="anchor_point.html#pyairpar.core.anchor_point.AnchorPoint">AnchorPoint</a></code> for a visual description of these definitions.</p>
+<h3 id="returns">Returns:</h3>
+<p>The generated neighboring control point <span><span class="MathJax_Preview">x</span><script type="math/tex">x</script></span> - <span><span class="MathJax_Preview">y</span><script type="math/tex">y</script></span> locations as <code>np.ndarray</code>s of <code>shape=2</code>.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">def set_slope(self, anchor_point: AnchorPoint):
+    r&#34;&#34;&#34;
+    ### Description:
+
+    This is the function which enforces \(G^1\) continuity for all `pyairpar.core.anchor_point.AnchorPoint`s
+    which are added. To keep the length ratios and angles defined in a &#34;nice&#34; way, the neighboring control points
+    to the anchor point are defined as follows: For anchor points on the upper surface (where \((x_0,
+    y_0)\) precedes the leading edge point):
+
+    $$\begin{align*}
+    \begin{bmatrix} x_{-1} \\ y_{-1} \end{bmatrix} &amp;= \begin{bmatrix} x_0 \\ y_0 \end{bmatrix} +
+    (1-r)L \begin{bmatrix} \cos{\phi} \\ \sin{\phi} \end{bmatrix} \\
+    \begin{bmatrix} x_{+1} \\ y_{+1} \end{bmatrix} &amp;= \begin{bmatrix} x_0 \\ y_0 \end{bmatrix} -
+    rL \begin{bmatrix} \cos{\phi} \\ \sin{\phi} \end{bmatrix}
+    \end{align*}$$
+
+    For anchor points on the lower surface (where \((x_0,y_0)\) occurs further down the Bézier curve path than
+    the leading edge point):
+
+    $$\begin{align*}
+    \begin{bmatrix} x_{-1} \\ y_{-1} \end{bmatrix} &amp;= \begin{bmatrix} x_0 \\ y_0 \end{bmatrix} -
+    rL \begin{bmatrix} \cos{(-\phi)} \\ \sin{(-\phi)} \end{bmatrix} \\
+    \begin{bmatrix} x_{+1} \\ y_{+1} \end{bmatrix} &amp;= \begin{bmatrix} x_0 \\ y_0 \end{bmatrix} +
+    (1-r)L \begin{bmatrix} \cos{(-\phi)} \\ \sin{(-\phi)} \end{bmatrix}
+    \end{align*}$$
+
+    Here, \((x_{-1},y_{-1})\) represents the coordinates of the &#34;minus&#34; point (the control point before the
+    leading edge point), and \((x_{+1},y_{+1})\) represents the coordinates of the &#34;plus&#34; point (the control
+    point after the leading edge point). The coordinates of the anchor point itself are \((x_0,y_0)\). With
+    these definitions, a ratio \(r&gt;0.5\) biases the neighboring control points toward the leading edge, and
+    a ratio \(r&lt;0.5\) biases the neighboring control points toward the leading edge. A positive value of \(\phi\)
+    angles the neighboring control points toward the trailing edge, and a negative value of \(\phi\) angles the
+    neighboring control points toward the trailing edge. See the diagram for
+    `pyairpar.core.anchor_point.AnchorPoint` for a visual description of these definitions.
+
+    ### Returns:
+
+    The generated neighboring control point \(x\) - \(y\) locations as `np.ndarray`s of `shape=2`.
+    &#34;&#34;&#34;
     r = anchor_point.r.value
     L = anchor_point.L.value
+    phi = anchor_point.phi.value
 
     if self.anchor_point_order.index(anchor_point.name) &lt; self.anchor_point_order.index(&#39;le&#39;):
-        phi = anchor_point.phi.value
         self.g1_minus_points[anchor_point.name] = \
             self.anchor_points[anchor_point.name] + (1 - r) * L * np.array([np.cos(phi), np.sin(phi)])
         self.g1_plus_points[anchor_point.name] = \
             self.anchor_points[anchor_point.name] - r * L * np.array([np.cos(phi), np.sin(phi)])
     else:
-        phi = -anchor_point.phi.value
         self.g1_minus_points[anchor_point.name] = \
-            self.anchor_points[anchor_point.name] - r * L * np.array([np.cos(phi), np.sin(phi)])
+            self.anchor_points[anchor_point.name] - r * L * np.array([np.cos(-phi), np.sin(-phi)])
         self.g1_plus_points[anchor_point.name] = \
-            self.anchor_points[anchor_point.name] + (1 - r) * L * np.array([np.cos(phi), np.sin(phi)])
-    return self.g1_minus_points, self.g1_plus_points</code></pre>
+            self.anchor_points[anchor_point.name] + (1 - r) * L * np.array([np.cos(-phi), np.sin(-phi)])
+    return self.g1_minus_points[anchor_point.name], self.g1_plus_points[anchor_point.name]</code></pre>
 </details>
 </dd>
 <dt id="pyairpar.core.airfoil.Airfoil.translate"><code class="name flex">
@@ -2028,12 +3115,28 @@ control point branch into the set of control points.
 <span>def <span class="ident">update</span></span>(<span>self)</span>
 </code></dt>
 <dd>
-<div class="desc"></div>
+<div class="desc"><h3 id="description">Description:</h3>
+<p>The <code>update</code> function adds first all of the anchor points in the <code>anchor_point_tuple</code> and then all of the free
+points in the <code>free_point_tuple</code>. The parameter information is extracted. The control points are ordered
+based on the <code>anchor_point_order</code>, <code>name</code> attributes, and <code>previous_anchor_point</code> attributes. The
+<code>anchor_point_array</code> is updated based on the anchor points added. Rotation to the specified angle of attack
+and translation by the specified <span><span class="MathJax_Preview">\Delta x</span><script type="math/tex">\Delta x</script></span>, <span><span class="MathJax_Preview">\Delta y</span><script type="math/tex">\Delta y</script></span> are applied, in that order. Finally, the Bézier
+curves are generated through the control points and the airfoil coordinates produced.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">def update(self):
+    r&#34;&#34;&#34;
+    ### Description:
+
+    The `update` function adds first all of the anchor points in the `anchor_point_tuple` and then all of the free
+    points in the `free_point_tuple`. The parameter information is extracted. The control points are ordered
+    based on the `anchor_point_order`, `name` attributes, and `previous_anchor_point` attributes. The
+    `anchor_point_array` is updated based on the anchor points added. Rotation to the specified angle of attack
+    and translation by the specified \(\Delta x\), \(\Delta y\) are applied, in that order. Finally, the Bézier
+    curves are generated through the control points and the airfoil coordinates produced.
+    &#34;&#34;&#34;
     self.add_anchor_points()
     self.add_free_points()
     self.extract_parameters()
@@ -2049,12 +3152,22 @@ control point branch into the set of control points.
 <span>def <span class="ident">update_anchor_point_array</span></span>(<span>self)</span>
 </code></dt>
 <dd>
-<div class="desc"></div>
+<div class="desc"><h3 id="description">Description:</h3>
+<p>This function updates the <code>anchor_point_array</code> attribute of <code><a title="pyairpar.core.airfoil.Airfoil" href="#pyairpar.core.airfoil.Airfoil">Airfoil</a></code>, which is a
+<code>np.ndarray</code> of <code>shape=(N, 2)</code>, where <code>N</code> is the number of anchor points in the airfoil, and the columns
+represent the <span><span class="MathJax_Preview">x</span><script type="math/tex">x</script></span> and <span><span class="MathJax_Preview">y</span><script type="math/tex">y</script></span> coordinates.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">def update_anchor_point_array(self):
+    r&#34;&#34;&#34;
+    ### Description:
+
+    This function updates the `anchor_point_array` attribute of `pyairpar.core.airfoil.Airfoil`, which is a
+    `np.ndarray` of `shape=(N, 2)`, where `N` is the number of anchor points in the airfoil, and the columns
+    represent the \(x\) and \(y\) coordinates.
+    &#34;&#34;&#34;
     for key in self.anchor_point_order:
         xy = self.anchor_points[key]
         if key == &#39;te_1&#39;:

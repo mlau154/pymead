@@ -48,13 +48,16 @@ smoothness and in particular for computational fluid dynamics (CFD) packages whe
 value at a point can cause undesired flow properties or even unconverged results.</p>
 <h2 id="applications">Applications</h2>
 <p>It is the hope of the author that <code><a title="pyairpar" href="#pyairpar">pyairpar</a></code> is sufficiently flexible to be used for airfoil applications of
-varying complexities, from simple single-airfoil design to high-fidelity, multi-element airfoil shape optimization.
+varying complexities, from simple, single-airfoil design to high-fidelity, multi-element airfoil shape optimization.
 Other common multi-element airfoil systems, such as the high-lift configuration on an aircraft, are also target
 applications for this software package.</p>
 <p>One utility provided in this software package which may be useful in the start-up phase of airfoil design is
 <code><a title="pyairpar.utils.airfoil_matching.match_airfoil" href="utils/airfoil_matching.html#pyairpar.utils.airfoil_matching.match_airfoil">match_airfoil()</a></code>. This modules allows the matching of a particular parametrization
 to any public airfoil geometry on <a href="http://airfoiltools.com/">airfoiltools.com</a> using the gradient-based "SLSQP"
 optimizer.</p>
+<h2 id="acknowledgments">Acknowledgments</h2>
+<p>This work was supported by NASA under award number 80NSSC19M0125 as part of the Center for High-Efficiency Electrical
+Technologies for Aircraft (CHEETA).</p>
 <h2 id="contact-information">Contact Information</h2>
 <p><strong>Author</strong>: Matthew G Lauer</p>
 <p><strong>Email</strong>: mlauer2015@gmail.com</p>
@@ -94,7 +97,7 @@ value at a point can cause undesired flow properties or even unconverged results
 ## Applications
 
 It is the hope of the author that `pyairpar` is sufficiently flexible to be used for airfoil applications of
-varying complexities, from simple single-airfoil design to high-fidelity, multi-element airfoil shape optimization.
+varying complexities, from simple, single-airfoil design to high-fidelity, multi-element airfoil shape optimization.
 Other common multi-element airfoil systems, such as the high-lift configuration on an aircraft, are also target
 applications for this software package.
 
@@ -102,6 +105,11 @@ One utility provided in this software package which may be useful in the start-u
 `pyairpar.utils.airfoil_matching.match_airfoil()`. This modules allows the matching of a particular parametrization
 to any public airfoil geometry on [airfoiltools.com](http://airfoiltools.com/) using the gradient-based &#34;SLSQP&#34;
 optimizer.
+
+## Acknowledgments
+
+This work was supported by NASA under award number 80NSSC19M0125 as part of the Center for High-Efficiency Electrical
+Technologies for Aircraft (CHEETA).
 
 ## Contact Information
 
@@ -117,23 +125,20 @@ optimizer.
 <dl>
 <dt><code class="name"><a title="pyairpar.core" href="core/index.html">pyairpar.core</a></code></dt>
 <dd>
-<div class="desc"></div>
+<div class="desc"><p><code><a title="pyairpar.core" href="core/index.html">pyairpar.core</a></code> contains the main modules that run <code><a title="pyairpar" href="#pyairpar">pyairpar</a></code>.</p></div>
 </dd>
 <dt><code class="name"><a title="pyairpar.examples" href="examples/index.html">pyairpar.examples</a></code></dt>
 <dd>
-<div class="desc"></div>
-</dd>
-<dt><code class="name"><a title="pyairpar.experimental" href="experimental/index.html">pyairpar.experimental</a></code></dt>
-<dd>
-<div class="desc"></div>
+<div class="desc"><p>Contains example implementations of <code><a title="pyairpar.core.airfoil.Airfoil" href="core/airfoil.html#pyairpar.core.airfoil.Airfoil">Airfoil</a></code> (<code><a title="pyairpar.examples.simple_airfoil" href="examples/simple_airfoil.html">pyairpar.examples.simple_airfoil</a></code>,
+<code><a title="pyairpar.examples.complex_airfoil" href="examples/complex_airfoil.html">pyairpar.examples.complex_airfoil</a></code>, …</p></div>
 </dd>
 <dt><code class="name"><a title="pyairpar.symmetric" href="symmetric/index.html">pyairpar.symmetric</a></code></dt>
 <dd>
-<div class="desc"></div>
+<div class="desc"><p>Symmetric implementations of <code><a title="pyairpar.core.airfoil.Airfoil" href="core/airfoil.html#pyairpar.core.airfoil.Airfoil">Airfoil</a></code> and <code><a title="pyairpar.core.base_airfoil_params.BaseAirfoilParams" href="core/base_airfoil_params.html#pyairpar.core.base_airfoil_params.BaseAirfoilParams">BaseAirfoilParams</a></code></p></div>
 </dd>
 <dt><code class="name"><a title="pyairpar.utils" href="utils/index.html">pyairpar.utils</a></code></dt>
 <dd>
-<div class="desc"></div>
+<div class="desc"><p>Helper functions for <code><a title="pyairpar" href="#pyairpar">pyairpar</a></code></p></div>
 </dd>
 </dl>
 </section>
@@ -151,6 +156,7 @@ optimizer.
 <li><a href="#welcome">Welcome</a></li>
 <li><a href="#motivation">Motivation</a></li>
 <li><a href="#applications">Applications</a></li>
+<li><a href="#acknowledgments">Acknowledgments</a></li>
 <li><a href="#contact-information">Contact Information</a></li>
 </ul>
 </div>
@@ -159,7 +165,6 @@ optimizer.
 <ul>
 <li><code><a title="pyairpar.core" href="core/index.html">pyairpar.core</a></code></li>
 <li><code><a title="pyairpar.examples" href="examples/index.html">pyairpar.examples</a></code></li>
-<li><code><a title="pyairpar.experimental" href="experimental/index.html">pyairpar.experimental</a></code></li>
 <li><code><a title="pyairpar.symmetric" href="symmetric/index.html">pyairpar.symmetric</a></code></li>
 <li><code><a title="pyairpar.utils" href="utils/index.html">pyairpar.utils</a></code></li>
 </ul>

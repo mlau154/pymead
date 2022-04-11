@@ -8,7 +8,6 @@ from matplotlib.axes import Axes
 from matplotlib.figure import Figure
 import matplotlib.pyplot as plt
 import typing
-import itertools
 from shapely.geometry import Polygon, LineString
 
 
@@ -50,7 +49,6 @@ class Airfoil:
 
         self.nt = number_coordinates
         self.params = []
-        self.bounds = []
         self.base_airfoil_params = base_airfoil_params
         self.override_parameters = override_parameters
 
@@ -306,22 +304,22 @@ class Airfoil:
             \begin{cases}
                 \begin{bmatrix} x_{-1} + \frac{c_1}{c_2[c_3(\tan{(\theta_1)} + y_0 - y_{-1})]}
                                 \\ \tan{(\theta_1)} (x_{-2} - x_{-1}) + y_{-1} \end{bmatrix}
-                                ,& \theta_1 \neq 90^{\circ} \wedge R \in (-\infty,0) \cup (0, \infty) \\
-                \begin{bmatrix} x_{-1} \\ y_{-1} + \frac{c_1}{c_2 c_3}  \end{bmatrix},& \theta_1 = 90^{\circ} \wedge
+                                ,& \mod{\left(\theta_1, \frac{\pi}{2}\right) \neq 0} \wedge R \in (-\infty,0) \cup (0, \infty) \\
+                \begin{bmatrix} x_{-1} \\ y_{-1} + \frac{c_1}{c_2 c_3}  \end{bmatrix},& \mod{\left(\theta_1, \frac{\pi}{2}\right) = 0} \wedge
                                                                                                     R \in (-\infty,0)
                                                                                                     \cup (0,\infty) \\
-                \begin{bmatrix} x_{-1} \\ y_{-1} \end{bmatrix},& \theta_1 \in (0^{\circ},180^{\circ}) \wedge R =
+                \begin{bmatrix} x_{-1} \\ y_{-1} \end{bmatrix},& \theta_1 \in \mathbb{R} \wedge R =
                                                                                                             \pm \infty
             \end{cases} \\
             \begin{bmatrix} x_{+2} \\ y_{+2} \end{bmatrix} &=
             \begin{cases}
                 \begin{bmatrix} x_{+1} + \frac{c_4}{c_5[c_6(\tan{(\theta_2)} + y_{+1} - y_0)]}
                                 \\ \tan{(\theta_2)} (x_{+2} - x_{+1}) + y_{+1} \end{bmatrix}
-                                ,& \theta_2 \neq 90^{\circ} \wedge R \in (-\infty,0) \cup (0, \infty) \\
-                \begin{bmatrix} x_{+1} \\ y_{+1} + \frac{c_4}{c_5 c_6}  \end{bmatrix},& \theta_2 = 90^{\circ} \wedge
+                                ,& \mod{\left(\theta_2, \frac{\pi}{2}\right) \neq 0} \wedge R \in (-\infty,0) \cup (0, \infty) \\
+                \begin{bmatrix} x_{+1} \\ y_{+1} + \frac{c_4}{c_5 c_6}  \end{bmatrix},& \mod{\left(\theta_1, \frac{\pi}{2}\right) = 0} \wedge
                                                                                                     R \in (-\infty,0)
                                                                                                     \cup (0,\infty) \\
-                \begin{bmatrix} x_{+1} \\ y_{+1} \end{bmatrix},& \theta_2 \in (0^{\circ},180^{\circ}) \wedge R =
+                \begin{bmatrix} x_{+1} \\ y_{+1} \end{bmatrix},& \theta_2 \in \mathbb{R} \wedge R =
                                                                                                             \pm \infty
             \end{cases}
         \end{align*}
@@ -400,7 +398,7 @@ class Airfoil:
             c1 = - 1 / R * ((x0 - x_m1) ** 2 + (y0 - y_m1) ** 2) ** (3 / 2)
             c2 = 1 - 1 / n1
             c3 = x_m1 - x0
-            if theta1 != np.deg2rad(90.0):
+            if theta1 % (np.pi / 2) != 0:
                 g2_minus_point[0] = x_m1 + c1 / c2 / (c3 * np.tan(theta1) + y0 - y_m1)
                 g2_minus_point[1] = np.tan(theta1) * (g2_minus_point[0] - x_m1) + y_m1
             else:
@@ -412,7 +410,7 @@ class Airfoil:
             c4 = - 1 / R * ((x_p1 - x0) ** 2 + (y_p1 - y0) ** 2) ** (3 / 2)
             c5 = 1 - 1 / n2
             c6 = x0 - x_p1
-            if theta2 != np.deg2rad(90.0):
+            if theta2 % (np.pi / 2) != 0:
                 g2_plus_point[0] = x_p1 + c4 / c5 / (c6 * np.tan(theta2) + y_p1 - y0)
                 g2_plus_point[1] = np.tan(theta2) * (g2_plus_point[0] - x_p1) + y_p1
             else:
@@ -433,26 +431,17 @@ class Airfoil:
         `active=True` and `linked=False` as a `list` of parameter values.
         """
 
-        self.params = [var.value for var in vars(self.base_airfoil_params).values()
-                       if isinstance(var, Param) and var.active and not var.linked]
-
-        self.bounds = [[var.bounds[0], var.bounds[1]] for var in vars(self.base_airfoil_params).values()
+        self.params = [var for var in vars(self.base_airfoil_params).values()
                        if isinstance(var, Param) and var.active and not var.linked]
 
         for anchor_point in self.anchor_point_tuple:
 
-            self.params.extend([var.value for var in vars(anchor_point).values()
-                                if isinstance(var, Param) and var.active and not var.linked])
-
-            self.bounds.extend([[var.bounds[0], var.bounds[1]] for var in vars(anchor_point).values()
+            self.params.extend([var for var in vars(anchor_point).values()
                                 if isinstance(var, Param) and var.active and not var.linked])
 
         for free_point in self.free_point_tuple:
 
-            self.params.extend([var.value for var in vars(free_point).values()
-                                if isinstance(var, Param) and var.active and not var.linked])
-
-            self.bounds.extend([[var.bounds[0], var.bounds[1]] for var in vars(free_point).values()
+            self.params.extend([var for var in vars(free_point).values()
                                 if isinstance(var, Param) and var.active and not var.linked])
 
     def order_control_points(self):
@@ -536,33 +525,23 @@ class Airfoil:
         """
         ### Description:
 
-        This function executes `pyairpar.core.airfoil.Airfoil.add_anchor_point` for all the anchor points in the
-        `anchor_point_tuple`. `needs_update` is set to `True`.
+        This function executes `pyairpar.core.airfoil.Airfoil.add_anchor_point()` for all the anchor points in the
+        `anchor_point_tuple`. Enforces leading edge and trailing edge Bézier curve orders.
+        `needs_update` is set to `True`.
         """
-        inf_iterator = itertools.cycle(self.anchor_point_tuple)  # Cycling object (infinite iterator)
-        stop = len(self.anchor_point_tuple)  # Stop once we have gone added every anchor point to the anchor_point_order
-        successes = 0
-        while successes < stop:
-            anchor_point = next(inf_iterator)
+        for anchor_point in self.anchor_point_tuple:
             if anchor_point.name not in self.anchor_point_order:
-                if anchor_point.previous_anchor_point in self.anchor_point_order:
-                    self.add_anchor_point(anchor_point)
-                    successes += 1
-            if successes > 1000:
-                break
+                self.add_anchor_point(anchor_point)
         if self.anchor_point_order.index('te_2') - self.anchor_point_order.index('le') != 1:
             self.N['le'] = 5  # Set the order of the Bezier curve after the leading edge to 5
             self.N[self.anchor_point_order[-2]] = 4  # Set the order of the last Bezier curve to 4
-        # for anchor_point in self.anchor_point_tuple:
-        #     if anchor_point.name not in self.anchor_point_order:
-        #         self.add_anchor_point(anchor_point)
         self.needs_update = True
 
     def add_free_points(self):
         """
         ### Description:
 
-        This function executes `pyairpar.core.free_point.FreePoint.add_free_point` for all the anchor points in the
+        This function executes `pyairpar.core.airfoil.Airfoil.add_free_point()` for all the anchor points in the
         `free_point_tuple`. `needs_update` is set to `True`.
         """
         for free_point in self.free_point_tuple:
@@ -570,6 +549,13 @@ class Airfoil:
         self.needs_update = True
 
     def update_anchor_point_array(self):
+        r"""
+        ### Description:
+
+        This function updates the `anchor_point_array` attribute of `pyairpar.core.airfoil.Airfoil`, which is a
+        `np.ndarray` of `shape=(N, 2)`, where `N` is the number of anchor points in the airfoil, and the columns
+        represent the \(x\) and \(y\) coordinates.
+        """
         for key in self.anchor_point_order:
             xy = self.anchor_points[key]
             if key == 'te_1':
@@ -578,6 +564,16 @@ class Airfoil:
                 self.anchor_point_array = np.row_stack((self.anchor_point_array, xy))
 
     def update(self):
+        r"""
+        ### Description:
+
+        The `update` function adds first all of the anchor points in the `anchor_point_tuple` and then all of the free
+        points in the `free_point_tuple`. The parameter information is extracted. The control points are ordered
+        based on the `anchor_point_order`, `name` attributes, and `previous_anchor_point` attributes. The
+        `anchor_point_array` is updated based on the anchor points added. Rotation to the specified angle of attack
+        and translation by the specified \(\Delta x\), \(\Delta y\) are applied, in that order. Finally, the Bézier
+        curves are generated through the control points and the airfoil coordinates produced.
+        """
         self.add_anchor_points()
         self.add_free_points()
         self.extract_parameters()
@@ -646,6 +642,17 @@ class Airfoil:
         return self.control_points, self.anchor_point_array
 
     def generate_airfoil_coordinates(self):
+        """
+        ### Description:
+
+        Generates the Bézier curves through the control points. Also re-casts the Bézier curve points in terms of
+        airfoil coordinates by removing the points shared by joined Bézier curves. Curvature information is extracted
+        from the `C` dictionary.
+
+        ### Returns:
+
+        The airfoil coordinates, the `C` dictionary of Bézier curve information, and the curvature.
+        """
         if self.C:
             self.C = []
         P_start_idx = 0
@@ -667,9 +674,18 @@ class Airfoil:
                 curvature = np.row_stack((curvature, np.column_stack((self.C[idx]['x'][1:], self.C[idx]['k'][1:]))))
         self.coords = coords
         self.curvature = curvature
-        return self.coords, self.C
+        return self.coords, self.C, self.curvature
 
     def compute_area(self):
+        """
+        ### Description:
+
+        Computes the area of the airfoil as the area of a many-sided polygon enclosed by the airfoil coordinates using
+        the [shapely](https://shapely.readthedocs.io/en/stable/manual.html) library.
+
+        ### Returns:
+        The area of the airfoil
+        """
         if self.needs_update:
             self.update()
         points_shapely = list(map(tuple, self.coords))
@@ -679,6 +695,16 @@ class Airfoil:
         return area
 
     def check_self_intersection(self):
+        """
+        ### Description:
+
+        Determines whether the airfoil intersects itself using the `is_simple()` function of the
+        [`shapely`](https://shapely.readthedocs.io/en/stable/manual.html) library.
+
+        ### Returns:
+
+        A `bool` value describing whether the airfoil intersects itself
+        """
         if self.needs_update:
             self.update()
         points_shapely = list(map(tuple, self.coords))
@@ -690,6 +716,57 @@ class Airfoil:
              save_plot: bool = False, save_path: str = None, plot_kwargs: typing.List[dict] = None,
              show_title: bool = True, show_legend: bool = True, figwidth: float = 10.0, figheight: float = 2.5,
              tight_layout: bool = True, axis_equal: bool = True):
+        r"""
+        ### Description:
+
+        A variety of airfoil plotting options using [`matplotlib`](https://matplotlib.org/). Many wrapper options
+        are available here, but custom plots can also be created directly from the `coords`, `curvature`, `C`,
+        `control_points`, and `anchor_point_array` attributes of the `Airfoil` class.
+
+        ### Args:
+
+        `plot_what`: One or more of `"airfoil"`, `"anchor-point-skeleton"`, `"control-point-skeleton"`,
+        `"chordline"`, `"R-circles"`, or `"curvature"`.
+
+        `fig`: The
+        [`matplotlib.figure.Figure`](https://matplotlib.org/stable/api/figure_api.html?highlight=figure%20figure#matplotlib.figure.Figure)
+        object as a canvas input. New `Figure` is created if `None`. Default: `None`.
+
+        `axs`: The
+        [`matplotlib.axes.Axes`](https://matplotlib.org/stable/api/axes_api.html?highlight=axes%20axes#the-axes-class)
+        object as a axes input. New `Axes` is created if `None`. Default: `None`.
+
+        `show_plot`: Whether to show the plot (`bool`). Default: `True`.
+
+        `save_plot`: Whether to save the plot (`bool`). Default: `False`.
+
+        `save_path`: A `str` describing the root directory, filename, and image extension of the path to save. Only
+        used if `save_plot` is `True`. Default: `None`.
+
+        `plot_kwargs`: A list of dictionaries with [`matplotlib`](https://matplotlib.org/) keyword arguments to be
+        unpacked and applied to each Bézier curve element-by-element. Default: `None`.
+
+        `show_title`: Whether to show a title describing the airfoil chord length, angle of attack, and area (`bool`).
+        Default: `True`.
+
+        `show_legend`: Whether to show the legend (`bool`). Default: `True`.
+
+        `figwidth`: The width of the figure, in inches (`float`). Default: `10.0`.
+
+        `figheight`: The height of the figure, in inches (`float`). Default: `2.5`.
+
+        `tight_layout`: Whether to tighten the margins around the plot (`bool`). Default: `True`.
+
+        `axis_equal`: Whether to set the aspect ratio of the plot to equal \(x\) and \(y\) (`bool`). Default: `True`.
+
+        ### Returns:
+
+        A tuple of the
+        [`matplotlib.figure.Figure`](https://matplotlib.org/stable/api/figure_api.html?highlight=figure%20figure#matplotlib.figure.Figure)
+        object and the
+        [`matplotlib.axes.Axes`](https://matplotlib.org/stable/api/axes_api.html?highlight=axes%20axes#the-axes-class)
+        object used for plotting
+        """
         if self.needs_update:
             self.update()
         if fig is None and axs is None:

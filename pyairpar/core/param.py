@@ -5,7 +5,7 @@ class Param:
 
     def __init__(self, value: float, units: str or None = None,
                  bounds: list or np.ndarray = np.array([-np.inf, np.inf]), scale_value: float or None = None,
-                 active: bool = True, linked: bool = False):
+                 active: bool = True, linked: bool = False, name: str = None):
         """
         ### Description:
 
@@ -32,21 +32,25 @@ class Param:
         `linked`: a `bool` stating whether the parameter is linked to/set by another parameter. If `True`, the
         parameter will not be extracted). Default: `False`.
 
+        `name`: an optional `str` that gives the name of the parameter. Can be useful in identifying extracted
+        parameters.
+
         ### Returns:
 
         An instance of the `pyairpar.core.param.Param` class.
         """
 
         self.units = units
-        self.length_scale_dimension = scale_value
+        self.scale_value = scale_value
 
-        if self.units == 'length' and self.length_scale_dimension is not None:
-            self.value = value * self.length_scale_dimension
-        elif self.units == 'inverse-length' and self.length_scale_dimension is not None:
-            self.value = value / self.length_scale_dimension
+        if self.units == 'length' and self.scale_value is not None:
+            self.value = value * self.scale_value
+        elif self.units == 'inverse-length' and self.scale_value is not None:
+            self.value = value / self.scale_value
         else:
             self.value = value
 
         self.bounds = bounds
         self.active = active
         self.linked = linked
+        self.name = name

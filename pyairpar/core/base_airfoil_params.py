@@ -28,7 +28,7 @@ class BaseAirfoilParams:
         ### Description:
 
         The most fundamental parameters required for the generation of any `pyairpar.core.airfoil.Airfoil`.
-        A geometric description of an example airfoil generated (from `pyairpar.examples.simple_airfoil.main`) is
+        A geometric description of an example airfoil generated (from `pyairpar.examples.simple_airfoil.run()`) is
         shown below (it may be helpful to open the image in a new tab to adequately view the details):
 
         .. image:: simple_airfoil_annotated.png
@@ -120,7 +120,7 @@ class BaseAirfoilParams:
         if self.non_dim_by_chord:  # only scale if the anchor point has a length scale dimension
             for param in [var for var in vars(self).values()  # For each parameter in the anchor point,
                           if isinstance(var, Param) and var.units == 'length']:
-                if param.length_scale_dimension is None:  # only scale if the parameter has not yet been scaled
+                if param.scale_value is None:  # only scale if the parameter has not yet been scaled
                     param.value = param.value * self.c.value
 
     def count_overrideable_variables(self):

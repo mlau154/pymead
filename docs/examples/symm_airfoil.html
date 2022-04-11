@@ -35,37 +35,40 @@ from pyairpar.symmetric.symmetric_airfoil import SymmetricAirfoil
 from pyairpar.symmetric.symmetric_base_airfoil_params import SymmetricBaseAirfoilParams
 
 
-def main():
+def run():
     c = 10.0
 
     base_airfoil_params = SymmetricBaseAirfoilParams(c=Param(c),
                                                      alf=Param(np.deg2rad(-2.5)),
-                                                     R_le=Param(0.04, &#39;length&#39;, c=c),
-                                                     L_le=Param(0.08, &#39;length&#39;, c=c),
+                                                     R_le=Param(0.04, &#39;length&#39;),
+                                                     L_le=Param(0.08, &#39;length&#39;),
                                                      psi1_le=Param(np.deg2rad(10.0)),
-                                                     L1_te=Param(0.3, &#39;length&#39;, c=c),
+                                                     L1_te=Param(0.3, &#39;length&#39;),
                                                      theta1_te=Param(np.deg2rad(5.0)),
-                                                     t_te=Param(0.0, &#39;length&#39;, c=c),
+                                                     t_te=Param(0.0, &#39;length&#39;),
+                                                     non_dim_by_chord=True
                                                      )
 
-    anchor_point1 = AnchorPoint(x=0.55,
-                                y=0.04,
+    anchor_point1 = AnchorPoint(x=Param(0.55, units=&#39;length&#39;),
+                                y=Param(0.04, units=&#39;length&#39;),
                                 name=&#39;anchor-top&#39;,
                                 previous_anchor_point=&#39;te_1&#39;,
-                                L=Param(0.12, units=&#39;length&#39;, c=c),
-                                R=Param(0.2, units=&#39;length&#39;, c=c),
+                                L=Param(0.12, units=&#39;length&#39;),
+                                R=Param(0.2, units=&#39;length&#39;),
                                 r=Param(0.55),
                                 phi=Param(np.deg2rad(0.0)),
                                 psi1=Param(np.deg2rad(55.0)),
                                 psi2=Param(np.deg2rad(45.0)),
-                                scale_dimension=c
+                                length_scale_dimension=c
                                 )
 
     anchor_point_tuple = (anchor_point1,)
 
-    free_point1 = FreePoint(x=0.3, y=0.07, previous_anchor_point=&#39;anchor-top&#39;, scale_dimension=c)
+    free_point1 = FreePoint(x=Param(0.4, units=&#39;length&#39;), y=Param(0.1, units=&#39;length&#39;),
+                            previous_anchor_point=&#39;anchor-top&#39;, length_scale_dimension=c)
 
-    free_point2 = FreePoint(x=0.2, y=0.062, previous_anchor_point=&#39;anchor-top&#39;, scale_dimension=c)
+    free_point2 = FreePoint(x=Param(0.25, units=&#39;length&#39;), y=Param(0.075, units=&#39;length&#39;),
+                            previous_anchor_point=&#39;anchor-top&#39;, length_scale_dimension=c)
 
     free_point_tuple = (free_point1, free_point2)
 
@@ -74,6 +77,9 @@ def main():
                                anchor_point_tuple=anchor_point_tuple,
                                free_point_tuple=free_point_tuple)
 
+    print(airfoil.L1_te.value)
+    print(airfoil.L2_te.value)
+
     self_intersecting = airfoil.check_self_intersection()
     print(f&#34;Self-intersecting? {self_intersecting}&#34;)
 
@@ -81,7 +87,7 @@ def main():
 
 
 if __name__ == &#39;__main__&#39;:
-    main()</code></pre>
+    run()</code></pre>
 </details>
 </section>
 <section>
@@ -91,8 +97,8 @@ if __name__ == &#39;__main__&#39;:
 <section>
 <h2 class="section-title" id="header-functions">Functions</h2>
 <dl>
-<dt id="pyairpar.examples.symm_airfoil.main"><code class="name flex">
-<span>def <span class="ident">main</span></span>(<span>)</span>
+<dt id="pyairpar.examples.symm_airfoil.run"><code class="name flex">
+<span>def <span class="ident">run</span></span>(<span>)</span>
 </code></dt>
 <dd>
 <div class="desc"></div>
@@ -100,37 +106,40 @@ if __name__ == &#39;__main__&#39;:
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def main():
+<pre><code class="python">def run():
     c = 10.0
 
     base_airfoil_params = SymmetricBaseAirfoilParams(c=Param(c),
                                                      alf=Param(np.deg2rad(-2.5)),
-                                                     R_le=Param(0.04, &#39;length&#39;, c=c),
-                                                     L_le=Param(0.08, &#39;length&#39;, c=c),
+                                                     R_le=Param(0.04, &#39;length&#39;),
+                                                     L_le=Param(0.08, &#39;length&#39;),
                                                      psi1_le=Param(np.deg2rad(10.0)),
-                                                     L1_te=Param(0.3, &#39;length&#39;, c=c),
+                                                     L1_te=Param(0.3, &#39;length&#39;),
                                                      theta1_te=Param(np.deg2rad(5.0)),
-                                                     t_te=Param(0.0, &#39;length&#39;, c=c),
+                                                     t_te=Param(0.0, &#39;length&#39;),
+                                                     non_dim_by_chord=True
                                                      )
 
-    anchor_point1 = AnchorPoint(x=0.55,
-                                y=0.04,
+    anchor_point1 = AnchorPoint(x=Param(0.55, units=&#39;length&#39;),
+                                y=Param(0.04, units=&#39;length&#39;),
                                 name=&#39;anchor-top&#39;,
                                 previous_anchor_point=&#39;te_1&#39;,
-                                L=Param(0.12, units=&#39;length&#39;, c=c),
-                                R=Param(0.2, units=&#39;length&#39;, c=c),
+                                L=Param(0.12, units=&#39;length&#39;),
+                                R=Param(0.2, units=&#39;length&#39;),
                                 r=Param(0.55),
                                 phi=Param(np.deg2rad(0.0)),
                                 psi1=Param(np.deg2rad(55.0)),
                                 psi2=Param(np.deg2rad(45.0)),
-                                scale_dimension=c
+                                length_scale_dimension=c
                                 )
 
     anchor_point_tuple = (anchor_point1,)
 
-    free_point1 = FreePoint(x=0.3, y=0.07, previous_anchor_point=&#39;anchor-top&#39;, scale_dimension=c)
+    free_point1 = FreePoint(x=Param(0.4, units=&#39;length&#39;), y=Param(0.1, units=&#39;length&#39;),
+                            previous_anchor_point=&#39;anchor-top&#39;, length_scale_dimension=c)
 
-    free_point2 = FreePoint(x=0.2, y=0.062, previous_anchor_point=&#39;anchor-top&#39;, scale_dimension=c)
+    free_point2 = FreePoint(x=Param(0.25, units=&#39;length&#39;), y=Param(0.075, units=&#39;length&#39;),
+                            previous_anchor_point=&#39;anchor-top&#39;, length_scale_dimension=c)
 
     free_point_tuple = (free_point1, free_point2)
 
@@ -138,6 +147,9 @@ if __name__ == &#39;__main__&#39;:
                                base_airfoil_params=base_airfoil_params,
                                anchor_point_tuple=anchor_point_tuple,
                                free_point_tuple=free_point_tuple)
+
+    print(airfoil.L1_te.value)
+    print(airfoil.L2_te.value)
 
     self_intersecting = airfoil.check_self_intersection()
     print(f&#34;Self-intersecting? {self_intersecting}&#34;)
@@ -163,7 +175,7 @@ if __name__ == &#39;__main__&#39;:
 </li>
 <li><h3><a href="#header-functions">Functions</a></h3>
 <ul class="">
-<li><code><a title="pyairpar.examples.symm_airfoil.main" href="#pyairpar.examples.symm_airfoil.main">main</a></code></li>
+<li><code><a title="pyairpar.examples.symm_airfoil.run" href="#pyairpar.examples.symm_airfoil.run">run</a></code></li>
 </ul>
 </li>
 </ul>

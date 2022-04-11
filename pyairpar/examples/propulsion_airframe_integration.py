@@ -11,14 +11,15 @@ from pyairpar.core.parametrization import AirfoilParametrization
 from pyairpar.core.parametrization import rotate
 
 
-def run():
+def run(override_parameters: list = None):
     param_dict = {
         # Main chord length:
         'c_main': Param(1.0, active=False),
         # Angles of attack
         'alf_main': Param(np.deg2rad(3.663), bounds=[np.deg2rad(-15), np.deg2rad(15)]),
         'alf_hub': Param(np.deg2rad(2.0), bounds=[np.deg2rad(-15), np.deg2rad(15)]),
-        'alf_nacelle': Param(np.deg2rad(-3.67), bounds=[np.deg2rad(-15), np.deg2rad(15)]),
+        'alf_nacelle_plus_hub': Param(np.deg2rad(-5.67), bounds=[np.deg2rad(-15), np.deg2rad(15)]),
+        # 'alf_nacelle': Param(np.deg2rad(-3.67), bounds=[np.deg2rad(-15), np.deg2rad(15)]),
         # Hub-to-tip ratio of the fan:
         'r_htf': Param(0.47, active=False),
         # Hub-to-nozzle-exit diameter ratio (set by desired fan-face Mach number)
@@ -27,6 +28,8 @@ def run():
         'alpha_r_hne': Param(0.9738, bounds=[0.9, 1.1]),
     }
     param_dict = {**param_dict, **{
+        # Nacelle angle of attack:
+        'alf_nacelle': Param(param_dict['alf_hub'].value + param_dict['alf_nacelle_plus_hub'].value, linked=True),
         # Nacelle chord length:
         'c_nacelle': Param(0.2866, 'length', bounds=[0.25, 0.35], scale_value=param_dict['c_main'].value),
         # Distance from fan center to tip of nose along hub chordline:
@@ -83,8 +86,8 @@ def run():
         'psi2_le_nacelle': Param(np.deg2rad(21.03), bounds=[np.deg2rad(-45), np.deg2rad(45)]),
         # Upper trailing edge length:
         'L1_te_main': Param(0.0519, 'length', bounds=[0.001, 0.5], scale_value=param_dict['c_main'].value),
-        'L1_te_hub': Param(0.104, 'length', scale_value=param_dict['c_main'].value),
-        'L1_te_nacelle': Param(0.138, 'length', scale_value=param_dict['c_main'].value),
+        'L1_te_hub': Param(0.104, 'length', bounds=[0.001, 0.5], scale_value=param_dict['c_main'].value),
+        'L1_te_nacelle': Param(0.138, 'length', bounds=[0.001, 0.5], scale_value=param_dict['c_main'].value),
         # Lower trailing edge length (equal to upper trailing edge length on hub due to symmetry, and nacelle trailing
         # edge length is equal to the main upper trailing edge length due to the axisymmetric condition):
         'L2_te_main': Param(0.0997, 'length', bounds=[0.001, 0.5], scale_value=param_dict['c_main'].value),
@@ -127,36 +130,48 @@ def run():
         'L_ap_mt_main': Param(0.019, 'length', bounds=[0.001, 0.05], scale_value=param_dict['c_main'].value),
         'L_ap_fan_upper_hub': Param(0.025, 'length', bounds=[0.001, 0.05], scale_value=param_dict['c_main'].value),
         'L_ap_ne_upper_hub': Param(0.025, 'length', bounds=[0.001, 0.05], scale_value=param_dict['c_main'].value),
-        # Anchor point radii of curvature:
-        'R_ap_fan_upper_main': Param(-86.6, 'length', bounds=[0.001, 1e3], scale_value=param_dict['c_main'].value),
-        'R_ap_inlet_upper_main': Param(50, 'length', bounds=[0.001, 1e3], scale_value=param_dict['c_main'].value),
-        'R_ap_mt_main': Param(1.0, 'length', bounds=[0.001, 1e3], scale_value=param_dict['c_main'].value),
-        'R_ap_fan_upper_hub': Param(100, 'length', bounds=[0.001, 1e3], scale_value=param_dict['c_main'].value),
-        'R_ap_ne_upper_hub': Param(100, 'length', bounds=[0.001, 1e3], scale_value=param_dict['c_main'].value),
+        'L_ap_mt_nacelle': Param(0.024, 'length', bounds=[0.001, 0.1], scale_value=param_dict['c_main'].value),
+        # Anchor point curvature:
+        'kappa_ap_fan_upper_main': Param(-1 / 86.6, 'inverse-length', bounds=[-1e2, 1e2],
+                                         scale_value=param_dict['c_main'].value),
+        'kappa_ap_inlet_upper_main': Param(1 / 50, 'inverse-length', bounds=[-1e2, 1e2],
+                                           scale_value=param_dict['c_main'].value),
+        'kappa_ap_mt_main': Param(1 / 1.0, 'inverse-length', bounds=[-1e2, 1e2],
+                                  scale_value=param_dict['c_main'].value),
+        'kappa_ap_fan_upper_hub': Param(1 / 100, 'inverse-length', bounds=[-1e2, 1e2],
+                                        scale_value=param_dict['c_main'].value),
+        'kappa_ap_ne_upper_hub': Param(1 / 100, 'inverse-length', bounds=[-1e2, 1e2],
+                                       scale_value=param_dict['c_main'].value),
+        'kappa_ap_mt_nacelle': Param(1 / 1.0, 'inverse-length', bounds=[-1e2, 1e2],
+                                     scale_value=param_dict['c_main'].value),
         # Anchor point length ratios:
         'r_ap_fan_upper_main': Param(0.5, bounds=[0.01, 0.99]),
         'r_ap_inlet_upper_main': Param(0.5, bounds=[0.01, 0.99]),
         'r_ap_mt_main': Param(0.5, bounds=[0.01, 0.99]),
         'r_ap_fan_upper_hub': Param(0.5, bounds=[0.01, 0.99]),
         'r_ap_ne_upper_hub': Param(0.5, bounds=[0.01, 0.99]),
+        'r_ap_mt_nacelle': Param(0.5, bounds=[0.01, 0.99]),
         # Anchor point neighboring point line angles:
         'phi_ap_fan_upper_main': Param(np.deg2rad(0.0), bounds=[np.deg2rad(-45), np.deg2rad(45)]),
         'phi_ap_inlet_upper_main': Param(np.deg2rad(-10.0), bounds=[np.deg2rad(-45), np.deg2rad(45)]),
         'phi_ap_mt_main': Param(np.deg2rad(0.0), bounds=[np.deg2rad(-45), np.deg2rad(45)]),
         'phi_ap_fan_upper_hub': Param(np.deg2rad(15.0), bounds=[np.deg2rad(-45), np.deg2rad(45)]),
         'phi_ap_ne_upper_hub': Param(np.deg2rad(0.0), bounds=[np.deg2rad(-45), np.deg2rad(45)]),
+        'phi_ap_mt_nacelle': Param(np.deg2rad(0.0), bounds=[np.deg2rad(-45), np.deg2rad(45)]),
         # Anchor point aft curvature control arm angles:
         'psi1_ap_fan_upper_main': Param(np.deg2rad(95.0), bounds=[np.deg2rad(10), np.deg2rad(170)]),
         'psi1_ap_inlet_upper_main': Param(np.deg2rad(95.0), bounds=[np.deg2rad(10), np.deg2rad(170)]),
         'psi1_ap_mt_main': Param(np.deg2rad(95.0), bounds=[np.deg2rad(10), np.deg2rad(170)]),
         'psi1_ap_fan_upper_hub': Param(np.deg2rad(95.0), bounds=[np.deg2rad(10), np.deg2rad(170)]),
         'psi1_ap_ne_upper_hub': Param(np.deg2rad(95.0), bounds=[np.deg2rad(10), np.deg2rad(170)]),
+        'psi1_ap_mt_nacelle': Param(np.deg2rad(95.0), bounds=[np.deg2rad(10), np.deg2rad(170)]),
         # Anchor point fore curvature control arm angles:
         'psi2_ap_fan_upper_main': Param(np.deg2rad(95.0), bounds=[np.deg2rad(10), np.deg2rad(170)]),
         'psi2_ap_inlet_upper_main': Param(np.deg2rad(95.0), bounds=[np.deg2rad(10), np.deg2rad(170)]),
         'psi2_ap_mt_main': Param(np.deg2rad(95.0), bounds=[np.deg2rad(10), np.deg2rad(170)]),
         'psi2_ap_fan_upper_hub': Param(np.deg2rad(95.0), bounds=[np.deg2rad(10), np.deg2rad(170)]),
         'psi2_ap_ne_upper_hub': Param(np.deg2rad(95.0), bounds=[np.deg2rad(10), np.deg2rad(170)]),
+        'psi2_ap_mt_nacelle': Param(np.deg2rad(90.0), bounds=[np.deg2rad(10), np.deg2rad(170)]),
         # Anchor point locations:
         'x_ap_fan_upper_main': Param(param_dict['fan_center_x_over_c_main'].value - param_dict['d_f'].value / 2 *
                                      np.cos(np.pi / 2 - param_dict['alf_hub'].value), linked=True),
@@ -165,11 +180,11 @@ def run():
         'x_ap_inlet_upper_main': Param(param_dict['fan_center_x_over_c_main'].value - (param_dict['l_n2inlet'].value +
                                                                                        param_dict['l_nose'].value) *
                                        np.cos(-param_dict['alf_hub'].value) - param_dict['d_inlet'].value / 2 *
-                                       np.cos(np.pi / 2 - param_dict['alf_hub'].value)),
+                                       np.cos(np.pi / 2 - param_dict['alf_hub'].value), linked=True),
         'y_ap_inlet_upper_main': Param(param_dict['fan_center_y_over_c_main'].value - (param_dict['l_n2inlet'].value +
                                                                                        param_dict['l_nose'].value) *
                                        np.sin(-param_dict['alf_hub'].value) - param_dict['d_inlet'].value / 2 *
-                                       np.sin(np.pi / 2 - param_dict['alf_hub'].value)),
+                                       np.sin(np.pi / 2 - param_dict['alf_hub'].value), linked=True),
         'x_ap_mt_main': Param(param_dict['fan_center_x_over_c_main'].value - param_dict['d_f'].value / 2 *
                               np.cos(np.pi / 2 - param_dict['alf_hub'].value) - param_dict['t_mt_main'].value *
                               np.cos(np.pi / 2 - param_dict['alf_hub'].value), linked=True),
@@ -177,15 +192,25 @@ def run():
                               np.sin(np.pi / 2 - param_dict['alf_hub'].value) - param_dict['t_mt_main'].value *
                               np.sin(np.pi / 2 - param_dict['alf_hub'].value), linked=True),
         'x_ap_fan_upper_hub': Param(param_dict['fan_center_x_over_c_main'].value + param_dict['r_htf'].value *
-                                    param_dict['d_f'].value / 2 * np.cos(np.pi / 2 - param_dict['alf_hub'].value)),
+                                    param_dict['d_f'].value / 2 * np.cos(np.pi / 2 - param_dict['alf_hub'].value),
+                                    linked=True),
         'y_ap_fan_upper_hub': Param(param_dict['fan_center_y_over_c_main'].value + param_dict['r_htf'].value *
-                                    param_dict['d_f'].value / 2 * np.sin(np.pi / 2 - param_dict['alf_hub'].value)),
+                                    param_dict['d_f'].value / 2 * np.sin(np.pi / 2 - param_dict['alf_hub'].value),
+                                    linked=True),
         'x_ap_ne_upper_hub': Param(param_dict['fan_center_x_over_c_main'].value + param_dict['l_fne'].value *
                                    np.cos(-param_dict['alf_hub'].value) + param_dict['d_ne'].value *
-                                   param_dict['r_hne'].value / 2 * np.cos(np.pi / 2 - param_dict['alf_hub'].value)),
+                                   param_dict['r_hne'].value / 2 * np.cos(np.pi / 2 - param_dict['alf_hub'].value),
+                                   linked=True),
         'y_ap_ne_upper_hub': Param(param_dict['fan_center_y_over_c_main'].value + param_dict['l_fne'].value *
                                    np.sin(-param_dict['alf_hub'].value) + param_dict['d_ne'].value *
-                                   param_dict['r_hne'].value / 2 * np.sin(np.pi / 2 - param_dict['alf_hub'].value)),
+                                   param_dict['r_hne'].value / 2 * np.sin(np.pi / 2 - param_dict['alf_hub'].value),
+                                   linked=True),
+        'x_ap_mt_nacelle': Param(param_dict['fan_center_x_over_c_main'].value + param_dict['d_f'].value / 2 *
+                                 np.cos(np.pi / 2 - param_dict['alf_hub'].value) + param_dict['t_mt_nacelle'].value *
+                                 np.cos(np.pi / 2 - param_dict['alf_hub'].value), linked=True),
+        'y_ap_mt_nacelle': Param(param_dict['fan_center_y_over_c_main'].value + param_dict['d_f'].value / 2 *
+                                 np.sin(np.pi / 2 - param_dict['alf_hub'].value) + param_dict['t_mt_nacelle'].value *
+                                 np.sin(np.pi / 2 - param_dict['alf_hub'].value), linked=True),
         # Free point locations:
         'x_fp1_upper_main': Param(0.575, 'length', bounds=[0.1, 0.9], scale_value=param_dict['c_main'].value),
         'y_fp1_upper_main': Param(0.07, 'length', bounds=[-0.2, 0.2], scale_value=param_dict['c_main'].value),
@@ -194,8 +219,15 @@ def run():
     }}
     param_dict = {**param_dict, **{
         'L2_te_nacelle': Param(param_dict['L1_te_main'].value, linked=True),
-        'theta2_te_nacelle': Param(param_dict['theta1_te_main'].value - param_dict['alf_hub'].value, linked=True),
+        'theta2_te_nacelle': Param(param_dict['theta1_te_main'].value - param_dict['alf_hub'].value - param_dict['alf_main'].value, linked=True),
         'c_hub': Param(param_dict['l_nose'].value + param_dict['l_fne'].value + param_dict['l_pr'].value, linked=True),
+        # Anchor point radii of curvature:
+        'R_ap_fan_upper_main': Param(np.divide(1, param_dict['kappa_ap_fan_upper_main'].value), linked=True),
+        'R_ap_inlet_upper_main': Param(np.divide(1, param_dict['kappa_ap_inlet_upper_main'].value), linked=True),
+        'R_ap_mt_main': Param(np.divide(1, param_dict['kappa_ap_mt_main'].value), linked=True),
+        'R_ap_fan_upper_hub': Param(np.divide(1, param_dict['kappa_ap_fan_upper_hub'].value), linked=True),
+        'R_ap_ne_upper_hub': Param(np.divide(1, param_dict['kappa_ap_ne_upper_hub'].value), linked=True),
+        'R_ap_mt_nacelle': Param(np.divide(1, param_dict['kappa_ap_mt_nacelle'].value), linked=True),
     }}
     param_dict = {**param_dict, **{
         'parametrization_dictionary_name': 'v00'
@@ -236,15 +268,15 @@ def run():
     x, y = rotate(x, y, param_dict['alf_main'].value)
 
     ap_fan_upper_main = AnchorPoint(x=Param(x, linked=True),
-                                     y=Param(y, linked=True),
-                                     name='ap_fan_upper_main',
-                                     previous_anchor_point='te_1',
-                                     L=param_dict['L_ap_fan_upper_main'],
-                                     R=param_dict['R_ap_fan_upper_main'],
-                                     r=param_dict['r_ap_fan_upper_main'],
-                                     phi=param_dict['phi_ap_fan_upper_main'],
-                                     psi1=param_dict['psi1_ap_fan_upper_main'],
-                                     psi2=param_dict['psi2_ap_fan_upper_main'])
+                                    y=Param(y, linked=True),
+                                    name='ap_fan_upper_main',
+                                    previous_anchor_point='te_1',
+                                    L=param_dict['L_ap_fan_upper_main'],
+                                    R=param_dict['R_ap_fan_upper_main'],
+                                    r=param_dict['r_ap_fan_upper_main'],
+                                    phi=param_dict['phi_ap_fan_upper_main'],
+                                    psi1=param_dict['psi1_ap_fan_upper_main'],
+                                    psi2=param_dict['psi2_ap_fan_upper_main'])
 
     x = param_dict['x_ap_inlet_upper_main'].value
     y = param_dict['y_ap_inlet_upper_main'].value
@@ -301,15 +333,15 @@ def run():
     x, y = rotate(x, y, param_dict['alf_hub'].value)
 
     ap_ne_upper_hub = AnchorPoint(x=Param(x, linked=True),
-                                   y=Param(y, linked=True),
-                                   name='ap_ne_upper_hub',
-                                   previous_anchor_point='te_1',
-                                   L=param_dict['L_ap_ne_upper_hub'],
-                                   R=param_dict['R_ap_ne_upper_hub'],
-                                   r=param_dict['r_ap_ne_upper_hub'],
-                                   phi=param_dict['phi_ap_ne_upper_hub'],
-                                   psi1=param_dict['psi1_ap_ne_upper_hub'],
-                                   psi2=param_dict['psi2_ap_ne_upper_hub'])
+                                  y=Param(y, linked=True),
+                                  name='ap_ne_upper_hub',
+                                  previous_anchor_point='te_1',
+                                  L=param_dict['L_ap_ne_upper_hub'],
+                                  R=param_dict['R_ap_ne_upper_hub'],
+                                  r=param_dict['r_ap_ne_upper_hub'],
+                                  phi=param_dict['phi_ap_ne_upper_hub'],
+                                  psi1=param_dict['psi1_ap_ne_upper_hub'],
+                                  psi2=param_dict['psi2_ap_ne_upper_hub'])
 
     x = param_dict['x_ap_fan_upper_hub'].value
     y = param_dict['y_ap_fan_upper_hub'].value
@@ -331,6 +363,26 @@ def run():
     anchor_point_tuple_hub = (ap_ne_upper_hub, ap_fan_upper_hub)
     free_point_tuple_hub = ()
 
+    x = param_dict['x_ap_mt_nacelle'].value
+    y = param_dict['y_ap_mt_nacelle'].value
+    x -= param_dict['dx_nacelle'].value
+    y -= param_dict['dy_nacelle'].value
+    x, y = rotate(x, y, param_dict['alf_nacelle'].value)
+
+    ap_mt_nacelle = AnchorPoint(x=Param(x, linked=True),
+                                y=Param(y, linked=True),
+                                name='ap_mt_nacelle',
+                                previous_anchor_point='te_1',
+                                L=param_dict['L_ap_mt_nacelle'],
+                                R=param_dict['R_ap_mt_nacelle'],
+                                r=param_dict['r_ap_mt_nacelle'],
+                                phi=param_dict['phi_ap_mt_nacelle'],
+                                psi1=param_dict['psi1_ap_mt_nacelle'],
+                                psi2=param_dict['psi2_ap_mt_nacelle'],
+                                )
+
+    anchor_point_tuple_nacelle = (ap_mt_nacelle,)
+
     airfoil_main = Airfoil(number_coordinates=100,
                            base_airfoil_params=base_airfoil_params_main,
                            anchor_point_tuple=anchor_point_tuple_main,
@@ -343,23 +395,25 @@ def run():
 
     airfoil_nacelle = Airfoil(number_coordinates=100,
                               base_airfoil_params=base_airfoil_params_nacelle,
-                              anchor_point_tuple=(),
+                              anchor_point_tuple=anchor_point_tuple_nacelle,
                               free_point_tuple=())
 
     parametrization = AirfoilParametrization((airfoil_main, airfoil_hub, airfoil_nacelle))
-    m = Param(np.tan(param_dict['alf_hub'].value), linked=True)
-    b = Param(0.02, 'length', scale_value=param_dict['c_main'].value)
-    parametrization.mirror(axis=(m.value, b.value), fixed_airfoil_idx=0, linked_airfoil_idx=2,
+    theta = -param_dict['alf_hub'].value
+    xy_axis = np.array([param_dict['fan_center_x_over_c_main'].value, param_dict['fan_center_y_over_c_main'].value])
+    parametrization.mirror(axis=(theta, xy_axis), fixed_airfoil_idx=0, linked_airfoil_idx=2,
                            fixed_anchor_point_range=('ap_fan_upper_main', 'ap_inlet_upper_main'),
                            starting_prev_anchor_point_str_linked='le')
 
-    parametrization.extract_parameters()
-    print(parametrization.params)
-    print(parametrization.bounds)
-    print(len(parametrization.params))
-    print(len(parametrization.bounds))
-
-    print(f"fixed_airfoil_N = {airfoil_main.N}, linked_airfoil_N = {airfoil_nacelle.N}")
+    parametrization.extract_parameters(param_dict)
+    print('')
+    print(f'bounds_normalized_values = {parametrization.parameter_info["bounds_normalized_values"]}')
+    print('')
+    print(f'values = {parametrization.parameter_info["values"]}')
+    print('')
+    print(f'names = {parametrization.parameter_info["names"]}')
+    print('')
+    print(f'n_params = {parametrization.parameter_info["n_params"]}')
 
     fig, axs = parametrization.airfoil_tuple[0].plot(
         ('airfoil', 'control-point-skeleton'),

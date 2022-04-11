@@ -33,8 +33,8 @@
 class Param:
 
     def __init__(self, value: float, units: str or None = None,
-                 bounds: list or np.ndarray = np.array([-np.inf, np.inf]),
-                 length_scale_dimension: float or None = None, active: bool = True, linked: bool = False):
+                 bounds: list or np.ndarray = np.array([-np.inf, np.inf]), scale_value: float or None = None,
+                 active: bool = True, linked: bool = False, name: str = None):
         &#34;&#34;&#34;
         ### Description:
 
@@ -61,24 +61,28 @@ class Param:
         `linked`: a `bool` stating whether the parameter is linked to/set by another parameter. If `True`, the
         parameter will not be extracted). Default: `False`.
 
+        `name`: an optional `str` that gives the name of the parameter. Can be useful in identifying extracted
+        parameters.
+
         ### Returns:
 
         An instance of the `pyairpar.core.param.Param` class.
         &#34;&#34;&#34;
 
         self.units = units
-        self.length_scale_dimension = length_scale_dimension
+        self.scale_value = scale_value
 
-        if self.units == &#39;length&#39; and self.length_scale_dimension is not None:
-            self.value = value * self.length_scale_dimension
-        elif self.units == &#39;inverse-length&#39; and self.length_scale_dimension is not None:
-            self.value = value / self.length_scale_dimension
+        if self.units == &#39;length&#39; and self.scale_value is not None:
+            self.value = value * self.scale_value
+        elif self.units == &#39;inverse-length&#39; and self.scale_value is not None:
+            self.value = value / self.scale_value
         else:
             self.value = value
 
         self.bounds = bounds
         self.active = active
-        self.linked = linked</code></pre>
+        self.linked = linked
+        self.name = name</code></pre>
 </details>
 </section>
 <section>
@@ -93,7 +97,7 @@ class Param:
 <dt id="pyairpar.core.param.Param"><code class="flex name class">
 <span>class <span class="ident">Param</span></span>
 <span>(</span><span>value: float, units: str = None, bounds: list = array([-inf,
-inf]), length_scale_dimension: float = None, active: bool = True, linked: bool = False)</span>
+inf]), scale_value: float = None, active: bool = True, linked: bool = False, name: str = None)</span>
 </code></dt>
 <dd>
 <div class="desc"><h3 id="description">Description:</h3>
@@ -112,6 +116,8 @@ Default value: <code>None</code>.</p>
 the parameter will not be extracted). Default: <code>True</code>.</p>
 <p><code>linked</code>: a <code>bool</code> stating whether the parameter is linked to/set by another parameter. If <code>True</code>, the
 parameter will not be extracted). Default: <code>False</code>.</p>
+<p><code>name</code>: an optional <code>str</code> that gives the name of the parameter. Can be useful in identifying extracted
+parameters.</p>
 <h3 id="returns">Returns:</h3>
 <p>An instance of the <code><a title="pyairpar.core.param.Param" href="#pyairpar.core.param.Param">Param</a></code> class.</p></div>
 <details class="source">
@@ -121,8 +127,8 @@ parameter will not be extracted). Default: <code>False</code>.</p>
 <pre><code class="python">class Param:
 
     def __init__(self, value: float, units: str or None = None,
-                 bounds: list or np.ndarray = np.array([-np.inf, np.inf]),
-                 length_scale_dimension: float or None = None, active: bool = True, linked: bool = False):
+                 bounds: list or np.ndarray = np.array([-np.inf, np.inf]), scale_value: float or None = None,
+                 active: bool = True, linked: bool = False, name: str = None):
         &#34;&#34;&#34;
         ### Description:
 
@@ -149,24 +155,28 @@ parameter will not be extracted). Default: <code>False</code>.</p>
         `linked`: a `bool` stating whether the parameter is linked to/set by another parameter. If `True`, the
         parameter will not be extracted). Default: `False`.
 
+        `name`: an optional `str` that gives the name of the parameter. Can be useful in identifying extracted
+        parameters.
+
         ### Returns:
 
         An instance of the `pyairpar.core.param.Param` class.
         &#34;&#34;&#34;
 
         self.units = units
-        self.length_scale_dimension = length_scale_dimension
+        self.scale_value = scale_value
 
-        if self.units == &#39;length&#39; and self.length_scale_dimension is not None:
-            self.value = value * self.length_scale_dimension
-        elif self.units == &#39;inverse-length&#39; and self.length_scale_dimension is not None:
-            self.value = value / self.length_scale_dimension
+        if self.units == &#39;length&#39; and self.scale_value is not None:
+            self.value = value * self.scale_value
+        elif self.units == &#39;inverse-length&#39; and self.scale_value is not None:
+            self.value = value / self.scale_value
         else:
             self.value = value
 
         self.bounds = bounds
         self.active = active
-        self.linked = linked</code></pre>
+        self.linked = linked
+        self.name = name</code></pre>
 </details>
 </dd>
 </dl>

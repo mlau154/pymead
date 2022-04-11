@@ -46,97 +46,148 @@ class SymmetricAirfoil(Airfoil):
                  free_point_tuple: typing.Tuple[FreePoint, ...] = ()
                  ):
 
-        # Copy the set of anchor points to mirrored_anchor_point_tuple and append &#39;_mirror&#39; to the names
-        self.mirrored_anchor_point_tuple = deepcopy(anchor_point_tuple)
-        for anchor_point in self.mirrored_anchor_point_tuple:
-            anchor_point.name = anchor_point.name + &#39;_mirror&#39;
-            anchor_point.y = -anchor_point.y
-            anchor_point.xy = np.array([anchor_point.x, anchor_point.y])
-
-        for anchor_point in anchor_point_tuple:
-            if anchor_point.previous_anchor_point == &#39;le&#39;:
-                raise Warning(&#39;The definition of a SymmetricAirfoil requires that no anchor points can be defined &#39;
-                              &#39;after the leading edge. Leaving \&#39;le\&#39; as the previous_anchor_point could produce &#39;
-                              &#39;undesired results.&#39;)
-
-        for free_point in free_point_tuple:
-            if free_point.previous_anchor_point == &#39;le&#39;:
-                raise Warning(&#39;The definition of a SymmetricAirfoil requires that no free points can be defined &#39;
-                              &#39;after the leading edge. Leaving \&#39;le\&#39; as the previous_anchor_point could produce &#39;
-                              &#39;undesired results.&#39;)
+        anchor_point_tuple = self.mirror_anchor_points(anchor_point_tuple)
+        free_point_tuple = self.mirror_free_points(free_point_tuple, anchor_point_tuple)
+        # for anchor_point in anchor_point_tuple:
+        #     if anchor_point.previous_anchor_point == &#39;le&#39;:
+        #         raise Warning(&#39;The definition of a SymmetricAirfoil requires that no anchor points can be defined &#39;
+        #                       &#39;after the leading edge. Leaving \&#39;le\&#39; as the previous_anchor_point could produce &#39;
+        #                       &#39;undesired results.&#39;)
+        #
+        # for free_point in free_point_tuple:
+        #     if free_point.previous_anchor_point == &#39;le&#39;:
+        #         raise Warning(&#39;The definition of a SymmetricAirfoil requires that no free points can be defined &#39;
+        #                       &#39;after the leading edge. Leaving \&#39;le\&#39; as the previous_anchor_point could produce &#39;
+        #                       &#39;undesired results.&#39;)
 
         super().__init__(number_coordinates, base_airfoil_params, anchor_point_tuple, free_point_tuple)
 
-    def mirror_control_points(self):
-        to_mirror = self.control_points[::-1]
-        to_mirror = to_mirror[5:, :]
-        mirror = to_mirror @ np.array([[1, 0], [0, -1]])
-        self.control_points = np.vstack((self.control_points[:-4, :], mirror))
-        self.needs_update = True
+    @staticmethod
+    def mirror_anchor_points(anchor_point_tuple: typing.Tuple[AnchorPoint, ...]):
+        # The next 3 lines produce, for example, [&#39;te_1&#39;, &#39;ap1&#39;, &#39;ap2&#39;, &#39;ap3&#39;, &#39;le&#39;]
+        upper_anchor_point_string_list = [anchor_point.name for anchor_point in anchor_point_tuple]
+        upper_anchor_point_string_list.insert(0, &#39;te_1&#39;)
+        upper_anchor_point_string_list.append(&#39;le&#39;)
+        # The next line produces, for example, [&#39;le&#39;, &#39;ap3&#39;, &#39;ap2&#39;]
+        previous_anchor_strings = upper_anchor_point_string_list[-1:1:-1]
+        # The next produces, for example, [&#39;ap3&#39;, &#39;ap2&#39;, &#39;ap1&#39;]
+        names = upper_anchor_point_string_list[-2:0:-1]
+        add_these_anchor_points = []
+        for idx, anchor_point in enumerate(anchor_point_tuple[::-1]):
+            mirrored_anchor_point = deepcopy(anchor_point)
+            mirrored_anchor_point.previous_anchor_point = previous_anchor_strings[idx]
+            if mirrored_anchor_point.previous_anchor_point != &#39;le&#39;:
+                mirrored_anchor_point.previous_anchor_point = mirrored_anchor_point.previous_anchor_point + &#39;_symm&#39;
+            mirrored_anchor_point.name = names[idx] + &#39;_symm&#39;
+            mirrored_anchor_point.y.value = -mirrored_anchor_point.y.value  # Reflect about the chordline (x-axis)
+            mirrored_anchor_point.xy = np.array([mirrored_anchor_point.x.value, mirrored_anchor_point.y.value])
+            mirrored_anchor_point.set_all_as_linked()
+            add_these_anchor_points.append(mirrored_anchor_point)
+        anchor_point_tuple = list(anchor_point_tuple)
+        anchor_point_tuple.extend(add_these_anchor_points)
+        anchor_point_tuple = tuple(anchor_point_tuple)
+        return anchor_point_tuple
 
-    def update_anchor_point_array(self):
-        mirrored_point_array = np.array([])
-        for key in self.anchor_point_order:
-            xy = self.anchor_points[key]
-            if key == &#39;te_1&#39;:
-                self.anchor_point_array = xy
-            elif key == &#39;te_2&#39;:
-                pass
-            elif key == &#39;le&#39;:
-                self.anchor_point_array = np.row_stack((self.anchor_point_array, xy))
-            else:
-                self.anchor_point_array = np.row_stack((self.anchor_point_array, xy))
-                xy_minus = xy.reshape(1, 2) @ np.array([[1, 0], [0, -1]])
-                if len(mirrored_point_array) == 0:
-                    mirrored_point_array = xy_minus
-                else:
-                    mirrored_point_array = np.vstack((xy_minus, mirrored_point_array))
-        if len(mirrored_point_array) != 0:
-            self.anchor_point_array = np.row_stack((self.anchor_point_array, mirrored_point_array))
-        self.anchor_point_array = np.row_stack((self.anchor_point_array, self.anchor_points[&#39;te_2&#39;]))
+    @staticmethod
+    def mirror_free_points(free_point_tuple: typing.Tuple[FreePoint, ...],
+                           anchor_point_tuple: typing.Tuple[AnchorPoint, ...]):
+        # The next 3 lines produce, for example, [&#39;te_1&#39;, &#39;ap1&#39;, &#39;ap2&#39;, &#39;ap3&#39;, &#39;le&#39;]
+        upper_anchor_point_string_list = [
+            anchor_point.name for anchor_point in anchor_point_tuple if &#39;_symm&#39; not in anchor_point.name]
+        upper_anchor_point_string_list.insert(0, &#39;te_1&#39;)
+        upper_anchor_point_string_list.append(&#39;le&#39;)
+        # The next line produces, for example, [&#39;te_1&#39;, &#39;ap1&#39;, &#39;ap2&#39;, &#39;ap3&#39;]
+        previous_free_strings = upper_anchor_point_string_list[-2::-1]
+        # The next produces, for example, [&#39;ap3&#39;, &#39;ap2&#39;, &#39;ap1&#39;, &#39;le&#39;]
+        previous_free_string_new = upper_anchor_point_string_list[:0:-1]
+        upper_free_point_string_list = [free_point.previous_anchor_point for free_point in free_point_tuple]
 
-    def generate_airfoil_coordinates(self):
-        if self.C:
-            self.C = []
-        P_start_idx = 0
-        for idx in range(len(self.anchor_point_order) - 2):
-            P_length = self.N[self.anchor_point_order[idx]] + 1
-            P_end_idx = P_start_idx + P_length
-            P = self.control_points[P_start_idx:P_end_idx, :]
-            C = bezier(P, self.nt)
-            self.C.append(C)
-            P_start_idx = P_end_idx - 1
-        for idx in range(len(self.anchor_point_order) - 2 - 1, -1, -1):
-            P_length = self.N[self.anchor_point_order[idx]] + 1
-            P_end_idx = P_start_idx + P_length
-            P = self.control_points[P_start_idx:P_end_idx, :]
-            C = bezier(P, self.nt)
-            self.C.append(C)
-            P_start_idx = P_end_idx - 1
-        coords = np.array([])
-        curvature = np.array([])
-        for idx in range(len(self.C)):
-            if idx == 0:
-                coords = np.column_stack((self.C[idx][&#39;x&#39;], self.C[idx][&#39;y&#39;]))
-                curvature = np.column_stack((self.C[idx][&#39;x&#39;], self.C[idx][&#39;k&#39;]))
-            else:
-                coords = np.row_stack((coords, np.column_stack((self.C[idx][&#39;x&#39;][1:], self.C[idx][&#39;y&#39;][1:]))))
-                curvature = np.row_stack((curvature, np.column_stack((self.C[idx][&#39;x&#39;][1:], self.C[idx][&#39;k&#39;][1:]))))
-        self.coords = coords
-        self.curvature = curvature
-        return self.coords, self.C
+        add_these_free_points = []
+        for idx, free_point in enumerate(free_point_tuple[::-1]):
+            mirrored_free_point = deepcopy(free_point)
+            mirrored_free_point.previous_anchor_point = previous_free_string_new[
+                previous_free_strings.index(mirrored_free_point.previous_anchor_point)]
+            if mirrored_free_point.previous_anchor_point != &#39;le&#39;:
+                mirrored_free_point.previous_anchor_point = mirrored_free_point.previous_anchor_point + &#39;_symm&#39;
+            mirrored_free_point.y.value = -mirrored_free_point.y.value
+            mirrored_free_point.xy = np.array([mirrored_free_point.x.value, mirrored_free_point.y.value])
+            mirrored_free_point.set_all_as_linked()
+            add_these_free_points.append(mirrored_free_point)
+        free_point_tuple = list(free_point_tuple)
+        free_point_tuple.extend(add_these_free_points)
+        free_point_tuple = tuple(free_point_tuple)
+        return free_point_tuple
 
-    def update(self):
-        self.add_anchor_points()
-        self.add_free_points()
-        self.extract_parameters()
-        self.order_control_points()
-        self.mirror_control_points()
-        # self.add_mirrored_anchor_points()
-        self.update_anchor_point_array()
-        self.rotate(-self.alf.value)
-        self.generate_airfoil_coordinates()
-        self.needs_update = False</code></pre>
+    # def mirror_control_points(self):
+    #     to_mirror = self.control_points[::-1]
+    #     to_mirror = to_mirror[5:, :]
+    #     mirror = to_mirror @ np.array([[1, 0], [0, -1]])
+    #     self.control_points = np.vstack((self.control_points[:-4, :], mirror))
+    #     self.needs_update = True
+    #
+    # def update_anchor_point_array(self):
+    #     mirrored_point_array = np.array([])
+    #     for key in self.anchor_point_order:
+    #         xy = self.anchor_points[key]
+    #         if key == &#39;te_1&#39;:
+    #             self.anchor_point_array = xy
+    #         elif key == &#39;te_2&#39;:
+    #             pass
+    #         elif key == &#39;le&#39;:
+    #             self.anchor_point_array = np.row_stack((self.anchor_point_array, xy))
+    #         else:
+    #             self.anchor_point_array = np.row_stack((self.anchor_point_array, xy))
+    #             xy_minus = xy.reshape(1, 2) @ np.array([[1, 0], [0, -1]])
+    #             if len(mirrored_point_array) == 0:
+    #                 mirrored_point_array = xy_minus
+    #             else:
+    #                 mirrored_point_array = np.vstack((xy_minus, mirrored_point_array))
+    #     if len(mirrored_point_array) != 0:
+    #         self.anchor_point_array = np.row_stack((self.anchor_point_array, mirrored_point_array))
+    #     self.anchor_point_array = np.row_stack((self.anchor_point_array, self.anchor_points[&#39;te_2&#39;]))
+    #
+    # def generate_airfoil_coordinates(self):
+    #     if self.C:
+    #         self.C = []
+    #     P_start_idx = 0
+    #     for idx in range(len(self.anchor_point_order) - 2):
+    #         P_length = self.N[self.anchor_point_order[idx]] + 1
+    #         P_end_idx = P_start_idx + P_length
+    #         P = self.control_points[P_start_idx:P_end_idx, :]
+    #         C = bezier(P, self.nt)
+    #         self.C.append(C)
+    #         P_start_idx = P_end_idx - 1
+    #     for idx in range(len(self.anchor_point_order) - 2 - 1, -1, -1):
+    #         P_length = self.N[self.anchor_point_order[idx]] + 1
+    #         P_end_idx = P_start_idx + P_length
+    #         P = self.control_points[P_start_idx:P_end_idx, :]
+    #         C = bezier(P, self.nt)
+    #         self.C.append(C)
+    #         P_start_idx = P_end_idx - 1
+    #     coords = np.array([])
+    #     curvature = np.array([])
+    #     for idx in range(len(self.C)):
+    #         if idx == 0:
+    #             coords = np.column_stack((self.C[idx][&#39;x&#39;], self.C[idx][&#39;y&#39;]))
+    #             curvature = np.column_stack((self.C[idx][&#39;x&#39;], self.C[idx][&#39;k&#39;]))
+    #         else:
+    #             coords = np.row_stack((coords, np.column_stack((self.C[idx][&#39;x&#39;][1:], self.C[idx][&#39;y&#39;][1:]))))
+    #             curvature = np.row_stack((curvature, np.column_stack((self.C[idx][&#39;x&#39;][1:], self.C[idx][&#39;k&#39;][1:]))))
+    #     self.coords = coords
+    #     self.curvature = curvature
+    #     return self.coords, self.C
+    #
+    # def update(self):
+    #     self.add_anchor_points()
+    #     self.add_free_points()
+    #     self.extract_parameters()
+    #     self.order_control_points()
+    #     self.mirror_control_points()
+    #     # self.add_mirrored_anchor_points()
+    #     self.update_anchor_point_array()
+    #     self.rotate(-self.alf.value)
+    #     self.generate_airfoil_coordinates()
+    #     self.needs_update = False</code></pre>
 </details>
 </section>
 <section>
@@ -181,106 +232,157 @@ point, use <code>(<a title="pyairpar.core.free_point.FreePoint" href="../core/fr
                  free_point_tuple: typing.Tuple[FreePoint, ...] = ()
                  ):
 
-        # Copy the set of anchor points to mirrored_anchor_point_tuple and append &#39;_mirror&#39; to the names
-        self.mirrored_anchor_point_tuple = deepcopy(anchor_point_tuple)
-        for anchor_point in self.mirrored_anchor_point_tuple:
-            anchor_point.name = anchor_point.name + &#39;_mirror&#39;
-            anchor_point.y = -anchor_point.y
-            anchor_point.xy = np.array([anchor_point.x, anchor_point.y])
-
-        for anchor_point in anchor_point_tuple:
-            if anchor_point.previous_anchor_point == &#39;le&#39;:
-                raise Warning(&#39;The definition of a SymmetricAirfoil requires that no anchor points can be defined &#39;
-                              &#39;after the leading edge. Leaving \&#39;le\&#39; as the previous_anchor_point could produce &#39;
-                              &#39;undesired results.&#39;)
-
-        for free_point in free_point_tuple:
-            if free_point.previous_anchor_point == &#39;le&#39;:
-                raise Warning(&#39;The definition of a SymmetricAirfoil requires that no free points can be defined &#39;
-                              &#39;after the leading edge. Leaving \&#39;le\&#39; as the previous_anchor_point could produce &#39;
-                              &#39;undesired results.&#39;)
+        anchor_point_tuple = self.mirror_anchor_points(anchor_point_tuple)
+        free_point_tuple = self.mirror_free_points(free_point_tuple, anchor_point_tuple)
+        # for anchor_point in anchor_point_tuple:
+        #     if anchor_point.previous_anchor_point == &#39;le&#39;:
+        #         raise Warning(&#39;The definition of a SymmetricAirfoil requires that no anchor points can be defined &#39;
+        #                       &#39;after the leading edge. Leaving \&#39;le\&#39; as the previous_anchor_point could produce &#39;
+        #                       &#39;undesired results.&#39;)
+        #
+        # for free_point in free_point_tuple:
+        #     if free_point.previous_anchor_point == &#39;le&#39;:
+        #         raise Warning(&#39;The definition of a SymmetricAirfoil requires that no free points can be defined &#39;
+        #                       &#39;after the leading edge. Leaving \&#39;le\&#39; as the previous_anchor_point could produce &#39;
+        #                       &#39;undesired results.&#39;)
 
         super().__init__(number_coordinates, base_airfoil_params, anchor_point_tuple, free_point_tuple)
 
-    def mirror_control_points(self):
-        to_mirror = self.control_points[::-1]
-        to_mirror = to_mirror[5:, :]
-        mirror = to_mirror @ np.array([[1, 0], [0, -1]])
-        self.control_points = np.vstack((self.control_points[:-4, :], mirror))
-        self.needs_update = True
+    @staticmethod
+    def mirror_anchor_points(anchor_point_tuple: typing.Tuple[AnchorPoint, ...]):
+        # The next 3 lines produce, for example, [&#39;te_1&#39;, &#39;ap1&#39;, &#39;ap2&#39;, &#39;ap3&#39;, &#39;le&#39;]
+        upper_anchor_point_string_list = [anchor_point.name for anchor_point in anchor_point_tuple]
+        upper_anchor_point_string_list.insert(0, &#39;te_1&#39;)
+        upper_anchor_point_string_list.append(&#39;le&#39;)
+        # The next line produces, for example, [&#39;le&#39;, &#39;ap3&#39;, &#39;ap2&#39;]
+        previous_anchor_strings = upper_anchor_point_string_list[-1:1:-1]
+        # The next produces, for example, [&#39;ap3&#39;, &#39;ap2&#39;, &#39;ap1&#39;]
+        names = upper_anchor_point_string_list[-2:0:-1]
+        add_these_anchor_points = []
+        for idx, anchor_point in enumerate(anchor_point_tuple[::-1]):
+            mirrored_anchor_point = deepcopy(anchor_point)
+            mirrored_anchor_point.previous_anchor_point = previous_anchor_strings[idx]
+            if mirrored_anchor_point.previous_anchor_point != &#39;le&#39;:
+                mirrored_anchor_point.previous_anchor_point = mirrored_anchor_point.previous_anchor_point + &#39;_symm&#39;
+            mirrored_anchor_point.name = names[idx] + &#39;_symm&#39;
+            mirrored_anchor_point.y.value = -mirrored_anchor_point.y.value  # Reflect about the chordline (x-axis)
+            mirrored_anchor_point.xy = np.array([mirrored_anchor_point.x.value, mirrored_anchor_point.y.value])
+            mirrored_anchor_point.set_all_as_linked()
+            add_these_anchor_points.append(mirrored_anchor_point)
+        anchor_point_tuple = list(anchor_point_tuple)
+        anchor_point_tuple.extend(add_these_anchor_points)
+        anchor_point_tuple = tuple(anchor_point_tuple)
+        return anchor_point_tuple
 
-    def update_anchor_point_array(self):
-        mirrored_point_array = np.array([])
-        for key in self.anchor_point_order:
-            xy = self.anchor_points[key]
-            if key == &#39;te_1&#39;:
-                self.anchor_point_array = xy
-            elif key == &#39;te_2&#39;:
-                pass
-            elif key == &#39;le&#39;:
-                self.anchor_point_array = np.row_stack((self.anchor_point_array, xy))
-            else:
-                self.anchor_point_array = np.row_stack((self.anchor_point_array, xy))
-                xy_minus = xy.reshape(1, 2) @ np.array([[1, 0], [0, -1]])
-                if len(mirrored_point_array) == 0:
-                    mirrored_point_array = xy_minus
-                else:
-                    mirrored_point_array = np.vstack((xy_minus, mirrored_point_array))
-        if len(mirrored_point_array) != 0:
-            self.anchor_point_array = np.row_stack((self.anchor_point_array, mirrored_point_array))
-        self.anchor_point_array = np.row_stack((self.anchor_point_array, self.anchor_points[&#39;te_2&#39;]))
+    @staticmethod
+    def mirror_free_points(free_point_tuple: typing.Tuple[FreePoint, ...],
+                           anchor_point_tuple: typing.Tuple[AnchorPoint, ...]):
+        # The next 3 lines produce, for example, [&#39;te_1&#39;, &#39;ap1&#39;, &#39;ap2&#39;, &#39;ap3&#39;, &#39;le&#39;]
+        upper_anchor_point_string_list = [
+            anchor_point.name for anchor_point in anchor_point_tuple if &#39;_symm&#39; not in anchor_point.name]
+        upper_anchor_point_string_list.insert(0, &#39;te_1&#39;)
+        upper_anchor_point_string_list.append(&#39;le&#39;)
+        # The next line produces, for example, [&#39;te_1&#39;, &#39;ap1&#39;, &#39;ap2&#39;, &#39;ap3&#39;]
+        previous_free_strings = upper_anchor_point_string_list[-2::-1]
+        # The next produces, for example, [&#39;ap3&#39;, &#39;ap2&#39;, &#39;ap1&#39;, &#39;le&#39;]
+        previous_free_string_new = upper_anchor_point_string_list[:0:-1]
+        upper_free_point_string_list = [free_point.previous_anchor_point for free_point in free_point_tuple]
 
-    def generate_airfoil_coordinates(self):
-        if self.C:
-            self.C = []
-        P_start_idx = 0
-        for idx in range(len(self.anchor_point_order) - 2):
-            P_length = self.N[self.anchor_point_order[idx]] + 1
-            P_end_idx = P_start_idx + P_length
-            P = self.control_points[P_start_idx:P_end_idx, :]
-            C = bezier(P, self.nt)
-            self.C.append(C)
-            P_start_idx = P_end_idx - 1
-        for idx in range(len(self.anchor_point_order) - 2 - 1, -1, -1):
-            P_length = self.N[self.anchor_point_order[idx]] + 1
-            P_end_idx = P_start_idx + P_length
-            P = self.control_points[P_start_idx:P_end_idx, :]
-            C = bezier(P, self.nt)
-            self.C.append(C)
-            P_start_idx = P_end_idx - 1
-        coords = np.array([])
-        curvature = np.array([])
-        for idx in range(len(self.C)):
-            if idx == 0:
-                coords = np.column_stack((self.C[idx][&#39;x&#39;], self.C[idx][&#39;y&#39;]))
-                curvature = np.column_stack((self.C[idx][&#39;x&#39;], self.C[idx][&#39;k&#39;]))
-            else:
-                coords = np.row_stack((coords, np.column_stack((self.C[idx][&#39;x&#39;][1:], self.C[idx][&#39;y&#39;][1:]))))
-                curvature = np.row_stack((curvature, np.column_stack((self.C[idx][&#39;x&#39;][1:], self.C[idx][&#39;k&#39;][1:]))))
-        self.coords = coords
-        self.curvature = curvature
-        return self.coords, self.C
+        add_these_free_points = []
+        for idx, free_point in enumerate(free_point_tuple[::-1]):
+            mirrored_free_point = deepcopy(free_point)
+            mirrored_free_point.previous_anchor_point = previous_free_string_new[
+                previous_free_strings.index(mirrored_free_point.previous_anchor_point)]
+            if mirrored_free_point.previous_anchor_point != &#39;le&#39;:
+                mirrored_free_point.previous_anchor_point = mirrored_free_point.previous_anchor_point + &#39;_symm&#39;
+            mirrored_free_point.y.value = -mirrored_free_point.y.value
+            mirrored_free_point.xy = np.array([mirrored_free_point.x.value, mirrored_free_point.y.value])
+            mirrored_free_point.set_all_as_linked()
+            add_these_free_points.append(mirrored_free_point)
+        free_point_tuple = list(free_point_tuple)
+        free_point_tuple.extend(add_these_free_points)
+        free_point_tuple = tuple(free_point_tuple)
+        return free_point_tuple
 
-    def update(self):
-        self.add_anchor_points()
-        self.add_free_points()
-        self.extract_parameters()
-        self.order_control_points()
-        self.mirror_control_points()
-        # self.add_mirrored_anchor_points()
-        self.update_anchor_point_array()
-        self.rotate(-self.alf.value)
-        self.generate_airfoil_coordinates()
-        self.needs_update = False</code></pre>
+    # def mirror_control_points(self):
+    #     to_mirror = self.control_points[::-1]
+    #     to_mirror = to_mirror[5:, :]
+    #     mirror = to_mirror @ np.array([[1, 0], [0, -1]])
+    #     self.control_points = np.vstack((self.control_points[:-4, :], mirror))
+    #     self.needs_update = True
+    #
+    # def update_anchor_point_array(self):
+    #     mirrored_point_array = np.array([])
+    #     for key in self.anchor_point_order:
+    #         xy = self.anchor_points[key]
+    #         if key == &#39;te_1&#39;:
+    #             self.anchor_point_array = xy
+    #         elif key == &#39;te_2&#39;:
+    #             pass
+    #         elif key == &#39;le&#39;:
+    #             self.anchor_point_array = np.row_stack((self.anchor_point_array, xy))
+    #         else:
+    #             self.anchor_point_array = np.row_stack((self.anchor_point_array, xy))
+    #             xy_minus = xy.reshape(1, 2) @ np.array([[1, 0], [0, -1]])
+    #             if len(mirrored_point_array) == 0:
+    #                 mirrored_point_array = xy_minus
+    #             else:
+    #                 mirrored_point_array = np.vstack((xy_minus, mirrored_point_array))
+    #     if len(mirrored_point_array) != 0:
+    #         self.anchor_point_array = np.row_stack((self.anchor_point_array, mirrored_point_array))
+    #     self.anchor_point_array = np.row_stack((self.anchor_point_array, self.anchor_points[&#39;te_2&#39;]))
+    #
+    # def generate_airfoil_coordinates(self):
+    #     if self.C:
+    #         self.C = []
+    #     P_start_idx = 0
+    #     for idx in range(len(self.anchor_point_order) - 2):
+    #         P_length = self.N[self.anchor_point_order[idx]] + 1
+    #         P_end_idx = P_start_idx + P_length
+    #         P = self.control_points[P_start_idx:P_end_idx, :]
+    #         C = bezier(P, self.nt)
+    #         self.C.append(C)
+    #         P_start_idx = P_end_idx - 1
+    #     for idx in range(len(self.anchor_point_order) - 2 - 1, -1, -1):
+    #         P_length = self.N[self.anchor_point_order[idx]] + 1
+    #         P_end_idx = P_start_idx + P_length
+    #         P = self.control_points[P_start_idx:P_end_idx, :]
+    #         C = bezier(P, self.nt)
+    #         self.C.append(C)
+    #         P_start_idx = P_end_idx - 1
+    #     coords = np.array([])
+    #     curvature = np.array([])
+    #     for idx in range(len(self.C)):
+    #         if idx == 0:
+    #             coords = np.column_stack((self.C[idx][&#39;x&#39;], self.C[idx][&#39;y&#39;]))
+    #             curvature = np.column_stack((self.C[idx][&#39;x&#39;], self.C[idx][&#39;k&#39;]))
+    #         else:
+    #             coords = np.row_stack((coords, np.column_stack((self.C[idx][&#39;x&#39;][1:], self.C[idx][&#39;y&#39;][1:]))))
+    #             curvature = np.row_stack((curvature, np.column_stack((self.C[idx][&#39;x&#39;][1:], self.C[idx][&#39;k&#39;][1:]))))
+    #     self.coords = coords
+    #     self.curvature = curvature
+    #     return self.coords, self.C
+    #
+    # def update(self):
+    #     self.add_anchor_points()
+    #     self.add_free_points()
+    #     self.extract_parameters()
+    #     self.order_control_points()
+    #     self.mirror_control_points()
+    #     # self.add_mirrored_anchor_points()
+    #     self.update_anchor_point_array()
+    #     self.rotate(-self.alf.value)
+    #     self.generate_airfoil_coordinates()
+    #     self.needs_update = False</code></pre>
 </details>
 <h3>Ancestors</h3>
 <ul class="hlist">
 <li><a title="pyairpar.core.airfoil.Airfoil" href="../core/airfoil.html#pyairpar.core.airfoil.Airfoil">Airfoil</a></li>
 </ul>
-<h3>Methods</h3>
+<h3>Static methods</h3>
 <dl>
-<dt id="pyairpar.symmetric.symmetric_airfoil.SymmetricAirfoil.generate_airfoil_coordinates"><code class="name flex">
-<span>def <span class="ident">generate_airfoil_coordinates</span></span>(<span>self)</span>
+<dt id="pyairpar.symmetric.symmetric_airfoil.SymmetricAirfoil.mirror_anchor_points"><code class="name flex">
+<span>def <span class="ident">mirror_anchor_points</span></span>(<span>anchor_point_tuple: Tuple[<a title="pyairpar.core.anchor_point.AnchorPoint" href="../core/anchor_point.html#pyairpar.core.anchor_point.AnchorPoint">AnchorPoint</a>, ...])</span>
 </code></dt>
 <dd>
 <div class="desc"></div>
@@ -288,40 +390,35 @@ point, use <code>(<a title="pyairpar.core.free_point.FreePoint" href="../core/fr
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def generate_airfoil_coordinates(self):
-    if self.C:
-        self.C = []
-    P_start_idx = 0
-    for idx in range(len(self.anchor_point_order) - 2):
-        P_length = self.N[self.anchor_point_order[idx]] + 1
-        P_end_idx = P_start_idx + P_length
-        P = self.control_points[P_start_idx:P_end_idx, :]
-        C = bezier(P, self.nt)
-        self.C.append(C)
-        P_start_idx = P_end_idx - 1
-    for idx in range(len(self.anchor_point_order) - 2 - 1, -1, -1):
-        P_length = self.N[self.anchor_point_order[idx]] + 1
-        P_end_idx = P_start_idx + P_length
-        P = self.control_points[P_start_idx:P_end_idx, :]
-        C = bezier(P, self.nt)
-        self.C.append(C)
-        P_start_idx = P_end_idx - 1
-    coords = np.array([])
-    curvature = np.array([])
-    for idx in range(len(self.C)):
-        if idx == 0:
-            coords = np.column_stack((self.C[idx][&#39;x&#39;], self.C[idx][&#39;y&#39;]))
-            curvature = np.column_stack((self.C[idx][&#39;x&#39;], self.C[idx][&#39;k&#39;]))
-        else:
-            coords = np.row_stack((coords, np.column_stack((self.C[idx][&#39;x&#39;][1:], self.C[idx][&#39;y&#39;][1:]))))
-            curvature = np.row_stack((curvature, np.column_stack((self.C[idx][&#39;x&#39;][1:], self.C[idx][&#39;k&#39;][1:]))))
-    self.coords = coords
-    self.curvature = curvature
-    return self.coords, self.C</code></pre>
+<pre><code class="python">@staticmethod
+def mirror_anchor_points(anchor_point_tuple: typing.Tuple[AnchorPoint, ...]):
+    # The next 3 lines produce, for example, [&#39;te_1&#39;, &#39;ap1&#39;, &#39;ap2&#39;, &#39;ap3&#39;, &#39;le&#39;]
+    upper_anchor_point_string_list = [anchor_point.name for anchor_point in anchor_point_tuple]
+    upper_anchor_point_string_list.insert(0, &#39;te_1&#39;)
+    upper_anchor_point_string_list.append(&#39;le&#39;)
+    # The next line produces, for example, [&#39;le&#39;, &#39;ap3&#39;, &#39;ap2&#39;]
+    previous_anchor_strings = upper_anchor_point_string_list[-1:1:-1]
+    # The next produces, for example, [&#39;ap3&#39;, &#39;ap2&#39;, &#39;ap1&#39;]
+    names = upper_anchor_point_string_list[-2:0:-1]
+    add_these_anchor_points = []
+    for idx, anchor_point in enumerate(anchor_point_tuple[::-1]):
+        mirrored_anchor_point = deepcopy(anchor_point)
+        mirrored_anchor_point.previous_anchor_point = previous_anchor_strings[idx]
+        if mirrored_anchor_point.previous_anchor_point != &#39;le&#39;:
+            mirrored_anchor_point.previous_anchor_point = mirrored_anchor_point.previous_anchor_point + &#39;_symm&#39;
+        mirrored_anchor_point.name = names[idx] + &#39;_symm&#39;
+        mirrored_anchor_point.y.value = -mirrored_anchor_point.y.value  # Reflect about the chordline (x-axis)
+        mirrored_anchor_point.xy = np.array([mirrored_anchor_point.x.value, mirrored_anchor_point.y.value])
+        mirrored_anchor_point.set_all_as_linked()
+        add_these_anchor_points.append(mirrored_anchor_point)
+    anchor_point_tuple = list(anchor_point_tuple)
+    anchor_point_tuple.extend(add_these_anchor_points)
+    anchor_point_tuple = tuple(anchor_point_tuple)
+    return anchor_point_tuple</code></pre>
 </details>
 </dd>
-<dt id="pyairpar.symmetric.symmetric_airfoil.SymmetricAirfoil.mirror_control_points"><code class="name flex">
-<span>def <span class="ident">mirror_control_points</span></span>(<span>self)</span>
+<dt id="pyairpar.symmetric.symmetric_airfoil.SymmetricAirfoil.mirror_free_points"><code class="name flex">
+<span>def <span class="ident">mirror_free_points</span></span>(<span>free_point_tuple: Tuple[<a title="pyairpar.core.free_point.FreePoint" href="../core/free_point.html#pyairpar.core.free_point.FreePoint">FreePoint</a>, ...], anchor_point_tuple: Tuple[<a title="pyairpar.core.anchor_point.AnchorPoint" href="../core/anchor_point.html#pyairpar.core.anchor_point.AnchorPoint">AnchorPoint</a>, ...])</span>
 </code></dt>
 <dd>
 <div class="desc"></div>
@@ -329,65 +426,35 @@ point, use <code>(<a title="pyairpar.core.free_point.FreePoint" href="../core/fr
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def mirror_control_points(self):
-    to_mirror = self.control_points[::-1]
-    to_mirror = to_mirror[5:, :]
-    mirror = to_mirror @ np.array([[1, 0], [0, -1]])
-    self.control_points = np.vstack((self.control_points[:-4, :], mirror))
-    self.needs_update = True</code></pre>
-</details>
-</dd>
-<dt id="pyairpar.symmetric.symmetric_airfoil.SymmetricAirfoil.update"><code class="name flex">
-<span>def <span class="ident">update</span></span>(<span>self)</span>
-</code></dt>
-<dd>
-<div class="desc"></div>
-<details class="source">
-<summary>
-<span>Expand source code</span>
-</summary>
-<pre><code class="python">def update(self):
-    self.add_anchor_points()
-    self.add_free_points()
-    self.extract_parameters()
-    self.order_control_points()
-    self.mirror_control_points()
-    # self.add_mirrored_anchor_points()
-    self.update_anchor_point_array()
-    self.rotate(-self.alf.value)
-    self.generate_airfoil_coordinates()
-    self.needs_update = False</code></pre>
-</details>
-</dd>
-<dt id="pyairpar.symmetric.symmetric_airfoil.SymmetricAirfoil.update_anchor_point_array"><code class="name flex">
-<span>def <span class="ident">update_anchor_point_array</span></span>(<span>self)</span>
-</code></dt>
-<dd>
-<div class="desc"></div>
-<details class="source">
-<summary>
-<span>Expand source code</span>
-</summary>
-<pre><code class="python">def update_anchor_point_array(self):
-    mirrored_point_array = np.array([])
-    for key in self.anchor_point_order:
-        xy = self.anchor_points[key]
-        if key == &#39;te_1&#39;:
-            self.anchor_point_array = xy
-        elif key == &#39;te_2&#39;:
-            pass
-        elif key == &#39;le&#39;:
-            self.anchor_point_array = np.row_stack((self.anchor_point_array, xy))
-        else:
-            self.anchor_point_array = np.row_stack((self.anchor_point_array, xy))
-            xy_minus = xy.reshape(1, 2) @ np.array([[1, 0], [0, -1]])
-            if len(mirrored_point_array) == 0:
-                mirrored_point_array = xy_minus
-            else:
-                mirrored_point_array = np.vstack((xy_minus, mirrored_point_array))
-    if len(mirrored_point_array) != 0:
-        self.anchor_point_array = np.row_stack((self.anchor_point_array, mirrored_point_array))
-    self.anchor_point_array = np.row_stack((self.anchor_point_array, self.anchor_points[&#39;te_2&#39;]))</code></pre>
+<pre><code class="python">@staticmethod
+def mirror_free_points(free_point_tuple: typing.Tuple[FreePoint, ...],
+                       anchor_point_tuple: typing.Tuple[AnchorPoint, ...]):
+    # The next 3 lines produce, for example, [&#39;te_1&#39;, &#39;ap1&#39;, &#39;ap2&#39;, &#39;ap3&#39;, &#39;le&#39;]
+    upper_anchor_point_string_list = [
+        anchor_point.name for anchor_point in anchor_point_tuple if &#39;_symm&#39; not in anchor_point.name]
+    upper_anchor_point_string_list.insert(0, &#39;te_1&#39;)
+    upper_anchor_point_string_list.append(&#39;le&#39;)
+    # The next line produces, for example, [&#39;te_1&#39;, &#39;ap1&#39;, &#39;ap2&#39;, &#39;ap3&#39;]
+    previous_free_strings = upper_anchor_point_string_list[-2::-1]
+    # The next produces, for example, [&#39;ap3&#39;, &#39;ap2&#39;, &#39;ap1&#39;, &#39;le&#39;]
+    previous_free_string_new = upper_anchor_point_string_list[:0:-1]
+    upper_free_point_string_list = [free_point.previous_anchor_point for free_point in free_point_tuple]
+
+    add_these_free_points = []
+    for idx, free_point in enumerate(free_point_tuple[::-1]):
+        mirrored_free_point = deepcopy(free_point)
+        mirrored_free_point.previous_anchor_point = previous_free_string_new[
+            previous_free_strings.index(mirrored_free_point.previous_anchor_point)]
+        if mirrored_free_point.previous_anchor_point != &#39;le&#39;:
+            mirrored_free_point.previous_anchor_point = mirrored_free_point.previous_anchor_point + &#39;_symm&#39;
+        mirrored_free_point.y.value = -mirrored_free_point.y.value
+        mirrored_free_point.xy = np.array([mirrored_free_point.x.value, mirrored_free_point.y.value])
+        mirrored_free_point.set_all_as_linked()
+        add_these_free_points.append(mirrored_free_point)
+    free_point_tuple = list(free_point_tuple)
+    free_point_tuple.extend(add_these_free_points)
+    free_point_tuple = tuple(free_point_tuple)
+    return free_point_tuple</code></pre>
 </details>
 </dd>
 </dl>
@@ -396,9 +463,25 @@ point, use <code>(<a title="pyairpar.core.free_point.FreePoint" href="../core/fr
 <li><code><b><a title="pyairpar.core.airfoil.Airfoil" href="../core/airfoil.html#pyairpar.core.airfoil.Airfoil">Airfoil</a></b></code>:
 <ul class="hlist">
 <li><code><a title="pyairpar.core.airfoil.Airfoil.add_anchor_point" href="../core/airfoil.html#pyairpar.core.airfoil.Airfoil.add_anchor_point">add_anchor_point</a></code></li>
+<li><code><a title="pyairpar.core.airfoil.Airfoil.add_anchor_points" href="../core/airfoil.html#pyairpar.core.airfoil.Airfoil.add_anchor_points">add_anchor_points</a></code></li>
 <li><code><a title="pyairpar.core.airfoil.Airfoil.add_free_point" href="../core/airfoil.html#pyairpar.core.airfoil.Airfoil.add_free_point">add_free_point</a></code></li>
+<li><code><a title="pyairpar.core.airfoil.Airfoil.add_free_points" href="../core/airfoil.html#pyairpar.core.airfoil.Airfoil.add_free_points">add_free_points</a></code></li>
+<li><code><a title="pyairpar.core.airfoil.Airfoil.check_self_intersection" href="../core/airfoil.html#pyairpar.core.airfoil.Airfoil.check_self_intersection">check_self_intersection</a></code></li>
+<li><code><a title="pyairpar.core.airfoil.Airfoil.compute_area" href="../core/airfoil.html#pyairpar.core.airfoil.Airfoil.compute_area">compute_area</a></code></li>
+<li><code><a title="pyairpar.core.airfoil.Airfoil.extract_parameters" href="../core/airfoil.html#pyairpar.core.airfoil.Airfoil.extract_parameters">extract_parameters</a></code></li>
+<li><code><a title="pyairpar.core.airfoil.Airfoil.generate_airfoil_coordinates" href="../core/airfoil.html#pyairpar.core.airfoil.Airfoil.generate_airfoil_coordinates">generate_airfoil_coordinates</a></code></li>
+<li><code><a title="pyairpar.core.airfoil.Airfoil.init_g1_points" href="../core/airfoil.html#pyairpar.core.airfoil.Airfoil.init_g1_points">init_g1_points</a></code></li>
+<li><code><a title="pyairpar.core.airfoil.Airfoil.init_g2_points" href="../core/airfoil.html#pyairpar.core.airfoil.Airfoil.init_g2_points">init_g2_points</a></code></li>
+<li><code><a title="pyairpar.core.airfoil.Airfoil.order_control_points" href="../core/airfoil.html#pyairpar.core.airfoil.Airfoil.order_control_points">order_control_points</a></code></li>
+<li><code><a title="pyairpar.core.airfoil.Airfoil.override" href="../core/airfoil.html#pyairpar.core.airfoil.Airfoil.override">override</a></code></li>
+<li><code><a title="pyairpar.core.airfoil.Airfoil.plot" href="../core/airfoil.html#pyairpar.core.airfoil.Airfoil.plot">plot</a></code></li>
 <li><code><a title="pyairpar.core.airfoil.Airfoil.rotate" href="../core/airfoil.html#pyairpar.core.airfoil.Airfoil.rotate">rotate</a></code></li>
+<li><code><a title="pyairpar.core.airfoil.Airfoil.set_curvature" href="../core/airfoil.html#pyairpar.core.airfoil.Airfoil.set_curvature">set_curvature</a></code></li>
+<li><code><a title="pyairpar.core.airfoil.Airfoil.set_curvature_le" href="../core/airfoil.html#pyairpar.core.airfoil.Airfoil.set_curvature_le">set_curvature_le</a></code></li>
+<li><code><a title="pyairpar.core.airfoil.Airfoil.set_slope" href="../core/airfoil.html#pyairpar.core.airfoil.Airfoil.set_slope">set_slope</a></code></li>
 <li><code><a title="pyairpar.core.airfoil.Airfoil.translate" href="../core/airfoil.html#pyairpar.core.airfoil.Airfoil.translate">translate</a></code></li>
+<li><code><a title="pyairpar.core.airfoil.Airfoil.update" href="../core/airfoil.html#pyairpar.core.airfoil.Airfoil.update">update</a></code></li>
+<li><code><a title="pyairpar.core.airfoil.Airfoil.update_anchor_point_array" href="../core/airfoil.html#pyairpar.core.airfoil.Airfoil.update_anchor_point_array">update_anchor_point_array</a></code></li>
 </ul>
 </li>
 </ul>
@@ -422,10 +505,8 @@ point, use <code>(<a title="pyairpar.core.free_point.FreePoint" href="../core/fr
 <li>
 <h4><code><a title="pyairpar.symmetric.symmetric_airfoil.SymmetricAirfoil" href="#pyairpar.symmetric.symmetric_airfoil.SymmetricAirfoil">SymmetricAirfoil</a></code></h4>
 <ul class="">
-<li><code><a title="pyairpar.symmetric.symmetric_airfoil.SymmetricAirfoil.generate_airfoil_coordinates" href="#pyairpar.symmetric.symmetric_airfoil.SymmetricAirfoil.generate_airfoil_coordinates">generate_airfoil_coordinates</a></code></li>
-<li><code><a title="pyairpar.symmetric.symmetric_airfoil.SymmetricAirfoil.mirror_control_points" href="#pyairpar.symmetric.symmetric_airfoil.SymmetricAirfoil.mirror_control_points">mirror_control_points</a></code></li>
-<li><code><a title="pyairpar.symmetric.symmetric_airfoil.SymmetricAirfoil.update" href="#pyairpar.symmetric.symmetric_airfoil.SymmetricAirfoil.update">update</a></code></li>
-<li><code><a title="pyairpar.symmetric.symmetric_airfoil.SymmetricAirfoil.update_anchor_point_array" href="#pyairpar.symmetric.symmetric_airfoil.SymmetricAirfoil.update_anchor_point_array">update_anchor_point_array</a></code></li>
+<li><code><a title="pyairpar.symmetric.symmetric_airfoil.SymmetricAirfoil.mirror_anchor_points" href="#pyairpar.symmetric.symmetric_airfoil.SymmetricAirfoil.mirror_anchor_points">mirror_anchor_points</a></code></li>
+<li><code><a title="pyairpar.symmetric.symmetric_airfoil.SymmetricAirfoil.mirror_free_points" href="#pyairpar.symmetric.symmetric_airfoil.SymmetricAirfoil.mirror_free_points">mirror_free_points</a></code></li>
 </ul>
 </li>
 </ul>

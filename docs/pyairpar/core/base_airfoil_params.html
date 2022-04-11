@@ -57,7 +57,7 @@ class BaseAirfoilParams:
         ### Description:
 
         The most fundamental parameters required for the generation of any `pyairpar.core.airfoil.Airfoil`.
-        A geometric description of an example airfoil generated (from `pyairpar.examples.simple_airfoil.main`) is
+        A geometric description of an example airfoil generated (from `pyairpar.examples.simple_airfoil.run()`) is
         shown below (it may be helpful to open the image in a new tab to adequately view the details):
 
         .. image:: simple_airfoil_annotated.png
@@ -149,7 +149,7 @@ class BaseAirfoilParams:
         if self.non_dim_by_chord:  # only scale if the anchor point has a length scale dimension
             for param in [var for var in vars(self).values()  # For each parameter in the anchor point,
                           if isinstance(var, Param) and var.units == &#39;length&#39;]:
-                if param.length_scale_dimension is None:  # only scale if the parameter has not yet been scaled
+                if param.scale_value is None:  # only scale if the parameter has not yet been scaled
                     param.value = param.value * self.c.value
 
     def count_overrideable_variables(self):
@@ -207,7 +207,7 @@ class BaseAirfoilParams:
 <dd>
 <div class="desc"><h3 id="description">Description:</h3>
 <p>The most fundamental parameters required for the generation of any <code><a title="pyairpar.core.airfoil.Airfoil" href="airfoil.html#pyairpar.core.airfoil.Airfoil">Airfoil</a></code>.
-A geometric description of an example airfoil generated (from <code>pyairpar.examples.simple_airfoil.main</code>) is
+A geometric description of an example airfoil generated (from <code><a title="pyairpar.examples.simple_airfoil.run" href="../examples/simple_airfoil.html#pyairpar.examples.simple_airfoil.run">run()</a></code>) is
 shown below (it may be helpful to open the image in a new tab to adequately view the details):</p>
 <p><img alt="" src="simple_airfoil_annotated.png"></p>
 <h3 id="args">Args:</h3>
@@ -275,7 +275,7 @@ should be non-dimensionalized by the chord (<code>c</code>). Default value: <cod
         ### Description:
 
         The most fundamental parameters required for the generation of any `pyairpar.core.airfoil.Airfoil`.
-        A geometric description of an example airfoil generated (from `pyairpar.examples.simple_airfoil.main`) is
+        A geometric description of an example airfoil generated (from `pyairpar.examples.simple_airfoil.run()`) is
         shown below (it may be helpful to open the image in a new tab to adequately view the details):
 
         .. image:: simple_airfoil_annotated.png
@@ -367,7 +367,7 @@ should be non-dimensionalized by the chord (<code>c</code>). Default value: <cod
         if self.non_dim_by_chord:  # only scale if the anchor point has a length scale dimension
             for param in [var for var in vars(self).values()  # For each parameter in the anchor point,
                           if isinstance(var, Param) and var.units == &#39;length&#39;]:
-                if param.length_scale_dimension is None:  # only scale if the parameter has not yet been scaled
+                if param.scale_value is None:  # only scale if the parameter has not yet been scaled
                     param.value = param.value * self.c.value
 
     def count_overrideable_variables(self):
@@ -501,7 +501,7 @@ been scaled.</p></div>
     if self.non_dim_by_chord:  # only scale if the anchor point has a length scale dimension
         for param in [var for var in vars(self).values()  # For each parameter in the anchor point,
                       if isinstance(var, Param) and var.units == &#39;length&#39;]:
-            if param.length_scale_dimension is None:  # only scale if the parameter has not yet been scaled
+            if param.scale_value is None:  # only scale if the parameter has not yet been scaled
                 param.value = param.value * self.c.value</code></pre>
 </details>
 </dd>

@@ -30,9 +30,8 @@ class AirfoilParametrization:
             self.airfoil_tuple = airfoil_tuple
 
         self.n_mirrors = 0
-        self.extra_params = []
-        self.params = []
-        self.bounds = []
+        self.params = None
+        self.parameter_info = None
 
     def mirror(self, axis: np.ndarray or tuple, fixed_airfoil_idx: int, linked_airfoil_idx: int,
                fixed_anchor_point_range: tuple, starting_prev_anchor_point_str_linked: str):
@@ -63,9 +62,8 @@ class AirfoilParametrization:
         representing the name of the final `pyairpar.core.anchor_point.AnchorPoint` in the fixed airfoil
         (counter-clockwise ordering)
 
-        `starting_prev_anchor_point_str_linked`:
-
-        ### Returns:
+        `starting_prev_anchor_point_str_linked`: The name (`str`) of the anchor point where the mirror should begin
+        on the linked airfoil.
         """
 
         self.n_mirrors += 1
@@ -79,10 +77,10 @@ class AirfoilParametrization:
         elif isinstance(axis, tuple):
             if isinstance(axis[1], np.ndarray):
                 # Option 2
-                theta = axis[0],
-                x1, y1 = axis[0][0], axis[0][1]
+                theta = axis[0]
+                x1, y1 = axis[1][0], axis[1][1]
                 m = np.tan(theta)
-                b = -m * x1 + y1
+                b = (-m * x1 + y1)
             elif isinstance(axis[1], float):
                 # Option 3
                 m, b = axis[0], axis[1]
@@ -93,10 +91,7 @@ class AirfoilParametrization:
             raise Exception('Invalid reflection axis input')
 
         # Calculate the reflection matrix
-        reflect_mat = 1 / (1 + m ** 2) * np.array([[1 - m ** 2, 2 * m, -2 * m * b],
-                                                   [2 * m, m ** 2 - 1, 2 * b],
-                                                   [0, 0, 1 + m ** 2]])
-
+        reflect_mat = 1 / (1 + m ** 2) * np.array([[1 - m ** 2, 2 * m, -2 * m * b], [2 * m, m ** 2 - 1, 2 * b], [0, 0, 1 + m ** 2]])
         # Reflect the relevant anchor points and free points about the input axis
         fixed_airfoil = self.airfoil_tuple[fixed_airfoil_idx]
         linked_airfoil = self.airfoil_tuple[linked_airfoil_idx]
@@ -152,7 +147,8 @@ class AirfoilParametrization:
         free_points_to_add = deepcopy([free_point for free_point in fixed_airfoil.free_point_tuple
                                        if free_point.previous_anchor_point + '_mirror_' + str(self.n_mirrors) in
                                        [anchor_point.name for anchor_point in linked_airfoil_anchor_points
-                                        if anchor_point.name != fixed_anchor_point_range[1]]])
+                                        if anchor_point.name != fixed_anchor_point_range[1] +
+                                        '_mirror_' + str(self.n_mirrors)]])
         fixed_anchor_point_str_list = fixed_airfoil.anchor_point_order[
                                       fixed_airfoil.anchor_point_order.index(fixed_anchor_point_range[0]):
                                       fixed_airfoil.anchor_point_order.index(fixed_anchor_point_range[1]) + 1]
@@ -178,26 +174,47 @@ class AirfoilParametrization:
         linked_airfoil.free_point_tuple.extend(free_points_to_add[::-1])
         linked_airfoil.free_point_tuple = tuple(linked_airfoil.free_point_tuple)
         linked_airfoil.update()
-        pass
 
-    def extract_parameters(self):
+    def extract_parameters(self, parameters: typing.List[Param] or typing.Dict[Param]):
         """
         ### Description:
 
         This function extracts every parameter from the each `pyairpar.core.airfoil.Airfoil` in the `airfoil_tuple`, as
         well as every parameter in the `AirfoilParametrization` with `active=True` and `linked=False` as a single
         `list` of parameter values.
+
+        ### Args:
+
+        `parameters`: a `list` or `dict` of parameters used in the parametrization
+
+        ### Returns:
+
+        The list of parameters and a dictionary contain parameter information
         """
-        self.params = []
-        self.bounds = []
-        for airfoil in self.airfoil_tuple:
-            airfoil.extract_parameters()
-            self.params.extend(airfoil.params)
-            self.bounds.extend(airfoil.bounds)
-        self.params.extend([parameter.value for parameter in self.extra_params
-                            if parameter.active and not parameter.linked])
-        self.bounds.extend([[parameter.bounds[0], parameter.bounds[1]] for parameter in self.extra_params
-                            if parameter.active and not parameter.linked])
+        if isinstance(parameters, list):
+            self.params = parameters
+        elif isinstance(parameters, dict):
+            for key, value in parameters.items():
+                if isinstance(value, Param):
+                    value.name = key
+            self.params = [param for param in parameters.values()
+                           if isinstance(param, Param) and param.active and not param.linked]
+        else:
+            raise TypeError('Invalid type input for extra_parameters. Must be a list or dictionary of Params.')
+        self.parameter_info = {
+            'values': [param.value for param in self.params],
+            'bounds_normalized_values': [np.divide(param.value - param.bounds[0], param.bounds[1] - param.bounds[0])
+                                         for param in self.params],
+            'bounds': [param.bounds for param in self.params],
+            'names': [param.name for param in self.params],
+            'units': [param.units for param in self.params],
+            'scale_value': [param.scale_value for param in self.params],
+            'n_params': len(self.params),
+        }
+        return self.params, self.parameter_info
+
+    def override_parameters(self, parameters: list):
+        pass
 
     def clone(self):
         """
@@ -206,21 +223,6 @@ class AirfoilParametrization:
         Clones an `pyairpar.core.airfoil.Airfoil`
         """
         pass
-
-    def include(self, parameters: typing.List[Param]):
-        """
-        ### Description:
-
-        This function provides a way to pass the external parameters added to the parametrization to the global list of
-        parameters. Useful for parameter extraction.
-
-        ### Args:
-
-        `parameters`: a `list` of `pyairpar.core.param.Param`s to add do the global parameter list. Typically, all
-        global parameters in the setup script for the particular parametrization should be included. See
-        `pyairpar.examples.propulsion_airframe_integration` for an example.
-        """
-        self.extra_params.extend(parameters)
 
 
 def rotate(x, y, theta):

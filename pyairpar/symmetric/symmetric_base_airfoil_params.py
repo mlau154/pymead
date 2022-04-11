@@ -49,7 +49,7 @@ class SymmetricBaseAirfoilParams:
         if self.non_dim_by_chord:  # only scale if the anchor point has a length scale dimension
             for param in [var for var in vars(self).values()  # For each parameter in the anchor point,
                           if isinstance(var, Param) and var.units == 'length']:
-                if param.length_scale_dimension is None:  # only scale if the parameter has not yet been scaled
+                if param.scale_value is None:  # only scale if the parameter has not yet been scaled
                     param.value = param.value * self.c.value
 
     def count_overrideable_variables(self):
