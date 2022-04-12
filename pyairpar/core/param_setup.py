@@ -62,6 +62,6 @@ class ParamSetup:
                                               self.parameter_info['bounds'][idx][0]
             else:
                 self.param_dict[name].value = parameter_info_values[idx]
-        self.param_dict = self._generate_linked_param_dict(self.param_dict)
+        self.param_dict = self._generate_linked_param_dict(self.param_dict, *args, **kwargs)
         self.extract_parameters()
         return self.param_dict

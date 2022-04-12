@@ -1,9 +1,5 @@
 import numpy as np
-import typing
 from copy import deepcopy
-
-from pyairpar.core.airfoil import Airfoil
-from pyairpar.core.param import Param
 from pyairpar.utils.transformations import rotate, translate
 from pyairpar.core.param_setup import ParamSetup
 

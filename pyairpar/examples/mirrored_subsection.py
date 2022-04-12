@@ -5,10 +5,32 @@ from pyairpar.core.anchor_point import AnchorPoint
 from pyairpar.core.base_airfoil_params import BaseAirfoilParams
 from pyairpar.core.airfoil import Airfoil
 from pyairpar.core.param import Param
+from pyairpar.core.param_setup import ParamSetup
 from pyairpar.core.parametrization import AirfoilParametrization
 
 
-def run():
+def _generate_unlinked_param_dict():
+    param_dict = {
+        'c_main': Param(10.0),
+        'alf_main': Param(np.deg2rad(5.0)),
+        'R_le_main': Param(0.03, 'length'),
+        'L_le_main': Param(0.05, 'length'),
+        'r_le_main': Param(0.6),
+        'phi_le_main': Param(np.deg2rad(12.0)),
+        'psi1_le_main': Param(np.deg2rad(10.0)),
+        'psi2_le_main': Param(np.deg2rad(15.0)),
+        'L1_te_main': Param(0.25, 'length'),
+        'L2_te_main': Param(0.3, 'length'),
+        'theta1_te_main': Param(np.deg2rad(2.0)),
+        'theta2_te_main': Param(np.deg2rad(2.0)),
+        't_te_main': Param(0.0, 'length', active=False),
+        'r_te_main': Param(0.5, active=False),
+        'phi_te_main': Param(np.deg2rad(0.0)),
+        'dx_main': Param(0.0, active=False),
+        'dy_main': Param(0.0, active=False),
+    }
+
+def _generate_airfoils():
     base_airfoil_params_main = BaseAirfoilParams(c=Param(10.0),
                                                  alf=Param(np.deg2rad(5.0)),
                                                  R_le=Param(0.03, 'length'),
@@ -122,20 +144,20 @@ def run():
                               anchor_point_tuple=(),
                               free_point_tuple=())
 
-    parametrization = AirfoilParametrization((airfoil_main, airfoil_nacelle))
+    airfoil_tuple = (airfoil_main, airfoil_nacelle)
+    return airfoil_tuple
+
+
+def run():
+    param_setup = ParamSetup(_generate_unlinked_param_dict, _generate_unlinked_param_dict)
+    parametrization = AirfoilParametrization(param_setup, _generate_airfoils)
     m = Param(-0.05)
-    b = Param(0.08, 'length', scale_value=base_airfoil_params_main.c.value)
+    b = Param(0.08, 'length', scale_value=param_setup.param_dict['c_main'])
     parametrization.mirror(axis=(m.value, b.value), fixed_airfoil_idx=0, linked_airfoil_idx=1,
                            fixed_anchor_point_range=('anchor-top', 'anchor-top2'),
                            starting_prev_anchor_point_str_linked='le')
 
-    parametrization.include([m, b])
-
     parametrization.extract_parameters()
-    print(parametrization.params)
-    print(parametrization.bounds)
-    print(len(parametrization.params))
-    print(len(parametrization.bounds))
 
     print(f"fixed_airfoil_N = {airfoil_main.N}, linked_airfoil_N = {airfoil_nacelle.N}")
 

@@ -296,7 +296,7 @@ class Airfoil:
 
         This is the function which enforces \(G^2\) continuity for all `pyairpar.core.anchor_point.AnchorPoint`s
         which are added. To keep the length ratios and angles defined in a "nice" way, the neighboring control points
-        to the anchor point are defined as follows:
+        to the anchor point's slope-control points are defined as follows:
 
         $$
         \begin{align*}
