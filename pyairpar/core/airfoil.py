@@ -304,22 +304,22 @@ class Airfoil:
             \begin{cases}
                 \begin{bmatrix} x_{-1} + \frac{c_1}{c_2[c_3(\tan{(\theta_1)} + y_0 - y_{-1})]}
                                 \\ \tan{(\theta_1)} (x_{-2} - x_{-1}) + y_{-1} \end{bmatrix}
-                                ,& \mod{\left(\theta_1, \frac{\pi}{2}\right) \neq 0} \wedge R \in (-\infty,0) \cup (0, \infty) \\
-                \begin{bmatrix} x_{-1} \\ y_{-1} + \frac{c_1}{c_2 c_3}  \end{bmatrix},& \mod{\left(\theta_1, \frac{\pi}{2}\right) = 0} \wedge
+                                ,& \theta_1 \in \left(0, \frac{\pi}{2} \right) \cup \left(\frac{\pi}{2}, \pi \right) \wedge R \in (-\infty,0) \cup (0, \infty) \\
+                \begin{bmatrix} x_{-1} \\ y_{-1} + \frac{c_1}{c_2 c_3}  \end{bmatrix},& \theta_1 = \frac{\pi}{2} \wedge
                                                                                                     R \in (-\infty,0)
                                                                                                     \cup (0,\infty) \\
-                \begin{bmatrix} x_{-1} \\ y_{-1} \end{bmatrix},& \theta_1 \in \mathbb{R} \wedge R =
+                \begin{bmatrix} x_{-1} \\ y_{-1} \end{bmatrix},& \theta_1 \in (0, \pi) \wedge R =
                                                                                                             \pm \infty
             \end{cases} \\
             \begin{bmatrix} x_{+2} \\ y_{+2} \end{bmatrix} &=
             \begin{cases}
                 \begin{bmatrix} x_{+1} + \frac{c_4}{c_5[c_6(\tan{(\theta_2)} + y_{+1} - y_0)]}
                                 \\ \tan{(\theta_2)} (x_{+2} - x_{+1}) + y_{+1} \end{bmatrix}
-                                ,& \mod{\left(\theta_2, \frac{\pi}{2}\right) \neq 0} \wedge R \in (-\infty,0) \cup (0, \infty) \\
-                \begin{bmatrix} x_{+1} \\ y_{+1} + \frac{c_4}{c_5 c_6}  \end{bmatrix},& \mod{\left(\theta_1, \frac{\pi}{2}\right) = 0} \wedge
+                                ,& \theta_2 \in \left(0, \frac{\pi}{2} \right) \cup \left(\frac{\pi}{2}, \pi \right) \wedge R \in (-\infty,0) \cup (0, \infty) \\
+                \begin{bmatrix} x_{+1} \\ y_{+1} + \frac{c_4}{c_5 c_6}  \end{bmatrix},& \theta_2 = \frac{\pi}{2} \wedge
                                                                                                     R \in (-\infty,0)
                                                                                                     \cup (0,\infty) \\
-                \begin{bmatrix} x_{+1} \\ y_{+1} \end{bmatrix},& \theta_2 \in \mathbb{R} \wedge R =
+                \begin{bmatrix} x_{+1} \\ y_{+1} \end{bmatrix},& \theta_2 \in (0, \pi) \wedge R =
                                                                                                             \pm \infty
             \end{cases}
         \end{align*}
@@ -363,6 +363,8 @@ class Airfoil:
         \(90^{\circ}\) has the effect of "tucking" the arms in, and increasing \(\psi_1\) or \(\psi_2\) from
         \(90^{\circ}\) has the effect of "spreading" the arms out. See the documentation for
         `pyairpar.core.anchor_point.AnchorPoint` for further description and a visual.
+
+        .. note:: A value of \( R = \frac{1}{\kappa} = 0 \) (infinite curvature) is not well-defined for geometric shapes. Setting \(R = 0\) will yield an exception.
 
         ### Returns:
 
