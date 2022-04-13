@@ -8,7 +8,7 @@ from matplotlib.axes import Axes
 from matplotlib.figure import Figure
 import matplotlib.pyplot as plt
 import typing
-from shapely.geometry import Polygon, LineString
+from shapely.geometry import Polygon, LineString, Point, MultiPoint
 
 
 class Airfoil:
@@ -86,8 +86,13 @@ class Airfoil:
         self.free_points = {}
         self.param_dicts = {}
         self.coords = None
+        self.non_transformed_coords = None
         self.curvature = None
         self.area = None
+        self.x_thickness = None
+        self.thickness = None
+        self.max_thickness = None
+
         self.needs_update = True
 
         self.anchor_point_tuple = anchor_point_tuple
@@ -572,15 +577,18 @@ class Airfoil:
         The `update` function adds first all of the anchor points in the `anchor_point_tuple` and then all of the free
         points in the `free_point_tuple`. The parameter information is extracted. The control points are ordered
         based on the `anchor_point_order`, `name` attributes, and `previous_anchor_point` attributes. The
-        `anchor_point_array` is updated based on the anchor points added. Rotation to the specified angle of attack
-        and translation by the specified \(\Delta x\), \(\Delta y\) are applied, in that order. Finally, the Bézier
-        curves are generated through the control points and the airfoil coordinates produced.
+        `anchor_point_array` is updated based on the anchor points added. Airfoil coordinates are generated and saved.
+        Rotation to the specified angle of attack
+        and translation by the specified \(\Delta x\), \(\Delta y\) are applied, in that order. The Bézier
+        curves are generated through the control points and the airfoil coordinates are then calculated again after
+        the transformations.
         """
         self.add_anchor_points()
         self.add_free_points()
         self.extract_parameters()
         self.order_control_points()
         self.update_anchor_point_array()
+        self.generate_non_transformed_airfoil_coordinates()
         self.rotate(-self.alf.value)
         self.translate(self.dx.value, self.dy.value)
         self.generate_airfoil_coordinates()
@@ -643,17 +651,18 @@ class Airfoil:
         self.needs_update = True
         return self.control_points, self.anchor_point_array
 
-    def generate_airfoil_coordinates(self):
+    def generate_coords(self):
         """
         ### Description:
 
         Generates the Bézier curves through the control points. Also re-casts the Bézier curve points in terms of
         airfoil coordinates by removing the points shared by joined Bézier curves. Curvature information is extracted
-        from the `C` dictionary.
+        from the `C` dictionary. Helper method for `generate_airfoil_coordinates()` and
+        `generate_non_transformed_airfoil_coordinates()`.
 
         ### Returns:
 
-        The airfoil coordinates, the `C` dictionary of Bézier curve information, and the curvature.
+        The airfoil coordinates and the curvature of the airfoil.
         """
         if self.C:
             self.C = []
@@ -674,9 +683,38 @@ class Airfoil:
             else:
                 coords = np.row_stack((coords, np.column_stack((self.C[idx]['x'][1:], self.C[idx]['y'][1:]))))
                 curvature = np.row_stack((curvature, np.column_stack((self.C[idx]['x'][1:], self.C[idx]['k'][1:]))))
+        return coords, curvature
+
+    def generate_airfoil_coordinates(self):
+        """
+        ### Description:
+
+        Runs the `generate_coords()` method after the rotation and translation steps and saves the information to
+        the `coords` and `curvature` attributes of `Airfoil`. Used in `update()`.
+
+        ### Returns:
+
+        The airfoil coordinates, the `C` dictionary of Bézier curve information, and the curvature.
+        """
+        coords, curvature = self.generate_coords()
         self.coords = coords
         self.curvature = curvature
         return self.coords, self.C, self.curvature
+
+    def generate_non_transformed_airfoil_coordinates(self):
+        """
+        ### Description:
+
+        Runs the `generate_coords()` method before the rotation and translation steps and saves the information to the
+        `non_transformed_coords` attribute of `Airfoil`. Used in `update()`.
+
+        ### Returns:
+
+        The coordinates of the airfoil before rotation and translation.
+        """
+        coords, _ = self.generate_coords()
+        self.non_transformed_coords = coords
+        return self.non_transformed_coords
 
     def compute_area(self):
         """
@@ -713,6 +751,38 @@ class Airfoil:
         line_string = LineString(points_shapely)
         is_simple = line_string.is_simple
         return not is_simple
+
+    def compute_thickness(self, n_lines: int = 201):
+        r"""
+        ### Description:
+
+        Calculates the thickness distribution and maximum thickness of the airfoil.
+
+        ### Args:
+
+        `n_lines`: Optional `int` describing the number of lines evenly spaced along the chordline produced to
+        determine the thickness distribution. Default: `201`.
+
+        ### Returns:
+
+        The list of \(x\)-values used for the thickness distribution calculation, the thickness distribution, and the
+        maximum value of the thickness distribution.
+        """
+        points_shapely = list(map(tuple, self.non_transformed_coords))
+        airfoil_line_string = LineString(points_shapely)
+        x_thickness = np.linspace(0.0, self.c.value, n_lines)
+        thickness = []
+        for idx in range(n_lines):
+            line_string = LineString([(x_thickness[idx], -1), (x_thickness[idx], 1)])
+            x_inters = line_string.intersection(airfoil_line_string)
+            if x_inters.is_empty:
+                thickness.append(0.0)
+            else:
+                thickness.append(x_inters.convex_hull.length)
+        self.x_thickness = x_thickness
+        self.thickness = thickness
+        self.max_thickness = max(thickness)
+        return self.x_thickness, self.thickness, self.max_thickness
 
     def plot(self, plot_what: typing.Tuple[str, ...], fig: Figure = None, axs: Axes = None, show_plot: bool = True,
              save_plot: bool = False, save_path: str = None, plot_kwargs: typing.List[dict] = None,

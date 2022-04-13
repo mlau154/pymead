@@ -106,11 +106,35 @@ class AnchorPoint:
         self.name = name
         self.previous_anchor_point = previous_anchor_point
         self.L = L
-        self.R = R
-        self.r = r
-        self.phi = phi
-        self.psi1 = psi1
-        self.psi2 = psi2
+
+        if R.value == 0:
+            raise ValueError(&#39;Setting R = 0 yields infinite curvature (not well-defined)&#39;)
+        else:
+            self.R = R
+
+        if 0 &lt; r.value &lt; 1:
+            self.r = r
+        else:
+            raise ValueError(f&#39;The distance fraction, r, must be between 0 and 1. A value of {r.value} was entered.&#39;)
+
+        if -np.pi &lt; phi.value &lt; np.pi:
+            self.phi = phi
+        else:
+            raise ValueError(f&#39;The anchor point neighboring control point angle, phi, must be between -90 degrees and&#39;
+                             f&#39;90 degrees. A value of {phi.value} was entered.&#39;)
+
+        if 0 &lt; psi1.value &lt; np.pi:
+            self.psi1 = psi1
+        else:
+            raise ValueError(f&#39;The aft curvature control arm angle, psi1, must be between 0 degrees and 180 degrees.&#39;
+                             f&#39;A value of {psi1.value} was entered.&#39;)
+
+        if 0 &lt; psi2.value &lt; np.pi:
+            self.psi2 = psi2
+        else:
+            raise ValueError(f&#39;The fore curvature control arm angle, psi2, must be between 0 degrees and 180 degrees.&#39;
+                             f&#39;A value of {psi2.value} was entered.&#39;)
+
         self.length_scale_dimension = length_scale_dimension
         self.n_overrideable_parameters = self.count_overrideable_variables()
         self.scale_vars()
@@ -312,11 +336,35 @@ values (optional)</p>
         self.name = name
         self.previous_anchor_point = previous_anchor_point
         self.L = L
-        self.R = R
-        self.r = r
-        self.phi = phi
-        self.psi1 = psi1
-        self.psi2 = psi2
+
+        if R.value == 0:
+            raise ValueError(&#39;Setting R = 0 yields infinite curvature (not well-defined)&#39;)
+        else:
+            self.R = R
+
+        if 0 &lt; r.value &lt; 1:
+            self.r = r
+        else:
+            raise ValueError(f&#39;The distance fraction, r, must be between 0 and 1. A value of {r.value} was entered.&#39;)
+
+        if -np.pi &lt; phi.value &lt; np.pi:
+            self.phi = phi
+        else:
+            raise ValueError(f&#39;The anchor point neighboring control point angle, phi, must be between -90 degrees and&#39;
+                             f&#39;90 degrees. A value of {phi.value} was entered.&#39;)
+
+        if 0 &lt; psi1.value &lt; np.pi:
+            self.psi1 = psi1
+        else:
+            raise ValueError(f&#39;The aft curvature control arm angle, psi1, must be between 0 degrees and 180 degrees.&#39;
+                             f&#39;A value of {psi1.value} was entered.&#39;)
+
+        if 0 &lt; psi2.value &lt; np.pi:
+            self.psi2 = psi2
+        else:
+            raise ValueError(f&#39;The fore curvature control arm angle, psi2, must be between 0 degrees and 180 degrees.&#39;
+                             f&#39;A value of {psi2.value} was entered.&#39;)
+
         self.length_scale_dimension = length_scale_dimension
         self.n_overrideable_parameters = self.count_overrideable_variables()
         self.scale_vars()

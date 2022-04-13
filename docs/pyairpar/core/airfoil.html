@@ -37,7 +37,7 @@ from matplotlib.axes import Axes
 from matplotlib.figure import Figure
 import matplotlib.pyplot as plt
 import typing
-from shapely.geometry import Polygon, LineString
+from shapely.geometry import Polygon, LineString, Point, MultiPoint
 
 
 class Airfoil:
@@ -115,8 +115,13 @@ class Airfoil:
         self.free_points = {}
         self.param_dicts = {}
         self.coords = None
+        self.non_transformed_coords = None
         self.curvature = None
         self.area = None
+        self.x_thickness = None
+        self.thickness = None
+        self.max_thickness = None
+
         self.needs_update = True
 
         self.anchor_point_tuple = anchor_point_tuple
@@ -601,15 +606,18 @@ class Airfoil:
         The `update` function adds first all of the anchor points in the `anchor_point_tuple` and then all of the free
         points in the `free_point_tuple`. The parameter information is extracted. The control points are ordered
         based on the `anchor_point_order`, `name` attributes, and `previous_anchor_point` attributes. The
-        `anchor_point_array` is updated based on the anchor points added. Rotation to the specified angle of attack
-        and translation by the specified \(\Delta x\), \(\Delta y\) are applied, in that order. Finally, the Bézier
-        curves are generated through the control points and the airfoil coordinates produced.
+        `anchor_point_array` is updated based on the anchor points added. Airfoil coordinates are generated and saved.
+        Rotation to the specified angle of attack
+        and translation by the specified \(\Delta x\), \(\Delta y\) are applied, in that order. The Bézier
+        curves are generated through the control points and the airfoil coordinates are then calculated again after
+        the transformations.
         &#34;&#34;&#34;
         self.add_anchor_points()
         self.add_free_points()
         self.extract_parameters()
         self.order_control_points()
         self.update_anchor_point_array()
+        self.generate_non_transformed_airfoil_coordinates()
         self.rotate(-self.alf.value)
         self.translate(self.dx.value, self.dy.value)
         self.generate_airfoil_coordinates()
@@ -672,17 +680,18 @@ class Airfoil:
         self.needs_update = True
         return self.control_points, self.anchor_point_array
 
-    def generate_airfoil_coordinates(self):
+    def generate_coords(self):
         &#34;&#34;&#34;
         ### Description:
 
         Generates the Bézier curves through the control points. Also re-casts the Bézier curve points in terms of
         airfoil coordinates by removing the points shared by joined Bézier curves. Curvature information is extracted
-        from the `C` dictionary.
+        from the `C` dictionary. Helper method for `generate_airfoil_coordinates()` and
+        `generate_non_transformed_airfoil_coordinates()`.
 
         ### Returns:
 
-        The airfoil coordinates, the `C` dictionary of Bézier curve information, and the curvature.
+        The airfoil coordinates and the curvature of the airfoil.
         &#34;&#34;&#34;
         if self.C:
             self.C = []
@@ -703,9 +712,38 @@ class Airfoil:
             else:
                 coords = np.row_stack((coords, np.column_stack((self.C[idx][&#39;x&#39;][1:], self.C[idx][&#39;y&#39;][1:]))))
                 curvature = np.row_stack((curvature, np.column_stack((self.C[idx][&#39;x&#39;][1:], self.C[idx][&#39;k&#39;][1:]))))
+        return coords, curvature
+
+    def generate_airfoil_coordinates(self):
+        &#34;&#34;&#34;
+        ### Description:
+
+        Runs the `generate_coords()` method after the rotation and translation steps and saves the information to
+        the `coords` and `curvature` attributes of `Airfoil`. Used in `update()`.
+
+        ### Returns:
+
+        The airfoil coordinates, the `C` dictionary of Bézier curve information, and the curvature.
+        &#34;&#34;&#34;
+        coords, curvature = self.generate_coords()
         self.coords = coords
         self.curvature = curvature
         return self.coords, self.C, self.curvature
+
+    def generate_non_transformed_airfoil_coordinates(self):
+        &#34;&#34;&#34;
+        ### Description:
+
+        Runs the `generate_coords()` method before the rotation and translation steps and saves the information to the
+        `non_transformed_coords` attribute of `Airfoil`. Used in `update()`.
+
+        ### Returns:
+
+        The coordinates of the airfoil before rotation and translation.
+        &#34;&#34;&#34;
+        coords, _ = self.generate_coords()
+        self.non_transformed_coords = coords
+        return self.non_transformed_coords
 
     def compute_area(self):
         &#34;&#34;&#34;
@@ -742,6 +780,38 @@ class Airfoil:
         line_string = LineString(points_shapely)
         is_simple = line_string.is_simple
         return not is_simple
+
+    def compute_thickness(self, n_lines: int = 201):
+        r&#34;&#34;&#34;
+        ### Description:
+
+        Calculates the thickness distribution and maximum thickness of the airfoil.
+
+        ### Args:
+
+        `n_lines`: Optional `int` describing the number of lines evenly spaced along the chordline produced to
+        determine the thickness distribution. Default: `201`.
+
+        ### Returns:
+
+        The list of \(x\)-values used for the thickness distribution calculation, the thickness distribution, and the
+        maximum value of the thickness distribution.
+        &#34;&#34;&#34;
+        points_shapely = list(map(tuple, self.non_transformed_coords))
+        airfoil_line_string = LineString(points_shapely)
+        x_thickness = np.linspace(0.0, self.c.value, n_lines)
+        thickness = []
+        for idx in range(n_lines):
+            line_string = LineString([(x_thickness[idx], -1), (x_thickness[idx], 1)])
+            x_inters = line_string.intersection(airfoil_line_string)
+            if x_inters.is_empty:
+                thickness.append(0.0)
+            else:
+                thickness.append(x_inters.convex_hull.length)
+        self.x_thickness = x_thickness
+        self.thickness = thickness
+        self.max_thickness = max(thickness)
+        return self.x_thickness, self.thickness, self.max_thickness
 
     def plot(self, plot_what: typing.Tuple[str, ...], fig: Figure = None, axs: Axes = None, show_plot: bool = True,
              save_plot: bool = False, save_path: str = None, plot_kwargs: typing.List[dict] = None,
@@ -1228,8 +1298,13 @@ point, use <code>(<a title="pyairpar.core.free_point.FreePoint" href="free_point
         self.free_points = {}
         self.param_dicts = {}
         self.coords = None
+        self.non_transformed_coords = None
         self.curvature = None
         self.area = None
+        self.x_thickness = None
+        self.thickness = None
+        self.max_thickness = None
+
         self.needs_update = True
 
         self.anchor_point_tuple = anchor_point_tuple
@@ -1714,15 +1789,18 @@ point, use <code>(<a title="pyairpar.core.free_point.FreePoint" href="free_point
         The `update` function adds first all of the anchor points in the `anchor_point_tuple` and then all of the free
         points in the `free_point_tuple`. The parameter information is extracted. The control points are ordered
         based on the `anchor_point_order`, `name` attributes, and `previous_anchor_point` attributes. The
-        `anchor_point_array` is updated based on the anchor points added. Rotation to the specified angle of attack
-        and translation by the specified \(\Delta x\), \(\Delta y\) are applied, in that order. Finally, the Bézier
-        curves are generated through the control points and the airfoil coordinates produced.
+        `anchor_point_array` is updated based on the anchor points added. Airfoil coordinates are generated and saved.
+        Rotation to the specified angle of attack
+        and translation by the specified \(\Delta x\), \(\Delta y\) are applied, in that order. The Bézier
+        curves are generated through the control points and the airfoil coordinates are then calculated again after
+        the transformations.
         &#34;&#34;&#34;
         self.add_anchor_points()
         self.add_free_points()
         self.extract_parameters()
         self.order_control_points()
         self.update_anchor_point_array()
+        self.generate_non_transformed_airfoil_coordinates()
         self.rotate(-self.alf.value)
         self.translate(self.dx.value, self.dy.value)
         self.generate_airfoil_coordinates()
@@ -1785,17 +1863,18 @@ point, use <code>(<a title="pyairpar.core.free_point.FreePoint" href="free_point
         self.needs_update = True
         return self.control_points, self.anchor_point_array
 
-    def generate_airfoil_coordinates(self):
+    def generate_coords(self):
         &#34;&#34;&#34;
         ### Description:
 
         Generates the Bézier curves through the control points. Also re-casts the Bézier curve points in terms of
         airfoil coordinates by removing the points shared by joined Bézier curves. Curvature information is extracted
-        from the `C` dictionary.
+        from the `C` dictionary. Helper method for `generate_airfoil_coordinates()` and
+        `generate_non_transformed_airfoil_coordinates()`.
 
         ### Returns:
 
-        The airfoil coordinates, the `C` dictionary of Bézier curve information, and the curvature.
+        The airfoil coordinates and the curvature of the airfoil.
         &#34;&#34;&#34;
         if self.C:
             self.C = []
@@ -1816,9 +1895,38 @@ point, use <code>(<a title="pyairpar.core.free_point.FreePoint" href="free_point
             else:
                 coords = np.row_stack((coords, np.column_stack((self.C[idx][&#39;x&#39;][1:], self.C[idx][&#39;y&#39;][1:]))))
                 curvature = np.row_stack((curvature, np.column_stack((self.C[idx][&#39;x&#39;][1:], self.C[idx][&#39;k&#39;][1:]))))
+        return coords, curvature
+
+    def generate_airfoil_coordinates(self):
+        &#34;&#34;&#34;
+        ### Description:
+
+        Runs the `generate_coords()` method after the rotation and translation steps and saves the information to
+        the `coords` and `curvature` attributes of `Airfoil`. Used in `update()`.
+
+        ### Returns:
+
+        The airfoil coordinates, the `C` dictionary of Bézier curve information, and the curvature.
+        &#34;&#34;&#34;
+        coords, curvature = self.generate_coords()
         self.coords = coords
         self.curvature = curvature
         return self.coords, self.C, self.curvature
+
+    def generate_non_transformed_airfoil_coordinates(self):
+        &#34;&#34;&#34;
+        ### Description:
+
+        Runs the `generate_coords()` method before the rotation and translation steps and saves the information to the
+        `non_transformed_coords` attribute of `Airfoil`. Used in `update()`.
+
+        ### Returns:
+
+        The coordinates of the airfoil before rotation and translation.
+        &#34;&#34;&#34;
+        coords, _ = self.generate_coords()
+        self.non_transformed_coords = coords
+        return self.non_transformed_coords
 
     def compute_area(self):
         &#34;&#34;&#34;
@@ -1855,6 +1963,38 @@ point, use <code>(<a title="pyairpar.core.free_point.FreePoint" href="free_point
         line_string = LineString(points_shapely)
         is_simple = line_string.is_simple
         return not is_simple
+
+    def compute_thickness(self, n_lines: int = 201):
+        r&#34;&#34;&#34;
+        ### Description:
+
+        Calculates the thickness distribution and maximum thickness of the airfoil.
+
+        ### Args:
+
+        `n_lines`: Optional `int` describing the number of lines evenly spaced along the chordline produced to
+        determine the thickness distribution. Default: `201`.
+
+        ### Returns:
+
+        The list of \(x\)-values used for the thickness distribution calculation, the thickness distribution, and the
+        maximum value of the thickness distribution.
+        &#34;&#34;&#34;
+        points_shapely = list(map(tuple, self.non_transformed_coords))
+        airfoil_line_string = LineString(points_shapely)
+        x_thickness = np.linspace(0.0, self.c.value, n_lines)
+        thickness = []
+        for idx in range(n_lines):
+            line_string = LineString([(x_thickness[idx], -1), (x_thickness[idx], 1)])
+            x_inters = line_string.intersection(airfoil_line_string)
+            if x_inters.is_empty:
+                thickness.append(0.0)
+            else:
+                thickness.append(x_inters.convex_hull.length)
+        self.x_thickness = x_thickness
+        self.thickness = thickness
+        self.max_thickness = max(thickness)
+        return self.x_thickness, self.thickness, self.max_thickness
 
     def plot(self, plot_what: typing.Tuple[str, ...], fig: Figure = None, axs: Axes = None, show_plot: bool = True,
              save_plot: bool = False, save_path: str = None, plot_kwargs: typing.List[dict] = None,
@@ -2190,6 +2330,55 @@ the <a href="https://shapely.readthedocs.io/en/stable/manual.html">shapely</a> l
     return area</code></pre>
 </details>
 </dd>
+<dt id="pyairpar.core.airfoil.Airfoil.compute_thickness"><code class="name flex">
+<span>def <span class="ident">compute_thickness</span></span>(<span>self, n_lines: int = 201)</span>
+</code></dt>
+<dd>
+<div class="desc"><h3 id="description">Description:</h3>
+<p>Calculates the thickness distribution and maximum thickness of the airfoil.</p>
+<h3 id="args">Args:</h3>
+<p><code>n_lines</code>: Optional <code>int</code> describing the number of lines evenly spaced along the chordline produced to
+determine the thickness distribution. Default: <code>201</code>.</p>
+<h3 id="returns">Returns:</h3>
+<p>The list of <span><span class="MathJax_Preview">x</span><script type="math/tex">x</script></span>-values used for the thickness distribution calculation, the thickness distribution, and the
+maximum value of the thickness distribution.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def compute_thickness(self, n_lines: int = 201):
+    r&#34;&#34;&#34;
+    ### Description:
+
+    Calculates the thickness distribution and maximum thickness of the airfoil.
+
+    ### Args:
+
+    `n_lines`: Optional `int` describing the number of lines evenly spaced along the chordline produced to
+    determine the thickness distribution. Default: `201`.
+
+    ### Returns:
+
+    The list of \(x\)-values used for the thickness distribution calculation, the thickness distribution, and the
+    maximum value of the thickness distribution.
+    &#34;&#34;&#34;
+    points_shapely = list(map(tuple, self.non_transformed_coords))
+    airfoil_line_string = LineString(points_shapely)
+    x_thickness = np.linspace(0.0, self.c.value, n_lines)
+    thickness = []
+    for idx in range(n_lines):
+        line_string = LineString([(x_thickness[idx], -1), (x_thickness[idx], 1)])
+        x_inters = line_string.intersection(airfoil_line_string)
+        if x_inters.is_empty:
+            thickness.append(0.0)
+        else:
+            thickness.append(x_inters.convex_hull.length)
+    self.x_thickness = x_thickness
+    self.thickness = thickness
+    self.max_thickness = max(thickness)
+    return self.x_thickness, self.thickness, self.max_thickness</code></pre>
+</details>
+</dd>
 <dt id="pyairpar.core.airfoil.Airfoil.extract_parameters"><code class="name flex">
 <span>def <span class="ident">extract_parameters</span></span>(<span>self)</span>
 </code></dt>
@@ -2230,9 +2419,8 @@ the <a href="https://shapely.readthedocs.io/en/stable/manual.html">shapely</a> l
 </code></dt>
 <dd>
 <div class="desc"><h3 id="description">Description:</h3>
-<p>Generates the Bézier curves through the control points. Also re-casts the Bézier curve points in terms of
-airfoil coordinates by removing the points shared by joined Bézier curves. Curvature information is extracted
-from the <code>C</code> dictionary.</p>
+<p>Runs the <code>generate_coords()</code> method after the rotation and translation steps and saves the information to
+the <code>coords</code> and <code>curvature</code> attributes of <code><a title="pyairpar.core.airfoil.Airfoil" href="#pyairpar.core.airfoil.Airfoil">Airfoil</a></code>. Used in <code>update()</code>.</p>
 <h3 id="returns">Returns:</h3>
 <p>The airfoil coordinates, the <code>C</code> dictionary of Bézier curve information, and the curvature.</p></div>
 <details class="source">
@@ -2243,13 +2431,46 @@ from the <code>C</code> dictionary.</p>
     &#34;&#34;&#34;
     ### Description:
 
-    Generates the Bézier curves through the control points. Also re-casts the Bézier curve points in terms of
-    airfoil coordinates by removing the points shared by joined Bézier curves. Curvature information is extracted
-    from the `C` dictionary.
+    Runs the `generate_coords()` method after the rotation and translation steps and saves the information to
+    the `coords` and `curvature` attributes of `Airfoil`. Used in `update()`.
 
     ### Returns:
 
     The airfoil coordinates, the `C` dictionary of Bézier curve information, and the curvature.
+    &#34;&#34;&#34;
+    coords, curvature = self.generate_coords()
+    self.coords = coords
+    self.curvature = curvature
+    return self.coords, self.C, self.curvature</code></pre>
+</details>
+</dd>
+<dt id="pyairpar.core.airfoil.Airfoil.generate_coords"><code class="name flex">
+<span>def <span class="ident">generate_coords</span></span>(<span>self)</span>
+</code></dt>
+<dd>
+<div class="desc"><h3 id="description">Description:</h3>
+<p>Generates the Bézier curves through the control points. Also re-casts the Bézier curve points in terms of
+airfoil coordinates by removing the points shared by joined Bézier curves. Curvature information is extracted
+from the <code>C</code> dictionary. Helper method for <code>generate_airfoil_coordinates()</code> and
+<code>generate_non_transformed_airfoil_coordinates()</code>.</p>
+<h3 id="returns">Returns:</h3>
+<p>The airfoil coordinates and the curvature of the airfoil.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def generate_coords(self):
+    &#34;&#34;&#34;
+    ### Description:
+
+    Generates the Bézier curves through the control points. Also re-casts the Bézier curve points in terms of
+    airfoil coordinates by removing the points shared by joined Bézier curves. Curvature information is extracted
+    from the `C` dictionary. Helper method for `generate_airfoil_coordinates()` and
+    `generate_non_transformed_airfoil_coordinates()`.
+
+    ### Returns:
+
+    The airfoil coordinates and the curvature of the airfoil.
     &#34;&#34;&#34;
     if self.C:
         self.C = []
@@ -2270,9 +2491,36 @@ from the <code>C</code> dictionary.</p>
         else:
             coords = np.row_stack((coords, np.column_stack((self.C[idx][&#39;x&#39;][1:], self.C[idx][&#39;y&#39;][1:]))))
             curvature = np.row_stack((curvature, np.column_stack((self.C[idx][&#39;x&#39;][1:], self.C[idx][&#39;k&#39;][1:]))))
-    self.coords = coords
-    self.curvature = curvature
-    return self.coords, self.C, self.curvature</code></pre>
+    return coords, curvature</code></pre>
+</details>
+</dd>
+<dt id="pyairpar.core.airfoil.Airfoil.generate_non_transformed_airfoil_coordinates"><code class="name flex">
+<span>def <span class="ident">generate_non_transformed_airfoil_coordinates</span></span>(<span>self)</span>
+</code></dt>
+<dd>
+<div class="desc"><h3 id="description">Description:</h3>
+<p>Runs the <code>generate_coords()</code> method before the rotation and translation steps and saves the information to the
+<code>non_transformed_coords</code> attribute of <code><a title="pyairpar.core.airfoil.Airfoil" href="#pyairpar.core.airfoil.Airfoil">Airfoil</a></code>. Used in <code>update()</code>.</p>
+<h3 id="returns">Returns:</h3>
+<p>The coordinates of the airfoil before rotation and translation.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def generate_non_transformed_airfoil_coordinates(self):
+    &#34;&#34;&#34;
+    ### Description:
+
+    Runs the `generate_coords()` method before the rotation and translation steps and saves the information to the
+    `non_transformed_coords` attribute of `Airfoil`. Used in `update()`.
+
+    ### Returns:
+
+    The coordinates of the airfoil before rotation and translation.
+    &#34;&#34;&#34;
+    coords, _ = self.generate_coords()
+    self.non_transformed_coords = coords
+    return self.non_transformed_coords</code></pre>
 </details>
 </dd>
 <dt id="pyairpar.core.airfoil.Airfoil.init_g1_points"><code class="name flex">
@@ -3139,9 +3387,11 @@ neighboring control points toward the trailing edge. See the diagram for
 <p>The <code>update</code> function adds first all of the anchor points in the <code>anchor_point_tuple</code> and then all of the free
 points in the <code>free_point_tuple</code>. The parameter information is extracted. The control points are ordered
 based on the <code>anchor_point_order</code>, <code>name</code> attributes, and <code>previous_anchor_point</code> attributes. The
-<code>anchor_point_array</code> is updated based on the anchor points added. Rotation to the specified angle of attack
-and translation by the specified <span><span class="MathJax_Preview">\Delta x</span><script type="math/tex">\Delta x</script></span>, <span><span class="MathJax_Preview">\Delta y</span><script type="math/tex">\Delta y</script></span> are applied, in that order. Finally, the Bézier
-curves are generated through the control points and the airfoil coordinates produced.</p></div>
+<code>anchor_point_array</code> is updated based on the anchor points added. Airfoil coordinates are generated and saved.
+Rotation to the specified angle of attack
+and translation by the specified <span><span class="MathJax_Preview">\Delta x</span><script type="math/tex">\Delta x</script></span>, <span><span class="MathJax_Preview">\Delta y</span><script type="math/tex">\Delta y</script></span> are applied, in that order. The Bézier
+curves are generated through the control points and the airfoil coordinates are then calculated again after
+the transformations.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
@@ -3153,15 +3403,18 @@ curves are generated through the control points and the airfoil coordinates prod
     The `update` function adds first all of the anchor points in the `anchor_point_tuple` and then all of the free
     points in the `free_point_tuple`. The parameter information is extracted. The control points are ordered
     based on the `anchor_point_order`, `name` attributes, and `previous_anchor_point` attributes. The
-    `anchor_point_array` is updated based on the anchor points added. Rotation to the specified angle of attack
-    and translation by the specified \(\Delta x\), \(\Delta y\) are applied, in that order. Finally, the Bézier
-    curves are generated through the control points and the airfoil coordinates produced.
+    `anchor_point_array` is updated based on the anchor points added. Airfoil coordinates are generated and saved.
+    Rotation to the specified angle of attack
+    and translation by the specified \(\Delta x\), \(\Delta y\) are applied, in that order. The Bézier
+    curves are generated through the control points and the airfoil coordinates are then calculated again after
+    the transformations.
     &#34;&#34;&#34;
     self.add_anchor_points()
     self.add_free_points()
     self.extract_parameters()
     self.order_control_points()
     self.update_anchor_point_array()
+    self.generate_non_transformed_airfoil_coordinates()
     self.rotate(-self.alf.value)
     self.translate(self.dx.value, self.dy.value)
     self.generate_airfoil_coordinates()
@@ -3228,8 +3481,11 @@ represent the <span><span class="MathJax_Preview">x</span><script type="math/tex
 <li><code><a title="pyairpar.core.airfoil.Airfoil.add_free_points" href="#pyairpar.core.airfoil.Airfoil.add_free_points">add_free_points</a></code></li>
 <li><code><a title="pyairpar.core.airfoil.Airfoil.check_self_intersection" href="#pyairpar.core.airfoil.Airfoil.check_self_intersection">check_self_intersection</a></code></li>
 <li><code><a title="pyairpar.core.airfoil.Airfoil.compute_area" href="#pyairpar.core.airfoil.Airfoil.compute_area">compute_area</a></code></li>
+<li><code><a title="pyairpar.core.airfoil.Airfoil.compute_thickness" href="#pyairpar.core.airfoil.Airfoil.compute_thickness">compute_thickness</a></code></li>
 <li><code><a title="pyairpar.core.airfoil.Airfoil.extract_parameters" href="#pyairpar.core.airfoil.Airfoil.extract_parameters">extract_parameters</a></code></li>
 <li><code><a title="pyairpar.core.airfoil.Airfoil.generate_airfoil_coordinates" href="#pyairpar.core.airfoil.Airfoil.generate_airfoil_coordinates">generate_airfoil_coordinates</a></code></li>
+<li><code><a title="pyairpar.core.airfoil.Airfoil.generate_coords" href="#pyairpar.core.airfoil.Airfoil.generate_coords">generate_coords</a></code></li>
+<li><code><a title="pyairpar.core.airfoil.Airfoil.generate_non_transformed_airfoil_coordinates" href="#pyairpar.core.airfoil.Airfoil.generate_non_transformed_airfoil_coordinates">generate_non_transformed_airfoil_coordinates</a></code></li>
 <li><code><a title="pyairpar.core.airfoil.Airfoil.init_g1_points" href="#pyairpar.core.airfoil.Airfoil.init_g1_points">init_g1_points</a></code></li>
 <li><code><a title="pyairpar.core.airfoil.Airfoil.init_g2_points" href="#pyairpar.core.airfoil.Airfoil.init_g2_points">init_g2_points</a></code></li>
 <li><code><a title="pyairpar.core.airfoil.Airfoil.order_control_points" href="#pyairpar.core.airfoil.Airfoil.order_control_points">order_control_points</a></code></li>
