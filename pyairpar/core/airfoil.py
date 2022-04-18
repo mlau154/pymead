@@ -904,7 +904,6 @@ class Airfoil:
                     line = np.array([xy, xy + anchor_point.R.value *
                                      np.array([np.cos(phi - self.alf.value + perp_angle),
                                                np.sin(phi - self.alf.value + perp_angle)])])
-                    print(line)
                     circle = plt.Circle((line[1, 0], line[1, 1]), anchor_point.R.value, fill=False, color='gold')
                     axs.plot(line[:, 0], line[:, 1], color='gold')
                     axs.add_patch(circle)

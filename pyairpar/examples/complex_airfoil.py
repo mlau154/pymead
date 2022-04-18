@@ -32,7 +32,7 @@ def run():
                                 name='anchor-top',
                                 previous_anchor_point='te_1',
                                 L=Param(0.1, units='length'),
-                                R=Param(0.15, units='length'),
+                                R=Param(-0.15, units='length'),
                                 r=Param(0.55),
                                 phi=Param(np.deg2rad(14.0)),
                                 psi1=Param(np.deg2rad(80.0)),
@@ -100,7 +100,7 @@ def run():
     axs.set_ylabel(r'$y/c$', fontsize=14)
     fig.suptitle('')
     fig.set_figwidth(9)
-    fig.set_figheight(6)
+    fig.set_figheight(5)
     fig.tight_layout()
 
     show_flag = False
