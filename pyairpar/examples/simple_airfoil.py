@@ -1,7 +1,11 @@
 import numpy as np
+import os
+from matplotlib.pyplot import show
 from pyairpar.core.param import Param
 from pyairpar.core.airfoil import Airfoil
 from pyairpar.core.base_airfoil_params import BaseAirfoilParams
+from pyairpar.core.param_setup import ParamSetup
+from pyairpar.core.parametrization import AirfoilParametrization
 
 
 def run():
@@ -16,31 +20,38 @@ def run():
     trailing edge thickness to `0.0`. In doing so, the `pyairpar.core.airfoil.Airfoil` class ignores the values set
     for `r_te` and `phi_te` and sets their `active` attributes to `False`.
     """
-
     base_airfoil_params = BaseAirfoilParams(c=Param(4.0),
-                                            alf=Param(np.deg2rad(5.0)),
+                                            alf=Param(np.deg2rad(3.0)),
                                             R_le=Param(0.03, 'length'),
                                             L_le=Param(0.08, 'length'),
                                             r_le=Param(0.6),
-                                            phi_le=Param(np.deg2rad(10.0)),
                                             psi1_le=Param(np.deg2rad(10.0)),
                                             psi2_le=Param(np.deg2rad(15.0)),
                                             L1_te=Param(0.25, 'length'),
                                             L2_te=Param(0.3, 'length'),
                                             theta1_te=Param(np.deg2rad(2.0)),
-                                            theta2_te=Param(np.deg2rad(2.0)),
-                                            t_te=Param(0.01, 'length'),
-                                            r_te=Param(0.4),
-                                            phi_te=Param(np.deg2rad(20.0))
+                                            theta2_te=Param(np.deg2rad(3.0)),
                                             )
 
     airfoil = Airfoil(number_coordinates=100,
                       base_airfoil_params=base_airfoil_params)
 
-    print(airfoil.params)
-    print(airfoil.bounds)
+    fig, axs = airfoil.plot(('airfoil', 'control-point-skeleton', 'anchor-point-skeleton', 'chordline',
+                                                     'R-circles'), show_plot=False)
+    axs.set_xlabel(r'$x/c$', fontsize=14)
+    axs.set_ylabel(r'$y/c$', fontsize=14)
+    fig.suptitle('')
+    fig.tight_layout()
 
-    airfoil.plot(('chordline', 'anchor-point-skeleton', 'control-point-skeleton', 'airfoil', 'R-circles'))
+    show_flag = False
+    save_flag = True
+
+    if save_flag:
+        save_name = os.path.join(os.path.dirname(
+            os.path.dirname(os.path.join(os.getcwd()))), 'docs', 'images', 'simple_1.png')
+        fig.savefig(save_name, dpi=600)
+    if show_flag:
+        show()
 
 
 if __name__ == '__main__':

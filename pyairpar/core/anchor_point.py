@@ -91,8 +91,8 @@ class AnchorPoint:
         if -np.pi < phi.value < np.pi:
             self.phi = phi
         else:
-            raise ValueError(f'The anchor point neighboring control point angle, phi, must be between -90 degrees and'
-                             f'90 degrees. A value of {phi.value} was entered.')
+            raise ValueError(f'The anchor point neighboring control point angle, phi, must be between -180 degrees and'
+                             f'180 degrees. A value of {phi.value} was entered.')
 
         if 0 < psi1.value < np.pi:
             self.psi1 = psi1

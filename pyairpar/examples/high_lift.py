@@ -20,8 +20,8 @@ def _generate_unlinked_param_dict():
         # Main chord length:
         'c_main': Param(1.0, active=False),
         # Angles of attack
-        'alf_main': Param(np.deg2rad(3.663), bounds=[np.deg2rad(-15), np.deg2rad(15)]),
-        'alf_hub': Param(np.deg2rad(2.0), bounds=[np.deg2rad(-15), np.deg2rad(15)]),
+        'alf_main': Param(np.deg2rad(2.0), bounds=[np.deg2rad(-15), np.deg2rad(15)]),
+        'alf_flap': Param(np.deg2rad(30.0), bounds=[np.deg2rad(-15), np.deg2rad(15)]),
         'alf_nacelle_plus_hub': Param(np.deg2rad(-5.67), bounds=[np.deg2rad(-15), np.deg2rad(15)]),
         # 'alf_nacelle': Param(np.deg2rad(-3.67), bounds=[np.deg2rad(-15), np.deg2rad(15)]),
         # Hub-to-tip ratio of the fan:

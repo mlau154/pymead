@@ -9,6 +9,7 @@ from matplotlib.figure import Figure
 import matplotlib.pyplot as plt
 import typing
 from shapely.geometry import Polygon, LineString, Point, MultiPoint
+from copy import deepcopy
 
 
 class Airfoil:
@@ -127,6 +128,7 @@ class Airfoil:
                                       (1 - self.r_te.value) * self.t_te.value *
                                       np.array([np.cos(np.pi / 2 + self.phi_te.value),
                                                 np.sin(np.pi / 2 + self.phi_te.value)])}
+        self.transformed_anchor_points = None
         self.anchor_point_order = ['te_1', 'le', 'te_2']
         self.anchor_point_array = np.array([])
 
@@ -569,6 +571,7 @@ class Airfoil:
                 self.anchor_point_array = xy
             else:
                 self.anchor_point_array = np.row_stack((self.anchor_point_array, xy))
+        self.transformed_anchor_points = deepcopy(self.anchor_points)
 
     def update(self):
         r"""
@@ -627,6 +630,8 @@ class Airfoil:
         self.control_points[:, 1] += dy
         self.anchor_point_array[:, 0] += dx
         self.anchor_point_array[:, 1] += dy
+        for key, anchor_point in self.transformed_anchor_points.items():
+            self.transformed_anchor_points[key] = anchor_point + np.array([dx, dy])
         self.needs_update = True
         return self.control_points, self.anchor_point_array
 
@@ -648,6 +653,8 @@ class Airfoil:
                             [np.sin(angle), np.cos(angle)]])
         self.control_points = (rot_mat @ self.control_points.T).T
         self.anchor_point_array = (rot_mat @ self.anchor_point_array.T).T
+        for key, anchor_point in self.transformed_anchor_points.items():
+            self.transformed_anchor_points[key] = (rot_mat @ anchor_point.T).T
         self.needs_update = True
         return self.control_points, self.anchor_point_array
 
@@ -690,7 +697,7 @@ class Airfoil:
         ### Description:
 
         Runs the `generate_coords()` method after the rotation and translation steps and saves the information to
-        the `coords` and `curvature` attributes of `Airfoil`. Used in `update()`.
+        the `coords` and `curvature` attributes of `Airfoil`. Used in `Airfoil.update()`.
 
         ### Returns:
 
@@ -706,7 +713,7 @@ class Airfoil:
         ### Description:
 
         Runs the `generate_coords()` method before the rotation and translation steps and saves the information to the
-        `non_transformed_coords` attribute of `Airfoil`. Used in `update()`.
+        `non_transformed_coords` attribute of `Airfoil`. Used in `Airfoil.update()`.
 
         ### Returns:
 

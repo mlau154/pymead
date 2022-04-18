@@ -1,4 +1,6 @@
 import numpy as np
+import os
+from matplotlib.pyplot import show
 from pyairpar.core.param import Param
 from pyairpar.core.anchor_point import AnchorPoint
 from pyairpar.core.free_point import FreePoint
@@ -7,7 +9,6 @@ from pyairpar.core.base_airfoil_params import BaseAirfoilParams
 
 
 def run():
-
     base_airfoil_params = BaseAirfoilParams(c=Param(10.0),
                                             alf=Param(np.deg2rad(5.0)),
                                             R_le=Param(0.06, 'length'),
@@ -23,8 +24,6 @@ def run():
                                             t_te=Param(0.0, 'length'),
                                             r_te=Param(0.5),
                                             phi_te=Param(np.deg2rad(0.0)),
-                                            dx=Param(0.5, linked=True),
-                                            dy=Param(0.5, linked=True),
                                             non_dim_by_chord=True
                                             )
 
@@ -94,8 +93,25 @@ def run():
     self_intersecting = airfoil.check_self_intersection()
     print(f"Self-intersecting? {self_intersecting}")
 
-    # airfoil.plot(('curvature',), axis_equal=False)
-    airfoil.plot(('chordline', 'anchor-point-skeleton', 'control-point-skeleton', 'airfoil', 'R-circles'))
+    fig, axs = airfoil.plot(('airfoil', 'control-point-skeleton', 'anchor-point-skeleton', 'chordline',
+                             'R-circles'), show_plot=False)
+
+    axs.set_xlabel(r'$x/c$', fontsize=14)
+    axs.set_ylabel(r'$y/c$', fontsize=14)
+    fig.suptitle('')
+    fig.set_figwidth(9)
+    fig.set_figheight(6)
+    fig.tight_layout()
+
+    show_flag = False
+    save_flag = True
+
+    if save_flag:
+        save_name = os.path.join(os.path.dirname(
+            os.path.dirname(os.path.join(os.getcwd()))), 'docs', 'images', 'complex_1.png')
+        fig.savefig(save_name, dpi=600)
+    if show_flag:
+        show()
 
 
 if __name__ == '__main__':
