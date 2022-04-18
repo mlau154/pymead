@@ -22,33 +22,10 @@ def _generate_unlinked_param_dict():
         # Angles of attack
         'alf_main': Param(np.deg2rad(2.0), bounds=[np.deg2rad(-15), np.deg2rad(15)]),
         'alf_flap': Param(np.deg2rad(30.0), bounds=[np.deg2rad(-15), np.deg2rad(15)]),
-        'alf_nacelle_plus_hub': Param(np.deg2rad(-5.67), bounds=[np.deg2rad(-15), np.deg2rad(15)]),
-        # 'alf_nacelle': Param(np.deg2rad(-3.67), bounds=[np.deg2rad(-15), np.deg2rad(15)]),
-        # Hub-to-tip ratio of the fan:
-        'r_htf': Param(0.47, active=False),
-        # Hub-to-nozzle-exit diameter ratio multiplier (accounts for lack of accuracy in quasi-1D assumption)
-        'alpha_r_hne': Param(0.9738, bounds=[0.9, 1.1]),
     }
     param_dict = {**param_dict, **{
-        # Nacelle chord length:
-        'c_nacelle': Param(0.2866, 'length', bounds=[0.25, 0.35], scale_value=param_dict['c_main'].value),
-        # Distance from fan center to tip of nose along hub chordline:
-        'l_nose': Param(0.048, 'length', bounds=[0.01, 0.08], scale_value=param_dict['c_main'].value),
-        # Distance from fan center to nozzle exit center along hub chordline:
-        'l_fne': Param(0.1473, 'length', bounds=[0.1, 0.2], scale_value=param_dict['c_main'].value),
-        # Distance from nozzle exit center to hub trailing edge along hub chordline (pressure recovery distance):
-        'l_pr': Param(0.352, 'length', bounds=[0.15, 0.5], scale_value=param_dict['c_main'].value),
-        # Distance from tip of nose to line perpendicular to hub chordline and passing through inlet anchor points:
-        'l_n2inlet': Param(0.03, 'length', bounds=[0.01, 0.07], scale_value=param_dict['c_main'].value),
-        # Fan diameter:
-        'd_f': Param(0.2, 'length', bounds=[0.17, 0.23], scale_value=param_dict['c_main'].value),
-        # Nozzle exit diameter:
-        'd_ne': Param(0.202, 'length', bounds=[0.17, 0.23], scale_value=param_dict['c_main'].value),
-        # Inlet diameter:
-        'd_inlet': Param(0.165, 'length', bounds=[0.13, 0.20], scale_value=param_dict['c_main'].value),
-        # Minimum thickness:
-        't_mt_main': Param(0.006, 'length', bounds=[0.001, 0.1], scale_value=param_dict['c_main'].value),
-        't_mt_nacelle': Param(0.003, 'length', bounds=[0.001, 0.1], scale_value=param_dict['c_main'].value),
+        # Flap chord length:
+        'c_flap': Param(0.3, 'length', bounds=[0.25, 0.35], scale_value=param_dict['c_main'].value),
         # Leading edge radius:
         'R_le_main': Param(0.03, 'length', bounds=[0.001, 0.2], scale_value=param_dict['c_main'].value),
         'R_le_hub': Param(0.099, 'length', bounds=[0.001, 0.2], scale_value=param_dict['c_main'].value),
