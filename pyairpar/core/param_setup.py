@@ -3,9 +3,21 @@ from pyairpar.core.param import Param
 
 
 class ParamSetup:
-    def __init__(self, _generate_unlinked_param_dict, _generate_linked_param_dict, *args, **kwargs):
-        self._generate_unlinked_param_dict = _generate_unlinked_param_dict
-        self._generate_linked_param_dict = _generate_linked_param_dict
+    def __init__(self, generate_unlinked_param_dict, generate_linked_param_dict, *args, **kwargs):
+        """
+        ### Description:
+
+        This class sets up the parameter dictionaries and prepares them for extraction or override.
+
+        ### Args:
+
+        `generate_unlinked_param_dict`: A method that returns a parameter `dict` of unlinked parameters
+        (that is, `pyairpar.core.param.Param`s with `linked=False`)
+
+        `generate_linked_param_dict`: A method that returns a parameter `dict` of linked parameters (that is `pyairpar.core.param.Param`s with `linked=True`). Takes the unlinked parameter dictionary as input and must return the modified parameter dictionary which includes the linked parameter dictionary. This method can also simply do nothing but return the input parameter dictionary.
+        """
+        self.generate_unlinked_param_dict = generate_unlinked_param_dict
+        self.generate_linked_param_dict = generate_linked_param_dict
         self.param_dict = None
         self.active_unlinked_params = None
         self.parameter_info = None
@@ -13,8 +25,14 @@ class ParamSetup:
         self.extract_parameters()
 
     def generate_param_dict(self, *args, **kwargs):
-        param_dict = self._generate_unlinked_param_dict(*args, **kwargs)
-        param_dict = self._generate_linked_param_dict(param_dict, *args, **kwargs)
+        """
+        ### Description:
+
+        Generates a parameter dictionary from the `generate_unlinked_param_dict` and `generate_linked_param_dict`
+        input methods. Raises an exception if the return type is not a `dict`.
+        """
+        param_dict = self.generate_unlinked_param_dict(*args, **kwargs)
+        param_dict = self.generate_linked_param_dict(param_dict, *args, **kwargs)
         if not isinstance(param_dict, dict):
             raise Exception(f'ParamSetup._generate_param_dict must return a dictionary. Return type was '
                             f'{type(param_dict)}')
@@ -54,6 +72,23 @@ class ParamSetup:
         return self.active_unlinked_params, self.parameter_info
 
     def override_parameters(self, parameter_info_values: list, normalized: bool = False, *args, **kwargs):
+        """
+        ### Description:
+
+        Overrides the parameters in the parameter dictionary using the input `list` of values. If `normalized` is true,
+        this method will convert the input values back into non-normalized values.
+
+        ### Args:
+
+        `parameter_info_values`: A `list` of values with which to override `pyairpar.core.param.Param`s.
+
+        `normalized`: A `bool` stating whether the input values are normalized by the `pyairpar.core.param.Param`
+        `bounds`
+
+        ### Returns:
+
+        The parameter dictionary modified by the override parameters
+        """
         for idx, name in enumerate(self.parameter_info['names']):
             if normalized:
                 self.param_dict[name].value = np.multiply(parameter_info_values[idx],
@@ -62,6 +97,6 @@ class ParamSetup:
                                               self.parameter_info['bounds'][idx][0]
             else:
                 self.param_dict[name].value = parameter_info_values[idx]
-        self.param_dict = self._generate_linked_param_dict(self.param_dict, *args, **kwargs)
+        self.param_dict = self.generate_linked_param_dict(self.param_dict, *args, **kwargs)
         self.extract_parameters()
         return self.param_dict

@@ -15,7 +15,18 @@ from pyairpar.core.parametrization import AirfoilParametrization
 from pyairpar.core.parametrization import rotate
 
 
-def _generate_unlinked_param_dict():
+def generate_unlinked_param_dict():
+    """
+    ### Description:
+
+    Generates the parameters in the `param_dict` which are to have `linked=False`. It is possible for `active` to be set
+    to `False` in some `pyairpar.core.param.Param`s. These parameters will be ignored in the parameter extraction
+    method.
+
+    ### Returns:
+
+    The dictionary filled with unlinked parameters.
+    """
     param_dict = {
         # Main chord length:
         'c_main': Param(1.0, active=False),
@@ -156,7 +167,27 @@ def _generate_unlinked_param_dict():
     return param_dict
 
 
-def _generate_linked_param_dict(param_dict):
+def generate_linked_param_dict(param_dict):
+    """
+    ### Description:
+
+    Generates more parameters for the parameter dictionary which are functions of other parameters in the `param_dict`
+    and should not be included in the method which overrides the parameters (using `linked=True`). If this method there
+    are no linked parameters required, this method can simply be empty and return the input parameter dictionary. E.g.,
+
+    ```python
+    def generate_linked_param_dict(param_dict):
+        return param_dict
+    ```
+
+    ### Args:
+
+    `param_dict`: The parameter dictionary which contains unlinked parameters.
+
+    ### Returns:
+
+    The dictionary of parameters
+    """
     param_dict['r_hne'] = Param(0.608, linked=True)
     param_dict = {**param_dict, **{
         # Nacelle angle of attack:
@@ -242,13 +273,13 @@ def _generate_linked_param_dict(param_dict):
     return param_dict
 
 
-def _generate_param_dict():
-    param_dict = _generate_unlinked_param_dict()
-    param_dict = _generate_linked_param_dict(param_dict)
-    return param_dict
+def generate_airfoils(param_dict):
+    """
+    ### Description:
 
-
-def _generate_airfoils(param_dict):
+    Converts the parameter dictionary into a tuple of `pyairpar.core.airfoil.Airfoil`s. Written as a method to increase
+    flexibility in the implementation.
+    """
     base_airfoil_params_main = \
         BaseAirfoilParams(c=param_dict['c_main'], alf=param_dict['alf_main'], R_le=param_dict['R_le_main'],
                           L_le=param_dict['L_le_main'], r_le=param_dict['r_le_main'], phi_le=param_dict['phi_le_main'],
@@ -418,10 +449,16 @@ def _generate_airfoils(param_dict):
 
 
 def update(parametrization: AirfoilParametrization, parameter_list: list = None):
+    """
+    ### Description:
+
+    Overrides parameter list using the input parameter list, generates the airfoil coordinates, and mirrors part of the
+    main airfoil element across the hub's chordline.
+    """
     if parameter_list is not None:
         parametrization.override_parameters(parameter_list, normalized=True)
     else:
-        parametrization.generate_airfoils()
+        parametrization.generate_airfoils_()
 
     theta = -parametrization.param_setup.param_dict['alf_hub'].value
     xy_axis = np.array([parametrization.param_setup.param_dict['fan_center_x_over_c_main'].value,
@@ -432,9 +469,15 @@ def update(parametrization: AirfoilParametrization, parameter_list: list = None)
 
 
 def run():
-    param_setup = ParamSetup(_generate_unlinked_param_dict, _generate_linked_param_dict)
+    """
+    ### Description:
+
+    An example implementation of a multi-element airfoil parametrization. In this example, an axisymmetric propulsor
+    embedded into a wing is approximated as a two-dimensional geometry.
+    """
+    param_setup = ParamSetup(generate_unlinked_param_dict, generate_linked_param_dict)
     parametrization = AirfoilParametrization(param_setup=param_setup,
-                                             _generate_airfoils=_generate_airfoils)
+                                             generate_airfoils=generate_airfoils)
 
     update(parametrization, None)
 
@@ -474,8 +517,8 @@ def run():
     axs.set_ylabel(r'$y/c$', fontsize=14)
     fig.tight_layout()
 
-    show_flag = False
-    save_flag = True
+    show_flag = True
+    save_flag = False
 
     if save_flag:
         save_name = os.path.join(os.path.dirname(

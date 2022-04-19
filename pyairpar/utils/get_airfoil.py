@@ -36,7 +36,8 @@ def extract_data_from_airfoiltools(name: str, repair: typing.Callable or None = 
         xy = [float(xy_str[0]), float(xy_str[1])]
         xy_list.append(xy)
     xy = np.array(xy_list)
-    xy = repair(xy)
+    if repair is not None:
+        xy = repair(xy)
     return xy
 
 

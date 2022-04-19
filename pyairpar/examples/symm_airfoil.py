@@ -7,6 +7,11 @@ from pyairpar.symmetric.symmetric_base_airfoil_params import SymmetricBaseAirfoi
 
 
 def run():
+    """
+    ### Description:
+
+    An example implementation of a `pyairpar.symmetric.symmetric_airfoil.SymmetricAirfoil`.
+    """
     c = 10.0
 
     base_airfoil_params = SymmetricBaseAirfoilParams(c=Param(c),

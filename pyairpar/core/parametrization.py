@@ -6,7 +6,7 @@ from pyairpar.core.param_setup import ParamSetup
 
 class AirfoilParametrization:
 
-    def __init__(self, param_setup: ParamSetup, _generate_airfoils: callable, args=None):
+    def __init__(self, param_setup: ParamSetup, generate_airfoils: callable, args=None):
         """
         ### Description:
 
@@ -24,19 +24,24 @@ class AirfoilParametrization:
         An instance of the `AirfoilParametrization` class
         """
         self.param_setup = param_setup
-        self._generate_airfoils = _generate_airfoils
+        self.generate_airfoils = generate_airfoils
         self.args = args
 
         self.airfoil_tuple = None
 
         self.n_mirrors = 0
 
-    def generate_airfoils(self, *args, **kwargs):
-        airfoil_tuple = self._generate_airfoils(self.param_setup.param_dict, *args, **kwargs)
+    def generate_airfoils_(self, *args, **kwargs):
+        """
+        ### Description:
+
+        Generates the `airfoil_tuple` and replaces the corresponding attribute in `Parameterization`.
+        """
+        airfoil_tuple = self.generate_airfoils(self.param_setup.param_dict, *args, **kwargs)
         if isinstance(airfoil_tuple, tuple):
             self.airfoil_tuple = airfoil_tuple
         else:
-            raise Exception(f'_generate_airfoils must return a tuple. Return type was {type(airfoil_tuple)}')
+            raise Exception(f'generate_airfoils must return a tuple. Return type was {type(airfoil_tuple)}')
 
     def mirror(self, axis: np.ndarray or tuple, fixed_airfoil_idx: int, linked_airfoil_idx: int,
                fixed_anchor_point_range: tuple, starting_prev_anchor_point_str_linked: str):
@@ -79,6 +84,7 @@ class AirfoilParametrization:
             x1, x2, y1, y2 = axis[0, 0], axis[0, 1], axis[1, 0], axis[1, 1]
             m = (y2 - y1) / (x2 - x1)
             b = -m * x1 + y1
+            theta = np.arctan(m)
         elif isinstance(axis, tuple):
             if isinstance(axis[1], np.ndarray):
                 # Option 2
@@ -89,6 +95,7 @@ class AirfoilParametrization:
             elif isinstance(axis[1], float):
                 # Option 3
                 m, b = axis[0], axis[1]
+                theta = np.arctan(m)
             else:
                 raise ValueError('input \'axis\' was a tuple where the second element was of an invalid length. The'
                                  'length of the second element should be either 1 or 2.')
@@ -186,6 +193,11 @@ class AirfoilParametrization:
         linked_airfoil.update()
 
     def override_parameters(self, parameter_info_values: list, normalized: bool = False, *args, **kwargs):
+        """
+        ### Description:
+
+        Overrides the parameters in the parameter dictionary and re-generates the `airfoil_tuple`
+        """
         self.param_setup.override_parameters(parameter_info_values, normalized)
         self.generate_airfoils(*args, **kwargs)
 

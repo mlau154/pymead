@@ -16,7 +16,11 @@ class SymmetricBaseAirfoilParams:
                  dx: Param = Param(0.0, active=False),  # dx to translate
                  dy: Param = Param(0.0, active=False),  # dy to translate
                  non_dim_by_chord: bool = True):                # Non-dimensionalize by chord length?
+        """
+        ### Description:
 
+        The reduced parameter set used in a `pyairpar.symmetric.symmetric_airfoil.SymmetricAirfoil`.
+        """
         self.c = c
         self.alf = alf
         self.R_le = R_le

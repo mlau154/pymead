@@ -9,8 +9,20 @@ from pyairpar.core.param_setup import ParamSetup
 from pyairpar.core.parametrization import AirfoilParametrization
 
 
-def _generate_unlinked_param_dict():
+def generate_unlinked_param_dict():
+    """
+    ### Description:
+
+    Generates the parameters in the `param_dict` which are to have `linked=False`. It is possible for `active` to be set
+    to `False` in some `pyairpar.core.param.Param`s. These parameters will be ignored in the parameter extraction
+    method.
+
+    ### Returns:
+
+    The dictionary filled with unlinked parameters.
+    """
     param_dict = {
+        # Base Airfoil Params:
         'c_main': Param(10.0),
         'alf_main': Param(np.deg2rad(5.0)),
         'R_le_main': Param(0.03, 'length'),
@@ -28,26 +40,77 @@ def _generate_unlinked_param_dict():
         'phi_te_main': Param(np.deg2rad(0.0)),
         'dx_main': Param(0.0, active=False),
         'dy_main': Param(0.0, active=False),
-    }
+        'c_nacelle': Param(7.0),
+        'alf_nacelle': Param(np.deg2rad(1.0)),
+        'R_le_nacelle': Param(0.04, 'length'),
+        'L_le_nacelle': Param(0.05, 'length'),
+        'r_le_nacelle': Param(0.6),
+        'phi_le_nacelle': Param(np.deg2rad(12.0)),
+        'psi1_le_nacelle': Param(np.deg2rad(10.0)),
+        'psi2_le_nacelle': Param(np.deg2rad(15.0)),
+        'L1_te_nacelle': Param(0.25, 'length'),
+        'L2_te_nacelle': Param(0.3, 'length'),
+        'theta1_te_nacelle': Param(np.deg2rad(2.0)),
+        'theta2_te_nacelle': Param(np.deg2rad(2.0)),
+        't_te_nacelle': Param(0.0, 'length'),
+        'r_te_nacelle': Param(0.5),
+        'phi_te_nacelle': Param(np.deg2rad(0.0)),
+        'dx_nacelle': Param(0.2, 'length'),
+        'dy_nacelle': Param(0.2, 'length'),
+        # Anchor points:
 
-def _generate_airfoils():
-    base_airfoil_params_main = BaseAirfoilParams(c=Param(10.0),
-                                                 alf=Param(np.deg2rad(5.0)),
-                                                 R_le=Param(0.03, 'length'),
-                                                 L_le=Param(0.05, 'length'),
-                                                 r_le=Param(0.6),
-                                                 phi_le=Param(np.deg2rad(12.0)),
-                                                 psi1_le=Param(np.deg2rad(10.0)),
-                                                 psi2_le=Param(np.deg2rad(15.0)),
-                                                 L1_te=Param(0.25, 'length'),
-                                                 L2_te=Param(0.3, 'length'),
-                                                 theta1_te=Param(np.deg2rad(2.0)),
-                                                 theta2_te=Param(np.deg2rad(2.0)),
-                                                 t_te=Param(0.0, 'length'),
-                                                 r_te=Param(0.5),
-                                                 phi_te=Param(np.deg2rad(0.0)),
-                                                 dx=Param(0.0, active=False),
-                                                 dy=Param(0.0, active=False),
+    }
+    return param_dict
+
+
+def generate_linked_param_dict(param_dict):
+    """
+    ### Description:
+
+    Generates more parameters for the parameter dictionary which are functions of other parameters in the `param_dict`
+    and should not be included in the method which overrides the parameters (using `linked=True`). If this method there
+    are no linked parameters required, this method can simply be empty and return the input parameter dictionary. E.g.,
+
+    ```python
+    def generate_linked_param_dict(param_dict):
+        return param_dict
+    ```
+
+    ### Args:
+
+    `param_dict`: The parameter dictionary which contains unlinked parameters.
+
+    ### Returns:
+
+    The dictionary of parameters
+    """
+    return param_dict
+
+
+def generate_airfoils(param_dict):
+    """
+    ### Description:
+
+    Converts the parameter dictionary into a tuple of `pyairpar.core.airfoil.Airfoil`s. Written as a method to increase
+    flexibility in the implementation.
+    """
+    base_airfoil_params_main = BaseAirfoilParams(c=param_dict['c_main'],
+                                                 alf=param_dict['alf_main'],
+                                                 R_le=param_dict['R_le_main'],
+                                                 L_le=param_dict['L_le_main'],
+                                                 r_le=param_dict['r_le_main'],
+                                                 phi_le=param_dict['phi_le_main'],
+                                                 psi1_le=param_dict['psi1_le_main'],
+                                                 psi2_le=param_dict['psi2_le_main'],
+                                                 L1_te=param_dict['L1_te_main'],
+                                                 L2_te=param_dict['L2_te_main'],
+                                                 theta1_te=param_dict['theta1_te_main'],
+                                                 theta2_te=param_dict['theta2_te_main'],
+                                                 t_te=param_dict['t_te_main'],
+                                                 r_te=param_dict['r_te_main'],
+                                                 phi_te=param_dict['phi_te_main'],
+                                                 dx=param_dict['dx_main'],
+                                                 dy=param_dict['dy_main'],
                                                  non_dim_by_chord=True
                                                  )
 
@@ -119,23 +182,23 @@ def _generate_airfoils():
                            anchor_point_tuple=anchor_point_tuple_main,
                            free_point_tuple=free_point_tuple)
 
-    base_airfoil_params_nacelle = BaseAirfoilParams(c=Param(7.0),
-                                                    alf=Param(np.deg2rad(1.0)),
-                                                    R_le=Param(0.04, 'length'),
-                                                    L_le=Param(0.05, 'length'),
-                                                    r_le=Param(0.6),
-                                                    phi_le=Param(np.deg2rad(12.0)),
-                                                    psi1_le=Param(np.deg2rad(10.0)),
-                                                    psi2_le=Param(np.deg2rad(15.0)),
-                                                    L1_te=Param(0.25, 'length'),
-                                                    L2_te=Param(0.3, 'length'),
-                                                    theta1_te=Param(np.deg2rad(2.0)),
-                                                    theta2_te=Param(np.deg2rad(2.0)),
-                                                    t_te=Param(0.0, 'length'),
-                                                    r_te=Param(0.5),
-                                                    phi_te=Param(np.deg2rad(0.0)),
-                                                    dx=Param(0.2, 'length'),
-                                                    dy=Param(0.2, 'length'),
+    base_airfoil_params_nacelle = BaseAirfoilParams(c=param_dict['c_nacelle'],
+                                                    alf=param_dict['alf_nacelle'],
+                                                    R_le=param_dict['R_le_nacelle'],
+                                                    L_le=param_dict['L_le_nacelle'],
+                                                    r_le=param_dict['r_le_nacelle'],
+                                                    phi_le=param_dict['phi_le_nacelle'],
+                                                    psi1_le=param_dict['psi1_le_nacelle'],
+                                                    psi2_le=param_dict['psi2_le_nacelle'],
+                                                    L1_te=param_dict['L1_te_nacelle'],
+                                                    L2_te=param_dict['L2_te_nacelle'],
+                                                    theta1_te=param_dict['theta1_te_nacelle'],
+                                                    theta2_te=param_dict['theta2_te_nacelle'],
+                                                    t_te=param_dict['t_te_nacelle'],
+                                                    r_te=param_dict['r_te_nacelle'],
+                                                    phi_te=param_dict['phi_te_nacelle'],
+                                                    dx=param_dict['dx_nacelle'],
+                                                    dy=param_dict['dy_nacelle'],
                                                     non_dim_by_chord=True
                                                     )
 
@@ -148,18 +211,36 @@ def _generate_airfoils():
     return airfoil_tuple
 
 
-def run():
-    param_setup = ParamSetup(_generate_unlinked_param_dict, _generate_unlinked_param_dict)
-    parametrization = AirfoilParametrization(param_setup, _generate_airfoils)
+def update(parametrization: AirfoilParametrization, param_setup: ParamSetup, parameter_list: list = None):
+    """
+    ### Description:
+
+    Overrides parameter list using the input parameter list, generates the airfoil coordinates, and mirrors part of the
+    main airfoil element across a specified axis.
+    """
+    if parameter_list is not None:
+        parametrization.override_parameters(parameter_list, normalized=True)
+    else:
+        parametrization.generate_airfoils_()
+
     m = Param(-0.05)
-    b = Param(0.08, 'length', scale_value=param_setup.param_dict['c_main'])
+    b = Param(0.08, 'length', scale_value=param_setup.param_dict['c_main'].value)
     parametrization.mirror(axis=(m.value, b.value), fixed_airfoil_idx=0, linked_airfoil_idx=1,
                            fixed_anchor_point_range=('anchor-top', 'anchor-top2'),
                            starting_prev_anchor_point_str_linked='le')
 
-    parametrization.extract_parameters()
 
-    print(f"fixed_airfoil_N = {airfoil_main.N}, linked_airfoil_N = {airfoil_nacelle.N}")
+def run():
+    """
+    ### Description:
+
+    In this example, a portion of one airfoil is mirrored across an axis onto another. Doing this decreases the number
+    of dimensions in the parametrization and reduces the amount of parametrization setup required.
+    """
+    param_setup = ParamSetup(generate_unlinked_param_dict, generate_linked_param_dict)
+    parametrization = AirfoilParametrization(param_setup, generate_airfoils)
+
+    update(parametrization, param_setup, None)
 
     fig, axs = parametrization.airfoil_tuple[0].plot(
         ('airfoil', 'control-point-skeleton'),

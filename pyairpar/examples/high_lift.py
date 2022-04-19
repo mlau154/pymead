@@ -13,7 +13,18 @@ from pyairpar.core.parametrization import AirfoilParametrization
 from pyairpar.core.parametrization import rotate
 
 
-def _generate_unlinked_param_dict():
+def generate_unlinked_param_dict():
+    """
+    ### Description:
+
+    Generates the parameters in the `param_dict` which are to have `linked=False`. It is possible for `active` to be set
+    to `False` in some `pyairpar.core.param.Param`s. These parameters will be ignored in the parameter extraction
+    method.
+
+    ### Returns:
+
+    The dictionary filled with unlinked parameters.
+    """
     param_dict = {
         # Main chord length:
         'c_main': Param(1.0, active=False),
@@ -82,7 +93,27 @@ def _generate_unlinked_param_dict():
     return param_dict
 
 
-def _generate_linked_param_dict(param_dict):
+def generate_linked_param_dict(param_dict):
+    """
+    ### Description:
+
+    Generates more parameters for the parameter dictionary which are functions of other parameters in the `param_dict`
+    and should not be included in the method which overrides the parameters (using `linked=True`). If this method there
+    are no linked parameters required, this method can simply be empty and return the input parameter dictionary. E.g.,
+
+    ```python
+    def generate_linked_param_dict(param_dict):
+        return param_dict
+    ```
+
+    ### Args:
+
+    `param_dict`: The parameter dictionary which contains unlinked parameters.
+
+    ### Returns:
+
+    The dictionary of parameters
+    """
     param_dict = {**param_dict, **{
         'L1_te_flap': Param(param_dict['L2_te_main'].value, linked=True),
         'theta1_te_flap': Param(-param_dict['theta2_te_main'].value, linked=True),
@@ -116,13 +147,28 @@ def _generate_linked_param_dict(param_dict):
     return param_dict
 
 
-def _generate_param_dict():
-    param_dict = _generate_unlinked_param_dict()
-    param_dict = _generate_linked_param_dict(param_dict)
+def generate_param_dict():
+    """
+    ### Description:
+
+    Method that executes the methods that generate the unlinked and linked parameter dictionaries.
+
+    ### Returns:
+
+    The combined dictionary of parameters
+    """
+    param_dict = generate_unlinked_param_dict()
+    param_dict = generate_linked_param_dict(param_dict)
     return param_dict
 
 
-def _generate_airfoils(param_dict):
+def generate_airfoils(param_dict):
+    """
+    ### Description:
+
+    Converts the parameter dictionary into a tuple of `pyairpar.core.airfoil.Airfoil`s. Written as a method to increase
+    flexibility in the implementation.
+    """
     base_airfoil_params_main = \
         BaseAirfoilParams(c=param_dict['c_main'], alf=param_dict['alf_main'], R_le=param_dict['R_le_main'],
                           L_le=param_dict['L_le_main'], r_le=param_dict['r_le_main'],
@@ -224,16 +270,28 @@ def _generate_airfoils(param_dict):
 
 
 def update(parametrization: AirfoilParametrization, parameter_list: list = None):
+    """
+    ### Description:
+
+    Overrides parameter list using the input parameter list and generates the airfoil coordinates.
+    """
     if parameter_list is not None:
         parametrization.override_parameters(parameter_list, normalized=True)
     else:
-        parametrization.generate_airfoils()
+        parametrization.generate_airfoils_()
 
 
 def run():
-    param_setup = ParamSetup(_generate_unlinked_param_dict, _generate_linked_param_dict)
+    """
+    ### Description:
+
+    An example implementation of a multi-element airfoil parametrization. Modeled in this example is a high-lift
+    configuration consisting of a main airfoil element and a deployable Fowler flap. Set `deploy` to `True` to deploy
+    the flap to a specified location.
+    """
+    param_setup = ParamSetup(generate_unlinked_param_dict, generate_linked_param_dict)
     parametrization = AirfoilParametrization(param_setup=param_setup,
-                                             _generate_airfoils=_generate_airfoils)
+                                             generate_airfoils=generate_airfoils)
     update(parametrization, None)
 
     deploy = True
