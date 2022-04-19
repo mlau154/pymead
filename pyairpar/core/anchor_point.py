@@ -88,7 +88,7 @@ class AnchorPoint:
         else:
             raise ValueError(f'The distance fraction, r, must be between 0 and 1. A value of {r.value} was entered.')
 
-        if -np.pi < phi.value < np.pi:
+        if -np.pi <= phi.value <= np.pi:
             self.phi = phi
         else:
             raise ValueError(f'The anchor point neighboring control point angle, phi, must be between -180 degrees and'

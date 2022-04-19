@@ -8,7 +8,7 @@ from matplotlib.axes import Axes
 from matplotlib.figure import Figure
 import matplotlib.pyplot as plt
 import typing
-from shapely.geometry import Polygon, LineString, Point, MultiPoint
+from shapely.geometry import Polygon, LineString
 from copy import deepcopy
 
 
@@ -507,9 +507,19 @@ class Airfoil:
             self.free_points[free_point.previous_anchor_point] = np.vstack(
                 (self.free_points[free_point.previous_anchor_point], free_point.xy))
 
-        # Increment the order of the modified Bézier curve
-        self.N[free_point.previous_anchor_point] += 1
         self.needs_update = True
+
+    def set_bezier_curve_orders(self):
+        for anchor_point in self.anchor_point_tuple:
+            self.N[anchor_point.name] = 5
+            self.anchor_point_order.insert(self.anchor_point_order.index(anchor_point.previous_anchor_point) + 1,
+                                           anchor_point.name)
+        if self.anchor_point_order.index('te_2') - self.anchor_point_order.index('le') != 1:
+            self.N['le'] = 5  # Set the order of the Bézier curve after the leading edge to 5
+            self.N[self.anchor_point_order[-2]] = 4  # Set the order of the last Bezier curve to 4
+        for free_point in self.free_point_tuple:
+            # Increment the order of the modified Bézier curve
+            self.N[free_point.previous_anchor_point] += 1
 
     def add_anchor_point(self, anchor_point: AnchorPoint):
         """
@@ -522,11 +532,8 @@ class Airfoil:
 
         `anchor_point`: an `pyairpar.core.anchor_point.AnchorPoint` from which to build a control point branch
         """
-        self.anchor_point_order.insert(self.anchor_point_order.index(anchor_point.previous_anchor_point) + 1,
-                                       anchor_point.name)
         self.anchor_points[anchor_point.name] = anchor_point.xy
         self.set_slope(anchor_point)
-        self.N[anchor_point.name] = 5
         self.set_curvature(anchor_point)
         self.needs_update = True
 
@@ -539,11 +546,7 @@ class Airfoil:
         `needs_update` is set to `True`.
         """
         for anchor_point in self.anchor_point_tuple:
-            if anchor_point.name not in self.anchor_point_order:
-                self.add_anchor_point(anchor_point)
-        if self.anchor_point_order.index('te_2') - self.anchor_point_order.index('le') != 1:
-            self.N['le'] = 5  # Set the order of the Bezier curve after the leading edge to 5
-            self.N[self.anchor_point_order[-2]] = 4  # Set the order of the last Bezier curve to 4
+            self.add_anchor_point(anchor_point)
         self.needs_update = True
 
     def add_free_points(self):
@@ -586,6 +589,7 @@ class Airfoil:
         curves are generated through the control points and the airfoil coordinates are then calculated again after
         the transformations.
         """
+        self.set_bezier_curve_orders()
         self.add_anchor_points()
         self.add_free_points()
         self.extract_parameters()
