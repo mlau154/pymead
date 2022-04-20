@@ -407,7 +407,7 @@ class Airfoil:
             c1 = - 1 / R * ((x0 - x_m1) ** 2 + (y0 - y_m1) ** 2) ** (3 / 2)
             c2 = 1 - 1 / n1
             c3 = x_m1 - x0
-            if theta1 % (np.pi / 2) != 0:
+            if (theta1 - np.pi / 2) % np.pi != 0:
                 g2_minus_point[0] = x_m1 + c1 / c2 / (c3 * np.tan(theta1) + y0 - y_m1)
                 g2_minus_point[1] = np.tan(theta1) * (g2_minus_point[0] - x_m1) + y_m1
             else:
@@ -419,7 +419,7 @@ class Airfoil:
             c4 = - 1 / R * ((x_p1 - x0) ** 2 + (y_p1 - y0) ** 2) ** (3 / 2)
             c5 = 1 - 1 / n2
             c6 = x0 - x_p1
-            if theta2 % (np.pi / 2) != 0:
+            if (theta2 - np.pi / 2) % np.pi != 0:
                 g2_plus_point[0] = x_p1 + c4 / c5 / (c6 * np.tan(theta2) + y_p1 - y0)
                 g2_plus_point[1] = np.tan(theta2) * (g2_plus_point[0] - x_p1) + y_p1
             else:
