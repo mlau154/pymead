@@ -51,7 +51,7 @@ optimizer.
 This work was supported by NASA under award number 80NSSC19M0125 as part of the Center for High-Efficiency Electrical
 Technologies for Aircraft (CHEETA). Logo courtesy of [NASA](https://www.nasa.gov/).
 
-.. image:: nasa-logo-web-rgb.png
+.. image:: nasa_cheeta_logo.png
 
 ## Contact Information
 
