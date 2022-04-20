@@ -53,7 +53,9 @@ optimizer.
 ## Acknowledgments
 
 This work was supported by NASA under award number 80NSSC19M0125 as part of the Center for High-Efficiency Electrical
-Technologies for Aircraft (CHEETA).
+Technologies for Aircraft (CHEETA). Logo courtesy of [NASA](https://www.nasa.gov/).
+
+![Image](https://github.com/mlau154/pyairpar/raw/master/docs/nasa-logo-web-rgb.png)
 
 ## Contact Information
 
