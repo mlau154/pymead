@@ -6,9 +6,14 @@ Source code can be found [here](https://github.com/mlau154/pyairpar). Documentat
 
 ## Welcome
 To the documentation page for `pyairpar`, an object-oriented Python 3 package for single- and multi-element
-Bézier-parametrized airfoil design.
+Bézier-parametrized airfoil design. This Bézier parametrization framework is being presented at the 2022 AIAA Aviation
+Conference in Chicago, IL under the title "A Bézier Curve Parametrization Framework for Multi-Element Airfoil Systems." 
 
-![Image](https://github.com/mlau154/pyairpar/raw/master/docs/complex_airfoil-3.png)
+![Image](https://github.com/mlau154/pyairpar/raw/master/docs/pai.png)
+
+![Image](https://github.com/mlau154/pyairpar/raw/master/docs/high_lift.png)
+
+![Image](https://github.com/mlau154/pyairpar/raw/master/docs/complex_1.png)
 
 ## Motivation
 

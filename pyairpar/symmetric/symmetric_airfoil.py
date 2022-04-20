@@ -18,7 +18,7 @@ class SymmetricAirfoil(Airfoil):
         """
         ### Description:
 
-        A sub-class of 'pyairpar.core.airfoil.Airfoil` that describes a symmetric airfoil using a reduced parameter set
+        A sub-class of `pyairpar.core.airfoil.Airfoil` that describes a symmetric airfoil using a reduced parameter set
         (`pyairpar.symmetric.symmetric_base_airfoil_params.SymmetricBaseAirfoilParams`)
         """
         anchor_point_tuple = self.mirror_anchor_points(anchor_point_tuple)

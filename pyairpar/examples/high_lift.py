@@ -286,70 +286,57 @@ def run():
     ### Description:
 
     An example implementation of a multi-element airfoil parametrization. Modeled in this example is a high-lift
-    configuration consisting of a main airfoil element and a deployable Fowler flap. Set `deploy` to `True` to deploy
-    the flap to a specified location.
+    configuration consisting of a main airfoil element and a deployable Fowler flap.
     """
     param_setup = ParamSetup(generate_unlinked_param_dict, generate_linked_param_dict)
     parametrization = AirfoilParametrization(param_setup=param_setup,
                                              generate_airfoils=generate_airfoils)
     update(parametrization, None)
 
-    deploy = True
-
-    if deploy:
-        parametrization.airfoil_tuple[1].translate(-0.7, 0.0)
-        parametrization.airfoil_tuple[1].rotate(-np.deg2rad(30.0))
-        parametrization.airfoil_tuple[1].translate(1.02, -0.02)
-        parametrization.airfoil_tuple[1].update_anchor_point_array()
-        parametrization.airfoil_tuple[1].generate_non_transformed_airfoil_coordinates()
-        parametrization.airfoil_tuple[1].generate_coords()
-        parametrization.airfoil_tuple[1].needs_update = False
-
-    if deploy:
-        main_plot = ('airfoil',)
-    else:
-        main_plot = ('airfoil', 'control-point-skeleton')
     fig, axs = parametrization.airfoil_tuple[0].plot(
-        main_plot, show_plot=False, show_legend=False)
+        ('airfoil',), show_plot=False, show_legend=False)
 
     parametrization.airfoil_tuple[1].plot(('airfoil',),
                                           fig=fig, axs=axs, show_plot=False, show_legend=False,
                                           plot_kwargs=[{'color': 'indianred'}] * 4)
 
-    if not deploy:
-        parametrization.airfoil_tuple[1].plot(('control-point-skeleton',), fig=fig, axs=axs, show_plot=False,
-                                              show_legend=False, plot_kwargs={'color': 'black', 'ls': '-.',
-                                                                              'marker': '*'},
-                                              )
+    parametrization.airfoil_tuple[1].translate(-0.7, 0.0)
+    parametrization.airfoil_tuple[1].rotate(-np.deg2rad(30.0))
+    parametrization.airfoil_tuple[1].translate(1.02, -0.02)
+    parametrization.airfoil_tuple[1].update_anchor_point_array()
+    parametrization.airfoil_tuple[1].generate_non_transformed_airfoil_coordinates()
+    parametrization.airfoil_tuple[1].generate_coords()
+    parametrization.airfoil_tuple[1].needs_update = False
+
+    parametrization.airfoil_tuple[1].plot(('airfoil',),
+                                          fig=fig, axs=axs, show_plot=False, show_legend=False,
+                                          plot_kwargs=[{'color': 'indianred', 'ls': '--'}] * 4)
+
+    parametrization.airfoil_tuple[1].plot(('control-point-skeleton',),
+                                          fig=fig, axs=axs, show_plot=False, show_legend=False)
 
     airfoil_main_line_proxy = Line2D([], [], color='cornflowerblue')
     airfoil_flap_line_proxy = Line2D([], [], color='indianred')
+    airfoil_flap_line_proxy2 = Line2D([], [], color='indianred', ls='--')
+    control_point_skeleton_proxy = Line2D([], [], color='grey', ls='--', marker='*')
 
-    if not deploy:
-        control_point_skeleton_proxy = Line2D([], [], color='grey', ls='--', marker='*')
-        control_point_skeleton_proxy2 = Line2D([], [], color='black', ls='-.', marker='*')
-        fig.legend([airfoil_main_line_proxy, airfoil_flap_line_proxy, control_point_skeleton_proxy,
-                    control_point_skeleton_proxy2],
-                   ['main element', 'flap', 'main c. polygon', 'flap c. polygon'], fontsize=10)
-    else:
-        fig.legend([airfoil_main_line_proxy, airfoil_flap_line_proxy],
-                   ['main element', 'flap'], fontsize=12)
+    fig.legend([airfoil_main_line_proxy, airfoil_flap_line_proxy, airfoil_flap_line_proxy2,
+                control_point_skeleton_proxy],
+               ['main element', 'flap (stowed)', 'flap (deployed)', 'control polygon'], fontsize=12)
 
     fig.suptitle('')
     axs.set_xlabel(r'$x/c$', fontsize=14)
     axs.set_ylabel(r'$y/c$', fontsize=14)
+    fig.set_figheight(3)
+    fig.set_figwidth(12)
     fig.tight_layout()
 
-    show_flag = False
-    save_flag = True
+    show_flag = True
+    save_flag = False
 
     if save_flag:
-        if deploy:
-            name = 'high_lift_deployed.png'
-        else:
-            name = 'high_lift_stowed.png'
         save_name = os.path.join(os.path.dirname(
-            os.path.dirname(os.path.join(os.getcwd()))), 'docs', 'images', name)
+            os.path.dirname(os.path.join(os.getcwd()))), 'docs', 'images', 'high_lift.png')
         fig.savefig(save_name, dpi=600)
     if show_flag:
         show()

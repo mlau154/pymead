@@ -1,4 +1,5 @@
 import numpy as np
+from matplotlib.pyplot import show
 from pyairpar.core.param import Param
 from pyairpar.core.anchor_point import AnchorPoint
 from pyairpar.core.free_point import FreePoint
@@ -53,13 +54,15 @@ def run():
                                anchor_point_tuple=anchor_point_tuple,
                                free_point_tuple=free_point_tuple)
 
-    print(airfoil.L1_te.value)
-    print(airfoil.L2_te.value)
-
     self_intersecting = airfoil.check_self_intersection()
     print(f"Self-intersecting? {self_intersecting}")
 
-    airfoil.plot(('chordline', 'anchor-point-skeleton', 'control-point-skeleton', 'airfoil', 'R-circles'))
+    fig, axs = airfoil.plot(('chordline', 'anchor-point-skeleton', 'control-point-skeleton', 'airfoil', 'R-circles'),
+                            show_plot=False)
+    fig.set_figheight(6)
+    fig.set_figwidth(9)
+    fig.tight_layout()
+    show()
 
 
 if __name__ == '__main__':

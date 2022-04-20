@@ -114,7 +114,7 @@ def run():
 
     show()
 
-    save_plot = True
+    save_plot = False
     if save_plot:
         fig.suptitle('')
         fig.savefig(os.path.join(os.path.dirname(os.path.dirname(os.getcwd())),

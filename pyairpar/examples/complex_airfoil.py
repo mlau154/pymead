@@ -9,6 +9,16 @@ from pyairpar.core.base_airfoil_params import BaseAirfoilParams
 
 
 def run():
+    """
+    ### Description:
+
+    Generates and plots the airfoil shape, control point skeleton, anchor point skeleton, chordline, and circles
+    depicting the radii of curvature at each `pyairpar.core.anchor_point.AnchorPoint` for an unnecessarily complicated
+    `pyairpar.core.airfoil.Airfoil` design. Here the trailing edge thickness is set to a non-zero value to show
+    the full capability of the `pyairpar.core.base_airfoil_params.BaseAirfoilParams` class. A simpler airfoil could
+    be created by setting the trailing edge thickness to `0.0`. In doing so, the `pyairpar.core.airfoil.Airfoil`
+    class ignores the values set for `r_te` and `phi_te` and sets their `active` attributes to `False`.
+    """
     base_airfoil_params = BaseAirfoilParams(c=Param(10.0),
                                             alf=Param(np.deg2rad(5.0)),
                                             R_le=Param(0.06, 'length'),
@@ -103,8 +113,8 @@ def run():
     fig.set_figheight(5)
     fig.tight_layout()
 
-    show_flag = False
-    save_flag = True
+    show_flag = True
+    save_flag = False
 
     if save_flag:
         save_name = os.path.join(os.path.dirname(
