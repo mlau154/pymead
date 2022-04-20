@@ -35,7 +35,7 @@ from pyairpar.core.param_setup import ParamSetup
 
 class AirfoilParametrization:
 
-    def __init__(self, param_setup: ParamSetup, _generate_airfoils: callable, args=None):
+    def __init__(self, param_setup: ParamSetup, generate_airfoils: callable, args=None):
         &#34;&#34;&#34;
         ### Description:
 
@@ -53,19 +53,24 @@ class AirfoilParametrization:
         An instance of the `AirfoilParametrization` class
         &#34;&#34;&#34;
         self.param_setup = param_setup
-        self._generate_airfoils = _generate_airfoils
+        self.generate_airfoils = generate_airfoils
         self.args = args
 
         self.airfoil_tuple = None
 
         self.n_mirrors = 0
 
-    def generate_airfoils(self, *args, **kwargs):
-        airfoil_tuple = self._generate_airfoils(self.param_setup.param_dict, *args, **kwargs)
+    def generate_airfoils_(self, *args, **kwargs):
+        &#34;&#34;&#34;
+        ### Description:
+
+        Generates the `airfoil_tuple` and replaces the corresponding attribute in `Parameterization`.
+        &#34;&#34;&#34;
+        airfoil_tuple = self.generate_airfoils(self.param_setup.param_dict, *args, **kwargs)
         if isinstance(airfoil_tuple, tuple):
             self.airfoil_tuple = airfoil_tuple
         else:
-            raise Exception(f&#39;_generate_airfoils must return a tuple. Return type was {type(airfoil_tuple)}&#39;)
+            raise Exception(f&#39;generate_airfoils must return a tuple. Return type was {type(airfoil_tuple)}&#39;)
 
     def mirror(self, axis: np.ndarray or tuple, fixed_airfoil_idx: int, linked_airfoil_idx: int,
                fixed_anchor_point_range: tuple, starting_prev_anchor_point_str_linked: str):
@@ -108,6 +113,7 @@ class AirfoilParametrization:
             x1, x2, y1, y2 = axis[0, 0], axis[0, 1], axis[1, 0], axis[1, 1]
             m = (y2 - y1) / (x2 - x1)
             b = -m * x1 + y1
+            theta = np.arctan(m)
         elif isinstance(axis, tuple):
             if isinstance(axis[1], np.ndarray):
                 # Option 2
@@ -118,6 +124,7 @@ class AirfoilParametrization:
             elif isinstance(axis[1], float):
                 # Option 3
                 m, b = axis[0], axis[1]
+                theta = np.arctan(m)
             else:
                 raise ValueError(&#39;input \&#39;axis\&#39; was a tuple where the second element was of an invalid length. The&#39;
                                  &#39;length of the second element should be either 1 or 2.&#39;)
@@ -215,6 +222,11 @@ class AirfoilParametrization:
         linked_airfoil.update()
 
     def override_parameters(self, parameter_info_values: list, normalized: bool = False, *args, **kwargs):
+        &#34;&#34;&#34;
+        ### Description:
+
+        Overrides the parameters in the parameter dictionary and re-generates the `airfoil_tuple`
+        &#34;&#34;&#34;
         self.param_setup.override_parameters(parameter_info_values, normalized)
         self.generate_airfoils(*args, **kwargs)
 
@@ -238,7 +250,7 @@ class AirfoilParametrization:
 <dl>
 <dt id="pyairpar.core.parametrization.AirfoilParametrization"><code class="flex name class">
 <span>class <span class="ident">AirfoilParametrization</span></span>
-<span>(</span><span>param_setup: <a title="pyairpar.core.param_setup.ParamSetup" href="param_setup.html#pyairpar.core.param_setup.ParamSetup">ParamSetup</a>, _generate_airfoils: <built-in function callable>, args=None)</span>
+<span>(</span><span>param_setup: <a title="pyairpar.core.param_setup.ParamSetup" href="param_setup.html#pyairpar.core.param_setup.ParamSetup">ParamSetup</a>, generate_airfoils: <built-in function callable>, args=None)</span>
 </code></dt>
 <dd>
 <div class="desc"><h3 id="description">Description:</h3>
@@ -256,7 +268,7 @@ must be specified.</p>
 </summary>
 <pre><code class="python">class AirfoilParametrization:
 
-    def __init__(self, param_setup: ParamSetup, _generate_airfoils: callable, args=None):
+    def __init__(self, param_setup: ParamSetup, generate_airfoils: callable, args=None):
         &#34;&#34;&#34;
         ### Description:
 
@@ -274,19 +286,24 @@ must be specified.</p>
         An instance of the `AirfoilParametrization` class
         &#34;&#34;&#34;
         self.param_setup = param_setup
-        self._generate_airfoils = _generate_airfoils
+        self.generate_airfoils = generate_airfoils
         self.args = args
 
         self.airfoil_tuple = None
 
         self.n_mirrors = 0
 
-    def generate_airfoils(self, *args, **kwargs):
-        airfoil_tuple = self._generate_airfoils(self.param_setup.param_dict, *args, **kwargs)
+    def generate_airfoils_(self, *args, **kwargs):
+        &#34;&#34;&#34;
+        ### Description:
+
+        Generates the `airfoil_tuple` and replaces the corresponding attribute in `Parameterization`.
+        &#34;&#34;&#34;
+        airfoil_tuple = self.generate_airfoils(self.param_setup.param_dict, *args, **kwargs)
         if isinstance(airfoil_tuple, tuple):
             self.airfoil_tuple = airfoil_tuple
         else:
-            raise Exception(f&#39;_generate_airfoils must return a tuple. Return type was {type(airfoil_tuple)}&#39;)
+            raise Exception(f&#39;generate_airfoils must return a tuple. Return type was {type(airfoil_tuple)}&#39;)
 
     def mirror(self, axis: np.ndarray or tuple, fixed_airfoil_idx: int, linked_airfoil_idx: int,
                fixed_anchor_point_range: tuple, starting_prev_anchor_point_str_linked: str):
@@ -329,6 +346,7 @@ must be specified.</p>
             x1, x2, y1, y2 = axis[0, 0], axis[0, 1], axis[1, 0], axis[1, 1]
             m = (y2 - y1) / (x2 - x1)
             b = -m * x1 + y1
+            theta = np.arctan(m)
         elif isinstance(axis, tuple):
             if isinstance(axis[1], np.ndarray):
                 # Option 2
@@ -339,6 +357,7 @@ must be specified.</p>
             elif isinstance(axis[1], float):
                 # Option 3
                 m, b = axis[0], axis[1]
+                theta = np.arctan(m)
             else:
                 raise ValueError(&#39;input \&#39;axis\&#39; was a tuple where the second element was of an invalid length. The&#39;
                                  &#39;length of the second element should be either 1 or 2.&#39;)
@@ -436,6 +455,11 @@ must be specified.</p>
         linked_airfoil.update()
 
     def override_parameters(self, parameter_info_values: list, normalized: bool = False, *args, **kwargs):
+        &#34;&#34;&#34;
+        ### Description:
+
+        Overrides the parameters in the parameter dictionary and re-generates the `airfoil_tuple`
+        &#34;&#34;&#34;
         self.param_setup.override_parameters(parameter_info_values, normalized)
         self.generate_airfoils(*args, **kwargs)
 
@@ -468,21 +492,27 @@ must be specified.</p>
     pass</code></pre>
 </details>
 </dd>
-<dt id="pyairpar.core.parametrization.AirfoilParametrization.generate_airfoils"><code class="name flex">
-<span>def <span class="ident">generate_airfoils</span></span>(<span>self, *args, **kwargs)</span>
+<dt id="pyairpar.core.parametrization.AirfoilParametrization.generate_airfoils_"><code class="name flex">
+<span>def <span class="ident">generate_airfoils_</span></span>(<span>self, *args, **kwargs)</span>
 </code></dt>
 <dd>
-<div class="desc"></div>
+<div class="desc"><h3 id="description">Description:</h3>
+<p>Generates the <code>airfoil_tuple</code> and replaces the corresponding attribute in <code>Parameterization</code>.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def generate_airfoils(self, *args, **kwargs):
-    airfoil_tuple = self._generate_airfoils(self.param_setup.param_dict, *args, **kwargs)
+<pre><code class="python">def generate_airfoils_(self, *args, **kwargs):
+    &#34;&#34;&#34;
+    ### Description:
+
+    Generates the `airfoil_tuple` and replaces the corresponding attribute in `Parameterization`.
+    &#34;&#34;&#34;
+    airfoil_tuple = self.generate_airfoils(self.param_setup.param_dict, *args, **kwargs)
     if isinstance(airfoil_tuple, tuple):
         self.airfoil_tuple = airfoil_tuple
     else:
-        raise Exception(f&#39;_generate_airfoils must return a tuple. Return type was {type(airfoil_tuple)}&#39;)</code></pre>
+        raise Exception(f&#39;generate_airfoils must return a tuple. Return type was {type(airfoil_tuple)}&#39;)</code></pre>
 </details>
 </dd>
 <dt id="pyairpar.core.parametrization.AirfoilParametrization.mirror"><code class="name flex">
@@ -556,6 +586,7 @@ on the linked airfoil.</p></div>
         x1, x2, y1, y2 = axis[0, 0], axis[0, 1], axis[1, 0], axis[1, 1]
         m = (y2 - y1) / (x2 - x1)
         b = -m * x1 + y1
+        theta = np.arctan(m)
     elif isinstance(axis, tuple):
         if isinstance(axis[1], np.ndarray):
             # Option 2
@@ -566,6 +597,7 @@ on the linked airfoil.</p></div>
         elif isinstance(axis[1], float):
             # Option 3
             m, b = axis[0], axis[1]
+            theta = np.arctan(m)
         else:
             raise ValueError(&#39;input \&#39;axis\&#39; was a tuple where the second element was of an invalid length. The&#39;
                              &#39;length of the second element should be either 1 or 2.&#39;)
@@ -667,12 +699,18 @@ on the linked airfoil.</p></div>
 <span>def <span class="ident">override_parameters</span></span>(<span>self, parameter_info_values: list, normalized: bool = False, *args, **kwargs)</span>
 </code></dt>
 <dd>
-<div class="desc"></div>
+<div class="desc"><h3 id="description">Description:</h3>
+<p>Overrides the parameters in the parameter dictionary and re-generates the <code>airfoil_tuple</code></p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">def override_parameters(self, parameter_info_values: list, normalized: bool = False, *args, **kwargs):
+    &#34;&#34;&#34;
+    ### Description:
+
+    Overrides the parameters in the parameter dictionary and re-generates the `airfoil_tuple`
+    &#34;&#34;&#34;
     self.param_setup.override_parameters(parameter_info_values, normalized)
     self.generate_airfoils(*args, **kwargs)</code></pre>
 </details>
@@ -699,7 +737,7 @@ on the linked airfoil.</p></div>
 <h4><code><a title="pyairpar.core.parametrization.AirfoilParametrization" href="#pyairpar.core.parametrization.AirfoilParametrization">AirfoilParametrization</a></code></h4>
 <ul class="">
 <li><code><a title="pyairpar.core.parametrization.AirfoilParametrization.clone" href="#pyairpar.core.parametrization.AirfoilParametrization.clone">clone</a></code></li>
-<li><code><a title="pyairpar.core.parametrization.AirfoilParametrization.generate_airfoils" href="#pyairpar.core.parametrization.AirfoilParametrization.generate_airfoils">generate_airfoils</a></code></li>
+<li><code><a title="pyairpar.core.parametrization.AirfoilParametrization.generate_airfoils_" href="#pyairpar.core.parametrization.AirfoilParametrization.generate_airfoils_">generate_airfoils_</a></code></li>
 <li><code><a title="pyairpar.core.parametrization.AirfoilParametrization.mirror" href="#pyairpar.core.parametrization.AirfoilParametrization.mirror">mirror</a></code></li>
 <li><code><a title="pyairpar.core.parametrization.AirfoilParametrization.override_parameters" href="#pyairpar.core.parametrization.AirfoilParametrization.override_parameters">override_parameters</a></code></li>
 </ul>

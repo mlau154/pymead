@@ -7,7 +7,7 @@
 <title>pyairpar API documentation</title>
 <meta name="description" content="Welcome
 To the documentation page for `pyairpar`, an object-oriented Python 3 package for single- and multi-element
-Bézier-parametrized airfoil design …" />
+Bézier-parametrized airfoil …" />
 <link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/sanitize.min.css" integrity="sha256-PK9q560IAAa6WVRRh76LtCaI8pjTJ2z11v0miyNNjrs=" crossorigin>
 <link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/typography.min.css" integrity="sha256-7l/o7C8jubJiy74VsKTidCy1yBkRtiUGbVkYBylBqUg=" crossorigin>
 <link rel="stylesheet preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.1.1/styles/github.min.css" crossorigin>
@@ -27,8 +27,9 @@ Bézier-parametrized airfoil design …" />
 <section id="section-intro">
 <h2 id="welcome">Welcome</h2>
 <p>To the documentation page for <code><a title="pyairpar" href="#pyairpar">pyairpar</a></code>, an object-oriented Python 3 package for single- and multi-element
-Bézier-parametrized airfoil design.</p>
-<p><img alt="" src="complex_airfoil-3.png"></p>
+Bézier-parametrized airfoil design. This Bézier parametrization framework is being presented at the 2022 AIAA Aviation
+Conference in Chicago, IL under the title "A Bézier Curve Parametrization Framework for Multi-Element Airfoil Systems."</p>
+<p><img alt="" src="complex_1.png"></p>
 <h2 id="motivation">Motivation</h2>
 <p>The creation of this package was motivated by a research aircraft application: the aerodynamic design of a
 propulsion-airframe-integrated commercial transport aircraft. The cross-section of a wing or fuselage with integrated
@@ -36,6 +37,7 @@ propulsors can be represented, with some sacrifice in fidelity, as a quasi-2D mu
 multi-element airfoil system is comprised of a main airfoil (either the fuselage or main airfoil element), a hub
 airfoil (representing the cross-section of an axisymmetric hub), and a nacelle airfoil (representing the cross-section
 of an axisymmetric nacelle).</p>
+<p><img alt="" src="pai.png"></p>
 <p>By using a well-defined parametrization framework, this airfoil system can be morphed or deformed in a variety of
 ways simply by changing the value of any of the input parameters. These parameters are represented by
 <code><a title="pyairpar.core.param.Param" href="core/param.html#pyairpar.core.param.Param">Param</a></code> objects in this framework. Defining the airfoil system in this way provides an
@@ -51,9 +53,10 @@ value at a point can cause undesired flow properties or even unconverged results
 varying complexities, from simple, single-airfoil design to high-fidelity, multi-element airfoil shape optimization.
 Other common multi-element airfoil systems, such as the high-lift configuration on an aircraft, are also target
 applications for this software package.</p>
+<p><img alt="" src="high_lift.png"></p>
 <p>One utility provided in this software package which may be useful in the start-up phase of airfoil design is
 <code><a title="pyairpar.utils.airfoil_matching.match_airfoil" href="utils/airfoil_matching.html#pyairpar.utils.airfoil_matching.match_airfoil">match_airfoil()</a></code>. This modules allows the matching of a particular parametrization
-to any public airfoil geometry on <a href="http://airfoiltools.com/">airfoiltools.com</a> using the gradient-based "SLSQP"
+to any public airfoil geometry at <a href="http://airfoiltools.com/">airfoiltools.com</a> using the gradient-based "SLSQP"
 optimizer.</p>
 <h2 id="acknowledgments">Acknowledgments</h2>
 <p>This work was supported by NASA under award number 80NSSC19M0125 as part of the Center for High-Efficiency Electrical
@@ -69,9 +72,10 @@ Technologies for Aircraft (CHEETA).</p>
 
 ## Welcome
 To the documentation page for `pyairpar`, an object-oriented Python 3 package for single- and multi-element
-Bézier-parametrized airfoil design.
+Bézier-parametrized airfoil design. This Bézier parametrization framework is being presented at the 2022 AIAA Aviation
+Conference in Chicago, IL under the title &#34;A Bézier Curve Parametrization Framework for Multi-Element Airfoil Systems.&#34;
 
-.. image:: complex_airfoil-3.png
+.. image:: complex_1.png
 
 ## Motivation
 
@@ -81,6 +85,8 @@ propulsors can be represented, with some sacrifice in fidelity, as a quasi-2D mu
 multi-element airfoil system is comprised of a main airfoil (either the fuselage or main airfoil element), a hub
 airfoil (representing the cross-section of an axisymmetric hub), and a nacelle airfoil (representing the cross-section
 of an axisymmetric nacelle).
+
+.. image:: pai.png
 
 By using a well-defined parametrization framework, this airfoil system can be morphed or deformed in a variety of
 ways simply by changing the value of any of the input parameters. These parameters are represented by
@@ -101,9 +107,11 @@ varying complexities, from simple, single-airfoil design to high-fidelity, multi
 Other common multi-element airfoil systems, such as the high-lift configuration on an aircraft, are also target
 applications for this software package.
 
+.. image:: high_lift.png
+
 One utility provided in this software package which may be useful in the start-up phase of airfoil design is
 `pyairpar.utils.airfoil_matching.match_airfoil()`. This modules allows the matching of a particular parametrization
-to any public airfoil geometry on [airfoiltools.com](http://airfoiltools.com/) using the gradient-based &#34;SLSQP&#34;
+to any public airfoil geometry at [airfoiltools.com](http://airfoiltools.com/) using the gradient-based &#34;SLSQP&#34;
 optimizer.
 
 ## Acknowledgments
@@ -129,8 +137,7 @@ Technologies for Aircraft (CHEETA).
 </dd>
 <dt><code class="name"><a title="pyairpar.examples" href="examples/index.html">pyairpar.examples</a></code></dt>
 <dd>
-<div class="desc"><p>Contains example implementations of <code><a title="pyairpar.core.airfoil.Airfoil" href="core/airfoil.html#pyairpar.core.airfoil.Airfoil">Airfoil</a></code> (<code><a title="pyairpar.examples.simple_airfoil" href="examples/simple_airfoil.html">pyairpar.examples.simple_airfoil</a></code>,
-<code><a title="pyairpar.examples.complex_airfoil" href="examples/complex_airfoil.html">pyairpar.examples.complex_airfoil</a></code>, …</p></div>
+<div class="desc"><p>Contains example implementations of <code><a title="pyairpar.core.airfoil.Airfoil" href="core/airfoil.html#pyairpar.core.airfoil.Airfoil">Airfoil</a></code></p></div>
 </dd>
 <dt><code class="name"><a title="pyairpar.symmetric" href="symmetric/index.html">pyairpar.symmetric</a></code></dt>
 <dd>

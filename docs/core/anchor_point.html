@@ -117,11 +117,11 @@ class AnchorPoint:
         else:
             raise ValueError(f&#39;The distance fraction, r, must be between 0 and 1. A value of {r.value} was entered.&#39;)
 
-        if -np.pi &lt; phi.value &lt; np.pi:
+        if -np.pi &lt;= phi.value &lt;= np.pi:
             self.phi = phi
         else:
-            raise ValueError(f&#39;The anchor point neighboring control point angle, phi, must be between -90 degrees and&#39;
-                             f&#39;90 degrees. A value of {phi.value} was entered.&#39;)
+            raise ValueError(f&#39;The anchor point neighboring control point angle, phi, must be between -180 degrees and&#39;
+                             f&#39;180 degrees. A value of {phi.value} was entered.&#39;)
 
         if 0 &lt; psi1.value &lt; np.pi:
             self.psi1 = psi1
@@ -347,11 +347,11 @@ values (optional)</p>
         else:
             raise ValueError(f&#39;The distance fraction, r, must be between 0 and 1. A value of {r.value} was entered.&#39;)
 
-        if -np.pi &lt; phi.value &lt; np.pi:
+        if -np.pi &lt;= phi.value &lt;= np.pi:
             self.phi = phi
         else:
-            raise ValueError(f&#39;The anchor point neighboring control point angle, phi, must be between -90 degrees and&#39;
-                             f&#39;90 degrees. A value of {phi.value} was entered.&#39;)
+            raise ValueError(f&#39;The anchor point neighboring control point angle, phi, must be between -180 degrees and&#39;
+                             f&#39;180 degrees. A value of {phi.value} was entered.&#39;)
 
         if 0 &lt; psi1.value &lt; np.pi:
             self.psi1 = psi1

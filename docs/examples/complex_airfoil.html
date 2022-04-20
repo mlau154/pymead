@@ -28,6 +28,8 @@
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">import numpy as np
+import os
+from matplotlib.pyplot import show
 from pyairpar.core.param import Param
 from pyairpar.core.anchor_point import AnchorPoint
 from pyairpar.core.free_point import FreePoint
@@ -36,7 +38,16 @@ from pyairpar.core.base_airfoil_params import BaseAirfoilParams
 
 
 def run():
+    &#34;&#34;&#34;
+    ### Description:
 
+    Generates and plots the airfoil shape, control point skeleton, anchor point skeleton, chordline, and circles
+    depicting the radii of curvature at each `pyairpar.core.anchor_point.AnchorPoint` for an unnecessarily complicated
+    `pyairpar.core.airfoil.Airfoil` design. Here the trailing edge thickness is set to a non-zero value to show
+    the full capability of the `pyairpar.core.base_airfoil_params.BaseAirfoilParams` class. A simpler airfoil could
+    be created by setting the trailing edge thickness to `0.0`. In doing so, the `pyairpar.core.airfoil.Airfoil`
+    class ignores the values set for `r_te` and `phi_te` and sets their `active` attributes to `False`.
+    &#34;&#34;&#34;
     base_airfoil_params = BaseAirfoilParams(c=Param(10.0),
                                             alf=Param(np.deg2rad(5.0)),
                                             R_le=Param(0.06, &#39;length&#39;),
@@ -52,8 +63,6 @@ def run():
                                             t_te=Param(0.0, &#39;length&#39;),
                                             r_te=Param(0.5),
                                             phi_te=Param(np.deg2rad(0.0)),
-                                            dx=Param(0.5, linked=True),
-                                            dy=Param(0.5, linked=True),
                                             non_dim_by_chord=True
                                             )
 
@@ -62,7 +71,7 @@ def run():
                                 name=&#39;anchor-top&#39;,
                                 previous_anchor_point=&#39;te_1&#39;,
                                 L=Param(0.1, units=&#39;length&#39;),
-                                R=Param(0.15, units=&#39;length&#39;),
+                                R=Param(-0.15, units=&#39;length&#39;),
                                 r=Param(0.55),
                                 phi=Param(np.deg2rad(14.0)),
                                 psi1=Param(np.deg2rad(80.0)),
@@ -123,8 +132,25 @@ def run():
     self_intersecting = airfoil.check_self_intersection()
     print(f&#34;Self-intersecting? {self_intersecting}&#34;)
 
-    # airfoil.plot((&#39;curvature&#39;,), axis_equal=False)
-    airfoil.plot((&#39;chordline&#39;, &#39;anchor-point-skeleton&#39;, &#39;control-point-skeleton&#39;, &#39;airfoil&#39;, &#39;R-circles&#39;))
+    fig, axs = airfoil.plot((&#39;airfoil&#39;, &#39;control-point-skeleton&#39;, &#39;anchor-point-skeleton&#39;, &#39;chordline&#39;,
+                             &#39;R-circles&#39;), show_plot=False)
+
+    axs.set_xlabel(r&#39;$x/c$&#39;, fontsize=14)
+    axs.set_ylabel(r&#39;$y/c$&#39;, fontsize=14)
+    fig.suptitle(&#39;&#39;)
+    fig.set_figwidth(9)
+    fig.set_figheight(5)
+    fig.tight_layout()
+
+    show_flag = True
+    save_flag = False
+
+    if save_flag:
+        save_name = os.path.join(os.path.dirname(
+            os.path.dirname(os.path.join(os.getcwd()))), &#39;docs&#39;, &#39;images&#39;, &#39;complex_1.png&#39;)
+        fig.savefig(save_name, dpi=600)
+    if show_flag:
+        show()
 
 
 if __name__ == &#39;__main__&#39;:
@@ -142,13 +168,28 @@ if __name__ == &#39;__main__&#39;:
 <span>def <span class="ident">run</span></span>(<span>)</span>
 </code></dt>
 <dd>
-<div class="desc"></div>
+<div class="desc"><h3 id="description">Description:</h3>
+<p>Generates and plots the airfoil shape, control point skeleton, anchor point skeleton, chordline, and circles
+depicting the radii of curvature at each <code><a title="pyairpar.core.anchor_point.AnchorPoint" href="../core/anchor_point.html#pyairpar.core.anchor_point.AnchorPoint">AnchorPoint</a></code> for an unnecessarily complicated
+<code><a title="pyairpar.core.airfoil.Airfoil" href="../core/airfoil.html#pyairpar.core.airfoil.Airfoil">Airfoil</a></code> design. Here the trailing edge thickness is set to a non-zero value to show
+the full capability of the <code><a title="pyairpar.core.base_airfoil_params.BaseAirfoilParams" href="../core/base_airfoil_params.html#pyairpar.core.base_airfoil_params.BaseAirfoilParams">BaseAirfoilParams</a></code> class. A simpler airfoil could
+be created by setting the trailing edge thickness to <code>0.0</code>. In doing so, the <code><a title="pyairpar.core.airfoil.Airfoil" href="../core/airfoil.html#pyairpar.core.airfoil.Airfoil">Airfoil</a></code>
+class ignores the values set for <code>r_te</code> and <code>phi_te</code> and sets their <code>active</code> attributes to <code>False</code>.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">def run():
+    &#34;&#34;&#34;
+    ### Description:
 
+    Generates and plots the airfoil shape, control point skeleton, anchor point skeleton, chordline, and circles
+    depicting the radii of curvature at each `pyairpar.core.anchor_point.AnchorPoint` for an unnecessarily complicated
+    `pyairpar.core.airfoil.Airfoil` design. Here the trailing edge thickness is set to a non-zero value to show
+    the full capability of the `pyairpar.core.base_airfoil_params.BaseAirfoilParams` class. A simpler airfoil could
+    be created by setting the trailing edge thickness to `0.0`. In doing so, the `pyairpar.core.airfoil.Airfoil`
+    class ignores the values set for `r_te` and `phi_te` and sets their `active` attributes to `False`.
+    &#34;&#34;&#34;
     base_airfoil_params = BaseAirfoilParams(c=Param(10.0),
                                             alf=Param(np.deg2rad(5.0)),
                                             R_le=Param(0.06, &#39;length&#39;),
@@ -164,8 +205,6 @@ if __name__ == &#39;__main__&#39;:
                                             t_te=Param(0.0, &#39;length&#39;),
                                             r_te=Param(0.5),
                                             phi_te=Param(np.deg2rad(0.0)),
-                                            dx=Param(0.5, linked=True),
-                                            dy=Param(0.5, linked=True),
                                             non_dim_by_chord=True
                                             )
 
@@ -174,7 +213,7 @@ if __name__ == &#39;__main__&#39;:
                                 name=&#39;anchor-top&#39;,
                                 previous_anchor_point=&#39;te_1&#39;,
                                 L=Param(0.1, units=&#39;length&#39;),
-                                R=Param(0.15, units=&#39;length&#39;),
+                                R=Param(-0.15, units=&#39;length&#39;),
                                 r=Param(0.55),
                                 phi=Param(np.deg2rad(14.0)),
                                 psi1=Param(np.deg2rad(80.0)),
@@ -235,8 +274,25 @@ if __name__ == &#39;__main__&#39;:
     self_intersecting = airfoil.check_self_intersection()
     print(f&#34;Self-intersecting? {self_intersecting}&#34;)
 
-    # airfoil.plot((&#39;curvature&#39;,), axis_equal=False)
-    airfoil.plot((&#39;chordline&#39;, &#39;anchor-point-skeleton&#39;, &#39;control-point-skeleton&#39;, &#39;airfoil&#39;, &#39;R-circles&#39;))</code></pre>
+    fig, axs = airfoil.plot((&#39;airfoil&#39;, &#39;control-point-skeleton&#39;, &#39;anchor-point-skeleton&#39;, &#39;chordline&#39;,
+                             &#39;R-circles&#39;), show_plot=False)
+
+    axs.set_xlabel(r&#39;$x/c$&#39;, fontsize=14)
+    axs.set_ylabel(r&#39;$y/c$&#39;, fontsize=14)
+    fig.suptitle(&#39;&#39;)
+    fig.set_figwidth(9)
+    fig.set_figheight(5)
+    fig.tight_layout()
+
+    show_flag = True
+    save_flag = False
+
+    if save_flag:
+        save_name = os.path.join(os.path.dirname(
+            os.path.dirname(os.path.join(os.getcwd()))), &#39;docs&#39;, &#39;images&#39;, &#39;complex_1.png&#39;)
+        fig.savefig(save_name, dpi=600)
+    if show_flag:
+        show()</code></pre>
 </details>
 </dd>
 </dl>

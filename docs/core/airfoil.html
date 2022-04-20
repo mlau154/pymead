@@ -37,7 +37,8 @@ from matplotlib.axes import Axes
 from matplotlib.figure import Figure
 import matplotlib.pyplot as plt
 import typing
-from shapely.geometry import Polygon, LineString, Point, MultiPoint
+from shapely.geometry import Polygon, LineString
+from copy import deepcopy
 
 
 class Airfoil:
@@ -156,6 +157,7 @@ class Airfoil:
                                       (1 - self.r_te.value) * self.t_te.value *
                                       np.array([np.cos(np.pi / 2 + self.phi_te.value),
                                                 np.sin(np.pi / 2 + self.phi_te.value)])}
+        self.transformed_anchor_points = None
         self.anchor_point_order = [&#39;te_1&#39;, &#39;le&#39;, &#39;te_2&#39;]
         self.anchor_point_array = np.array([])
 
@@ -338,22 +340,22 @@ class Airfoil:
             \begin{cases}
                 \begin{bmatrix} x_{-1} + \frac{c_1}{c_2[c_3(\tan{(\theta_1)} + y_0 - y_{-1})]}
                                 \\ \tan{(\theta_1)} (x_{-2} - x_{-1}) + y_{-1} \end{bmatrix}
-                                ,&amp; \theta_1 \in \left(0, \frac{\pi}{2} \right) \cup \left(\frac{\pi}{2}, \pi \right) \wedge R \in (-\infty,0) \cup (0, \infty) \\
-                \begin{bmatrix} x_{-1} \\ y_{-1} + \frac{c_1}{c_2 c_3}  \end{bmatrix},&amp; \theta_1 = \frac{\pi}{2} \wedge
+                                ,&amp; \theta_1 \neq \frac{\pi}{2} + k\pi \text{ for integer } k \wedge R \in (-\infty,0) \cup (0, \infty) \\
+                \begin{bmatrix} x_{-1} \\ y_{-1} + \frac{c_1}{c_2 c_3}  \end{bmatrix},&amp; \theta_1 = \frac{\pi}{2} + k\pi \text{ for integer } k \wedge
                                                                                                     R \in (-\infty,0)
                                                                                                     \cup (0,\infty) \\
-                \begin{bmatrix} x_{-1} \\ y_{-1} \end{bmatrix},&amp; \theta_1 \in (0, \pi) \wedge R =
+                \begin{bmatrix} x_{-1} \\ y_{-1} \end{bmatrix},&amp; \theta_1 \in (-\infty, \infty) \wedge R =
                                                                                                             \pm \infty
             \end{cases} \\
             \begin{bmatrix} x_{+2} \\ y_{+2} \end{bmatrix} &amp;=
             \begin{cases}
                 \begin{bmatrix} x_{+1} + \frac{c_4}{c_5[c_6(\tan{(\theta_2)} + y_{+1} - y_0)]}
                                 \\ \tan{(\theta_2)} (x_{+2} - x_{+1}) + y_{+1} \end{bmatrix}
-                                ,&amp; \theta_2 \in \left(0, \frac{\pi}{2} \right) \cup \left(\frac{\pi}{2}, \pi \right) \wedge R \in (-\infty,0) \cup (0, \infty) \\
-                \begin{bmatrix} x_{+1} \\ y_{+1} + \frac{c_4}{c_5 c_6}  \end{bmatrix},&amp; \theta_2 = \frac{\pi}{2} \wedge
+                                ,&amp; \theta_2 \neq \frac{\pi}{2} + k\pi \text{ for integer } k \wedge R \in (-\infty,0) \cup (0, \infty) \\
+                \begin{bmatrix} x_{+1} \\ y_{+1} + \frac{c_4}{c_5 c_6}  \end{bmatrix},&amp; \theta_2 = \frac{\pi}{2} + k\pi \text{ for integer } k \wedge
                                                                                                     R \in (-\infty,0)
                                                                                                     \cup (0,\infty) \\
-                \begin{bmatrix} x_{+1} \\ y_{+1} \end{bmatrix},&amp; \theta_2 \in (0, \pi) \wedge R =
+                \begin{bmatrix} x_{+1} \\ y_{+1} \end{bmatrix},&amp; \theta_2 \in (-\infty, \infty) \wedge R =
                                                                                                             \pm \infty
             \end{cases}
         \end{align*}
@@ -534,9 +536,19 @@ class Airfoil:
             self.free_points[free_point.previous_anchor_point] = np.vstack(
                 (self.free_points[free_point.previous_anchor_point], free_point.xy))
 
-        # Increment the order of the modified Bézier curve
-        self.N[free_point.previous_anchor_point] += 1
         self.needs_update = True
+
+    def set_bezier_curve_orders(self):
+        for anchor_point in self.anchor_point_tuple:
+            self.N[anchor_point.name] = 5
+            self.anchor_point_order.insert(self.anchor_point_order.index(anchor_point.previous_anchor_point) + 1,
+                                           anchor_point.name)
+        if self.anchor_point_order.index(&#39;te_2&#39;) - self.anchor_point_order.index(&#39;le&#39;) != 1:
+            self.N[&#39;le&#39;] = 5  # Set the order of the Bézier curve after the leading edge to 5
+            self.N[self.anchor_point_order[-2]] = 4  # Set the order of the last Bezier curve to 4
+        for free_point in self.free_point_tuple:
+            # Increment the order of the modified Bézier curve
+            self.N[free_point.previous_anchor_point] += 1
 
     def add_anchor_point(self, anchor_point: AnchorPoint):
         &#34;&#34;&#34;
@@ -549,11 +561,8 @@ class Airfoil:
 
         `anchor_point`: an `pyairpar.core.anchor_point.AnchorPoint` from which to build a control point branch
         &#34;&#34;&#34;
-        self.anchor_point_order.insert(self.anchor_point_order.index(anchor_point.previous_anchor_point) + 1,
-                                       anchor_point.name)
         self.anchor_points[anchor_point.name] = anchor_point.xy
         self.set_slope(anchor_point)
-        self.N[anchor_point.name] = 5
         self.set_curvature(anchor_point)
         self.needs_update = True
 
@@ -566,11 +575,7 @@ class Airfoil:
         `needs_update` is set to `True`.
         &#34;&#34;&#34;
         for anchor_point in self.anchor_point_tuple:
-            if anchor_point.name not in self.anchor_point_order:
-                self.add_anchor_point(anchor_point)
-        if self.anchor_point_order.index(&#39;te_2&#39;) - self.anchor_point_order.index(&#39;le&#39;) != 1:
-            self.N[&#39;le&#39;] = 5  # Set the order of the Bezier curve after the leading edge to 5
-            self.N[self.anchor_point_order[-2]] = 4  # Set the order of the last Bezier curve to 4
+            self.add_anchor_point(anchor_point)
         self.needs_update = True
 
     def add_free_points(self):
@@ -598,6 +603,7 @@ class Airfoil:
                 self.anchor_point_array = xy
             else:
                 self.anchor_point_array = np.row_stack((self.anchor_point_array, xy))
+        self.transformed_anchor_points = deepcopy(self.anchor_points)
 
     def update(self):
         r&#34;&#34;&#34;
@@ -612,6 +618,7 @@ class Airfoil:
         curves are generated through the control points and the airfoil coordinates are then calculated again after
         the transformations.
         &#34;&#34;&#34;
+        self.set_bezier_curve_orders()
         self.add_anchor_points()
         self.add_free_points()
         self.extract_parameters()
@@ -656,6 +663,8 @@ class Airfoil:
         self.control_points[:, 1] += dy
         self.anchor_point_array[:, 0] += dx
         self.anchor_point_array[:, 1] += dy
+        for key, anchor_point in self.transformed_anchor_points.items():
+            self.transformed_anchor_points[key] = anchor_point + np.array([dx, dy])
         self.needs_update = True
         return self.control_points, self.anchor_point_array
 
@@ -677,6 +686,8 @@ class Airfoil:
                             [np.sin(angle), np.cos(angle)]])
         self.control_points = (rot_mat @ self.control_points.T).T
         self.anchor_point_array = (rot_mat @ self.anchor_point_array.T).T
+        for key, anchor_point in self.transformed_anchor_points.items():
+            self.transformed_anchor_points[key] = (rot_mat @ anchor_point.T).T
         self.needs_update = True
         return self.control_points, self.anchor_point_array
 
@@ -719,7 +730,7 @@ class Airfoil:
         ### Description:
 
         Runs the `generate_coords()` method after the rotation and translation steps and saves the information to
-        the `coords` and `curvature` attributes of `Airfoil`. Used in `update()`.
+        the `coords` and `curvature` attributes of `Airfoil`. Used in `Airfoil.update()`.
 
         ### Returns:
 
@@ -735,7 +746,7 @@ class Airfoil:
         ### Description:
 
         Runs the `generate_coords()` method before the rotation and translation steps and saves the information to the
-        `non_transformed_coords` attribute of `Airfoil`. Used in `update()`.
+        `non_transformed_coords` attribute of `Airfoil`. Used in `Airfoil.update()`.
 
         ### Returns:
 
@@ -926,7 +937,6 @@ class Airfoil:
                     line = np.array([xy, xy + anchor_point.R.value *
                                      np.array([np.cos(phi - self.alf.value + perp_angle),
                                                np.sin(phi - self.alf.value + perp_angle)])])
-                    print(line)
                     circle = plt.Circle((line[1, 0], line[1, 1]), anchor_point.R.value, fill=False, color=&#39;gold&#39;)
                     axs.plot(line[:, 0], line[:, 1], color=&#39;gold&#39;)
                     axs.add_patch(circle)
@@ -1339,6 +1349,7 @@ point, use <code>(<a title="pyairpar.core.free_point.FreePoint" href="free_point
                                       (1 - self.r_te.value) * self.t_te.value *
                                       np.array([np.cos(np.pi / 2 + self.phi_te.value),
                                                 np.sin(np.pi / 2 + self.phi_te.value)])}
+        self.transformed_anchor_points = None
         self.anchor_point_order = [&#39;te_1&#39;, &#39;le&#39;, &#39;te_2&#39;]
         self.anchor_point_array = np.array([])
 
@@ -1521,22 +1532,22 @@ point, use <code>(<a title="pyairpar.core.free_point.FreePoint" href="free_point
             \begin{cases}
                 \begin{bmatrix} x_{-1} + \frac{c_1}{c_2[c_3(\tan{(\theta_1)} + y_0 - y_{-1})]}
                                 \\ \tan{(\theta_1)} (x_{-2} - x_{-1}) + y_{-1} \end{bmatrix}
-                                ,&amp; \theta_1 \in \left(0, \frac{\pi}{2} \right) \cup \left(\frac{\pi}{2}, \pi \right) \wedge R \in (-\infty,0) \cup (0, \infty) \\
-                \begin{bmatrix} x_{-1} \\ y_{-1} + \frac{c_1}{c_2 c_3}  \end{bmatrix},&amp; \theta_1 = \frac{\pi}{2} \wedge
+                                ,&amp; \theta_1 \neq \frac{\pi}{2} + k\pi \text{ for integer } k \wedge R \in (-\infty,0) \cup (0, \infty) \\
+                \begin{bmatrix} x_{-1} \\ y_{-1} + \frac{c_1}{c_2 c_3}  \end{bmatrix},&amp; \theta_1 = \frac{\pi}{2} + k\pi \text{ for integer } k \wedge
                                                                                                     R \in (-\infty,0)
                                                                                                     \cup (0,\infty) \\
-                \begin{bmatrix} x_{-1} \\ y_{-1} \end{bmatrix},&amp; \theta_1 \in (0, \pi) \wedge R =
+                \begin{bmatrix} x_{-1} \\ y_{-1} \end{bmatrix},&amp; \theta_1 \in (-\infty, \infty) \wedge R =
                                                                                                             \pm \infty
             \end{cases} \\
             \begin{bmatrix} x_{+2} \\ y_{+2} \end{bmatrix} &amp;=
             \begin{cases}
                 \begin{bmatrix} x_{+1} + \frac{c_4}{c_5[c_6(\tan{(\theta_2)} + y_{+1} - y_0)]}
                                 \\ \tan{(\theta_2)} (x_{+2} - x_{+1}) + y_{+1} \end{bmatrix}
-                                ,&amp; \theta_2 \in \left(0, \frac{\pi}{2} \right) \cup \left(\frac{\pi}{2}, \pi \right) \wedge R \in (-\infty,0) \cup (0, \infty) \\
-                \begin{bmatrix} x_{+1} \\ y_{+1} + \frac{c_4}{c_5 c_6}  \end{bmatrix},&amp; \theta_2 = \frac{\pi}{2} \wedge
+                                ,&amp; \theta_2 \neq \frac{\pi}{2} + k\pi \text{ for integer } k \wedge R \in (-\infty,0) \cup (0, \infty) \\
+                \begin{bmatrix} x_{+1} \\ y_{+1} + \frac{c_4}{c_5 c_6}  \end{bmatrix},&amp; \theta_2 = \frac{\pi}{2} + k\pi \text{ for integer } k \wedge
                                                                                                     R \in (-\infty,0)
                                                                                                     \cup (0,\infty) \\
-                \begin{bmatrix} x_{+1} \\ y_{+1} \end{bmatrix},&amp; \theta_2 \in (0, \pi) \wedge R =
+                \begin{bmatrix} x_{+1} \\ y_{+1} \end{bmatrix},&amp; \theta_2 \in (-\infty, \infty) \wedge R =
                                                                                                             \pm \infty
             \end{cases}
         \end{align*}
@@ -1717,9 +1728,19 @@ point, use <code>(<a title="pyairpar.core.free_point.FreePoint" href="free_point
             self.free_points[free_point.previous_anchor_point] = np.vstack(
                 (self.free_points[free_point.previous_anchor_point], free_point.xy))
 
-        # Increment the order of the modified Bézier curve
-        self.N[free_point.previous_anchor_point] += 1
         self.needs_update = True
+
+    def set_bezier_curve_orders(self):
+        for anchor_point in self.anchor_point_tuple:
+            self.N[anchor_point.name] = 5
+            self.anchor_point_order.insert(self.anchor_point_order.index(anchor_point.previous_anchor_point) + 1,
+                                           anchor_point.name)
+        if self.anchor_point_order.index(&#39;te_2&#39;) - self.anchor_point_order.index(&#39;le&#39;) != 1:
+            self.N[&#39;le&#39;] = 5  # Set the order of the Bézier curve after the leading edge to 5
+            self.N[self.anchor_point_order[-2]] = 4  # Set the order of the last Bezier curve to 4
+        for free_point in self.free_point_tuple:
+            # Increment the order of the modified Bézier curve
+            self.N[free_point.previous_anchor_point] += 1
 
     def add_anchor_point(self, anchor_point: AnchorPoint):
         &#34;&#34;&#34;
@@ -1732,11 +1753,8 @@ point, use <code>(<a title="pyairpar.core.free_point.FreePoint" href="free_point
 
         `anchor_point`: an `pyairpar.core.anchor_point.AnchorPoint` from which to build a control point branch
         &#34;&#34;&#34;
-        self.anchor_point_order.insert(self.anchor_point_order.index(anchor_point.previous_anchor_point) + 1,
-                                       anchor_point.name)
         self.anchor_points[anchor_point.name] = anchor_point.xy
         self.set_slope(anchor_point)
-        self.N[anchor_point.name] = 5
         self.set_curvature(anchor_point)
         self.needs_update = True
 
@@ -1749,11 +1767,7 @@ point, use <code>(<a title="pyairpar.core.free_point.FreePoint" href="free_point
         `needs_update` is set to `True`.
         &#34;&#34;&#34;
         for anchor_point in self.anchor_point_tuple:
-            if anchor_point.name not in self.anchor_point_order:
-                self.add_anchor_point(anchor_point)
-        if self.anchor_point_order.index(&#39;te_2&#39;) - self.anchor_point_order.index(&#39;le&#39;) != 1:
-            self.N[&#39;le&#39;] = 5  # Set the order of the Bezier curve after the leading edge to 5
-            self.N[self.anchor_point_order[-2]] = 4  # Set the order of the last Bezier curve to 4
+            self.add_anchor_point(anchor_point)
         self.needs_update = True
 
     def add_free_points(self):
@@ -1781,6 +1795,7 @@ point, use <code>(<a title="pyairpar.core.free_point.FreePoint" href="free_point
                 self.anchor_point_array = xy
             else:
                 self.anchor_point_array = np.row_stack((self.anchor_point_array, xy))
+        self.transformed_anchor_points = deepcopy(self.anchor_points)
 
     def update(self):
         r&#34;&#34;&#34;
@@ -1795,6 +1810,7 @@ point, use <code>(<a title="pyairpar.core.free_point.FreePoint" href="free_point
         curves are generated through the control points and the airfoil coordinates are then calculated again after
         the transformations.
         &#34;&#34;&#34;
+        self.set_bezier_curve_orders()
         self.add_anchor_points()
         self.add_free_points()
         self.extract_parameters()
@@ -1839,6 +1855,8 @@ point, use <code>(<a title="pyairpar.core.free_point.FreePoint" href="free_point
         self.control_points[:, 1] += dy
         self.anchor_point_array[:, 0] += dx
         self.anchor_point_array[:, 1] += dy
+        for key, anchor_point in self.transformed_anchor_points.items():
+            self.transformed_anchor_points[key] = anchor_point + np.array([dx, dy])
         self.needs_update = True
         return self.control_points, self.anchor_point_array
 
@@ -1860,6 +1878,8 @@ point, use <code>(<a title="pyairpar.core.free_point.FreePoint" href="free_point
                             [np.sin(angle), np.cos(angle)]])
         self.control_points = (rot_mat @ self.control_points.T).T
         self.anchor_point_array = (rot_mat @ self.anchor_point_array.T).T
+        for key, anchor_point in self.transformed_anchor_points.items():
+            self.transformed_anchor_points[key] = (rot_mat @ anchor_point.T).T
         self.needs_update = True
         return self.control_points, self.anchor_point_array
 
@@ -1902,7 +1922,7 @@ point, use <code>(<a title="pyairpar.core.free_point.FreePoint" href="free_point
         ### Description:
 
         Runs the `generate_coords()` method after the rotation and translation steps and saves the information to
-        the `coords` and `curvature` attributes of `Airfoil`. Used in `update()`.
+        the `coords` and `curvature` attributes of `Airfoil`. Used in `Airfoil.update()`.
 
         ### Returns:
 
@@ -1918,7 +1938,7 @@ point, use <code>(<a title="pyairpar.core.free_point.FreePoint" href="free_point
         ### Description:
 
         Runs the `generate_coords()` method before the rotation and translation steps and saves the information to the
-        `non_transformed_coords` attribute of `Airfoil`. Used in `update()`.
+        `non_transformed_coords` attribute of `Airfoil`. Used in `Airfoil.update()`.
 
         ### Returns:
 
@@ -2109,7 +2129,6 @@ point, use <code>(<a title="pyairpar.core.free_point.FreePoint" href="free_point
                     line = np.array([xy, xy + anchor_point.R.value *
                                      np.array([np.cos(phi - self.alf.value + perp_angle),
                                                np.sin(phi - self.alf.value + perp_angle)])])
-                    print(line)
                     circle = plt.Circle((line[1, 0], line[1, 1]), anchor_point.R.value, fill=False, color=&#39;gold&#39;)
                     axs.plot(line[:, 0], line[:, 1], color=&#39;gold&#39;)
                     axs.add_patch(circle)
@@ -2170,11 +2189,8 @@ control point branch into the set of control points. <code>needs_update</code> i
 
     `anchor_point`: an `pyairpar.core.anchor_point.AnchorPoint` from which to build a control point branch
     &#34;&#34;&#34;
-    self.anchor_point_order.insert(self.anchor_point_order.index(anchor_point.previous_anchor_point) + 1,
-                                   anchor_point.name)
     self.anchor_points[anchor_point.name] = anchor_point.xy
     self.set_slope(anchor_point)
-    self.N[anchor_point.name] = 5
     self.set_curvature(anchor_point)
     self.needs_update = True</code></pre>
 </details>
@@ -2200,11 +2216,7 @@ control point branch into the set of control points. <code>needs_update</code> i
     `needs_update` is set to `True`.
     &#34;&#34;&#34;
     for anchor_point in self.anchor_point_tuple:
-        if anchor_point.name not in self.anchor_point_order:
-            self.add_anchor_point(anchor_point)
-    if self.anchor_point_order.index(&#39;te_2&#39;) - self.anchor_point_order.index(&#39;le&#39;) != 1:
-        self.N[&#39;le&#39;] = 5  # Set the order of the Bezier curve after the leading edge to 5
-        self.N[self.anchor_point_order[-2]] = 4  # Set the order of the last Bezier curve to 4
+        self.add_anchor_point(anchor_point)
     self.needs_update = True</code></pre>
 </details>
 </dd>
@@ -2238,8 +2250,6 @@ control point branch into the set of control points. <code>needs_update</code> i
         self.free_points[free_point.previous_anchor_point] = np.vstack(
             (self.free_points[free_point.previous_anchor_point], free_point.xy))
 
-    # Increment the order of the modified Bézier curve
-    self.N[free_point.previous_anchor_point] += 1
     self.needs_update = True</code></pre>
 </details>
 </dd>
@@ -2420,7 +2430,7 @@ maximum value of the thickness distribution.</p></div>
 <dd>
 <div class="desc"><h3 id="description">Description:</h3>
 <p>Runs the <code>generate_coords()</code> method after the rotation and translation steps and saves the information to
-the <code>coords</code> and <code>curvature</code> attributes of <code><a title="pyairpar.core.airfoil.Airfoil" href="#pyairpar.core.airfoil.Airfoil">Airfoil</a></code>. Used in <code>update()</code>.</p>
+the <code>coords</code> and <code>curvature</code> attributes of <code><a title="pyairpar.core.airfoil.Airfoil" href="#pyairpar.core.airfoil.Airfoil">Airfoil</a></code>. Used in <code><a title="pyairpar.core.airfoil.Airfoil.update" href="#pyairpar.core.airfoil.Airfoil.update">Airfoil.update()</a></code>.</p>
 <h3 id="returns">Returns:</h3>
 <p>The airfoil coordinates, the <code>C</code> dictionary of Bézier curve information, and the curvature.</p></div>
 <details class="source">
@@ -2432,7 +2442,7 @@ the <code>coords</code> and <code>curvature</code> attributes of <code><a title=
     ### Description:
 
     Runs the `generate_coords()` method after the rotation and translation steps and saves the information to
-    the `coords` and `curvature` attributes of `Airfoil`. Used in `update()`.
+    the `coords` and `curvature` attributes of `Airfoil`. Used in `Airfoil.update()`.
 
     ### Returns:
 
@@ -2500,7 +2510,7 @@ from the <code>C</code> dictionary. Helper method for <code>generate_airfoil_coo
 <dd>
 <div class="desc"><h3 id="description">Description:</h3>
 <p>Runs the <code>generate_coords()</code> method before the rotation and translation steps and saves the information to the
-<code>non_transformed_coords</code> attribute of <code><a title="pyairpar.core.airfoil.Airfoil" href="#pyairpar.core.airfoil.Airfoil">Airfoil</a></code>. Used in <code>update()</code>.</p>
+<code>non_transformed_coords</code> attribute of <code><a title="pyairpar.core.airfoil.Airfoil" href="#pyairpar.core.airfoil.Airfoil">Airfoil</a></code>. Used in <code><a title="pyairpar.core.airfoil.Airfoil.update" href="#pyairpar.core.airfoil.Airfoil.update">Airfoil.update()</a></code>.</p>
 <h3 id="returns">Returns:</h3>
 <p>The coordinates of the airfoil before rotation and translation.</p></div>
 <details class="source">
@@ -2512,7 +2522,7 @@ from the <code>C</code> dictionary. Helper method for <code>generate_airfoil_coo
     ### Description:
 
     Runs the `generate_coords()` method before the rotation and translation steps and saves the information to the
-    `non_transformed_coords` attribute of `Airfoil`. Used in `update()`.
+    `non_transformed_coords` attribute of `Airfoil`. Used in `Airfoil.update()`.
 
     ### Returns:
 
@@ -2845,7 +2855,6 @@ object used for plotting</p></div>
                 line = np.array([xy, xy + anchor_point.R.value *
                                  np.array([np.cos(phi - self.alf.value + perp_angle),
                                            np.sin(phi - self.alf.value + perp_angle)])])
-                print(line)
                 circle = plt.Circle((line[1, 0], line[1, 1]), anchor_point.R.value, fill=False, color=&#39;gold&#39;)
                 axs.plot(line[:, 0], line[:, 1], color=&#39;gold&#39;)
                 axs.add_patch(circle)
@@ -2909,8 +2918,32 @@ object used for plotting</p></div>
                         [np.sin(angle), np.cos(angle)]])
     self.control_points = (rot_mat @ self.control_points.T).T
     self.anchor_point_array = (rot_mat @ self.anchor_point_array.T).T
+    for key, anchor_point in self.transformed_anchor_points.items():
+        self.transformed_anchor_points[key] = (rot_mat @ anchor_point.T).T
     self.needs_update = True
     return self.control_points, self.anchor_point_array</code></pre>
+</details>
+</dd>
+<dt id="pyairpar.core.airfoil.Airfoil.set_bezier_curve_orders"><code class="name flex">
+<span>def <span class="ident">set_bezier_curve_orders</span></span>(<span>self)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def set_bezier_curve_orders(self):
+    for anchor_point in self.anchor_point_tuple:
+        self.N[anchor_point.name] = 5
+        self.anchor_point_order.insert(self.anchor_point_order.index(anchor_point.previous_anchor_point) + 1,
+                                       anchor_point.name)
+    if self.anchor_point_order.index(&#39;te_2&#39;) - self.anchor_point_order.index(&#39;le&#39;) != 1:
+        self.N[&#39;le&#39;] = 5  # Set the order of the Bézier curve after the leading edge to 5
+        self.N[self.anchor_point_order[-2]] = 4  # Set the order of the last Bezier curve to 4
+    for free_point in self.free_point_tuple:
+        # Increment the order of the modified Bézier curve
+        self.N[free_point.previous_anchor_point] += 1</code></pre>
 </details>
 </dd>
 <dt id="pyairpar.core.airfoil.Airfoil.set_curvature"><code class="name flex">
@@ -2927,24 +2960,24 @@ to the anchor point's slope-control points are defined as follows:</p>
 \begin{cases}
 \begin{bmatrix} x_{-1} + \frac{c_1}{c_2[c_3(\tan{(\theta_1)} + y_0 - y_{-1})]}
 \\ \tan{(\theta_1)} (x_{-2} - x_{-1}) + y_{-1} \end{bmatrix}
-,&amp; \theta_1 \in \left(0, \frac{\pi}{2} \right) \cup \left(\frac{\pi}{2}, \pi \right) \wedge R \in (-\infty,0) \cup (0, \infty) \\
+,&amp; \theta_1 \neq \frac{\pi}{2} + k\pi \text{ for integer } k \wedge R \in (-\infty,0) \cup (0, \infty) \\
 \begin{bmatrix} x_{-1} \\ y_{-1} + \frac{c_1}{c_2 c_3}
-\end{bmatrix},&amp; \theta_1 = \frac{\pi}{2} \wedge
+\end{bmatrix},&amp; \theta_1 = \frac{\pi}{2} + k\pi \text{ for integer } k \wedge
 R \in (-\infty,0)
 \cup (0,\infty) \\
-\begin{bmatrix} x_{-1} \\ y_{-1} \end{bmatrix},&amp; \theta_1 \in (0, \pi) \wedge R =
+\begin{bmatrix} x_{-1} \\ y_{-1} \end{bmatrix},&amp; \theta_1 \in (-\infty, \infty) \wedge R =
 \pm \infty
 \end{cases} \\
 \begin{bmatrix} x_{+2} \\ y_{+2} \end{bmatrix} &amp;=
 \begin{cases}
 \begin{bmatrix} x_{+1} + \frac{c_4}{c_5[c_6(\tan{(\theta_2)} + y_{+1} - y_0)]}
 \\ \tan{(\theta_2)} (x_{+2} - x_{+1}) + y_{+1} \end{bmatrix}
-,&amp; \theta_2 \in \left(0, \frac{\pi}{2} \right) \cup \left(\frac{\pi}{2}, \pi \right) \wedge R \in (-\infty,0) \cup (0, \infty) \\
+,&amp; \theta_2 \neq \frac{\pi}{2} + k\pi \text{ for integer } k \wedge R \in (-\infty,0) \cup (0, \infty) \\
 \begin{bmatrix} x_{+1} \\ y_{+1} + \frac{c_4}{c_5 c_6}
-\end{bmatrix},&amp; \theta_2 = \frac{\pi}{2} \wedge
+\end{bmatrix},&amp; \theta_2 = \frac{\pi}{2} + k\pi \text{ for integer } k \wedge
 R \in (-\infty,0)
 \cup (0,\infty) \\
-\begin{bmatrix} x_{+1} \\ y_{+1} \end{bmatrix},&amp; \theta_2 \in (0, \pi) \wedge R =
+\begin{bmatrix} x_{+1} \\ y_{+1} \end{bmatrix},&amp; \theta_2 \in (-\infty, \infty) \wedge R =
 \pm \infty
 \end{cases}
 \end{align*}
@@ -2954,24 +2987,24 @@ R \in (-\infty,0)
 \begin{cases}
 \begin{bmatrix} x_{-1} + \frac{c_1}{c_2[c_3(\tan{(\theta_1)} + y_0 - y_{-1})]}
 \\ \tan{(\theta_1)} (x_{-2} - x_{-1}) + y_{-1} \end{bmatrix}
-,& \theta_1 \in \left(0, \frac{\pi}{2} \right) \cup \left(\frac{\pi}{2}, \pi \right) \wedge R \in (-\infty,0) \cup (0, \infty) \\
+,& \theta_1 \neq \frac{\pi}{2} + k\pi \text{ for integer } k \wedge R \in (-\infty,0) \cup (0, \infty) \\
 \begin{bmatrix} x_{-1} \\ y_{-1} + \frac{c_1}{c_2 c_3}
-\end{bmatrix},& \theta_1 = \frac{\pi}{2} \wedge
+\end{bmatrix},& \theta_1 = \frac{\pi}{2} + k\pi \text{ for integer } k \wedge
 R \in (-\infty,0)
 \cup (0,\infty) \\
-\begin{bmatrix} x_{-1} \\ y_{-1} \end{bmatrix},& \theta_1 \in (0, \pi) \wedge R =
+\begin{bmatrix} x_{-1} \\ y_{-1} \end{bmatrix},& \theta_1 \in (-\infty, \infty) \wedge R =
 \pm \infty
 \end{cases} \\
 \begin{bmatrix} x_{+2} \\ y_{+2} \end{bmatrix} &=
 \begin{cases}
 \begin{bmatrix} x_{+1} + \frac{c_4}{c_5[c_6(\tan{(\theta_2)} + y_{+1} - y_0)]}
 \\ \tan{(\theta_2)} (x_{+2} - x_{+1}) + y_{+1} \end{bmatrix}
-,& \theta_2 \in \left(0, \frac{\pi}{2} \right) \cup \left(\frac{\pi}{2}, \pi \right) \wedge R \in (-\infty,0) \cup (0, \infty) \\
+,& \theta_2 \neq \frac{\pi}{2} + k\pi \text{ for integer } k \wedge R \in (-\infty,0) \cup (0, \infty) \\
 \begin{bmatrix} x_{+1} \\ y_{+1} + \frac{c_4}{c_5 c_6}
-\end{bmatrix},& \theta_2 = \frac{\pi}{2} \wedge
+\end{bmatrix},& \theta_2 = \frac{\pi}{2} + k\pi \text{ for integer } k \wedge
 R \in (-\infty,0)
 \cup (0,\infty) \\
-\begin{bmatrix} x_{+1} \\ y_{+1} \end{bmatrix},& \theta_2 \in (0, \pi) \wedge R =
+\begin{bmatrix} x_{+1} \\ y_{+1} \end{bmatrix},& \theta_2 \in (-\infty, \infty) \wedge R =
 \pm \infty
 \end{cases}
 \end{align*}
@@ -3062,22 +3095,22 @@ By these definitions of the curvature control arm angles, decreasing <span><span
         \begin{cases}
             \begin{bmatrix} x_{-1} + \frac{c_1}{c_2[c_3(\tan{(\theta_1)} + y_0 - y_{-1})]}
                             \\ \tan{(\theta_1)} (x_{-2} - x_{-1}) + y_{-1} \end{bmatrix}
-                            ,&amp; \theta_1 \in \left(0, \frac{\pi}{2} \right) \cup \left(\frac{\pi}{2}, \pi \right) \wedge R \in (-\infty,0) \cup (0, \infty) \\
-            \begin{bmatrix} x_{-1} \\ y_{-1} + \frac{c_1}{c_2 c_3}  \end{bmatrix},&amp; \theta_1 = \frac{\pi}{2} \wedge
+                            ,&amp; \theta_1 \neq \frac{\pi}{2} + k\pi \text{ for integer } k \wedge R \in (-\infty,0) \cup (0, \infty) \\
+            \begin{bmatrix} x_{-1} \\ y_{-1} + \frac{c_1}{c_2 c_3}  \end{bmatrix},&amp; \theta_1 = \frac{\pi}{2} + k\pi \text{ for integer } k \wedge
                                                                                                 R \in (-\infty,0)
                                                                                                 \cup (0,\infty) \\
-            \begin{bmatrix} x_{-1} \\ y_{-1} \end{bmatrix},&amp; \theta_1 \in (0, \pi) \wedge R =
+            \begin{bmatrix} x_{-1} \\ y_{-1} \end{bmatrix},&amp; \theta_1 \in (-\infty, \infty) \wedge R =
                                                                                                         \pm \infty
         \end{cases} \\
         \begin{bmatrix} x_{+2} \\ y_{+2} \end{bmatrix} &amp;=
         \begin{cases}
             \begin{bmatrix} x_{+1} + \frac{c_4}{c_5[c_6(\tan{(\theta_2)} + y_{+1} - y_0)]}
                             \\ \tan{(\theta_2)} (x_{+2} - x_{+1}) + y_{+1} \end{bmatrix}
-                            ,&amp; \theta_2 \in \left(0, \frac{\pi}{2} \right) \cup \left(\frac{\pi}{2}, \pi \right) \wedge R \in (-\infty,0) \cup (0, \infty) \\
-            \begin{bmatrix} x_{+1} \\ y_{+1} + \frac{c_4}{c_5 c_6}  \end{bmatrix},&amp; \theta_2 = \frac{\pi}{2} \wedge
+                            ,&amp; \theta_2 \neq \frac{\pi}{2} + k\pi \text{ for integer } k \wedge R \in (-\infty,0) \cup (0, \infty) \\
+            \begin{bmatrix} x_{+1} \\ y_{+1} + \frac{c_4}{c_5 c_6}  \end{bmatrix},&amp; \theta_2 = \frac{\pi}{2} + k\pi \text{ for integer } k \wedge
                                                                                                 R \in (-\infty,0)
                                                                                                 \cup (0,\infty) \\
-            \begin{bmatrix} x_{+1} \\ y_{+1} \end{bmatrix},&amp; \theta_2 \in (0, \pi) \wedge R =
+            \begin{bmatrix} x_{+1} \\ y_{+1} \end{bmatrix},&amp; \theta_2 \in (-\infty, \infty) \wedge R =
                                                                                                         \pm \infty
         \end{cases}
     \end{align*}
@@ -3375,6 +3408,8 @@ neighboring control points toward the trailing edge. See the diagram for
     self.control_points[:, 1] += dy
     self.anchor_point_array[:, 0] += dx
     self.anchor_point_array[:, 1] += dy
+    for key, anchor_point in self.transformed_anchor_points.items():
+        self.transformed_anchor_points[key] = anchor_point + np.array([dx, dy])
     self.needs_update = True
     return self.control_points, self.anchor_point_array</code></pre>
 </details>
@@ -3409,6 +3444,7 @@ the transformations.</p></div>
     curves are generated through the control points and the airfoil coordinates are then calculated again after
     the transformations.
     &#34;&#34;&#34;
+    self.set_bezier_curve_orders()
     self.add_anchor_points()
     self.add_free_points()
     self.extract_parameters()
@@ -3446,7 +3482,8 @@ represent the <span><span class="MathJax_Preview">x</span><script type="math/tex
         if key == &#39;te_1&#39;:
             self.anchor_point_array = xy
         else:
-            self.anchor_point_array = np.row_stack((self.anchor_point_array, xy))</code></pre>
+            self.anchor_point_array = np.row_stack((self.anchor_point_array, xy))
+    self.transformed_anchor_points = deepcopy(self.anchor_points)</code></pre>
 </details>
 </dd>
 </dl>
@@ -3492,6 +3529,7 @@ represent the <span><span class="MathJax_Preview">x</span><script type="math/tex
 <li><code><a title="pyairpar.core.airfoil.Airfoil.override" href="#pyairpar.core.airfoil.Airfoil.override">override</a></code></li>
 <li><code><a title="pyairpar.core.airfoil.Airfoil.plot" href="#pyairpar.core.airfoil.Airfoil.plot">plot</a></code></li>
 <li><code><a title="pyairpar.core.airfoil.Airfoil.rotate" href="#pyairpar.core.airfoil.Airfoil.rotate">rotate</a></code></li>
+<li><code><a title="pyairpar.core.airfoil.Airfoil.set_bezier_curve_orders" href="#pyairpar.core.airfoil.Airfoil.set_bezier_curve_orders">set_bezier_curve_orders</a></code></li>
 <li><code><a title="pyairpar.core.airfoil.Airfoil.set_curvature" href="#pyairpar.core.airfoil.Airfoil.set_curvature">set_curvature</a></code></li>
 <li><code><a title="pyairpar.core.airfoil.Airfoil.set_curvature_le" href="#pyairpar.core.airfoil.Airfoil.set_curvature_le">set_curvature_le</a></code></li>
 <li><code><a title="pyairpar.core.airfoil.Airfoil.set_slope" href="#pyairpar.core.airfoil.Airfoil.set_slope">set_slope</a></code></li>

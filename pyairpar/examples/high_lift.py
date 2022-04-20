@@ -328,7 +328,7 @@ def run():
     axs.set_xlabel(r'$x/c$', fontsize=14)
     axs.set_ylabel(r'$y/c$', fontsize=14)
     fig.set_figheight(3)
-    fig.set_figwidth(12)
+    fig.set_figwidth(11)
     fig.tight_layout()
 
     show_flag = True
