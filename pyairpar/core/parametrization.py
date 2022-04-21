@@ -199,7 +199,7 @@ class AirfoilParametrization:
         Overrides the parameters in the parameter dictionary and re-generates the `airfoil_tuple`
         """
         self.param_setup.override_parameters(parameter_info_values, normalized)
-        self.generate_airfoils(*args, **kwargs)
+        self.generate_airfoils_(self.param_setup.param_dict, *args, **kwargs)
 
     def clone(self):
         """
