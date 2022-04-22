@@ -512,8 +512,9 @@ class Airfoil:
     def set_bezier_curve_orders(self):
         for anchor_point in self.anchor_point_tuple:
             self.N[anchor_point.name] = 5
-            self.anchor_point_order.insert(self.anchor_point_order.index(anchor_point.previous_anchor_point) + 1,
-                                           anchor_point.name)
+            if anchor_point.name not in self.anchor_point_order:
+                self.anchor_point_order.insert(self.anchor_point_order.index(anchor_point.previous_anchor_point) + 1,
+                                               anchor_point.name)
         if self.anchor_point_order.index('te_2') - self.anchor_point_order.index('le') != 1:
             self.N['le'] = 5  # Set the order of the Bézier curve after the leading edge to 5
             self.N[self.anchor_point_order[-2]] = 4  # Set the order of the last Bezier curve to 4

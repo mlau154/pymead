@@ -228,7 +228,7 @@ class AirfoilParametrization:
         Overrides the parameters in the parameter dictionary and re-generates the `airfoil_tuple`
         &#34;&#34;&#34;
         self.param_setup.override_parameters(parameter_info_values, normalized)
-        self.generate_airfoils_(self.param_setup.param_dict, *args, **kwargs)
+        self.generate_airfoils_(*args, **kwargs)
 
     def clone(self):
         &#34;&#34;&#34;
@@ -461,7 +461,7 @@ must be specified.</p>
         Overrides the parameters in the parameter dictionary and re-generates the `airfoil_tuple`
         &#34;&#34;&#34;
         self.param_setup.override_parameters(parameter_info_values, normalized)
-        self.generate_airfoils_(self.param_setup.param_dict, *args, **kwargs)
+        self.generate_airfoils_(*args, **kwargs)
 
     def clone(self):
         &#34;&#34;&#34;
@@ -712,7 +712,7 @@ on the linked airfoil.</p></div>
     Overrides the parameters in the parameter dictionary and re-generates the `airfoil_tuple`
     &#34;&#34;&#34;
     self.param_setup.override_parameters(parameter_info_values, normalized)
-    self.generate_airfoils_(self.param_setup.param_dict, *args, **kwargs)</code></pre>
+    self.generate_airfoils_(*args, **kwargs)</code></pre>
 </details>
 </dd>
 </dl>

@@ -541,8 +541,9 @@ class Airfoil:
     def set_bezier_curve_orders(self):
         for anchor_point in self.anchor_point_tuple:
             self.N[anchor_point.name] = 5
-            self.anchor_point_order.insert(self.anchor_point_order.index(anchor_point.previous_anchor_point) + 1,
-                                           anchor_point.name)
+            if anchor_point.name not in self.anchor_point_order:
+                self.anchor_point_order.insert(self.anchor_point_order.index(anchor_point.previous_anchor_point) + 1,
+                                               anchor_point.name)
         if self.anchor_point_order.index(&#39;te_2&#39;) - self.anchor_point_order.index(&#39;le&#39;) != 1:
             self.N[&#39;le&#39;] = 5  # Set the order of the Bézier curve after the leading edge to 5
             self.N[self.anchor_point_order[-2]] = 4  # Set the order of the last Bezier curve to 4
@@ -1733,8 +1734,9 @@ point, use <code>(<a title="pyairpar.core.free_point.FreePoint" href="free_point
     def set_bezier_curve_orders(self):
         for anchor_point in self.anchor_point_tuple:
             self.N[anchor_point.name] = 5
-            self.anchor_point_order.insert(self.anchor_point_order.index(anchor_point.previous_anchor_point) + 1,
-                                           anchor_point.name)
+            if anchor_point.name not in self.anchor_point_order:
+                self.anchor_point_order.insert(self.anchor_point_order.index(anchor_point.previous_anchor_point) + 1,
+                                               anchor_point.name)
         if self.anchor_point_order.index(&#39;te_2&#39;) - self.anchor_point_order.index(&#39;le&#39;) != 1:
             self.N[&#39;le&#39;] = 5  # Set the order of the Bézier curve after the leading edge to 5
             self.N[self.anchor_point_order[-2]] = 4  # Set the order of the last Bezier curve to 4
@@ -2936,8 +2938,9 @@ object used for plotting</p></div>
 <pre><code class="python">def set_bezier_curve_orders(self):
     for anchor_point in self.anchor_point_tuple:
         self.N[anchor_point.name] = 5
-        self.anchor_point_order.insert(self.anchor_point_order.index(anchor_point.previous_anchor_point) + 1,
-                                       anchor_point.name)
+        if anchor_point.name not in self.anchor_point_order:
+            self.anchor_point_order.insert(self.anchor_point_order.index(anchor_point.previous_anchor_point) + 1,
+                                           anchor_point.name)
     if self.anchor_point_order.index(&#39;te_2&#39;) - self.anchor_point_order.index(&#39;le&#39;) != 1:
         self.N[&#39;le&#39;] = 5  # Set the order of the Bézier curve after the leading edge to 5
         self.N[self.anchor_point_order[-2]] = 4  # Set the order of the last Bezier curve to 4
