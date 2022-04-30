@@ -49,13 +49,16 @@ class BaseAirfoilParams:
         anchor point ( \\( r_{LE} = L_{LE,upper} / L_{LE} \\) ): `pyairpar.core.param.Param`. Default value: `0.5`.
 
         `phi_LE`: ( \\(\\phi_{LE}\\) ) leading-edge tilt (rad), referenced counter-clockwise from the perpendicular to
-        the chordline: `pyairpar.core.param.Param`. Default value: `0.0`.
+        the chordline: `pyairpar.core.param.Param`. Valid range: \\( \\phi_{LE} \\in [-180^{\\circ},180^{\\circ}]\\).
+        Default value: `0.0`.
 
         `psi1_LE`: ( \\(\\psi_{LE,1}\\) ) leading-edge upper curvature control angle (rad), referenced counter-clockwise
-        from the chordline: `pyairpar.core.param.Param`. Default value: `0.0`.
+        from the chordline: `pyairpar.core.param.Param`. Valid range: \\( \\psi_{1,LE} \\in [-90^{\\circ},90^{\\circ}] \\).
+        Default value: `0.0`.
 
         `psi2_LE`: ( \\(\\psi_{LE,2}\\) ) leading-edge lower curvature control angle (rad), referenced clockwise
-        from the chordline: `pyairpar.core.param.Param`. Default value: `0.0`.
+        from the chordline: `pyairpar.core.param.Param`. Valid range: \\( \\psi_{2,LE} \\in [-90^{\\circ},90^{\\circ}] \\).
+         Default value: `0.0`.
 
         `L1_TE`: ( \\(L_{TE,1}\\) ) trailing edge upper length: `pyairpar.core.param.Param`. Default value: `0.1`.
 
@@ -93,9 +96,25 @@ class BaseAirfoilParams:
         self.R_le = R_le
         self.L_le = L_le
         self.r_le = r_le
-        self.phi_le = phi_le
-        self.psi1_le = psi1_le
-        self.psi2_le = psi2_le
+
+        if -np.pi <= phi_le.value <= np.pi:
+            self.phi_le = phi_le
+        else:
+            raise ValueError(f'The leading edge tilt angle, phi_le, must be between -180 degrees and 180 degrees,'
+                             f'inclusive. A value of {phi_le.value} was entered.')
+
+        if -np.pi / 2 <= psi1_le.value <= np.pi / 2:
+            self.psi1_le = psi1_le
+        else:
+            raise ValueError(f'The upper curvature control arm angle, psi1_le, must be between -90 degrees and '
+                             f'90 degrees, inclusive. A value of {psi1_le.value} was entered.')
+
+        if -np.pi / 2 <= psi2_le.value <= np.pi / 2:
+            self.psi2_le = psi2_le
+        else:
+            raise ValueError(f'The lower curvature control arm angle, psi2_le, must be between -90 degrees and '
+                             f'90 degrees, inclusive. A value of {psi2_le.value} was entered.')
+
         self.L1_te = L1_te
         self.L2_te = L2_te
         self.theta1_te = theta1_te

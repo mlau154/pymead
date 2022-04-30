@@ -106,8 +106,8 @@ def run():
     fig, axs = airfoil.plot(('airfoil', 'control-point-skeleton', 'anchor-point-skeleton', 'chordline',
                              'R-circles'), show_plot=False)
 
-    axs.set_xlabel(r'$x/c$', fontsize=14)
-    axs.set_ylabel(r'$y/c$', fontsize=14)
+    axs.set_xlabel(r'$x$', fontsize=14)
+    axs.set_ylabel(r'$y$', fontsize=14)
     fig.suptitle('')
     fig.set_figwidth(9)
     fig.set_figheight(5)

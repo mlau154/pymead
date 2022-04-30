@@ -39,8 +39,10 @@ class AnchorPoint:
 
         `R`: ( \\(R\\) ) `pyairpar.core.param.Param` representing the radius of curvature at the \\(x\\) - \\(y\\)
         location of the `AnchorPoint`. A positive value makes the airfoil convex at the `AnchorPoint` location,
-        and a negative value makes the airfoil concave at the `AnchorPoint` location. The valid range is
-        \\( \\{R \\in \\mathbb{R} \\, | \\, R \\neq 0 \\} \\).
+        and a negative value makes the airfoil concave at the `AnchorPoint` location. A value of 0 creates a
+        flat-plate-type leading edge. The valid range is \\( R \\in [-\infty, \infty] \\). Inclusive brackets are
+        used here because setting \\(R=\\pm \\infty\\) creates an anchor point with no curvature (infinite radius of
+        curvature).
 
         `r`: ( \\(r\\) ) `pyairpar.core.param.Param` representing the ratio of the distance from the `AnchorPoint`
         location to the neighboring control point closest to the trailing edge to the distance between the
@@ -49,7 +51,8 @@ class AnchorPoint:
         `phi`: ( \\(\\phi\\) ) `pyairpar.core.param.Param` representing the angle of the line passing through the
         `AnchorPoint`'s neighboring control points, referenced counter-clockwise from the chordline if the
         `AnchorPoint` is on the upper airfoil surface and clockwise from the chordline if the `AnchorPoint` is on the
-        lower airfoil surface. The valid range is \\(\\psi_1 \\in (-90^{\\circ},90^{\\circ})\\).
+        lower airfoil surface. The valid range is \\(\\psi_1 \\in [-180^{\\circ},180^{\\circ}]\\). A value of \\(0^{
+        \\circ}\\) creates an anchor point with local slope equal to the slope of the chordline.
 
         `psi1`: ( \\(\\psi_1\\) ) `pyairpar.core.param.Param` representing the angle of the aft curvature control "arm."
         Regardless of the sign of \\(R\\) or which surface the `AnchorPoint` lies on, an angle of \\(90^{\\circ}\\)
@@ -77,11 +80,7 @@ class AnchorPoint:
         self.name = name
         self.previous_anchor_point = previous_anchor_point
         self.L = L
-
-        if R.value == 0:
-            raise ValueError('Setting R = 0 yields infinite curvature (not well-defined)')
-        else:
-            self.R = R
+        self.R = R
 
         if 0 < r.value < 1:
             self.r = r
@@ -92,18 +91,20 @@ class AnchorPoint:
             self.phi = phi
         else:
             raise ValueError(f'The anchor point neighboring control point angle, phi, must be between -180 degrees and'
-                             f'180 degrees. A value of {phi.value} was entered.')
+                             f' 180 degrees, inclusive. A value of {phi.value} was entered.')
 
-        if 0 < psi1.value < np.pi:
+        if 0 <= psi1.value <= np.pi:
             self.psi1 = psi1
         else:
-            raise ValueError(f'The aft curvature control arm angle, psi1, must be between 0 degrees and 180 degrees.'
+            raise ValueError(f'The aft curvature control arm angle, psi1, must be between 0 degrees and 180 degrees, '
+                             f'inclusive. '
                              f'A value of {psi1.value} was entered.')
 
-        if 0 < psi2.value < np.pi:
+        if 0 <= psi2.value <= np.pi:
             self.psi2 = psi2
         else:
-            raise ValueError(f'The fore curvature control arm angle, psi2, must be between 0 degrees and 180 degrees.'
+            raise ValueError(f'The fore curvature control arm angle, psi2, must be between 0 degrees and 180 degrees,'
+                             f'inclusive. '
                              f'A value of {psi2.value} was entered.')
 
         self.length_scale_dimension = length_scale_dimension
