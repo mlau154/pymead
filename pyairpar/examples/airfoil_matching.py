@@ -119,6 +119,8 @@ def run():
         fig.suptitle('')
         fig.savefig(os.path.join(os.path.dirname(os.path.dirname(os.getcwd())),
                                  'docs', 'images', 'sd7062_matching.png'), dpi=600)
+        fig.savefig(os.path.join(os.path.dirname(os.path.dirname(os.getcwd())),
+                                 'docs', 'images', 'sd7062_matching.pdf'))
 
 
 if __name__ == '__main__':

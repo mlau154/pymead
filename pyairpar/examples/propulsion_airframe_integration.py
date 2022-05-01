@@ -524,6 +524,9 @@ def run():
         save_name = os.path.join(os.path.dirname(
             os.path.dirname(os.path.join(os.getcwd()))), 'docs', 'images', 'pai.png')
         fig.savefig(save_name, dpi=600)
+        save_name_pdf = os.path.join(os.path.dirname(
+            os.path.dirname(os.path.join(os.getcwd()))), 'docs', 'images', 'pai.pdf')
+        fig.savefig(save_name_pdf)
     if show_flag:
         show()
 

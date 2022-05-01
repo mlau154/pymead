@@ -815,7 +815,7 @@ class Airfoil:
         return self.x_thickness, self.thickness, self.max_thickness
 
     def plot(self, plot_what: typing.Tuple[str, ...], fig: Figure = None, axs: Axes = None, show_plot: bool = True,
-             save_plot: bool = False, save_path: str = None, plot_kwargs: typing.List[dict] = None,
+             save_plot: bool = False, save_path: str = None, plot_kwargs: typing.List[dict] or dict = None,
              show_title: bool = True, show_legend: bool = True, figwidth: float = 10.0, figheight: float = 2.5,
              tight_layout: bool = True, axis_equal: bool = True):
         r"""
