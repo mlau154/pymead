@@ -58,14 +58,14 @@ class AnchorPoint:
         Regardless of the sign of \\(R\\) or which surface the `AnchorPoint` lies on, an angle of \\(90^{\\circ}\\)
         always means that the curvature control arm points perpendicular to the line passing through the
         neighboring control points of the `AnchorPoint`. Angles below \\(90^{\\circ}\\) "tuck" the arms in, and angles
-        above \\(90^{\\circ}\\) "spread" the arms out. The valid range is \\(\\psi_1 \\in (0^{\\circ},180^{\\circ})\\).
+        above \\(90^{\\circ}\\) "spread" the arms out. The valid range is \\(\\psi_1 \\in [0^{\\circ},180^{\\circ}]\\).
 
         `psi2`: ( \\(\\psi_2\\) ) `pyairpar.core.param.Param` representing the angle of the fore curvature control
         "arm." Regardless of the sign of \\(R\\) or which surface the `AnchorPoint` lies on, an angle of \\(90^{
         \\circ}\\) always means that the curvature control arm points perpendicular to the line passing through the
         neighboring control points of the `AnchorPoint`. Angles below \\(90^{\\circ}\\) "tuck" the arms in,
-        and angles above \\(90^{\\circ}\\) "spread" the arms out. The valid range is \\(\\psi_2 \\in (0^{\\circ},
-        180^{\\circ})\\).
+        and angles above \\(90^{\\circ}\\) "spread" the arms out. The valid range is \\(\\psi_2 \\in [0^{\\circ},
+        180^{\\circ}]\\).
 
         `length_scale_dimension`: a `float` giving the length scale by which to non-dimensionalize the `x` and `y`
         values (optional)
