@@ -135,8 +135,8 @@ def run():
     fig, axs = airfoil.plot((&#39;airfoil&#39;, &#39;control-point-skeleton&#39;, &#39;anchor-point-skeleton&#39;, &#39;chordline&#39;,
                              &#39;R-circles&#39;), show_plot=False)
 
-    axs.set_xlabel(r&#39;$x/c$&#39;, fontsize=14)
-    axs.set_ylabel(r&#39;$y/c$&#39;, fontsize=14)
+    axs.set_xlabel(r&#39;$x$&#39;, fontsize=14)
+    axs.set_ylabel(r&#39;$y$&#39;, fontsize=14)
     fig.suptitle(&#39;&#39;)
     fig.set_figwidth(9)
     fig.set_figheight(5)
@@ -149,6 +149,9 @@ def run():
         save_name = os.path.join(os.path.dirname(
             os.path.dirname(os.path.join(os.getcwd()))), &#39;docs&#39;, &#39;images&#39;, &#39;complex_1.png&#39;)
         fig.savefig(save_name, dpi=600)
+        save_name_pdf = os.path.join(os.path.dirname(
+            os.path.dirname(os.path.join(os.getcwd()))), &#39;docs&#39;, &#39;images&#39;, &#39;complex_1.pdf&#39;)
+        fig.savefig(save_name_pdf)
     if show_flag:
         show()
 
@@ -277,8 +280,8 @@ class ignores the values set for <code>r_te</code> and <code>phi_te</code> and s
     fig, axs = airfoil.plot((&#39;airfoil&#39;, &#39;control-point-skeleton&#39;, &#39;anchor-point-skeleton&#39;, &#39;chordline&#39;,
                              &#39;R-circles&#39;), show_plot=False)
 
-    axs.set_xlabel(r&#39;$x/c$&#39;, fontsize=14)
-    axs.set_ylabel(r&#39;$y/c$&#39;, fontsize=14)
+    axs.set_xlabel(r&#39;$x$&#39;, fontsize=14)
+    axs.set_ylabel(r&#39;$y$&#39;, fontsize=14)
     fig.suptitle(&#39;&#39;)
     fig.set_figwidth(9)
     fig.set_figheight(5)
@@ -291,6 +294,9 @@ class ignores the values set for <code>r_te</code> and <code>phi_te</code> and s
         save_name = os.path.join(os.path.dirname(
             os.path.dirname(os.path.join(os.getcwd()))), &#39;docs&#39;, &#39;images&#39;, &#39;complex_1.png&#39;)
         fig.savefig(save_name, dpi=600)
+        save_name_pdf = os.path.join(os.path.dirname(
+            os.path.dirname(os.path.join(os.getcwd()))), &#39;docs&#39;, &#39;images&#39;, &#39;complex_1.pdf&#39;)
+        fig.savefig(save_name_pdf)
     if show_flag:
         show()</code></pre>
 </details>

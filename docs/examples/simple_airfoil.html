@@ -61,8 +61,8 @@ def run():
 
     fig, axs = airfoil.plot((&#39;airfoil&#39;, &#39;control-point-skeleton&#39;, &#39;anchor-point-skeleton&#39;, &#39;chordline&#39;,
                                                      &#39;R-circles&#39;), show_plot=False)
-    axs.set_xlabel(r&#39;$x/c$&#39;, fontsize=14)
-    axs.set_ylabel(r&#39;$y/c$&#39;, fontsize=14)
+    axs.set_xlabel(r&#39;$x$&#39;, fontsize=14)
+    axs.set_ylabel(r&#39;$y$&#39;, fontsize=14)
     fig.suptitle(&#39;&#39;)
     fig.tight_layout()
 
@@ -73,6 +73,9 @@ def run():
         save_name = os.path.join(os.path.dirname(
             os.path.dirname(os.path.join(os.getcwd()))), &#39;docs&#39;, &#39;images&#39;, &#39;simple_1.png&#39;)
         fig.savefig(save_name, dpi=600)
+        save_name_pdf = os.path.join(os.path.dirname(
+            os.path.dirname(os.path.join(os.getcwd()))), &#39;docs&#39;, &#39;images&#39;, &#39;simple_1.pdf&#39;)
+        fig.savefig(save_name_pdf)
     if show_flag:
         show()
 
@@ -126,8 +129,8 @@ airfoil with no <code><a title="pyairpar.core.free_point.FreePoint" href="../cor
 
     fig, axs = airfoil.plot((&#39;airfoil&#39;, &#39;control-point-skeleton&#39;, &#39;anchor-point-skeleton&#39;, &#39;chordline&#39;,
                                                      &#39;R-circles&#39;), show_plot=False)
-    axs.set_xlabel(r&#39;$x/c$&#39;, fontsize=14)
-    axs.set_ylabel(r&#39;$y/c$&#39;, fontsize=14)
+    axs.set_xlabel(r&#39;$x$&#39;, fontsize=14)
+    axs.set_ylabel(r&#39;$y$&#39;, fontsize=14)
     fig.suptitle(&#39;&#39;)
     fig.tight_layout()
 
@@ -138,6 +141,9 @@ airfoil with no <code><a title="pyairpar.core.free_point.FreePoint" href="../cor
         save_name = os.path.join(os.path.dirname(
             os.path.dirname(os.path.join(os.getcwd()))), &#39;docs&#39;, &#39;images&#39;, &#39;simple_1.png&#39;)
         fig.savefig(save_name, dpi=600)
+        save_name_pdf = os.path.join(os.path.dirname(
+            os.path.dirname(os.path.join(os.getcwd()))), &#39;docs&#39;, &#39;images&#39;, &#39;simple_1.pdf&#39;)
+        fig.savefig(save_name_pdf)
     if show_flag:
         show()</code></pre>
 </details>

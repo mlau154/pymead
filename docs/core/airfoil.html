@@ -196,6 +196,7 @@ class Airfoil:
                   self.r_le.value * self.L_le.value *
                   np.array([np.cos(np.pi / 2 + self.phi_le.value),
                             np.sin(np.pi / 2 + self.phi_le.value)])
+                    if self.R_le.value != 0 else self.anchor_points[&#39;le&#39;]
         }
 
         g1_plus_points = {
@@ -206,6 +207,7 @@ class Airfoil:
                   (1 - self.r_le.value) * self.L_le.value *
                   np.array([np.cos(np.pi / 2 + self.phi_le.value),
                             np.sin(np.pi / 2 + self.phi_le.value)])
+                    if self.R_le.value != 0 else self.anchor_points[&#39;le&#39;]
         }
 
         return g1_minus_points, g1_plus_points
@@ -277,26 +279,34 @@ class Airfoil:
         r = anchor_point.r.value
         L = anchor_point.L.value
         phi = anchor_point.phi.value
+        R = anchor_point.R.value
 
-        if self.anchor_point_order.index(anchor_point.name) &lt; self.anchor_point_order.index(&#39;le&#39;):
-            self.g1_minus_points[anchor_point.name] = \
-                self.anchor_points[anchor_point.name] + (1 - r) * L * np.array([np.cos(phi), np.sin(phi)])
-            self.g1_plus_points[anchor_point.name] = \
-                self.anchor_points[anchor_point.name] - r * L * np.array([np.cos(phi), np.sin(phi)])
+        if R == 0:
+            self.g1_minus_points[anchor_point.name] = self.anchor_points[anchor_point.name]
+            self.g1_plus_points[anchor_point.name] = self.anchor_points[anchor_point.name]
         else:
-            self.g1_minus_points[anchor_point.name] = \
-                self.anchor_points[anchor_point.name] - r * L * np.array([np.cos(-phi), np.sin(-phi)])
-            self.g1_plus_points[anchor_point.name] = \
-                self.anchor_points[anchor_point.name] + (1 - r) * L * np.array([np.cos(-phi), np.sin(-phi)])
+            if self.anchor_point_order.index(anchor_point.name) &lt; self.anchor_point_order.index(&#39;le&#39;):
+                self.g1_minus_points[anchor_point.name] = \
+                    self.anchor_points[anchor_point.name] + (1 - r) * L * np.array([np.cos(phi), np.sin(phi)])
+                self.g1_plus_points[anchor_point.name] = \
+                    self.anchor_points[anchor_point.name] - r * L * np.array([np.cos(phi), np.sin(phi)])
+            else:
+                self.g1_minus_points[anchor_point.name] = \
+                    self.anchor_points[anchor_point.name] - r * L * np.array([np.cos(-phi), np.sin(-phi)])
+                self.g1_plus_points[anchor_point.name] = \
+                    self.anchor_points[anchor_point.name] + (1 - r) * L * np.array([np.cos(-phi), np.sin(-phi)])
         return self.g1_minus_points[anchor_point.name], self.g1_plus_points[anchor_point.name]
 
     def set_curvature_le(self):
         r&#34;&#34;&#34;
         ### Description:
 
-        See the description of `pyairpar.core.airfoil.Airfoil.set_curvature()`. This is just a special case of that
+        See the description of `pyairpar.core.airfoil.Airfoil.set_curvature`. This is just a special case of that
         function tailored for the leading edge of the airfoil. Here, \(\psi_1\) defines the angle of the upper
-        curvature control arm, and \(\psi_2\) defines the angle of the lower curvature control arm. See also
+        curvature control arm at the leading edge, and \(\psi_2\) defines the angle of the lower curvature control
+        arm at the leading edge. \(\psi_1\), \(\psi_2\), and \(\phi\) are all referenced differently from the other
+        `pyairpar.core.anchor_point.AnchorPoint`s. The difference is given mathematically by \(\psi_{1,LE}=\psi_1 -
+        \frac{\pi}{2}\), \(\psi_{2,LE}=\psi_2 - \frac{\pi}{2}\), and \(\phi_{LE} = \phi + \frac{\pi}{2}\). See also
         `pyairpar.core.base_airfoil_params.BaseAirfoilParams` for more details on the definitions of the attribute
         parameters input to this function.
 
@@ -304,9 +314,15 @@ class Airfoil:
 
         The generated curvature control point \(x\) - \(y\) locations as `np.ndarray`s of `shape=2`.
         &#34;&#34;&#34;
-        if self.R_le.value == np.inf or self.R_le.value == -np.inf:
+        R_le = self.R_le.value
+        psi1_le = self.psi1_le.value
+        psi2_le = self.psi2_le.value
+        if R_le in [-np.inf, np.inf] or psi1_le in [-np.pi / 2, np.pi / 2] or psi2_le in [-np.pi / 2, np.pi / 2]:
             g2_minus_point = self.g1_minus_points[&#39;le&#39;]
             g2_plus_point = self.g1_plus_points[&#39;le&#39;]
+        elif R_le == 0:
+            g2_minus_point = self.anchor_points[&#39;le&#39;]
+            g2_plus_point = self.anchor_points[&#39;le&#39;]
         else:
             n1, n2 = self.N[self.anchor_point_order[self.anchor_point_order.index(&#39;le&#39;) - 1]], self.N[&#39;le&#39;]
             theta1, theta2 = self.psi1_le.value, -self.psi2_le.value
@@ -344,8 +360,9 @@ class Airfoil:
                 \begin{bmatrix} x_{-1} \\ y_{-1} + \frac{c_1}{c_2 c_3}  \end{bmatrix},&amp; \theta_1 = \frac{\pi}{2} + k\pi \text{ for integer } k \wedge
                                                                                                     R \in (-\infty,0)
                                                                                                     \cup (0,\infty) \\
-                \begin{bmatrix} x_{-1} \\ y_{-1} \end{bmatrix},&amp; \theta_1 \in (-\infty, \infty) \wedge R =
-                                                                                                            \pm \infty
+                \begin{bmatrix} x_{-1} \\ y_{-1} \end{bmatrix},&amp; \psi_1 = 0 \vee \psi_2 = 0 \vee \psi_1 = \frac{\pi}{2} \vee \psi_2 = \frac{\pi}{2} \vee R =
+                                                                                                            \pm \infty \\
+                \begin{bmatrix} x_0 \\ y_0 \end{bmatrix},&amp; R = 0
             \end{cases} \\
             \begin{bmatrix} x_{+2} \\ y_{+2} \end{bmatrix} &amp;=
             \begin{cases}
@@ -355,8 +372,9 @@ class Airfoil:
                 \begin{bmatrix} x_{+1} \\ y_{+1} + \frac{c_4}{c_5 c_6}  \end{bmatrix},&amp; \theta_2 = \frac{\pi}{2} + k\pi \text{ for integer } k \wedge
                                                                                                     R \in (-\infty,0)
                                                                                                     \cup (0,\infty) \\
-                \begin{bmatrix} x_{+1} \\ y_{+1} \end{bmatrix},&amp; \theta_2 \in (-\infty, \infty) \wedge R =
-                                                                                                            \pm \infty
+                \begin{bmatrix} x_{+1} \\ y_{+1} \end{bmatrix},&amp; \psi_1 = 0 \vee \psi_2 = 0 \vee \psi_1 = \frac{\pi}{2} \vee \psi_2 = \frac{\pi}{2} \vee R =
+                                                                                                            \pm \infty \\
+                \begin{bmatrix} x_0 \\ y_0 \end{bmatrix},&amp; R = 0
             \end{cases}
         \end{align*}
         $$
@@ -377,39 +395,33 @@ class Airfoil:
         and \((x_{+1},y_{+1})\) are the neighboring control points, and \((x_{-2},y_{-2})\) and \((x_{+2},y_{+2})\)
         are the curvature control points. \(\theta_1\) and \(\theta_2\) are governed by the following relationships:
 
-        $$
-        \begin{align*}
-            \theta_1 &amp;=
-            \begin{cases}
-                \psi_1 + \phi,&amp; R &gt; 0,\,\text{upper surface} \\
-                \pi + \psi_2 - \phi,&amp; R &gt; 0,\,\text{lower surface} \\
-                \pi - \psi_1 + \phi,&amp; R &lt; 0,\,\text{upper surface} \\
-                -\psi_2 - \phi,&amp; R &lt; 0,\,\text{lower surface}
-            \end{cases} \\
-            \theta_2 &amp;=
-            \begin{cases}
-                -\psi_2 + \phi,&amp; R &gt; 0,\,\text{upper surface} \\
-                \psi_1 - \phi,&amp; R &gt; 0,\,\text{lower surface} \\
-                \pi + \psi_2 + \phi,&amp; R &lt; 0,\,\text{upper surface} \\
-                \psi_1 - \phi,&amp; R &lt; 0,\,\text{lower surface}
-            \end{cases}
-        \end{align*}
-        $$
-        By these definitions of the curvature control arm angles, decreasing \(\psi_1\) or \(\psi_2\) from
-        \(90^{\circ}\) has the effect of &#34;tucking&#34; the arms in, and increasing \(\psi_1\) or \(\psi_2\) from
-        \(90^{\circ}\) has the effect of &#34;spreading&#34; the arms out. See the documentation for
+        $$ \begin{align*} \theta_1 &amp;= \begin{cases} \psi_1 + \phi,&amp; R &gt; 0,\,\text{upper surface} \\ \pi + \psi_2 -
+        \phi,&amp; R &gt; 0,\,\text{lower surface} \\ \pi - \psi_1 + \phi,&amp; R &lt; 0,\,\text{upper surface} \\ -\psi_2 - \phi,
+        &amp; R &lt; 0,\,\text{lower surface} \end{cases} \\ \theta_2 &amp;= \begin{cases} -\psi_2 + \phi,&amp; R &gt; 0,\,\text{upper
+        surface} \\ \psi_1 - \phi,&amp; R &gt; 0,\,\text{lower surface} \\ \pi + \psi_2 + \phi,&amp; R &lt; 0,\,\text{upper
+        surface} \\ \psi_1 - \phi,&amp; R &lt; 0,\,\text{lower surface} \end{cases} \end{align*} $$ where \(\psi_1\) and \(
+        \psi_2\) are the aft and fore curvature control arm angles, respectively (or the upper and lower curvature
+        control arm angles in the case of the leading edge). By these definitions of the curvature control arm
+        angles, decreasing \(\psi_1\) or \(\psi_2\) from \(90^{\circ}\) ( \(0^{\circ}\) in the leading edge case) has
+        the effect of &#34;tucking&#34; the arms in, and increasing \(\psi_1\) or \(\psi_2\) from \(90^{\circ}\) ( \(0^{
+        \circ}\) in the leading edge case) has the effect of &#34;spreading&#34; the arms out. See the documentation for
         `pyairpar.core.anchor_point.AnchorPoint` for further description and a visual.
-
-        .. note:: A value of \( R = \frac{1}{\kappa} = 0 \) (infinite curvature) is not well-defined for geometric shapes. Setting \(R = 0\) will yield an exception.
 
         ### Returns:
 
         The generated curvature control point \(x\) - \(y\) locations as `np.ndarray`s of `shape=2`.
         &#34;&#34;&#34;
         R = anchor_point.R.value
-        if R == np.inf or R == -np.inf:
+        psi1 = anchor_point.psi1.value
+        psi2 = anchor_point.psi2.value
+        if R in [-np.inf, np.inf] or psi1 in [0, np.pi] or psi2 in [0, np.pi]:
             self.g2_minus_points[anchor_point.name] = self.g1_minus_points[anchor_point.name]
             self.g2_plus_points[anchor_point.name] = self.g1_plus_points[anchor_point.name]
+            g2_minus_point = self.g2_minus_points[anchor_point.name]
+            g2_plus_point = self.g2_plus_points[anchor_point.name]
+        elif R == 0:
+            self.g2_minus_points[anchor_point.name] = self.anchor_points[anchor_point.name]
+            self.g2_plus_points[anchor_point.name] = self.anchor_points[anchor_point.name]
             g2_minus_point = self.g2_minus_points[anchor_point.name]
             g2_plus_point = self.g2_plus_points[anchor_point.name]
         else:
@@ -539,6 +551,12 @@ class Airfoil:
         self.needs_update = True
 
     def set_bezier_curve_orders(self):
+        &#34;&#34;&#34;
+        ### Description:
+
+        Sets the orders of the Bézier curves properly based on the location of all the
+        `pyairpar.core.anchor_point.AnchorPoint`s and `pyairpar.core.free_point.FreePoint`s.
+        &#34;&#34;&#34;
         for anchor_point in self.anchor_point_tuple:
             self.N[anchor_point.name] = 5
             if anchor_point.name not in self.anchor_point_order:
@@ -826,7 +844,7 @@ class Airfoil:
         return self.x_thickness, self.thickness, self.max_thickness
 
     def plot(self, plot_what: typing.Tuple[str, ...], fig: Figure = None, axs: Axes = None, show_plot: bool = True,
-             save_plot: bool = False, save_path: str = None, plot_kwargs: typing.List[dict] = None,
+             save_plot: bool = False, save_path: str = None, plot_kwargs: typing.List[dict] or dict = None,
              show_title: bool = True, show_legend: bool = True, figwidth: float = 10.0, figheight: float = 2.5,
              tight_layout: bool = True, axis_equal: bool = True):
         r&#34;&#34;&#34;
@@ -1389,6 +1407,7 @@ point, use <code>(<a title="pyairpar.core.free_point.FreePoint" href="free_point
                   self.r_le.value * self.L_le.value *
                   np.array([np.cos(np.pi / 2 + self.phi_le.value),
                             np.sin(np.pi / 2 + self.phi_le.value)])
+                    if self.R_le.value != 0 else self.anchor_points[&#39;le&#39;]
         }
 
         g1_plus_points = {
@@ -1399,6 +1418,7 @@ point, use <code>(<a title="pyairpar.core.free_point.FreePoint" href="free_point
                   (1 - self.r_le.value) * self.L_le.value *
                   np.array([np.cos(np.pi / 2 + self.phi_le.value),
                             np.sin(np.pi / 2 + self.phi_le.value)])
+                    if self.R_le.value != 0 else self.anchor_points[&#39;le&#39;]
         }
 
         return g1_minus_points, g1_plus_points
@@ -1470,26 +1490,34 @@ point, use <code>(<a title="pyairpar.core.free_point.FreePoint" href="free_point
         r = anchor_point.r.value
         L = anchor_point.L.value
         phi = anchor_point.phi.value
+        R = anchor_point.R.value
 
-        if self.anchor_point_order.index(anchor_point.name) &lt; self.anchor_point_order.index(&#39;le&#39;):
-            self.g1_minus_points[anchor_point.name] = \
-                self.anchor_points[anchor_point.name] + (1 - r) * L * np.array([np.cos(phi), np.sin(phi)])
-            self.g1_plus_points[anchor_point.name] = \
-                self.anchor_points[anchor_point.name] - r * L * np.array([np.cos(phi), np.sin(phi)])
+        if R == 0:
+            self.g1_minus_points[anchor_point.name] = self.anchor_points[anchor_point.name]
+            self.g1_plus_points[anchor_point.name] = self.anchor_points[anchor_point.name]
         else:
-            self.g1_minus_points[anchor_point.name] = \
-                self.anchor_points[anchor_point.name] - r * L * np.array([np.cos(-phi), np.sin(-phi)])
-            self.g1_plus_points[anchor_point.name] = \
-                self.anchor_points[anchor_point.name] + (1 - r) * L * np.array([np.cos(-phi), np.sin(-phi)])
+            if self.anchor_point_order.index(anchor_point.name) &lt; self.anchor_point_order.index(&#39;le&#39;):
+                self.g1_minus_points[anchor_point.name] = \
+                    self.anchor_points[anchor_point.name] + (1 - r) * L * np.array([np.cos(phi), np.sin(phi)])
+                self.g1_plus_points[anchor_point.name] = \
+                    self.anchor_points[anchor_point.name] - r * L * np.array([np.cos(phi), np.sin(phi)])
+            else:
+                self.g1_minus_points[anchor_point.name] = \
+                    self.anchor_points[anchor_point.name] - r * L * np.array([np.cos(-phi), np.sin(-phi)])
+                self.g1_plus_points[anchor_point.name] = \
+                    self.anchor_points[anchor_point.name] + (1 - r) * L * np.array([np.cos(-phi), np.sin(-phi)])
         return self.g1_minus_points[anchor_point.name], self.g1_plus_points[anchor_point.name]
 
     def set_curvature_le(self):
         r&#34;&#34;&#34;
         ### Description:
 
-        See the description of `pyairpar.core.airfoil.Airfoil.set_curvature()`. This is just a special case of that
+        See the description of `pyairpar.core.airfoil.Airfoil.set_curvature`. This is just a special case of that
         function tailored for the leading edge of the airfoil. Here, \(\psi_1\) defines the angle of the upper
-        curvature control arm, and \(\psi_2\) defines the angle of the lower curvature control arm. See also
+        curvature control arm at the leading edge, and \(\psi_2\) defines the angle of the lower curvature control
+        arm at the leading edge. \(\psi_1\), \(\psi_2\), and \(\phi\) are all referenced differently from the other
+        `pyairpar.core.anchor_point.AnchorPoint`s. The difference is given mathematically by \(\psi_{1,LE}=\psi_1 -
+        \frac{\pi}{2}\), \(\psi_{2,LE}=\psi_2 - \frac{\pi}{2}\), and \(\phi_{LE} = \phi + \frac{\pi}{2}\). See also
         `pyairpar.core.base_airfoil_params.BaseAirfoilParams` for more details on the definitions of the attribute
         parameters input to this function.
 
@@ -1497,9 +1525,15 @@ point, use <code>(<a title="pyairpar.core.free_point.FreePoint" href="free_point
 
         The generated curvature control point \(x\) - \(y\) locations as `np.ndarray`s of `shape=2`.
         &#34;&#34;&#34;
-        if self.R_le.value == np.inf or self.R_le.value == -np.inf:
+        R_le = self.R_le.value
+        psi1_le = self.psi1_le.value
+        psi2_le = self.psi2_le.value
+        if R_le in [-np.inf, np.inf] or psi1_le in [-np.pi / 2, np.pi / 2] or psi2_le in [-np.pi / 2, np.pi / 2]:
             g2_minus_point = self.g1_minus_points[&#39;le&#39;]
             g2_plus_point = self.g1_plus_points[&#39;le&#39;]
+        elif R_le == 0:
+            g2_minus_point = self.anchor_points[&#39;le&#39;]
+            g2_plus_point = self.anchor_points[&#39;le&#39;]
         else:
             n1, n2 = self.N[self.anchor_point_order[self.anchor_point_order.index(&#39;le&#39;) - 1]], self.N[&#39;le&#39;]
             theta1, theta2 = self.psi1_le.value, -self.psi2_le.value
@@ -1537,8 +1571,9 @@ point, use <code>(<a title="pyairpar.core.free_point.FreePoint" href="free_point
                 \begin{bmatrix} x_{-1} \\ y_{-1} + \frac{c_1}{c_2 c_3}  \end{bmatrix},&amp; \theta_1 = \frac{\pi}{2} + k\pi \text{ for integer } k \wedge
                                                                                                     R \in (-\infty,0)
                                                                                                     \cup (0,\infty) \\
-                \begin{bmatrix} x_{-1} \\ y_{-1} \end{bmatrix},&amp; \theta_1 \in (-\infty, \infty) \wedge R =
-                                                                                                            \pm \infty
+                \begin{bmatrix} x_{-1} \\ y_{-1} \end{bmatrix},&amp; \psi_1 = 0 \vee \psi_2 = 0 \vee \psi_1 = \frac{\pi}{2} \vee \psi_2 = \frac{\pi}{2} \vee R =
+                                                                                                            \pm \infty \\
+                \begin{bmatrix} x_0 \\ y_0 \end{bmatrix},&amp; R = 0
             \end{cases} \\
             \begin{bmatrix} x_{+2} \\ y_{+2} \end{bmatrix} &amp;=
             \begin{cases}
@@ -1548,8 +1583,9 @@ point, use <code>(<a title="pyairpar.core.free_point.FreePoint" href="free_point
                 \begin{bmatrix} x_{+1} \\ y_{+1} + \frac{c_4}{c_5 c_6}  \end{bmatrix},&amp; \theta_2 = \frac{\pi}{2} + k\pi \text{ for integer } k \wedge
                                                                                                     R \in (-\infty,0)
                                                                                                     \cup (0,\infty) \\
-                \begin{bmatrix} x_{+1} \\ y_{+1} \end{bmatrix},&amp; \theta_2 \in (-\infty, \infty) \wedge R =
-                                                                                                            \pm \infty
+                \begin{bmatrix} x_{+1} \\ y_{+1} \end{bmatrix},&amp; \psi_1 = 0 \vee \psi_2 = 0 \vee \psi_1 = \frac{\pi}{2} \vee \psi_2 = \frac{\pi}{2} \vee R =
+                                                                                                            \pm \infty \\
+                \begin{bmatrix} x_0 \\ y_0 \end{bmatrix},&amp; R = 0
             \end{cases}
         \end{align*}
         $$
@@ -1570,39 +1606,33 @@ point, use <code>(<a title="pyairpar.core.free_point.FreePoint" href="free_point
         and \((x_{+1},y_{+1})\) are the neighboring control points, and \((x_{-2},y_{-2})\) and \((x_{+2},y_{+2})\)
         are the curvature control points. \(\theta_1\) and \(\theta_2\) are governed by the following relationships:
 
-        $$
-        \begin{align*}
-            \theta_1 &amp;=
-            \begin{cases}
-                \psi_1 + \phi,&amp; R &gt; 0,\,\text{upper surface} \\
-                \pi + \psi_2 - \phi,&amp; R &gt; 0,\,\text{lower surface} \\
-                \pi - \psi_1 + \phi,&amp; R &lt; 0,\,\text{upper surface} \\
-                -\psi_2 - \phi,&amp; R &lt; 0,\,\text{lower surface}
-            \end{cases} \\
-            \theta_2 &amp;=
-            \begin{cases}
-                -\psi_2 + \phi,&amp; R &gt; 0,\,\text{upper surface} \\
-                \psi_1 - \phi,&amp; R &gt; 0,\,\text{lower surface} \\
-                \pi + \psi_2 + \phi,&amp; R &lt; 0,\,\text{upper surface} \\
-                \psi_1 - \phi,&amp; R &lt; 0,\,\text{lower surface}
-            \end{cases}
-        \end{align*}
-        $$
-        By these definitions of the curvature control arm angles, decreasing \(\psi_1\) or \(\psi_2\) from
-        \(90^{\circ}\) has the effect of &#34;tucking&#34; the arms in, and increasing \(\psi_1\) or \(\psi_2\) from
-        \(90^{\circ}\) has the effect of &#34;spreading&#34; the arms out. See the documentation for
+        $$ \begin{align*} \theta_1 &amp;= \begin{cases} \psi_1 + \phi,&amp; R &gt; 0,\,\text{upper surface} \\ \pi + \psi_2 -
+        \phi,&amp; R &gt; 0,\,\text{lower surface} \\ \pi - \psi_1 + \phi,&amp; R &lt; 0,\,\text{upper surface} \\ -\psi_2 - \phi,
+        &amp; R &lt; 0,\,\text{lower surface} \end{cases} \\ \theta_2 &amp;= \begin{cases} -\psi_2 + \phi,&amp; R &gt; 0,\,\text{upper
+        surface} \\ \psi_1 - \phi,&amp; R &gt; 0,\,\text{lower surface} \\ \pi + \psi_2 + \phi,&amp; R &lt; 0,\,\text{upper
+        surface} \\ \psi_1 - \phi,&amp; R &lt; 0,\,\text{lower surface} \end{cases} \end{align*} $$ where \(\psi_1\) and \(
+        \psi_2\) are the aft and fore curvature control arm angles, respectively (or the upper and lower curvature
+        control arm angles in the case of the leading edge). By these definitions of the curvature control arm
+        angles, decreasing \(\psi_1\) or \(\psi_2\) from \(90^{\circ}\) ( \(0^{\circ}\) in the leading edge case) has
+        the effect of &#34;tucking&#34; the arms in, and increasing \(\psi_1\) or \(\psi_2\) from \(90^{\circ}\) ( \(0^{
+        \circ}\) in the leading edge case) has the effect of &#34;spreading&#34; the arms out. See the documentation for
         `pyairpar.core.anchor_point.AnchorPoint` for further description and a visual.
-
-        .. note:: A value of \( R = \frac{1}{\kappa} = 0 \) (infinite curvature) is not well-defined for geometric shapes. Setting \(R = 0\) will yield an exception.
 
         ### Returns:
 
         The generated curvature control point \(x\) - \(y\) locations as `np.ndarray`s of `shape=2`.
         &#34;&#34;&#34;
         R = anchor_point.R.value
-        if R == np.inf or R == -np.inf:
+        psi1 = anchor_point.psi1.value
+        psi2 = anchor_point.psi2.value
+        if R in [-np.inf, np.inf] or psi1 in [0, np.pi] or psi2 in [0, np.pi]:
             self.g2_minus_points[anchor_point.name] = self.g1_minus_points[anchor_point.name]
             self.g2_plus_points[anchor_point.name] = self.g1_plus_points[anchor_point.name]
+            g2_minus_point = self.g2_minus_points[anchor_point.name]
+            g2_plus_point = self.g2_plus_points[anchor_point.name]
+        elif R == 0:
+            self.g2_minus_points[anchor_point.name] = self.anchor_points[anchor_point.name]
+            self.g2_plus_points[anchor_point.name] = self.anchor_points[anchor_point.name]
             g2_minus_point = self.g2_minus_points[anchor_point.name]
             g2_plus_point = self.g2_plus_points[anchor_point.name]
         else:
@@ -1732,6 +1762,12 @@ point, use <code>(<a title="pyairpar.core.free_point.FreePoint" href="free_point
         self.needs_update = True
 
     def set_bezier_curve_orders(self):
+        &#34;&#34;&#34;
+        ### Description:
+
+        Sets the orders of the Bézier curves properly based on the location of all the
+        `pyairpar.core.anchor_point.AnchorPoint`s and `pyairpar.core.free_point.FreePoint`s.
+        &#34;&#34;&#34;
         for anchor_point in self.anchor_point_tuple:
             self.N[anchor_point.name] = 5
             if anchor_point.name not in self.anchor_point_order:
@@ -2019,7 +2055,7 @@ point, use <code>(<a title="pyairpar.core.free_point.FreePoint" href="free_point
         return self.x_thickness, self.thickness, self.max_thickness
 
     def plot(self, plot_what: typing.Tuple[str, ...], fig: Figure = None, axs: Axes = None, show_plot: bool = True,
-             save_plot: bool = False, save_path: str = None, plot_kwargs: typing.List[dict] = None,
+             save_plot: bool = False, save_path: str = None, plot_kwargs: typing.List[dict] or dict = None,
              show_title: bool = True, show_legend: bool = True, figwidth: float = 10.0, figheight: float = 2.5,
              tight_layout: bool = True, axis_equal: bool = True):
         r&#34;&#34;&#34;
@@ -2572,6 +2608,7 @@ control points which occur before the anchor point.</p>
               self.r_le.value * self.L_le.value *
               np.array([np.cos(np.pi / 2 + self.phi_le.value),
                         np.sin(np.pi / 2 + self.phi_le.value)])
+                if self.R_le.value != 0 else self.anchor_points[&#39;le&#39;]
     }
 
     g1_plus_points = {
@@ -2582,6 +2619,7 @@ control points which occur before the anchor point.</p>
               (1 - self.r_le.value) * self.L_le.value *
               np.array([np.cos(np.pi / 2 + self.phi_le.value),
                         np.sin(np.pi / 2 + self.phi_le.value)])
+                if self.R_le.value != 0 else self.anchor_points[&#39;le&#39;]
     }
 
     return g1_minus_points, g1_plus_points</code></pre>
@@ -2745,7 +2783,7 @@ object used for plotting</p></div>
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">def plot(self, plot_what: typing.Tuple[str, ...], fig: Figure = None, axs: Axes = None, show_plot: bool = True,
-         save_plot: bool = False, save_path: str = None, plot_kwargs: typing.List[dict] = None,
+         save_plot: bool = False, save_path: str = None, plot_kwargs: typing.List[dict] or dict = None,
          show_title: bool = True, show_legend: bool = True, figwidth: float = 10.0, figheight: float = 2.5,
          tight_layout: bool = True, axis_equal: bool = True):
     r&#34;&#34;&#34;
@@ -2930,12 +2968,20 @@ object used for plotting</p></div>
 <span>def <span class="ident">set_bezier_curve_orders</span></span>(<span>self)</span>
 </code></dt>
 <dd>
-<div class="desc"></div>
+<div class="desc"><h3 id="description">Description:</h3>
+<p>Sets the orders of the Bézier curves properly based on the location of all the
+<code><a title="pyairpar.core.anchor_point.AnchorPoint" href="anchor_point.html#pyairpar.core.anchor_point.AnchorPoint">AnchorPoint</a></code>s and <code><a title="pyairpar.core.free_point.FreePoint" href="free_point.html#pyairpar.core.free_point.FreePoint">FreePoint</a></code>s.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">def set_bezier_curve_orders(self):
+    &#34;&#34;&#34;
+    ### Description:
+
+    Sets the orders of the Bézier curves properly based on the location of all the
+    `pyairpar.core.anchor_point.AnchorPoint`s and `pyairpar.core.free_point.FreePoint`s.
+    &#34;&#34;&#34;
     for anchor_point in self.anchor_point_tuple:
         self.N[anchor_point.name] = 5
         if anchor_point.name not in self.anchor_point_order:
@@ -2968,8 +3014,9 @@ to the anchor point's slope-control points are defined as follows:</p>
 \end{bmatrix},&amp; \theta_1 = \frac{\pi}{2} + k\pi \text{ for integer } k \wedge
 R \in (-\infty,0)
 \cup (0,\infty) \\
-\begin{bmatrix} x_{-1} \\ y_{-1} \end{bmatrix},&amp; \theta_1 \in (-\infty, \infty) \wedge R =
-\pm \infty
+\begin{bmatrix} x_{-1} \\ y_{-1} \end{bmatrix},&amp; \psi_1 = 0 \vee \psi_2 = 0 \vee \psi_1 = \frac{\pi}{2} \vee \psi_2 = \frac{\pi}{2} \vee R =
+\pm \infty \\
+\begin{bmatrix} x_0 \\ y_0 \end{bmatrix},&amp; R = 0
 \end{cases} \\
 \begin{bmatrix} x_{+2} \\ y_{+2} \end{bmatrix} &amp;=
 \begin{cases}
@@ -2980,8 +3027,9 @@ R \in (-\infty,0)
 \end{bmatrix},&amp; \theta_2 = \frac{\pi}{2} + k\pi \text{ for integer } k \wedge
 R \in (-\infty,0)
 \cup (0,\infty) \\
-\begin{bmatrix} x_{+1} \\ y_{+1} \end{bmatrix},&amp; \theta_2 \in (-\infty, \infty) \wedge R =
-\pm \infty
+\begin{bmatrix} x_{+1} \\ y_{+1} \end{bmatrix},&amp; \psi_1 = 0 \vee \psi_2 = 0 \vee \psi_1 = \frac{\pi}{2} \vee \psi_2 = \frac{\pi}{2} \vee R =
+\pm \infty \\
+\begin{bmatrix} x_0 \\ y_0 \end{bmatrix},&amp; R = 0
 \end{cases}
 \end{align*}
 </span><script type="math/tex; mode=display">
@@ -2995,8 +3043,9 @@ R \in (-\infty,0)
 \end{bmatrix},& \theta_1 = \frac{\pi}{2} + k\pi \text{ for integer } k \wedge
 R \in (-\infty,0)
 \cup (0,\infty) \\
-\begin{bmatrix} x_{-1} \\ y_{-1} \end{bmatrix},& \theta_1 \in (-\infty, \infty) \wedge R =
-\pm \infty
+\begin{bmatrix} x_{-1} \\ y_{-1} \end{bmatrix},& \psi_1 = 0 \vee \psi_2 = 0 \vee \psi_1 = \frac{\pi}{2} \vee \psi_2 = \frac{\pi}{2} \vee R =
+\pm \infty \\
+\begin{bmatrix} x_0 \\ y_0 \end{bmatrix},& R = 0
 \end{cases} \\
 \begin{bmatrix} x_{+2} \\ y_{+2} \end{bmatrix} &=
 \begin{cases}
@@ -3007,8 +3056,9 @@ R \in (-\infty,0)
 \end{bmatrix},& \theta_2 = \frac{\pi}{2} + k\pi \text{ for integer } k \wedge
 R \in (-\infty,0)
 \cup (0,\infty) \\
-\begin{bmatrix} x_{+1} \\ y_{+1} \end{bmatrix},& \theta_2 \in (-\infty, \infty) \wedge R =
-\pm \infty
+\begin{bmatrix} x_{+1} \\ y_{+1} \end{bmatrix},& \psi_1 = 0 \vee \psi_2 = 0 \vee \psi_1 = \frac{\pi}{2} \vee \psi_2 = \frac{\pi}{2} \vee R =
+\pm \infty \\
+\begin{bmatrix} x_0 \\ y_0 \end{bmatrix},& R = 0
 \end{cases}
 \end{align*}
 </script></span>
@@ -3036,48 +3086,23 @@ c_6 &= x_0 - x_{+1}
 Bézier curve following the anchor point. <span><span class="MathJax_Preview">(x_0,y_0)</span><script type="math/tex">(x_0,y_0)</script></span> is the anchor point location, <span><span class="MathJax_Preview">(x_{-1},y_{-1})</span><script type="math/tex">(x_{-1},y_{-1})</script></span>
 and <span><span class="MathJax_Preview">(x_{+1},y_{+1})</span><script type="math/tex">(x_{+1},y_{+1})</script></span> are the neighboring control points, and <span><span class="MathJax_Preview">(x_{-2},y_{-2})</span><script type="math/tex">(x_{-2},y_{-2})</script></span> and <span><span class="MathJax_Preview">(x_{+2},y_{+2})</span><script type="math/tex">(x_{+2},y_{+2})</script></span>
 are the curvature control points. <span><span class="MathJax_Preview">\theta_1</span><script type="math/tex">\theta_1</script></span> and <span><span class="MathJax_Preview">\theta_2</span><script type="math/tex">\theta_2</script></span> are governed by the following relationships:</p>
-<p><span><span class="MathJax_Preview">
-\begin{align*}
-\theta_1 &amp;=
-\begin{cases}
-\psi_1 + \phi,&amp; R &gt; 0,\,\text{upper surface} \\
-\pi + \psi_2 - \phi,&amp; R &gt; 0,\,\text{lower surface} \\
-\pi - \psi_1 + \phi,&amp; R &lt; 0,\,\text{upper surface} \\
--\psi_2 - \phi,&amp; R &lt; 0,\,\text{lower surface}
-\end{cases} \\
-\theta_2 &amp;=
-\begin{cases}
--\psi_2 + \phi,&amp; R &gt; 0,\,\text{upper surface} \\
-\psi_1 - \phi,&amp; R &gt; 0,\,\text{lower surface} \\
-\pi + \psi_2 + \phi,&amp; R &lt; 0,\,\text{upper surface} \\
-\psi_1 - \phi,&amp; R &lt; 0,\,\text{lower surface}
-\end{cases}
-\end{align*}
-</span><script type="math/tex; mode=display">
-\begin{align*}
-\theta_1 &=
-\begin{cases}
-\psi_1 + \phi,& R > 0,\,\text{upper surface} \\
-\pi + \psi_2 - \phi,& R > 0,\,\text{lower surface} \\
-\pi - \psi_1 + \phi,& R < 0,\,\text{upper surface} \\
--\psi_2 - \phi,& R < 0,\,\text{lower surface}
-\end{cases} \\
-\theta_2 &=
-\begin{cases}
--\psi_2 + \phi,& R > 0,\,\text{upper surface} \\
-\psi_1 - \phi,& R > 0,\,\text{lower surface} \\
-\pi + \psi_2 + \phi,& R < 0,\,\text{upper surface} \\
-\psi_1 - \phi,& R < 0,\,\text{lower surface}
-\end{cases}
-\end{align*}
-</script></span>
-By these definitions of the curvature control arm angles, decreasing <span><span class="MathJax_Preview">\psi_1</span><script type="math/tex">\psi_1</script></span> or <span><span class="MathJax_Preview">\psi_2</span><script type="math/tex">\psi_2</script></span> from
-<span><span class="MathJax_Preview">90^{\circ}</span><script type="math/tex">90^{\circ}</script></span> has the effect of "tucking" the arms in, and increasing <span><span class="MathJax_Preview">\psi_1</span><script type="math/tex">\psi_1</script></span> or <span><span class="MathJax_Preview">\psi_2</span><script type="math/tex">\psi_2</script></span> from
-<span><span class="MathJax_Preview">90^{\circ}</span><script type="math/tex">90^{\circ}</script></span> has the effect of "spreading" the arms out. See the documentation for
+<p><span><span class="MathJax_Preview"> \begin{align*} \theta_1 &amp;= \begin{cases} \psi_1 + \phi,&amp; R &gt; 0,\,\text{upper surface} \\ \pi + \psi_2 -
+\phi,&amp; R &gt; 0,\,\text{lower surface} \\ \pi - \psi_1 + \phi,&amp; R &lt; 0,\,\text{upper surface} \\ -\psi_2 - \phi,
+&amp; R &lt; 0,\,\text{lower surface} \end{cases} \\ \theta_2 &amp;= \begin{cases} -\psi_2 + \phi,&amp; R &gt; 0,\,\text{upper
+surface} \\ \psi_1 - \phi,&amp; R &gt; 0,\,\text{lower surface} \\ \pi + \psi_2 + \phi,&amp; R &lt; 0,\,\text{upper
+surface} \\ \psi_1 - \phi,&amp; R &lt; 0,\,\text{lower surface} \end{cases} \end{align*} </span><script type="math/tex; mode=display"> \begin{align*} \theta_1 &= \begin{cases} \psi_1 + \phi,& R > 0,\,\text{upper surface} \\ \pi + \psi_2 -
+\phi,& R > 0,\,\text{lower surface} \\ \pi - \psi_1 + \phi,& R < 0,\,\text{upper surface} \\ -\psi_2 - \phi,
+& R < 0,\,\text{lower surface} \end{cases} \\ \theta_2 &= \begin{cases} -\psi_2 + \phi,& R > 0,\,\text{upper
+surface} \\ \psi_1 - \phi,& R > 0,\,\text{lower surface} \\ \pi + \psi_2 + \phi,& R < 0,\,\text{upper
+surface} \\ \psi_1 - \phi,& R < 0,\,\text{lower surface} \end{cases} \end{align*} </script></span> where <span><span class="MathJax_Preview">\psi_1</span><script type="math/tex">\psi_1</script></span> and <span><span class="MathJax_Preview">
+\psi_2</span><script type="math/tex">
+\psi_2</script></span> are the aft and fore curvature control arm angles, respectively (or the upper and lower curvature
+control arm angles in the case of the leading edge). By these definitions of the curvature control arm
+angles, decreasing <span><span class="MathJax_Preview">\psi_1</span><script type="math/tex">\psi_1</script></span> or <span><span class="MathJax_Preview">\psi_2</span><script type="math/tex">\psi_2</script></span> from <span><span class="MathJax_Preview">90^{\circ}</span><script type="math/tex">90^{\circ}</script></span> ( <span><span class="MathJax_Preview">0^{\circ}</span><script type="math/tex">0^{\circ}</script></span> in the leading edge case) has
+the effect of "tucking" the arms in, and increasing <span><span class="MathJax_Preview">\psi_1</span><script type="math/tex">\psi_1</script></span> or <span><span class="MathJax_Preview">\psi_2</span><script type="math/tex">\psi_2</script></span> from <span><span class="MathJax_Preview">90^{\circ}</span><script type="math/tex">90^{\circ}</script></span> ( <span><span class="MathJax_Preview">0^{
+\circ}</span><script type="math/tex">0^{
+\circ}</script></span> in the leading edge case) has the effect of "spreading" the arms out. See the documentation for
 <code><a title="pyairpar.core.anchor_point.AnchorPoint" href="anchor_point.html#pyairpar.core.anchor_point.AnchorPoint">AnchorPoint</a></code> for further description and a visual.</p>
-<div class="admonition note">
-<p class="admonition-title">Note:&ensp;A value of <span><span class="MathJax_Preview"> R = \frac{1}{\kappa} = 0 </span><script type="math/tex"> R = \frac{1}{\kappa} = 0 </script></span> (infinite curvature) is not well-defined for geometric shapes. Setting <span><span class="MathJax_Preview">R = 0</span><script type="math/tex">R = 0</script></span> will yield an exception.</p>
-</div>
 <h3 id="returns">Returns:</h3>
 <p>The generated curvature control point <span><span class="MathJax_Preview">x</span><script type="math/tex">x</script></span> - <span><span class="MathJax_Preview">y</span><script type="math/tex">y</script></span> locations as <code>np.ndarray</code>s of <code>shape=2</code>.</p></div>
 <details class="source">
@@ -3102,8 +3127,9 @@ By these definitions of the curvature control arm angles, decreasing <span><span
             \begin{bmatrix} x_{-1} \\ y_{-1} + \frac{c_1}{c_2 c_3}  \end{bmatrix},&amp; \theta_1 = \frac{\pi}{2} + k\pi \text{ for integer } k \wedge
                                                                                                 R \in (-\infty,0)
                                                                                                 \cup (0,\infty) \\
-            \begin{bmatrix} x_{-1} \\ y_{-1} \end{bmatrix},&amp; \theta_1 \in (-\infty, \infty) \wedge R =
-                                                                                                        \pm \infty
+            \begin{bmatrix} x_{-1} \\ y_{-1} \end{bmatrix},&amp; \psi_1 = 0 \vee \psi_2 = 0 \vee \psi_1 = \frac{\pi}{2} \vee \psi_2 = \frac{\pi}{2} \vee R =
+                                                                                                        \pm \infty \\
+            \begin{bmatrix} x_0 \\ y_0 \end{bmatrix},&amp; R = 0
         \end{cases} \\
         \begin{bmatrix} x_{+2} \\ y_{+2} \end{bmatrix} &amp;=
         \begin{cases}
@@ -3113,8 +3139,9 @@ By these definitions of the curvature control arm angles, decreasing <span><span
             \begin{bmatrix} x_{+1} \\ y_{+1} + \frac{c_4}{c_5 c_6}  \end{bmatrix},&amp; \theta_2 = \frac{\pi}{2} + k\pi \text{ for integer } k \wedge
                                                                                                 R \in (-\infty,0)
                                                                                                 \cup (0,\infty) \\
-            \begin{bmatrix} x_{+1} \\ y_{+1} \end{bmatrix},&amp; \theta_2 \in (-\infty, \infty) \wedge R =
-                                                                                                        \pm \infty
+            \begin{bmatrix} x_{+1} \\ y_{+1} \end{bmatrix},&amp; \psi_1 = 0 \vee \psi_2 = 0 \vee \psi_1 = \frac{\pi}{2} \vee \psi_2 = \frac{\pi}{2} \vee R =
+                                                                                                        \pm \infty \\
+            \begin{bmatrix} x_0 \\ y_0 \end{bmatrix},&amp; R = 0
         \end{cases}
     \end{align*}
     $$
@@ -3135,39 +3162,33 @@ By these definitions of the curvature control arm angles, decreasing <span><span
     and \((x_{+1},y_{+1})\) are the neighboring control points, and \((x_{-2},y_{-2})\) and \((x_{+2},y_{+2})\)
     are the curvature control points. \(\theta_1\) and \(\theta_2\) are governed by the following relationships:
 
-    $$
-    \begin{align*}
-        \theta_1 &amp;=
-        \begin{cases}
-            \psi_1 + \phi,&amp; R &gt; 0,\,\text{upper surface} \\
-            \pi + \psi_2 - \phi,&amp; R &gt; 0,\,\text{lower surface} \\
-            \pi - \psi_1 + \phi,&amp; R &lt; 0,\,\text{upper surface} \\
-            -\psi_2 - \phi,&amp; R &lt; 0,\,\text{lower surface}
-        \end{cases} \\
-        \theta_2 &amp;=
-        \begin{cases}
-            -\psi_2 + \phi,&amp; R &gt; 0,\,\text{upper surface} \\
-            \psi_1 - \phi,&amp; R &gt; 0,\,\text{lower surface} \\
-            \pi + \psi_2 + \phi,&amp; R &lt; 0,\,\text{upper surface} \\
-            \psi_1 - \phi,&amp; R &lt; 0,\,\text{lower surface}
-        \end{cases}
-    \end{align*}
-    $$
-    By these definitions of the curvature control arm angles, decreasing \(\psi_1\) or \(\psi_2\) from
-    \(90^{\circ}\) has the effect of &#34;tucking&#34; the arms in, and increasing \(\psi_1\) or \(\psi_2\) from
-    \(90^{\circ}\) has the effect of &#34;spreading&#34; the arms out. See the documentation for
+    $$ \begin{align*} \theta_1 &amp;= \begin{cases} \psi_1 + \phi,&amp; R &gt; 0,\,\text{upper surface} \\ \pi + \psi_2 -
+    \phi,&amp; R &gt; 0,\,\text{lower surface} \\ \pi - \psi_1 + \phi,&amp; R &lt; 0,\,\text{upper surface} \\ -\psi_2 - \phi,
+    &amp; R &lt; 0,\,\text{lower surface} \end{cases} \\ \theta_2 &amp;= \begin{cases} -\psi_2 + \phi,&amp; R &gt; 0,\,\text{upper
+    surface} \\ \psi_1 - \phi,&amp; R &gt; 0,\,\text{lower surface} \\ \pi + \psi_2 + \phi,&amp; R &lt; 0,\,\text{upper
+    surface} \\ \psi_1 - \phi,&amp; R &lt; 0,\,\text{lower surface} \end{cases} \end{align*} $$ where \(\psi_1\) and \(
+    \psi_2\) are the aft and fore curvature control arm angles, respectively (or the upper and lower curvature
+    control arm angles in the case of the leading edge). By these definitions of the curvature control arm
+    angles, decreasing \(\psi_1\) or \(\psi_2\) from \(90^{\circ}\) ( \(0^{\circ}\) in the leading edge case) has
+    the effect of &#34;tucking&#34; the arms in, and increasing \(\psi_1\) or \(\psi_2\) from \(90^{\circ}\) ( \(0^{
+    \circ}\) in the leading edge case) has the effect of &#34;spreading&#34; the arms out. See the documentation for
     `pyairpar.core.anchor_point.AnchorPoint` for further description and a visual.
-
-    .. note:: A value of \( R = \frac{1}{\kappa} = 0 \) (infinite curvature) is not well-defined for geometric shapes. Setting \(R = 0\) will yield an exception.
 
     ### Returns:
 
     The generated curvature control point \(x\) - \(y\) locations as `np.ndarray`s of `shape=2`.
     &#34;&#34;&#34;
     R = anchor_point.R.value
-    if R == np.inf or R == -np.inf:
+    psi1 = anchor_point.psi1.value
+    psi2 = anchor_point.psi2.value
+    if R in [-np.inf, np.inf] or psi1 in [0, np.pi] or psi2 in [0, np.pi]:
         self.g2_minus_points[anchor_point.name] = self.g1_minus_points[anchor_point.name]
         self.g2_plus_points[anchor_point.name] = self.g1_plus_points[anchor_point.name]
+        g2_minus_point = self.g2_minus_points[anchor_point.name]
+        g2_plus_point = self.g2_plus_points[anchor_point.name]
+    elif R == 0:
+        self.g2_minus_points[anchor_point.name] = self.anchor_points[anchor_point.name]
+        self.g2_plus_points[anchor_point.name] = self.anchor_points[anchor_point.name]
         g2_minus_point = self.g2_minus_points[anchor_point.name]
         g2_plus_point = self.g2_plus_points[anchor_point.name]
     else:
@@ -3226,7 +3247,11 @@ By these definitions of the curvature control arm angles, decreasing <span><span
 <div class="desc"><h3 id="description">Description:</h3>
 <p>See the description of <code><a title="pyairpar.core.airfoil.Airfoil.set_curvature" href="#pyairpar.core.airfoil.Airfoil.set_curvature">Airfoil.set_curvature()</a></code>. This is just a special case of that
 function tailored for the leading edge of the airfoil. Here, <span><span class="MathJax_Preview">\psi_1</span><script type="math/tex">\psi_1</script></span> defines the angle of the upper
-curvature control arm, and <span><span class="MathJax_Preview">\psi_2</span><script type="math/tex">\psi_2</script></span> defines the angle of the lower curvature control arm. See also
+curvature control arm at the leading edge, and <span><span class="MathJax_Preview">\psi_2</span><script type="math/tex">\psi_2</script></span> defines the angle of the lower curvature control
+arm at the leading edge. <span><span class="MathJax_Preview">\psi_1</span><script type="math/tex">\psi_1</script></span>, <span><span class="MathJax_Preview">\psi_2</span><script type="math/tex">\psi_2</script></span>, and <span><span class="MathJax_Preview">\phi</span><script type="math/tex">\phi</script></span> are all referenced differently from the other
+<code><a title="pyairpar.core.anchor_point.AnchorPoint" href="anchor_point.html#pyairpar.core.anchor_point.AnchorPoint">AnchorPoint</a></code>s. The difference is given mathematically by <span><span class="MathJax_Preview">\psi_{1,LE}=\psi_1 -
+\frac{\pi}{2}</span><script type="math/tex">\psi_{1,LE}=\psi_1 -
+\frac{\pi}{2}</script></span>, <span><span class="MathJax_Preview">\psi_{2,LE}=\psi_2 - \frac{\pi}{2}</span><script type="math/tex">\psi_{2,LE}=\psi_2 - \frac{\pi}{2}</script></span>, and <span><span class="MathJax_Preview">\phi_{LE} = \phi + \frac{\pi}{2}</span><script type="math/tex">\phi_{LE} = \phi + \frac{\pi}{2}</script></span>. See also
 <code><a title="pyairpar.core.base_airfoil_params.BaseAirfoilParams" href="base_airfoil_params.html#pyairpar.core.base_airfoil_params.BaseAirfoilParams">BaseAirfoilParams</a></code> for more details on the definitions of the attribute
 parameters input to this function.</p>
 <h3 id="returns">Returns:</h3>
@@ -3239,9 +3264,12 @@ parameters input to this function.</p>
     r&#34;&#34;&#34;
     ### Description:
 
-    See the description of `pyairpar.core.airfoil.Airfoil.set_curvature()`. This is just a special case of that
+    See the description of `pyairpar.core.airfoil.Airfoil.set_curvature`. This is just a special case of that
     function tailored for the leading edge of the airfoil. Here, \(\psi_1\) defines the angle of the upper
-    curvature control arm, and \(\psi_2\) defines the angle of the lower curvature control arm. See also
+    curvature control arm at the leading edge, and \(\psi_2\) defines the angle of the lower curvature control
+    arm at the leading edge. \(\psi_1\), \(\psi_2\), and \(\phi\) are all referenced differently from the other
+    `pyairpar.core.anchor_point.AnchorPoint`s. The difference is given mathematically by \(\psi_{1,LE}=\psi_1 -
+    \frac{\pi}{2}\), \(\psi_{2,LE}=\psi_2 - \frac{\pi}{2}\), and \(\phi_{LE} = \phi + \frac{\pi}{2}\). See also
     `pyairpar.core.base_airfoil_params.BaseAirfoilParams` for more details on the definitions of the attribute
     parameters input to this function.
 
@@ -3249,9 +3277,15 @@ parameters input to this function.</p>
 
     The generated curvature control point \(x\) - \(y\) locations as `np.ndarray`s of `shape=2`.
     &#34;&#34;&#34;
-    if self.R_le.value == np.inf or self.R_le.value == -np.inf:
+    R_le = self.R_le.value
+    psi1_le = self.psi1_le.value
+    psi2_le = self.psi2_le.value
+    if R_le in [-np.inf, np.inf] or psi1_le in [-np.pi / 2, np.pi / 2] or psi2_le in [-np.pi / 2, np.pi / 2]:
         g2_minus_point = self.g1_minus_points[&#39;le&#39;]
         g2_plus_point = self.g1_plus_points[&#39;le&#39;]
+    elif R_le == 0:
+        g2_minus_point = self.anchor_points[&#39;le&#39;]
+        g2_plus_point = self.anchor_points[&#39;le&#39;]
     else:
         n1, n2 = self.N[self.anchor_point_order[self.anchor_point_order.index(&#39;le&#39;) - 1]], self.N[&#39;le&#39;]
         theta1, theta2 = self.psi1_le.value, -self.psi2_le.value
@@ -3362,17 +3396,22 @@ neighboring control points toward the trailing edge. See the diagram for
     r = anchor_point.r.value
     L = anchor_point.L.value
     phi = anchor_point.phi.value
+    R = anchor_point.R.value
 
-    if self.anchor_point_order.index(anchor_point.name) &lt; self.anchor_point_order.index(&#39;le&#39;):
-        self.g1_minus_points[anchor_point.name] = \
-            self.anchor_points[anchor_point.name] + (1 - r) * L * np.array([np.cos(phi), np.sin(phi)])
-        self.g1_plus_points[anchor_point.name] = \
-            self.anchor_points[anchor_point.name] - r * L * np.array([np.cos(phi), np.sin(phi)])
+    if R == 0:
+        self.g1_minus_points[anchor_point.name] = self.anchor_points[anchor_point.name]
+        self.g1_plus_points[anchor_point.name] = self.anchor_points[anchor_point.name]
     else:
-        self.g1_minus_points[anchor_point.name] = \
-            self.anchor_points[anchor_point.name] - r * L * np.array([np.cos(-phi), np.sin(-phi)])
-        self.g1_plus_points[anchor_point.name] = \
-            self.anchor_points[anchor_point.name] + (1 - r) * L * np.array([np.cos(-phi), np.sin(-phi)])
+        if self.anchor_point_order.index(anchor_point.name) &lt; self.anchor_point_order.index(&#39;le&#39;):
+            self.g1_minus_points[anchor_point.name] = \
+                self.anchor_points[anchor_point.name] + (1 - r) * L * np.array([np.cos(phi), np.sin(phi)])
+            self.g1_plus_points[anchor_point.name] = \
+                self.anchor_points[anchor_point.name] - r * L * np.array([np.cos(phi), np.sin(phi)])
+        else:
+            self.g1_minus_points[anchor_point.name] = \
+                self.anchor_points[anchor_point.name] - r * L * np.array([np.cos(-phi), np.sin(-phi)])
+            self.g1_plus_points[anchor_point.name] = \
+                self.anchor_points[anchor_point.name] + (1 - r) * L * np.array([np.cos(-phi), np.sin(-phi)])
     return self.g1_minus_points[anchor_point.name], self.g1_plus_points[anchor_point.name]</code></pre>
 </details>
 </dd>

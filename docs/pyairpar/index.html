@@ -28,7 +28,8 @@ Bézier-parametrized airfoil …" />
 <h2 id="welcome">Welcome</h2>
 <p>To the documentation page for <code><a title="pyairpar" href="#pyairpar">pyairpar</a></code>, an object-oriented Python 3 package for single- and multi-element
 Bézier-parametrized airfoil design. This Bézier parametrization framework is being presented at the 2022 AIAA Aviation
-Conference in Chicago, IL under the title "A Bézier Curve Parametrization Framework for Multi-Element Airfoil Systems."</p>
+Conference in Chicago, IL under the title "A Parametrization Framework for Multi-Element Airfoil Systems Using Bézier
+curves."</p>
 <p><img alt="" src="complex_1.png"></p>
 <h2 id="motivation">Motivation</h2>
 <p>The creation of this package was motivated by a research aircraft application: the aerodynamic design of a
@@ -66,6 +67,16 @@ Technologies for Aircraft (CHEETA). Logo courtesy of <a href="https://www.nasa.g
 <h2 id="contact-information">Contact Information</h2>
 <p><strong>Author</strong>: Matthew G Lauer</p>
 <p><strong>Email</strong>: mlauer2015@gmail.com</p>
+<h2 id="version-notes">Version Notes</h2>
+<h3 id="110">1.1.0</h3>
+<ul>
+<li>Made corrections on BaseAirfoilParams and AnchorPoint Args domains</li>
+<li>Added support for zero-curvature anchor points
+using 180-degree curvature control arm angles (or 90-degree curvature control arm angles for the leading edge)</li>
+<li>Added support for sharp-juncture anchor points with <span><span class="MathJax_Preview">R=0</span><script type="math/tex">R=0</script></span> or <span><span class="MathJax_Preview">R_{LE}=0</span><script type="math/tex">R_{LE}=0</script></span>. Adding multiple consecutive sharp
+juncture anchor points creates line segments. Adding sharp-juncture anchor points violates the principle of slope and
+curvature continuity, but may be useful in some cases.</li>
+</ul>
 <details class="source">
 <summary>
 <span>Expand source code</span>
@@ -75,7 +86,8 @@ Technologies for Aircraft (CHEETA). Logo courtesy of <a href="https://www.nasa.g
 ## Welcome
 To the documentation page for `pyairpar`, an object-oriented Python 3 package for single- and multi-element
 Bézier-parametrized airfoil design. This Bézier parametrization framework is being presented at the 2022 AIAA Aviation
-Conference in Chicago, IL under the title &#34;A Bézier Curve Parametrization Framework for Multi-Element Airfoil Systems.&#34;
+Conference in Chicago, IL under the title &#34;A Parametrization Framework for Multi-Element Airfoil Systems Using Bézier
+curves.&#34;
 
 .. image:: complex_1.png
 
@@ -131,6 +143,17 @@ Technologies for Aircraft (CHEETA). Logo courtesy of [NASA](https://www.nasa.gov
 
 **Email**: mlauer2015@gmail.com
 
+## Version Notes
+
+### 1.1.0
+
+- Made corrections on BaseAirfoilParams and AnchorPoint Args domains
+- Added support for zero-curvature anchor points
+using 180-degree curvature control arm angles (or 90-degree curvature control arm angles for the leading edge)
+- Added support for sharp-juncture anchor points with \\(R=0\\) or \\(R_{LE}=0\\). Adding multiple consecutive sharp
+juncture anchor points creates line segments. Adding sharp-juncture anchor points violates the principle of slope and
+curvature continuity, but may be useful in some cases.
+
 &#34;&#34;&#34;</code></pre>
 </details>
 </section>
@@ -171,6 +194,10 @@ Technologies for Aircraft (CHEETA). Logo courtesy of [NASA](https://www.nasa.gov
 <li><a href="#applications">Applications</a></li>
 <li><a href="#acknowledgments">Acknowledgments</a></li>
 <li><a href="#contact-information">Contact Information</a></li>
+<li><a href="#version-notes">Version Notes</a><ul>
+<li><a href="#110">1.1.0</a></li>
+</ul>
+</li>
 </ul>
 </div>
 <ul id="index">

@@ -68,8 +68,10 @@ class AnchorPoint:
 
         `R`: ( \\(R\\) ) `pyairpar.core.param.Param` representing the radius of curvature at the \\(x\\) - \\(y\\)
         location of the `AnchorPoint`. A positive value makes the airfoil convex at the `AnchorPoint` location,
-        and a negative value makes the airfoil concave at the `AnchorPoint` location. The valid range is
-        \\( \\{R \\in \\mathbb{R} \\, | \\, R \\neq 0 \\} \\).
+        and a negative value makes the airfoil concave at the `AnchorPoint` location. A value of 0 creates a
+        flat-plate-type leading edge. The valid range is \\( R \\in [-\infty, \infty] \\). Inclusive brackets are
+        used here because setting \\(R=\\pm \\infty\\) creates an anchor point with no curvature (infinite radius of
+        curvature).
 
         `r`: ( \\(r\\) ) `pyairpar.core.param.Param` representing the ratio of the distance from the `AnchorPoint`
         location to the neighboring control point closest to the trailing edge to the distance between the
@@ -78,20 +80,21 @@ class AnchorPoint:
         `phi`: ( \\(\\phi\\) ) `pyairpar.core.param.Param` representing the angle of the line passing through the
         `AnchorPoint`&#39;s neighboring control points, referenced counter-clockwise from the chordline if the
         `AnchorPoint` is on the upper airfoil surface and clockwise from the chordline if the `AnchorPoint` is on the
-        lower airfoil surface. The valid range is \\(\\psi_1 \\in (-90^{\\circ},90^{\\circ})\\).
+        lower airfoil surface. The valid range is \\(\\psi_1 \\in [-180^{\\circ},180^{\\circ}]\\). A value of \\(0^{
+        \\circ}\\) creates an anchor point with local slope equal to the slope of the chordline.
 
         `psi1`: ( \\(\\psi_1\\) ) `pyairpar.core.param.Param` representing the angle of the aft curvature control &#34;arm.&#34;
         Regardless of the sign of \\(R\\) or which surface the `AnchorPoint` lies on, an angle of \\(90^{\\circ}\\)
         always means that the curvature control arm points perpendicular to the line passing through the
         neighboring control points of the `AnchorPoint`. Angles below \\(90^{\\circ}\\) &#34;tuck&#34; the arms in, and angles
-        above \\(90^{\\circ}\\) &#34;spread&#34; the arms out. The valid range is \\(\\psi_1 \\in (0^{\\circ},180^{\\circ})\\).
+        above \\(90^{\\circ}\\) &#34;spread&#34; the arms out. The valid range is \\(\\psi_1 \\in [0^{\\circ},180^{\\circ}]\\).
 
         `psi2`: ( \\(\\psi_2\\) ) `pyairpar.core.param.Param` representing the angle of the fore curvature control
         &#34;arm.&#34; Regardless of the sign of \\(R\\) or which surface the `AnchorPoint` lies on, an angle of \\(90^{
         \\circ}\\) always means that the curvature control arm points perpendicular to the line passing through the
         neighboring control points of the `AnchorPoint`. Angles below \\(90^{\\circ}\\) &#34;tuck&#34; the arms in,
-        and angles above \\(90^{\\circ}\\) &#34;spread&#34; the arms out. The valid range is \\(\\psi_2 \\in (0^{\\circ},
-        180^{\\circ})\\).
+        and angles above \\(90^{\\circ}\\) &#34;spread&#34; the arms out. The valid range is \\(\\psi_2 \\in [0^{\\circ},
+        180^{\\circ}]\\).
 
         `length_scale_dimension`: a `float` giving the length scale by which to non-dimensionalize the `x` and `y`
         values (optional)
@@ -106,11 +109,7 @@ class AnchorPoint:
         self.name = name
         self.previous_anchor_point = previous_anchor_point
         self.L = L
-
-        if R.value == 0:
-            raise ValueError(&#39;Setting R = 0 yields infinite curvature (not well-defined)&#39;)
-        else:
-            self.R = R
+        self.R = R
 
         if 0 &lt; r.value &lt; 1:
             self.r = r
@@ -121,18 +120,20 @@ class AnchorPoint:
             self.phi = phi
         else:
             raise ValueError(f&#39;The anchor point neighboring control point angle, phi, must be between -180 degrees and&#39;
-                             f&#39;180 degrees. A value of {phi.value} was entered.&#39;)
+                             f&#39; 180 degrees, inclusive. A value of {phi.value} was entered.&#39;)
 
-        if 0 &lt; psi1.value &lt; np.pi:
+        if 0 &lt;= psi1.value &lt;= np.pi:
             self.psi1 = psi1
         else:
-            raise ValueError(f&#39;The aft curvature control arm angle, psi1, must be between 0 degrees and 180 degrees.&#39;
+            raise ValueError(f&#39;The aft curvature control arm angle, psi1, must be between 0 degrees and 180 degrees, &#39;
+                             f&#39;inclusive. &#39;
                              f&#39;A value of {psi1.value} was entered.&#39;)
 
-        if 0 &lt; psi2.value &lt; np.pi:
+        if 0 &lt;= psi2.value &lt;= np.pi:
             self.psi2 = psi2
         else:
-            raise ValueError(f&#39;The fore curvature control arm angle, psi2, must be between 0 degrees and 180 degrees.&#39;
+            raise ValueError(f&#39;The fore curvature control arm angle, psi2, must be between 0 degrees and 180 degrees,&#39;
+                             f&#39;inclusive. &#39;
                              f&#39;A value of {psi2.value} was entered.&#39;)
 
         self.length_scale_dimension = length_scale_dimension
@@ -231,28 +232,32 @@ image below. It may be helpful to enlarge the image by opening it in a new tab.<
 side of the <code><a title="pyairpar.core.anchor_point.AnchorPoint" href="#pyairpar.core.anchor_point.AnchorPoint">AnchorPoint</a></code></p>
 <p><code>R</code>: ( <span><span class="MathJax_Preview">R</span><script type="math/tex">R</script></span> ) <code><a title="pyairpar.core.param.Param" href="param.html#pyairpar.core.param.Param">Param</a></code> representing the radius of curvature at the <span><span class="MathJax_Preview">x</span><script type="math/tex">x</script></span> - <span><span class="MathJax_Preview">y</span><script type="math/tex">y</script></span>
 location of the <code><a title="pyairpar.core.anchor_point.AnchorPoint" href="#pyairpar.core.anchor_point.AnchorPoint">AnchorPoint</a></code>. A positive value makes the airfoil convex at the <code><a title="pyairpar.core.anchor_point.AnchorPoint" href="#pyairpar.core.anchor_point.AnchorPoint">AnchorPoint</a></code> location,
-and a negative value makes the airfoil concave at the <code><a title="pyairpar.core.anchor_point.AnchorPoint" href="#pyairpar.core.anchor_point.AnchorPoint">AnchorPoint</a></code> location. The valid range is
-<span><span class="MathJax_Preview"> \{R \in \mathbb{R} \, | \, R \neq 0 \} </span><script type="math/tex"> \{R \in \mathbb{R} \, | \, R \neq 0 \} </script></span>.</p>
+and a negative value makes the airfoil concave at the <code><a title="pyairpar.core.anchor_point.AnchorPoint" href="#pyairpar.core.anchor_point.AnchorPoint">AnchorPoint</a></code> location. A value of 0 creates a
+flat-plate-type leading edge. The valid range is <span><span class="MathJax_Preview"> R \in [-\infty, \infty] </span><script type="math/tex"> R \in [-\infty, \infty] </script></span>. Inclusive brackets are
+used here because setting <span><span class="MathJax_Preview">R=\pm \infty</span><script type="math/tex">R=\pm \infty</script></span> creates an anchor point with no curvature (infinite radius of
+curvature).</p>
 <p><code>r</code>: ( <span><span class="MathJax_Preview">r</span><script type="math/tex">r</script></span> ) <code><a title="pyairpar.core.param.Param" href="param.html#pyairpar.core.param.Param">Param</a></code> representing the ratio of the distance from the <code><a title="pyairpar.core.anchor_point.AnchorPoint" href="#pyairpar.core.anchor_point.AnchorPoint">AnchorPoint</a></code>
 location to the neighboring control point closest to the trailing edge to the distance between the
 <code><a title="pyairpar.core.anchor_point.AnchorPoint" href="#pyairpar.core.anchor_point.AnchorPoint">AnchorPoint</a></code>'s neighboring control points ( <span><span class="MathJax_Preview">L_{fore} / L</span><script type="math/tex">L_{fore} / L</script></span> ). The valid range is <span><span class="MathJax_Preview">r \in (0,1)</span><script type="math/tex">r \in (0,1)</script></span>.</p>
 <p><code>phi</code>: ( <span><span class="MathJax_Preview">\phi</span><script type="math/tex">\phi</script></span> ) <code><a title="pyairpar.core.param.Param" href="param.html#pyairpar.core.param.Param">Param</a></code> representing the angle of the line passing through the
 <code><a title="pyairpar.core.anchor_point.AnchorPoint" href="#pyairpar.core.anchor_point.AnchorPoint">AnchorPoint</a></code>'s neighboring control points, referenced counter-clockwise from the chordline if the
 <code><a title="pyairpar.core.anchor_point.AnchorPoint" href="#pyairpar.core.anchor_point.AnchorPoint">AnchorPoint</a></code> is on the upper airfoil surface and clockwise from the chordline if the <code><a title="pyairpar.core.anchor_point.AnchorPoint" href="#pyairpar.core.anchor_point.AnchorPoint">AnchorPoint</a></code> is on the
-lower airfoil surface. The valid range is <span><span class="MathJax_Preview">\psi_1 \in (-90^{\circ},90^{\circ})</span><script type="math/tex">\psi_1 \in (-90^{\circ},90^{\circ})</script></span>.</p>
+lower airfoil surface. The valid range is <span><span class="MathJax_Preview">\psi_1 \in [-180^{\circ},180^{\circ}]</span><script type="math/tex">\psi_1 \in [-180^{\circ},180^{\circ}]</script></span>. A value of <span><span class="MathJax_Preview">0^{
+\circ}</span><script type="math/tex">0^{
+\circ}</script></span> creates an anchor point with local slope equal to the slope of the chordline.</p>
 <p><code>psi1</code>: ( <span><span class="MathJax_Preview">\psi_1</span><script type="math/tex">\psi_1</script></span> ) <code><a title="pyairpar.core.param.Param" href="param.html#pyairpar.core.param.Param">Param</a></code> representing the angle of the aft curvature control "arm."
 Regardless of the sign of <span><span class="MathJax_Preview">R</span><script type="math/tex">R</script></span> or which surface the <code><a title="pyairpar.core.anchor_point.AnchorPoint" href="#pyairpar.core.anchor_point.AnchorPoint">AnchorPoint</a></code> lies on, an angle of <span><span class="MathJax_Preview">90^{\circ}</span><script type="math/tex">90^{\circ}</script></span>
 always means that the curvature control arm points perpendicular to the line passing through the
 neighboring control points of the <code><a title="pyairpar.core.anchor_point.AnchorPoint" href="#pyairpar.core.anchor_point.AnchorPoint">AnchorPoint</a></code>. Angles below <span><span class="MathJax_Preview">90^{\circ}</span><script type="math/tex">90^{\circ}</script></span> "tuck" the arms in, and angles
-above <span><span class="MathJax_Preview">90^{\circ}</span><script type="math/tex">90^{\circ}</script></span> "spread" the arms out. The valid range is <span><span class="MathJax_Preview">\psi_1 \in (0^{\circ},180^{\circ})</span><script type="math/tex">\psi_1 \in (0^{\circ},180^{\circ})</script></span>.</p>
+above <span><span class="MathJax_Preview">90^{\circ}</span><script type="math/tex">90^{\circ}</script></span> "spread" the arms out. The valid range is <span><span class="MathJax_Preview">\psi_1 \in [0^{\circ},180^{\circ}]</span><script type="math/tex">\psi_1 \in [0^{\circ},180^{\circ}]</script></span>.</p>
 <p><code>psi2</code>: ( <span><span class="MathJax_Preview">\psi_2</span><script type="math/tex">\psi_2</script></span> ) <code><a title="pyairpar.core.param.Param" href="param.html#pyairpar.core.param.Param">Param</a></code> representing the angle of the fore curvature control
 "arm." Regardless of the sign of <span><span class="MathJax_Preview">R</span><script type="math/tex">R</script></span> or which surface the <code><a title="pyairpar.core.anchor_point.AnchorPoint" href="#pyairpar.core.anchor_point.AnchorPoint">AnchorPoint</a></code> lies on, an angle of <span><span class="MathJax_Preview">90^{
 \circ}</span><script type="math/tex">90^{
 \circ}</script></span> always means that the curvature control arm points perpendicular to the line passing through the
 neighboring control points of the <code><a title="pyairpar.core.anchor_point.AnchorPoint" href="#pyairpar.core.anchor_point.AnchorPoint">AnchorPoint</a></code>. Angles below <span><span class="MathJax_Preview">90^{\circ}</span><script type="math/tex">90^{\circ}</script></span> "tuck" the arms in,
-and angles above <span><span class="MathJax_Preview">90^{\circ}</span><script type="math/tex">90^{\circ}</script></span> "spread" the arms out. The valid range is <span><span class="MathJax_Preview">\psi_2 \in (0^{\circ},
-180^{\circ})</span><script type="math/tex">\psi_2 \in (0^{\circ},
-180^{\circ})</script></span>.</p>
+and angles above <span><span class="MathJax_Preview">90^{\circ}</span><script type="math/tex">90^{\circ}</script></span> "spread" the arms out. The valid range is <span><span class="MathJax_Preview">\psi_2 \in [0^{\circ},
+180^{\circ}]</span><script type="math/tex">\psi_2 \in [0^{\circ},
+180^{\circ}]</script></span>.</p>
 <p><code>length_scale_dimension</code>: a <code>float</code> giving the length scale by which to non-dimensionalize the <code>x</code> and <code>y</code>
 values (optional)</p>
 <h3 id="returns">Returns:</h3>
@@ -298,8 +303,10 @@ values (optional)</p>
 
         `R`: ( \\(R\\) ) `pyairpar.core.param.Param` representing the radius of curvature at the \\(x\\) - \\(y\\)
         location of the `AnchorPoint`. A positive value makes the airfoil convex at the `AnchorPoint` location,
-        and a negative value makes the airfoil concave at the `AnchorPoint` location. The valid range is
-        \\( \\{R \\in \\mathbb{R} \\, | \\, R \\neq 0 \\} \\).
+        and a negative value makes the airfoil concave at the `AnchorPoint` location. A value of 0 creates a
+        flat-plate-type leading edge. The valid range is \\( R \\in [-\infty, \infty] \\). Inclusive brackets are
+        used here because setting \\(R=\\pm \\infty\\) creates an anchor point with no curvature (infinite radius of
+        curvature).
 
         `r`: ( \\(r\\) ) `pyairpar.core.param.Param` representing the ratio of the distance from the `AnchorPoint`
         location to the neighboring control point closest to the trailing edge to the distance between the
@@ -308,20 +315,21 @@ values (optional)</p>
         `phi`: ( \\(\\phi\\) ) `pyairpar.core.param.Param` representing the angle of the line passing through the
         `AnchorPoint`&#39;s neighboring control points, referenced counter-clockwise from the chordline if the
         `AnchorPoint` is on the upper airfoil surface and clockwise from the chordline if the `AnchorPoint` is on the
-        lower airfoil surface. The valid range is \\(\\psi_1 \\in (-90^{\\circ},90^{\\circ})\\).
+        lower airfoil surface. The valid range is \\(\\psi_1 \\in [-180^{\\circ},180^{\\circ}]\\). A value of \\(0^{
+        \\circ}\\) creates an anchor point with local slope equal to the slope of the chordline.
 
         `psi1`: ( \\(\\psi_1\\) ) `pyairpar.core.param.Param` representing the angle of the aft curvature control &#34;arm.&#34;
         Regardless of the sign of \\(R\\) or which surface the `AnchorPoint` lies on, an angle of \\(90^{\\circ}\\)
         always means that the curvature control arm points perpendicular to the line passing through the
         neighboring control points of the `AnchorPoint`. Angles below \\(90^{\\circ}\\) &#34;tuck&#34; the arms in, and angles
-        above \\(90^{\\circ}\\) &#34;spread&#34; the arms out. The valid range is \\(\\psi_1 \\in (0^{\\circ},180^{\\circ})\\).
+        above \\(90^{\\circ}\\) &#34;spread&#34; the arms out. The valid range is \\(\\psi_1 \\in [0^{\\circ},180^{\\circ}]\\).
 
         `psi2`: ( \\(\\psi_2\\) ) `pyairpar.core.param.Param` representing the angle of the fore curvature control
         &#34;arm.&#34; Regardless of the sign of \\(R\\) or which surface the `AnchorPoint` lies on, an angle of \\(90^{
         \\circ}\\) always means that the curvature control arm points perpendicular to the line passing through the
         neighboring control points of the `AnchorPoint`. Angles below \\(90^{\\circ}\\) &#34;tuck&#34; the arms in,
-        and angles above \\(90^{\\circ}\\) &#34;spread&#34; the arms out. The valid range is \\(\\psi_2 \\in (0^{\\circ},
-        180^{\\circ})\\).
+        and angles above \\(90^{\\circ}\\) &#34;spread&#34; the arms out. The valid range is \\(\\psi_2 \\in [0^{\\circ},
+        180^{\\circ}]\\).
 
         `length_scale_dimension`: a `float` giving the length scale by which to non-dimensionalize the `x` and `y`
         values (optional)
@@ -336,11 +344,7 @@ values (optional)</p>
         self.name = name
         self.previous_anchor_point = previous_anchor_point
         self.L = L
-
-        if R.value == 0:
-            raise ValueError(&#39;Setting R = 0 yields infinite curvature (not well-defined)&#39;)
-        else:
-            self.R = R
+        self.R = R
 
         if 0 &lt; r.value &lt; 1:
             self.r = r
@@ -351,18 +355,20 @@ values (optional)</p>
             self.phi = phi
         else:
             raise ValueError(f&#39;The anchor point neighboring control point angle, phi, must be between -180 degrees and&#39;
-                             f&#39;180 degrees. A value of {phi.value} was entered.&#39;)
+                             f&#39; 180 degrees, inclusive. A value of {phi.value} was entered.&#39;)
 
-        if 0 &lt; psi1.value &lt; np.pi:
+        if 0 &lt;= psi1.value &lt;= np.pi:
             self.psi1 = psi1
         else:
-            raise ValueError(f&#39;The aft curvature control arm angle, psi1, must be between 0 degrees and 180 degrees.&#39;
+            raise ValueError(f&#39;The aft curvature control arm angle, psi1, must be between 0 degrees and 180 degrees, &#39;
+                             f&#39;inclusive. &#39;
                              f&#39;A value of {psi1.value} was entered.&#39;)
 
-        if 0 &lt; psi2.value &lt; np.pi:
+        if 0 &lt;= psi2.value &lt;= np.pi:
             self.psi2 = psi2
         else:
-            raise ValueError(f&#39;The fore curvature control arm angle, psi2, must be between 0 degrees and 180 degrees.&#39;
+            raise ValueError(f&#39;The fore curvature control arm angle, psi2, must be between 0 degrees and 180 degrees,&#39;
+                             f&#39;inclusive. &#39;
                              f&#39;A value of {psi2.value} was entered.&#39;)
 
         self.length_scale_dimension = length_scale_dimension
