@@ -62,6 +62,10 @@ Technologies for Aircraft (CHEETA). Logo courtesy of [NASA](https://www.nasa.gov
 
 ## Version Notes
 
+### 1.1.1
+
+- Corrections to README.md for PyPi long project description (images not showing properly)
+
 ### 1.1.0
 
 - Made corrections on BaseAirfoilParams and AnchorPoint Args domains
