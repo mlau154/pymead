@@ -11,7 +11,7 @@ with open((HERE / "README.md"), encoding="utf-8") as f:
 # This call to setup() does all the work
 setup(
     name="pyairpar",
-    version="1.1.1",
+    version="2.0.0",
     description="Generate Bézier-parametrized airfoils and airfoil systems",
     long_description=README,
     long_description_content_type="text/markdown",
@@ -23,7 +23,8 @@ setup(
         "License :: OSI Approved :: MIT License",
         "Programming Language :: Python :: 3",
     ],
-    packages=["pyairpar", "pyairpar/core", "pyairpar/symmetric", "pyairpar/examples", "pyairpar/utils"],
+    packages=["pyairpar", "pyairpar/core", "pyairpar/symmetric", "pyairpar/examples", "pyairpar/utils", "pyairpar/gui",
+              "pyairpar/tests"],
     include_package_data=True,
-    install_requires=["scipy", "numpy", "shapely", "matplotlib", "requests"],
+    install_requires=["scipy", "numpy", "shapely", "matplotlib", "requests", "PyQt5"],
 )

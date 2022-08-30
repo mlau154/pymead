@@ -23,7 +23,7 @@ class Param:
         `pyairpar.utils.airfoil_matching` and for normalization during parameter extraction. Default:
         `np.array([-np.inf, np.inf])` (no normalization).
 
-        `length_scale_dimension`: length scale used to non-dimensionalize the parameter if `units` is not `None`.
+        `scale_value`: length scale used to non-dimensionalize the parameter if `units` is not `None`.
         Default value: `None`.
 
         `active`: a `bool` stating whether the parameter is active (used in parameter extraction: if inactive,

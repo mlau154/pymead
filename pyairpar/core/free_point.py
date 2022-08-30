@@ -1,14 +1,17 @@
 import numpy as np
 from pyairpar.core.param import Param
+from pyairpar.core.control_point import ControlPoint
 
 
-class FreePoint:
+class FreePoint(ControlPoint):
 
     def __init__(self,
                  x: Param,
                  y: Param,
                  previous_anchor_point: str,
-                 length_scale_dimension: float = None
+                 previous_free_point: str or None = None,
+                 name: str or None = None,
+                 length_scale_dimension: float or None = None
                  ):
         """
         ### Description:
@@ -36,13 +39,14 @@ class FreePoint:
         An instance of the `FreePoint` class
         """
 
+        super().__init__(x.value, y.value, name, previous_anchor_point)
+
         self.x = x
         self.y = y
-        self.previous_anchor_point = previous_anchor_point
+        self.previous_free_point = previous_free_point
         self.length_scale_dimension = length_scale_dimension
         self.n_overrideable_parameters = self.count_overrideable_variables()
         self.scale_vars()
-        self.xy = np.array([self.x.value, self.y.value])
 
     def scale_vars(self):
         """
@@ -57,6 +61,9 @@ class FreePoint:
                           if isinstance(var, Param) and var.units == 'length']:
                 if param.scale_value is None:  # only scale if the parameter has not yet been scaled
                     param.value = param.value * self.length_scale_dimension
+
+    def __repr__(self):
+        return f"free_point_{self.name}"
 
     def count_overrideable_variables(self):
         """
