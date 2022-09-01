@@ -379,20 +379,20 @@ class AnchorPoint(ControlPoint):
         else:
             self.abs_psi2 = measured_psi
             self.Lc_plus = measured_Lc
-            print(f"angle_diff = {np.arctan2(np.sin(self.abs_psi2 - self.abs_phi2), np.cos(self.abs_psi2 - self.abs_phi2)) * 180/np.pi}")
+            # print(f"angle_diff = {np.arctan2(np.sin(self.abs_psi2 - self.abs_phi2), np.cos(self.abs_psi2 - self.abs_phi2)) * 180/np.pi}")
             if 0 < np.arctan2(np.sin(self.abs_psi2 - self.abs_phi2), np.cos(self.abs_psi2 - self.abs_phi2)) < np.pi:
                 sign_R = 1
             else:
                 sign_R = -1
 
-        print(f"self.abs_phi1 = {self.abs_phi1 * 180/np.pi}")
-        print(f"self.abs_phi2 = {self.abs_phi2 * 180/np.pi}")
-        print(f"self.abs_psi1 = {self.abs_psi1 * 180/np.pi}")
-        print(f"self.abs_psi2 = {self.abs_psi2 * 180/np.pi}")
+        # print(f"self.abs_phi1 = {self.abs_phi1 * 180/np.pi}")
+        # print(f"self.abs_phi2 = {self.abs_phi2 * 180/np.pi}")
+        # print(f"self.abs_psi1 = {self.abs_psi1 * 180/np.pi}")
+        # print(f"self.abs_psi2 = {self.abs_psi2 * 180/np.pi}")
 
-        print(f"sign(Rvalue) = {int(np.sign(self.R.value))}")
+        # print(f"sign(Rvalue) = {int(np.sign(self.R.value))}")
         if int(np.sign(self.R.value)) * sign_R == -1:
-            print('Flipping sign!')
+            # print('Flipping sign!')
             self.R.value *= -1  # Flip the sign of the radius of curvature if different than current value
         else:
             pass
@@ -465,7 +465,7 @@ class AnchorPoint(ControlPoint):
             else:
                 self.R.value = self.Lt_plus ** 2 / (
                         self.Lc_plus * (1 - 1 / self.n2) * np.sin(self.psi2.value + np.pi / 2))
-                print(f"self.psi2.value = {self.psi2.value * 180/ np.pi}")
+                # print(f"self.psi2.value = {self.psi2.value * 180/ np.pi}")
         else:
             # Lc = Lt ** 2 / (R * (1 - 1 / n) * np.sin(psi))
             if minus_plus == 'minus':

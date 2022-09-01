@@ -7,22 +7,31 @@ import numpy as np
 import pyqtgraph as pg
 from pyqtgraph.Qt import QtCore
 
+from PyQt5.QtGui import QPen
+from PyQt5 import QtCore
+
 from pyairpar.core.airfoil import Airfoil
 
 # Enable antialiasing for prettier plots
 pg.setConfigOptions(antialias=True)
 
-w = pg.GraphicsLayoutWidget(show=True)
+w = pg.GraphicsLayoutWidget(show=True, size=(1000, 300))
 w.setWindowTitle('pyqtgraph example: CustomGraphItem')
 w.setBackground('w')
-v = w.addViewBox()
+# v = w.addViewBox()
+# v.setAspectLocked()
+v = w.addPlot()
 v.setAspectLocked()
 
 
-class Graph(pg.GraphItem):
-    def __init__(self):
+class AirfoilGraph(pg.GraphItem):
+    def __init__(self, airfoil: Airfoil, pen):
+        self.airfoil = airfoil
+        self.airfoil.init_airfoil_curve_pg(v, pen)
+        # w.addItem(self.airfoil.curve_list[0].pg_plot_widget_handle)
         self.dragPoint = None
         self.dragOffset = None
+        self.te_thickness_edit_mode = False
         self.textItems = []
         pg.GraphItem.__init__(self)
         self.scatter.sigClicked.connect(self.clicked)
@@ -48,6 +57,8 @@ class Graph(pg.GraphItem):
 
     def updateGraph(self):
         pg.GraphItem.setData(self, **self.data)
+        # print(self.data)
+        self.airfoil.update_airfoil_curve_pg()
         for i, item in enumerate(self.textItems):
             item.setPos(*self.data['pos'][i])
 
@@ -81,39 +92,49 @@ class Graph(pg.GraphItem):
         x = self.data['pos'][:, 0]
         y = self.data['pos'][:, 1]
 
-        anchor_point = airfoil.anchor_points[
-            airfoil.anchor_point_order.index(airfoil.control_points[ind].anchor_point_tag)]
+        anchor_point = self.airfoil.anchor_points[
+            self.airfoil.anchor_point_order.index(self.airfoil.control_points[ind].anchor_point_tag)]
 
-        if airfoil.control_points[ind].cp_type == 'g2_minus':
+        if self.airfoil.control_points[ind].cp_type == 'g2_minus':
             new_Lc = np.sqrt((x[ind] - x[ind + 1]) ** 2 + (y[ind] - y[ind + 1]) ** 2)
             # print(f"new_Lc = {new_Lc}")
             # phi_abs_angle = np.arctan2(y[ind + 1] - y[ind + 2], x[ind + 1] - x[ind + 2])
             new_psi1_abs_angle = np.arctan2(y[ind] - y[ind + 1], x[ind] - x[ind + 1])
             anchor_point.recalculate_ap_branch_props_from_g2_pt('minus', new_psi1_abs_angle, new_Lc)
 
-        elif airfoil.control_points[ind].cp_type == 'g2_plus':
+        elif self.airfoil.control_points[ind].cp_type == 'g2_plus':
             new_Lc = np.sqrt((x[ind] - x[ind - 1]) ** 2 + (y[ind] - y[ind - 1]) ** 2)
-            print(f"new_Lc = {new_Lc}")
+            # print(f"new_Lc = {new_Lc}")
             new_psi2_abs_angle = np.arctan2(y[ind] - y[ind - 1], x[ind] - x[ind - 1])
             anchor_point.recalculate_ap_branch_props_from_g2_pt('plus', new_psi2_abs_angle, new_Lc)
 
-        elif airfoil.control_points[ind].cp_type == 'g1_minus':
-            # x[ind - 1] += dx
-            # y[ind - 1] += dy
-            # cp_skeleton.set_xdata(x)
-            # cp_skeleton.set_ydata(y)
+        elif self.airfoil.control_points[ind].cp_type == 'g1_minus':
             new_Lt = np.sqrt((x[ind] - x[ind + 1]) ** 2 + (y[ind] - y[ind + 1]) ** 2)
             new_abs_phi1 = np.arctan2(y[ind] - y[ind + 1], x[ind] - x[ind + 1])
             anchor_point.recalculate_ap_branch_props_from_g1_pt('minus', new_abs_phi1, new_Lt)
 
-        elif airfoil.control_points[ind].cp_type == 'g1_plus':
+        elif self.airfoil.control_points[ind].cp_type == 'g1_plus':
             new_Lt = np.sqrt((x[ind] - x[ind - 1]) ** 2 + (y[ind] - y[ind - 1]) ** 2)
             new_abs_phi2 = np.arctan2(y[ind] - y[ind - 1], x[ind] - x[ind - 1])
             anchor_point.recalculate_ap_branch_props_from_g1_pt('plus', new_abs_phi2, new_Lt)
 
+        elif self.airfoil.control_points[ind].name == 'le':
+            self.airfoil.dx.value = x[ind]
+            self.airfoil.dy.value = y[ind]
+
+        elif self.airfoil.control_points[ind].name in ['te_1', 'te_2']:
+            if self.te_thickness_edit_mode:
+                pass
+            else:
+                # chord = np.sqrt((x[ind] - self.airfoil.dx.value)**2 + (y[ind] - self.airfoil.dy.value)**2)
+                angle_of_attack = -np.arctan2(y[ind] - self.airfoil.dy.value, x[ind] - self.airfoil.dx.value)
+                print(f"AoA = {angle_of_attack * 180/np.pi}")
+                # self.airfoil.c.value = chord
+                self.airfoil.alf.value = angle_of_attack
+
         # print(f"anchor_point.R.value = {anchor_point.R.value}")
         # airfoil.base_airfoil_params.R_le.value = anchor_point.R.value
-        airfoil.update()
+        self.airfoil.update()
         # airfoil.update_curvature_comb_normals()
         # airfoil.update_curvature_comb_curve()
         # print(f"airfoil_ap_LE = {airfoil.anchor_points[1].R.value}")
@@ -139,9 +160,10 @@ class Graph(pg.GraphItem):
 
         # cp_skeleton.set_xdata(airfoil.control_point_array[:, 0])
         # cp_skeleton.set_ydata(airfoil.control_point_array[:, 1])
-        self.data['pos'] = airfoil.control_point_array
-        print(airfoil.control_points[2].xp)
-
+        # print(self.airfoil.control_point_array[3, :])
+        self.data['pos'] = self.airfoil.control_point_array
+        # print(self.data['pos'])
+        # print(airfoil.control_points[2].xp)
 
         self.updateGraph()
         ev.accept()
@@ -150,8 +172,11 @@ class Graph(pg.GraphItem):
         print("clicked: %s" % pts)
 
 
-g = Graph()
+airfoil1 = Airfoil()
+g = AirfoilGraph(airfoil1, pen=pg.mkPen(color='cornflowerblue', width=2))
+# v.addItem(g)
 v.addItem(g)
+
 
 ## Define positions of nodes
 # pos = np.array([
@@ -162,8 +187,8 @@ v.addItem(g)
 #     [5, 5],
 #     [15, 5]
 # ], dtype=float)
-airfoil = Airfoil()
-pos = airfoil.control_point_array
+
+pos = airfoil1.control_point_array
 
 ## Define the set of connections in the graph
 # adj = np.array([
@@ -181,7 +206,7 @@ for idx, _ in enumerate(pos):
         adj[idx, 1] = 0
     else:
         adj[idx, 1] = idx + 1
-print(adj)
+# print(adj)
 
 ## Define the symbol to use for each node (this is optional)
 # symbols = ['o', 'o', 'o', 'o', 't', '+']
@@ -201,6 +226,7 @@ print(adj)
 
 ## Update the graph
 g.setData(pos=pos, adj=adj, size=8, pxMode=True)
+pass
 
 if __name__ == '__main__':
     pg.exec()

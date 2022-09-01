@@ -26,5 +26,5 @@ setup(
     packages=["pyairpar", "pyairpar/core", "pyairpar/symmetric", "pyairpar/examples", "pyairpar/utils", "pyairpar/gui",
               "pyairpar/tests"],
     include_package_data=True,
-    install_requires=["scipy", "numpy", "shapely", "matplotlib", "requests", "PyQt5"],
+    install_requires=["scipy", "numpy", "shapely", "matplotlib", "requests", "PyQt5", "pyqtgraph"],
 )

@@ -90,7 +90,7 @@ class Bezier(ParametricCurve):
             self.R = np.true_divide(1, self.k)
 
         super().__init__(self.t, self.x, self.y, self.px, self.py, self.ppx, self.ppy, self.k, self.R)
-        print('Finished initialization of Bezier curve.')
+        # print('Finished initialization of Bezier curve.')
 
     def update(self, P, nt, t: np.ndarray = None):
         self.P = P

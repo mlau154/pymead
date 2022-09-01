@@ -5,8 +5,6 @@ import numpy as np
 
 def recalculate_airfoil_parameters(ind: int, x: np.ndarray, y: np.ndarray, cp_skeleton, dx, dy, airfoil: Airfoil, canvas: MplCanvas, lines):
     anchor_point = airfoil.anchor_points[airfoil.anchor_point_order.index(airfoil.control_points[ind].anchor_point_tag)]
-    print(ind)
-    print(airfoil.control_points[ind].cp_type)
 
     if airfoil.control_points[ind].cp_type == 'g2_minus':
         new_Lc = np.sqrt((x[ind] - x[ind + 1])**2 + (y[ind] - y[ind + 1])**2)
@@ -34,6 +32,10 @@ def recalculate_airfoil_parameters(ind: int, x: np.ndarray, y: np.ndarray, cp_sk
         new_Lt = np.sqrt((x[ind] - x[ind - 1]) ** 2 + (y[ind] - y[ind - 1]) ** 2)
         new_abs_phi2 = np.arctan2(y[ind] - y[ind - 1], x[ind] - x[ind - 1])
         anchor_point.recalculate_ap_branch_props_from_g1_pt('plus', new_abs_phi2, new_Lt)
+
+    elif airfoil.control_points[ind].name == 'le':
+        airfoil.dx.value = x[ind]
+        airfoil.dy.value = y[ind]
 
     # print(f"anchor_point.R.value = {anchor_point.R.value}")
     # airfoil.base_airfoil_params.R_le.value = anchor_point.R.value

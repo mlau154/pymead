@@ -270,6 +270,18 @@ class Airfoil:
 
 
         """
+        # Translate back to origin if not already at origin
+        if self.control_points is not None and self.control_points != []:
+            current_le_pos = np.array([[cp.xp, cp.yp] for cp in self.control_points if cp.name == 'le'])
+            self.translate(-current_le_pos[0, 0], -current_le_pos[0, 1])
+
+        # Rotate to zero degree angle of attack
+        if self.control_points is not None and self.control_points != []:
+            current_te_1_pos = np.array([[cp.xp, cp.yp] for cp in self.control_points if cp.name == 'te_1']).flatten()
+            current_alf = -np.arctan2(current_te_1_pos[1], current_te_1_pos[0])
+            # print(current_alf * 180/np.pi)
+            self.rotate(current_alf)
+
         # Generate anchor point branches
         for ap in self.anchor_points:
             if isinstance(ap, AnchorPoint):
@@ -281,13 +293,21 @@ class Airfoil:
         # Get the control points from all the anchor points
         self.control_points = []
         for ap_name in self.anchor_point_order:
-            print(f"ap_name_control_points = {self.control_points}")
+            # print(f"ap_name_control_points = {self.control_points}")
             self.control_points.extend(next((ap.ctrlpt_branch_list for ap in self.anchor_points if ap.name == ap_name)))
+
+        # Rotate by airfoil angle of attack (alf)
+        print(f"alf.value = {self.alf.value * 180/np.pi}")
+        self.rotate(-1.0 * self.alf.value)
+
+        # Translate by airfoil dx, dy
+        self.translate(self.dx.value, self.dy.value)
 
         # Get the control point array
         self.control_point_array = np.array([[cp.xp, cp.yp] for cp in self.control_points])
+        print(next((cp.xp for cp in self.control_points if cp.name == 'te_1')))
 
-        # Make Bezier curves from the control point array
+        # Make Bézier curves from the control point array
         self.curve_list_generated = True
         if self.curve_list is None:
             self.curve_list = []
@@ -334,14 +354,15 @@ class Airfoil:
 
         The translated control point and anchor point arrays
         """
-        self.control_points[:, 0] += dx
-        self.control_points[:, 1] += dy
-        self.anchor_point_array[:, 0] += dx
-        self.anchor_point_array[:, 1] += dy
-        for key, anchor_point in self.transformed_anchor_points.items():
-            self.transformed_anchor_points[key] = anchor_point + np.array([dx, dy])
-        self.needs_update = True
-        return self.control_points, self.anchor_point_array
+        for cp in self.control_points:
+            cp.xp += dx
+            cp.yp += dy
+        # self.anchor_point_array[:, 0] += dx
+        # self.anchor_point_array[:, 1] += dy
+        # for key, anchor_point in self.transformed_anchor_points.items():
+        #     self.transformed_anchor_points[key] = anchor_point + np.array([dx, dy])
+        # self.needs_update = True
+        # return self.control_points, self.anchor_point_array
 
     def rotate(self, angle: float):
         """
@@ -359,12 +380,23 @@ class Airfoil:
         """
         rot_mat = np.array([[np.cos(angle), -np.sin(angle)],
                             [np.sin(angle), np.cos(angle)]])
-        self.control_points = (rot_mat @ self.control_points.T).T
-        self.anchor_point_array = (rot_mat @ self.anchor_point_array.T).T
-        for key, anchor_point in self.transformed_anchor_points.items():
-            self.transformed_anchor_points[key] = (rot_mat @ anchor_point.T).T
-        self.needs_update = True
-        return self.control_points, self.anchor_point_array
+        # self.control_points = (rot_mat @ self.control_points.T).T
+        for cp in self.control_points:
+            if cp.name == 'te_1':
+                print(f"Original te point = {cp.xp}, {cp.yp}")
+                print(f"Original measured alpha = {-np.arctan2(cp.yp, cp.xp) * 180/np.pi}")
+            rotated_point = (rot_mat @ np.array([[cp.xp], [cp.yp]])).flatten()
+            # print(f"rotated_point = {rotated_point}")
+            cp.xp = rotated_point[0]
+            cp.yp = rotated_point[1]
+            if cp.name == 'te_1':
+                print(f"New te point = {cp.xp}, {cp.yp}")
+                print(f"New measured alpha = {-np.arctan2(cp.yp, cp.xp) * 180 / np.pi}")
+        # self.anchor_point_array = (rot_mat @ self.anchor_point_array.T).T
+        # for key, anchor_point in self.transformed_anchor_points.items():
+        #     self.transformed_anchor_points[key] = (rot_mat @ anchor_point.T).T
+        # self.needs_update = True
+        # return self.control_points, self.anchor_point_array
 
     def generate_coords(self):
         """
@@ -648,6 +680,18 @@ class Airfoil:
             plt_curves.append(plt_curve)
         return plt_curves
 
+    def init_airfoil_curve_pg(self, v, pen):
+        for curve in self.curve_list:
+            curve.init_curve_pg(v, pen)
+
+    def update_airfoil_curve(self):
+        for curve in self.curve_list:
+            curve.update_curve()
+
+    def update_airfoil_curve_pg(self):
+        for curve in self.curve_list:
+            curve.update_curve_pg()
+
     def plot_control_point_skeleton(self, axs: plt.axes, **plot_kwargs):
         return axs.plot(self.control_point_array[:, 0], self.control_point_array[:, 1], **plot_kwargs)
 
@@ -661,7 +705,7 @@ class Airfoil:
     def plot_curvature_comb_normals(self, axs: plt.axes, scale_factor, **plot_kwargs):
         self.set_curvature_scale_factor(scale_factor)
         self.plt_normals = []
-        print(f"Setting plt_normals...")
+        # print(f"Setting plt_normals...")
         for curve in self.curve_list:
             plt_normal = curve.plot_curvature_comb_normals(axs, self.normalized_curvature_scale_factor, **plot_kwargs)
             self.plt_normals.append(plt_normal)
@@ -669,7 +713,7 @@ class Airfoil:
 
     def update_curvature_comb_normals(self):
         for curve in self.curve_list:
-            print(f"scale_factor = {curve.scale_factor}")
+            # print(f"scale_factor = {curve.scale_factor}")
             curve.update_curvature_comb_normals()
 
     def plot_curvature_comb_curve(self, axs: plt.axes, scale_factor, **plot_kwargs):
