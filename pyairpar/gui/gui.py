@@ -27,9 +27,15 @@ class GUI(QMainWindow):
         self.drs = []  # Extremely important that this be left as an instance variable since Qt will garbage collect
         # the draggable line otherwise
         self.design_tree = None
-        self.airfoil = Airfoil()
 
+        self.airfoil = Airfoil()
         self.airfoil_graph = AirfoilGraph(self.airfoil)
+        print(f"Airfoil Curve 0 Handle = {self.airfoil_graph.airfoil.curve_list[0].pg_curve_handle}")
+
+        self.airfoil2 = Airfoil()
+        self.airfoil_graph2 = AirfoilGraph(self.airfoil2, w=self.airfoil_graph.w, v=self.airfoil_graph.v)
+        print(f"Airfoil 2 Curve 0 Handle = {self.airfoil_graph2.airfoil.curve_list[0].pg_curve_handle}")
+
         self.main_layout = QHBoxLayout()
         self.create_design_tree()
         self.main_layout.addWidget(self.airfoil_graph.w)
@@ -38,7 +44,6 @@ class GUI(QMainWindow):
         # self.airfoil_graph.w.setFocus()
         self.setCentralWidget(self.main_widget)
         self.set_title_and_icon()
-        # self.plot_airfoil_on_canvas(self.mplcanvas1)
         self.main_icon_toolbar = MainIconToolbar(self)
         self.setStatusBar(QStatusBar(self))
 
@@ -52,8 +57,7 @@ class GUI(QMainWindow):
         self.design_tree.setGeometry(100, 100, 800, 500)
         self.design_tree.setColumnCount(1)
         self.design_tree.header().hide()
-        items = []
-        items.append(QTreeWidgetItem(self.design_tree))
+        items = [QTreeWidgetItem(self.design_tree)]
         items[0].setText(0, "Airfoils")
         child_item_airfoil = QTreeWidgetItem(items[0])
         child_item_airfoil.setText(0, "Airfoil 0")
@@ -95,29 +99,10 @@ class GUI(QMainWindow):
 
         return super().eventFilter(source, event)
 
-    def plot_airfoil_on_canvas(self, canvas: MplCanvas):
-        airfoil = Airfoil()
-        lines1 = airfoil.plot_airfoil(canvas.axes, color='cornflowerblue', lw=2, label='airfoil')
-        curve_list2 = airfoil.plot_curvature_comb_normals(canvas.axes, 0.04, color='mediumaquamarine', lw=0.8)
-        curve_list3 = airfoil.plot_curvature_comb_curve(canvas.axes, 0.04, color='indianred', lw=0.8)
-        print(f'Normals = {airfoil.plt_normals}')
-        curve_list4 = airfoil.plot_control_point_skeleton(canvas.axes, color='grey', ls='--', marker='*', lw=1.2)
-        # for curve in curve_list1:
-        #     curve.set_picker(7)
-        #     # curve.pick()
-        for curve in curve_list4:
-            dr = DraggableLine(curve, 7, button_release_callback=recalculate_airfoil_parameters, airfoil=airfoil,
-                               canvas=canvas, lines=lines1)
-            dr.connect()
-            self.drs.append(dr)
-        canvas.axes.margins(x=0.1, y=1.5, tight=True)
-        canvas.axes.set_aspect('equal')
-        canvas.draw()
-
 
 def main():
     app = QApplication(sys.argv)
-    app.setStyle('Fusion')
+    # app.setStyle('Fusion')
     gui = GUI()
     gui.show()
     app.exec()

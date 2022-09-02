@@ -7,6 +7,10 @@ import sys
 import os
 
 from pyairpar.utils.read_write_json import read_json
+from pyairpar.gui.airfoil_graph import AirfoilGraph
+from pyairpar.core.airfoil import Airfoil
+from pyairpar.core.base_airfoil_params import BaseAirfoilParams
+from pyairpar.core.param import Param
 
 
 class MainIconToolbar(QToolBar):
@@ -40,6 +44,14 @@ class MainIconToolbar(QToolBar):
         self.change_background_color_button.clicked.connect(self.change_background_color_button_toggled)
         self.addWidget(self.change_background_color_button)
 
+        self.add_airfoil_icon = QIcon(os.path.join(self.icon_dir, 'add_icon.png'))
+        self.add_airfoil_button = QToolButton(self)
+        self.add_airfoil_button.setStatusTip("Add airfoil")
+        self.add_airfoil_button.setCheckable(False)
+        self.add_airfoil_button.setIcon(self.add_airfoil_icon)
+        self.add_airfoil_button.clicked.connect(self.add_airfoil_button_toggled)
+        self.addWidget(self.add_airfoil_button)
+
     def on_grid_button_pressed(self, checked):
         if checked:
             self.parent.mplcanvas1.axes.grid(**self.grid_kwargs)
@@ -65,5 +77,11 @@ class MainIconToolbar(QToolBar):
     def change_background_color_button_toggled(self):
         self.parent.setStyleSheet("background-color: black;")
         self.parent.airfoil_graph.w.setBackground('k')
-        self.parent.design_tree.setStyleSheet("color: white;")
+        self.parent.design_tree.setStyleSheet('''QTreeWidget {color: white;} QTreeView::item:hover {background: green;}
+        QTreeView::branch:closed {color: white;} QTreeView::branch:open {color: white;}''')  # need to use image, not
+        # color for open closed arrows
         self.parent.show()
+
+    def add_airfoil_button_toggled(self):
+        airfoil = Airfoil(base_airfoil_params=BaseAirfoilParams(R_le=Param(0.15, 'length'), dx=Param(-0.1), dy=Param(-0.2)))
+        self.parent.airfoil_graph2 = AirfoilGraph(airfoil=airfoil, w=self.parent.airfoil_graph.w, v=self.parent.airfoil_graph.v)
