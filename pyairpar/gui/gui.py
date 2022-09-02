@@ -11,6 +11,7 @@ import numpy as np
 
 from pyairpar.core.airfoil import Airfoil
 from pyairpar.gui.recalculate_airfoil_parameters import recalculate_airfoil_parameters
+from pyairpar.gui.airfoil_graph import AirfoilGraph
 from draggable_line import DraggableLine
 
 import sys
@@ -28,38 +29,18 @@ class GUI(QMainWindow):
         self.design_tree = None
         self.airfoil = Airfoil()
 
-        self.mplcanvas1 = MplCanvas(self, width=12, height=6)
+        self.airfoil_graph = AirfoilGraph(self.airfoil)
         self.main_layout = QHBoxLayout()
         self.create_design_tree()
-        self.main_layout.addWidget(self.mplcanvas1.widget)
+        self.main_layout.addWidget(self.airfoil_graph.w)
         self.main_widget = QWidget()
         self.main_widget.setLayout(self.main_layout)
-        self.mplcanvas1.widget.setFocus()
+        # self.airfoil_graph.w.setFocus()
         self.setCentralWidget(self.main_widget)
         self.set_title_and_icon()
-        self.plot_airfoil_on_canvas(self.mplcanvas1)
+        # self.plot_airfoil_on_canvas(self.mplcanvas1)
         self.main_icon_toolbar = MainIconToolbar(self)
         self.setStatusBar(QStatusBar(self))
-
-        # PyQtGraph test
-        win = pg.GraphicsLayoutWidget(show=True, title="Basic plotting examples")
-        win.resize(1000, 600)
-        win.setWindowTitle('pyqtgraph example: Plotting')
-
-        # Enable antialiasing for prettier plots
-        pg.setConfigOptions(antialias=True)
-        win.setBackground('w')
-
-        # pw = pg.PlotWidget()
-
-        # plot_widget = pg.PlotWidget()
-
-        b = win.addPlot(x=np.array([0, 1]), y=np.array([0, 1]), symbol='x')
-
-        # b = win.addPlot(title="Basic array plotting", x=np.array([0, 1]), y=np.array([0, 1]), symbol='x')
-        # b.set_movable(True)
-
-        self.main_layout.addWidget(win)
 
     def set_title_and_icon(self):
         self.setWindowTitle("Airfoil Designer")

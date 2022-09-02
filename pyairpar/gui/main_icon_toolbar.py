@@ -6,17 +6,7 @@ from PIL import Image
 import sys
 import os
 
-current = os.path.dirname(os.path.realpath(__file__))
-
-# Getting the parent directory name
-# where the current directory is present.
-parent_dir = os.path.dirname(current)
-
-# adding the parent directory to
-# the sys.path.
-sys.path.append(parent_dir)
-
-from utils.read_write_json import read_json
+from pyairpar.utils.read_write_json import read_json
 
 
 class MainIconToolbar(QToolBar):
@@ -42,6 +32,14 @@ class MainIconToolbar(QToolBar):
         self.add_image_button.toggled.connect(self.add_image_button_toggled)
         self.addWidget(self.add_image_button)
 
+        self.change_background_color_icon = QIcon(os.path.join(self.icon_dir, 'color_palette.png'))
+        self.change_background_color_button = QToolButton(self)
+        self.change_background_color_button.setStatusTip("Change background color")
+        self.change_background_color_button.setCheckable(False)
+        self.change_background_color_button.setIcon(self.change_background_color_icon)
+        self.change_background_color_button.clicked.connect(self.change_background_color_button_toggled)
+        self.addWidget(self.change_background_color_button)
+
     def on_grid_button_pressed(self, checked):
         if checked:
             self.parent.mplcanvas1.axes.grid(**self.grid_kwargs)
@@ -64,3 +62,8 @@ class MainIconToolbar(QToolBar):
             self.figure_to_remove.remove()
         self.parent.mplcanvas1.draw()
 
+    def change_background_color_button_toggled(self):
+        self.parent.setStyleSheet("background-color: black;")
+        self.parent.airfoil_graph.w.setBackground('k')
+        self.parent.design_tree.setStyleSheet("color: white;")
+        self.parent.show()
