@@ -14,8 +14,8 @@ from pyairpar.core.airfoil import Airfoil
 
 
 class AirfoilGraph(pg.GraphItem):
-    def __init__(self, airfoil: Airfoil = Airfoil(), pen=pg.mkPen(color='cornflowerblue', width=2),
-                 size: tuple = (1000, 300), background_color: str = 'w', w=None, v=None, airfoil2: Airfoil = Airfoil()):
+    def __init__(self, airfoil: Airfoil = None, pen=pg.mkPen(color='cornflowerblue', width=2),
+                 size: tuple = (1000, 300), background_color: str = 'w', w=None, v=None):
         # Enable antialiasing for prettier plots
         pg.setConfigOptions(antialias=True)
 
@@ -33,7 +33,8 @@ class AirfoilGraph(pg.GraphItem):
             self.v = v
 
         self.airfoil = airfoil
-        self.airfoil2 = airfoil2
+        if not self.airfoil:
+            self.airfoil = Airfoil()
         self.airfoil.init_airfoil_curve_pg(self.v, pen)
         self.dragPoint = None
         self.dragOffset = None
@@ -169,14 +170,17 @@ class AirfoilGraph(pg.GraphItem):
             else:
                 chord = np.sqrt((x[ind] - self.airfoil.dx.value)**2 + (y[ind] - self.airfoil.dy.value)**2)
                 angle_of_attack = -np.arctan2(y[ind] - self.airfoil.dy.value, x[ind] - self.airfoil.dx.value)
-                print(f"Before update, airfoil 1 chord is {self.airfoil.c.value}")
-                print(f"Before update, airfoil 2 chord is {self.airfoil2.c.value}")
-                print(self.airfoil.base_airfoil_params.c)
-                print(self.airfoil2.base_airfoil_params.c)
                 self.airfoil.c.value = chord
-                print(f"After update, airfoil 1 chord is {self.airfoil.c.value}")
-                print(f"After update, airfoil 2 chord is {self.airfoil2.c.value}")
                 self.airfoil.alf.value = angle_of_attack
+
+        elif self.airfoil.control_points[ind].cp_type == 'free_point':
+            ap_tag = self.airfoil.control_points[ind].anchor_point_tag
+            fp_name_index = next((idx for idx, fp in enumerate(self.airfoil.free_points[ap_tag])
+                                  if fp.name == self.airfoil.control_points[ind].name))
+            self.airfoil.free_points[ap_tag][fp_name_index].x.value = x[ind]
+            self.airfoil.free_points[ap_tag][fp_name_index].y.value = y[ind]
+            self.airfoil.control_points[ind].xp = x[ind]
+            self.airfoil.control_points[ind].yp = y[ind]
 
         self.airfoil.update()
         self.data['pos'] = self.airfoil.control_point_array

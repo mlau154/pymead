@@ -39,7 +39,9 @@ class FreePoint(ControlPoint):
         An instance of the `FreePoint` class
         """
 
-        super().__init__(x.value, y.value, name, previous_anchor_point)
+        super().__init__(x.value, y.value, name, previous_anchor_point, cp_type='free_point')
+
+        self.ctrlpt = ControlPoint(x.value, y.value, name, previous_anchor_point, cp_type='free_point')
 
         self.x = x
         self.y = y
@@ -52,7 +54,7 @@ class FreePoint(ControlPoint):
         """
         ### Description:
 
-        Scales all of the `pyairpar.core.param.Param`s in the `FreePoint` with `units == 'length'` by the
+        Scales all the `pyairpar.core.param.Param`s in the `FreePoint` with `units == 'length'` by the
         `length_scale_dimension`. Scaling only occurs for each parameter if the `pyairpar.core.param.Param` has not yet
         been scaled.
         """

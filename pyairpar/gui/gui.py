@@ -10,6 +10,9 @@ import pyqtgraph as pg
 import numpy as np
 
 from pyairpar.core.airfoil import Airfoil
+from pyairpar.core.base_airfoil_params import BaseAirfoilParams
+from pyairpar.core.param import Param
+from pyairpar.core.free_point import FreePoint
 from pyairpar.gui.recalculate_airfoil_parameters import recalculate_airfoil_parameters
 from pyairpar.gui.airfoil_graph import AirfoilGraph
 from draggable_line import DraggableLine
@@ -28,21 +31,26 @@ class GUI(QMainWindow):
         # the draggable line otherwise
         self.design_tree = None
 
-        self.airfoil = Airfoil()
-        self.airfoil_graph = AirfoilGraph(self.airfoil)
-        print(f"Airfoil Curve 0 Handle = {self.airfoil_graph.airfoil.curve_list[0].pg_curve_handle}")
-
-        self.airfoil2 = Airfoil()
-        self.airfoil_graph2 = AirfoilGraph(self.airfoil2, w=self.airfoil_graph.w, v=self.airfoil_graph.v, airfoil2=self.airfoil)
-        print(f"Airfoil 2 Curve 0 Handle = {self.airfoil_graph2.airfoil.curve_list[0].pg_curve_handle}")
-        print(f"airfoil_graph_v = {self.airfoil_graph.v}")
-        print(f"airfoil_graph2_v = {self.airfoil_graph2.v}")
-        print(f"airfoil_graph_w = {self.airfoil_graph.w}")
-        print(f"airfoil_graph2_w = {self.airfoil_graph2.w}")
+        self.airfoils = [Airfoil()]
+        self.airfoils[0].insert_free_point(FreePoint(Param(0.5), Param(0.1), previous_anchor_point='te_1', previous_free_point=None, name='upper_fp'))
+        self.airfoils[0].update()
+        self.airfoil_graphs = [AirfoilGraph(self.airfoils[0])]
+        # print(f"Airfoil Curve 0 Handle = {self.airfoil_graph.airfoil.curve_list[0].pg_curve_handle}")
+        self.w = self.airfoil_graphs[0].w
+        self.v = self.airfoil_graphs[0].v
+        #
+        # self.airfoils.append(Airfoil())
+        # self.airfoil_graphs.append(AirfoilGraph(self.airfoils[1], w=self.w, v=self.v, airfoil2=self.airfoils[1]))
+        # self.airfoil_graph2 = None
+        # print(f"Airfoil 2 Curve 0 Handle = {self.airfoil_graph2.airfoil.curve_list[0].pg_curve_handle}")
+        # print(f"airfoil_graph_v = {self.airfoil_graph.v}")
+        # print(f"airfoil_graph2_v = {self.airfoil_graph2.v}")
+        # print(f"airfoil_graph_w = {self.airfoil_graph.w}")
+        # print(f"airfoil_graph2_w = {self.airfoil_graph2.w}")
 
         self.main_layout = QHBoxLayout()
         self.create_design_tree()
-        self.main_layout.addWidget(self.airfoil_graph.w)
+        self.main_layout.addWidget(self.airfoil_graphs[0].w)
         self.main_widget = QWidget()
         self.main_widget.setLayout(self.main_layout)
         # self.airfoil_graph.w.setFocus()
@@ -55,6 +63,13 @@ class GUI(QMainWindow):
         self.setWindowTitle("Airfoil Designer")
         image_path = os.path.join(os.path.dirname(os.getcwd()), 'icons', 'airfoil_slat.png')
         self.setWindowIcon(QIcon(image_path))
+
+    def add_airfoil(self, airfoil: Airfoil = None):
+        print(f"scene = {self.v.scene()}")
+        if not airfoil:
+            airfoil = Airfoil(
+                base_airfoil_params=BaseAirfoilParams(dx=Param(-0.1), dy=Param(-0.2)))
+        self.airfoil_graphs.append(AirfoilGraph(airfoil=airfoil, w=self.w, v=self.v))
 
     def create_design_tree(self):
         self.design_tree = QTreeWidget()
@@ -73,7 +88,7 @@ class GUI(QMainWindow):
         self.design_tree.insertTopLevelItems(0, items)
         # self.design_tree.setItemWidget(items[0], 0, QLineEdit('Airfoil 1'))
         # print(items)
-        for idx, curve in enumerate(self.airfoil.curve_list):
+        for idx, curve in enumerate(self.airfoils[0].curve_list):
             child_item = QTreeWidgetItem(items[0].child(0).child(0))
             items[0].child(0).child(0).insertChild(idx, child_item)
 

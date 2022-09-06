@@ -89,7 +89,6 @@ class Airfoil:
             self.r_te.active = False
             self.phi_te.active = False
 
-        self.free_points = {}
         self.param_dicts = {}
         self.coords = None
         self.non_transformed_coords = None
@@ -129,7 +128,7 @@ class Airfoil:
 
         self.transformed_anchor_points = None
         self.anchor_point_order = ['te_1', 'le', 'te_2']
-        self.free_point_order = {'te_1': [], 'le': []}
+        self.free_points = {'te_1': [], 'le': []}
         self.anchor_point_array = np.array([])
 
         self.N = {
@@ -184,10 +183,14 @@ class Airfoil:
 
         `free_point`: a `pyairpar.core.free_point.FreePoint` to add to a Bézier curve
         """
-        _temp_free_point_list = list(deepcopy(self.free_point_tuple))
-        _temp_free_point_list.append(free_point)
-        self.free_point_tuple = tuple(deepcopy(_temp_free_point_list))
-        self.update()
+        if free_point.previous_free_point is None:
+            # If there are already free_points assigned to this anchor point, need to change the previous_free_point
+            # name of the first free_point in the order from <None> to the name of the current free_point being set
+            if len(self.free_points[free_point.anchor_point_tag]) > 0:
+                self.free_points[free_point.anchor_point_tag].previous_free_point = free_point.name
+            # Now insert the free_point at the start of the list
+            self.free_points[free_point.anchor_point_tag].insert(0, free_point)
+        self.N[free_point.anchor_point_tag] += 1
 
     def delete_free_point(self, index: int = None, xy_location: tuple = None):
         pass
@@ -299,8 +302,15 @@ class Airfoil:
         # Get the control points from all the anchor points
         self.control_points = []
         for ap_name in self.anchor_point_order:
-            # print(f"ap_name_control_points = {self.control_points}")
             self.control_points.extend(next((ap.ctrlpt_branch_list for ap in self.anchor_points if ap.name == ap_name)))
+
+        for key, fp_list in self.free_points.items():
+            if key == 'te_1':
+                insertion_index = 2
+            else:
+                insertion_index = next((idx for idx, cp in enumerate(self.control_points)
+                                        if cp.cp_type == 'g2_plus' and cp.anchor_point_tag == key))
+            self.control_points[insertion_index:insertion_index] = [fp.ctrlpt for fp in fp_list]
 
         # Scale airfoil by chord length
         self.scale(self.c.value)

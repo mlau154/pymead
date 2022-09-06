@@ -17,6 +17,7 @@ class MainIconToolbar(QToolBar):
     def __init__(self, parent):
         super().__init__(parent=parent)
         self.parent = parent
+        self.new_airfoil_location = None
         self.icon_dir = os.path.join(os.path.dirname(os.getcwd()), 'icons')
         self.parent.addToolBar(self)
         self.grid_icon = QIcon(os.path.join(self.icon_dir, 'grid_icon.png'))
@@ -54,10 +55,9 @@ class MainIconToolbar(QToolBar):
 
     def on_grid_button_pressed(self, checked):
         if checked:
-            self.parent.mplcanvas1.axes.grid(**self.grid_kwargs)
+            self.parent.v.showGrid(x=True, y=True)
         else:
-            self.parent.mplcanvas1.axes.grid(visible=False)
-        self.parent.mplcanvas1.draw()
+            self.parent.v.showGrid(x=False, y=False)
 
     def add_image_button_toggled(self, checked):
         if checked:
@@ -76,12 +76,18 @@ class MainIconToolbar(QToolBar):
 
     def change_background_color_button_toggled(self):
         self.parent.setStyleSheet("background-color: black;")
-        self.parent.airfoil_graph.w.setBackground('k')
+        self.parent.w.setBackground('k')
         self.parent.design_tree.setStyleSheet('''QTreeWidget {color: white;} QTreeView::item:hover {background: green;}
         QTreeView::branch:closed {color: white;} QTreeView::branch:open {color: white;}''')  # need to use image, not
         # color for open closed arrows
         self.parent.show()
 
     def add_airfoil_button_toggled(self):
-        airfoil = Airfoil(base_airfoil_params=BaseAirfoilParams(R_le=Param(0.15, 'length'), dx=Param(-0.1), dy=Param(-0.2)))
-        self.parent.airfoil_graph2 = AirfoilGraph(airfoil=airfoil, w=self.parent.airfoil_graph.w, v=self.parent.airfoil_graph.v)
+        def scene_clicked(ev):
+            self.new_airfoil_location = self.parent.v.vb.mapSceneToView(ev.scenePos())
+            airfoil = Airfoil(base_airfoil_params=BaseAirfoilParams(dx=Param(self.new_airfoil_location.x()),
+                                                                    dy=Param(self.new_airfoil_location.y())))
+            self.parent.airfoil_graphs.append(AirfoilGraph(airfoil=airfoil, w=self.parent.w, v=self.parent.v))
+            self.parent.v.scene().sigMouseClicked.disconnect()
+
+        self.parent.v.scene().sigMouseClicked.connect(scene_clicked)

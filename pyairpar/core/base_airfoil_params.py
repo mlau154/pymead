@@ -166,7 +166,7 @@ class BaseAirfoilParams:
         """
         ### Description:
 
-        Scales all of the `pyairpar.core.param.Param`s in the `BaseAirfoilParams` with `units == 'length'` by the
+        Scales all the `pyairpar.core.param.Param`s in the `BaseAirfoilParams` with `units == 'length'` by the
         `length_scale_dimension`. Scaling only occurs for each parameter if the `pyairpar.core.param.Param` has not yet
         been scaled.
         """
