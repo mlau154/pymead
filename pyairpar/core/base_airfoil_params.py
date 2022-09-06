@@ -7,23 +7,23 @@ import numpy as np
 class BaseAirfoilParams:
 
     def __init__(self,
-                 c: Param = Param(1.0),  # chord length
-                 alf: Param = Param(0.0),  # angle of attack (rad)
-                 R_le: Param = Param(0.1, 'length'),  # leading edge radius
-                 L_le: Param = Param(0.1, 'length'),  # leading edge length
-                 r_le: Param = Param(0.5),  # leading edge length ratio
-                 phi_le: Param = Param(0.0, active=False),  # leading edge 'tilt' angle
-                 psi1_le: Param = Param(0.0),  # leading edge upper curvature control angle
-                 psi2_le: Param = Param(0.0),  # leading edge lower curvature control angle
-                 L1_te: Param = Param(0.1, 'length'),  # trailing edge upper length
-                 L2_te: Param = Param(0.1, 'length'),  # trailing edge lower length
-                 theta1_te: Param = Param(np.deg2rad(10.0)),  # trailing edge upper angle
-                 theta2_te: Param = Param(np.deg2rad(10.0)),  # trailing edge lower angle
-                 t_te: Param = Param(0.0, 'length', active=False),  # blunt trailing edge thickness
-                 r_te: Param = Param(0.5, active=False),  # blunt trailing edge thickness length ratio
-                 phi_te: Param = Param(0.0, active=False),  # blunt trailing edge 'tilt' angle
-                 dx: Param = Param(0.0, active=False),  # dx to translate
-                 dy: Param = Param(0.0, active=False),  # dy to translate
+                 c: Param = None,  # chord length
+                 alf: Param = None,  # angle of attack (rad)
+                 R_le: Param = None,  # leading edge radius
+                 L_le: Param = None,  # leading edge length
+                 r_le: Param = None,  # leading edge length ratio
+                 phi_le: Param = None,  # leading edge 'tilt' angle
+                 psi1_le: Param = None,  # leading edge upper curvature control angle
+                 psi2_le: Param = None,  # leading edge lower curvature control angle
+                 L1_te: Param = None,  # trailing edge upper length
+                 L2_te: Param = None,  # trailing edge lower length
+                 theta1_te: Param = None,  # trailing edge upper angle
+                 theta2_te: Param = None,  # trailing edge lower angle
+                 t_te: Param = None,  # blunt trailing edge thickness
+                 r_te: Param = None,  # blunt trailing edge thickness length ratio
+                 phi_te: Param = None,  # blunt trailing edge 'tilt' angle
+                 dx: Param = None,  # dx to translate
+                 dy: Param = None,  # dy to translate
                  non_dim_by_chord: bool = True,
                  ):
         """
@@ -98,25 +98,9 @@ class BaseAirfoilParams:
         self.R_le = R_le
         self.L_le = L_le
         self.r_le = r_le
-
-        if -np.pi <= phi_le.value <= np.pi:
-            self.phi_le = phi_le
-        else:
-            raise ValueError(f'The leading edge tilt angle, phi_le, must be between -180 degrees and 180 degrees,'
-                             f'inclusive. A value of {phi_le.value} was entered.')
-
-        if -np.pi / 2 <= psi1_le.value <= np.pi / 2:
-            self.psi1_le = psi1_le
-        else:
-            raise ValueError(f'The upper curvature control arm angle, psi1_le, must be between -90 degrees and '
-                             f'90 degrees, inclusive. A value of {psi1_le.value} was entered.')
-
-        if -np.pi / 2 <= psi2_le.value <= np.pi / 2:
-            self.psi2_le = psi2_le
-        else:
-            raise ValueError(f'The lower curvature control arm angle, psi2_le, must be between -90 degrees and '
-                             f'90 degrees, inclusive. A value of {psi2_le.value} was entered.')
-
+        self.phi_le = phi_le
+        self.psi1_le = psi1_le
+        self.psi2_le = psi2_le
         self.L1_te = L1_te
         self.L2_te = L2_te
         self.theta1_te = theta1_te
@@ -126,6 +110,54 @@ class BaseAirfoilParams:
         self.phi_te = phi_te
         self.dx = dx
         self.dy = dy
+
+        if not self.c:
+            self.c = Param(1.0)
+        if not self.alf:
+            self.alf = Param(0.0)
+        if not self.R_le:
+            self.R_le = Param(0.1, 'length')
+        if not self.L_le:
+            self.L_le = Param(0.1, 'length')
+        if not self.r_le:
+            self.r_le = Param(0.5)
+        if not self.phi_le:
+            self.phi_le = Param(0.0, active=False)
+        if not self.psi1_le:
+            self.psi1_le = Param(0.0)
+        if not self.psi2_le:
+            self.psi2_le = Param(0.0)
+        if not self.L1_te:
+            self.L1_te = Param(0.1, 'length')
+        if not self.L2_te:
+            self.L2_te = Param(0.1, 'length')
+        if not self.theta1_te:
+            self.theta1_te = Param(np.deg2rad(10.0))
+        if not self.theta2_te:
+            self.theta2_te = Param(np.deg2rad(10.0))
+        if not self.t_te:
+            self.t_te = Param(0.0, 'length', active=False)
+        if not self.r_te:
+            self.r_te = Param(0.5, active=False)
+        if not self.phi_te:
+            self.phi_te = Param(0.0, active=False)
+        if not self.dx:
+            self.dx = Param(0.0, active=False)
+        if not self.dy:
+            self.dy = Param(0.0, active=False)
+
+        if not -np.pi <= self.phi_le.value <= np.pi:
+            raise ValueError(f'The leading edge tilt angle, phi_le, must be between -180 degrees and 180 degrees,'
+                             f'inclusive. A value of {phi_le.value} was entered.')
+
+        if not -np.pi / 2 <= self.psi1_le.value <= np.pi / 2:
+            raise ValueError(f'The upper curvature control arm angle, psi1_le, must be between -90 degrees and '
+                             f'90 degrees, inclusive. A value of {psi1_le.value} was entered.')
+
+        if not -np.pi / 2 <= self.psi2_le.value <= np.pi / 2:
+            raise ValueError(f'The lower curvature control arm angle, psi2_le, must be between -90 degrees and '
+                             f'90 degrees, inclusive. A value of {psi2_le.value} was entered.')
+
         self.non_dim_by_chord = non_dim_by_chord
         self.n_overrideable_parameters = self.count_overrideable_variables()
         self.scale_vars()

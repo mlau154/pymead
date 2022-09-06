@@ -15,7 +15,7 @@ from pyairpar.core.airfoil import Airfoil
 
 class AirfoilGraph(pg.GraphItem):
     def __init__(self, airfoil: Airfoil = Airfoil(), pen=pg.mkPen(color='cornflowerblue', width=2),
-                 size: tuple = (1000, 300), background_color: str = 'w', w=None, v=None):
+                 size: tuple = (1000, 300), background_color: str = 'w', w=None, v=None, airfoil2: Airfoil = Airfoil()):
         # Enable antialiasing for prettier plots
         pg.setConfigOptions(antialias=True)
 
@@ -33,6 +33,7 @@ class AirfoilGraph(pg.GraphItem):
             self.v = v
 
         self.airfoil = airfoil
+        self.airfoil2 = airfoil2
         self.airfoil.init_airfoil_curve_pg(self.v, pen)
         self.dragPoint = None
         self.dragOffset = None
@@ -55,6 +56,7 @@ class AirfoilGraph(pg.GraphItem):
 
         # Define the symbol to use for each node (this is optional)
         # symbols = ['o', 'o', 'o', 'o', 't', '+']
+        symbols = ['+' if cp.cp_type == 'anchor_point' else 'o' for cp in self.airfoil.control_points]
 
         # Define the line style for each connection (this is optional)
         # lines = np.array([
@@ -70,7 +72,7 @@ class AirfoilGraph(pg.GraphItem):
         # texts = ["Point %d" % i for i in range(6)]
 
         # Update the graph
-        self.setData(pos=pos, adj=adj, size=8, pxMode=True)
+        self.setData(pos=pos, adj=adj, size=8, pxMode=True, symbol=symbols)
         self.v.disableAutoRange()
         self.scatter.sigClicked.connect(self.clicked)
 
@@ -159,6 +161,7 @@ class AirfoilGraph(pg.GraphItem):
         elif self.airfoil.control_points[ind].name == 'le':
             self.airfoil.dx.value = x[ind]
             self.airfoil.dy.value = y[ind]
+            # print(f"dx, dy for airfoil {repr(self.airfoil)} is {self.airfoil.dx.value}, {self.airfoil.dy.value}")
 
         elif self.airfoil.control_points[ind].name in ['te_1', 'te_2']:
             if self.te_thickness_edit_mode:
@@ -166,7 +169,13 @@ class AirfoilGraph(pg.GraphItem):
             else:
                 chord = np.sqrt((x[ind] - self.airfoil.dx.value)**2 + (y[ind] - self.airfoil.dy.value)**2)
                 angle_of_attack = -np.arctan2(y[ind] - self.airfoil.dy.value, x[ind] - self.airfoil.dx.value)
+                print(f"Before update, airfoil 1 chord is {self.airfoil.c.value}")
+                print(f"Before update, airfoil 2 chord is {self.airfoil2.c.value}")
+                print(self.airfoil.base_airfoil_params.c)
+                print(self.airfoil2.base_airfoil_params.c)
                 self.airfoil.c.value = chord
+                print(f"After update, airfoil 1 chord is {self.airfoil.c.value}")
+                print(f"After update, airfoil 2 chord is {self.airfoil2.c.value}")
                 self.airfoil.alf.value = angle_of_attack
 
         self.airfoil.update()

@@ -18,7 +18,7 @@ class Airfoil:
 
     def __init__(self,
                  number_coordinates: int = 100,
-                 base_airfoil_params: BaseAirfoilParams or SymmetricBaseAirfoilParams = BaseAirfoilParams(),
+                 base_airfoil_params: BaseAirfoilParams or SymmetricBaseAirfoilParams = None,
                  override_parameters: list = None
                  ):
         """
@@ -51,6 +51,8 @@ class Airfoil:
         self.nt = number_coordinates
         self.params = []
         self.base_airfoil_params = base_airfoil_params
+        if not self.base_airfoil_params:
+            self.base_airfoil_params = BaseAirfoilParams()
         self.override_parameters = override_parameters
 
         self.override_parameter_start_idx = 0
@@ -60,23 +62,23 @@ class Airfoil:
                 self.override_parameters[self.override_parameter_start_idx:self.override_parameter_end_idx])
         self.override_parameter_start_idx += self.base_airfoil_params.n_overrideable_parameters
 
-        self.c = base_airfoil_params.c
-        self.alf = base_airfoil_params.alf
-        self.R_le = base_airfoil_params.R_le
-        self.L_le = base_airfoil_params.L_le
-        self.r_le = base_airfoil_params.r_le
-        self.phi_le = base_airfoil_params.phi_le
-        self.psi1_le = base_airfoil_params.psi1_le
-        self.psi2_le = base_airfoil_params.psi2_le
-        self.L1_te = base_airfoil_params.L1_te
-        self.L2_te = base_airfoil_params.L2_te
-        self.theta1_te = base_airfoil_params.theta1_te
-        self.theta2_te = base_airfoil_params.theta2_te
-        self.t_te = base_airfoil_params.t_te
-        self.r_te = base_airfoil_params.r_te
-        self.phi_te = base_airfoil_params.phi_te
-        self.dx = base_airfoil_params.dx
-        self.dy = base_airfoil_params.dy
+        self.c = self.base_airfoil_params.c
+        self.alf = self.base_airfoil_params.alf
+        self.R_le = self.base_airfoil_params.R_le
+        self.L_le = self.base_airfoil_params.L_le
+        self.r_le = self.base_airfoil_params.r_le
+        self.phi_le = self.base_airfoil_params.phi_le
+        self.psi1_le = self.base_airfoil_params.psi1_le
+        self.psi2_le = self.base_airfoil_params.psi2_le
+        self.L1_te = self.base_airfoil_params.L1_te
+        self.L2_te = self.base_airfoil_params.L2_te
+        self.theta1_te = self.base_airfoil_params.theta1_te
+        self.theta2_te = self.base_airfoil_params.theta2_te
+        self.t_te = self.base_airfoil_params.t_te
+        self.r_te = self.base_airfoil_params.r_te
+        self.phi_te = self.base_airfoil_params.phi_te
+        self.dx = self.base_airfoil_params.dx
+        self.dy = self.base_airfoil_params.dy
         self.control_point_array = None
         self.n_control_points = None
         self.curve_list = None

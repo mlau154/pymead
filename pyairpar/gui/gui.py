@@ -33,8 +33,12 @@ class GUI(QMainWindow):
         print(f"Airfoil Curve 0 Handle = {self.airfoil_graph.airfoil.curve_list[0].pg_curve_handle}")
 
         self.airfoil2 = Airfoil()
-        self.airfoil_graph2 = AirfoilGraph(self.airfoil2, w=self.airfoil_graph.w, v=self.airfoil_graph.v)
+        self.airfoil_graph2 = AirfoilGraph(self.airfoil2, w=self.airfoil_graph.w, v=self.airfoil_graph.v, airfoil2=self.airfoil)
         print(f"Airfoil 2 Curve 0 Handle = {self.airfoil_graph2.airfoil.curve_list[0].pg_curve_handle}")
+        print(f"airfoil_graph_v = {self.airfoil_graph.v}")
+        print(f"airfoil_graph2_v = {self.airfoil_graph2.v}")
+        print(f"airfoil_graph_w = {self.airfoil_graph.w}")
+        print(f"airfoil_graph2_w = {self.airfoil_graph2.w}")
 
         self.main_layout = QHBoxLayout()
         self.create_design_tree()
