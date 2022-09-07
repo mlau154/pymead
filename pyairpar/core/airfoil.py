@@ -19,7 +19,8 @@ class Airfoil:
     def __init__(self,
                  number_coordinates: int = 100,
                  base_airfoil_params: BaseAirfoilParams or SymmetricBaseAirfoilParams = None,
-                 override_parameters: list = None
+                 override_parameters: list = None,
+                 tag: str = None
                  ):
         """
         ### Description:
@@ -49,6 +50,7 @@ class Airfoil:
         """
 
         self.nt = number_coordinates
+        self.tag = tag
         self.params = []
         self.base_airfoil_params = base_airfoil_params
         if not self.base_airfoil_params:
@@ -116,7 +118,6 @@ class Airfoil:
                     self.override_parameters[self.override_parameter_start_idx:self.override_parameter_end_idx])
                 self.override_parameter_start_idx += anchor_point.n_overrideable_parameters
 
-        if self.override_parameters is not None:
             for free_point in self.free_point_tuple:
                 if self.base_airfoil_params.non_dim_by_chord:
                     free_point.length_scale_dimension = self.base_airfoil_params.c.value
@@ -140,15 +141,6 @@ class Airfoil:
         self.control_points = []
 
         self.update()
-
-        # fig, axs = plt.subplots(1, 1)
-        # self.curve_list[0].plot_curve(axs, color='mediumaquamarine')
-        # self.curve_list[1].plot_curve(axs, color='indianred')
-        # axs.set_aspect('equal')
-        # plt.show()
-
-        # self.update()
-        pass
 
     def extract_parameters(self):
         """
@@ -339,6 +331,7 @@ class Airfoil:
             else:
                 self.curve_list.append(Bezier(P, 150))
             cp_start_idx = deepcopy(cp_end_idx)
+        self.curve_list_generated = True
 
         self.n_control_points = len(self.control_points)
 
