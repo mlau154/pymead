@@ -10,7 +10,7 @@ with open((HERE / "README.md"), encoding="utf-8") as f:
 
 # This call to setup() does all the work
 setup(
-    name="pyairpar",
+    name="pymead",
     version="2.0.0",
     description="Generate Bézier-parametrized airfoils and airfoil systems",
     long_description=README,
@@ -23,8 +23,8 @@ setup(
         "License :: OSI Approved :: MIT License",
         "Programming Language :: Python :: 3",
     ],
-    packages=["pyairpar", "pyairpar/core", "pyairpar/symmetric", "pyairpar/examples", "pyairpar/utils", "pyairpar/gui",
-              "pyairpar/tests"],
+    packages=["pymead", "pymead/core", "pymead/symmetric", "pymead/examples", "pymead/utils", "pymead/gui",
+              "pymead/tests"],
     include_package_data=True,
     install_requires=["scipy", "numpy", "shapely", "matplotlib", "requests", "PyQt5", "pyqtgraph"],
 )
