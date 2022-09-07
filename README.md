@@ -1,15 +1,15 @@
-# pyairpar
+# pymead
 
 ## Author: Matthew G Lauer
 
-Source code can be found [here](https://github.com/mlau154/pyairpar). Documentation can be found [here](https://mlau154.github.io/pyairpar/).
+Source code can be found [here](https://github.com/mlau154/pymead). Documentation can be found [here](https://mlau154.github.io/pyairpar/).
 
 ## Welcome
-To the documentation page for `pyairpar`, an object-oriented Python 3 package for single- and multi-element
+To the documentation page for `pymead`, an object-oriented Python 3 package for single- and multi-element
 Bézier-parametrized airfoil design. This Bézier parametrization framework is being presented at the 2022 AIAA Aviation
 Conference in Chicago, IL under the title "A Parametrization Framework for Multi-Element Airfoil Systems Using Bézier Curves."
 
-![Image](https://raw.githubusercontent.com/mlau154/pyairpar/master/docs/complex_1.png)
+![Image](https://raw.githubusercontent.com/mlau154/pymead/master/docs/complex_1.png)
 
 ## Motivation
 
@@ -20,7 +20,7 @@ multi-element airfoil system is comprised of a main airfoil (either the fuselage
 airfoil (representing the cross-section of an axisymmetric hub), and a nacelle airfoil (representing the cross-section
 of an axisymmetric nacelle).
 
-![Image](https://raw.githubusercontent.com/mlau154/pyairpar/master/docs/pai.png)
+![Image](https://raw.githubusercontent.com/mlau154/pymead/master/docs/pai.png)
 
 By using a well-defined parametrization framework, this airfoil system can be morphed or deformed in a variety of
 ways simply by changing the value of any of the input parameters. These parameters are represented by
@@ -41,21 +41,21 @@ varying complexities, from simple, single-airfoil design to high-fidelity, multi
 Other common multi-element airfoil systems, such as the high-lift configuration on an aircraft, are also target
 applications for this software package.
 
-![Image](https://raw.githubusercontent.com/mlau154/pyairpar/master/docs/high_lift.png)
+![Image](https://raw.githubusercontent.com/mlau154/pymead/master/docs/high_lift.png)
 
 One utility provided in this software package which may be useful in the start-up phase of airfoil design is
 `pyairpar.utils.airfoil_matching.match_airfoil()`. This modules allows the matching of a particular parametrization
 to any public airfoil geometry at [airfoiltools.com](http://airfoiltools.com/) using the gradient-based "SLSQP"
 optimizer.
 
-![Image](https://raw.githubusercontent.com/mlau154/pyairpar/master/docs/sd7062_matching.png)
+![Image](https://raw.githubusercontent.com/mlau154/pymead/master/docs/sd7062_matching.png)
 
 ## Acknowledgments
 
 This work was supported by NASA under award number 80NSSC19M0125 as part of the Center for High-Efficiency Electrical
 Technologies for Aircraft (CHEETA). Logo courtesy of [NASA](https://www.nasa.gov/).
 
-![Image](https://raw.githubusercontent.com/mlau154/pyairpar/master/docs/nasa_cheeta_logo.png)
+![Image](https://raw.githubusercontent.com/mlau154/pymead/master/docs/nasa_cheeta_logo.png)
 
 ## Contact Information
 
