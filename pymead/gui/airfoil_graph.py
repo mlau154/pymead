@@ -12,12 +12,17 @@ from PyQt5 import QtCore
 
 from pymead.core.airfoil import Airfoil
 
+from pymead.utils.transformations import rotate, translate, scale
+
 
 class AirfoilGraph(pg.GraphItem):
-    def __init__(self, airfoil: Airfoil = None, pen=pg.mkPen(color='cornflowerblue', width=2),
+    def __init__(self, airfoil: Airfoil = None, pen=None,
                  size: tuple = (1000, 300), background_color: str = 'w', w=None, v=None):
         # Enable antialiasing for prettier plots
         pg.setConfigOptions(antialias=True)
+
+        if pen is None:
+            pen = pg.mkPen(color='cornflowerblue', width=2)
 
         if w is None:
             self.w = pg.GraphicsLayoutWidget(show=True, size=size)
@@ -76,6 +81,7 @@ class AirfoilGraph(pg.GraphItem):
         self.setData(pos=pos, adj=adj, size=8, pxMode=True, symbol=symbols)
         self.v.disableAutoRange()
         self.scatter.sigClicked.connect(self.clicked)
+        # self.scatter.sigPlotChanged.connect(self.clicked)
 
     def setData(self, **kwds):
         self.text = kwds.pop('text', [])
@@ -97,6 +103,7 @@ class AirfoilGraph(pg.GraphItem):
             item.setParentItem(self)
 
     def updateGraph(self):
+        # print(f"self.data for airfoil {self.airfoil} is {self.data}")
         pg.GraphItem.setData(self, **self.data)
         # print(self.data)
         self.airfoil.update_airfoil_curve_pg()
@@ -109,6 +116,7 @@ class AirfoilGraph(pg.GraphItem):
             return
 
         if ev.isStart():
+            print(f"Starting to drag!")
             # We are already one step into the drag.
             # Find the point(s) at the mouse cursor when the button was first
             # pressed:
@@ -122,11 +130,15 @@ class AirfoilGraph(pg.GraphItem):
             self.dragOffset = self.data['pos'][ind] - pos
         elif ev.isFinish():
             self.dragPoint = None
+            print(f"Finished dragging!")
             return
         else:
             if self.dragPoint is None:
+                print(f"DragPoint is None")
                 ev.ignore()
                 return
+
+        print(f"Dragging!")
 
         ind = self.dragPoint.data()[0]
         self.data['pos'][ind] = ev.pos() + self.dragOffset
@@ -159,12 +171,12 @@ class AirfoilGraph(pg.GraphItem):
             new_abs_phi2 = np.arctan2(y[ind] - y[ind - 1], x[ind] - x[ind - 1]) + self.airfoil.alf.value
             anchor_point.recalculate_ap_branch_props_from_g1_pt('plus', new_abs_phi2, new_Lt)
 
-        elif self.airfoil.control_points[ind].name == 'le':
+        elif self.airfoil.control_points[ind].tag == 'le':
             self.airfoil.dx.value = x[ind]
             self.airfoil.dy.value = y[ind]
             # print(f"dx, dy for airfoil {repr(self.airfoil)} is {self.airfoil.dx.value}, {self.airfoil.dy.value}")
 
-        elif self.airfoil.control_points[ind].name in ['te_1', 'te_2']:
+        elif self.airfoil.control_points[ind].tag in ['te_1', 'te_2']:
             if self.te_thickness_edit_mode:
                 pass
             else:
@@ -175,18 +187,23 @@ class AirfoilGraph(pg.GraphItem):
 
         elif self.airfoil.control_points[ind].cp_type == 'free_point':
             ap_tag = self.airfoil.control_points[ind].anchor_point_tag
-            fp_name_index = next((idx for idx, fp in enumerate(self.airfoil.free_points[ap_tag])
-                                  if fp.name == self.airfoil.control_points[ind].name))
-            self.airfoil.free_points[ap_tag][fp_name_index].x.value = x[ind]
-            self.airfoil.free_points[ap_tag][fp_name_index].y.value = y[ind]
+            fp_tag = self.airfoil.control_points[ind].tag
+            # fp_x, fp_y = translate(x[ind], y[ind], -self.airfoil.dx.value, -self.airfoil.dy.value)
+            # fp_x, fp_y = rotate(fp_x, fp_y, self.airfoil.alf.value)
+            # fp_x, fp_y = scale(fp_x, fp_y, 1/self.airfoil.c.value)
+            self.airfoil.free_points[ap_tag][fp_tag].x.value = x[ind]
             self.airfoil.control_points[ind].xp = x[ind]
+            self.airfoil.free_points[ap_tag][fp_tag].y.value = y[ind]
             self.airfoil.control_points[ind].yp = y[ind]
 
         self.airfoil.update()
         self.data['pos'] = self.airfoil.control_point_array
 
         self.updateGraph()
+        # print(f"Made it before accept")
         ev.accept()
+        # print(f"Made it after accept")
+        self.airfoil.update()
 
     def clicked(self, pts):
         print("clicked: %s" % pts)

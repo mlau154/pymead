@@ -26,6 +26,12 @@ def translate(x, y, dx, dy):
     return x, y
 
 
+def scale(x, y, scale_factor):
+    x *= scale_factor
+    y *= scale_factor
+    return x, y
+
+
 def rotate(x, y, theta):
     r"""
     ### Description:

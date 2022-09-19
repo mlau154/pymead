@@ -315,7 +315,7 @@ def generate_airfoils(param_dict):
 
     ap_fan_upper_main = AnchorPoint(x=Param(x, linked=True),
                                     y=Param(y, linked=True),
-                                    name='ap_fan_upper_main',
+                                    tag='ap_fan_upper_main',
                                     previous_anchor_point='te_1',
                                     L=param_dict['L_ap_fan_upper_main'],
                                     R=param_dict['R_ap_fan_upper_main'],
@@ -332,7 +332,7 @@ def generate_airfoils(param_dict):
 
     ap_inlet_upper_main = AnchorPoint(x=Param(x, linked=True),
                                       y=Param(y, linked=True),
-                                      name='ap_inlet_upper_main',
+                                      tag='ap_inlet_upper_main',
                                       previous_anchor_point='ap_fan_upper_main',
                                       L=param_dict['L_ap_inlet_upper_main'],
                                       R=param_dict['R_ap_inlet_upper_main'],
@@ -350,7 +350,7 @@ def generate_airfoils(param_dict):
 
     ap_mt_main = AnchorPoint(x=Param(x, linked=True),
                              y=Param(y, linked=True),
-                             name='ap_mt_main',
+                             tag='ap_mt_main',
                              previous_anchor_point='le',
                              L=param_dict['L_ap_mt_main'],
                              R=param_dict['R_ap_mt_main'],
@@ -380,7 +380,7 @@ def generate_airfoils(param_dict):
 
     ap_ne_upper_hub = AnchorPoint(x=Param(x, linked=True),
                                   y=Param(y, linked=True),
-                                  name='ap_ne_upper_hub',
+                                  tag='ap_ne_upper_hub',
                                   previous_anchor_point='te_1',
                                   L=param_dict['L_ap_ne_upper_hub'],
                                   R=param_dict['R_ap_ne_upper_hub'],
@@ -397,7 +397,7 @@ def generate_airfoils(param_dict):
 
     ap_fan_upper_hub = AnchorPoint(x=Param(x, linked=True),
                                    y=Param(y, linked=True),
-                                   name='ap_fan_upper_hub',
+                                   tag='ap_fan_upper_hub',
                                    previous_anchor_point='ap_ne_upper_hub',
                                    L=param_dict['L_ap_fan_upper_hub'],
                                    R=param_dict['R_ap_fan_upper_hub'],
@@ -417,7 +417,7 @@ def generate_airfoils(param_dict):
 
     ap_mt_nacelle = AnchorPoint(x=Param(x, linked=True),
                                 y=Param(y, linked=True),
-                                name='ap_mt_nacelle',
+                                tag='ap_mt_nacelle',
                                 previous_anchor_point='te_1',
                                 L=param_dict['L_ap_mt_nacelle'],
                                 R=param_dict['R_ap_mt_nacelle'],

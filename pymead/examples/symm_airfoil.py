@@ -28,7 +28,7 @@ def run():
 
     anchor_point1 = AnchorPoint(x=Param(0.55, units='length'),
                                 y=Param(0.04, units='length'),
-                                name='anchor-top',
+                                tag='anchor-top',
                                 previous_anchor_point='te_1',
                                 L=Param(0.12, units='length'),
                                 R=Param(0.2, units='length'),

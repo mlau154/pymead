@@ -191,31 +191,31 @@ def generate_airfoils(param_dict):
     x, y = rotate(x, y, param_dict['alf_main'].value)
 
     ap_flap_le_main = AnchorPoint(x=Param(x, linked=True),
-                                    y=Param(y, linked=True),
-                                    name='ap_flap_le_main',
-                                    previous_anchor_point='ap_flap_end_main',
-                                    L=param_dict['L_ap_flap_le_main'],
-                                    R=param_dict['R_ap_flap_le_main'],
-                                    r=param_dict['r_ap_flap_le_main'],
-                                    phi=param_dict['phi_ap_flap_le_main'],
-                                    psi1=param_dict['psi1_ap_flap_le_main'],
-                                    psi2=param_dict['psi2_ap_flap_le_main'])
+                                  y=Param(y, linked=True),
+                                  tag='ap_flap_le_main',
+                                  previous_anchor_point='ap_flap_end_main',
+                                  L=param_dict['L_ap_flap_le_main'],
+                                  R=param_dict['R_ap_flap_le_main'],
+                                  r=param_dict['r_ap_flap_le_main'],
+                                  phi=param_dict['phi_ap_flap_le_main'],
+                                  psi1=param_dict['psi1_ap_flap_le_main'],
+                                  psi2=param_dict['psi2_ap_flap_le_main'])
 
     x = param_dict['x_ap_flap_end_main'].value
     y = param_dict['y_ap_flap_end_main'].value
     x, y = rotate(x, y, param_dict['alf_main'].value)
 
     ap_flap_end_main = AnchorPoint(x=Param(x, linked=True),
-                                     y=Param(y, linked=True),
-                                     name='ap_flap_end_main',
-                                     previous_anchor_point='le',
-                                     L=param_dict['L_ap_flap_end_main'],
-                                     R=param_dict['R_ap_flap_end_main'],
-                                     r=param_dict['r_ap_flap_end_main'],
-                                     phi=param_dict['phi_ap_flap_end_main'],
-                                     psi1=param_dict['psi1_ap_flap_end_main'],
-                                     psi2=param_dict['psi2_ap_flap_end_main'],
-                                    )
+                                   y=Param(y, linked=True),
+                                   tag='ap_flap_end_main',
+                                   previous_anchor_point='le',
+                                   L=param_dict['L_ap_flap_end_main'],
+                                   R=param_dict['R_ap_flap_end_main'],
+                                   r=param_dict['r_ap_flap_end_main'],
+                                   phi=param_dict['phi_ap_flap_end_main'],
+                                   psi1=param_dict['psi1_ap_flap_end_main'],
+                                   psi2=param_dict['psi2_ap_flap_end_main'],
+                                   )
 
     anchor_point_tuple_main = (ap_flap_end_main, ap_flap_le_main)
 
@@ -242,16 +242,16 @@ def generate_airfoils(param_dict):
     x, y = rotate(x, y, param_dict['alf_flap'].value)
 
     ap_flap_end_flap = AnchorPoint(x=Param(x, linked=True),
-                                    y=Param(y, linked=True),
-                                    name='ap_flap_end_flap',
-                                    previous_anchor_point='le',
-                                    L=param_dict['L_ap_flap_end_flap'],
-                                    R=param_dict['R_ap_flap_end_flap'],
-                                    r=param_dict['r_ap_flap_end_flap'],
-                                    phi=param_dict['phi_ap_flap_end_flap'],
-                                    psi1=param_dict['psi1_ap_flap_end_flap'],
-                                    psi2=param_dict['psi2_ap_flap_end_flap'],
-                                    )
+                                   y=Param(y, linked=True),
+                                   tag='ap_flap_end_flap',
+                                   previous_anchor_point='le',
+                                   L=param_dict['L_ap_flap_end_flap'],
+                                   R=param_dict['R_ap_flap_end_flap'],
+                                   r=param_dict['r_ap_flap_end_flap'],
+                                   phi=param_dict['phi_ap_flap_end_flap'],
+                                   psi1=param_dict['psi1_ap_flap_end_flap'],
+                                   psi2=param_dict['psi2_ap_flap_end_flap'],
+                                   )
 
     anchor_point_tuple_nacelle = (ap_flap_end_flap,)
 

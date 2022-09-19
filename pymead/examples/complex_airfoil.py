@@ -39,7 +39,7 @@ def run():
 
     anchor_point1 = AnchorPoint(x=Param(0.55, units='length'),
                                 y=Param(0.04, units='length'),
-                                name='anchor-top',
+                                tag='anchor-top',
                                 previous_anchor_point='te_1',
                                 L=Param(0.1, units='length'),
                                 R=Param(-0.15, units='length'),
@@ -52,7 +52,7 @@ def run():
 
     anchor_point2 = AnchorPoint(x=Param(0.2, units='length'),
                                 y=Param(0.05, units='length'),
-                                name='anchor-top2',
+                                tag='anchor-top2',
                                 previous_anchor_point='anchor-top',
                                 L=Param(0.04, units='length'),
                                 R=Param(0.1, units='length'),
@@ -65,7 +65,7 @@ def run():
 
     anchor_point3 = AnchorPoint(x=Param(0.35, units='length'),
                                 y=Param(-0.02, units='length'),
-                                name='anchor-bottom',
+                                tag='anchor-bottom',
                                 previous_anchor_point='le',
                                 L=Param(0.13, units='length'),
                                 R=Param(0.2, units='length'),

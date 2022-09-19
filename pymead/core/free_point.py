@@ -10,7 +10,7 @@ class FreePoint(ControlPoint):
                  y: Param,
                  previous_anchor_point: str,
                  previous_free_point: str or None = None,
-                 name: str or None = None,
+                 tag: str or None = None,
                  length_scale_dimension: float or None = None
                  ):
         """
@@ -39,12 +39,13 @@ class FreePoint(ControlPoint):
         An instance of the `FreePoint` class
         """
 
-        super().__init__(x.value, y.value, name, previous_anchor_point, cp_type='free_point')
+        super().__init__(x.value, y.value, tag, previous_anchor_point, cp_type='free_point')
 
-        self.ctrlpt = ControlPoint(x.value, y.value, name, previous_anchor_point, cp_type='free_point')
+        self.ctrlpt = ControlPoint(x.value, y.value, tag, previous_anchor_point, cp_type='free_point')
 
         self.x = x
         self.y = y
+        self.tag = tag
         self.previous_free_point = previous_free_point
         self.length_scale_dimension = length_scale_dimension
         self.n_overrideable_parameters = self.count_overrideable_variables()
@@ -65,7 +66,7 @@ class FreePoint(ControlPoint):
                     param.value = param.value * self.length_scale_dimension
 
     def __repr__(self):
-        return f"free_point_{self.name}"
+        return f"free_point_{self.tag}"
 
     def count_overrideable_variables(self):
         """

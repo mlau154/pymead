@@ -11,6 +11,7 @@ from pymead.gui.airfoil_graph import AirfoilGraph
 from pymead.core.airfoil import Airfoil
 from pymead.core.base_airfoil_params import BaseAirfoilParams
 from pymead.core.param import Param
+from functools import partial
 
 
 class MainIconToolbar(QToolBar):
@@ -29,13 +30,13 @@ class MainIconToolbar(QToolBar):
         self.grid_kwargs = read_json(os.path.join('gui_settings', 'grid_settings.json'))
         self.addWidget(self.grid_button)
 
-        self.add_image_icon = QIcon(os.path.join(self.icon_dir, 'add_image.png'))
-        self.add_image_button = QToolButton(self)
-        self.add_image_button.setStatusTip("Add background to image")
-        self.add_image_button.setCheckable(True)
-        self.add_image_button.setIcon(self.add_image_icon)
-        self.add_image_button.toggled.connect(self.add_image_button_toggled)
-        self.addWidget(self.add_image_button)
+        # self.add_image_icon = QIcon(os.path.join(self.icon_dir, 'add_image.png'))
+        # self.add_image_button = QToolButton(self)
+        # self.add_image_button.setStatusTip("Add background to image")
+        # self.add_image_button.setCheckable(True)
+        # self.add_image_button.setIcon(self.add_image_icon)
+        # self.add_image_button.toggled.connect(self.add_image_button_toggled)
+        # self.addWidget(self.add_image_button)
 
         self.change_background_color_icon = QIcon(os.path.join(self.icon_dir, 'color_palette.png'))
         self.change_background_color_button = QToolButton(self)
@@ -59,20 +60,20 @@ class MainIconToolbar(QToolBar):
         else:
             self.parent.v.showGrid(x=False, y=False)
 
-    def add_image_button_toggled(self, checked):
-        if checked:
-            image = os.path.join(self.icon_dir, 'airfoil_slat.png')
-            fig = self.parent.mplcanvas1.figure
-            ax = self.parent.mplcanvas1.axes
-            xlimits = ax.get_xlim()
-            ylimits = ax.get_ylim()
-            extent = [xlimits[0], xlimits[1], ylimits[0], ylimits[1]]
-            # print(f"extent = {self.parent.mplcanvas1.axes.get_xlim()}")
-            with Image.open(image) as im:
-                self.figure_to_remove = self.parent.mplcanvas1.axes.imshow(im, extent=extent)
-        else:
-            self.figure_to_remove.remove()
-        self.parent.mplcanvas1.draw()
+    # def add_image_button_toggled(self, checked):
+    #     if checked:
+    #         image = os.path.join(self.icon_dir, 'airfoil_slat.png')
+    #         fig = self.parent.mplcanvas1.figure
+    #         ax = self.parent.mplcanvas1.axes
+    #         xlimits = ax.get_xlim()
+    #         ylimits = ax.get_ylim()
+    #         extent = [xlimits[0], xlimits[1], ylimits[0], ylimits[1]]
+    #         # print(f"extent = {self.parent.mplcanvas1.axes.get_xlim()}")
+    #         with Image.open(image) as im:
+    #             self.figure_to_remove = self.parent.mplcanvas1.axes.imshow(im, extent=extent)
+    #     else:
+    #         self.figure_to_remove.remove()
+    #     self.parent.mplcanvas1.draw()
 
     def change_background_color_button_toggled(self):
         self.parent.setStyleSheet("background-color: black;")
@@ -84,10 +85,12 @@ class MainIconToolbar(QToolBar):
 
     def add_airfoil_button_toggled(self):
         def scene_clicked(ev):
-            self.new_airfoil_location = self.parent.v.vb.mapSceneToView(ev.scenePos())
+            self.new_airfoil_location = self.parent.mea.v.vb.mapSceneToView(ev.scenePos())
             airfoil = Airfoil(base_airfoil_params=BaseAirfoilParams(dx=Param(self.new_airfoil_location.x()),
                                                                     dy=Param(self.new_airfoil_location.y())))
-            self.parent.airfoil_graphs.append(AirfoilGraph(airfoil=airfoil, w=self.parent.w, v=self.parent.v))
-            self.parent.v.scene().sigMouseClicked.disconnect()
+            self.parent.mea.add_airfoil(airfoil, len(self.parent.mea.airfoils))
+            self.parent.param_tree_instance.params[-1].add_airfoil(airfoil, len(self.parent.mea.airfoils) - 1)
+            self.parent.mea.v.scene().sigMouseClicked.disconnect()
+            airfoil.airfoil_graph.scatter.sigPlotChanged.connect(partial(self.parent.param_tree_instance.plot_changed, f"A{len(self.parent.mea.airfoils) - 1}"))
 
-        self.parent.v.scene().sigMouseClicked.connect(scene_clicked)
+        self.parent.mea.v.scene().sigMouseClicked.connect(scene_clicked)

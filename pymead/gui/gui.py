@@ -15,7 +15,8 @@ from pymead.core.param import Param
 from pymead.core.free_point import FreePoint
 from pymead.gui.recalculate_airfoil_parameters import recalculate_airfoil_parameters
 from pymead.gui.airfoil_graph import AirfoilGraph
-from pymead.gui.parameter_tree import CustomParamTree
+from pymead.gui.parameter_tree import MEAParamTree
+from pymead.core.mea import MEA
 from draggable_line import DraggableLine
 
 import sys
@@ -27,34 +28,20 @@ matplotlib.use('Qt5Agg')
 class GUI(QMainWindow):
     def __init__(self):
         super().__init__()
-
-        self.drs = []  # Extremely important that this be left as an instance variable since Qt will garbage collect
-        # the draggable line otherwise
         self.design_tree = None
 
-        self.airfoils = [Airfoil()]
-        self.airfoils[0].insert_free_point(FreePoint(Param(0.5), Param(0.1), previous_anchor_point='te_1', previous_free_point=None, name='upper_fp'))
-        self.airfoils[0].update()
-        self.airfoil_graphs = [AirfoilGraph(self.airfoils[0])]
-        # print(f"Airfoil Curve 0 Handle = {self.airfoil_graph.airfoil.curve_list[0].pg_curve_handle}")
-        self.w = self.airfoil_graphs[0].w
-        self.v = self.airfoil_graphs[0].v
-        #
-        # self.airfoils.append(Airfoil())
-        # self.airfoil_graphs.append(AirfoilGraph(self.airfoils[1], w=self.w, v=self.v, airfoil2=self.airfoils[1]))
-        # self.airfoil_graph2 = None
-        # print(f"Airfoil 2 Curve 0 Handle = {self.airfoil_graph2.airfoil.curve_list[0].pg_curve_handle}")
-        # print(f"airfoil_graph_v = {self.airfoil_graph.v}")
-        # print(f"airfoil_graph2_v = {self.airfoil_graph2.v}")
-        # print(f"airfoil_graph_w = {self.airfoil_graph.w}")
-        # print(f"airfoil_graph2_w = {self.airfoil_graph2.w}")
-
+        self.mea = MEA([Airfoil(), Airfoil(), Airfoil()], airfoil_graphs_active=True)
+        # self.mea.airfoils['A0'].insert_free_point(FreePoint(Param(0.5), Param(0.1), previous_anchor_point='te_1'))
+        # self.mea.airfoils['A0'].update()
+        # self.airfoil_graphs = [AirfoilGraph(self.mea.airfoils['A0'])]
+        # self.w = self.airfoil_graphs[0].w
+        # self.v = self.airfoil_graphs[0].v
+        # self.airfoil_graphs.append(AirfoilGraph(self.mea.airfoils['A1'], w=self.w, v=self.v))
         self.main_layout = QHBoxLayout()
-        # self.create_design_tree()
-        self.param_tree_instance = CustomParamTree(self.airfoil_graphs[0])
+        self.param_tree_instance = MEAParamTree(self.mea)
         self.design_tree_widget = self.param_tree_instance.t
         self.main_layout.addWidget(self.design_tree_widget)
-        self.main_layout.addWidget(self.airfoil_graphs[0].w)
+        self.main_layout.addWidget(self.mea.airfoils['A0'].airfoil_graph.w)
         self.main_widget = QWidget()
         self.main_widget.setLayout(self.main_layout)
         # self.airfoil_graph.w.setFocus()
@@ -64,7 +51,7 @@ class GUI(QMainWindow):
         self.setStatusBar(QStatusBar(self))
 
     def set_title_and_icon(self):
-        self.setWindowTitle("Airfoil Designer")
+        self.setWindowTitle("pymead")
         image_path = os.path.join(os.path.dirname(os.getcwd()), 'icons', 'airfoil_slat.png')
         self.setWindowIcon(QIcon(image_path))
 
@@ -91,7 +78,7 @@ class GUI(QMainWindow):
 
 def main():
     app = QApplication(sys.argv)
-    # app.setStyle('Fusion')
+    app.setStyle('Fusion')
     gui = GUI()
     gui.show()
     app.exec()

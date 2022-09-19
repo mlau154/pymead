@@ -8,7 +8,7 @@ class AnchorPoint(ControlPoint):
     def __init__(self,
                  x: Param,
                  y: Param,
-                 name: str,
+                 tag: str,
                  previous_anchor_point: str,
                  L: Param,
                  R: Param,
@@ -76,15 +76,17 @@ class AnchorPoint(ControlPoint):
         An instance of the `AnchorPoint` class
         """
 
-        super().__init__(x.value, y.value, name, previous_anchor_point)
+        super().__init__(x.value, y.value, tag, previous_anchor_point)
 
-        self.ctrlpt = ControlPoint(x.value, y.value, name, previous_anchor_point, cp_type='anchor_point')
+        self.ctrlpt = ControlPoint(x.value, y.value, tag, previous_anchor_point, cp_type='anchor_point')
         self.ctrlpt_branch_list = None
 
         self.n1 = None
         self.n2 = None
 
         self.anchor_type = None
+        self.tag = tag
+        self.previous_anchor_point = previous_anchor_point
 
         self.x = x
         self.y = y
@@ -190,14 +192,14 @@ class AnchorPoint(ControlPoint):
                     param.value = param.value * self.length_scale_dimension
 
     def __repr__(self):
-        return f"anchor_point_{self.name}"
+        return f"anchor_point_{self.tag}"
 
     def get_anchor_type(self, anchor_point_order):
-        if self.name == 'le':
-            self.anchor_type = self.name
-        elif anchor_point_order.index(self.name) < anchor_point_order.index('le'):
+        if self.tag == 'le':
+            self.anchor_type = self.tag
+        elif anchor_point_order.index(self.tag) < anchor_point_order.index('le'):
             self.anchor_type = 'upper_surf'
-        elif anchor_point_order.index(self.name) > anchor_point_order.index('le'):
+        elif anchor_point_order.index(self.tag) > anchor_point_order.index('le'):
             self.anchor_type = 'lower_surf'
 
     def set_minus_plus_bezier_curve_orders(self, n1, n2):
@@ -211,7 +213,7 @@ class AnchorPoint(ControlPoint):
         R = self.R.value
         psi1 = self.psi1.value
         psi2 = self.psi2.value
-        name = self.name
+        tag = self.tag
         x0 = self.x_val
         y0 = self.y_val
 
@@ -231,7 +233,7 @@ class AnchorPoint(ControlPoint):
 
         def generate_tangent_seg_ctrlpts(minus_plus: str):
             if R == 0:  # degenerate case 1: infinite curvature (sharp corner)
-                return ControlPoint(x0, y0, f'{repr(self)}_g1_{minus_plus}', name)
+                return ControlPoint(x0, y0, f'{repr(self)}_g1_{minus_plus}', tag)
 
             def evaluate_tangent_segment_length():
                 if self.anchor_type == 'upper_surf':
@@ -273,24 +275,24 @@ class AnchorPoint(ControlPoint):
                 xy = np.array([x0, y0]) + self.Lt_minus * np.array([np.cos(self.abs_phi1), np.sin(self.abs_phi1)])
             else:
                 xy = np.array([x0, y0]) + self.Lt_plus * np.array([np.cos(self.abs_phi2), np.sin(self.abs_phi2)])
-            return ControlPoint(xy[0], xy[1], f'{repr(self)}_g1_{minus_plus}', name, cp_type=f'g1_{minus_plus}')
+            return ControlPoint(xy[0], xy[1], f'{repr(self)}_g1_{minus_plus}', tag, cp_type=f'g1_{minus_plus}')
 
         def generate_curvature_seg_ctrlpts(psi, tangent_ctrlpt: ControlPoint, n, minus_plus):
             if R == 0:  # degenerate case 1: infinite curvature (sharp corner)
-                return ControlPoint(x0, y0, f'{repr(self)}_g2_{minus_plus}', name)
+                return ControlPoint(x0, y0, f'{repr(self)}_g2_{minus_plus}', tag)
             with np.errstate(divide='ignore'):  # accept divide by 0 as valid
-                if name == 'le':
+                if tag == 'le':
                     if np.sin(psi + np.pi / 2) == 0 or np.true_divide(1, R) == 0:
                         # degenerate case 2: zero curvature (straight line)
                         return ControlPoint(tangent_ctrlpt.x_val, tangent_ctrlpt.y_val, f'{repr(self)}_g2_{minus_plus}',
-                                            name, cp_type=f'g2_{minus_plus}')
+                                            tag, cp_type=f'g2_{minus_plus}')
                 else:
                     if np.sin(psi) == 0 or np.true_divide(1, R) == 0:
                         # degenerate case 2: zero curvature (straight line)
                         return ControlPoint(tangent_ctrlpt.x_val, tangent_ctrlpt.y_val, f'{repr(self)}_g2_{minus_plus}',
-                                            name, cp_type=f'g2_{minus_plus}')
+                                            tag, cp_type=f'g2_{minus_plus}')
 
-            if name == 'le':
+            if tag == 'le':
                 if minus_plus == 'minus':
                     self.Lc_minus = self.Lt_minus ** 2 / (R * (1 - 1 / n) * np.sin(psi + np.pi / 2))
                 else:
@@ -348,7 +350,7 @@ class AnchorPoint(ControlPoint):
                 xy = np.array([tangent_ctrlpt.x_val, tangent_ctrlpt.y_val]) + abs(self.Lc_plus) * \
                      np.array([np.cos(self.abs_psi2), np.sin(self.abs_psi2)])
 
-            return ControlPoint(xy[0], xy[1], f'{repr(self)}_g2_{minus_plus}', name, cp_type=f'g2_{minus_plus}')
+            return ControlPoint(xy[0], xy[1], f'{repr(self)}_g2_{minus_plus}', tag, cp_type=f'g2_{minus_plus}')
 
         self.g1_minus_ctrlpt = generate_tangent_seg_ctrlpts('minus')
         self.g1_plus_ctrlpt = generate_tangent_seg_ctrlpts('plus')
@@ -456,8 +458,8 @@ class AnchorPoint(ControlPoint):
         map_psi_to_airfoil_csys_inverse()
         # print(f"new_psi = {airfoil.anchor_points[1].psi1.value * 180 / np.pi}")
         # Lt = evaluate_tangent_segment_length('minus', anchor_point)
-        # print(anchor_point.name)
-        if self.name == 'le':
+        # print(anchor_point.tag)
+        if self.tag == 'le':
             # Lc = Lt ** 2 / (R * (1 - 1 / n) * np.sin(psi + np.pi / 2))
             if minus_plus == 'minus':
                 self.R.value = self.Lt_minus ** 2 / (

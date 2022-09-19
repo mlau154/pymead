@@ -5,7 +5,7 @@ from copy import deepcopy
 
 
 class ControlPoint:
-    def __init__(self, x, y, name: str, anchor_point_tag: str, cp_type: str = None):
+    def __init__(self, x, y, tag: str, anchor_point_tag: str, cp_type: str = None):
         r"""
         ### Description:
 
@@ -18,13 +18,13 @@ class ControlPoint:
         self.x_val = x
         self.y_val = y
         self.anchor_point_tag = anchor_point_tag
-        self.name = name
+        self.tag = tag
         self.xp = deepcopy(self.x_val)
         self.yp = deepcopy(self.y_val)
         self.cp_type = cp_type
 
     def __repr__(self):
-        return f"control_point_{self.name}"
+        return f"control_point_{self.tag}"
 
     def translate(self, dx, dy):
         self.xp += dx
