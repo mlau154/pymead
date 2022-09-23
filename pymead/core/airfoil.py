@@ -6,6 +6,7 @@ from pymead.core.base_airfoil_params import BaseAirfoilParams
 from pymead.core.bezier import Bezier
 from pymead.core.trailing_edge_point import TrailingEdgePoint
 from pymead.symmetric.symmetric_base_airfoil_params import SymmetricBaseAirfoilParams
+from pymead.utils.increment_string_index import increment_string_index, decrement_string_index, get_prefix_and_index_from_string
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
 import matplotlib.pyplot as plt
@@ -64,29 +65,29 @@ class Airfoil:
                 self.override_parameters[self.override_parameter_start_idx:self.override_parameter_end_idx])
         self.override_parameter_start_idx += self.base_airfoil_params.n_overrideable_parameters
 
-        self.param_dicts = {'Base': {}, 'AnchorPoints': {}, 'FreePoints': {}, 'Custom': {}}
+        self.param_dicts = {'Base': {}, 'AnchorPoints': {}, 'FreePoints': {'te_1': {}, 'le': {}}, 'Custom': {}}
 
-        # self.c = self.base_airfoil_params.c
-        # self.alf = self.base_airfoil_params.alf
-        # self.R_le = self.base_airfoil_params.R_le
-        # self.L_le = self.base_airfoil_params.L_le
-        # self.r_le = self.base_airfoil_params.r_le
-        # self.phi_le = self.base_airfoil_params.phi_le
-        # self.psi1_le = self.base_airfoil_params.psi1_le
-        # self.psi2_le = self.base_airfoil_params.psi2_le
-        # self.L1_te = self.base_airfoil_params.L1_te
-        # self.L2_te = self.base_airfoil_params.L2_te
-        # self.theta1_te = self.base_airfoil_params.theta1_te
-        # self.theta2_te = self.base_airfoil_params.theta2_te
-        # self.t_te = self.base_airfoil_params.t_te
-        # self.r_te = self.base_airfoil_params.r_te
-        # self.phi_te = self.base_airfoil_params.phi_te
-        # self.dx = self.base_airfoil_params.dx
-        # self.dy = self.base_airfoil_params.dy
+        self.c = self.base_airfoil_params.c
+        self.alf = self.base_airfoil_params.alf
+        self.R_le = self.base_airfoil_params.R_le
+        self.L_le = self.base_airfoil_params.L_le
+        self.r_le = self.base_airfoil_params.r_le
+        self.phi_le = self.base_airfoil_params.phi_le
+        self.psi1_le = self.base_airfoil_params.psi1_le
+        self.psi2_le = self.base_airfoil_params.psi2_le
+        self.L1_te = self.base_airfoil_params.L1_te
+        self.L2_te = self.base_airfoil_params.L2_te
+        self.theta1_te = self.base_airfoil_params.theta1_te
+        self.theta2_te = self.base_airfoil_params.theta2_te
+        self.t_te = self.base_airfoil_params.t_te
+        self.r_te = self.base_airfoil_params.r_te
+        self.phi_te = self.base_airfoil_params.phi_te
+        self.dx = self.base_airfoil_params.dx
+        self.dy = self.base_airfoil_params.dy
 
         for bp in ['c', 'alf', 'R_le', 'L_le', 'r_le', 'phi_le', 'psi1_le', 'psi2_le', 'L1_te', 'L2_te', 'theta1_te',
                    'theta2_te', 't_te', 'r_te', 'phi_te', 'dx', 'dy']:
-            setattr(self, bp, getattr(self.base_airfoil_params, bp))
+            # setattr(self, bp, getattr(self.base_airfoil_params, bp))
             self.param_dicts['Base'][bp] = getattr(self, bp)
 
         self.control_point_array = None
@@ -152,6 +153,19 @@ class Airfoil:
 
         self.update()
 
+    def __getstate__(self):
+        # Reimplemented to ensure MEA picklability
+        # Do not need to reimplement __setstate__ for unpickling because the __setstate__ reimplementation in
+        # pymead.core.mea.MEA re-adds the airfoil_graph (and thus pg_curve_handle) objects to each airfoil
+        state = self.__dict__.copy()
+        for curve in state['curve_list']:
+            print(f"curve = {curve}")
+            if hasattr(curve, 'pg_curve_handle'):
+                # curve.pg_curve_handle.clear()
+                curve.pg_curve_handle = None  # Delete unpicklable PlotDataItem object from state
+        state['airfoil_graph'] = None  # Delete GraphItem object from state (contains several unpicklable object)
+        return state
+
     def extract_parameters(self):
         """
         ### Description:
@@ -185,111 +199,96 @@ class Airfoil:
 
         `free_point`: a `pymead.core.free_point.FreePoint` to add to a Bézier curve
         """
+        fp_dict = self.free_points[free_point.anchor_point_tag]
+
         if free_point.previous_free_point is None:
-            free_point.tag = 'FP0'
-            free_point.ctrlpt.tag = free_point.tag
-            # If there are already free_points assigned to this anchor point, need to change the previous_free_point
-            # name of the first free_point in the order from <None> to the name of the current free_point being set
-            if len(self.free_points[free_point.anchor_point_tag]) > 0:
-                self.free_points[free_point.anchor_point_tag][0].previous_free_point = free_point.tag
-            self.free_points[free_point.anchor_point_tag][free_point.tag] = free_point
-            self.free_point_order[free_point.anchor_point_tag].insert(0, free_point)
+            free_point.set_tag('FP0')
+            fp_idx = 0
+        else:
+            # Name the free point the previous free point with index incremented by one
+            free_point.set_tag(increment_string_index(free_point.previous_free_point))
+            fp_idx = get_prefix_and_index_from_string(free_point.tag)[1]
+
+        if free_point.anchor_point_tag in self.free_points.keys():
+            temp_dict = {}
+            keys_to_pop = []
+            for key, fp in fp_dict.items():
+                idx = get_prefix_and_index_from_string(key)[1]
+                if idx >= fp_idx:
+                    new_key = increment_string_index(fp.tag)
+                    temp_dict[new_key] = fp
+                    fp.set_tag(new_key)
+                    keys_to_pop.append(key)
+            for k in keys_to_pop[::-1]:
+                fp_dict.pop(k)
+            fp_dict = {**fp_dict, **temp_dict}
+            fp_dict[free_point.tag] = free_point
+            # print(f"id of fp_dict is {hex(id(fp_dict))}")
+            self.free_points[free_point.anchor_point_tag] = fp_dict
+            # print(f"id of fp_dict after assignment is {hex(id(self.free_points[free_point.previous_anchor_point]))}")
+
+        key_pairs = []
+        for k in self.param_dicts['FreePoints'][free_point.anchor_point_tag].keys():
+            idx = get_prefix_and_index_from_string(k)[1]
+            if idx >= fp_idx:
+                new_key = increment_string_index(k)
+                key_pairs.append((k, new_key))
+        for kp in key_pairs:
+            self.param_dicts['FreePoints'][free_point.anchor_point_tag][kp[1]] = self.param_dicts['FreePoints'][
+                free_point.anchor_point_tag].pop(kp[0])
+        self.free_point_order[free_point.anchor_point_tag] = [f"FP{idx}" for idx in range(len(fp_dict))]
         self.N[free_point.anchor_point_tag] += 1
-        self.param_dicts['FreePoints'][free_point.tag] = {'x': free_point.x, 'y': free_point.y}
+        self.param_dicts['FreePoints'][free_point.anchor_point_tag][free_point.tag] = {'x': free_point.x, 'y': free_point.y, 'xp': free_point.xp,
+                                                          'yp': free_point.yp}
 
     def delete_free_point(self, free_point_tag: str, anchor_point_tag: str):
-        print(f"free_points before deletion: {self.free_points}")
-        print(f"free_point_order before deletion: {self.free_point_order}")
-        fp_idx = next((idx for idx, fp in enumerate(self.free_point_order[anchor_point_tag])
-                       if fp.tag == free_point_tag))
-        print(f"Deleting fp_idx = {fp_idx}...")
-        self.free_point_order[anchor_point_tag].pop(fp_idx)
+        fp_dict = self.free_points[anchor_point_tag]
+        fp_idx = next((idx for idx, fp_tag in enumerate(self.free_point_order[anchor_point_tag])
+                       if fp_tag == free_point_tag))
+        # self.free_point_order[anchor_point_tag].pop(fp_idx)
         self.free_points[anchor_point_tag].pop(free_point_tag)
-        print(f"free_points after deletion: {self.free_points}")
-        print(f"free_point_order after deletion: {self.free_point_order}")
+        self.param_dicts['FreePoints'][anchor_point_tag].pop(free_point_tag)
+        temp_dict = {}
+        keys_to_pop = []
+        for key, fp in fp_dict.items():
+            idx = get_prefix_and_index_from_string(key)[1]
+            # print(f"free_point.tag = {free_point.tag}")
+            if idx >= fp_idx:
+                new_key = decrement_string_index(key)
+                temp_dict[new_key] = fp
+                fp.set_tag(new_key)
+                keys_to_pop.append(key)
+        for k in keys_to_pop[::-1]:
+            fp_dict.pop(k)
+        fp_dict = {**fp_dict, **temp_dict}
+        self.free_points[anchor_point_tag] = fp_dict
+        self.free_point_order[anchor_point_tag] = [f"FP{idx}" for idx in range(len(fp_dict))]
+        self.N[anchor_point_tag] += 1
+        key_pairs = []
+        for k in self.param_dicts['FreePoints'][anchor_point_tag].keys():
+            idx = get_prefix_and_index_from_string(k)[1]
+            if idx >= fp_idx:
+                new_key = decrement_string_index(k)
+                key_pairs.append((k, new_key))
+        for kp in key_pairs:
+            self.param_dicts['FreePoints'][anchor_point_tag][kp[1]] = self.param_dicts['FreePoints'][anchor_point_tag].pop(kp[0])
 
     def insert_anchor_point(self, ap: AnchorPoint):
         order_idx = next((idx for idx, anchor_point in enumerate(self.anchor_point_order)
                           if anchor_point == ap.previous_anchor_point))
-        self.anchor_point_order.insert(order_idx, ap.tag)
-        self.anchor_points[ap.tag] = ap
-        self.N[ap.tag] = 5
-        ap_param_list = ['x', 'y', 'L', 'R', 'r', 'phi', 'psi1', 'psi2']
+        self.anchor_points[order_idx + 1].previous_anchor_point = ap.tag
+        self.anchor_point_order.insert(order_idx + 1, ap.tag)
+        self.anchor_points.insert(order_idx + 1, ap)
+        if self.anchor_point_order[order_idx + 2] == 'te_2':
+            self.N[ap.tag] = 4
+        else:
+            self.N[ap.tag] = 5
+        if ap.previous_anchor_point == 'le':
+            self.N['le'] = 5
+        ap_param_list = ['x', 'y', 'xp', 'yp', 'L', 'R', 'r', 'phi', 'psi1', 'psi2']
         self.param_dicts['AnchorPoints'][ap.tag] = {p: getattr(ap, p) for p in ap_param_list}
-
-    # def _set_bezier_curve_orders(self):
-    #     """
-    #     ### Description:
-    #
-    #     Sets the orders of the Bézier curves properly based on the location of all the
-    #     `pymead.core.anchor_point.AnchorPoint`s and `pymead.core.free_point.FreePoint`s.
-    #     """
-    #     for anchor_point in self.anchor_point_tuple:
-    #         self.N[anchor_point.name] = 5
-    #         if anchor_point.name not in self.anchor_point_order:
-    #             self.anchor_point_order.insert(self.anchor_point_order.index(anchor_point.previous_anchor_point) + 1,
-    #                                            anchor_point.name)
-    #     if self.anchor_point_order.index('te_2') - self.anchor_point_order.index('le') != 1:
-    #         self.N['le'] = 5  # Set the order of the Bézier curve after the leading edge to 5
-    #         self.N[self.anchor_point_order[-2]] = 4  # Set the order of the last Bezier curve to 4
-    #     for free_point in self.free_point_tuple:
-    #         # Increment the order of the modified Bézier curve
-    #         self.N[free_point.previous_anchor_point] += 1
-
-    # def _add_anchor_point(self, anchor_point: AnchorPoint):
-    #     """
-    #     ### Description:
-    #
-    #     Adds an anchor point between two anchor points, builds the associated control point branch, and inserts the
-    #     control point branch into the set of control points. `needs_update` is set to `True`.
-    #
-    #     ### Args:
-    #
-    #     `anchor_point`: an `pymead.core.anchor_point.AnchorPoint` from which to build a control point branch
-    #     """
-    #     self.anchor_points[anchor_point.name] = anchor_point.xy
-    #     self._set_slope(anchor_point)
-    #     self._set_curvature(anchor_point)
-    #     self.needs_update = True
-
-    # def _add_anchor_points(self):
-    #     """
-    #     ### Description:
-    #
-    #     This function executes `pymead.core.airfoil.Airfoil.add_anchor_point()` for all the anchor points in the
-    #     `anchor_point_tuple`. Enforces leading edge and trailing edge Bézier curve orders.
-    #     `needs_update` is set to `True`.
-    #     """
-    #     for anchor_point in self.anchor_point_tuple:
-    #         self._add_anchor_point(anchor_point)
-    #     self.needs_update = True
-
-    # def _add_free_points(self):
-    #     """
-    #     ### Description:
-    #
-    #     This function executes `pymead.core.airfoil.Airfoil.add_free_point()` for all the anchor points in the
-    #     `free_point_tuple`. `needs_update` is set to `True`.
-    #     """
-    #     for free_point in self.free_point_tuple:
-    #         self._add_free_point(free_point)
-    #     self.needs_update = True
-
-    # def update_anchor_point_array(self):
-    #     r"""
-    #     ### Description:
-    #
-    #     This function updates the `anchor_point_array` attribute of `pymead.core.airfoil.Airfoil`, which is a
-    #     `np.ndarray` of `shape=(N, 2)`, where `N` is the number of anchor points in the airfoil, and the columns
-    #     represent the \(x\) and \(y\) coordinates.
-    #     """
-    #     for key in self.anchor_point_order:
-    #         xy = self.anchor_points[key]
-    #         if key == 'te_1':
-    #             self.anchor_point_array = xy
-    #         else:
-    #             self.anchor_point_array = np.row_stack((self.anchor_point_array, xy))
-    #     self.transformed_anchor_points = deepcopy(self.anchor_points)
+        self.free_points[ap.tag] = {}
+        self.param_dicts['FreePoints'][ap.tag] = {}
 
     def update(self):
         r"""
@@ -317,7 +316,7 @@ class Airfoil:
         # Generate anchor point branches
         for ap in self.anchor_points:
             if isinstance(ap, AnchorPoint):
-                ap.set_minus_plus_bezier_curve_orders(self.N['te_1'], self.N['le'])
+                ap.set_minus_plus_bezier_curve_orders(self.N[ap.previous_anchor_point], self.N[ap.tag])
                 ap.generate_anchor_point_branch(self.anchor_point_order)
             elif isinstance(ap, TrailingEdgePoint):
                 ap.generate_anchor_point_branch()  # trailing edge anchor points do not need to know the ap order
@@ -328,14 +327,13 @@ class Airfoil:
             self.control_points.extend(next((ap.ctrlpt_branch_list for ap in self.anchor_points if ap.tag == ap_tag)))
 
         for key, fp_dict in self.free_points.items():
-            if key == 'te_1':
-                insertion_index = 2
-            else:
-                insertion_index = next((idx for idx, cp in enumerate(self.control_points)
-                                        if cp.cp_type == 'g2_plus' and cp.anchor_point_tag == key))
-            self.control_points[insertion_index:insertion_index] = [fp.ctrlpt for fp in fp_dict.values()]
-            # if key == 'te_1':
-            #     print(f"control_points = {self.control_points[insertion_index].xp}, {self.control_points[insertion_index].yp}")
+            if len(fp_dict) > 0:
+                if key == 'te_1':
+                    insertion_index = 2
+                else:
+                    insertion_index = next((idx for idx, cp in enumerate(self.control_points)
+                                            if cp.cp_type == 'g2_plus' and cp.anchor_point_tag == key)) + 1
+                self.control_points[insertion_index:insertion_index] = [fp_dict[k].ctrlpt for k in self.free_point_order[key]]
 
         # Scale airfoil by chord length
         self.scale(self.c.value)
@@ -351,15 +349,22 @@ class Airfoil:
 
         # Make Bézier curves from the control point array
         self.curve_list_generated = True
-        if self.curve_list is None:
+        previous_number_of_curves = 0
+        if self.curve_list is None or len(self.curve_list) != len(self.anchor_point_order) - 1:
             self.curve_list = []
             self.curve_list_generated = False
+        else:
+            previous_number_of_curves = len(self.curve_list)
 
         cp_end_idx, cp_start_idx = 0, 1
         for idx, ap_tag in enumerate(self.anchor_point_order[:-1]):
-            cp_end_idx += self.N[ap_tag] + 1
+            if idx == 0:
+                cp_end_idx += self.N[ap_tag] + 1
+            else:
+                cp_end_idx += self.N[ap_tag]
             P = self.control_point_array[cp_start_idx - 1:cp_end_idx]
-            if self.curve_list_generated:
+            # print(f"P = {P}")
+            if self.curve_list_generated and previous_number_of_curves == len(self.anchor_point_order) - 1:
                 self.curve_list[idx].update(P, 150)
             else:
                 self.curve_list.append(Bezier(P, 150))
@@ -500,15 +505,35 @@ class Airfoil:
         return self.x_thickness, self.thickness, self.max_thickness
 
     def plot_airfoil(self, axs: plt.axes, **plot_kwargs):
+        """
+        Plots each of the airfoil's Bézier curves on a specified matplotlib axis
+        """
         plt_curves = []
         for curve in self.curve_list:
             plt_curve = curve.plot_curve(axs, **plot_kwargs)
             plt_curves.append(plt_curve)
         return plt_curves
 
+    def plot_control_points(self, axs: plt.axes, **plot_kwargs):
+        """
+        Plots the airfoil's control point skeleton on a specified matplotlib axis
+        """
+        axs.plot(self.control_point_array[:, 0], self.control_point_array[:, 1], **plot_kwargs)
+
     def init_airfoil_curve_pg(self, v, pen):
+        """
+        Initializes the pyqtgraph PlotDataItem for each of the airfoil's Bézier curves
+        """
         for curve in self.curve_list:
             curve.init_curve_pg(v, pen)
+
+    def set_airfoil_pen(self, pen):
+        """
+        Sets the QPen for each curve in the airfoil object
+        """
+        for curve in self.curve_list:
+            if curve.pg_curve_handle:
+                curve.pg_curve_handle.setPen(pen)
 
     def update_airfoil_curve(self):
         for curve in self.curve_list:

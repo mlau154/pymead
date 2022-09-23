@@ -1,5 +1,6 @@
 from pymead.core.param import Param
 from pymead.core.control_point import ControlPoint
+from pymead.utils.transformations import rotate, translate, scale
 import numpy as np
 
 
@@ -90,6 +91,9 @@ class AnchorPoint(ControlPoint):
 
         self.x = x
         self.y = y
+        self.xp = Param(self.x.value)
+        self.yp = Param(self.y.value)
+        self.airfoil_transformation = None
         self.L = L
         self.R = R
 
@@ -149,34 +153,6 @@ class AnchorPoint(ControlPoint):
         self.scale_vars()
         self.xy = np.array([x.value, y.value])
 
-    # @property
-    # def Lt_minus(self):
-    #     return self._Lt_minus
-    #
-    # @property
-    # def Lt_plus(self):
-    #     return self._Lt_plus
-    #
-    # @property
-    # def Lc_minus(self):
-    #     return self._Lc_minus
-    #
-    # @property
-    # def Lc_plus(self):
-    #     return self._Lc_plus
-    #
-    # @property
-    # def abs_psi1(self):
-    #     return self._abs_psi1
-    #
-    # @property
-    # def abs_psi2(self):
-    #     return self._abs_psi2
-    #
-    # @property
-    # def abs_phi(self):
-    #     return self._abs_phi
-
     def scale_vars(self):
         """
         ### Description:
@@ -193,6 +169,34 @@ class AnchorPoint(ControlPoint):
 
     def __repr__(self):
         return f"anchor_point_{self.tag}"
+
+    def set_x_value(self, value):
+        self.x.value = value
+        self.xp.value, self.yp.value = translate(self.x.value, self.y.value, -self.airfoil_transformation['dx'].value,
+                                                 -self.airfoil_transformation['dy'].value)
+        self.xp.value, self.yp.value = rotate(self.xp.value, self.yp.value, self.airfoil_transformation['alf'].value)
+        self.xp.value, self.yp.value = scale(self.xp.value, self.yp.value, 1 / self.airfoil_transformation['c'].value)
+
+    def set_y_value(self, value):
+        self.y.value = value
+        self.xp.value, self.yp.value = translate(self.x.value, self.y.value, -self.airfoil_transformation['dx'].value,
+                                                 -self.airfoil_transformation['dy'].value)
+        self.xp.value, self.yp.value = rotate(self.xp.value, self.yp.value, self.airfoil_transformation['alf'].value)
+        self.xp.value, self.yp.value = scale(self.xp.value, self.yp.value, 1 / self.airfoil_transformation['c'].value)
+
+    def set_xp_value(self, value):
+        self.xp.value = value
+        self.x.value, self.y.value = translate(self.xp.value, self.yp.value, self.airfoil_transformation['dx'].value,
+                                               self.airfoil_transformation['dy'].value)
+        self.x.value, self.y.value = rotate(self.x.value, self.y.value, -self.airfoil_transformation['alf'].value)
+        self.x.value, self.y.value = scale(self.x.value, self.y.value, self.airfoil_transformation['c'].value)
+
+    def set_yp_value(self, value):
+        self.yp.value = value
+        self.x.value, self.y.value = translate(self.xp.value, self.yp.value, self.airfoil_transformation['dx'].value,
+                                               self.airfoil_transformation['dy'].value)
+        self.x.value, self.y.value = rotate(self.x.value, self.y.value, -self.airfoil_transformation['alf'].value)
+        self.x.value, self.y.value = scale(self.x.value, self.y.value, self.airfoil_transformation['c'].value)
 
     def get_anchor_type(self, anchor_point_order):
         if self.tag == 'le':
@@ -372,15 +376,19 @@ class AnchorPoint(ControlPoint):
         if minus_plus == 'minus':
             # The following logic block is to ensure that the curvature control arm angle (psi) uses the correct
             # coordinate system:
-            self.abs_psi1 = measured_psi
-            self.Lc_minus = measured_Lc
+            if measured_psi is not None:
+                self.abs_psi1 = measured_psi
+            if measured_Lc is not None:
+                self.Lc_minus = measured_Lc
             if 0 < np.arctan2(np.sin(self.abs_psi1 - self.abs_phi1), np.cos(self.abs_psi1 - self.abs_phi1)) < np.pi:
                 sign_R = -1
             else:
                 sign_R = 1
         else:
-            self.abs_psi2 = measured_psi
-            self.Lc_plus = measured_Lc
+            if measured_psi is not None:
+                self.abs_psi2 = measured_psi
+            if measured_Lc is not None:
+                self.Lc_plus = measured_Lc
             # print(f"angle_diff = {np.arctan2(np.sin(self.abs_psi2 - self.abs_phi2), np.cos(self.abs_psi2 - self.abs_phi2)) * 180/np.pi}")
             if 0 < np.arctan2(np.sin(self.abs_psi2 - self.abs_phi2), np.cos(self.abs_psi2 - self.abs_phi2)) < np.pi:
                 sign_R = 1
@@ -393,11 +401,12 @@ class AnchorPoint(ControlPoint):
         # print(f"self.abs_psi2 = {self.abs_psi2 * 180/np.pi}")
 
         # print(f"sign(Rvalue) = {int(np.sign(self.R.value))}")
-        if int(np.sign(self.R.value)) * sign_R == -1:
-            # print('Flipping sign!')
-            self.R.value *= -1  # Flip the sign of the radius of curvature if different than current value
-        else:
-            pass
+        if self.R.active and not self.R.linked:
+            if int(np.sign(self.R.value)) * sign_R == -1:
+                # print('Flipping sign!')
+                self.R.value *= -1  # Flip the sign of the radius of curvature if different than current value
+            else:
+                pass
 
         # Since we will be overriding the radius of curvature (R.value) with a value that is always positive, we need to
         # determine whether the sign of the radius of curvature should be positive or negative:
@@ -407,118 +416,128 @@ class AnchorPoint(ControlPoint):
 
         def map_psi_to_airfoil_csys_inverse():
             if minus_plus == 'minus':
-                if self.anchor_type == 'upper_surf':
-                    if self.R.value > 0:
-                        # angle = np.pi + psi + phi
-                        self.psi1.value = self.abs_psi1 - np.pi - self.phi.value
+                if self.psi1.active and not self.psi1.linked:
+                    if self.anchor_type == 'upper_surf':
+                        if self.R.value > 0:
+                            # angle = np.pi + psi + phi
+                            self.psi1.value = self.abs_psi1 - np.pi - self.phi.value
+                        else:
+                            # angle = np.pi - psi + phi
+                            self.psi1.value = -self.abs_psi1 + np.pi + self.phi.value
+                    elif self.anchor_type == 'lower_surf':
+                        if self.R.value > 0:
+                            # angle = psi - phi
+                            self.psi1.value = self.abs_psi1 + self.phi.value
+                        else:
+                            # angle = -psi - phi
+                            self.psi1.value = -self.abs_psi1 - self.phi.value
+                    elif self.anchor_type == 'le':
+                        if self.R.value > 0:
+                            # angle = psi + phi
+                            self.psi1.value = self.abs_psi1 - self.phi.value
+                        else:
+                            # angle = np.pi - psi + phi
+                            self.psi1.value = np.pi - self.abs_psi1 + self.phi.value
                     else:
-                        # angle = np.pi - psi + phi
-                        self.psi1.value = -self.abs_psi1 + np.pi + self.phi.value
-                elif self.anchor_type == 'lower_surf':
-                    if self.R.value > 0:
-                        # angle = psi - phi
-                        self.psi1.value = self.abs_psi1 + self.phi.value
-                    else:
-                        # angle = -psi - phi
-                        self.psi1.value = -self.abs_psi1 - self.phi.value
-                elif self.anchor_type == 'le':
-                    if self.R.value > 0:
-                        # angle = psi + phi
-                        self.psi1.value = self.abs_psi1 - self.phi.value
-                    else:
-                        # angle = np.pi - psi + phi
-                        self.psi1.value = np.pi - self.abs_psi1 + self.phi.value
-                else:
-                    raise ValueError("Anchor is of invalid type")
+                        raise ValueError("Anchor is of invalid type")
             else:
-                if self.anchor_type == 'upper_surf':
-                    if self.R.value > 0:
-                        # angle = -psi + phi
-                        self.psi2.value = -self.abs_psi2 + self.phi.value
+                if self.psi2.active and not self.psi2.linked:
+                    if self.anchor_type == 'upper_surf':
+                        if self.R.value > 0:
+                            # angle = -psi + phi
+                            self.psi2.value = -self.abs_psi2 + self.phi.value
+                        else:
+                            # angle = psi + phi
+                            self.psi2.value = self.abs_psi2 - self.phi.value
+                    elif self.anchor_type == 'lower_surf':
+                        if self.R.value > 0:
+                            # angle = np.pi - psi - phi
+                            self.psi2.value = np.pi - self.abs_psi2 - self.phi.value
+                        else:
+                            # angle = np.pi + psi - phi
+                            self.psi2.value = self.abs_psi2 - np.pi + self.phi.value
+                    elif self.anchor_type == 'le':
+                        if self.R.value > 0:
+                            # angle = -psi + phi
+                            self.psi2.value = -self.abs_psi2 + self.phi.value
+                        else:
+                            # angle = np.pi + psi + phi
+                            self.psi2.value = self.abs_psi2 - np.pi - self.phi.value
                     else:
-                        # angle = psi + phi
-                        self.psi2.value = self.abs_psi2 - self.phi.value
-                elif self.anchor_type == 'lower_surf':
-                    if self.R.value > 0:
-                        # angle = np.pi - psi - phi
-                        self.psi2.value = np.pi - self.abs_psi2 - self.phi.value
-                    else:
-                        # angle = np.pi + psi - phi
-                        self.psi2.value = self.abs_psi2 - np.pi + self.phi.value
-                elif self.anchor_type == 'le':
-                    if self.R.value > 0:
-                        # angle = -psi + phi
-                        self.psi2.value = -self.abs_psi2 + self.phi.value
-                    else:
-                        # angle = np.pi + psi + phi
-                        self.psi2.value = self.abs_psi2 - np.pi - self.phi.value
-                else:
-                    raise ValueError("Anchor is of invalid type")
+                        raise ValueError("Anchor is of invalid type")
 
         map_psi_to_airfoil_csys_inverse()
         # print(f"new_psi = {airfoil.anchor_points[1].psi1.value * 180 / np.pi}")
         # Lt = evaluate_tangent_segment_length('minus', anchor_point)
         # print(anchor_point.tag)
-        if self.tag == 'le':
-            # Lc = Lt ** 2 / (R * (1 - 1 / n) * np.sin(psi + np.pi / 2))
-            if minus_plus == 'minus':
-                self.R.value = self.Lt_minus ** 2 / (
-                            self.Lc_minus * (1 - 1 / self.n1) * np.sin(self.psi1.value + np.pi / 2))
+        if self.R.active and not self.R.linked:
+            if self.tag == 'le':
+                # Lc = Lt ** 2 / (R * (1 - 1 / n) * np.sin(psi + np.pi / 2))
+                if minus_plus == 'minus':
+                    self.R.value = self.Lt_minus ** 2 / (
+                                self.Lc_minus * (1 - 1 / self.n1) * np.sin(self.psi1.value + np.pi / 2))
+                else:
+                    self.R.value = self.Lt_plus ** 2 / (
+                            self.Lc_plus * (1 - 1 / self.n2) * np.sin(self.psi2.value + np.pi / 2))
+                    # print(f"self.psi2.value = {self.psi2.value * 180/ np.pi}")
             else:
-                self.R.value = self.Lt_plus ** 2 / (
-                        self.Lc_plus * (1 - 1 / self.n2) * np.sin(self.psi2.value + np.pi / 2))
-                # print(f"self.psi2.value = {self.psi2.value * 180/ np.pi}")
-        else:
-            # Lc = Lt ** 2 / (R * (1 - 1 / n) * np.sin(psi))
-            if minus_plus == 'minus':
-                self.R.value = self.Lt_minus ** 2 / (self.Lc_minus * (1 - 1 / self.n1) * np.sin(self.psi1.value))
-            else:
-                self.R.value = self.Lt_plus ** 2 / (self.Lc_plus * (1 - 1 / self.n2) * np.sin(self.psi2.value))
-        if negate_R:
-            self.R.value *= -1
+                # Lc = Lt ** 2 / (R * (1 - 1 / n) * np.sin(psi))
+                if minus_plus == 'minus':
+                    self.R.value = self.Lt_minus ** 2 / (self.Lc_minus * (1 - 1 / self.n1) * np.sin(self.psi1.value))
+                else:
+                    self.R.value = self.Lt_plus ** 2 / (self.Lc_plus * (1 - 1 / self.n2) * np.sin(self.psi2.value))
+            if negate_R:
+                self.R.value *= -1
 
     def recalculate_ap_branch_props_from_g1_pt(self, minus_plus: str, measured_phi, measured_Lt):
 
         if minus_plus == 'minus':
-            self.Lt_minus = measured_Lt
-            self.abs_phi1 = measured_phi
+            if measured_Lt is not None:
+                self.Lt_minus = measured_Lt
+            if measured_phi is not None:
+                self.abs_phi1 = measured_phi
         else:
-            self.Lt_plus = measured_Lt
-            self.abs_phi2 = measured_phi
+            if measured_Lt is not None:
+                self.Lt_plus = measured_Lt
+            if measured_phi is not None:
+                self.abs_phi2 = measured_phi
 
         def evaluate_g1_length_and_ratio():
-            self.L.value = self.Lt_minus + self.Lt_plus
-            if self.anchor_type == 'upper_surf':
-                self.r.value = self.Lt_plus / self.L.value
-            elif self.anchor_type in ['lower_surf', 'le']:
-                self.r.value = self.Lt_minus / self.L.value
-            else:
-                raise ValueError('Invalid anchor type')
+            if self.L.active and not self.L.linked:
+                self.L.value = self.Lt_minus + self.Lt_plus
+            if self.r.active and not self.r.linked:
+                if self.anchor_type == 'upper_surf':
+                    self.r.value = self.Lt_plus / self.L.value
+                elif self.anchor_type in ['lower_surf', 'le']:
+                    self.r.value = self.Lt_minus / self.L.value
+                else:
+                    raise ValueError('Invalid anchor type')
 
         def map_tilt_angle_inverse():
-            if self.anchor_type == 'upper_surf':
-                if minus_plus == 'minus':
-                    # self.abs_phi1 = phi
-                    self.phi.value = self.abs_phi1
+            if self.phi.active and not self.phi.linked:
+                if self.anchor_type == 'upper_surf':
+                    if minus_plus == 'minus':
+                        # self.abs_phi1 = phi
+                        self.phi.value = self.abs_phi1
+                    else:
+                        # self.abs_phi2 = np.pi + phi
+                        self.phi.value = self.abs_phi2 - np.pi
+                elif self.anchor_type == 'lower_surf':
+                    if minus_plus == 'minus':
+                        # self.abs_phi1 = np.pi - phi
+                        self.phi.value = np.pi - self.abs_phi1
+                    else:
+                        # self.abs_phi2 = -phi
+                        self.phi.value = -self.abs_phi2
+                elif self.anchor_type == 'le':
+                    if minus_plus == 'minus':
+                        # self.abs_phi1 = np.pi / 2 + phi
+                        self.phi.value = self.abs_phi1 - np.pi / 2
+                    else:
+                        # self.abs_phi2 = 3 * np.pi / 2 + phi
+                        self.phi.value = self.abs_phi2 - 3 * np.pi / 2
                 else:
-                    # self.abs_phi2 = np.pi + phi
-                    self.phi.value = self.abs_phi2 - np.pi
-            elif self.anchor_type == 'lower_surf':
-                if minus_plus == 'minus':
-                    # self.abs_phi1 = np.pi - phi
-                    self.phi.value = np.pi - self.abs_phi1
-                else:
-                    # self.abs_phi2 = -phi
-                    self.phi.value = -self.abs_phi2
-            elif self.anchor_type == 'le':
-                if minus_plus == 'minus':
-                    # self.abs_phi1 = np.pi / 2 + phi
-                    self.phi.value = self.abs_phi1 - np.pi / 2
-                else:
-                    # self.abs_phi2 = 3 * np.pi / 2 + phi
-                    self.phi.value = self.abs_phi2 - 3 * np.pi / 2
-            else:
-                raise ValueError('Invalid anchor type')
+                    raise ValueError('Invalid anchor type')
 
         evaluate_g1_length_and_ratio()
         map_tilt_angle_inverse()

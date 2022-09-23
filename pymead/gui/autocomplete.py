@@ -21,11 +21,3 @@ class AutoStrParameterItem(WidgetParameterItem):
         self.widget = w
         # print(f"widget = {self.widget}")
         return w
-
-
-# class AutoStrParameter(Parameter):
-#     def __init__(self, **opts):
-#         self.q_line_edit = None
-#         Parameter.__init__(self, **opts)
-
-

@@ -1,6 +1,7 @@
 import numpy as np
 from pymead.core.param import Param
 from pymead.core.control_point import ControlPoint
+from pymead.utils.transformations import translate, rotate, scale
 
 
 class FreePoint(ControlPoint):
@@ -45,11 +46,56 @@ class FreePoint(ControlPoint):
 
         self.x = x
         self.y = y
+        self.xp = Param(self.x.value)
+        self.yp = Param(self.y.value)
+        self.airfoil_transformation = None
         self.tag = tag
         self.previous_free_point = previous_free_point
         self.length_scale_dimension = length_scale_dimension
         self.n_overrideable_parameters = self.count_overrideable_variables()
         self.scale_vars()
+
+    def set_tag(self, tag: str):
+        self.tag = tag
+        self.ctrlpt.tag = tag
+
+    def set_x_value(self, value):
+        self.x.value = value
+        self.xp.value, self.yp.value = translate(self.x.value, self.y.value, -self.airfoil_transformation['dx'].value,
+                                                 -self.airfoil_transformation['dy'].value)
+        self.xp.value, self.yp.value = rotate(self.xp.value, self.yp.value, self.airfoil_transformation['alf'].value)
+        self.xp.value, self.yp.value = scale(self.xp.value, self.yp.value, 1 / self.airfoil_transformation['c'].value)
+        self.set_ctrlpt_value()
+
+    def set_y_value(self, value):
+        self.y.value = value
+        self.xp.value, self.yp.value = translate(self.x.value, self.y.value, -self.airfoil_transformation['dx'].value,
+                                                 -self.airfoil_transformation['dy'].value)
+        self.xp.value, self.yp.value = rotate(self.xp.value, self.yp.value, self.airfoil_transformation['alf'].value)
+        self.xp.value, self.yp.value = scale(self.xp.value, self.yp.value, 1 / self.airfoil_transformation['c'].value)
+        self.set_ctrlpt_value()
+
+    def set_xp_value(self, value):
+        self.xp.value = value
+        # self.x.value, self.y.value = translate(self.xp.value, self.yp.value, -self.airfoil_transformation['dx'].value,
+        #                                        -self.airfoil_transformation['dy'].value)
+        # self.x.value, self.y.value = rotate(self.x.value, self.y.value, self.airfoil_transformation['alf'].value)
+        # self.x.value, self.y.value = scale(self.x.value, self.y.value, 1 / self.airfoil_transformation['c'].value)
+        self.set_ctrlpt_value()
+
+    def set_yp_value(self, value):
+        self.yp.value = value
+        self.x.value, self.y.value = translate(self.xp.value, self.yp.value, -self.airfoil_transformation['dx'].value,
+                                               -self.airfoil_transformation['dy'].value)
+        self.x.value, self.y.value = rotate(self.x.value, self.y.value, self.airfoil_transformation['alf'].value)
+        self.x.value, self.y.value = scale(self.x.value, self.y.value, 1 / self.airfoil_transformation['c'].value)
+        self.set_ctrlpt_value()
+
+    def set_ctrlpt_value(self):
+        self.ctrlpt.xp = self.xp.value
+        self.ctrlpt.yp = self.yp.value
+        self.ctrlpt.x_val = self.x.value
+        self.ctrlpt.y_val = self.y.value
 
     def scale_vars(self):
         """

@@ -88,11 +88,13 @@ class TrailingEdgePoint(ControlPoint):
             self.ctrlpt_branch_list = [self.tangent_ctrlpt, self.ctrlpt]
 
     def recalculate_ap_branch_props_from_g1_pt(self, minus_plus: str, measured_phi, measured_Lt):
-        self.L.value = measured_Lt
-        if minus_plus == 'minus':
-            self.theta.value = measured_phi - np.pi
-        else:
-            self.theta.value = -measured_phi + np.pi
+        if self.L.active and not self.L.linked:
+            self.L.value = measured_Lt
+        if self.theta.active and not self.theta.linked:
+            if minus_plus == 'minus':
+                self.theta.value = measured_phi - np.pi
+            else:
+                self.theta.value = -measured_phi + np.pi
 
     def count_overrideable_variables(self):
         """

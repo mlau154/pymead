@@ -48,21 +48,7 @@ class AirfoilGraph(pg.GraphItem):
         pg.GraphItem.__init__(self)
         self.v.addItem(self)
 
-        # Define positions of nodes
-        pos = self.airfoil.control_point_array
-
-        # Define the set of connections in the graph
-        adj = np.zeros(shape=pos.shape, dtype=int)
-        for idx, _ in enumerate(pos):
-            adj[idx, 0] = idx
-            if idx == len(pos) - 1:
-                adj[idx, 1] = 0
-            else:
-                adj[idx, 1] = idx + 1
-
-        # Define the symbol to use for each node (this is optional)
-        # symbols = ['o', 'o', 'o', 'o', 't', '+']
-        symbols = ['+' if cp.cp_type == 'anchor_point' else 'o' for cp in self.airfoil.control_points]
+        pos, adj, symbols = self.update_airfoil_data()
 
         # Define the line style for each connection (this is optional)
         # lines = np.array([
@@ -75,7 +61,7 @@ class AirfoilGraph(pg.GraphItem):
         # ], dtype=[('red', np.ubyte), ('green', np.ubyte), ('blue', np.ubyte), ('alpha', np.ubyte), ('width', float)])
 
         # Define text to show next to each symbol
-        # texts = ["Point %d" % i for i in range(6)]
+        # texts = ["%d" % i for i in range(9)]
 
         # Update the graph
         self.setData(pos=pos, adj=adj, size=8, pxMode=True, symbol=symbols)
@@ -92,6 +78,24 @@ class AirfoilGraph(pg.GraphItem):
             self.data['data']['index'] = np.arange(npts)
         self.setTexts(self.text)
         self.updateGraph()
+
+    def update_airfoil_data(self):
+        # Define positions of nodes
+        pos = self.airfoil.control_point_array
+
+        # Define the set of connections in the graph
+        adj = np.zeros(shape=pos.shape, dtype=int)
+        for idx, _ in enumerate(pos):
+            adj[idx, 0] = idx
+            if idx == len(pos) - 1:
+                adj[idx, 1] = 0
+            else:
+                adj[idx, 1] = idx + 1
+
+        # Define the symbol to use for each node (this is optional)
+        # symbols = ['o', 'o', 'o', 'o', 't', '+']
+        symbols = ['x' if cp.cp_type == 'anchor_point' else 'o' for cp in self.airfoil.control_points]
+        return pos, adj, symbols
 
     def setTexts(self, text):
         for i in self.textItems:
@@ -111,12 +115,12 @@ class AirfoilGraph(pg.GraphItem):
             item.setPos(*self.data['pos'][i])
 
     def mouseDragEvent(self, ev):
+        # print(f"event = {ev}")
         if ev.button() != QtCore.Qt.MouseButton.LeftButton:
             ev.ignore()
             return
 
         if ev.isStart():
-            print(f"Starting to drag!")
             # We are already one step into the drag.
             # Find the point(s) at the mouse cursor when the button was first
             # pressed:
@@ -130,15 +134,11 @@ class AirfoilGraph(pg.GraphItem):
             self.dragOffset = self.data['pos'][ind] - pos
         elif ev.isFinish():
             self.dragPoint = None
-            print(f"Finished dragging!")
             return
         else:
             if self.dragPoint is None:
-                print(f"DragPoint is None")
                 ev.ignore()
                 return
-
-        print(f"Dragging!")
 
         ind = self.dragPoint.data()[0]
         self.data['pos'][ind] = ev.pos() + self.dragOffset
@@ -150,14 +150,11 @@ class AirfoilGraph(pg.GraphItem):
 
         if self.airfoil.control_points[ind].cp_type == 'g2_minus':
             new_Lc = np.sqrt((x[ind] - x[ind + 1]) ** 2 + (y[ind] - y[ind + 1]) ** 2) / self.airfoil.c.value
-            # print(f"new_Lc = {new_Lc}")
-            # phi_abs_angle = np.arctan2(y[ind + 1] - y[ind + 2], x[ind + 1] - x[ind + 2])
             new_psi1_abs_angle = np.arctan2(y[ind] - y[ind + 1], x[ind] - x[ind + 1]) + self.airfoil.alf.value
             anchor_point.recalculate_ap_branch_props_from_g2_pt('minus', new_psi1_abs_angle, new_Lc)
 
         elif self.airfoil.control_points[ind].cp_type == 'g2_plus':
             new_Lc = np.sqrt((x[ind] - x[ind - 1]) ** 2 + (y[ind] - y[ind - 1]) ** 2) / self.airfoil.c.value
-            # print(f"new_Lc = {new_Lc}")
             new_psi2_abs_angle = np.arctan2(y[ind] - y[ind - 1], x[ind] - x[ind - 1]) + self.airfoil.alf.value
             anchor_point.recalculate_ap_branch_props_from_g2_pt('plus', new_psi2_abs_angle, new_Lc)
 
@@ -172,9 +169,10 @@ class AirfoilGraph(pg.GraphItem):
             anchor_point.recalculate_ap_branch_props_from_g1_pt('plus', new_abs_phi2, new_Lt)
 
         elif self.airfoil.control_points[ind].tag == 'le':
-            self.airfoil.dx.value = x[ind]
-            self.airfoil.dy.value = y[ind]
-            # print(f"dx, dy for airfoil {repr(self.airfoil)} is {self.airfoil.dx.value}, {self.airfoil.dy.value}")
+            if self.airfoil.dx.active and not self.airfoil.dx.linked:
+                self.airfoil.dx.value = x[ind]
+            if self.airfoil.dy.active and not self.airfoil.dy.linked:
+                self.airfoil.dy.value = y[ind]
 
         elif self.airfoil.control_points[ind].tag in ['te_1', 'te_2']:
             if self.te_thickness_edit_mode:
@@ -182,8 +180,10 @@ class AirfoilGraph(pg.GraphItem):
             else:
                 chord = np.sqrt((x[ind] - self.airfoil.dx.value)**2 + (y[ind] - self.airfoil.dy.value)**2)
                 angle_of_attack = -np.arctan2(y[ind] - self.airfoil.dy.value, x[ind] - self.airfoil.dx.value)
-                self.airfoil.c.value = chord
-                self.airfoil.alf.value = angle_of_attack
+                if self.airfoil.c.active and not self.airfoil.c.linked:
+                    self.airfoil.c.value = chord
+                if self.airfoil.alf.active and not self.airfoil.alf.linked:
+                    self.airfoil.alf.value = angle_of_attack
 
         elif self.airfoil.control_points[ind].cp_type == 'free_point':
             ap_tag = self.airfoil.control_points[ind].anchor_point_tag
@@ -191,10 +191,15 @@ class AirfoilGraph(pg.GraphItem):
             # fp_x, fp_y = translate(x[ind], y[ind], -self.airfoil.dx.value, -self.airfoil.dy.value)
             # fp_x, fp_y = rotate(fp_x, fp_y, self.airfoil.alf.value)
             # fp_x, fp_y = scale(fp_x, fp_y, 1/self.airfoil.c.value)
-            self.airfoil.free_points[ap_tag][fp_tag].x.value = x[ind]
-            self.airfoil.control_points[ind].xp = x[ind]
-            self.airfoil.free_points[ap_tag][fp_tag].y.value = y[ind]
-            self.airfoil.control_points[ind].yp = y[ind]
+            self.airfoil.free_points[ap_tag][fp_tag].airfoil_transformation = {'dx': self.airfoil.dx,
+                                                                               'dy': self.airfoil.dy,
+                                                                               'alf': self.airfoil.alf,
+                                                                               'c': self.airfoil.c}
+            self.airfoil.free_points[ap_tag][fp_tag].set_xp_value(x[ind])
+            self.airfoil.free_points[ap_tag][fp_tag].set_yp_value(y[ind])
+
+        elif self.airfoil.control_points[ind].cp_type == 'anchor_point':
+            print(f"Anchor point!")
 
         self.airfoil.update()
         self.data['pos'] = self.airfoil.control_point_array
@@ -203,7 +208,7 @@ class AirfoilGraph(pg.GraphItem):
         # print(f"Made it before accept")
         ev.accept()
         # print(f"Made it after accept")
-        self.airfoil.update()
+        # self.airfoil.update()
 
     def clicked(self, pts):
         print("clicked: %s" % pts)

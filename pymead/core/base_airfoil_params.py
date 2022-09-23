@@ -122,7 +122,7 @@ class BaseAirfoilParams:
         if not self.r_le:
             self.r_le = Param(0.5)
         if not self.phi_le:
-            self.phi_le = Param(0.0, active=False)
+            self.phi_le = Param(0.0)
         if not self.psi1_le:
             self.psi1_le = Param(0.0)
         if not self.psi2_le:
@@ -136,15 +136,15 @@ class BaseAirfoilParams:
         if not self.theta2_te:
             self.theta2_te = Param(np.deg2rad(10.0))
         if not self.t_te:
-            self.t_te = Param(0.0, 'length', active=False)
+            self.t_te = Param(0.0, 'length')
         if not self.r_te:
-            self.r_te = Param(0.5, active=False)
+            self.r_te = Param(0.5)
         if not self.phi_te:
-            self.phi_te = Param(0.0, active=False)
+            self.phi_te = Param(0.0)
         if not self.dx:
-            self.dx = Param(0.0, active=False)
+            self.dx = Param(0.0)
         if not self.dy:
-            self.dy = Param(0.0, active=False)
+            self.dy = Param(0.0)
 
         if not -np.pi <= self.phi_le.value <= np.pi:
             raise ValueError(f'The leading edge tilt angle, phi_le, must be between -180 degrees and 180 degrees,'

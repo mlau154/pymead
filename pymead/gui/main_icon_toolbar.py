@@ -76,9 +76,9 @@ class MainIconToolbar(QToolBar):
     #     self.parent.mplcanvas1.draw()
 
     def change_background_color_button_toggled(self):
-        self.parent.setStyleSheet("background-color: black;")
+        self.parent.setStyleSheet("background-color: black; color: white;")
         self.parent.w.setBackground('k')
-        self.parent.design_tree.setStyleSheet('''QTreeWidget {color: white;} QTreeView::item:hover {background: green;}
+        self.parent.design_tree_widget.setStyleSheet('''QTreeWidget {color: white;} QTreeView::item:hover {background: green;}
         QTreeView::branch:closed {color: white;} QTreeView::branch:open {color: white;}''')  # need to use image, not
         # color for open closed arrows
         self.parent.show()
