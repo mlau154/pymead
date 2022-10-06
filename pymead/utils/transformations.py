@@ -82,3 +82,12 @@ def rotate_matrix(mat: np.ndarray, theta):
                              [np.sin(theta), np.cos(theta)]])
     mat = (rotation_mat @ xy).T
     return mat
+
+
+def transform(x, y, dx, dy, theta, scale_factor, transformation_order: list):
+    command_dict = {'translate': translate, 'rotate': rotate, 'scale': scale}
+    argument_dict = {'translate': {'dx': dx, 'dy': dy}, 'rotate': {'theta': theta},
+                     'scale': {'scale_factor': scale_factor}}
+    for command in transformation_order:
+        x, y = command_dict[command](x, y, **argument_dict[command])
+    return x, y
