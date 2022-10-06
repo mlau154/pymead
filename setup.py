@@ -26,5 +26,6 @@ setup(
     packages=["pymead", "pymead/core", "pymead/symmetric", "pymead/examples", "pymead/utils", "pymead/gui",
               "pymead/tests"],
     include_package_data=True,
-    install_requires=["scipy", "numpy", "shapely", "matplotlib", "requests", "PyQt5", "pyqtgraph", "python-benedict"],
+    install_requires=["scipy", "numpy", "shapely", "matplotlib", "requests", "PyQt5", "pyqtgraph", "python-benedict",
+                      "pandas"],
 )

@@ -76,3 +76,7 @@ juncture anchor points creates line segments. Adding sharp-juncture anchor point
 curvature continuity, but may be useful in some cases.
 
 """
+import os
+from matplotlib import colormaps
+DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")
+RESOURCE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "resources")

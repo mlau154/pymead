@@ -171,32 +171,63 @@ class AnchorPoint(ControlPoint):
         return f"anchor_point_{self.tag}"
 
     def set_x_value(self, value):
-        self.x.value = value
-        self.xp.value, self.yp.value = translate(self.x.value, self.y.value, -self.airfoil_transformation['dx'].value,
-                                                 -self.airfoil_transformation['dy'].value)
-        self.xp.value, self.yp.value = rotate(self.xp.value, self.yp.value, self.airfoil_transformation['alf'].value)
-        self.xp.value, self.yp.value = scale(self.xp.value, self.yp.value, 1 / self.airfoil_transformation['c'].value)
+        if value is not None:
+            self.x.value = value
+        self.xp.value, self.yp.value = scale(self.x.value, self.y.value,
+                                             self.airfoil_transformation['c'].value)
+        self.xp.value, self.yp.value = rotate(self.xp.value, self.yp.value, -self.airfoil_transformation['alf'].value)
+        self.xp.value, self.yp.value = translate(self.xp.value, self.yp.value, self.airfoil_transformation['dx'].value,
+                                                 self.airfoil_transformation['dy'].value)
+        if value is not None:
+            self.set_ctrlpt_value()
 
     def set_y_value(self, value):
-        self.y.value = value
-        self.xp.value, self.yp.value = translate(self.x.value, self.y.value, -self.airfoil_transformation['dx'].value,
-                                                 -self.airfoil_transformation['dy'].value)
-        self.xp.value, self.yp.value = rotate(self.xp.value, self.yp.value, self.airfoil_transformation['alf'].value)
-        self.xp.value, self.yp.value = scale(self.xp.value, self.yp.value, 1 / self.airfoil_transformation['c'].value)
+        if value is not None:
+            self.y.value = value
+        self.xp.value, self.yp.value = scale(self.x.value, self.y.value,
+                                             self.airfoil_transformation['c'].value)
+        self.xp.value, self.yp.value = rotate(self.xp.value, self.yp.value, -self.airfoil_transformation['alf'].value)
+        self.xp.value, self.yp.value = translate(self.xp.value, self.yp.value, self.airfoil_transformation['dx'].value,
+                                                 self.airfoil_transformation['dy'].value)
+        if value is not None:
+            self.set_ctrlpt_value()
 
     def set_xp_value(self, value):
-        self.xp.value = value
-        self.x.value, self.y.value = translate(self.xp.value, self.yp.value, self.airfoil_transformation['dx'].value,
-                                               self.airfoil_transformation['dy'].value)
-        self.x.value, self.y.value = rotate(self.x.value, self.y.value, -self.airfoil_transformation['alf'].value)
-        self.x.value, self.y.value = scale(self.x.value, self.y.value, self.airfoil_transformation['c'].value)
+        if value is not None:
+            self.xp.value = value
+        # self.x.value, self.y.value = translate(self.xp.value, self.yp.value, -self.airfoil_transformation['dx'].value,
+        #                                        -self.airfoil_transformation['dy'].value)
+        # self.x.value, self.y.value = rotate(self.x.value, self.y.value, self.airfoil_transformation['alf'].value)
+        # self.x.value, self.y.value = scale(self.x.value, self.y.value, 1 / self.airfoil_transformation['c'].value)
+        # print(f"Setting xp value! x = {self.x.value}, y = {self.y.value}")
+        self.set_ctrlpt_value()
 
     def set_yp_value(self, value):
-        self.yp.value = value
-        self.x.value, self.y.value = translate(self.xp.value, self.yp.value, self.airfoil_transformation['dx'].value,
-                                               self.airfoil_transformation['dy'].value)
-        self.x.value, self.y.value = rotate(self.x.value, self.y.value, -self.airfoil_transformation['alf'].value)
-        self.x.value, self.y.value = scale(self.x.value, self.y.value, self.airfoil_transformation['c'].value)
+        if value is not None:
+            self.yp.value = value
+        self.x.value, self.y.value = translate(self.xp.value, self.yp.value, -self.airfoil_transformation['dx'].value,
+                                               -self.airfoil_transformation['dy'].value)
+        self.x.value, self.y.value = rotate(self.x.value, self.y.value, self.airfoil_transformation['alf'].value)
+        self.x.value, self.y.value = scale(self.x.value, self.y.value, 1 / self.airfoil_transformation['c'].value)
+        # print(f"Setting yp value! x = {self.x.value}, y = {self.y.value}")
+        self.set_ctrlpt_value()
+
+    def set_xp_yp_value(self, xp_value, yp_value):
+        if xp_value is not None:
+            self.xp.value = xp_value
+        if yp_value is not None:
+            self.yp.value = yp_value
+        self.x.value, self.y.value = translate(self.xp.value, self.yp.value, -self.airfoil_transformation['dx'].value,
+                                               -self.airfoil_transformation['dy'].value)
+        self.x.value, self.y.value = rotate(self.x.value, self.y.value, self.airfoil_transformation['alf'].value)
+        self.x.value, self.y.value = scale(self.x.value, self.y.value, 1 / self.airfoil_transformation['c'].value)
+        self.set_ctrlpt_value()
+
+    def set_ctrlpt_value(self):
+        self.ctrlpt.xp = self.xp.value
+        self.ctrlpt.yp = self.yp.value
+        self.ctrlpt.x_val = self.x.value
+        self.ctrlpt.y_val = self.y.value
 
     def get_anchor_type(self, anchor_point_order):
         if self.tag == 'le':
@@ -218,8 +249,10 @@ class AnchorPoint(ControlPoint):
         psi1 = self.psi1.value
         psi2 = self.psi2.value
         tag = self.tag
-        x0 = self.x_val
-        y0 = self.y_val
+        x0 = self.x.value
+        y0 = self.y.value
+        # if self.tag == 'ap0':
+        #     print(f"Generating anchor point branch! x0 = {x0}, y0 = {y0}")
 
         if self.n1 is None:
             raise ValueError('Order of Bezier curve before anchor point was not set before generating the anchor'
@@ -237,7 +270,7 @@ class AnchorPoint(ControlPoint):
 
         def generate_tangent_seg_ctrlpts(minus_plus: str):
             if R == 0:  # degenerate case 1: infinite curvature (sharp corner)
-                return ControlPoint(x0, y0, f'{repr(self)}_g1_{minus_plus}', tag)
+                return ControlPoint(x0, y0, f'anchor_point_{tag}_g1_{minus_plus}', tag)
 
             def evaluate_tangent_segment_length():
                 if self.anchor_type == 'upper_surf':

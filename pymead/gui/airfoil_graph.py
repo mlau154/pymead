@@ -8,7 +8,7 @@ import pyqtgraph as pg
 from pyqtgraph.Qt import QtCore
 
 from PyQt5.QtGui import QPen
-from PyQt5 import QtCore
+from PyQt5.QtCore import pyqtSignal, pyqtSlot
 
 from pymead.core.airfoil import Airfoil
 
@@ -16,6 +16,7 @@ from pymead.utils.transformations import rotate, translate, scale
 
 
 class AirfoilGraph(pg.GraphItem):
+    my_signal = pyqtSignal(str)
     def __init__(self, airfoil: Airfoil = None, pen=None,
                  size: tuple = (1000, 300), background_color: str = 'w', w=None, v=None):
         # Enable antialiasing for prettier plots
@@ -68,6 +69,7 @@ class AirfoilGraph(pg.GraphItem):
         self.v.disableAutoRange()
         self.scatter.sigClicked.connect(self.clicked)
         # self.scatter.sigPlotChanged.connect(self.clicked)
+        self.my_signal.connect(self.slot)
 
     def setData(self, **kwds):
         self.text = kwds.pop('text', [])
@@ -107,6 +109,7 @@ class AirfoilGraph(pg.GraphItem):
             item.setParentItem(self)
 
     def updateGraph(self):
+        # print(f"Updating graph!")
         # print(f"self.data for airfoil {self.airfoil} is {self.data}")
         pg.GraphItem.setData(self, **self.data)
         # print(self.data)
@@ -169,10 +172,37 @@ class AirfoilGraph(pg.GraphItem):
             anchor_point.recalculate_ap_branch_props_from_g1_pt('plus', new_abs_phi2, new_Lt)
 
         elif self.airfoil.control_points[ind].tag == 'le':
+            old_dx = self.airfoil.dx.value
+            old_dy = self.airfoil.dy.value
             if self.airfoil.dx.active and not self.airfoil.dx.linked:
                 self.airfoil.dx.value = x[ind]
+                new_dx = x[ind]
+            else:
+                new_dx = old_dx
             if self.airfoil.dy.active and not self.airfoil.dy.linked:
                 self.airfoil.dy.value = y[ind]
+                new_dy = y[ind]
+            else:
+                new_dy = old_dx
+            for ap_key, ap_val in self.airfoil.free_points.items():
+                for fp_key, fp_val in ap_val.items():
+                    fp_val.set_x_value(None)
+                    fp_val.set_y_value(None)
+            for ap in self.airfoil.anchor_points:
+                if ap.tag not in ['te_1', 'le', 'te_2']:
+                    ap.set_x_value(None)
+                    ap.set_y_value(None)
+            # for ap_key, ap_val in self.airfoil.free_points.items():
+            #     for fp_key, fp_val in ap_val.items():
+            #         fp_val.xp.value, fp_val.yp.value = translate(fp_val.x.value, fp_val.y.value, new_dx - old_dx,
+            #                                                      new_dy - old_dy)
+                    # print(f"xp val = {fp_val.xp.value}")
+            # for ap_key, ap_val in self.airfoil.free_points.items():
+            #     for fp_key, fp_val in ap_val.items():
+            #         fp_val.set_y_value(None)
+            # print(f"value = {self.airfoil.free_points['ap0']['FP0'].xp.value}")
+            # print(f"transformation fp = {self.airfoil.free_points['ap0']['FP0'].airfoil_transformation}")
+            # print(f"airfoil dx = {self.airfoil.dx}")
 
         elif self.airfoil.control_points[ind].tag in ['te_1', 'te_2']:
             if self.te_thickness_edit_mode:
@@ -184,8 +214,23 @@ class AirfoilGraph(pg.GraphItem):
                     self.airfoil.c.value = chord
                 if self.airfoil.alf.active and not self.airfoil.alf.linked:
                     self.airfoil.alf.value = angle_of_attack
+            # print(f"c = {self.airfoil.c}")
+
+            for ap_key, ap_val in self.airfoil.free_points.items():
+                for fp_key, fp_val in ap_val.items():
+                    fp_val.set_x_value(None)
+                    fp_val.set_y_value(None)
+            for ap in self.airfoil.anchor_points:
+                if ap.tag not in ['te_1', 'le', 'te_2']:
+                    ap.set_x_value(None)
+                    ap.set_y_value(None)
+
+            # for ap_key, ap_val in self.airfoil.free_points.items():
+            #     for fp_key, fp_val in ap_val.items():
+            #         fp_val.set_y_value(None)
 
         elif self.airfoil.control_points[ind].cp_type == 'free_point':
+            # print(f"free_point function called!")
             ap_tag = self.airfoil.control_points[ind].anchor_point_tag
             fp_tag = self.airfoil.control_points[ind].tag
             # fp_x, fp_y = translate(x[ind], y[ind], -self.airfoil.dx.value, -self.airfoil.dy.value)
@@ -195,20 +240,47 @@ class AirfoilGraph(pg.GraphItem):
                                                                                'dy': self.airfoil.dy,
                                                                                'alf': self.airfoil.alf,
                                                                                'c': self.airfoil.c}
-            self.airfoil.free_points[ap_tag][fp_tag].set_xp_value(x[ind])
-            self.airfoil.free_points[ap_tag][fp_tag].set_yp_value(y[ind])
+            # if self.airfoil.free_points[ap_tag][fp_tag].x.active and not self.airfoil.free_points[ap_tag][fp_tag].x.linked:
+            if self.airfoil.free_points[ap_tag][fp_tag].xp.active and not self.airfoil.free_points[ap_tag][fp_tag].xp.linked:
+                self.airfoil.free_points[ap_tag][fp_tag].set_xp_value(x[ind])
+            if self.airfoil.free_points[ap_tag][fp_tag].yp.active and not self.airfoil.free_points[ap_tag][
+                fp_tag].yp.linked:
+                self.airfoil.free_points[ap_tag][fp_tag].set_yp_value(y[ind])
 
         elif self.airfoil.control_points[ind].cp_type == 'anchor_point':
-            print(f"Anchor point!")
+            selected_anchor_point = self.airfoil.anchor_points[
+                self.airfoil.anchor_point_order.index(self.airfoil.control_points[ind].tag)]
+            # print(f"ap = {self.airfoil.anchor_points}")
+            # ap_tag = self.airfoil.control_points[ind].tag
+            # ap_idx = next((idx for idx, ap in enumerate(self.airfoil.anchor_points) if ap.tag == ap_tag))
+            if selected_anchor_point.airfoil_transformation is None:
+                selected_anchor_point.airfoil_transformation = {'dx': self.airfoil.dx, 'dy': self.airfoil.dy,
+                                                                'alf': self.airfoil.alf, 'c': self.airfoil.c}
+            if selected_anchor_point.xp.active and not selected_anchor_point.xp.linked:
+                xp_input = x[ind]
+            else:
+                xp_input = None
+            if selected_anchor_point.yp.active and not selected_anchor_point.yp.linked:
+                yp_input = y[ind]
+            else:
+                yp_input = None
+            selected_anchor_point.set_xp_yp_value(xp_input, yp_input)
 
         self.airfoil.update()
         self.data['pos'] = self.airfoil.control_point_array
+
+        # self.my_signal.emit("Hi!")
+
 
         self.updateGraph()
         # print(f"Made it before accept")
         ev.accept()
         # print(f"Made it after accept")
         # self.airfoil.update()
+
+    @pyqtSlot(str)
+    def slot(self, string):
+        print(f"Signal emitted! Emitted signal was {string}")
 
     def clicked(self, pts):
         print("clicked: %s" % pts)

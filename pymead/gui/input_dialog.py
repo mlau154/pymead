@@ -1,6 +1,6 @@
 import numpy as np
 from typing import List
-from PyQt5.QtWidgets import QDialog, QDialogButtonBox, QFormLayout, QDoubleSpinBox, QComboBox, QLineEdit
+from PyQt5.QtWidgets import QDialog, QDialogButtonBox, QFormLayout, QDoubleSpinBox, QComboBox, QLineEdit, QSpinBox
 
 
 class FreePointInputDialog(QDialog):
@@ -98,3 +98,110 @@ class AnchorPointInputDialog(QDialog):
 
     def update_ap_tags(self):
         self.ap_list = [anchor_point.tag for anchor_point in self.ap]
+
+
+class SingleAirfoilInviscidDialog(QDialog):
+    def __init__(self, items: List[tuple], a_list: list, parent=None):
+        super().__init__(parent)
+
+        buttonBox = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel, self)
+        layout = QFormLayout(self)
+
+        self.inputs = []
+        for item in items:
+            if item[1] == 'double':
+                self.inputs.append(QDoubleSpinBox(self))
+                self.inputs[-1].setValue(item[2])
+                self.inputs[-1].setMinimum(0.0)
+                self.inputs[-1].setMaximum(np.inf)
+                self.inputs[-1].setSingleStep(1.0)
+                self.inputs[-1].setDecimals(5)
+            elif item[1] == 'combo':
+                self.inputs.append(QComboBox(self))
+                if item[0] == "Airfoil":
+                    self.inputs[-1].addItems(a_list)
+            elif item[1] == 'string':
+                self.inputs.append(QLineEdit(self))
+            else:
+                raise ValueError(f"AnchorPointInputDialog item types must be \'double\', \'combo\', or \'string\'")
+            layout.addRow(item[0], self.inputs[-1])
+
+        layout.addWidget(buttonBox)
+
+        buttonBox.accepted.connect(self.accept)
+        buttonBox.rejected.connect(self.reject)
+
+    def getInputs(self):
+        return_vals = []
+        for val in self.inputs:
+            if isinstance(val, QDoubleSpinBox):
+                return_vals.append(val.value())
+            elif isinstance(val, QLineEdit):
+                return_vals.append(val.text())
+            elif isinstance(val, QComboBox):
+                return_vals.append(val.currentText())
+            else:
+                raise TypeError(f'QFormLayout widget must be of type {type(QComboBox)}, {type(QDoubleSpinBox)}, '
+                                f'or {type(QLineEdit)}')
+        return tuple(return_vals)
+
+
+class SingleAirfoilViscousDialog(QDialog):
+    def __init__(self, items: List[tuple], a_list: list, parent=None):
+        super().__init__(parent)
+
+        buttonBox = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel, self)
+        layout = QFormLayout(self)
+
+        self.inputs = []
+        for item in items:
+            if item[1] == 'double':
+                self.inputs.append(QDoubleSpinBox(self))
+                if item[0] == "Reynolds Number":
+                    self.inputs[-1].setMinimum(0.0)
+                else:
+                    self.inputs[-1].setMinimum(-np.inf)
+                self.inputs[-1].setMaximum(np.inf)
+                self.inputs[-1].setValue(item[2])
+                self.inputs[-1].setSingleStep(1.0)
+                self.inputs[-1].setDecimals(5)
+            elif item[1] == 'int':
+                self.inputs.append(QSpinBox(self))
+                self.inputs[-1].setMaximum(99999)
+                self.inputs[-1].setValue(item[2])
+            elif item[1] == 'combo':
+                self.inputs.append(QComboBox(self))
+                if item[0] == "Airfoil":
+                    self.inputs[-1].addItems(a_list)
+                    # self.inputs[-1].valueChanged.connect(self.set_airfoil_name)
+            elif item[1] == 'string':
+                self.inputs.append(QLineEdit(self))
+                self.inputs[-1].setText(item[2])
+            else:
+                raise ValueError(f"AnchorPointInputDialog item types must be \'double\', \'combo\', or \'string\'")
+            layout.addRow(item[0], self.inputs[-1])
+
+        layout.addWidget(buttonBox)
+
+        buttonBox.accepted.connect(self.accept)
+        buttonBox.rejected.connect(self.reject)
+
+    # def set_airfoil_name(self, value):
+    #     for item in self.inputs:
+    #         if item.
+
+    def getInputs(self):
+        return_vals = []
+        for val in self.inputs:
+            if isinstance(val, QDoubleSpinBox):
+                return_vals.append(val.value())
+            elif isinstance(val, QLineEdit):
+                return_vals.append(val.text())
+            elif isinstance(val, QComboBox):
+                return_vals.append(val.currentText())
+            elif isinstance(val, QSpinBox):
+                return_vals.append(val.value())
+            else:
+                raise TypeError(f'QFormLayout widget must be of type {type(QComboBox)}, {type(QDoubleSpinBox)}, '
+                                f'or {type(QLineEdit)}')
+        return tuple(return_vals)

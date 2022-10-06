@@ -103,6 +103,10 @@ class Bezier(ParametricCurve):
                 self.t = t
         else:
             self.t = np.linspace(0, 1, nt)
+            # self.t = np.zeros(nt)
+            # for idx, val in enumerate(self.t):
+            #     self.t[idx] += idx / (nt - 1)
+            # self.t = np.array([idx / (nt - 1) for idx in range(nt)])
 
         t = self.t
 

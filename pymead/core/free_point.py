@@ -60,31 +60,40 @@ class FreePoint(ControlPoint):
         self.ctrlpt.tag = tag
 
     def set_x_value(self, value):
-        self.x.value = value
-        self.xp.value, self.yp.value = translate(self.x.value, self.y.value, -self.airfoil_transformation['dx'].value,
-                                                 -self.airfoil_transformation['dy'].value)
-        self.xp.value, self.yp.value = rotate(self.xp.value, self.yp.value, self.airfoil_transformation['alf'].value)
-        self.xp.value, self.yp.value = scale(self.xp.value, self.yp.value, 1 / self.airfoil_transformation['c'].value)
-        self.set_ctrlpt_value()
+        if value is not None:
+            self.x.value = value
+        self.xp.value, self.yp.value = scale(self.x.value, self.y.value,
+                                             self.airfoil_transformation['c'].value)
+        self.xp.value, self.yp.value = rotate(self.xp.value, self.yp.value, -self.airfoil_transformation['alf'].value)
+        self.xp.value, self.yp.value = translate(self.xp.value, self.yp.value, self.airfoil_transformation['dx'].value,
+                                                 self.airfoil_transformation['dy'].value)
+        if value is not None:
+            self.set_ctrlpt_value()
 
     def set_y_value(self, value):
-        self.y.value = value
-        self.xp.value, self.yp.value = translate(self.x.value, self.y.value, -self.airfoil_transformation['dx'].value,
-                                                 -self.airfoil_transformation['dy'].value)
-        self.xp.value, self.yp.value = rotate(self.xp.value, self.yp.value, self.airfoil_transformation['alf'].value)
-        self.xp.value, self.yp.value = scale(self.xp.value, self.yp.value, 1 / self.airfoil_transformation['c'].value)
-        self.set_ctrlpt_value()
+        if value is not None:
+            self.y.value = value
+        self.xp.value, self.yp.value = scale(self.x.value, self.y.value,
+                                             self.airfoil_transformation['c'].value)
+        self.xp.value, self.yp.value = rotate(self.xp.value, self.yp.value, -self.airfoil_transformation['alf'].value)
+        self.xp.value, self.yp.value = translate(self.xp.value, self.yp.value, self.airfoil_transformation['dx'].value,
+                                                 self.airfoil_transformation['dy'].value)
+        if value is not None:
+            self.set_ctrlpt_value()
 
     def set_xp_value(self, value):
-        self.xp.value = value
-        # self.x.value, self.y.value = translate(self.xp.value, self.yp.value, -self.airfoil_transformation['dx'].value,
-        #                                        -self.airfoil_transformation['dy'].value)
-        # self.x.value, self.y.value = rotate(self.x.value, self.y.value, self.airfoil_transformation['alf'].value)
-        # self.x.value, self.y.value = scale(self.x.value, self.y.value, 1 / self.airfoil_transformation['c'].value)
+        if value is not None:
+            self.xp.value = value
+        self.x.value, self.y.value = translate(self.xp.value, self.yp.value, -self.airfoil_transformation['dx'].value,
+                                               -self.airfoil_transformation['dy'].value)
+        self.x.value, self.y.value = rotate(self.x.value, self.y.value, self.airfoil_transformation['alf'].value)
+        self.x.value, self.y.value = scale(self.x.value, self.y.value, 1 / self.airfoil_transformation['c'].value)
         self.set_ctrlpt_value()
 
     def set_yp_value(self, value):
-        self.yp.value = value
+        # print(f"set_yp called")
+        if value is not None:
+            self.yp.value = value
         self.x.value, self.y.value = translate(self.xp.value, self.yp.value, -self.airfoil_transformation['dx'].value,
                                                -self.airfoil_transformation['dy'].value)
         self.x.value, self.y.value = rotate(self.x.value, self.y.value, self.airfoil_transformation['alf'].value)

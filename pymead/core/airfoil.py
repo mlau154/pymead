@@ -7,12 +7,18 @@ from pymead.core.bezier import Bezier
 from pymead.core.trailing_edge_point import TrailingEdgePoint
 from pymead.symmetric.symmetric_base_airfoil_params import SymmetricBaseAirfoilParams
 from pymead.utils.increment_string_index import increment_string_index, decrement_string_index, get_prefix_and_index_from_string
+from pymead.utils.transformations import translate_matrix, rotate_matrix, scale_matrix
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
 import matplotlib.pyplot as plt
 import typing
 from shapely.geometry import Polygon, LineString
 from copy import deepcopy
+from pymead import DATA_DIR
+import os
+import subprocess
+from time import time
+import pandas as pd
 
 
 class Airfoil:
@@ -114,6 +120,9 @@ class Airfoil:
         self.plt_normals = None
         self.plt_comb_curves = None
 
+        self.Cl = None
+        self.Cp = None
+
         self.needs_update = True
 
         if self.override_parameters is not None:
@@ -200,6 +209,10 @@ class Airfoil:
         `free_point`: a `pymead.core.free_point.FreePoint` to add to a Bézier curve
         """
         fp_dict = self.free_points[free_point.anchor_point_tag]
+        free_point.x.x = True
+        free_point.y.y = True
+        free_point.xp.xp = True
+        free_point.yp.yp = True
 
         if free_point.previous_free_point is None:
             free_point.set_tag('FP0')
@@ -279,12 +292,13 @@ class Airfoil:
         self.anchor_points[order_idx + 1].previous_anchor_point = ap.tag
         self.anchor_point_order.insert(order_idx + 1, ap.tag)
         self.anchor_points.insert(order_idx + 1, ap)
-        if self.anchor_point_order[order_idx + 2] == 'te_2':
+        if self.anchor_point_order[order_idx + 1] == 'te_2':
             self.N[ap.tag] = 4
         else:
             self.N[ap.tag] = 5
         if ap.previous_anchor_point == 'le':
             self.N['le'] = 5
+        ap.airfoil_transformation = {'c': self.c, 'alf': self.alf, 'dx': self.dx, 'dy': self.dy}
         ap_param_list = ['x', 'y', 'xp', 'yp', 'L', 'R', 'r', 'phi', 'psi1', 'psi2']
         self.param_dicts['AnchorPoints'][ap.tag] = {p: getattr(ap, p) for p in ap_param_list}
         self.free_points[ap.tag] = {}
@@ -347,6 +361,16 @@ class Airfoil:
         # Get the control point array
         self.control_point_array = np.array([[cp.xp, cp.yp] for cp in self.control_points])
 
+        # for ap_key, ap_val in self.free_points.items():
+        #     for fp_key, fp_val in ap_val.items():
+        #         cp = next((cp for cp in self.control_points if cp.tag == fp_key and cp.anchor_point_tag == ap_key))
+        #         print(f"cp = {cp}")
+        #         fp_val.xp.value = cp.xp
+        #         fp_val.yp.value = cp.yp
+
+        # if 'ap0' in self.free_points.keys():
+        #     print(f"xp_val now is {self.free_points['ap0']['FP0'].xp.value}")
+
         # Make Bézier curves from the control point array
         self.curve_list_generated = True
         previous_number_of_curves = 0
@@ -355,6 +379,8 @@ class Airfoil:
             self.curve_list_generated = False
         else:
             previous_number_of_curves = len(self.curve_list)
+
+        # print(f"curve_list = {self.curve_list}")
 
         cp_end_idx, cp_start_idx = 0, 1
         for idx, ap_tag in enumerate(self.anchor_point_order[:-1]):
@@ -365,6 +391,7 @@ class Airfoil:
             P = self.control_point_array[cp_start_idx - 1:cp_end_idx]
             # print(f"P = {P}")
             if self.curve_list_generated and previous_number_of_curves == len(self.anchor_point_order) - 1:
+                # print(f"previous_number_of_curves = {previous_number_of_curves}, airfoil_tag = {self.tag}")
                 self.curve_list[idx].update(P, 150)
             else:
                 self.curve_list.append(Bezier(P, 150))
@@ -385,7 +412,7 @@ class Airfoil:
         """
         self.__init__(self.nt, self.base_airfoil_params, override_parameters=parameters)
 
-    def translate(self, dx: float, dy: float):
+    def translate(self, dx: float, dy: float, update_ap_fp: bool = False):
         """
         ### Description:
 
@@ -404,8 +431,16 @@ class Airfoil:
         for cp in self.control_points:
             cp.xp += dx
             cp.yp += dy
+        if update_ap_fp:
+            for ap_key, ap_val in self.free_points.items():
+                for fp_key, fp_val in ap_val.items():
+                    fp_val.xp.value = fp_val.x.value + dx
+                    fp_val.yp.value = fp_val.y.value + dy
+            for ap in self.anchor_points:
+                ap.xp.value = ap.x.value + dx
+                ap.yp.value = ap.y.value + dy
 
-    def rotate(self, angle: float):
+    def rotate(self, angle: float, update_ap_fp: bool = False):
         """
         ### Description:
 
@@ -425,8 +460,18 @@ class Airfoil:
             rotated_point = (rot_mat @ np.array([[cp.xp], [cp.yp]])).flatten()
             cp.xp = rotated_point[0]
             cp.yp = rotated_point[1]
+        if update_ap_fp:
+            for ap_key, ap_val in self.free_points.items():
+                for fp_key, fp_val in ap_val.items():
+                    rotated_point = (rot_mat @ np.array([[fp_val.x.value], [fp_val.y.value]])).flatten()
+                    fp_val.xp.value = rotated_point[0]
+                    fp_val.yp.value = rotated_point[1]
+            for ap in self.anchor_points:
+                rotated_point = (rot_mat @ np.array([[ap.x.value], [ap.y.value]])).flatten()
+                ap.xp.value = rotated_point[0]
+                ap.yp.value = rotated_point[1]
 
-    def scale(self, scale_value):
+    def scale(self, scale_value, update_ap_fp: bool = False):
         """
         ### Description:
 
@@ -435,6 +480,14 @@ class Airfoil:
         for cp in self.control_points:
             cp.xp *= scale_value
             cp.yp *= scale_value
+        if update_ap_fp:
+            for ap_key, ap_val in self.free_points.items():
+                for fp_key, fp_val in ap_val.items():
+                    fp_val.xp.value = fp_val.x.value * scale_value
+                    fp_val.yp.value = fp_val.y.value * scale_value
+            for ap in self.anchor_points:
+                ap.xp.value = ap.x.value * scale_value
+                ap.yp.value = ap.y.value * scale_value
 
     def compute_area(self):
         """
@@ -543,6 +596,66 @@ class Airfoil:
         for curve in self.curve_list:
             curve.update_curve_pg()
 
+    def get_coords(self, body_fixed_csys: bool = False):
+        x = np.array([])
+        y = np.array([])
+        self.coords = []
+        for idx, curve in enumerate(self.curve_list):
+            if idx == 0:
+                x = curve.x
+                y = curve.y
+            else:
+                x = np.append(x, curve.x[1:])
+                y = np.append(y, curve.y[1:])
+        self.coords = np.column_stack((x, y))
+        if body_fixed_csys:
+            self.coords = translate_matrix(self.coords, -self.dx.value, -self.dy.value)
+            self.coords = rotate_matrix(self.coords, self.alf.value)
+            self.coords = scale_matrix(self.coords, 1 / self.c.value)
+        return self.coords
+
+    def write_coords_to_file(self, f: str, read_write_mode: str, body_fixed_csys: bool = False) -> int:
+        self.get_coords(body_fixed_csys)
+        n_data_pts = len(self.coords)
+        with open(f, read_write_mode) as coord_file:
+            for row in self.coords:
+                coord_file.write(f"{row[0]} {row[1]}\n")
+        return n_data_pts
+
+    def read_Cl_from_file(self, f: str):
+        with open(f, 'r') as Cl_file:
+            line = Cl_file.readline()
+        str_Cl = ''
+        for ch in line:
+            if ch.isdigit() or ch in ['.', 'e', 'E', '-']:
+                str_Cl += ch
+        self.Cl = float(str_Cl)
+        return self.Cl
+
+    def read_Cp_from_file(self, f: str):
+        df = pd.read_csv(f, names=['x/c', 'Cp'])
+        self.Cp = df.to_numpy()
+        return self.Cp
+
+    def calculate_Cl_Cp(self, alpha, tool: str = 'panel_fort'):
+        """
+        Calculates the lift coefficient and surface pressure coefficient distribution for the Airfoil.
+        Note that the angle of attack (alpha) should be entered in degrees.
+        """
+        tool_list = ['panel_fort', 'xfoil', 'mses']
+        if tool not in tool_list:
+            raise ValueError(f"\'tool\' must be one of {tool_list}")
+        coord_file_name = 'airfoil_coords_ClCp_calc.dat'
+        f = os.path.join(DATA_DIR, coord_file_name)
+        n_data_pts = self.write_coords_to_file(f, 'w')
+        if tool == 'panel_fort':
+            subprocess.run((["panel_fort", DATA_DIR, coord_file_name, str(n_data_pts - 1), str(alpha)]),
+                           stdout=subprocess.DEVNULL)
+            self.read_Cl_from_file(os.path.join(DATA_DIR, 'LIFT.dat'))
+            self.read_Cp_from_file(os.path.join(DATA_DIR, 'CPLV.DAT'))
+        elif tool == 'xfoil':
+            subprocess.run((['xfoil', os.path.join(DATA_DIR, coord_file_name)]))
+
     def plot_control_point_skeleton(self, axs: plt.axes, **plot_kwargs):
         return axs.plot(self.control_point_array[:, 0], self.control_point_array[:, 1], **plot_kwargs)
 
@@ -578,3 +691,8 @@ class Airfoil:
     def update_curvature_comb_curve(self):
         for curve in self.curve_list:
             curve.update_curvature_comb_curve()
+
+
+if __name__ == '__main__':
+    airfoil = Airfoil()
+    airfoil.calculate_Cl_Cp(5.0)

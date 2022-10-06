@@ -6,7 +6,8 @@ class Param:
 
     def __init__(self, value: float, units: str or None = None,
                  bounds: list or np.ndarray = np.array([-np.inf, np.inf]), scale_value: float or None = None,
-                 active: bool = True, linked: bool = False, func_str: str = None):
+                 active: bool = True, linked: bool = False, func_str: str = None, x: bool = False, y: bool = False,
+                 xp: bool = False, yp: bool = False):
         """
         ### Description:
 
@@ -63,7 +64,11 @@ class Param:
         self.depends_on = {}
         self.tag_matrix = None
         self.tag_list = None
-        self.param_dict = None
+        self.mea = None
+        self.x = x
+        self.y = y
+        self.xp = xp
+        self.yp = yp
 
     def set_func_str(self, func_str: str):
         self.func_str = func_str
@@ -152,7 +157,7 @@ class Param:
 
         for idx, t in enumerate(self.tag_list):
             # print(f"tag_matrix_idx = {self.tag_matrix[idx]}")
-            self.depends_on[t] = get_nested_dict_val(self.param_dict, self.tag_matrix[idx])
+            self.depends_on[t] = get_nested_dict_val(self.mea.param_dict, self.tag_matrix[idx])
             # print(f"self.depends_on = {self.depends_on}")
             if self.depends_on[t] is None:
                 self.depends_on = {}
@@ -169,6 +174,7 @@ class Param:
                 return False
 
         for key, value in self.depends_on.items():
+            # print(f"updating depends on! val = {value.value}")
             # print(f"param_dict = {self.param_dict}")
             # print(f"key, val = {key}, {value}")
             # print(f"function_dict = {self.function_dict}")
@@ -188,7 +194,7 @@ if __name__ == '__main__':
     mea.airfoils['A0'].insert_free_point(FreePoint(x=Param(0.5), y=Param(0.1), previous_anchor_point='te_1'))
     mea.param_dict['A0']['FP0']['x'].func_str = '6.0 * $A0.FP0.y + 0.01'
     mea.param_dict['A0']['FP0']['y'].value = 0.15
-    mea.param_dict['A0']['FP0']['x'].param_dict = mea.param_dict
+    mea.param_dict['A0']['FP0']['x'].mea = mea
     mea.param_dict['A0']['FP0']['x'].update()
     mea.add_custom_parameters({'r_htf': dict(value=0.38)})
     mea.param_dict['A0']['FP0']['x'].func_str = '$CUSTOM.r_htf + cos(0.005)'
