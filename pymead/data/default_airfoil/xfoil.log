@@ -1,0 +1,158 @@
+Output:
+
+ ===================================================
+  XFOIL Version 6.99
+  Copyright (C) 2000   Mark Drela, Harold Youngren
+
+  This software comes with ABSOLUTELY NO WARRANTY,
+    subject to the GNU General Public License.
+
+  Caveat computor
+ ===================================================
+
+ File  xfoil.def  not found
+
+ Plain airfoil file
+
+Enter airfoil name   s>  
+ Number of input coordinate points: 299
+ Counterclockwise ordering
+ Max thickness =     0.074458  at x =   0.179
+ Max camber    =    -0.000000  at x =   0.017
+
+  LE  x,y  =   0.00000   0.00000  |   Chord =   1.00000
+  TE  x,y  =   1.00000   0.00000  |
+
+ Current airfoil nodes set from buffer airfoil nodes ( 299 )
+
+   QUIT    Exit program
+
+  .OPER    Direct operating point(s)
+  .MDES    Complex mapping design routine
+  .QDES    Surface speed design routine
+  .GDES    Geometry design routine
+
+   SAVE f  Write airfoil to labeled coordinate file
+   PSAV f  Write airfoil to plain coordinate file
+   ISAV f  Write airfoil to ISES coordinate file
+   MSAV f  Write airfoil to MSES coordinate file
+   REVE    Reverse written-airfoil node ordering
+
+   LOAD f  Read buffer airfoil from coordinate file
+   NACA i  Set NACA 4,5-digit airfoil and buffer airfoil
+   INTE    Set buffer airfoil by interpolating two airfoils
+   NORM    Buffer airfoil normalization toggle
+   XYCM rr Change CM reference location, currently  0.25000 0.00000
+
+   BEND    Display structural properties of current airfoil
+
+   PCOP    Set current-airfoil panel nodes directly from buffer airfoil points
+   PANE    Set current-airfoil panel nodes ( 160 ) based on curvature
+  .PPAR    Show/change paneling
+
+  .PLOP    Plotting options
+
+   WDEF f  Write  current-settings file
+   RDEF f  Reread current-settings file
+   NAME s  Specify new airfoil name
+   NINC    Increment name version number
+
+   Z       Zoom    | (available in all menus)
+   U       Unzoom  | 
+
+ XFOIL   c>  
+.OPERi   c>  
+.OPERi   c>  
+Enter Reynolds number   r>  
+ M  =    0.0000
+ Re =    100000
+
+.OPERv   c>   Calculating unit vorticity distributions ...
+ Calculating wake trajectory ...
+ Array size (IWX) too small.  Last wake point index reduced.
+ Calculating source influence matrix ...
+
+ Solving BL system ...
+
+ Initializing BL ...
+    side            1  ...
+ MRCHUE: Inverse mode at 136     Hk =   3.800
+ MRCHUE: Inverse mode at 137     Hk =   3.891
+ MRCHUE: Inverse mode at 138     Hk =   3.979
+ MRCHUE: Inverse mode at 139     Hk =   4.062
+ MRCHUE: Inverse mode at 140     Hk =   4.142
+ MRCHUE: Inverse mode at 141     Hk =   4.218
+ MRCHUE: Inverse mode at 142     Hk =   4.291
+ MRCHUE: Inverse mode at 143     Hk =   4.359
+ MRCHUE: Inverse mode at 144     Hk =   4.423
+ MRCHUE: Inverse mode at 145     Hk =   4.483
+ MRCHUE: Inverse mode at 146     Hk =   4.539
+ MRCHUE: Inverse mode at 147     Hk =   4.590
+ MRCHUE: Inverse mode at 148     Hk =   4.637
+ MRCHUE: Convergence failed at 149  side 1    Res =  0.3140E+01
+ MRCHUE: Inverse mode at 150     Hk =   4.675
+ MRCHUE: Inverse mode at 151     Hk =   4.708
+    side            2  ...
+ MRCHUE: Inverse mode at 135     Hk =   3.800
+ MRCHUE: Inverse mode at 136     Hk =   3.891
+ MRCHUE: Inverse mode at 137     Hk =   3.979
+ MRCHUE: Inverse mode at 138     Hk =   4.062
+ MRCHUE: Inverse mode at 139     Hk =   4.142
+ MRCHUE: Inverse mode at 140     Hk =   4.218
+ MRCHUE: Inverse mode at 141     Hk =   4.291
+ MRCHUE: Inverse mode at 142     Hk =   4.359
+ MRCHUE: Inverse mode at 143     Hk =   4.423
+ MRCHUE: Inverse mode at 144     Hk =   4.483
+ MRCHUE: Inverse mode at 145     Hk =   4.539
+ MRCHUE: Inverse mode at 146     Hk =   4.590
+ MRCHUE: Inverse mode at 147     Hk =   4.637
+ MRCHUE: Convergence failed at 148  side 2    Res =  0.3246E+01
+ MRCHUE: Inverse mode at 149     Hk =   4.675
+ MRCHUE: Inverse mode at 150     Hk =   4.708
+ MRCHUE: Inverse mode at 152     Hk =   4.176
+ MRCHUE: Inverse mode at 153     Hk =   3.789
+ MRCHUE: Inverse mode at 154     Hk =   3.489
+ MRCHUE: Inverse mode at 155     Hk =   3.248
+ MRCHUE: Inverse mode at 156     Hk =   3.048
+
+ Side 1 forced transition at x/c =  1.0000  151
+ Side 2 forced transition at x/c =  1.0000  150
+ idif Ue xi dudx           1  8.06295425E-02  1.42550468E-03   56.562103    
+ Uenew xinew           2  5.46835270E-03  9.66787338E-05
+
+   1   rms: 0.4049E+00   max: 0.3377E+01   D at  157  2   RLX: 0.444
+       a =  0.000      CL =  0.0000
+      Cm = -0.0000     CD =  0.00571   =>   CDf =  0.00587    CDp = -0.00015
+
+ Side 1 forced transition at x/c =  1.0000  150
+ Side 2 forced transition at x/c =  1.0000  151
+
+   2   rms: 0.1641E+00   max: 0.1043E+01   D at  161  2   RLX: 0.859
+       a =  0.000      CL =  0.0000
+      Cm = -0.0000     CD =  0.00910   =>   CDf =  0.00609    CDp =  0.00302
+
+ Side 1 forced transition at x/c =  1.0000  151
+ Side 2 forced transition at x/c =  1.0000  150
+
+   3   rms: 0.2953E-01   max: -.2303E+00   T at    2  1
+       a =  0.000      CL = -0.0000
+      Cm =  0.0000     CD =  0.01109   =>   CDf =  0.00619    CDp =  0.00490
+
+ Side 1 forced transition at x/c =  1.0000  151
+ Side 2 forced transition at x/c =  1.0000  150
+
+   4   rms: 0.1472E-02   max: -.1619E-01   D at    3  1
+       a =  0.000      CL = -0.0000
+      Cm =  0.0000     CD =  0.01114   =>   CDf =  0.00612    CDp =  0.00502
+
+ Side 1 forced transition at x/c =  1.0000  151
+ Side 2 forced transition at x/c =  1.0000  150
+
+   5   rms: 0.1157E-04   max: 0.8427E-04   D at  154  2
+       a =  0.000      CL = -0.0000
+      Cm =  0.0000     CD =  0.01114   =>   CDf =  0.00612    CDp =  0.00502
+
+.OPERv   c>  
+.OPERv   c>  
+ XFOIL   c>  
+Errors:
