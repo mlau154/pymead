@@ -3,7 +3,7 @@ oper
 iter 150
 visc
 100000.0
-alfa 3.0
+alfa 2.0
 cpwr default_airfoil_Cp.dat
 
 quit

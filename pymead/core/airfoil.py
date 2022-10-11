@@ -213,6 +213,7 @@ class Airfoil:
         free_point.y.y = True
         free_point.xp.xp = True
         free_point.yp.yp = True
+        free_point.airfoil_transformation = {'dx': self.dx, 'dy': self.dy, 'alf': self.alf, 'c': self.c}
 
         if free_point.previous_free_point is None:
             free_point.set_tag('FP0')
@@ -392,9 +393,9 @@ class Airfoil:
             # print(f"P = {P}")
             if self.curve_list_generated and previous_number_of_curves == len(self.anchor_point_order) - 1:
                 # print(f"previous_number_of_curves = {previous_number_of_curves}, airfoil_tag = {self.tag}")
-                self.curve_list[idx].update(P, 150)
+                self.curve_list[idx].update(P, 100)
             else:
-                self.curve_list.append(Bezier(P, 150))
+                self.curve_list.append(Bezier(P, 100))
             cp_start_idx = deepcopy(cp_end_idx)
         self.curve_list_generated = True
 

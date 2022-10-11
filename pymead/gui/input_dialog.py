@@ -1,6 +1,7 @@
 import numpy as np
 from typing import List
-from PyQt5.QtWidgets import QDialog, QDialogButtonBox, QFormLayout, QDoubleSpinBox, QComboBox, QLineEdit, QSpinBox
+from PyQt5.QtWidgets import QDialog, QDialogButtonBox, QFormLayout, QDoubleSpinBox, QComboBox, QLineEdit, QSpinBox, \
+    QTabWidget
 
 
 class FreePointInputDialog(QDialog):
@@ -205,3 +206,28 @@ class SingleAirfoilViscousDialog(QDialog):
                 raise TypeError(f'QFormLayout widget must be of type {type(QComboBox)}, {type(QDoubleSpinBox)}, '
                                 f'or {type(QLineEdit)}')
         return tuple(return_vals)
+
+
+class SettingsDialog(QDialog):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+
+        buttonBox = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel, self)
+        layout = QFormLayout(self)
+
+        self.tab_widget = QTabWidget()
+        layout.addWidget(self.tab_widget)
+
+        layout.addWidget(buttonBox)
+
+        buttonBox.accepted.connect(self.accept)
+        buttonBox.rejected.connect(self.reject)
+
+
+class InviscidCpCalcDialog(QDialog):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        layout = QFormLayout(self)
+
+
+

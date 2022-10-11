@@ -24,6 +24,7 @@ from pymead.gui.analysis_graph import AnalysisGraph
 from pymead.gui.recalculate_airfoil_parameters import recalculate_airfoil_parameters
 from pymead.gui.airfoil_graph import AirfoilGraph
 from pymead.gui.parameter_tree import MEAParamTree
+from pymead.analysis.single_element_inviscid import single_element_inviscid
 from pymead.gui.text_area import ConsoleTextArea
 from pymead.gui.dockable_tab_widget import DockableTabWidget
 from pymead.core.mea import MEA
@@ -40,11 +41,13 @@ import os
 class GUI(QMainWindow):
     def __init__(self):
         super().__init__()
+        single_element_inviscid(np.array([[1, 0], [0, 0], [1, 0]]), 0.0)
         for font_name in ["DejaVuSans", "DejaVuSansMono", "DejaVuSerif"]:
             QFontDatabase.addApplicationFont(os.path.join(RESOURCE_DIR, "dejavu-fonts-ttf-2.37", "ttf",
                                                           f"{font_name}.ttf"))
         # QFontDatabase.addApplicationFont(os.path.join(RESOURCE_DIR, "cascadia-code", "Cascadia.ttf"))
         # print(QFontDatabase().families())
+
         self.design_tree = None
         self.dialog = None
         self.analysis_graph = None
@@ -53,7 +56,7 @@ class GUI(QMainWindow):
         # self.setFont(QFont("DejaVu Serif"))
         self.setFont(QFont("DejaVu Sans"))
 
-        self.mea = MEA([Airfoil(), Airfoil(), Airfoil()], airfoil_graphs_active=True)
+        self.mea = MEA([Airfoil()], airfoil_graphs_active=True)
         # self.mea.airfoils['A0'].insert_free_point(FreePoint(Param(0.5), Param(0.1), previous_anchor_point='te_1'))
         # self.mea.airfoils['A0'].update()
         # self.airfoil_graphs = [AirfoilGraph(self.mea.airfoils['A0'])]
@@ -116,6 +119,10 @@ class GUI(QMainWindow):
         self.save_action = QAction("Save", self)
         self.file_menu.addAction(self.save_action)
         self.save_action.triggered.connect(self.save_mea)
+
+        self.settings_action = QAction("Settings", self)
+        self.file_menu.addAction(self.settings_action)
+        # self.settings_action.triggered.connect()
 
         # Analysis Menu set-up
         self.analysis_menu = QMenu("&Analysis", self)

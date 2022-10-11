@@ -1,7 +1,7 @@
 import numpy as np
 
 
-def translate(x, y, dx, dy):
+def translate(x, y, dx, dy, skip_x: bool = False, skip_y: bool = False):
     r"""
     ### Description:
 
@@ -21,8 +21,10 @@ def translate(x, y, dx, dy):
 
     The translated \(x\)- and \(y\)-coordinates
     """
-    x += dx
-    y += dy
+    if not skip_x:
+        x += dx
+    if not skip_y:
+        y += dy
     return x, y
 
 
@@ -34,9 +36,11 @@ def translate_matrix(mat: np.ndarray, dx, dy):
     return mat
 
 
-def scale(x, y, scale_factor):
-    x *= scale_factor
-    y *= scale_factor
+def scale(x, y, scale_factor, skip_x: bool = False, skip_y: bool = False):
+    if not skip_x:
+        x *= scale_factor
+    if not skip_y:
+        y *= scale_factor
     return x, y
 
 
@@ -47,7 +51,7 @@ def scale_matrix(mat: np.ndarray, scale_factor):
     return mat
 
 
-def rotate(x, y, theta):
+def rotate(x, y, theta, skip_x: bool = False, skip_y: bool = False):
     r"""
     ### Description:
 
@@ -69,8 +73,14 @@ def rotate(x, y, theta):
     rotation_mat = np.array([[np.cos(theta), -np.sin(theta)],
                              [np.sin(theta), np.cos(theta)]])
     new_xy = (rotation_mat @ xy).T.flatten()
-    new_x = new_xy[0]
-    new_y = new_xy[1]
+    if skip_x:
+        new_x = x
+    else:
+        new_x = new_xy[0]
+    if skip_y:
+        new_y = y
+    else:
+        new_y = new_xy[1]
     return new_x, new_y
 
 
@@ -84,10 +94,22 @@ def rotate_matrix(mat: np.ndarray, theta):
     return mat
 
 
-def transform(x, y, dx, dy, theta, scale_factor, transformation_order: list):
+def transform(x, y, dx, dy, theta, scale_factor, transformation_order: list,
+              skip_x: bool = False, skip_y: bool = False):
     command_dict = {'translate': translate, 'rotate': rotate, 'scale': scale}
     argument_dict = {'translate': {'dx': dx, 'dy': dy}, 'rotate': {'theta': theta},
                      'scale': {'scale_factor': scale_factor}}
+    # print(f"x, y before was {x, y}")
     for command in transformation_order:
-        x, y = command_dict[command](x, y, **argument_dict[command])
+        x, y = command_dict[command](x, y, **argument_dict[command], skip_x=skip_x, skip_y=skip_y)
+        # print(f"x, y after {command} is {x, y}")
     return x, y
+
+
+def transform_matrix(mat: np.ndarray, dx, dy, theta, scale_factor, transformation_order: list):
+    command_dict = {'translate': translate_matrix, 'rotate': rotate_matrix, 'scale': scale_matrix}
+    argument_dict = {'translate': {'dx': dx, 'dy': dy}, 'rotate': {'theta': theta},
+                     'scale': {'scale_factor': scale_factor}}
+    for command in transformation_order:
+        mat = command_dict[command](mat, **argument_dict[command])
+    return mat

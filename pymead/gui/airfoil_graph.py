@@ -7,7 +7,7 @@ import numpy as np
 import pyqtgraph as pg
 from pyqtgraph.Qt import QtCore
 
-from PyQt5.QtGui import QPen
+from PyQt5.QtGui import QPen, QFont
 from PyQt5.QtCore import pyqtSignal, pyqtSlot
 
 from pymead.core.airfoil import Airfoil
@@ -29,12 +29,15 @@ class AirfoilGraph(pg.GraphItem):
             self.w = pg.GraphicsLayoutWidget(show=True, size=size)
             # self.w.setWindowTitle('Airfoil')
             self.w.setBackground(background_color)
+            self.w.setFont(QFont("Arial"))
         else:
             self.w = w
 
         if v is None:
             self.v = self.w.addPlot()
             self.v.setAspectLocked()
+            self.v.hideButtons()
+            self.v.getViewBox().setFont(QFont("Arial"))
         else:
             self.v = v
 
