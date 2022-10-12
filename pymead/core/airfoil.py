@@ -8,6 +8,7 @@ from pymead.core.trailing_edge_point import TrailingEdgePoint
 from pymead.symmetric.symmetric_base_airfoil_params import SymmetricBaseAirfoilParams
 from pymead.utils.increment_string_index import increment_string_index, decrement_string_index, get_prefix_and_index_from_string
 from pymead.utils.transformations import translate_matrix, rotate_matrix, scale_matrix
+from pymead.utils.downsampling_schemes import fractal_downsampler2
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
 import matplotlib.pyplot as plt
@@ -393,9 +394,9 @@ class Airfoil:
             # print(f"P = {P}")
             if self.curve_list_generated and previous_number_of_curves == len(self.anchor_point_order) - 1:
                 # print(f"previous_number_of_curves = {previous_number_of_curves}, airfoil_tag = {self.tag}")
-                self.curve_list[idx].update(P, 100)
+                self.curve_list[idx].update(P, 70)
             else:
-                self.curve_list.append(Bezier(P, 100))
+                self.curve_list.append(Bezier(P, 70))
             cp_start_idx = deepcopy(cp_end_idx)
         self.curve_list_generated = True
 
@@ -615,12 +616,24 @@ class Airfoil:
             self.coords = scale_matrix(self.coords, 1 / self.c.value)
         return self.coords
 
-    def write_coords_to_file(self, f: str, read_write_mode: str, body_fixed_csys: bool = False) -> int:
+    def write_coords_to_file(self, f: str, read_write_mode: str, body_fixed_csys: bool = False,
+                             downsample: bool = False, ratio_thresh=None, abs_thresh=None) -> int:
+        """
+        Note: If downsample is set to true and either ratio_thresh or abs_thresh is not specified, the default values of
+        1.001 and 0.1 will be used for ratio_thresh and abs_thresh, respectively.
+        """
         self.get_coords(body_fixed_csys)
-        n_data_pts = len(self.coords)
-        with open(f, read_write_mode) as coord_file:
-            for row in self.coords:
-                coord_file.write(f"{row[0]} {row[1]}\n")
+        if downsample:
+            ds = fractal_downsampler2(self.coords, ratio_thresh=ratio_thresh, abs_thresh=abs_thresh)
+            n_data_pts = len(ds)
+            with open(f, read_write_mode) as coord_file:
+                for row in ds:
+                    coord_file.write(f"{row[0]} {row[1]}\n")
+        else:
+            n_data_pts = len(self.coords)
+            with open(f, read_write_mode) as coord_file:
+                for row in self.coords:
+                    coord_file.write(f"{row[0]} {row[1]}\n")
         return n_data_pts
 
     def read_Cl_from_file(self, f: str):

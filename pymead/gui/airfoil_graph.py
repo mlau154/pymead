@@ -11,6 +11,7 @@ from PyQt5.QtGui import QPen, QFont
 from PyQt5.QtCore import pyqtSignal, pyqtSlot
 
 from pymead.core.airfoil import Airfoil
+from time import time
 
 from pymead.utils.transformations import rotate, translate, scale
 
@@ -29,7 +30,7 @@ class AirfoilGraph(pg.GraphItem):
             self.w = pg.GraphicsLayoutWidget(show=True, size=size)
             # self.w.setWindowTitle('Airfoil')
             self.w.setBackground(background_color)
-            self.w.setFont(QFont("Arial"))
+            # self.w.setFont(QFont("Arial"))
         else:
             self.w = w
 
@@ -37,7 +38,7 @@ class AirfoilGraph(pg.GraphItem):
             self.v = self.w.addPlot()
             self.v.setAspectLocked()
             self.v.hideButtons()
-            self.v.getViewBox().setFont(QFont("Arial"))
+            # self.v.getViewBox().setFont(QFont("Arial"))
         else:
             self.v = v
 
@@ -114,11 +115,20 @@ class AirfoilGraph(pg.GraphItem):
     def updateGraph(self):
         # print(f"Updating graph!")
         # print(f"self.data for airfoil {self.airfoil} is {self.data}")
+        t1 = time()
         pg.GraphItem.setData(self, **self.data)
+        t2 = time()
+        print(f"graph item setting data time = {t2 - t1:.3e} seconds")
         # print(self.data)
+        t3 = time()
         self.airfoil.update_airfoil_curve_pg()
+        t4 = time()
+        print(f"updating airfoil curve pg time = {t4 - t3:.3e} seconds")
+        t5 = time()
         for i, item in enumerate(self.textItems):
             item.setPos(*self.data['pos'][i])
+        t6 = time()
+        print(f"Setting pos time = {t6 - t5:.3e} seconds")
 
     def mouseDragEvent(self, ev):
         # print(f"event = {ev}")
@@ -217,7 +227,6 @@ class AirfoilGraph(pg.GraphItem):
                     self.airfoil.c.value = chord
                 if self.airfoil.alf.active and not self.airfoil.alf.linked:
                     self.airfoil.alf.value = angle_of_attack
-            # print(f"c = {self.airfoil.c}")
 
             for ap_key, ap_val in self.airfoil.free_points.items():
                 for fp_key, fp_val in ap_val.items():
@@ -239,15 +248,15 @@ class AirfoilGraph(pg.GraphItem):
             # fp_x, fp_y = translate(x[ind], y[ind], -self.airfoil.dx.value, -self.airfoil.dy.value)
             # fp_x, fp_y = rotate(fp_x, fp_y, self.airfoil.alf.value)
             # fp_x, fp_y = scale(fp_x, fp_y, 1/self.airfoil.c.value)
-            self.airfoil.free_points[ap_tag][fp_tag].airfoil_transformation = {'dx': self.airfoil.dx,
-                                                                               'dy': self.airfoil.dy,
-                                                                               'alf': self.airfoil.alf,
-                                                                               'c': self.airfoil.c}
+            if self.airfoil.free_points[ap_tag][fp_tag].airfoil_transformation is None:
+                self.airfoil.free_points[ap_tag][fp_tag].airfoil_transformation = {'dx': self.airfoil.dx,
+                                                                                   'dy': self.airfoil.dy,
+                                                                                   'alf': self.airfoil.alf,
+                                                                                   'c': self.airfoil.c}
             # if self.airfoil.free_points[ap_tag][fp_tag].x.active and not self.airfoil.free_points[ap_tag][fp_tag].x.linked:
             if self.airfoil.free_points[ap_tag][fp_tag].xp.active and not self.airfoil.free_points[ap_tag][fp_tag].xp.linked:
                 self.airfoil.free_points[ap_tag][fp_tag].set_xp_value(x[ind])
-            if self.airfoil.free_points[ap_tag][fp_tag].yp.active and not self.airfoil.free_points[ap_tag][
-                fp_tag].yp.linked:
+            if self.airfoil.free_points[ap_tag][fp_tag].yp.active and not self.airfoil.free_points[ap_tag][fp_tag].yp.linked:
                 self.airfoil.free_points[ap_tag][fp_tag].set_yp_value(y[ind])
 
         elif self.airfoil.control_points[ind].cp_type == 'anchor_point':
@@ -273,7 +282,6 @@ class AirfoilGraph(pg.GraphItem):
         self.data['pos'] = self.airfoil.control_point_array
 
         # self.my_signal.emit("Hi!")
-
 
         self.updateGraph()
         # print(f"Made it before accept")

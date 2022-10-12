@@ -78,6 +78,7 @@ class Param:
     def remove_func(self):
         self.func_str = None
         self.linked = False
+        self.depends_on = {}
 
     def update_function(self, show_q_error_messages: bool):
         if self.func_str is None:

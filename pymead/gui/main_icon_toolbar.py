@@ -89,7 +89,7 @@ class MainIconToolbar(QToolBar):
             airfoil = Airfoil(base_airfoil_params=BaseAirfoilParams(dx=Param(self.new_airfoil_location.x()),
                                                                     dy=Param(self.new_airfoil_location.y())))
             self.parent.mea.add_airfoil(airfoil, len(self.parent.mea.airfoils))
-            self.parent.param_tree_instance.p.child("Analysis").child("Inviscid Cp Calc").setLimits([a.tag for a in self.parent.mea.airfoils.values()])
+            self.parent.param_tree_instance.p.child("Analysis").child("Inviscid Cl Calc").setLimits([a.tag for a in self.parent.mea.airfoils.values()])
             self.parent.param_tree_instance.params[-1].add_airfoil(airfoil, len(self.parent.mea.airfoils) - 1)
             self.parent.mea.v.scene().sigMouseClicked.disconnect()
             airfoil.airfoil_graph.scatter.sigPlotChanged.connect(partial(self.parent.param_tree_instance.plot_changed, f"A{len(self.parent.mea.airfoils) - 1}"))

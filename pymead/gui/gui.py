@@ -52,7 +52,7 @@ class GUI(QMainWindow):
         self.dialog = None
         self.analysis_graph = None
         self.n_analyses = 0
-        self.color_helper = MplColorHelper("gist_rainbow", 0, 255)
+        self.color_helper = MplColorHelper("jet", 0, 255)
         # self.setFont(QFont("DejaVu Serif"))
         self.setFont(QFont("DejaVu Sans"))
 
@@ -190,7 +190,7 @@ class GUI(QMainWindow):
                     # Need to set analysis_graph to None if analysis window is closed! Might also not want to allow geometry docking window to be closed
                     self.analysis_graph = AnalysisGraph()
                     self.dockable_tab_window.add_new_tab_widget(self.analysis_graph.w, "Analysis")
-                pg_plot_handle = self.analysis_graph.v.plot(pen=pg.mkPen(color=self.color_helper.get_rgb(20 * self.n_analyses)),
+                pg_plot_handle = self.analysis_graph.v.plot(pen=pg.mkPen(color=self.color_helper.get_rgb(255 - 25 * self.n_analyses)),
                                                             name=str(self.n_analyses))
                 pg_plot_handle.setData(aero_data['Cp']['x'], aero_data['Cp']['Cp'])
                 # pen = pg.mkPen(color='green')

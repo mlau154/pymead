@@ -1,6 +1,6 @@
 from pymead.core.param import Param
 from pymead.core.control_point import ControlPoint
-from pymead.utils.transformations import rotate, translate, scale
+from pymead.utils.transformations import rotate, translate, scale, transform
 import numpy as np
 
 
@@ -200,15 +200,30 @@ class AnchorPoint(ControlPoint):
         # self.x.value, self.y.value = rotate(self.x.value, self.y.value, self.airfoil_transformation['alf'].value)
         # self.x.value, self.y.value = scale(self.x.value, self.y.value, 1 / self.airfoil_transformation['c'].value)
         # print(f"Setting xp value! x = {self.x.value}, y = {self.y.value}")
+        skip_x = False
+        skip_y = False
+        if not skip_x or not skip_y:
+            # print(f"not skip_x or not skip_y!")
+            self.x.value, self.y.value = transform(self.xp.value, self.yp.value, -self.airfoil_transformation['dx'].value,
+                                                   -self.airfoil_transformation['dy'].value,
+                                                   self.airfoil_transformation['alf'].value,
+                                                   1 / self.airfoil_transformation['c'].value,
+                                                   ['translate', 'rotate', 'scale'], skip_x=skip_x, skip_y=skip_y)
         self.set_ctrlpt_value()
 
     def set_yp_value(self, value):
         if value is not None:
             self.yp.value = value
-        self.x.value, self.y.value = translate(self.xp.value, self.yp.value, -self.airfoil_transformation['dx'].value,
-                                               -self.airfoil_transformation['dy'].value)
-        self.x.value, self.y.value = rotate(self.x.value, self.y.value, self.airfoil_transformation['alf'].value)
-        self.x.value, self.y.value = scale(self.x.value, self.y.value, 1 / self.airfoil_transformation['c'].value)
+        skip_x = False
+        skip_y = False
+        if not skip_x or not skip_y:
+            # print(f"not skip_x or not skip_y!")
+            self.x.value, self.y.value = transform(self.xp.value, self.yp.value,
+                                                   -self.airfoil_transformation['dx'].value,
+                                                   -self.airfoil_transformation['dy'].value,
+                                                   self.airfoil_transformation['alf'].value,
+                                                   1 / self.airfoil_transformation['c'].value,
+                                                   ['translate', 'rotate', 'scale'], skip_x=skip_x, skip_y=skip_y)
         # print(f"Setting yp value! x = {self.x.value}, y = {self.y.value}")
         self.set_ctrlpt_value()
 
@@ -217,10 +232,12 @@ class AnchorPoint(ControlPoint):
             self.xp.value = xp_value
         if yp_value is not None:
             self.yp.value = yp_value
-        self.x.value, self.y.value = translate(self.xp.value, self.yp.value, -self.airfoil_transformation['dx'].value,
-                                               -self.airfoil_transformation['dy'].value)
-        self.x.value, self.y.value = rotate(self.x.value, self.y.value, self.airfoil_transformation['alf'].value)
-        self.x.value, self.y.value = scale(self.x.value, self.y.value, 1 / self.airfoil_transformation['c'].value)
+        self.x.value, self.y.value = transform(self.xp.value, self.yp.value,
+                                               -self.airfoil_transformation['dx'].value,
+                                               -self.airfoil_transformation['dy'].value,
+                                               self.airfoil_transformation['alf'].value,
+                                               1 / self.airfoil_transformation['c'].value,
+                                               ['translate', 'rotate', 'scale'], skip_x=False, skip_y=False)
         self.set_ctrlpt_value()
 
     def set_ctrlpt_value(self):

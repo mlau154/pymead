@@ -63,27 +63,22 @@ class FreePoint(ControlPoint):
         # print(f"set_x_value called!")
         if value is not None:
             self.x.value = value
-        # print(f"Before x call, self.xp.value was {self.xp.value}")
         self.xp.value, self.yp.value = scale(self.x.value, self.y.value,
                                              self.airfoil_transformation['c'].value)
         self.xp.value, self.yp.value = rotate(self.xp.value, self.yp.value, -self.airfoil_transformation['alf'].value)
         self.xp.value, self.yp.value = translate(self.xp.value, self.yp.value, self.airfoil_transformation['dx'].value,
                                                  self.airfoil_transformation['dy'].value)
-        # print(f"After x call, self.xp.value is {self.xp.value}")
         if value is not None:
             self.set_ctrlpt_value()
 
     def set_y_value(self, value):
-        # print(f"set_y_value called!")
         if value is not None:
             self.y.value = value
-        # print(f"Before y call, self.xp.value was {self.xp.value}")
         self.xp.value, self.yp.value = scale(self.x.value, self.y.value,
                                              self.airfoil_transformation['c'].value)
         self.xp.value, self.yp.value = rotate(self.xp.value, self.yp.value, -self.airfoil_transformation['alf'].value)
         self.xp.value, self.yp.value = translate(self.xp.value, self.yp.value, self.airfoil_transformation['dx'].value,
                                                  self.airfoil_transformation['dy'].value)
-        # print(f"After y call, self.xp.value is {self.xp.value}")
         if value is not None:
             self.set_ctrlpt_value()
 
