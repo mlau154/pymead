@@ -59,6 +59,100 @@ class FreePoint(ControlPoint):
         self.tag = tag
         self.ctrlpt.tag = tag
 
+    def set_xy(self, x=None, y=None, xp=None, yp=None):
+        if (x is not None or y is not None) and xp is None and yp is None:
+            if self.xp.linked and self.yp.linked or (not self.xp.active) and (not self.yp.active):
+                return
+            if x is not None and (not self.x.linked) and self.x.active:
+                self.x.value = x
+            if y is not None and (not self.y.linked) and self.y.active:
+                self.y.value = y
+            if self.xp.linked or not self.xp.active:
+                self.yp.value = self.get_yp_from_x_y(x, y)
+            elif self.yp.linked or not self.yp.active:
+                self.xp.value = self.get_xp_from_x_y(x, y)
+            else:
+                self.xp.value, self.yp.value = transform(self.x.value, self.y.value,
+                                                         self.airfoil_transformation['dx'].value,
+                                                         self.airfoil_transformation['dy'].value,
+                                                         -self.airfoil_transformation['alf'].value,
+                                                         self.airfoil_transformation['c'].value,
+                                                         ['scale', 'rotate', 'translate'])
+            self.update_xy()
+        elif (xp is not None or yp is not None) and x is None and y is None:
+            if self.x.linked and self.y.linked or (not self.x.active) and (not self.y.active):
+                return
+            # if xp is not None and (not self.xp.linked) and self.xp.active:
+            #     self.xp.value = xp
+            #     print(f"Setting xp value! xp = {self.xp.value}")
+            # if yp is not None and (not self.yp.linked) and self.yp.active:
+            #     self.yp.value = yp
+            if self.x.linked or not self.x.active:
+                self.y.value = self.get_y_from_xp_yp(xp, yp)
+                self.xp.value, self.yp.value = transform(self.x.value, self.y.value,
+                                                         self.airfoil_transformation['dx'].value,
+                                                         self.airfoil_transformation['dy'].value,
+                                                         -self.airfoil_transformation['alf'].value,
+                                                         self.airfoil_transformation['c'].value,
+                                                         ['scale', 'rotate', 'translate'])
+            elif self.y.linked or not self.y.active:
+                self.x.value = self.get_x_from_xp_yp(xp, yp)
+                self.xp.value, self.yp.value = transform(self.x.value, self.y.value,
+                                                         self.airfoil_transformation['dx'].value,
+                                                         self.airfoil_transformation['dy'].value,
+                                                         -self.airfoil_transformation['alf'].value,
+                                                         self.airfoil_transformation['c'].value,
+                                                         ['scale', 'rotate', 'translate'])
+            else:
+                self.xp.value = xp
+                self.yp.value = yp
+                self.x.value, self.y.value = transform(self.xp.value, self.yp.value,
+                                                       -self.airfoil_transformation['dx'].value,
+                                                       -self.airfoil_transformation['dy'].value,
+                                                       self.airfoil_transformation['alf'].value,
+                                                       1 / self.airfoil_transformation['c'].value,
+                                                       ['translate', 'rotate', 'scale'])
+            # self.update_xy()
+        else:
+            raise ValueError("Either (\'x\' or \'y\') or (\'xp\' or \'yp\') must be specified")
+        self.set_ctrlpt_value()
+
+    def update_xy(self):
+        self.x.update()
+        self.y.update()
+        self.xp.update()
+        self.yp.update()
+
+    def get_x_from_xp_yp(self, xp, yp):
+        x, _ = transform(xp, yp, -self.airfoil_transformation['dx'].value,
+                         -self.airfoil_transformation['dy'].value,
+                         self.airfoil_transformation['alf'].value,
+                         1 / self.airfoil_transformation['c'].value,
+                         ['translate', 'rotate', 'scale'])
+        return x
+
+    def get_y_from_xp_yp(self, xp, yp):
+        _, y = transform(xp, yp, -self.airfoil_transformation['dx'].value, -self.airfoil_transformation['dy'].value,
+                         self.airfoil_transformation['alf'].value, 1 / self.airfoil_transformation['c'].value,
+                         ['translate', 'rotate', 'scale'])
+        return y
+
+    def get_xp_from_x_y(self, x, y):
+        xp, _ = transform(x, y, self.airfoil_transformation['dx'].value,
+                          self.airfoil_transformation['dy'].value,
+                          -self.airfoil_transformation['alf'].value,
+                          self.airfoil_transformation['c'].value,
+                          ['scale', 'rotate', 'translate'])
+        return xp
+
+    def get_yp_from_x_y(self, x, y):
+        _, yp = transform(x, y, self.airfoil_transformation['dx'].value, self.airfoil_transformation['dy'].value,
+                          -self.airfoil_transformation['alf'].value, self.airfoil_transformation['c'].value,
+                          ['scale', 'rotate', 'translate'])
+        return yp
+
+
+
     def set_x_value(self, value):
         # print(f"set_x_value called!")
         if value is not None:

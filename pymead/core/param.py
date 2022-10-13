@@ -29,11 +29,13 @@ class Param:
         `scale_value`: length scale used to non-dimensionalize the parameter if `units` is not `None`.
         Default value: `None`.
 
-        `active`: a `bool` stating whether the parameter is active (used in parameter extraction: if inactive,
-        the parameter will not be extracted). Default: `True`.
+        `active`: a `bool` stating whether the parameter is active. If `False`, direct and indirect write access to the
+         parameter are restricted. Default: `True`.
 
-        `linked`: a `bool` stating whether the parameter is linked to/set by another parameter. If `True`, the
-        parameter will not be extracted). Default: `False`.
+        `linked`: a `bool` stating whether the parameter is linked to another parameter (i.e., whether the parameter
+        has an active function). If `True`, direct write access to the parameter is restricted, but indirect write
+        access is still allowed (via modification of parameters to which the current parameter is linked).
+        Default: `False`.
 
         `name`: an optional `str` that gives the name of the parameter. Can be useful in identifying extracted
         parameters.

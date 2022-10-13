@@ -49,6 +49,8 @@ class AirfoilGraph(pg.GraphItem):
         self.dragPoint = None
         self.dragOffset = None
         self.te_thickness_edit_mode = False
+        self.param_tree = None
+        self.airfoil_parameters = None
         self.textItems = []
         pg.GraphItem.__init__(self)
         self.v.addItem(self)
@@ -118,17 +120,17 @@ class AirfoilGraph(pg.GraphItem):
         t1 = time()
         pg.GraphItem.setData(self, **self.data)
         t2 = time()
-        print(f"graph item setting data time = {t2 - t1:.3e} seconds")
+        # print(f"graph item setting data time = {t2 - t1:.3e} seconds")
         # print(self.data)
         t3 = time()
         self.airfoil.update_airfoil_curve_pg()
         t4 = time()
-        print(f"updating airfoil curve pg time = {t4 - t3:.3e} seconds")
+        # print(f"updating airfoil curve pg time = {t4 - t3:.3e} seconds")
         t5 = time()
         for i, item in enumerate(self.textItems):
             item.setPos(*self.data['pos'][i])
         t6 = time()
-        print(f"Setting pos time = {t6 - t5:.3e} seconds")
+        # print(f"Setting pos time = {t6 - t5:.3e} seconds")
 
     def mouseDragEvent(self, ev):
         # print(f"event = {ev}")
@@ -164,10 +166,18 @@ class AirfoilGraph(pg.GraphItem):
         anchor_point = self.airfoil.anchor_points[
             self.airfoil.anchor_point_order.index(self.airfoil.control_points[ind].anchor_point_tag)]
 
+        if self.param_tree is not None:
+            if self.airfoil_parameters is None:
+                self.airfoil_parameters = self.param_tree.p.param('Airfoil Parameters')
+
+        # self.param_tree.p.param('Airfoil Parameters').param('A0').param('Base').param('A0.Base.psi1_le').blockTreeChangeSignal()
+        # self.param_tree.p.param('Airfoil Parameters').param('A0').param('Base').param('A0.Base.R_le').blockTreeChangeSignal()
+
         if self.airfoil.control_points[ind].cp_type == 'g2_minus':
             new_Lc = np.sqrt((x[ind] - x[ind + 1]) ** 2 + (y[ind] - y[ind + 1]) ** 2) / self.airfoil.c.value
             new_psi1_abs_angle = np.arctan2(y[ind] - y[ind + 1], x[ind] - x[ind + 1]) + self.airfoil.alf.value
             anchor_point.recalculate_ap_branch_props_from_g2_pt('minus', new_psi1_abs_angle, new_Lc)
+            # self.airfoil_parameters.param(self.airfoil.tag).param('Base').param(f"{self.airfoil.tag}.Base.psi1_le").setValue(self.airfoil.psi1_le.value)
 
         elif self.airfoil.control_points[ind].cp_type == 'g2_plus':
             new_Lc = np.sqrt((x[ind] - x[ind - 1]) ** 2 + (y[ind] - y[ind - 1]) ** 2) / self.airfoil.c.value
@@ -254,10 +264,13 @@ class AirfoilGraph(pg.GraphItem):
                                                                                    'alf': self.airfoil.alf,
                                                                                    'c': self.airfoil.c}
             # if self.airfoil.free_points[ap_tag][fp_tag].x.active and not self.airfoil.free_points[ap_tag][fp_tag].x.linked:
-            if self.airfoil.free_points[ap_tag][fp_tag].xp.active and not self.airfoil.free_points[ap_tag][fp_tag].xp.linked:
-                self.airfoil.free_points[ap_tag][fp_tag].set_xp_value(x[ind])
-            if self.airfoil.free_points[ap_tag][fp_tag].yp.active and not self.airfoil.free_points[ap_tag][fp_tag].yp.linked:
-                self.airfoil.free_points[ap_tag][fp_tag].set_yp_value(y[ind])
+            # if self.airfoil.free_points[ap_tag][fp_tag].xp.active and not self.airfoil.free_points[ap_tag][fp_tag].xp.linked:
+            #     self.airfoil.free_points[ap_tag][fp_tag].set_xp_value(x[ind])
+            # if self.airfoil.free_points[ap_tag][fp_tag].yp.active and not self.airfoil.free_points[ap_tag][fp_tag].yp.linked:
+            #     self.airfoil.free_points[ap_tag][fp_tag].set_yp_value(y[ind])
+            self.airfoil.free_points[ap_tag][fp_tag].set_xy(xp=x[ind], yp=y[ind])
+            fp = self.airfoil.free_points[ap_tag][fp_tag]
+            print(f"x = {fp.x.value}, y = {fp.y.value}, xp = {fp.xp.value}, yp = {fp.yp.value}")
 
         elif self.airfoil.control_points[ind].cp_type == 'anchor_point':
             selected_anchor_point = self.airfoil.anchor_points[
@@ -284,10 +297,38 @@ class AirfoilGraph(pg.GraphItem):
         # self.my_signal.emit("Hi!")
 
         self.updateGraph()
+        self.plot_change_recursive(self.airfoil_parameters.child(self.airfoil.tag).children())
         # print(f"Made it before accept")
         ev.accept()
         # print(f"Made it after accept")
         # self.airfoil.update()
+
+    def plot_change_recursive(self, child_list: list):
+
+        def block_changes(pg_param):
+            pg_param.blockTreeChangeSignal()
+
+        def flush_changes(pg_param):
+            pg_param.treeStateChanges = []
+            pg_param.blockTreeChangeEmit = 1
+            pg_param.unblockTreeChangeSignal()
+
+        for idx, child in enumerate(child_list):
+            if hasattr(child, "airfoil_param"):
+                if child.hasChildren():
+                    if child.children()[0].name() == 'Equation Definition':
+                        block_changes(child)
+                        child.setValue(child.airfoil_param.value)
+                        flush_changes(child)
+                    else:
+                        self.plot_change_recursive(child.children())
+                else:
+                    block_changes(child)
+                    child.setValue(child.airfoil_param.value)
+                    flush_changes(child)
+            else:
+                if child.hasChildren():
+                    self.plot_change_recursive(child.children())
 
     @pyqtSlot(str)
     def slot(self, string):

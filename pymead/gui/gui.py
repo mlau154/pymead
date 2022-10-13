@@ -56,7 +56,7 @@ class GUI(QMainWindow):
         # self.setFont(QFont("DejaVu Serif"))
         self.setFont(QFont("DejaVu Sans"))
 
-        self.mea = MEA([Airfoil()], airfoil_graphs_active=True)
+        self.mea = MEA(None, [Airfoil()], airfoil_graphs_active=True)
         # self.mea.airfoils['A0'].insert_free_point(FreePoint(Param(0.5), Param(0.1), previous_anchor_point='te_1'))
         # self.mea.airfoils['A0'].update()
         # self.airfoil_graphs = [AirfoilGraph(self.mea.airfoils['A0'])]
@@ -66,6 +66,7 @@ class GUI(QMainWindow):
         self.main_layout = QHBoxLayout()
         self.setStatusBar(QStatusBar(self))
         self.param_tree_instance = MEAParamTree(self.mea, self.statusBar())
+        self.mea.airfoils['A0'].airfoil_graph.param_tree = self.param_tree_instance
         # print(f"param_tree_instance = {self.param_tree_instance}")
         self.design_tree_widget = self.param_tree_instance.t
         self.text_area = ConsoleTextArea()
