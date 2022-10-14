@@ -157,9 +157,9 @@ class MEAParamTree:
             # print(f"change = {change}")
 
             for param, change, data in changes:
-                print(f"change = {change}")
-                print(f"param = {param}")
-                print(f"data = {data}")
+                # print(f"change = {change}")
+                # print(f"param = {param}")
+                # print(f"data = {data}")
                 # if param.children():
                 #     print(f"param name = {param.children()[0].name()}")
                 # print(f"has children = {param.hasChildren()}")
@@ -437,7 +437,7 @@ class MEAParamTree:
                             pfp = None
                         else:
                             pfp = inputs[3]
-                        fp = FreePoint(Param(inputs[0]), Param(inputs[1]),
+                        fp = FreePoint(Param(inputs[0]), Param(inputs[1]), airfoil_tag=a_tag,
                                        previous_anchor_point=inputs[2], previous_free_point=pfp)
                         self.mea.airfoils[a_tag].insert_free_point(fp)
                         self.mea.airfoils[a_tag].update()

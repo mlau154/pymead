@@ -13,7 +13,7 @@ from PyQt5.QtCore import pyqtSignal, pyqtSlot
 from pymead.core.airfoil import Airfoil
 from time import time
 
-from pymead.utils.transformations import rotate, translate, scale
+from pymead.utils.transformations import rotate, translate, scale, transform
 
 
 class AirfoilGraph(pg.GraphItem):
@@ -173,6 +173,8 @@ class AirfoilGraph(pg.GraphItem):
         # self.param_tree.p.param('Airfoil Parameters').param('A0').param('Base').param('A0.Base.psi1_le').blockTreeChangeSignal()
         # self.param_tree.p.param('Airfoil Parameters').param('A0').param('Base').param('A0.Base.R_le').blockTreeChangeSignal()
 
+        other_airfoils_affected = []
+
         if self.airfoil.control_points[ind].cp_type == 'g2_minus':
             new_Lc = np.sqrt((x[ind] - x[ind + 1]) ** 2 + (y[ind] - y[ind + 1]) ** 2) / self.airfoil.c.value
             new_psi1_abs_angle = np.arctan2(y[ind] - y[ind + 1], x[ind] - x[ind + 1]) + self.airfoil.alf.value
@@ -237,11 +239,16 @@ class AirfoilGraph(pg.GraphItem):
                     self.airfoil.c.value = chord
                 if self.airfoil.alf.active and not self.airfoil.alf.linked:
                     self.airfoil.alf.value = angle_of_attack
+                self.airfoil.update(generate_curves=False)
 
             for ap_key, ap_val in self.airfoil.free_points.items():
                 for fp_key, fp_val in ap_val.items():
-                    fp_val.set_x_value(None)
-                    fp_val.set_y_value(None)
+                    # other_airfoils_affected.extend(fp_val.set_xy(x=fp_val.x.value, y=fp_val.y.value))
+                    other_airfoils_affected.extend(fp_val.set_xy(x=fp_val.x.value, y=fp_val.y.value))
+                    # print(f"xp now is {fp_val.xp.value}")
+                    self.airfoil.update_control_point_array()
+                    self.airfoil.generate_curves()
+                    # other_airfoils_affected.extend(fp_val.set_xy(xp=fp_val.xp.value, yp=fp_val.yp.value))
             for ap in self.airfoil.anchor_points:
                 if ap.tag not in ['te_1', 'le', 'te_2']:
                     ap.set_x_value(None)
@@ -252,25 +259,15 @@ class AirfoilGraph(pg.GraphItem):
             #         fp_val.set_y_value(None)
 
         elif self.airfoil.control_points[ind].cp_type == 'free_point':
-            # print(f"free_point function called!")
             ap_tag = self.airfoil.control_points[ind].anchor_point_tag
             fp_tag = self.airfoil.control_points[ind].tag
-            # fp_x, fp_y = translate(x[ind], y[ind], -self.airfoil.dx.value, -self.airfoil.dy.value)
-            # fp_x, fp_y = rotate(fp_x, fp_y, self.airfoil.alf.value)
-            # fp_x, fp_y = scale(fp_x, fp_y, 1/self.airfoil.c.value)
             if self.airfoil.free_points[ap_tag][fp_tag].airfoil_transformation is None:
                 self.airfoil.free_points[ap_tag][fp_tag].airfoil_transformation = {'dx': self.airfoil.dx,
                                                                                    'dy': self.airfoil.dy,
                                                                                    'alf': self.airfoil.alf,
                                                                                    'c': self.airfoil.c}
-            # if self.airfoil.free_points[ap_tag][fp_tag].x.active and not self.airfoil.free_points[ap_tag][fp_tag].x.linked:
-            # if self.airfoil.free_points[ap_tag][fp_tag].xp.active and not self.airfoil.free_points[ap_tag][fp_tag].xp.linked:
-            #     self.airfoil.free_points[ap_tag][fp_tag].set_xp_value(x[ind])
-            # if self.airfoil.free_points[ap_tag][fp_tag].yp.active and not self.airfoil.free_points[ap_tag][fp_tag].yp.linked:
-            #     self.airfoil.free_points[ap_tag][fp_tag].set_yp_value(y[ind])
-            self.airfoil.free_points[ap_tag][fp_tag].set_xy(xp=x[ind], yp=y[ind])
-            fp = self.airfoil.free_points[ap_tag][fp_tag]
-            print(f"x = {fp.x.value}, y = {fp.y.value}, xp = {fp.xp.value}, yp = {fp.yp.value}")
+            other_airfoils_affected.extend(self.airfoil.free_points[ap_tag][fp_tag].set_xy(xp=x[ind], yp=y[ind]))
+            # self.airfoil.update_free_point_only()
 
         elif self.airfoil.control_points[ind].cp_type == 'anchor_point':
             selected_anchor_point = self.airfoil.anchor_points[
@@ -291,17 +288,50 @@ class AirfoilGraph(pg.GraphItem):
                 yp_input = None
             selected_anchor_point.set_xp_yp_value(xp_input, yp_input)
 
-        self.airfoil.update()
+        # if not self.airfoil.control_points[ind].cp_type == 'free_point':  # try dealing with this case separately
+        if not self.airfoil.control_points[ind].tag in ['te_1', 'te_2']:
+            self.airfoil.update()
+
         self.data['pos'] = self.airfoil.control_point_array
 
         # self.my_signal.emit("Hi!")
 
         self.updateGraph()
         self.plot_change_recursive(self.airfoil_parameters.child(self.airfoil.tag).children())
+
+        for a_tag in set(other_airfoils_affected):  # Use set to ignore duplicate values
+            other_graph = self.airfoil.mea.airfoils[a_tag].airfoil_graph
+            other_graph.airfoil.update()
+            other_graph.data['pos'] = other_graph.airfoil.control_point_array
+            other_graph.updateGraph()
+            other_graph.plot_change_recursive(other_graph.airfoil_parameters.child(a_tag).children())
+
         # print(f"Made it before accept")
         ev.accept()
         # print(f"Made it after accept")
         # self.airfoil.update()
+
+    # def update_dependencies(self):
+    #     list_of_vals = []
+    #
+    #     def get_list_of_vals_from_dict(d):
+    #         for k, v in d.items():
+    #             # print(f"k = {k}, v = {v}")
+    #             if isinstance(v, dict):
+    #                 get_list_of_vals_from_dict(v)
+    #             else:
+    #                 # print("{0} : {1}".format(k, v))
+    #                 list_of_vals.append(v)
+    #                 # return list_of_vals
+    #
+    #     # IMPORTANT
+    #     if mea.param_dict is not None:
+    #         get_list_of_vals_from_dict(mea.param_dict)
+    #         for val in list_of_vals:
+    #             for v in val.depends_on.values():
+    #                 # print(f"v = {v}")
+    #                 if param.airfoil_param is v:
+    #                     val.update()
 
     def plot_change_recursive(self, child_list: list):
 

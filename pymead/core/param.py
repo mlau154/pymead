@@ -65,6 +65,7 @@ class Param:
             self.linked = True
         self.function_dict = {}
         self.depends_on = {}
+        self.affects = []
         self.tag_matrix = None
         self.tag_list = None
         self.mea = None
@@ -72,6 +73,7 @@ class Param:
         self.y = y
         self.xp = xp
         self.yp = yp
+        self.free_point = None
 
     def set_func_str(self, func_str: str):
         self.func_str = func_str
@@ -80,6 +82,9 @@ class Param:
     def remove_func(self):
         self.func_str = None
         self.linked = False
+        for parameter in self.depends_on.values():
+            if self in parameter.affects:
+                parameter.affects.remove(self)
         self.depends_on = {}
 
     def update_function(self, show_q_error_messages: bool):
@@ -162,6 +167,8 @@ class Param:
         for idx, t in enumerate(self.tag_list):
             # print(f"tag_matrix_idx = {self.tag_matrix[idx]}")
             self.depends_on[t] = get_nested_dict_val(self.mea.param_dict, self.tag_matrix[idx])
+            if self not in self.depends_on[t].affects:
+                self.depends_on[t].affects.append(self)
             # print(f"self.depends_on = {self.depends_on}")
             if self.depends_on[t] is None:
                 self.depends_on = {}

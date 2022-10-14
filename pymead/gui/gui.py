@@ -146,7 +146,7 @@ class GUI(QMainWindow):
         with open(os.path.join(os.getcwd(), 'test_mea.mead'), "wb") as f:
             dill.dump(self.mea, f)
         for idx, airfoil in enumerate(self.mea.airfoils.values()):
-            self.mea.add_airfoil_graph_to_airfoil(airfoil, idx, w=self.w, v=self.v)
+            self.mea.add_airfoil_graph_to_airfoil(airfoil, idx, self.param_tree_instance, w=self.w, v=self.v)
         for a_name, a in self.mea.airfoils.items():
             a.airfoil_graph.scatter.sigPlotChanged.connect(partial(self.param_tree_instance.plot_changed, a_name))
 
@@ -155,7 +155,7 @@ class GUI(QMainWindow):
             self.mea = dill.load(f)
         self.v.clear()
         for idx, airfoil in enumerate(self.mea.airfoils.values()):
-            self.mea.add_airfoil_graph_to_airfoil(airfoil, idx, w=self.w, v=self.v)
+            self.mea.add_airfoil_graph_to_airfoil(airfoil, idx, self.param_tree_instance, w=self.w, v=self.v)
         self.param_tree_instance = MEAParamTree(self.mea, self.statusBar())
         self.design_tree_widget = self.param_tree_instance.t
         self.main_layout.replaceWidget(self.main_layout.itemAt(0).widget(), self.design_tree_widget)

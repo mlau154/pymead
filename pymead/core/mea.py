@@ -56,6 +56,8 @@ class MEA:
         """
         if airfoil.tag is None:
             airfoil.tag = f'A{idx}'
+        print(f"Adding mea to airfoil {airfoil.tag}")
+        airfoil.mea = self
         self.airfoils[airfoil.tag] = airfoil
         self.param_dict[airfoil.tag] = airfoil.param_dicts
 

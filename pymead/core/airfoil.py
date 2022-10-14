@@ -306,7 +306,7 @@ class Airfoil:
         self.free_points[ap.tag] = {}
         self.param_dicts['FreePoints'][ap.tag] = {}
 
-    def update(self):
+    def update(self, skip_fp_ap_regen: bool = False, generate_curves: bool = True):
         r"""
         ### Description:
         """
@@ -329,27 +329,28 @@ class Airfoil:
             current_chord = current_te_1_pos[0]
             self.scale(1 / current_chord)
 
-        # Generate anchor point branches
-        for ap in self.anchor_points:
-            if isinstance(ap, AnchorPoint):
-                ap.set_minus_plus_bezier_curve_orders(self.N[ap.previous_anchor_point], self.N[ap.tag])
-                ap.generate_anchor_point_branch(self.anchor_point_order)
-            elif isinstance(ap, TrailingEdgePoint):
-                ap.generate_anchor_point_branch()  # trailing edge anchor points do not need to know the ap order
+        if not skip_fp_ap_regen:
+            # Generate anchor point branches
+            for ap in self.anchor_points:
+                if isinstance(ap, AnchorPoint):
+                    ap.set_minus_plus_bezier_curve_orders(self.N[ap.previous_anchor_point], self.N[ap.tag])
+                    ap.generate_anchor_point_branch(self.anchor_point_order)
+                elif isinstance(ap, TrailingEdgePoint):
+                    ap.generate_anchor_point_branch()  # trailing edge anchor points do not need to know the ap order
 
-        # Get the control points from all the anchor points
-        self.control_points = []
-        for ap_tag in self.anchor_point_order:
-            self.control_points.extend(next((ap.ctrlpt_branch_list for ap in self.anchor_points if ap.tag == ap_tag)))
+            # Get the control points from all the anchor points
+            self.control_points = []
+            for ap_tag in self.anchor_point_order:
+                self.control_points.extend(next((ap.ctrlpt_branch_list for ap in self.anchor_points if ap.tag == ap_tag)))
 
-        for key, fp_dict in self.free_points.items():
-            if len(fp_dict) > 0:
-                if key == 'te_1':
-                    insertion_index = 2
-                else:
-                    insertion_index = next((idx for idx, cp in enumerate(self.control_points)
-                                            if cp.cp_type == 'g2_plus' and cp.anchor_point_tag == key)) + 1
-                self.control_points[insertion_index:insertion_index] = [fp_dict[k].ctrlpt for k in self.free_point_order[key]]
+            for key, fp_dict in self.free_points.items():
+                if len(fp_dict) > 0:
+                    if key == 'te_1':
+                        insertion_index = 2
+                    else:
+                        insertion_index = next((idx for idx, cp in enumerate(self.control_points)
+                                                if cp.cp_type == 'g2_plus' and cp.anchor_point_tag == key)) + 1
+                    self.control_points[insertion_index:insertion_index] = [fp_dict[k].ctrlpt for k in self.free_point_order[key]]
 
         # Scale airfoil by chord length
         self.scale(self.c.value)
@@ -361,18 +362,12 @@ class Airfoil:
         self.translate(self.dx.value, self.dy.value)
 
         # Get the control point array
-        self.control_point_array = np.array([[cp.xp, cp.yp] for cp in self.control_points])
+        self.update_control_point_array()
 
-        # for ap_key, ap_val in self.free_points.items():
-        #     for fp_key, fp_val in ap_val.items():
-        #         cp = next((cp for cp in self.control_points if cp.tag == fp_key and cp.anchor_point_tag == ap_key))
-        #         print(f"cp = {cp}")
-        #         fp_val.xp.value = cp.xp
-        #         fp_val.yp.value = cp.yp
+        if generate_curves:
+            self.generate_curves()
 
-        # if 'ap0' in self.free_points.keys():
-        #     print(f"xp_val now is {self.free_points['ap0']['FP0'].xp.value}")
-
+    def generate_curves(self):
         # Make Bézier curves from the control point array
         self.curve_list_generated = True
         previous_number_of_curves = 0
@@ -401,6 +396,13 @@ class Airfoil:
         self.curve_list_generated = True
 
         self.n_control_points = len(self.control_points)
+
+    def update_control_point_array(self):
+        self.control_point_array = np.array([[cp.xp, cp.yp] for cp in self.control_points])
+        return self.control_point_array
+
+    def update_free_point_only(self):
+        pass
 
     def override(self, parameters):
         """

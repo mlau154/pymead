@@ -10,6 +10,7 @@ class FreePoint(ControlPoint):
                  x: Param,
                  y: Param,
                  previous_anchor_point: str,
+                 airfoil_tag,
                  previous_free_point: str or None = None,
                  tag: str or None = None,
                  length_scale_dimension: float or None = None
@@ -48,7 +49,12 @@ class FreePoint(ControlPoint):
         self.y = y
         self.xp = Param(self.x.value)
         self.yp = Param(self.y.value)
+        self.x.free_point = self
+        self.y.free_point = self
+        self.xp.free_point = self
+        self.yp.free_point = self
         self.airfoil_transformation = None
+        self.airfoil_tag = airfoil_tag
         self.tag = tag
         self.previous_free_point = previous_free_point
         self.length_scale_dimension = length_scale_dimension
@@ -59,7 +65,8 @@ class FreePoint(ControlPoint):
         self.tag = tag
         self.ctrlpt.tag = tag
 
-    def set_xy(self, x=None, y=None, xp=None, yp=None):
+    def set_xy(self, x=None, y=None, xp=None, yp=None, only_update_xy: bool = False):
+        # other_airfoils_affected = []
         if (x is not None or y is not None) and xp is None and yp is None:
             if self.xp.linked and self.yp.linked or (not self.xp.active) and (not self.yp.active):
                 return
@@ -69,8 +76,20 @@ class FreePoint(ControlPoint):
                 self.y.value = y
             if self.xp.linked or not self.xp.active:
                 self.yp.value = self.get_yp_from_x_y(x, y)
+                self.x.value, self.y.value = transform(self.xp.value, self.yp.value,
+                                                       -self.airfoil_transformation['dx'].value,
+                                                       -self.airfoil_transformation['dy'].value,
+                                                       self.airfoil_transformation['alf'].value,
+                                                       1 / self.airfoil_transformation['c'].value,
+                                                       ['translate', 'rotate', 'scale'])
             elif self.yp.linked or not self.yp.active:
                 self.xp.value = self.get_xp_from_x_y(x, y)
+                self.x.value, self.y.value = transform(self.xp.value, self.yp.value,
+                                                       -self.airfoil_transformation['dx'].value,
+                                                       -self.airfoil_transformation['dy'].value,
+                                                       self.airfoil_transformation['alf'].value,
+                                                       1 / self.airfoil_transformation['c'].value,
+                                                       ['translate', 'rotate', 'scale'])
             else:
                 self.xp.value, self.yp.value = transform(self.x.value, self.y.value,
                                                          self.airfoil_transformation['dx'].value,
@@ -78,7 +97,9 @@ class FreePoint(ControlPoint):
                                                          -self.airfoil_transformation['alf'].value,
                                                          self.airfoil_transformation['c'].value,
                                                          ['scale', 'rotate', 'translate'])
-            self.update_xy()
+            # If other airfoils are affected by this change in FreePoint location, we need to mark the airfoil for
+            # change:
+            # other_airfoils_affected.extend(self.update_xy())
         elif (xp is not None or yp is not None) and x is None and y is None:
             if self.x.linked and self.y.linked or (not self.x.active) and (not self.y.active):
                 return
@@ -103,6 +124,14 @@ class FreePoint(ControlPoint):
                                                          -self.airfoil_transformation['alf'].value,
                                                          self.airfoil_transformation['c'].value,
                                                          ['scale', 'rotate', 'translate'])
+            # elif self.xp.linked or not self.yp.active:
+            #     self.yp.value = self.get_yp_from_x_y(self.x.value, self.y.value)
+            #     self.x.value, self.y.value = transform(self.xp.value, self.yp.value,
+            #                                            -self.airfoil_transformation['dx'].value,
+            #                                            -self.airfoil_transformation['dy'].value,
+            #                                            self.airfoil_transformation['alf'].value,
+            #                                            1 / self.airfoil_transformation['c'].value,
+            #                                            ['translate', 'rotate', 'scale'])
             else:
                 self.xp.value = xp
                 self.yp.value = yp
@@ -112,16 +141,66 @@ class FreePoint(ControlPoint):
                                                        self.airfoil_transformation['alf'].value,
                                                        1 / self.airfoil_transformation['c'].value,
                                                        ['translate', 'rotate', 'scale'])
-            # self.update_xy()
+        elif only_update_xy:
+            _, self.yp.value = transform(self.x.value, self.y.value,
+                                                     self.airfoil_transformation['dx'].value,
+                                                     self.airfoil_transformation['dy'].value,
+                                                     -self.airfoil_transformation['alf'].value,
+                                                     self.airfoil_transformation['c'].value,
+                                                     ['scale', 'rotate', 'translate'])
+            # self.ctrlpt.xp = self.xp.value
+            # If other airfoils are affected by this change in FreePoint location, we need to mark the airfoil for
+            # change:
+            # other_airfoils_affected.extend(self.update_xy())
+        # elif only_update_xp_yp:
+        #     print(f"only updating xp yp")
+        #     self.xp.value, self.yp.value = transform(self.x.value, self.y.value,
+        #                                              self.airfoil_transformation['dx'].value,
+        #                                              self.airfoil_transformation['dy'].value,
+        #                                              -self.airfoil_transformation['alf'].value,
+        #                                              self.airfoil_transformation['c'].value,
+        #                                              ['scale', 'rotate', 'translate'])
+        #     # other_airfoils_affected.extend(self.update_xy())
         else:
-            raise ValueError("Either (\'x\' or \'y\') or (\'xp\' or \'yp\') must be specified")
+            raise ValueError("Either (\'x\' or \'y\') or (\'xp\' or \'yp\') must be specified or \'only_update_xp_yp\' "
+                             "must be set to True")
+        other_airfoils_affected = self.update_xy()
+        # if only_update_xy:
+        #     self.set_ctrlpt_value2()
+        # else:
         self.set_ctrlpt_value()
+        return other_airfoils_affected
 
     def update_xy(self):
-        self.x.update()
-        self.y.update()
-        self.xp.update()
-        self.yp.update()
+        other_airfoils_affected = []
+        for xy in ['x', 'y', 'xp', 'yp']:
+            getattr(self, xy).update()
+            # print(f"updating affects")
+            # print(f"affects = {getattr(self, xy).affects}")
+            for affects in getattr(self, xy).affects:
+                # print(f"affects = {affects}")
+                affects.update()
+                if affects.free_point is not None:
+                    fp = affects.free_point
+                    if fp.airfoil_tag != self.airfoil_tag:
+                        other_airfoils_affected.append(fp.airfoil_tag)
+                    if affects.x or affects.y:
+                        fp.xp.value, fp.yp.value = transform(fp.x.value, fp.y.value,
+                                                             fp.airfoil_transformation['dx'].value,
+                                                             fp.airfoil_transformation['dy'].value,
+                                                             -fp.airfoil_transformation['alf'].value,
+                                                             fp.airfoil_transformation['c'].value,
+                                                             ['scale', 'rotate', 'translate'])
+                    if affects.xp or affects.yp:
+                        fp.x.value, fp.y.value = transform(fp.xp.value, fp.yp.value,
+                                                           -fp.airfoil_transformation['dx'].value,
+                                                           -fp.airfoil_transformation['dy'].value,
+                                                           fp.airfoil_transformation['alf'].value,
+                                                           1 / fp.airfoil_transformation['c'].value,
+                                                           ['translate', 'rotate', 'scale'])
+                    if affects.x or affects.y or affects.xp or affects.yp:
+                        fp.set_ctrlpt_value()
+        return other_airfoils_affected
 
     def get_x_from_xp_yp(self, xp, yp):
         x, _ = transform(xp, yp, -self.airfoil_transformation['dx'].value,
@@ -150,7 +229,6 @@ class FreePoint(ControlPoint):
                           -self.airfoil_transformation['alf'].value, self.airfoil_transformation['c'].value,
                           ['scale', 'rotate', 'translate'])
         return yp
-
 
 
     def set_x_value(self, value):
@@ -237,6 +315,12 @@ class FreePoint(ControlPoint):
     def set_ctrlpt_value(self):
         self.ctrlpt.xp = self.xp.value
         self.ctrlpt.yp = self.yp.value
+        self.ctrlpt.x_val = self.x.value
+        self.ctrlpt.y_val = self.y.value
+
+    def set_ctrlpt_value2(self):
+        self.ctrlpt.xp = self.x.value
+        self.ctrlpt.yp = self.y.value
         self.ctrlpt.x_val = self.x.value
         self.ctrlpt.y_val = self.y.value
 
