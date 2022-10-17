@@ -1,6 +1,6 @@
 from pymead.core.airfoil import Airfoil
 from pymead.core.param import Param
-from pymead.utils.dict_recursion import set_all_dict_values
+from pymead.utils.dict_recursion import set_all_dict_values, assign_airfoil_tags_to_param_dict
 import typing
 import benedict
 
@@ -56,12 +56,15 @@ class MEA:
         """
         if airfoil.tag is None:
             airfoil.tag = f'A{idx}'
-        print(f"Adding mea to airfoil {airfoil.tag}")
+        # print(f"Adding mea to airfoil {airfoil.tag}")
         airfoil.mea = self
         self.airfoils[airfoil.tag] = airfoil
         self.param_dict[airfoil.tag] = airfoil.param_dicts
+        print(f"param_dict = {self.param_dict}")
 
         set_all_dict_values(self.param_dict[airfoil.tag])
+
+        assign_airfoil_tags_to_param_dict(self.param_dict[airfoil.tag], airfoil_tag=airfoil.tag)
 
         self.add_airfoil_graph_to_airfoil(airfoil, idx, param_tree)
 

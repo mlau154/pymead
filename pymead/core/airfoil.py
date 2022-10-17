@@ -62,7 +62,7 @@ class Airfoil:
         self.mea = None
         self.base_airfoil_params = base_airfoil_params
         if not self.base_airfoil_params:
-            self.base_airfoil_params = BaseAirfoilParams()
+            self.base_airfoil_params = BaseAirfoilParams(airfoil_tag=self.tag)
         self.override_parameters = override_parameters
 
         self.override_parameter_start_idx = 0
@@ -102,10 +102,10 @@ class Airfoil:
         self.curve_list = None
         self.curve_list_generated = None
 
-        # Ensure that all the trailing edge parameters are no longer active if the trailing edge thickness is set to 0.0
-        if self.t_te.value == 0.0:
-            self.r_te.active = False
-            self.phi_te.active = False
+        # # Ensure that all the trailing edge parameters are no longer active if the trailing edge thickness is set to 0.0
+        # if self.t_te.value == 0.0:
+        #     self.r_te.active = False
+        #     self.phi_te.active = False
 
         self.coords = None
         self.non_transformed_coords = None
@@ -211,9 +211,13 @@ class Airfoil:
         """
         fp_dict = self.free_points[free_point.anchor_point_tag]
         free_point.x.x = True
+        free_point.x.airfoil_tag = self.tag
         free_point.y.y = True
+        free_point.y.airfoil_tag = self.tag
         free_point.xp.xp = True
+        free_point.xp.airfoil_tag = self.tag
         free_point.yp.yp = True
+        free_point.yp.airfoil_tag = self.tag
         free_point.airfoil_transformation = {'dx': self.dx, 'dy': self.dy, 'alf': self.alf, 'c': self.c}
 
         if free_point.previous_free_point is None:
@@ -289,6 +293,14 @@ class Airfoil:
             self.param_dicts['FreePoints'][anchor_point_tag][kp[1]] = self.param_dicts['FreePoints'][anchor_point_tag].pop(kp[0])
 
     def insert_anchor_point(self, ap: AnchorPoint):
+        ap.x.x = True
+        ap.x.airfoil_tag = self.tag
+        ap.y.y = True
+        ap.y.airfoil_tag = self.tag
+        ap.xp.xp = True
+        ap.xp.airfoil_tag = self.tag
+        ap.yp.yp = True
+        ap.yp.airfoil_tag = self.tag
         order_idx = next((idx for idx, anchor_point in enumerate(self.anchor_point_order)
                           if anchor_point == ap.previous_anchor_point))
         self.anchor_points[order_idx + 1].previous_anchor_point = ap.tag
@@ -334,6 +346,9 @@ class Airfoil:
             for ap in self.anchor_points:
                 if isinstance(ap, AnchorPoint):
                     ap.set_minus_plus_bezier_curve_orders(self.N[ap.previous_anchor_point], self.N[ap.tag])
+                    # if ap.tag == 'ap0':
+                    #     print(f"Generating anchor point branch ap0 with xp = {ap.xp.value}, yp = {ap.yp.value}, x = {ap.x.value}, y = {ap.y.value}")
+                    #     print(f"ctrlpt: x = {ap.ctrlpt.x_val}, y = {ap.ctrlpt.y_val}, xp = {ap.ctrlpt.xp}, yp = {ap.ctrlpt.yp}")
                     ap.generate_anchor_point_branch(self.anchor_point_order)
                 elif isinstance(ap, TrailingEdgePoint):
                     ap.generate_anchor_point_branch()  # trailing edge anchor points do not need to know the ap order
@@ -363,6 +378,13 @@ class Airfoil:
 
         # Get the control point array
         self.update_control_point_array()
+
+        # for ap in self.anchor_points:
+        #     if isinstance(ap, AnchorPoint):
+        #         # ap.set_minus_plus_bezier_curve_orders(self.N[ap.previous_anchor_point], self.N[ap.tag])
+        #         if ap.tag == 'ap0':
+        #             print(
+        #                 f"ctrlpt now is: x = {ap.ctrlpt.x_val}, y = {ap.ctrlpt.y_val}, xp = {ap.ctrlpt.xp}, yp = {ap.ctrlpt.yp}")
 
         if generate_curves:
             self.generate_curves()

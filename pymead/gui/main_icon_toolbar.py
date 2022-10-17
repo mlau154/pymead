@@ -54,6 +54,14 @@ class MainIconToolbar(QToolBar):
         self.add_airfoil_button.clicked.connect(self.add_airfoil_button_toggled)
         self.addWidget(self.add_airfoil_button)
 
+        self.te_thickness_icon = QIcon(os.path.join(self.icon_dir, 'thickness_icon.png'))
+        self.te_thickness_button = QToolButton(self)
+        self.te_thickness_button.setStatusTip("Toggle trailing edge thickness edit mode")
+        self.te_thickness_button.setCheckable(True)
+        self.te_thickness_button.setIcon(self.te_thickness_icon)
+        self.te_thickness_button.toggled.connect(self.te_thickness_mode_toggled)
+        self.addWidget(self.te_thickness_button)
+
     def on_grid_button_pressed(self, checked):
         if checked:
             self.parent.v.showGrid(x=True, y=True)
@@ -95,3 +103,11 @@ class MainIconToolbar(QToolBar):
             airfoil.airfoil_graph.scatter.sigPlotChanged.connect(partial(self.parent.param_tree_instance.plot_changed, f"A{len(self.parent.mea.airfoils) - 1}"))
 
         self.parent.mea.v.scene().sigMouseClicked.connect(scene_clicked)
+
+    def te_thickness_mode_toggled(self, checked):
+        if checked:
+            for airfoil in self.parent.mea.airfoils.values():
+                airfoil.airfoil_graph.te_thickness_edit_mode = True
+        else:
+            for airfoil in self.parent.mea.airfoils.values():
+                airfoil.airfoil_graph.te_thickness_edit_mode = False

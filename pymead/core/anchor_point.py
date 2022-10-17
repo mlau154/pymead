@@ -11,6 +11,7 @@ class AnchorPoint(ControlPoint):
                  y: Param,
                  tag: str,
                  previous_anchor_point: str,
+                 airfoil_tag: str,
                  L: Param,
                  R: Param,
                  r: Param,
@@ -94,8 +95,13 @@ class AnchorPoint(ControlPoint):
         self.xp = Param(self.x.value)
         self.yp = Param(self.y.value)
         self.airfoil_transformation = None
+        self.airfoil_tag = airfoil_tag
         self.L = L
         self.R = R
+        self.x.anchor_point = self
+        self.y.anchor_point = self
+        self.xp.anchor_point = self
+        self.yp.anchor_point = self
 
         self.Lt_minus = None
         self.Lt_plus = None
@@ -169,6 +175,194 @@ class AnchorPoint(ControlPoint):
 
     def __repr__(self):
         return f"anchor_point_{self.tag}"
+
+    def set_xy(self, x=None, y=None, xp=None, yp=None):
+        # other_airfoils_affected = []
+        # print("Made it to the start")
+        # print(f"Made it 2")
+        for xy in [['x', 'y'], ['xp', 'yp'], ['x', 'yp'], ['xp', 'y']]:
+            if getattr(getattr(self, xy[0]), 'linked') and getattr(getattr(self, xy[1]), 'linked') or (
+                    not getattr(getattr(self, xy[0]), 'active')) and (not getattr(getattr(self, xy[1]), 'active')):
+                return []  # Early return if both x and y degrees of freedom are locked
+        if (x is not None or y is not None) and xp is None and yp is None:
+            # if self.xp.linked and self.yp.linked or (not self.xp.active) and (not self.yp.active):
+            #     return []
+            if x is not None and (not self.x.linked) and self.x.active:
+                self.x.value = x
+            if y is not None and (not self.y.linked) and self.y.active:
+                self.y.value = y
+            if self.xp.linked or not self.xp.active:
+                self.yp.value = self.get_yp_from_x_y(x, y)
+                self.x.value, self.y.value = transform(self.xp.value, self.yp.value,
+                                                       -self.airfoil_transformation['dx'].value,
+                                                       -self.airfoil_transformation['dy'].value,
+                                                       self.airfoil_transformation['alf'].value,
+                                                       1 / self.airfoil_transformation['c'].value,
+                                                       ['translate', 'rotate', 'scale'])
+            elif self.yp.linked or not self.yp.active:
+                self.xp.value = self.get_xp_from_x_y(x, y)
+                self.x.value, self.y.value = transform(self.xp.value, self.yp.value,
+                                                       -self.airfoil_transformation['dx'].value,
+                                                       -self.airfoil_transformation['dy'].value,
+                                                       self.airfoil_transformation['alf'].value,
+                                                       1 / self.airfoil_transformation['c'].value,
+                                                       ['translate', 'rotate', 'scale'])
+            else:
+                self.xp.value, self.yp.value = transform(self.x.value, self.y.value,
+                                                         self.airfoil_transformation['dx'].value,
+                                                         self.airfoil_transformation['dy'].value,
+                                                         -self.airfoil_transformation['alf'].value,
+                                                         self.airfoil_transformation['c'].value,
+                                                         ['scale', 'rotate', 'translate'])
+            # If other airfoils are affected by this change in FreePoint location, we need to mark the airfoil for
+            # change:
+            # other_airfoils_affected.extend(self.update_xy())
+        elif (xp is not None or yp is not None) and x is None and y is None:
+            # if self.x.linked and self.y.linked or (not self.x.active) and (not self.y.active):
+            #     return []
+            # if xp is not None and (not self.xp.linked) and self.xp.active:
+            #     self.xp.value = xp
+            #     print(f"Setting xp value! xp = {self.xp.value}")
+            # if yp is not None and (not self.yp.linked) and self.yp.active:
+            #     self.yp.value = yp
+            if self.x.linked or not self.x.active:
+                self.y.value = self.get_y_from_xp_yp(xp, yp)
+                self.xp.value, self.yp.value = transform(self.x.value, self.y.value,
+                                                         self.airfoil_transformation['dx'].value,
+                                                         self.airfoil_transformation['dy'].value,
+                                                         -self.airfoil_transformation['alf'].value,
+                                                         self.airfoil_transformation['c'].value,
+                                                         ['scale', 'rotate', 'translate'])
+            elif self.y.linked or not self.y.active:
+                self.x.value = self.get_x_from_xp_yp(xp, yp)
+                self.xp.value, self.yp.value = transform(self.x.value, self.y.value,
+                                                         self.airfoil_transformation['dx'].value,
+                                                         self.airfoil_transformation['dy'].value,
+                                                         -self.airfoil_transformation['alf'].value,
+                                                         self.airfoil_transformation['c'].value,
+                                                         ['scale', 'rotate', 'translate'])
+            elif self.xp.linked or not self.xp.active:
+                self.yp.value = yp
+                self.x.value, self.y.value = transform(self.xp.value, self.yp.value,
+                                                       -self.airfoil_transformation['dx'].value,
+                                                       -self.airfoil_transformation['dy'].value,
+                                                       self.airfoil_transformation['alf'].value,
+                                                       1 / self.airfoil_transformation['c'].value,
+                                                       ['translate', 'rotate', 'scale'])
+            elif self.yp.linked or not self.yp.active:
+                self.xp.value = xp
+                self.x.value, self.y.value = transform(self.xp.value, self.yp.value,
+                                                       -self.airfoil_transformation['dx'].value,
+                                                       -self.airfoil_transformation['dy'].value,
+                                                       self.airfoil_transformation['alf'].value,
+                                                       1 / self.airfoil_transformation['c'].value,
+                                                       ['translate', 'rotate', 'scale'])
+            else:
+                self.xp.value = xp
+                self.yp.value = yp
+                self.x.value, self.y.value = transform(self.xp.value, self.yp.value,
+                                                       -self.airfoil_transformation['dx'].value,
+                                                       -self.airfoil_transformation['dy'].value,
+                                                       self.airfoil_transformation['alf'].value,
+                                                       1 / self.airfoil_transformation['c'].value,
+                                                       ['translate', 'rotate', 'scale'])
+        else:
+            raise ValueError("Either (\'x\' or \'y\') or (\'xp\' or \'yp\') must be specified or \'only_update_xp_yp\' "
+                             "must be set to True")
+        other_airfoils_affected = self.update_xy()
+        # print(f"other_airfoils_affected now is {other_airfoils_affected}")
+        # if only_update_xy:
+        #     self.set_ctrlpt_value2()
+        # else:
+        self.set_ctrlpt_value()
+        return other_airfoils_affected
+
+    def update_xy(self):
+        other_airfoils_affected = []
+        for xy in ['x', 'y', 'xp', 'yp']:
+            getattr(self, xy).update()
+            # print(f"updating affects")
+            # print(f"affects = {getattr(self, xy).affects}")
+            for affects in getattr(self, xy).affects:
+                # print(f"affects.anchor_point = {affects.anchor_point}")
+                # print(f"affects = {affects}")
+                affects.update()
+                if affects.free_point is not None:
+                    fp = affects.free_point
+                    if fp.airfoil_tag != self.airfoil_tag:
+                        other_airfoils_affected.append(fp.airfoil_tag)
+                    if affects.x or affects.y:
+                        fp.xp.value, fp.yp.value = transform(fp.x.value, fp.y.value,
+                                                             fp.airfoil_transformation['dx'].value,
+                                                             fp.airfoil_transformation['dy'].value,
+                                                             -fp.airfoil_transformation['alf'].value,
+                                                             fp.airfoil_transformation['c'].value,
+                                                             ['scale', 'rotate', 'translate'])
+                    if affects.xp or affects.yp:
+                        fp.x.value, fp.y.value = transform(fp.xp.value, fp.yp.value,
+                                                           -fp.airfoil_transformation['dx'].value,
+                                                           -fp.airfoil_transformation['dy'].value,
+                                                           fp.airfoil_transformation['alf'].value,
+                                                           1 / fp.airfoil_transformation['c'].value,
+                                                           ['translate', 'rotate', 'scale'])
+                    if affects.x or affects.y or affects.xp or affects.yp:
+                        fp.set_ctrlpt_value()
+                if affects.anchor_point is not None:
+
+                    ap = affects.anchor_point
+                    # print(f"ap airfoil tag = {ap.airfoil_tag}")
+                    # print(f"self.airfoil_tag = {self.airfoil_tag}")
+                    # print(f"affects.x = {affects.x}")
+                    # print(f"affects.y = {affects.y}")
+                    # print(f"affects.xp = {affects.xp}")
+                    # print(f"affects.yp = {affects.yp}")
+                    if ap.airfoil_tag != self.airfoil_tag:
+                        other_airfoils_affected.append(ap.airfoil_tag)
+                    if affects.x or affects.y:
+                        ap.xp.value, ap.yp.value = transform(ap.x.value, ap.y.value,
+                                                             ap.airfoil_transformation['dx'].value,
+                                                             ap.airfoil_transformation['dy'].value,
+                                                             -ap.airfoil_transformation['alf'].value,
+                                                             ap.airfoil_transformation['c'].value,
+                                                             ['scale', 'rotate', 'translate'])
+                    if affects.xp or affects.yp:
+                        ap.x.value, ap.y.value = transform(ap.xp.value, ap.yp.value,
+                                                           -ap.airfoil_transformation['dx'].value,
+                                                           -ap.airfoil_transformation['dy'].value,
+                                                           ap.airfoil_transformation['alf'].value,
+                                                           1 / ap.airfoil_transformation['c'].value,
+                                                           ['translate', 'rotate', 'scale'])
+                    if affects.x or affects.y or affects.xp or affects.yp:
+                        ap.set_ctrlpt_value()
+        return other_airfoils_affected
+
+    def get_x_from_xp_yp(self, xp, yp):
+        x, _ = transform(xp, yp, -self.airfoil_transformation['dx'].value,
+                         -self.airfoil_transformation['dy'].value,
+                         self.airfoil_transformation['alf'].value,
+                         1 / self.airfoil_transformation['c'].value,
+                         ['translate', 'rotate', 'scale'])
+        return x
+
+    def get_y_from_xp_yp(self, xp, yp):
+        _, y = transform(xp, yp, -self.airfoil_transformation['dx'].value, -self.airfoil_transformation['dy'].value,
+                         self.airfoil_transformation['alf'].value, 1 / self.airfoil_transformation['c'].value,
+                         ['translate', 'rotate', 'scale'])
+        return y
+
+    def get_xp_from_x_y(self, x, y):
+        xp, _ = transform(x, y, self.airfoil_transformation['dx'].value,
+                          self.airfoil_transformation['dy'].value,
+                          -self.airfoil_transformation['alf'].value,
+                          self.airfoil_transformation['c'].value,
+                          ['scale', 'rotate', 'translate'])
+        return xp
+
+    def get_yp_from_x_y(self, x, y):
+        _, yp = transform(x, y, self.airfoil_transformation['dx'].value, self.airfoil_transformation['dy'].value,
+                          -self.airfoil_transformation['alf'].value, self.airfoil_transformation['c'].value,
+                          ['scale', 'rotate', 'translate'])
+        return yp
 
     def set_x_value(self, value):
         if value is not None:

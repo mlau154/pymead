@@ -7,6 +7,7 @@ import numpy as np
 class BaseAirfoilParams:
 
     def __init__(self,
+                 airfoil_tag: str = None,
                  c: Param = None,  # chord length
                  alf: Param = None,  # angle of attack (rad)
                  R_le: Param = None,  # leading edge radius
@@ -92,7 +93,7 @@ class BaseAirfoilParams:
         `non_dim_by_chord`: a `bool` that determines whether the `pymead.core.param.Param`s with `units == length`
         should be non-dimensionalized by the chord (`c`). Default value: `True`.
         """
-
+        self.airfoil_tag = airfoil_tag
         self.c = c
         self.alf = alf
         self.R_le = R_le
@@ -177,11 +178,11 @@ class BaseAirfoilParams:
                     param.value = param.value * self.c.value
 
     def generate_main_anchor_points(self):
-        le_anchor_point = AnchorPoint(Param(0), Param(0), 'le', 'te_1', self.L_le, self.R_le, self.r_le, self.phi_le,
-                                      self.psi1_le, self.psi2_le)
-        te_1_anchor_point = TrailingEdgePoint(self.c, self.r_le, self.t_te, self.phi_te, self.L1_te, self.theta1_te,
+        le_anchor_point = AnchorPoint(Param(0), Param(0), 'le', 'te_1', self.airfoil_tag, self.L_le, self.R_le,
+                                      self.r_le, self.phi_le, self.psi1_le, self.psi2_le)
+        te_1_anchor_point = TrailingEdgePoint(self.c, self.r_te, self.t_te, self.phi_te, self.L1_te, self.theta1_te,
                                               True)
-        te_2_anchor_point = TrailingEdgePoint(self.c, self.r_le, self.t_te, self.phi_te, self.L2_te, self.theta2_te,
+        te_2_anchor_point = TrailingEdgePoint(self.c, self.r_te, self.t_te, self.phi_te, self.L2_te, self.theta2_te,
                                               False)
         return [te_1_anchor_point, le_anchor_point, te_2_anchor_point]
 

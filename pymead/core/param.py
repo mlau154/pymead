@@ -1,6 +1,7 @@
 import numpy as np
 import math
 from pymead.utils.misc import count_dollar_signs
+from pymead.utils.transformations import transform
 
 
 class Param:
@@ -68,12 +69,14 @@ class Param:
         self.affects = []
         self.tag_matrix = None
         self.tag_list = None
+        self.airfoil_tag = None
         self.mea = None
         self.x = x
         self.y = y
         self.xp = xp
         self.yp = yp
         self.free_point = None
+        self.anchor_point = None
 
     def set_func_str(self, func_str: str):
         self.func_str = func_str
@@ -104,10 +107,50 @@ class Param:
         else:
             self.value = self.function_dict['f']()  # no parameters passed as inputs (inputs all stored and updated
             # inside self.function_dict )
+            # print(f"self.value now is {self.value}")
 
     def update(self, show_q_error_messages: bool = True):
         self.update_function(show_q_error_messages)
         self.update_value()
+        self.update_fp_ap()
+
+    def update_fp_ap(self):
+        if self.free_point is not None:
+            fp = self.free_point
+            if self.x or self.y:
+                fp.xp.value, fp.yp.value = transform(fp.x.value, fp.y.value,
+                                                     fp.airfoil_transformation['dx'].value,
+                                                     fp.airfoil_transformation['dy'].value,
+                                                     -fp.airfoil_transformation['alf'].value,
+                                                     fp.airfoil_transformation['c'].value,
+                                                     ['scale', 'rotate', 'translate'])
+            if self.xp or self.yp:
+                fp.x.value, fp.y.value = transform(fp.xp.value, fp.yp.value,
+                                                   -fp.airfoil_transformation['dx'].value,
+                                                   -fp.airfoil_transformation['dy'].value,
+                                                   fp.airfoil_transformation['alf'].value,
+                                                   1 / fp.airfoil_transformation['c'].value,
+                                                   ['translate', 'rotate', 'scale'])
+            if self.x or self.y or self.xp or self.yp:
+                fp.set_ctrlpt_value()
+        if self.anchor_point is not None:
+            ap = self.anchor_point
+            if self.x or self.y:
+                ap.xp.value, ap.yp.value = transform(ap.x.value, ap.y.value,
+                                                     ap.airfoil_transformation['dx'].value,
+                                                     ap.airfoil_transformation['dy'].value,
+                                                     -ap.airfoil_transformation['alf'].value,
+                                                     ap.airfoil_transformation['c'].value,
+                                                     ['scale', 'rotate', 'translate'])
+            if self.xp or self.yp:
+                ap.x.value, ap.y.value = transform(ap.xp.value, ap.yp.value,
+                                                   -ap.airfoil_transformation['dx'].value,
+                                                   -ap.airfoil_transformation['dy'].value,
+                                                   ap.airfoil_transformation['alf'].value,
+                                                   1 / ap.airfoil_transformation['c'].value,
+                                                   ['translate', 'rotate', 'scale'])
+            if self.x or self.y or self.xp or self.yp:
+                ap.set_ctrlpt_value()
 
     def parse_update_function_str(self):
         self.tag_matrix = []

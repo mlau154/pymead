@@ -1,4 +1,4 @@
-from pymead.utils.nchoosek import nchoosek
+from pymead.utils.nchoosek import nchoosek, nchoosek_matrix
 from pymead.core.parametric_curve import ParametricCurve
 import numpy as np
 
@@ -83,14 +83,30 @@ class Bezier(ParametricCurve):
             self.ppy += (n - 1) * (n - 2) * (P[i + 2, 1] - 2 * P[i + 1, 1] + P[i, 1]) * nchoosek(n - 3, i) * t ** (
                            i) * (1 - t) ** (n - 3 - i)
 
-            # Calculate the curvature of the Bezier curve (k = kappa = 1 / R, where R is the radius of curvature)
-            self.k = (self.px * self.ppy - self.py * self.ppx) / (self.px ** 2 + self.py ** 2) ** (3 / 2)
+            with np.errstate(divide='ignore', invalid='ignore'):
+                # Calculate the curvature of the Bezier curve (k = kappa = 1 / R, where R is the radius of curvature)
+                self.k = np.true_divide((self.px * self.ppy - self.py * self.ppx),
+                                        (self.px ** 2 + self.py ** 2) ** (3 / 2))
 
-        with np.errstate(divide='ignore'):
+        with np.errstate(divide='ignore', invalid='ignore'):
             self.R = np.true_divide(1, self.k)
 
         super().__init__(self.t, self.x, self.y, self.px, self.py, self.ppx, self.ppy, self.k, self.R)
         # print('Finished initialization of Bezier curve.')
+
+    @staticmethod
+    def approximate_arc_length(P, nt):
+        # nchoosek_array = nchoosek_matrix(np.ones(shape=nt) * (len(P) - 1), np.arange(len(P)))
+        # xy_array = np.sum(P * nchoosek_array)
+
+        x, y = np.zeros(nt), np.zeros(nt)
+        n = len(P)
+        t = np.linspace(0, 1, nt)
+        for i in range(n):
+            # Calculate the x- and y-coordinates of the Bézier curve given the input vector t
+            x += P[i, 0] * nchoosek(n - 1, i) * t ** i * (1 - t) ** (n - 1 - i)
+            y += P[i, 1] * nchoosek(n - 1, i) * t ** i * (1 - t) ** (n - 1 - i)
+        return np.sum(np.hypot(x[1:] - x[:-1], y[1:] - y[:-1]))
 
     def update(self, P, nt, t: np.ndarray = None):
         self.P = P
@@ -133,10 +149,12 @@ class Bezier(ParametricCurve):
             self.ppy += (n - 1) * (n - 2) * (P[i + 2, 1] - 2 * P[i + 1, 1] + P[i, 1]) * nchoosek(n - 3, i) * t ** (
                 i) * (1 - t) ** (n - 3 - i)
 
-            # Calculate the curvature of the Bezier curve (k = kappa = 1 / R, where R is the radius of curvature)
-            self.k = (self.px * self.ppy - self.py * self.ppx) / (self.px ** 2 + self.py ** 2) ** (3 / 2)
+            with np.errstate(divide='ignore', invalid='ignore'):
+                # Calculate the curvature of the Bezier curve (k = kappa = 1 / R, where R is the radius of curvature)
+                self.k = np.true_divide((self.px * self.ppy - self.py * self.ppx),
+                                        (self.px ** 2 + self.py ** 2) ** (3 / 2))
 
-        with np.errstate(divide='ignore'):
+        with np.errstate(divide='ignore', invalid='ignore'):
             self.R = np.true_divide(1, self.k)
 
     def get_curvature_comb(self, max_k_normalized_scale_factor, interval: int = 1):

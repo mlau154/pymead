@@ -67,6 +67,7 @@ class GUI(QMainWindow):
         self.setStatusBar(QStatusBar(self))
         self.param_tree_instance = MEAParamTree(self.mea, self.statusBar())
         self.mea.airfoils['A0'].airfoil_graph.param_tree = self.param_tree_instance
+        self.mea.airfoils['A0'].airfoil_graph.airfoil_parameters = self.param_tree_instance.p.param('Airfoil Parameters')
         # print(f"param_tree_instance = {self.param_tree_instance}")
         self.design_tree_widget = self.param_tree_instance.t
         self.text_area = ConsoleTextArea()

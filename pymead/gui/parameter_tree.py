@@ -477,7 +477,7 @@ class MEAParamTree:
                             curve.pg_curve_handle.clear()
                         ap = AnchorPoint(x=Param(inputs[0]), y=Param(inputs[1]), L=Param(inputs[2]), R=Param(inputs[3]),
                                          r=Param(inputs[4]), phi=Param(inputs[5]), psi1=Param(inputs[6]),
-                                         psi2=Param(inputs[7]), previous_anchor_point=inputs[8], tag=inputs[9])
+                                         psi2=Param(inputs[7]), previous_anchor_point=inputs[8], tag=inputs[9], airfoil_tag=a_tag)
                         self.mea.airfoils[a_tag].insert_anchor_point(ap)
                         self.mea.airfoils[a_tag].update()
                         self.mea.airfoils[a_tag].init_airfoil_curve_pg(self.mea.airfoils[a_tag].airfoil_graph.v,
