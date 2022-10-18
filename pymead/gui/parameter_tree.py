@@ -13,7 +13,7 @@ from pymead.core.free_point import FreePoint
 from pymead.core.anchor_point import AnchorPoint
 from pymead.gui.autocomplete import AutoStrParameterItem
 from pymead.gui.selectable_header import SelectableHeaderParameterItem
-from pymead.gui.input_dialog import FreePointInputDialog, AnchorPointInputDialog
+from pymead.gui.input_dialog import FreePointInputDialog, AnchorPointInputDialog, BoundsDialog
 from pymead.analysis.single_element_inviscid import single_element_inviscid
 from pymead.core.airfoil import Airfoil
 from PyQt5.QtWidgets import QCompleter, QWidget, QGridLayout, QLabel, QInputDialog, QHeaderView
@@ -69,7 +69,8 @@ class MEAParameters(pTypes.GroupParameter):
                     name=f"{airfoil.tag}.AnchorPoints.{ap_key}.{p_key}", type='float',
                     value=self.mea.param_dict[airfoil.tag]['AnchorPoints'][ap_key][
                         p_key].value,
-                    context={'add_eq': 'Define by equation'}))
+                    context={'add_eq': 'Define by equation', 'deactivate': 'Deactivate parameter',
+                                         'activate': 'Activate parameter', 'setbounds': 'Set parameter bounds'}))
         for ap_key, ap_val in self.mea.param_dict[airfoil.tag]['FreePoints'].items():
             self.child(airfoil.tag).child('FreePoints').addChild(
                 HeaderParameter(name=ap_key, type='bool', value='true'))
@@ -81,7 +82,8 @@ class MEAParameters(pTypes.GroupParameter):
                         AirfoilParameter(self.mea.param_dict[airfoil.tag]['FreePoints'][ap_key][fp_key][p_key],
                                          name=f"{airfoil.tag}.FreePoints.{ap_key}.{fp_key}.{p_key}", type='float',
                                          value=self.mea.param_dict[airfoil.tag]['FreePoints'][ap_key][fp_key][p_key].value,
-                                         context={'add_eq': 'Define by equation'}))
+                                         context={'add_eq': 'Define by equation', 'deactivate': 'Deactivate parameter',
+                                         'activate': 'Activate parameter', 'setbounds': 'Set parameter bounds'}))
 
 
 class AirfoilParameter(pTypes.SimpleParameter):
@@ -473,6 +475,15 @@ class MEAParamTree:
                 if change == 'contextMenu' and data == 'activate':
                     param.airfoil_param.active = True
                     param.setReadonly(False)
+
+                if change == 'contextMenu' and data == 'setbounds':
+                    self.dialog = BoundsDialog(param.airfoil_param.bounds)
+                    if self.dialog.exec():
+                        inputs = self.dialog.getInputs()
+                    else:
+                        inputs = None
+                    if inputs:
+                        param.airfoil_param.bounds = np.array([inputs[0], inputs[1]])
 
                 # Adding a FreePoint
                 if change == 'contextMenu' and data == 'add_fp':

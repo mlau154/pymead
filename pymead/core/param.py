@@ -48,6 +48,8 @@ class Param:
 
         self.units = units
         self.scale_value = scale_value
+        self._value = None
+        self.bounds = bounds
 
         if self.units == 'length' and self.scale_value is not None:
             self.value = value * self.scale_value
@@ -56,7 +58,6 @@ class Param:
         else:
             self.value = value
 
-        self.bounds = bounds
         self.active = active
         self.linked = linked
         # self.tag = tag
@@ -77,6 +78,19 @@ class Param:
         self.yp = yp
         self.free_point = None
         self.anchor_point = None
+
+    @property
+    def value(self):
+        return self._value
+
+    @value.setter
+    def value(self, v):
+        if v < self.bounds[0]:
+            self._value = self.bounds[0]
+        elif v > self.bounds[1]:
+            self._value = self.bounds[1]
+        else:
+            self._value = v
 
     def set_func_str(self, func_str: str):
         self.func_str = func_str

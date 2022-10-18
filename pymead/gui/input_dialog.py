@@ -230,4 +230,28 @@ class InviscidCpCalcDialog(QDialog):
         layout = QFormLayout(self)
 
 
+class BoundsDialog(QDialog):
+    def __init__(self, bounds, parent=None):
+        super().__init__(parent)
+        buttonBox = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel, self)
+        layout = QFormLayout(self)
 
+        self.lower_bound = QDoubleSpinBox()
+        self.lower_bound.setMinimum(-np.inf)
+        self.lower_bound.setMaximum(np.inf)
+        self.lower_bound.setValue(bounds[0])
+        layout.addRow("Lower Bound", self.lower_bound)
+
+        self.upper_bound = QDoubleSpinBox()
+        self.upper_bound.setMinimum(-np.inf)
+        self.upper_bound.setMaximum(np.inf)
+        self.upper_bound.setValue(bounds[1])
+        layout.addRow("Upper Bound", self.upper_bound)
+
+        layout.addWidget(buttonBox)
+
+        buttonBox.accepted.connect(self.accept)
+        buttonBox.rejected.connect(self.reject)
+
+    def getInputs(self):
+        return self.lower_bound.value(), self.upper_bound.value()

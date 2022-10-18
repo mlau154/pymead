@@ -2,7 +2,7 @@
 oper
 iter 150
 visc
-1000000000.0
+1000000.0
 alfa 0.0
 cpwr default_airfoil_Cp.dat
 

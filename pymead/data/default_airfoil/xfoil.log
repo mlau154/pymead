@@ -15,15 +15,15 @@ Output:
  Plain airfoil file
 
 Enter airfoil name   s>  
- Number of input coordinate points: 154
+ Number of input coordinate points: 143
  Counterclockwise ordering
- Max thickness =     0.107224  at x =   0.246
- Max camber    =     0.022516  at x =   0.356
+ Max thickness =     0.106221  at x =   0.272
+ Max camber    =     0.020723  at x =   0.373
 
-  LE  x,y  =  -0.00000  -0.00000  |   Chord =   1.00000
+  LE  x,y  =  -0.00014  -0.00332  |   Chord =   1.00015
   TE  x,y  =   1.00000   0.00000  |
 
- Current airfoil nodes set from buffer airfoil nodes ( 154 )
+ Current airfoil nodes set from buffer airfoil nodes ( 143 )
 
    QUIT    Exit program
 
@@ -65,7 +65,7 @@ Enter airfoil name   s>
 .OPERi   c>  
 Enter Reynolds number   r>  
  M  =    0.0000
- Re =1000000000
+ Re =   1000000
 
 .OPERv   c>   Calculating unit vorticity distributions ...
  Calculating wake trajectory ...
@@ -75,116 +75,46 @@ Enter Reynolds number   r>
 
  Initializing BL ...
     side            1  ...
+ MRCHUE: Inverse mode at  69     Hk =   4.735
+ MRCHUE: Inverse mode at  70     Hk =   2.500
+ MRCHUE: Inverse mode at  78     Hk =   2.500
     side            2  ...
- MRCHUE: Inverse mode at  32     Hk =  21.323
- MRCHUE: Inverse mode at  33     Hk =  10.554
- MRCHUE: Inverse mode at  34     Hk =   7.427
- MRCHUE: Inverse mode at  35     Hk =   5.548
- MRCHUE: Inverse mode at  36     Hk =   4.191
- MRCHUE: Inverse mode at  37     Hk =   3.132
- MRCHUE: Convergence failed at  38  side 2    Res =  0.1327E+00
+ MRCHUE: Inverse mode at  67     Hk =   2.500
 
- Side 1  free  transition at x/c =  0.0313   28
- Side 2  free  transition at x/c =  0.0163   32
+ Side 1  free  transition at x/c =  0.6724   69
+ Side 2  free  transition at x/c =  0.4888   55
 
-   1   rms: 0.2856E+00   max: -.3074E+01   T at   32  2   RLX: 0.163
-       a =  0.000      CL =  0.1183
-      Cm = -0.0071     CD =  0.00424   =>   CDf =  0.00317    CDp =  0.00106
+   1   rms: 0.1340E+00   max: -.9622E+00   D at   70  1   RLX: 0.520
+       a =  0.000      CL =  0.1788
+      Cm = -0.0325     CD =  0.00499   =>   CDf =  0.00453    CDp =  0.00046
 
- TRCHEK2: N2 convergence failed.
- x:  0.03662  0.03809  0.03827  N:  6.469  9.000  9.145  Nx:1770.311   dN:-0.197E+02
- TRCHEK2: N2 convergence failed.
- x:  0.03662  0.03810  0.03827  N:  6.469  9.000  9.446  Nx:1759.334   dN: 0.192E+02
- TRCHEK2: N2 convergence failed.
- x:  0.03662  0.03809  0.03827  N:  6.469  9.000  9.143  Nx:1768.467   dN:-0.279E+02
- TRCHEK2: N2 convergence failed.
- x:  0.03662  0.03809  0.03827  N:  6.469  9.000  9.141  Nx:1765.749   dN:-0.432E+02
- TRCHEK2: N2 convergence failed.
- x:  0.03662  0.03810  0.03827  N:  6.469  9.000  9.140  Nx:1764.695   dN:-0.558E+02
- TRCHEK2: N2 convergence failed.
- x:  0.03662  0.03810  0.03827  N:  6.469  9.000  9.139  Nx:1763.311   dN:-0.736E+02
- TRCHEK2: N2 convergence failed.
- x:  0.03662  0.03810  0.03827  N:  6.469  9.000  9.138  Nx:1762.698   dN:-0.935E+02
- TRCHEK2: N2 convergence failed.
- x:  0.03662  0.03810  0.03827  N:  6.469  9.000  9.138  Nx:1762.214   dN:-0.119E+03
- TRCHEK2: N2 convergence failed.
- x:  0.03662  0.03810  0.03827  N:  6.469  9.000  9.138  Nx:1761.835   dN:-0.151E+03
- TRCHEK2: N2 convergence failed.
- x:  0.03662  0.03810  0.03827  N:  6.469  9.000  9.137  Nx:1761.542   dN:-0.193E+03
- TRCHEK2: N2 convergence failed.
- x:  0.03662  0.03810  0.03827  N:  6.469  9.000  9.136  Nx:1760.737   dN:-0.286E+03
- TRCHEK2: N2 convergence failed.
- x:  0.03662  0.03810  0.03827  N:  6.469  9.000  9.136  Nx:1760.582   dN:-0.368E+03
- TRCHEK2: N2 convergence failed.
- x:  0.03662  0.03810  0.03827  N:  6.469  9.000  9.136  Nx:1760.461   dN:-0.472E+03
- TRCHEK2: N2 convergence failed.
- x:  0.03662  0.03810  0.03827  N:  6.469  9.000  9.136  Nx:1760.367   dN:-0.600E+03
- TRCHEK2: N2 convergence failed.
- x:  0.03662  0.03810  0.03827  N:  6.469  9.000  9.136  Nx:1760.292   dN:-0.770E+03
- TRCHEK2: N2 convergence failed.
- x:  0.03662  0.03810  0.03827  N:  6.469  9.000  9.136  Nx:1760.233   dN:-0.964E+03
- TRCHEK2: N2 convergence failed.
- x:  0.03662  0.03810  0.03827  N:  6.469  9.000  9.136  Nx:1760.189   dN:-0.123E+04
- TRCHEK2: N2 convergence failed.
- x:  0.03662  0.03810  0.03827  N:  6.469  9.000  9.136  Nx:1760.153   dN:-0.158E+04
- TRCHEK2: N2 convergence failed.
- x:  0.03662  0.03810  0.03827  N:  6.469  9.000  9.136  Nx:1760.124   dN:-0.203E+04
- TRCHEK2: N2 convergence failed.
- x:  0.03662  0.03810  0.03827  N:  6.469  9.000  9.136  Nx:1760.101   dN:-0.260E+04
- TRCHEK2: N2 convergence failed.
- x:  0.03662  0.03810  0.03827  N:  6.469  9.000  9.136  Nx:1760.086   dN:-0.331E+04
- Side 1  free  transition at x/c =  0.0313   28
- TRCHEK2: N2 convergence failed.
- x:  0.03662  0.03810  0.03827  N:  6.469  9.000  9.136  Nx:1760.070   dN:-0.428E+04
- Side 2  free  transition at x/c =  0.0169   32
+ Side 1  free  transition at x/c =  0.6826   69
+ Side 2  free  transition at x/c =  0.4810   55
 
-   2   rms: 0.2537E+00   max: -.2960E+01   T at   32  2   RLX: 0.169
-       a =  0.000      CL =  0.1167
-      Cm = -0.0076     CD =  0.00420   =>   CDf =  0.00317    CDp =  0.00102
+   2   rms: 0.5954E-01   max: -.5249E+00   D at   70  1   RLX: 0.953
+       a =  0.000      CL =  0.1942
+      Cm = -0.0376     CD =  0.00558   =>   CDf =  0.00455    CDp =  0.00103
 
- TRCHEK2: N2 convergence failed.
- x:  0.03661  0.03814  0.03827  N:  6.567  9.000  9.062  Nx:3605.083   dN:-0.146E+01
- TRCHEK2: N2 convergence failed.
- x:  0.03661  0.03814  0.03827  N:  6.567  9.000  9.062  Nx:3350.879   dN:-0.207E+01
- TRCHEK2: N2 convergence failed.
- x:  0.03661  0.03814  0.03827  N:  6.567  9.000  9.062  Nx:3124.393   dN:-0.284E+01
- TRCHEK2: N2 convergence failed.
- x:  0.03661  0.03823  0.03827  N:  6.567  9.000  9.000  Nx:2770.426   dN:-0.349E+01
- TRCHEK2: N2 convergence failed.
- x:  0.03661  0.03827  0.03827  N:  6.567  9.000 10.000  Nx:2493.369   dN: 0.169E+01
- TRCHEK2: N2 convergence failed.
- x:  0.03661  0.03805  0.03827  N:  6.567  9.000  9.205  Nx:3601.917   dN:-0.475E+01
- TRCHEK2: N2 convergence failed.
- x:  0.03661  0.03814  0.03827  N:  6.567  9.000  9.062  Nx:3142.277   dN:-0.532E+01
- MRCHDU: Convergence failed at  32  side 2    Res =  0.2543E+00
- MRCHDU: Convergence failed at  34  side 2    Res =  0.9259E+01
- Side 1  free  transition at x/c =  0.0313   28
- Side 2  free  transition at x/c =  0.0182   33
+ Side 1  free  transition at x/c =  0.7171   70
+ Side 2  free  transition at x/c =  0.5123   55
 
-   3   rms: 0.1490E+00   max: -.1646E+01   D at   33  2   RLX: 0.304
-       a =  0.000      CL =  0.1149
-      Cm = -0.0081     CD =  0.00376   =>   CDf =  0.00327    CDp =  0.00048
+   3   rms: 0.2055E-01   max: -.3473E+00   C at   70  1
+       a =  0.000      CL =  0.2009
+      Cm = -0.0393     CD =  0.00538   =>   CDf =  0.00424    CDp =  0.00113
 
- Side 1  free  transition at x/c =  0.0313   28
- Side 2  free  transition at x/c =  0.0180   33
+ Side 1  free  transition at x/c =  0.7149   70
+ Side 2  free  transition at x/c =  0.5262   55
 
-   4   rms: 0.9409E-01   max: 0.4802E+00   D at   38  2   RLX: 0.634
-       a =  0.000      CL =  0.1126
-      Cm = -0.0088     CD =  0.00377   =>   CDf =  0.00328    CDp =  0.00049
+   4   rms: 0.1042E-02   max: 0.1797E-01   C at   70  1
+       a =  0.000      CL =  0.2012
+      Cm = -0.0394     CD =  0.00540   =>   CDf =  0.00414    CDp =  0.00126
 
- Side 1  free  transition at x/c =  0.0313   28
- Side 2  free  transition at x/c =  0.0173   33
+ Side 1  free  transition at x/c =  0.7135   70
+ Side 2  free  transition at x/c =  0.5268   55
 
-   5   rms: 0.3213E-01   max: 0.1518E+00   D at   38  2
-       a =  0.000      CL =  0.1111
-      Cm = -0.0093     CD =  0.00378   =>   CDf =  0.00328    CDp =  0.00050
-
- Side 1  free  transition at x/c =  0.0313   28
- Side 2  free  transition at x/c =  0.0170   32
-
-   6   rms: 0.5652E-04   max: -.1078E-02   C at   32  2
-       a =  0.000      CL =  0.1111
-      Cm = -0.0093     CD =  0.00378   =>   CDf =  0.00329    CDp =  0.00049
+   5   rms: 0.1590E-04   max: -.3131E-03   C at   70  1
+       a =  0.000      CL =  0.2012
+      Cm = -0.0394     CD =  0.00540   =>   CDf =  0.00414    CDp =  0.00126
 
 .OPERv   c>  
 .OPERv   c>  
