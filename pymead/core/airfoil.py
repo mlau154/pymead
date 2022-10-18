@@ -25,7 +25,7 @@ import pandas as pd
 class Airfoil:
 
     def __init__(self,
-                 number_coordinates: int = 100,
+                 number_coordinates: int = 300,
                  base_airfoil_params: BaseAirfoilParams or SymmetricBaseAirfoilParams = None,
                  override_parameters: list = None,
                  tag: str = None
@@ -401,6 +401,46 @@ class Airfoil:
 
         # print(f"curve_list = {self.curve_list}")
 
+        P_list = self.get_list_of_control_point_arrays()
+        # arc_length_list = []
+        # nt_list = []
+
+        # for idx, P in enumerate(P_list):
+        #     arc_length_list.append(Bezier.approximate_arc_length(P, 50))
+
+        # total_arc_length = sum(arc_length_list)
+        #
+        # for idx in range(len(P_list)):
+        #     nt_list.append(int(arc_length_list[idx] / total_arc_length * self.nt))
+        #
+        # while sum(nt_list) != self.nt:
+        #     if sum(nt_list) < self.nt:
+        #         nt_list[np.random.choice(len(nt_list))] += 1
+        #     else:
+        #         nt_list[np.random.choice(len(nt_list))] -= 1
+        #
+        # print(nt_list)
+
+        # cp_end_idx, cp_start_idx = 0, 1
+        # for idx, ap_tag in enumerate(self.anchor_point_order[:-1]):
+        #     if idx == 0:
+        #         cp_end_idx += self.N[ap_tag] + 1
+        #     else:
+        #         cp_end_idx += self.N[ap_tag]
+        #     P = self.control_point_array[cp_start_idx - 1:cp_end_idx]
+        for idx, P in enumerate(P_list):
+            # print(f"P = {P}")
+            if self.curve_list_generated and previous_number_of_curves == len(self.anchor_point_order) - 1:
+                # print(f"previous_number_of_curves = {previous_number_of_curves}, airfoil_tag = {self.tag}")
+                self.curve_list[idx].update(P, 150)
+            else:
+                self.curve_list.append(Bezier(P, 150))
+        self.curve_list_generated = True
+
+        self.n_control_points = len(self.control_points)
+
+    def get_list_of_control_point_arrays(self):
+        P_list = []
         cp_end_idx, cp_start_idx = 0, 1
         for idx, ap_tag in enumerate(self.anchor_point_order[:-1]):
             if idx == 0:
@@ -408,16 +448,9 @@ class Airfoil:
             else:
                 cp_end_idx += self.N[ap_tag]
             P = self.control_point_array[cp_start_idx - 1:cp_end_idx]
-            # print(f"P = {P}")
-            if self.curve_list_generated and previous_number_of_curves == len(self.anchor_point_order) - 1:
-                # print(f"previous_number_of_curves = {previous_number_of_curves}, airfoil_tag = {self.tag}")
-                self.curve_list[idx].update(P, 70)
-            else:
-                self.curve_list.append(Bezier(P, 70))
+            P_list.append(P)
             cp_start_idx = deepcopy(cp_end_idx)
-        self.curve_list_generated = True
-
-        self.n_control_points = len(self.control_points)
+        return P_list
 
     def update_control_point_array(self):
         self.control_point_array = np.array([[cp.xp, cp.yp] for cp in self.control_points])

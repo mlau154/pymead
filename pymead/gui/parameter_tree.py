@@ -57,7 +57,8 @@ class MEAParameters(pTypes.GroupParameter):
                                                                               type='float',
                                                                               value=self.mea.param_dict[airfoil.tag]['Base'][
                                                                                   p_key].value,
-                                                                              context={'add_eq': 'Define by equation'}))
+                                                                              context={'add_eq': 'Define by equation', 'deactivate': 'Deactivate parameter',
+                                         'activate': 'Activate parameter', 'setbounds': 'Set parameter bounds'}))
         # print(f"param_dict = {self.mea.param_dict}")
         for ap_key, ap_val in self.mea.param_dict[airfoil.tag]['AnchorPoints'].items():
             self.child(airfoil.tag).child('AnchorPoints').addChild(
@@ -225,39 +226,65 @@ class MEAParamTree:
                                 param.parent().setReadonly(False)
                                 self.line_edit_refs[param.parent().name()].widget.setStyleSheet('border: 0px; color: red;')
 
+                def block_changes(pg_param):
+                    pg_param.blockTreeChangeSignal()
+
+                def flush_changes(pg_param):
+                    pg_param.treeStateChanges = []
+                    pg_param.blockTreeChangeEmit = 1
+                    pg_param.unblockTreeChangeSignal()
+
                 # Value change for any parameter:
                 if hasattr(param, 'airfoil_param') and change == 'value':
                     param_name = param.name().split('.')[-1]
                     # print(f"name = {param_name}")
                     if param.airfoil_param.active and not param.airfoil_param.linked:
+                        block_changes(param)
                         if param_name not in ['x', 'y', 'xp', 'yp']:
                             param.airfoil_param.value = data
-
-                    def block_changes(pg_param):
-                        pg_param.blockTreeChangeSignal()
-
-                    def flush_changes(pg_param):
-                        pg_param.treeStateChanges = []
-                        pg_param.blockTreeChangeEmit = 1
-                        pg_param.unblockTreeChangeSignal()
-
-                    # Treat the x, y, xp, and yp locations of the FreePoints and AnchorPoints separately
-                    if param_name in ['x', 'y', 'xp', 'yp']:
-                        if param.parent().parent().parent().name() == 'FreePoints':
-                            fp_name = param.parent().name()
-                            ap_name = param.parent().parent().name()
-                            a_name = param.parent().parent().parent().parent().name()
-                            fp_or_ap = self.mea.airfoils[a_name].airfoil_graph.airfoil.free_points[ap_name][fp_name]
-                        elif param.parent().parent().name() == 'AnchorPoints':
-                            ap_name = param.parent().name()
-                            a_name = param.parent().parent().parent().name()
-                            airfoil = self.mea.airfoils[a_name].airfoil_graph.airfoil
-                            aps = airfoil.anchor_points
-                            ap_order = airfoil.anchor_point_order
-                            fp_or_ap = aps[ap_order.index(ap_name)]
                         else:
-                            raise ValueError('Parameter names \'x\', \'y\', \'xp\', and \'yp\' are reserved for '
-                                             'FreePoints and AnchorPoints. Please choose a different parameter name.')
+                            t1 = time()
+                            if 'FreePoints' in param.name():
+                                fp_name = param.parent().name()
+                                ap_name = param.parent().parent().name()
+                                a_name = param.parent().parent().parent().parent().name()
+                                fp_or_ap = self.mea.airfoils[a_name].airfoil_graph.airfoil.free_points[ap_name][fp_name]
+                            else:
+                                ap_name = param.parent().name()
+                                a_name = param.parent().parent().parent().name()
+                                airfoil = self.mea.airfoils[a_name].airfoil_graph.airfoil
+                                aps = airfoil.anchor_points
+                                ap_order = airfoil.anchor_point_order
+                                fp_or_ap = aps[ap_order.index(ap_name)]
+                            if param_name == 'x':
+                                fp_or_ap.set_xy(x=data, y=fp_or_ap.y.value)
+                            elif param_name == 'y':
+                                fp_or_ap.set_xy(y=data, x=fp_or_ap.x.value)
+                            elif param_name == 'xp':
+                                fp_or_ap.set_xy(xp=data, yp=fp_or_ap.yp.value)
+                            elif param_name == 'yp':
+                                fp_or_ap.set_xy(yp=data, xp=fp_or_ap.xp.value)
+                            t2 = time()
+                            print(f"Free or AnchorPoint xy setting time: {t2 - t1:.3e} seconds")
+
+                    #
+                    # # Treat the x, y, xp, and yp locations of the FreePoints and AnchorPoints separately
+                    # if param_name in ['x', 'y', 'xp', 'yp']:
+                    #     if param.parent().parent().parent().name() == 'FreePoints':
+                    #         fp_name = param.parent().name()
+                    #         ap_name = param.parent().parent().name()
+                    #         a_name = param.parent().parent().parent().parent().name()
+                    #         fp_or_ap = self.mea.airfoils[a_name].airfoil_graph.airfoil.free_points[ap_name][fp_name]
+                    #     elif param.parent().parent().name() == 'AnchorPoints':
+                    #         ap_name = param.parent().name()
+                    #         a_name = param.parent().parent().parent().name()
+                    #         airfoil = self.mea.airfoils[a_name].airfoil_graph.airfoil
+                    #         aps = airfoil.anchor_points
+                    #         ap_order = airfoil.anchor_point_order
+                    #         fp_or_ap = aps[ap_order.index(ap_name)]
+                    #     else:
+                    #         raise ValueError('Parameter names \'x\', \'y\', \'xp\', and \'yp\' are reserved for '
+                    #                          'FreePoints and AnchorPoints. Please choose a different parameter name.')
 
                         # if not self.mea.airfoils[a_name].airfoil_graph.dragPoint:
                         #     if param_name == 'x':
@@ -271,10 +298,13 @@ class MEAParamTree:
                         #     elif param_name == 'yp':
                         #         fp_or_ap.set_yp_value(data)
 
+                    t3 = time()
                     param.airfoil_param.update()
 
                     if param.airfoil_param.linked:
                         param.setValue(param.airfoil_param.value)
+                    t4 = time()
+                    print(f"Param update and setValue time: {t4 - t3:.3e} seconds")
 
                     list_of_vals = []
 
@@ -289,6 +319,7 @@ class MEAParamTree:
                                 # return list_of_vals
 
                     # IMPORTANT
+                    t1 = time()
                     if mea.param_dict is not None:
                         get_list_of_vals_from_dict(mea.param_dict)
                         for val in list_of_vals:
@@ -296,6 +327,8 @@ class MEAParamTree:
                                 # print(f"v = {v}")
                                 if param.airfoil_param is v:
                                     val.update()
+                    t2 = time()
+                    print(f"val setting time: {t2 - t1:.3e} seconds")
                                     # if param.parent().parent().parent().name() == 'FreePoints':
                                     #     fp_name = param.parent().name()
                                     #     ap_name = param.parent().parent().name()
@@ -325,76 +358,80 @@ class MEAParamTree:
                                     #     fp_or_ap.set_yp_value(data)
 
                     for a in mea.airfoils.values():
-                        # for fp_dict in a.free_points.values():
-                        #     if len(fp_dict) > 0:
-                        #         for fp in fp_dict.values():
-                        #             for x_or_y in ['x', 'y', 'xp', 'yp']:
-                        #                 self.params[-1].child(a.tag).child("FreePoints").child(
-                        #                     fp.anchor_point_tag).child(fp.tag).child(
-                        #                     f"{a.tag}.FreePoints.{fp.anchor_point_tag}.{fp.tag}.{x_or_y}").blockTreeChangeSignal()
-                        #             if fp.airfoil_transformation is None:
-                        #                 fp.airfoil_transformation = {'dx': a.dx, 'dy': a.dy, 'alf': a.alf, 'c': a.c}
-                        #             if fp.xp.linked or fp.yp.linked:
-                        #                 fp.set_xp_value(None)
-                        #                 fp.set_yp_value(None)
-                        #             else:
-                        #                 fp.set_x_value(None)
-                        #                 fp.set_y_value(None)
-                        #             # fp.set_xp_value(None)
-                        #             # fp.set_yp_value(None)
-                        #             fp.set_ctrlpt_value()
-                        for ap in a.anchor_points:
-                            if ap.tag not in ['te_1', 'le', 'te_2']:
-                                for x_or_y in ['x', 'y']:
-                                    self.params[-1].child(a.tag).child(
-                                        "AnchorPoints").child(ap.tag).child(
-                                        f"{a.tag}.AnchorPoints.{ap.tag}.{x_or_y}").blockTreeChangeSignal()
-                                if ap.airfoil_transformation is None:
-                                    ap.airfoil_transformation = {'dx': a.dx, 'dy': a.dy, 'alf': a.alf, 'c': a.c}
-                                if ap.xp.linked or ap.yp.linked:
-                                    ap.set_xp_value(None)
-                                    ap.set_yp_value(None)
-                                else:
-                                    ap.set_x_value(None)
-                                    ap.set_y_value(None)
-                                ap.set_ctrlpt_value()
+                    #     for fp_dict in a.free_points.values():
+                    #         if len(fp_dict) > 0:
+                    #             for fp in fp_dict.values():
+                                    # for x_or_y in ['x', 'y', 'xp', 'yp']:
+                                    #     self.params[-1].child(a.tag).child("FreePoints").child(
+                                    #         fp.anchor_point_tag).child(fp.tag).child(
+                                    #         f"{a.tag}.FreePoints.{fp.anchor_point_tag}.{fp.tag}.{x_or_y}").blockTreeChangeSignal()
+                                    # if fp.airfoil_transformation is None:
+                                    #     fp.airfoil_transformation = {'dx': a.dx, 'dy': a.dy, 'alf': a.alf, 'c': a.c}
+                                    # if fp.xp.linked or fp.yp.linked:
+                                    #     fp.set_xp_value(None)
+                                    #     fp.set_yp_value(None)
+                                    # else:
+                                    #     fp.set_x_value(None)
+                                    #     fp.set_y_value(None)
+                                    # # fp.set_xp_value(None)
+                                    # # fp.set_yp_value(None)
+                                    # fp.set_ctrlpt_value()
+                                    # fp.set_xy(xp=fp.xp.value, yp=fp.yp.value)
+                        # for ap in a.anchor_points:
+                        #     if ap.tag not in ['te_1', 'le', 'te_2']:
+                        #         for x_or_y in ['x', 'y']:
+                        #             self.params[-1].child(a.tag).child(
+                        #                 "AnchorPoints").child(ap.tag).child(
+                        #                 f"{a.tag}.AnchorPoints.{ap.tag}.{x_or_y}").blockTreeChangeSignal()
+                        #         if ap.airfoil_transformation is None:
+                        #             ap.airfoil_transformation = {'dx': a.dx, 'dy': a.dy, 'alf': a.alf, 'c': a.c}
+                        #         if ap.xp.linked or ap.yp.linked:
+                        #             ap.set_xp_value(None)
+                        #             ap.set_yp_value(None)
+                        #         else:
+                        #             ap.set_x_value(None)
+                        #             ap.set_y_value(None)
+                        #         ap.set_ctrlpt_value()
 
-                        # t1 = time()
-                        # a.update()
-                        # t2 = time()
-                        # print(f"airfoil update time is {t2 - t1:.3e} seconds")
+                        t1 = time()
+                        a.update()
+                        t2 = time()
+                        print(f"airfoil update time is {t2 - t1:.3e} seconds")
                         # if 'ap0' in a.free_points.keys():
                         #     print(f"x, y, xp, yp = {a.free_points['ap0']['FP0'].x.value}, {a.free_points['ap0']['FP0'].y.value}, {a.free_points['ap0']['FP0'].xp.value}, {a.free_points['ap0']['FP0'].yp.value}")
-                        # a.airfoil_graph.data['pos'] = a.control_point_array
+                        a.airfoil_graph.data['pos'] = a.control_point_array
                         # print(f"cp = {a.control_point_array[7, :]}")
                         # t3 = time()
-                        # a.airfoil_graph.updateGraph()
+                        a.airfoil_graph.updateGraph()
                         # t4 = time()
                         # print(f"airfoil graph update time is {t4 - t3:.3e} seconds")
 
                         # Run inviscid CL calculation after any geometry change
+                        t1 = time()
                         if a.tag == self.cl_airfoil_tag:
                             a.get_coords(body_fixed_csys=True)
                             ds = fractal_downsampler2(a.coords, ratio_thresh=1.000005, abs_thresh=0.1)
                             _, _, CL = single_element_inviscid(ds, a.alf.value * 180 / np.pi)
                             self.cl_label.setText(f"{self.cl_airfoil_tag} Inviscid CL = {CL:.3f}")
+                        t2 = time()
+                        print(f"cl time: {t2 - t1:.3} seconds")
 
-                        # Flush AnchorPoint x and y changes and unblock AnchorPoint x and y parameters
-                        for fp_dict in a.free_points.values():
-                            if len(fp_dict) > 0:
-                                for fp in fp_dict.values():
-                                    for x_or_y in ['x', 'y', 'xp', 'yp']:
-                                        param_val = self.params[-1].child(a.tag).child("FreePoints").child(
-                                            fp.anchor_point_tag).child(fp.tag).child(
-                                            f"{a.tag}.FreePoints.{fp.anchor_point_tag}.{fp.tag}.{x_or_y}")
-                                        flush_changes(param_val)
-                            for ap in a.anchor_points:
-                                if ap.tag not in ['te_1', 'le', 'te_2']:
-                                    for x_or_y in ['x', 'y', 'xp', 'yp']:
-                                        param_val = self.params[-1].child(a.tag).child(
-                                            "AnchorPoints").child(ap.tag).child(
-                                            f"{a.tag}.AnchorPoints.{ap.tag}.{x_or_y}")
-                                        flush_changes(param_val)
+                        # # Flush AnchorPoint x and y changes and unblock AnchorPoint x and y parameters
+                        # for fp_dict in a.free_points.values():
+                        #     if len(fp_dict) > 0:
+                        #         for fp in fp_dict.values():
+                        #             for x_or_y in ['x', 'y', 'xp', 'yp']:
+                        #                 param_val = self.params[-1].child(a.tag).child("FreePoints").child(
+                        #                     fp.anchor_point_tag).child(fp.tag).child(
+                        #                     f"{a.tag}.FreePoints.{fp.anchor_point_tag}.{fp.tag}.{x_or_y}")
+                        #                 flush_changes(param_val)
+                        #     for ap in a.anchor_points:
+                        #         if ap.tag not in ['te_1', 'le', 'te_2']:
+                        #             for x_or_y in ['x', 'y', 'xp', 'yp']:
+                        #                 param_val = self.params[-1].child(a.tag).child(
+                        #                     "AnchorPoints").child(ap.tag).child(
+                        #                     f"{a.tag}.AnchorPoints.{ap.tag}.{x_or_y}")
+                        #                 flush_changes(param_val)
 
                         # for fp_dict in a.free_points.values():
                         #     for fp in fp_dict.values():
@@ -403,7 +440,15 @@ class MEAParamTree:
                         #         print(f"fp.xp value is {fp.xp.value}")
                         #         print(f"fp.yp value is {fp.yp.value}")
 
+                        t1 = time()
                         self.plot_change_recursive(self.p.param('Airfoil Parameters').child(a.tag).children())
+                        t2 = time()
+                        print(f"plot change recursive time: {t2 - t1:.3e} seconds")
+
+                    t1 = time()
+                    flush_changes(param)
+                    t2 = time()
+                    print(f"time to flush changes: {t2 - t1:.3e} seconds")
 
                 # Add equation child parameter if the change is the selection of the "equation" button in the
                 # contextMenu
@@ -420,6 +465,14 @@ class MEAParamTree:
                     # for id_val in self.id_list:
                     #     value = ctypes.cast(id_val, ctypes.py_object).value
                     #     print(f"value = {value}")
+
+                if change == 'contextMenu' and data == 'deactivate':
+                    param.airfoil_param.active = False
+                    param.setReadonly(True)
+
+                if change == 'contextMenu' and data == 'activate':
+                    param.airfoil_param.active = True
+                    param.setReadonly(False)
 
                 # Adding a FreePoint
                 if change == 'contextMenu' and data == 'add_fp':
@@ -453,7 +506,10 @@ class MEAParamTree:
                             self.params[-1].child(a_tag).child('FreePoints').child(fp.anchor_point_tag).child(fp.tag).addChild(AirfoilParameter(self.mea.param_dict[a_tag]['FreePoints'][fp.anchor_point_tag][fp.tag][p_key],
                                                  name=f"{a_tag}.FreePoints.{fp.anchor_point_tag}.{fp.tag}.{p_key}", type='float',
                                                  value=self.mea.param_dict[a_tag]['FreePoints'][fp.anchor_point_tag][fp.tag][p_key].value,
-                                                 context={'add_eq': 'Define by equation'}))
+                                                 context={'add_eq': 'Define by equation',
+                                                          'deactivate': 'Deactivate parameter',
+                                                          'activate': 'Activate parameter',
+                                                          'setbounds': 'Set parameter bounds'}))
 
                 # Adding an AnchorPoint
                 if change == 'contextMenu' and data == 'add_ap':
@@ -498,7 +554,8 @@ class MEAParamTree:
                                 name=f"{a_tag}.AnchorPoints.{ap.tag}.{p_key}", type='float',
                                 value=self.mea.param_dict[a_tag]['AnchorPoints'][ap.tag][
                                     p_key].value,
-                                context={'add_eq': 'Define by equation'}))
+                                context={'add_eq': 'Define by equation', 'deactivate': 'Deactivate parameter',
+                                         'activate': 'Activate parameter', 'setbounds': 'Set parameter bounds'}))
 
                 # Different value in QComboBox for the inviscid CL calculation is selected
                 if change == 'value' and param.name() == 'Inviscid Cl Calc':
@@ -539,16 +596,29 @@ class MEAParamTree:
 
     def plot_changed(self, airfoil_name: str):
         # print(f"plot changed for airfoil {airfoil_name}!")
+
+        def block_changes(pg_param):
+            pg_param.blockTreeChangeSignal()
+
+        def flush_changes(pg_param):
+            pg_param.treeStateChanges = []
+            pg_param.blockTreeChangeEmit = 1
+            pg_param.unblockTreeChangeSignal()
+
         def plot_change_recursive(child_list: list):
             for idx, child in enumerate(child_list):
                 if hasattr(child, "airfoil_param"):
                     if child.hasChildren():
                         if child.children()[0].name() == 'Equation Definition':
+                            block_changes(child)
                             child.setValue(child.airfoil_param.value)
+                            flush_changes(child)
                         else:
                             plot_change_recursive(child.children())
                     else:
+                        block_changes(child)
                         child.setValue(child.airfoil_param.value)
+                        flush_changes(child)
                 else:
                     if child.hasChildren():
                         plot_change_recursive(child.children())

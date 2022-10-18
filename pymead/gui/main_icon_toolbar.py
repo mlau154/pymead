@@ -48,7 +48,7 @@ class MainIconToolbar(QToolBar):
 
         self.add_airfoil_icon = QIcon(os.path.join(self.icon_dir, 'add_icon.png'))
         self.add_airfoil_button = QToolButton(self)
-        self.add_airfoil_button.setStatusTip("Add airfoil")
+        self.add_airfoil_button.setStatusTip("Add airfoil (click on the graph to complete action)")
         self.add_airfoil_button.setCheckable(False)
         self.add_airfoil_button.setIcon(self.add_airfoil_icon)
         self.add_airfoil_button.clicked.connect(self.add_airfoil_button_toggled)

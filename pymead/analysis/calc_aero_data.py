@@ -36,8 +36,9 @@ def calculate_aero_data(airfoil_coord_dir: str, airfoil_name: str, alpha, airfoi
             raise ValueError(f"\'xfoil_settings\' must be set if \'xfoil\' tool is selected")
         f = os.path.join(base_dir, airfoil_name + ".dat")
         # print(repr(f).replace('\\\\', '\\\\\\\\'))
-        airfoil.write_coords_to_file(f, 'w', body_fixed_csys=True, downsample=True, ratio_thresh=1.000005,
+        n_coords = airfoil.write_coords_to_file(f, 'w', body_fixed_csys=True, downsample=True, ratio_thresh=1.000005,
                                      abs_thresh=0.1)
+        print(f"len coords = {n_coords}")
         xfoil_input_file = os.path.join(base_dir, 'xfoil_input.txt')
         xfoil_input_list = ['', 'oper', f'iter {xfoil_settings["iter"]}', 'visc', str(xfoil_settings['Re'])]
         if not isinstance(alpha, list):
