@@ -1,8 +1,11 @@
 from pymead.core.airfoil import Airfoil
+from pymead.core.free_point import FreePoint
+from pymead.core.anchor_point import AnchorPoint
 from pymead.core.param import Param
 from pymead.utils.dict_recursion import set_all_dict_values, assign_airfoil_tags_to_param_dict
 import typing
 import benedict
+import numpy as np
 
 
 class MEA:
@@ -17,6 +20,7 @@ class MEA:
         self.airfoils = {}
         self.param_dict = {}
         self.airfoil_graphs_active = airfoil_graphs_active
+        self.te_thickness_edit_mode = False
         if self.airfoil_graphs_active:
             self.w = None
             self.v = None
@@ -66,30 +70,96 @@ class MEA:
 
         assign_airfoil_tags_to_param_dict(self.param_dict[airfoil.tag], airfoil_tag=airfoil.tag)
 
-        self.add_airfoil_graph_to_airfoil(airfoil, idx, param_tree)
+        if self.airfoil_graphs_active:
+            self.add_airfoil_graph_to_airfoil(airfoil, idx, param_tree)
 
     def add_airfoil_graph_to_airfoil(self, airfoil: Airfoil, idx: int, param_tree, w=None, v=None):
         """
         Add a `pyqtgraph`-based `pymead.gui.airfoil_graph.AirfoilGraph` to the airfoil at index `int`.
         """
-        if self.airfoil_graphs_active:
-            from pymead.gui.airfoil_graph import AirfoilGraph
-            if w is None:
-                if idx == 0:
-                    airfoil_graph = AirfoilGraph(airfoil)
-                    self.w = airfoil_graph.w
-                    self.v = airfoil_graph.v
-                else:  # Assign the first airfoil's Graphics Window and ViewBox to each subsequent airfoil
-                    airfoil_graph = AirfoilGraph(airfoil,
-                                                 w=self.airfoils['A0'].airfoil_graph.w,
-                                                 v=self.airfoils['A0'].airfoil_graph.v)
-            else:
-                airfoil_graph = AirfoilGraph(airfoil, w=w, v=v)
-                self.w = w
-                self.v = v
+        from pymead.gui.airfoil_graph import AirfoilGraph
+        if w is None:
+            if idx == 0:
+                airfoil_graph = AirfoilGraph(airfoil)
+                self.w = airfoil_graph.w
+                self.v = airfoil_graph.v
+                print(f"setting te_thickness_edit_mode of airfoil {airfoil.tag} to {self.te_thickness_edit_mode}")
+                airfoil_graph.te_thickness_edit_mode = self.te_thickness_edit_mode
+            else:  # Assign the first airfoil's Graphics Window and ViewBox to each subsequent airfoil
+                airfoil_graph = AirfoilGraph(airfoil,
+                                             w=self.airfoils['A0'].airfoil_graph.w,
+                                             v=self.airfoils['A0'].airfoil_graph.v)
+                print(f"setting te_thickness_edit_mode of airfoil {airfoil.tag} to {self.te_thickness_edit_mode}")
+                airfoil_graph.te_thickness_edit_mode = self.te_thickness_edit_mode
+        else:
+            airfoil_graph = AirfoilGraph(airfoil, w=w, v=v)
+            print(f"setting te_thickness_edit_mode of airfoil {airfoil.tag} to {self.te_thickness_edit_mode}")
+            airfoil_graph.te_thickness_edit_mode = self.te_thickness_edit_mode
+            self.w = w
+            self.v = v
 
-            airfoil_graph.param_tree = param_tree
-            airfoil.airfoil_graph = airfoil_graph
+        airfoil_graph.param_tree = param_tree
+        airfoil.airfoil_graph = airfoil_graph
+
+    def extract_parameters(self):
+        parameter_list = []
+
+        def extract_parameters_recursively(d: dict):
+            for k, v in d.items():
+                if isinstance(v, dict):
+                    extract_parameters_recursively(v)
+                else:
+                    if isinstance(v, Param):
+                        if v.active and not v.linked:
+                            if v.bounds[0] == -np.inf or v.bounds[0] == np.inf or v.bounds[1] == -np.inf or v.bounds[1] == np.inf:
+                                raise ValueError('Bounds for parameter must be set to finite values for extraction')
+                            else:
+                                if self.xy_update_rule(v):
+                                    parameter_list.append((v.value - v.bounds[0]) / (v.bounds[1] - v.bounds[0]))
+                    else:
+                        raise ValueError('Found value in dictionary not of type \'Param\'')
+
+        extract_parameters_recursively(self.param_dict)
+        print(f"parameter_list = {parameter_list}")
+        return parameter_list
+
+    @staticmethod
+    def xy_update_rule(p: Param):
+        if p.x or p.y or p.xp or p.yp:
+            if p.free_point:
+                fp_or_ap = p.free_point
+            elif p.anchor_point:
+                fp_or_ap = p.anchor_point
+            else:
+                raise ValueError(f'Neither FreePoint nor AnchorPoint was found for parameter {p}')
+            if fp_or_ap.more_than_one_xy_linked_or_inactive():
+                return False
+            if fp_or_ap.x_or_y_linked_or_inactive() and (p.xp or p.yp):
+                return False
+            if fp_or_ap.xp_or_yp_linked_or_inactive() and (p.x or p.y):
+                return False
+        return True
+
+    # @staticmethod
+    # def more_than_one_xy_linked_or_inactive(fp_or_ap: FreePoint or AnchorPoint):
+    #     linked_or_inactive_counter = 0
+    #     for xy in ['x', 'y', 'xp', 'yp']:
+    #         if getattr(fp_or_ap, xy).linked or not getattr(fp_or_ap, xy).active:
+    #             linked_or_inactive_counter += 1
+    #     if linked_or_inactive_counter > 1:
+    #         return True
+    #     else:
+    #         return False
+    #
+    # @staticmethod
+    # def x_or_y_linked_or_inactive(fp_or_ap: FreePoint or AnchorPoint):
+    #     for xy in ['x', 'y']:
+    #         if getattr(fp_or_ap, xy).linked or not getattr(fp_or_ap, xy).active:
+    #             return True
+    #     return False
+    #
+    # @staticmethod
+    # def xp_or_yp_linked_or_inactive(fp_or_ap: FreePoint or AnchorPoint):
 
     def add_custom_parameters(self, params: dict):
         if 'Custom' not in self.param_dict.keys():

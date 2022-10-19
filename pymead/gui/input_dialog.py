@@ -1,7 +1,9 @@
 import numpy as np
 from typing import List
 from PyQt5.QtWidgets import QDialog, QDialogButtonBox, QFormLayout, QDoubleSpinBox, QComboBox, QLineEdit, QSpinBox, \
-    QTabWidget
+    QTabWidget, QLabel, QMessageBox
+from PyQt5.QtCore import QEvent
+from pymead.gui.infty_doublespinbox import InftyDoubleSpinBox
 
 
 class FreePointInputDialog(QDialog):
@@ -233,20 +235,24 @@ class InviscidCpCalcDialog(QDialog):
 class BoundsDialog(QDialog):
     def __init__(self, bounds, parent=None):
         super().__init__(parent)
+        self.setWindowTitle("Parameter Bounds Modification")
         buttonBox = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel, self)
         layout = QFormLayout(self)
 
-        self.lower_bound = QDoubleSpinBox()
-        self.lower_bound.setMinimum(-np.inf)
-        self.lower_bound.setMaximum(np.inf)
+        self.lower_bound = InftyDoubleSpinBox(lower=True)
         self.lower_bound.setValue(bounds[0])
+        self.lower_bound.setDecimals(16)
         layout.addRow("Lower Bound", self.lower_bound)
 
-        self.upper_bound = QDoubleSpinBox()
-        self.upper_bound.setMinimum(-np.inf)
-        self.upper_bound.setMaximum(np.inf)
+        self.upper_bound = InftyDoubleSpinBox(lower=False)
         self.upper_bound.setValue(bounds[1])
+        self.upper_bound.setDecimals(16)
         layout.addRow("Upper Bound", self.upper_bound)
+
+        self.hint_label = QLabel("<Home> key: +/-inf", parent=self)
+        self.hint_label.setWordWrap(True)
+
+        layout.addWidget(self.hint_label)
 
         layout.addWidget(buttonBox)
 
@@ -255,3 +261,14 @@ class BoundsDialog(QDialog):
 
     def getInputs(self):
         return self.lower_bound.value(), self.upper_bound.value()
+
+    def event(self, event):
+        if event.type() == QEvent.EnterWhatsThisMode:
+            mbox = QMessageBox()
+            mbox.setText("Note: When focused on the Lower Bound field, press the <Home> "
+                         "key to set the value to negative infinity. When focused on the Upper Bound "
+                         "field, press the <Home> key to set the value to positive infinity.")
+            mbox.exec()
+        elif event.type() == QEvent.LeaveWhatsThisMode:
+            pass
+        return super().event(event)

@@ -133,9 +133,9 @@ class BaseAirfoilParams:
         if not self.L2_te:
             self.L2_te = Param(0.1, 'length')
         if not self.theta1_te:
-            self.theta1_te = Param(np.deg2rad(10.0))
+            self.theta1_te = Param(0.1)
         if not self.theta2_te:
-            self.theta2_te = Param(np.deg2rad(10.0))
+            self.theta2_te = Param(0.1)
         if not self.t_te:
             self.t_te = Param(0.0, 'length')
         if not self.r_te:

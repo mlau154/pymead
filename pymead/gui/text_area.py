@@ -13,5 +13,5 @@ class ConsoleTextArea(QTextEdit):
         font.setPointSize(10)
         self.setFont(font)
         self.moveCursor(QTextCursor.End)
-        self.setTextColor(QColor("#13294B"))
+        # self.setTextColor(QColor("#13294B"))
         self.setFixedHeight(200)

@@ -364,6 +364,28 @@ class AnchorPoint(ControlPoint):
                           ['scale', 'rotate', 'translate'])
         return yp
 
+    def more_than_one_xy_linked_or_inactive(self):
+        linked_or_inactive_counter = 0
+        for xy in ['x', 'y', 'xp', 'yp']:
+            if getattr(self, xy).linked or not getattr(self, xy).active:
+                linked_or_inactive_counter += 1
+        if linked_or_inactive_counter > 1:
+            return True
+        else:
+            return False
+
+    def x_or_y_linked_or_inactive(self):
+        for xy in ['x', 'y']:
+            if getattr(self, xy).linked or not getattr(self, xy).active:
+                return True
+        return False
+
+    def xp_or_yp_linked_or_inactive(self):
+        for xy in ['xp', 'yp']:
+            if getattr(self, xy).linked or not getattr(self, xy).active:
+                return True
+        return False
+
     def set_x_value(self, value):
         if value is not None:
             self.x.value = value

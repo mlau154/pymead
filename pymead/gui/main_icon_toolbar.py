@@ -46,7 +46,7 @@ class MainIconToolbar(QToolBar):
         self.change_background_color_button.clicked.connect(self.change_background_color_button_toggled)
         self.addWidget(self.change_background_color_button)
 
-        self.add_airfoil_icon = QIcon(os.path.join(self.icon_dir, 'add_icon.png'))
+        self.add_airfoil_icon = QIcon(os.path.join(self.icon_dir, 'Add-icon3.png'))
         self.add_airfoil_button = QToolButton(self)
         self.add_airfoil_button.setStatusTip("Add airfoil (click on the graph to complete action)")
         self.add_airfoil_button.setCheckable(False)
@@ -67,6 +67,7 @@ class MainIconToolbar(QToolBar):
             self.parent.v.showGrid(x=True, y=True)
         else:
             self.parent.v.showGrid(x=False, y=False)
+        self.parent.mea.extract_parameters()
 
     # def add_image_button_toggled(self, checked):
     #     if checked:
@@ -84,11 +85,18 @@ class MainIconToolbar(QToolBar):
     #     self.parent.mplcanvas1.draw()
 
     def change_background_color_button_toggled(self):
-        self.parent.setStyleSheet("background-color: black; color: white;")
-        self.parent.w.setBackground('k')
-        self.parent.design_tree_widget.setStyleSheet('''QTreeWidget {color: white;} QTreeView::item:hover {background: green;}
-        QTreeView::branch:closed {color: white;} QTreeView::branch:open {color: white;}''')  # need to use image, not
+        self.parent.dark_mode = True
+        self.parent.setStyleSheet("background-color: #3e3f40; color: #dce1e6; font-family: DejaVu; font-size: 12px;")
+        self.parent.w.setBackground('#2a2a2b')
+        if self.parent.analysis_graph is not None:
+            self.parent.analysis_graph.set_background('#2a2a2b')
+        self.parent.design_tree_widget.setStyleSheet('''QTreeWidget {color: #dce1e6; alternate-background-color: #dce1e6;
+        selection-background-color: #36bacfaa;} 
+        QTreeView::item:hover {background: #36bacfaa;} QTreeView::item {border: 0px solid gray; color: #dce1e6}''')
+        # QTreeView::branch:closed {color: white;} QTreeView::branch:open {color: white;}''')
+        # QTreeView::item {border: 1px solid black;}''')  # need to use image, not
         # color for open closed arrows
+        self.parent.design_tree_widget.updatePalette()
         self.parent.show()
 
     def add_airfoil_button_toggled(self):
@@ -96,6 +104,7 @@ class MainIconToolbar(QToolBar):
             self.new_airfoil_location = self.parent.mea.v.vb.mapSceneToView(ev.scenePos())
             airfoil = Airfoil(base_airfoil_params=BaseAirfoilParams(dx=Param(self.new_airfoil_location.x()),
                                                                     dy=Param(self.new_airfoil_location.y())))
+            self.parent.mea.te_thickness_edit_mode = self.parent.te_thickness_edit_mode
             self.parent.mea.add_airfoil(airfoil, len(self.parent.mea.airfoils), self.parent.param_tree_instance)
             self.parent.param_tree_instance.p.child("Analysis").child("Inviscid Cl Calc").setLimits([a.tag for a in self.parent.mea.airfoils.values()])
             self.parent.param_tree_instance.params[-1].add_airfoil(airfoil, len(self.parent.mea.airfoils) - 1)
@@ -108,6 +117,8 @@ class MainIconToolbar(QToolBar):
         if checked:
             for airfoil in self.parent.mea.airfoils.values():
                 airfoil.airfoil_graph.te_thickness_edit_mode = True
+            self.parent.te_thickness_edit_mode = True
         else:
             for airfoil in self.parent.mea.airfoils.values():
                 airfoil.airfoil_graph.te_thickness_edit_mode = False
+            self.parent.te_thickness_edit_mode = False

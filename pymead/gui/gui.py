@@ -40,6 +40,7 @@ import os
 
 class GUI(QMainWindow):
     def __init__(self):
+        # super().__init__(flags=Qt.FramelessWindowHint)
         super().__init__()
         single_element_inviscid(np.array([[1, 0], [0, 0], [1, 0]]), 0.0)
         for font_name in ["DejaVuSans", "DejaVuSansMono", "DejaVuSerif"]:
@@ -51,8 +52,17 @@ class GUI(QMainWindow):
         self.design_tree = None
         self.dialog = None
         self.analysis_graph = None
+        self.te_thickness_edit_mode = False
+        self.dark_mode = False
         self.n_analyses = 0
+        self.n_converged_analyses = 0
         self.color_helper = MplColorHelper("jet", 0, 255)
+        self.pens = [('#d4251c', Qt.SolidLine), ('darkorange', Qt.SolidLine), ('gold', Qt.SolidLine),
+                     ('limegreen', Qt.SolidLine), ('cyan', Qt.SolidLine), ('mediumpurple', Qt.SolidLine),
+                     ('deeppink', Qt.SolidLine), ('#d4251c', Qt.DashLine), ('darkorange', Qt.DashLine),
+                     ('gold', Qt.DashLine),
+                     ('limegreen', Qt.DashLine), ('cyan', Qt.DashLine), ('mediumpurple', Qt.DashLine),
+                     ('deeppink', Qt.DashLine)]
         # self.setFont(QFont("DejaVu Serif"))
         self.setFont(QFont("DejaVu Sans"))
 
@@ -70,6 +80,12 @@ class GUI(QMainWindow):
         self.mea.airfoils['A0'].airfoil_graph.airfoil_parameters = self.param_tree_instance.p.param('Airfoil Parameters')
         # print(f"param_tree_instance = {self.param_tree_instance}")
         self.design_tree_widget = self.param_tree_instance.t
+        self.design_tree_widget.setAlternatingRowColors(False)
+        # self.design_tree_widget.setStyleSheet("selection-background-color: #36bacfaa; selection-color: black;")
+        self.design_tree_widget.setStyleSheet('''QTreeWidget {color: black; alternate-background-color: red;
+                selection-background-color: #36bacfaa;} 
+                QTreeView::item:hover {background: #36bacfaa;} QTreeView::item {border: 0px solid gray; color: black}''')
+        self.setStyleSheet("color: black; font-family: DejaVu; font-size: 12px;")
         self.text_area = ConsoleTextArea()
         self.right_widget_layout = QVBoxLayout()
         # self.tab_widget = QTabWidget()
@@ -156,8 +172,10 @@ class GUI(QMainWindow):
             self.mea = dill.load(f)
         self.v.clear()
         for idx, airfoil in enumerate(self.mea.airfoils.values()):
-            self.mea.add_airfoil_graph_to_airfoil(airfoil, idx, self.param_tree_instance, w=self.w, v=self.v)
+            self.mea.add_airfoil_graph_to_airfoil(airfoil, idx, None, w=self.w, v=self.v)
         self.param_tree_instance = MEAParamTree(self.mea, self.statusBar())
+        for a in self.mea.airfoils.values():
+            a.airfoil_graph.param_tree = self.param_tree_instance
         self.design_tree_widget = self.param_tree_instance.t
         self.main_layout.replaceWidget(self.main_layout.itemAt(0).widget(), self.design_tree_widget)
         self.v.autoRange()
@@ -190,20 +208,27 @@ class GUI(QMainWindow):
             if aero_data['converged'] and not aero_data['errored_out'] and not aero_data['timed_out']:
                 if self.analysis_graph is None:
                     # Need to set analysis_graph to None if analysis window is closed! Might also not want to allow geometry docking window to be closed
-                    self.analysis_graph = AnalysisGraph()
+                    if self.dark_mode:
+                        bcolor = '#2a2a2b'
+                    else:
+                        bcolor = 'w'
+                    self.analysis_graph = AnalysisGraph(background_color=bcolor)
                     self.dockable_tab_window.add_new_tab_widget(self.analysis_graph.w, "Analysis")
-                pg_plot_handle = self.analysis_graph.v.plot(pen=pg.mkPen(color=self.color_helper.get_rgb(255 - 25 * self.n_analyses)),
+                pg_plot_handle = self.analysis_graph.v.plot(pen=pg.mkPen(color=self.pens[self.n_converged_analyses][0],
+                                                                         style=self.pens[self.n_converged_analyses][1]),
                                                             name=str(self.n_analyses))
                 pg_plot_handle.setData(aero_data['Cp']['x'], aero_data['Cp']['Cp'])
                 # pen = pg.mkPen(color='green')
+                self.n_converged_analyses += 1
+                self.n_analyses += 1
+            else:
+                self.n_analyses += 1
 
-            self.n_analyses += 1
-
-    def add_airfoil(self, airfoil: Airfoil = None):
-        if not airfoil:
-            airfoil = Airfoil(
-                base_airfoil_params=BaseAirfoilParams(dx=Param(-0.1), dy=Param(-0.2)))
-        self.airfoil_graphs.append(AirfoilGraph(airfoil=airfoil, w=self.w, v=self.v))
+    # def add_airfoil(self, airfoil: Airfoil = None):
+    #     if not airfoil:
+    #         airfoil = Airfoil(
+    #             base_airfoil_params=BaseAirfoilParams(dx=Param(-0.1), dy=Param(-0.2)))
+    #     self.airfoil_graphs.append(AirfoilGraph(airfoil=airfoil, w=self.w, v=self.v))
 
     def eventFilter(self, source: QObject, event: QEvent) -> bool:
         if event.type() == QEvent.ContextMenu and source is self.design_tree:

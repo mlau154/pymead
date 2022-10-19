@@ -72,6 +72,7 @@ class Param:
         self.tag_list = None
         self.airfoil_tag = None
         self.mea = None
+        self.at_boundary = False
         self.x = x
         self.y = y
         self.xp = xp
@@ -87,10 +88,13 @@ class Param:
     def value(self, v):
         if v < self.bounds[0]:
             self._value = self.bounds[0]
+            self.at_boundary = True
         elif v > self.bounds[1]:
             self._value = self.bounds[1]
+            self.at_boundary = True
         else:
             self._value = v
+            self.at_boundary = False
 
     def set_func_str(self, func_str: str):
         self.func_str = func_str
@@ -224,8 +228,9 @@ class Param:
         for idx, t in enumerate(self.tag_list):
             # print(f"tag_matrix_idx = {self.tag_matrix[idx]}")
             self.depends_on[t] = get_nested_dict_val(self.mea.param_dict, self.tag_matrix[idx])
-            if self not in self.depends_on[t].affects:
-                self.depends_on[t].affects.append(self)
+            if self.depends_on[t] is not None:
+                if self not in self.depends_on[t].affects:
+                    self.depends_on[t].affects.append(self)
             # print(f"self.depends_on = {self.depends_on}")
             if self.depends_on[t] is None:
                 self.depends_on = {}

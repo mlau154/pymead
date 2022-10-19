@@ -14,5 +14,10 @@ class AnalysisGraph:
 
         self.v = self.w.addPlot(pen=pen)
         self.v.invertY(True)
+        self.v.setLabel(axis='bottom', text='x')
+        self.v.setLabel(axis='left', text='Cp')
         self.legend = self.v.addLegend(offset=(300, 20))
         # self.v.setAspectLocked()
+
+    def set_background(self, background_color: str):
+        self.w.setBackground(background_color)
