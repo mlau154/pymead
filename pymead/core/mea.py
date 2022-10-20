@@ -83,17 +83,17 @@ class MEA:
                 airfoil_graph = AirfoilGraph(airfoil)
                 self.w = airfoil_graph.w
                 self.v = airfoil_graph.v
-                print(f"setting te_thickness_edit_mode of airfoil {airfoil.tag} to {self.te_thickness_edit_mode}")
+                # print(f"setting te_thickness_edit_mode of airfoil {airfoil.tag} to {self.te_thickness_edit_mode}")
                 airfoil_graph.te_thickness_edit_mode = self.te_thickness_edit_mode
             else:  # Assign the first airfoil's Graphics Window and ViewBox to each subsequent airfoil
                 airfoil_graph = AirfoilGraph(airfoil,
                                              w=self.airfoils['A0'].airfoil_graph.w,
                                              v=self.airfoils['A0'].airfoil_graph.v)
-                print(f"setting te_thickness_edit_mode of airfoil {airfoil.tag} to {self.te_thickness_edit_mode}")
+                # print(f"setting te_thickness_edit_mode of airfoil {airfoil.tag} to {self.te_thickness_edit_mode}")
                 airfoil_graph.te_thickness_edit_mode = self.te_thickness_edit_mode
         else:
             airfoil_graph = AirfoilGraph(airfoil, w=w, v=v)
-            print(f"setting te_thickness_edit_mode of airfoil {airfoil.tag} to {self.te_thickness_edit_mode}")
+            # print(f"setting te_thickness_edit_mode of airfoil {airfoil.tag} to {self.te_thickness_edit_mode}")
             airfoil_graph.te_thickness_edit_mode = self.te_thickness_edit_mode
             self.w = w
             self.v = v

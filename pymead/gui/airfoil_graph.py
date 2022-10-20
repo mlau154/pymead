@@ -184,51 +184,51 @@ class AirfoilGraph(pg.GraphItem):
         # self.param_tree.p.param('Airfoil Parameters').param('A0').param('Base').param('A0.Base.psi1_le').blockTreeChangeSignal()
         # self.param_tree.p.param('Airfoil Parameters').param('A0').param('Base').param('A0.Base.R_le').blockTreeChangeSignal()
 
-        other_airfoils_affected = []
+        # other_airfoils_affected = []
 
         if self.airfoil.control_points[ind].cp_type == 'g2_minus':
             new_Lc = np.sqrt((x[ind] - x[ind + 1]) ** 2 + (y[ind] - y[ind + 1]) ** 2) / self.airfoil.c.value
             new_psi1_abs_angle = np.arctan2(y[ind] - y[ind + 1], x[ind] - x[ind + 1]) + self.airfoil.alf.value
             anchor_point.recalculate_ap_branch_props_from_g2_pt('minus', new_psi1_abs_angle, new_Lc)
-            other_airfoils_affected = self.update_affected_parameters(anchor_point, ['R', 'psi1'], other_airfoils_affected)
+            # other_airfoils_affected = self.update_affected_parameters(anchor_point, ['R', 'psi1'], other_airfoils_affected)
 
         elif self.airfoil.control_points[ind].cp_type == 'g2_plus':
             new_Lc = np.sqrt((x[ind] - x[ind - 1]) ** 2 + (y[ind] - y[ind - 1]) ** 2) / self.airfoil.c.value
             new_psi2_abs_angle = np.arctan2(y[ind] - y[ind - 1], x[ind] - x[ind - 1]) + self.airfoil.alf.value
             anchor_point.recalculate_ap_branch_props_from_g2_pt('plus', new_psi2_abs_angle, new_Lc)
-            other_airfoils_affected = self.update_affected_parameters(anchor_point, ['R', 'psi2'], other_airfoils_affected)
+            # other_airfoils_affected = self.update_affected_parameters(anchor_point, ['R', 'psi2'], other_airfoils_affected)
 
         elif self.airfoil.control_points[ind].cp_type == 'g1_minus':
             new_Lt = np.sqrt((x[ind] - x[ind + 1]) ** 2 + (y[ind] - y[ind + 1]) ** 2) / self.airfoil.c.value
             new_abs_phi1 = np.arctan2(y[ind] - y[ind + 1], x[ind] - x[ind + 1]) + self.airfoil.alf.value
             anchor_point.recalculate_ap_branch_props_from_g1_pt('minus', new_abs_phi1, new_Lt)
-            other_airfoils_affected = self.update_affected_parameters(anchor_point, ['r', 'L', 'phi', 't', 'theta'], other_airfoils_affected)
+            # other_airfoils_affected = self.update_affected_parameters(anchor_point, ['r', 'L', 'phi', 't', 'theta'], other_airfoils_affected)
 
         elif self.airfoil.control_points[ind].cp_type == 'g1_plus':
             new_Lt = np.sqrt((x[ind] - x[ind - 1]) ** 2 + (y[ind] - y[ind - 1]) ** 2) / self.airfoil.c.value
             new_abs_phi2 = np.arctan2(y[ind] - y[ind - 1], x[ind] - x[ind - 1]) + self.airfoil.alf.value
             anchor_point.recalculate_ap_branch_props_from_g1_pt('plus', new_abs_phi2, new_Lt)
-            other_airfoils_affected = self.update_affected_parameters(anchor_point, ['r', 'L', 'phi', 't', 'theta'], other_airfoils_affected)
+            # other_airfoils_affected = self.update_affected_parameters(anchor_point, ['r', 'L', 'phi', 't', 'theta'], other_airfoils_affected)
 
         elif self.airfoil.control_points[ind].tag == 'le':
             if self.airfoil.dx.active and not self.airfoil.dx.linked:
-                old_dx_value = self.airfoil.dx.value
+                # old_dx_value = self.airfoil.dx.value
                 self.airfoil.dx.value = x[ind]
-                other_airfoils_affected = self.update_affected_parameters(self.airfoil, ['dx'], other_airfoils_affected)
-                if any([affected_param.at_boundary for affected_param in self.airfoil.dx.affects]):
-                    self.airfoil.dx.value = old_dx_value
-                    other_airfoils_affected = self.update_affected_parameters(self.airfoil, ['dx'],
-                                                                              other_airfoils_affected)
+                # other_airfoils_affected = self.update_affected_parameters(self.airfoil, ['dx'], other_airfoils_affected)
+                # if any([affected_param.at_boundary for affected_param in self.airfoil.dx.affects]):
+                #     self.airfoil.dx.value = old_dx_value
+                #     other_airfoils_affected = self.update_affected_parameters(self.airfoil, ['dx'],
+                #                                                               other_airfoils_affected)
             if self.airfoil.dy.active and not self.airfoil.dy.linked:
                 self.airfoil.dy.value = y[ind]
-                other_airfoils_affected = self.update_affected_parameters(self.airfoil, ['dy'], other_airfoils_affected)
+                # other_airfoils_affected = self.update_affected_parameters(self.airfoil, ['dy'], other_airfoils_affected)
             self.airfoil.update(generate_curves=False)
             for ap_key, ap_val in self.airfoil.free_points.items():
                 for fp_key, fp_val in ap_val.items():
-                    other_airfoils_affected.extend(fp_val.set_xy(x=fp_val.x.value, y=fp_val.y.value))
+                    fp_val.set_xy(x=fp_val.x.value, y=fp_val.y.value)
             for ap in self.airfoil.anchor_points:
                 if ap.tag not in ['te_1', 'le', 'te_2']:
-                    other_airfoils_affected.extend(ap.set_xy(x=ap.x.value, y=ap.y.value))
+                    ap.set_xy(x=ap.x.value, y=ap.y.value)
             self.airfoil.update_control_point_array()
             self.airfoil.generate_curves()
 
@@ -246,75 +246,76 @@ class AirfoilGraph(pg.GraphItem):
                     if self.airfoil.t_te.active and not self.airfoil.t_te.linked:
                         self.airfoil.t_te.value = np.sqrt((x_te1_new - x_te2_old) ** 2 +
                                                           (y_te1_new - y_te2_old) ** 2) / self.airfoil.c.value
-                        other_airfoils_affected = self.update_affected_parameters(self.airfoil, ['t_te'], other_airfoils_affected)
+                        # other_airfoils_affected = self.update_affected_parameters(self.airfoil, ['t_te'], other_airfoils_affected)
                     if self.airfoil.r_te.active and not self.airfoil.r_te.linked:
                         self.airfoil.r_te.value = np.sqrt((x_te1_new - x_te) ** 2 +
                                                           (y_te1_new - y_te) ** 2) / np.sqrt(
                             (x_te1_new - x_te2_old) ** 2 + (y_te1_new - y_te2_old) ** 2)
-                        other_airfoils_affected = self.update_affected_parameters(self.airfoil, ['r_te'], other_airfoils_affected)
+                        # other_airfoils_affected = self.update_affected_parameters(self.airfoil, ['r_te'], other_airfoils_affected)
                     if self.airfoil.phi_te.active and not self.airfoil.phi_te.linked:
                         self.airfoil.phi_te.value = np.arctan2(y_te1_new - y_te2_old, x_te1_new - x_te2_old) - np.pi / 2 + self.airfoil.alf.value
-                        other_airfoils_affected = self.update_affected_parameters(self.airfoil, ['phi_te'], other_airfoils_affected)
+                        # other_airfoils_affected = self.update_affected_parameters(self.airfoil, ['phi_te'], other_airfoils_affected)
                 else:
                     x_te2_new = x[ind]
                     y_te2_new = y[ind]
                     if self.airfoil.t_te.active and not self.airfoil.t_te.linked:
                         self.airfoil.t_te.value = np.sqrt((x_te2_new - x_te1_old) ** 2 +
                                                           (y_te2_new - y_te1_old) ** 2) / self.airfoil.c.value
-                        other_airfoils_affected = self.update_affected_parameters(self.airfoil, ['t_te'], other_airfoils_affected)
+                        # other_airfoils_affected = self.update_affected_parameters(self.airfoil, ['t_te'], other_airfoils_affected)
                     if self.airfoil.r_te.active and not self.airfoil.r_te.linked:
                         self.airfoil.r_te.value = np.sqrt((x_te1_old - x_te) ** 2 +
                                                           (y_te1_old - y_te) ** 2) / np.sqrt(
                             (x_te1_old - x_te2_new) ** 2 + (y_te1_old - y_te2_new) ** 2)
-                        other_airfoils_affected = self.update_affected_parameters(self.airfoil, ['r_te'], other_airfoils_affected)
+                        # other_airfoils_affected = self.update_affected_parameters(self.airfoil, ['r_te'], other_airfoils_affected)
                     if self.airfoil.phi_te.active and not self.airfoil.phi_te.linked:
                         self.airfoil.phi_te.value = np.arctan2(y_te1_old - y_te2_new, x_te1_old - x_te2_new) - np.pi / 2 + self.airfoil.alf.value
-                        other_airfoils_affected = self.update_affected_parameters(self.airfoil, ['phi_te'], other_airfoils_affected)
+                        # other_airfoils_affected = self.update_affected_parameters(self.airfoil, ['phi_te'], other_airfoils_affected)
             else:
                 chord = np.sqrt((x[ind] - self.airfoil.dx.value)**2 + (y[ind] - self.airfoil.dy.value)**2)
                 angle_of_attack = -np.arctan2(y[ind] - self.airfoil.dy.value, x[ind] - self.airfoil.dx.value)
                 if self.airfoil.c.active and not self.airfoil.c.linked:
                     self.airfoil.c.value = chord
-                    other_airfoils_affected = self.update_affected_parameters(self.airfoil, ['c'], other_airfoils_affected)
+                    # other_airfoils_affected = self.update_affected_parameters(self.airfoil, ['c'], other_airfoils_affected)
                 if self.airfoil.alf.active and not self.airfoil.alf.linked:
                     self.airfoil.alf.value = angle_of_attack
-                    other_airfoils_affected = self.update_affected_parameters(self.airfoil, ['alf'], other_airfoils_affected)
+                    # other_airfoils_affected = self.update_affected_parameters(self.airfoil, ['alf'], other_airfoils_affected)
                 self.airfoil.update(generate_curves=False)
 
             for ap_key, ap_val in self.airfoil.free_points.items():
                 for fp_key, fp_val in ap_val.items():
-                    other_airfoils_affected.extend(fp_val.set_xy(x=fp_val.x.value, y=fp_val.y.value))
+                    fp_val.set_xy(x=fp_val.x.value, y=fp_val.y.value)
                     self.airfoil.update_control_point_array()
                     self.airfoil.generate_curves()
             for ap in self.airfoil.anchor_points:
                 if ap.tag not in ['te_1', 'le', 'te_2']:
-                    other_airfoils_affected.extend(ap.set_xy(x=ap.x.value, y=ap.y.value))
+                    ap.set_xy(x=ap.x.value, y=ap.y.value)
                     self.airfoil.update_control_point_array()
                     self.airfoil.generate_curves()
 
         elif self.airfoil.control_points[ind].cp_type == 'free_point':
             ap_tag = self.airfoil.control_points[ind].anchor_point_tag
             fp_tag = self.airfoil.control_points[ind].tag
-            other_airfoils_affected.extend(self.airfoil.free_points[ap_tag][fp_tag].set_xy(xp=x[ind], yp=y[ind]))
+            self.airfoil.free_points[ap_tag][fp_tag].set_xy(xp=x[ind], yp=y[ind])
 
         elif self.airfoil.control_points[ind].cp_type == 'anchor_point':
             selected_anchor_point = self.airfoil.anchor_points[
                 self.airfoil.anchor_point_order.index(self.airfoil.control_points[ind].tag)]
-            other_airfoils_affected.extend(selected_anchor_point.set_xy(xp=x[ind], yp=y[ind]))
+            selected_anchor_point.set_xy(xp=x[ind], yp=y[ind])
 
-        self.airfoil.update()
+        # self.airfoil.update()
+        #
+        # self.data['pos'] = self.airfoil.control_point_array
+        #
+        # self.updateGraph()
+        # self.plot_change_recursive(self.airfoil_parameters.child(self.airfoil.tag).children())
 
-        self.data['pos'] = self.airfoil.control_point_array
-
-        self.updateGraph()
-        self.plot_change_recursive(self.airfoil_parameters.child(self.airfoil.tag).children())
-
-        for a_tag in set(other_airfoils_affected):  # Use set to ignore duplicate values
-            other_graph = self.airfoil.mea.airfoils[a_tag].airfoil_graph
-            other_graph.airfoil.update()
-            other_graph.data['pos'] = other_graph.airfoil.control_point_array
-            other_graph.updateGraph()
-            other_graph.plot_change_recursive(other_graph.airfoil_parameters.child(a_tag).children())
+        # for a_tag in set(other_airfoils_affected):  # Use set to ignore duplicate values
+        for a_tag, airfoil in self.airfoil.mea.airfoils.items():
+            # airfoil = self.airfoil.mea.airfoils[a_tag].airfoil_graph
+            airfoil.update()
+            airfoil.airfoil_graph.data['pos'] = airfoil.control_point_array
+            airfoil.airfoil_graph.updateGraph()
+            airfoil.airfoil_graph.plot_change_recursive(airfoil.airfoil_graph.airfoil_parameters.child(a_tag).children())
 
         ev.accept()
 

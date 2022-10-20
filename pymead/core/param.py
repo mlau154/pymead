@@ -52,11 +52,11 @@ class Param:
         self.bounds = bounds
 
         if self.units == 'length' and self.scale_value is not None:
-            self.value = value * self.scale_value
+            self._value = value * self.scale_value
         elif self.units == 'inverse-length' and self.scale_value is not None:
-            self.value = value / self.scale_value
+            self._value = value / self.scale_value
         else:
-            self.value = value
+            self._value = value
 
         self.active = active
         self.linked = linked
@@ -86,6 +86,7 @@ class Param:
 
     @value.setter
     def value(self, v):
+        old_value = self._value
         if v < self.bounds[0]:
             self._value = self.bounds[0]
             self.at_boundary = True
@@ -95,6 +96,20 @@ class Param:
         else:
             self._value = v
             self.at_boundary = False
+        if len(self.affects) > 0:
+            idx = 0
+            any_affected_params_at_boundary = False
+            old_affected_param_values = []
+            for idx, affected_param in enumerate(self.affects):
+                old_affected_param_values.append(affected_param.value)
+                affected_param.update()
+                if affected_param.at_boundary:
+                    any_affected_params_at_boundary = True
+                    break
+            if any_affected_params_at_boundary:
+                self._value = old_value
+                for idx2, affected_param in enumerate(self.affects[:idx + 1]):
+                    affected_param._value = old_affected_param_values[idx2]
 
     def set_func_str(self, func_str: str):
         self.func_str = func_str
