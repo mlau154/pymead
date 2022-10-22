@@ -161,6 +161,8 @@ class MEAParamTree:
         def add_equation_boxes_recursively(child_list):
             for child in child_list:
                 if hasattr(child, 'airfoil_param'):
+                    if len(child.airfoil_param.function_dict) > 0:
+                        print(f"Parameter {child.name()} has a non-zero-length function dictionary")
                     if child.airfoil_param.func_str is not None:
                         self.add_equation_box(child, child.airfoil_param.func_str)
                 else:
@@ -450,12 +452,12 @@ class MEAParamTree:
                     def recursive_refactor(child_list):
                         for child in child_list:
                             if hasattr(child, 'airfoil_param') and child.airfoil_param.func_str is not None:
-                                print(f"This one has a func_str!")
+                                # print(f"This one has a func_str!")
                                 if key_to_change in child.airfoil_param.func_str:
-                                    print(f"Replacing {key_to_change} with {new_name}...")
+                                    # print(f"Replacing {key_to_change} with {new_name}...")
                                     child.airfoil_param.func_str = \
                                         child.airfoil_param.func_str.replace(key_to_change, new_name)
-                                    print(f"func_str now is {child.airfoil_param.func_str}")
+                                    # print(f"func_str now is {child.airfoil_param.func_str}")
                                     child.child('Equation Definition').setValue(child.airfoil_param.func_str)
                             else:
                                 recursive_refactor(child.children())

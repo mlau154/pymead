@@ -119,6 +119,7 @@ class Param:
 
     def remove_func(self):
         self.func_str = None
+        self.function_dict = {}
         self.linked = False
         for parameter in self.depends_on.values():
             if self in parameter.affects:
@@ -129,10 +130,12 @@ class Param:
         if self.func_str is None:
             pass
         else:
-            if 'math' not in self.function_dict.values():
-                self.function_dict = {**self.function_dict, **vars(math)}
+            # if 'math' not in self.function_dict.values():
+            #     self.function_dict = {**self.function_dict, **vars(math)}
             self.parse_update_function_str()  # Convert the function string into a Python function and extract vars
             execute = self.add_dependencies(show_q_error_messages)  # Add the variables the function depends on to the function_dict
+            # To-do: Add function for parsing function string for common math function here (addresses problem with
+            # pickling entire modules)
             if execute:
                 exec(self.func, self.function_dict)  # Update the function (not the result) in the function_dict
 
