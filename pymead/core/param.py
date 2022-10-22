@@ -129,8 +129,8 @@ class Param:
         if self.func_str is None:
             pass
         else:
-            # if 'math' not in self.function_dict.values():
-            #     self.function_dict = {**self.function_dict, **vars(math)}
+            if 'math' not in self.function_dict.values():
+                self.function_dict = {**self.function_dict, **vars(math)}
             self.parse_update_function_str()  # Convert the function string into a Python function and extract vars
             execute = self.add_dependencies(show_q_error_messages)  # Add the variables the function depends on to the function_dict
             if execute:
