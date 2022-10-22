@@ -119,7 +119,7 @@ class MEA:
                             else:
                                 if self.xy_update_rule(v):
                                     parameter_list.append((v.value - v.bounds[0]) / (v.bounds[1] - v.bounds[0]))
-                                    print(f"extracting {k}")
+                                    # print(f"extracting {k}")
                                     # print(f"value = {v.value}")
                                     # print(f"bounds[0] = {v.bounds[0]}")
                                     # print(f"bounds[1] = {v.bounds[1]}")
@@ -175,13 +175,13 @@ class MEA:
 
         for a_tag, airfoil in self.airfoils.items():
             # airfoil = self.airfoil.mea.airfoils[a_tag].airfoil_graph
-            for ap in airfoil.anchor_points:
-                if ap.tag not in ['te_1', 'le', 'te_2']:
-                    print(f"Before update, xp, yp = {ap.ctrlpt.xp}, {ap.ctrlpt.yp}")
+            # for ap in airfoil.anchor_points:
+                # if ap.tag not in ['te_1', 'le', 'te_2']:
+                    # print(f"Before update, xp, yp = {ap.ctrlpt.xp}, {ap.ctrlpt.yp}")
             airfoil.update()
-            for ap in airfoil.anchor_points:
-                if ap.tag not in ['te_1', 'le', 'te_2']:
-                    print(f"After update, xp, yp = {ap.ctrlpt.xp}, {ap.ctrlpt.yp}")
+            # for ap in airfoil.anchor_points:
+            #     if ap.tag not in ['te_1', 'le', 'te_2']:
+            #         print(f"After update, xp, yp = {ap.ctrlpt.xp}, {ap.ctrlpt.yp}")
             if self.airfoil_graphs_active:
                 airfoil.airfoil_graph.data['pos'] = airfoil.control_point_array
                 airfoil.airfoil_graph.updateGraph()

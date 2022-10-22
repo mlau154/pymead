@@ -192,9 +192,9 @@ class MEAParamTree:
         def change(_, changes):
 
             for param, change, data in changes:
-                print(f"change = {change}")
-                print(f"param = {param}")
-                print(f"data = {data}")
+                # print(f"change = {change}")
+                # print(f"param = {param}")
+                # print(f"data = {data}")
 
                 # Removing an equation:
                 if change == 'childRemoved' and data.opts['name'] == 'Equation Definition':
