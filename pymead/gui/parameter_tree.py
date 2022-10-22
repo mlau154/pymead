@@ -1,9 +1,3 @@
-"""
-This example demonstrates the use of pyqtgraph's parametertree system. This provides
-a simple way to generate user interfaces that control sets of parameters. The example
-demonstrates a variety of different parameter types (int, float, list, etc.)
-as well as some customized parameter types
-"""
 import pyqtgraph.parametertree.parameterTypes as pTypes
 from pyqtgraph.parametertree import Parameter, ParameterTree, registerParameterItemType
 from pymead.core.mea import MEA
@@ -18,6 +12,7 @@ from pymead.analysis.single_element_inviscid import single_element_inviscid
 from pymead.core.airfoil import Airfoil
 from PyQt5.QtWidgets import QCompleter, QWidget, QGridLayout, QLabel, QInputDialog, QHeaderView
 from pymead.utils.downsampling_schemes import fractal_downsampler2
+from pymead.gui.autocomplete import Completer
 from PyQt5.QtCore import Qt
 from functools import partial
 import numpy as np
@@ -25,7 +20,7 @@ from time import time
 
 import ctypes
 
-app = pg.mkQApp("Parameter Tree Example")
+app = pg.mkQApp("Parameter Tree")
 
 
 # test subclassing parameters
@@ -39,7 +34,14 @@ class MEAParameters(pTypes.GroupParameter):
         self.mea = mea
         self.status_bar = status_bar
         self.airfoil_headers = []
-        self.custom_header = self.addChild(HeaderParameter(name='Custom', type='bool', value=True))
+        self.custom_header = self.addChild(CustomGroup(mea, name='Custom'))
+        for k, v in self.mea.param_dict['Custom'].items():
+            pg_param = self.custom_header.addChild(dict(name=k, type='float', value=v.value, removable=True,
+                                                        renamable=True, context={'add_eq': 'Define by equation',
+                                                                                 'deactivate': 'Deactivate parameter',
+                                                                                 'activate': 'Activate parameter',
+                                                                                 'setbounds': 'Set parameter bounds'}))
+            pg_param.airfoil_param = v
         for idx, a in enumerate(self.mea.airfoils.values()):
             self.add_airfoil(a, idx)
 
@@ -98,26 +100,43 @@ class HeaderParameter(pTypes.GroupParameter):
 
 
 # this group includes a menu allowing the user to add new parameters into its child list
-class ScalableGroup(pTypes.GroupParameter):
-    def __init__(self, **opts):
+class CustomGroup(pTypes.GroupParameter):
+    def __init__(self, mea: MEA, **opts):
         opts['type'] = 'group'
-        opts['addText'] = "Add"
-        opts['addList'] = ['str', 'float', 'int']
+        opts['addText'] = 'Add'
+        opts['addList'] = ['New']
         pTypes.GroupParameter.__init__(self, **opts)
+        self.mea = mea
 
     def addNew(self, typ):
-        val = {
-            'str': '',
-            'float': 0.0,
-            'int': 0
-        }[typ]
-        self.addChild(
-            dict(name="ScalableParam %d" % (len(self.childs) + 1), type=typ, value=val, removable=True, renamable=True))
+        default_value = 0.0
+        default_name = f"CustomParam{(len(self.childs) + 1)}"
+        airfoil_param = Param(default_value)
+        pg_param = self.addChild(dict(name=default_name,
+                                      type='float', value=default_value, removable=True, renamable=True,
+                                      context={'add_eq': 'Define by equation', 'deactivate': 'Deactivate parameter',
+                                               'activate': 'Activate parameter', 'setbounds': 'Set parameter bounds'}
+                                      ))
+        pg_param.airfoil_param = airfoil_param
+        self.mea.param_dict['Custom'][default_name] = airfoil_param
+        # pg_param.sigNameChanged.connect(self.name_changed_action)
+
+    # def name_changed_action(self, pg_param):
+        # new_name = pg_param.name()
+        # key_to_change = ''
+        # for k, v in self.mea.param_dict['Custom'].items():
+        #     if v is pg_param.airfoil_param:
+        #         key_to_change = k
+        #         break
+        # if key_to_change == '':
+        #     raise ValueError('This shouldn\'t be possible...')
+        # self.mea.param_dict['Custom'][new_name] = self.mea.param_dict['Custom'].pop(key_to_change)
+        # print(f"new param_dict = {self.mea.param_dict['Custom']}")
 
 
 # Create two ParameterTree widgets, both accessing the same data
 class MEAParamTree:
-    def __init__(self, mea: MEA, status_bar):
+    def __init__(self, mea: MEA, status_bar, parent=None):
         self.params = [
             {'name': 'Save/Restore functionality', 'type': 'group', 'children': [
                 {'name': 'Save State', 'type': 'action'},
@@ -148,10 +167,18 @@ class MEAParamTree:
                     if child.hasChildren():
                         add_equation_boxes_recursively(child.children())
 
+        def set_readonly_recursively(child_list):
+            for child in child_list:
+                if hasattr(child, 'airfoil_param'):
+                    if child.airfoil_param.linked or not child.airfoil_param.active:
+                        child.setReadonly(True)
+                else:
+                    if child.hasChildren():
+                        set_readonly_recursively(child.children())
+
         self.mea = mea
         self.cl_label = pg.LabelItem(size="18pt")
         self.cl_label.setParentItem(self.mea.v)
-        print(f"mea v is {self.mea.v}")
         self.cl_label.anchor(itemPos=(1, 0), parentPos=(1, 0), offset=(-10, 10))
 
         self.cl_airfoil_tag = 'A0'
@@ -159,24 +186,15 @@ class MEAParamTree:
         registerParameterItemType('auto_str', AutoStrParameterItem, override=True)
 
         for a_name, a in mea.airfoils.items():
-            # print(f"airfoil_name = {a_name}")
             a.airfoil_graph.scatter.sigPlotChanged.connect(partial(self.plot_changed, a_name))  # Needs to change with airfoil added or removed
 
         # For any change in the tree:
-        def change(param, changes):
-            # print(f"line edit refs = {self.line_edit_refs}")
-            # single_element_inviscid(np.array([[1, 0], [0, 0], [1, 0]]))
-            # print(f"params = {vars(self.params[-1])}")
-            # print("tree changes:")
-            # print(f"change = {change}")
+        def change(_, changes):
 
             for param, change, data in changes:
-                # print(f"change = {change}")
-                # print(f"param = {param}")
-                # print(f"data = {data}")
-                # if param.children():
-                #     print(f"param name = {param.children()[0].name()}")
-                # print(f"has children = {param.hasChildren()}")
+                print(f"change = {change}")
+                print(f"param = {param}")
+                print(f"data = {data}")
 
                 # Removing an equation:
                 if change == 'childRemoved' and data.opts['name'] == 'Equation Definition':
@@ -285,6 +303,8 @@ class MEAParamTree:
                                 # print(f"v = {v}")
                                 if param.airfoil_param is v:
                                     val.update()
+
+                    self.plot_change_recursive(self.p.param('Airfoil Parameters').child('Custom').children())
 
                     for a in mea.airfoils.values():
                         a.update()
@@ -411,6 +431,37 @@ class MEAParamTree:
                 if change == 'value' and param.name() == 'Inviscid Cl Calc':
                     self.cl_airfoil_tag = data
 
+                if change == 'name':
+                    new_name = param.name()
+                    key_to_change = ''
+                    for k, v in self.mea.param_dict['Custom'].items():
+                        if v is param.airfoil_param:
+                            key_to_change = k
+                            break
+                    if key_to_change == '':
+                        raise ValueError('This shouldn\'t be possible...')
+                    self.mea.param_dict['Custom'][new_name] = self.mea.param_dict['Custom'].pop(key_to_change)
+                    # print(f"new param_dict = {self.mea.param_dict['Custom']}")
+
+                if change == 'childRemoved' and param.name() == 'Custom':
+                    self.mea.param_dict['Custom'].pop(data.name())
+                    print(f"new custom param_dict = {self.mea.param_dict['Custom']}")
+
+                    def recursive_refactor(child_list):
+                        for child in child_list:
+                            if hasattr(child, 'airfoil_param') and child.airfoil_param.func_str is not None:
+                                print(f"This one has a func_str!")
+                                if key_to_change in child.airfoil_param.func_str:
+                                    print(f"Replacing {key_to_change} with {new_name}...")
+                                    child.airfoil_param.func_str = \
+                                        child.airfoil_param.func_str.replace(key_to_change, new_name)
+                                    print(f"func_str now is {child.airfoil_param.func_str}")
+                                    child.child('Equation Definition').setValue(child.airfoil_param.func_str)
+                            else:
+                                recursive_refactor(child.children())
+
+                    recursive_refactor(self.p.param('Airfoil Parameters').children())
+
         self.p.sigTreeStateChanged.connect(change)
 
         def save():
@@ -425,7 +476,7 @@ class MEAParamTree:
 
         self.p.param('Save/Restore functionality', 'Save State').sigActivated.connect(save)
         self.p.param('Save/Restore functionality', 'Restore State').sigActivated.connect(restore)
-        self.t = ParameterTree()
+        self.t = ParameterTree(parent=parent)
         # self.t.header().setResizeMode(QHeaderView.ResizeToContents)
         # self.t.header().setStretchLastSection(False)
         # for idx in [0, 1]:
@@ -436,8 +487,15 @@ class MEAParamTree:
         # print(header_view)
         self.t.header().setSectionResizeMode(0, QHeaderView.Interactive)
         self.t.header().setSectionResizeMode(1, QHeaderView.Interactive)
+        self.t.setAlternatingRowColors(False)
+
+        if self.t.parent().dark_mode:
+            self.set_dark_mode()
+        else:
+            self.set_light_mode()
 
         add_equation_boxes_recursively(self.p.param('Airfoil Parameters').children())
+        set_readonly_recursively(self.p.param('Airfoil Parameters').children())
 
         self.win = QWidget()
         self.layout = QGridLayout()
@@ -445,6 +503,16 @@ class MEAParamTree:
         self.layout.addWidget(QLabel("These are two views of the same data. They should always display the same values."),
                          0, 0, 1, 2)
         self.layout.addWidget(self.t, 1, 0, 1, 1)
+
+    def set_dark_mode(self):
+        self.t.setStyleSheet('''QTreeWidget {color: #dce1e6; alternate-background-color: #dce1e6;
+                            selection-background-color: #36bacfaa;} 
+                            QTreeView::item:hover {background: #36bacfaa;} QTreeView::item {border: 0px solid gray; color: #dce1e6}''')
+
+    def set_light_mode(self):
+        self.t.setStyleSheet('''QTreeWidget {color: white; alternate-background-color: white; 
+                    selection-background-color: #36bacfaa}
+                    QTreeView::item::hover {background: #36bacfaa;} QTreeView::item {border: 0px solid gray; color: black}''')
 
     def add_equation_box(self, pg_param, equation: str = None):
         if equation is None:
@@ -496,10 +564,10 @@ class MEAParamTree:
 
     def update_auto_complete(self):
         for v in self.equation_strings.values():
-            v.setCompleter(QCompleter(self.mea.get_keys()))
+            v.setCompleter(Completer(self.mea.get_keys()))
 
     def equation_widget(self, pg_param):
-        return next((p for p in self.t.listAllItems() if p.param is pg_param)).widget
+        return next((p for p in self.t.listAllItems() if hasattr(p, 'param') and p.param is pg_param)).widget
 
     @staticmethod
     def block_changes(pg_param):
@@ -513,9 +581,11 @@ class MEAParamTree:
 
     def plot_change_recursive(self, child_list: list):
         for idx, child in enumerate(child_list):
+            # print(f"child name is {child.name()}")
             if hasattr(child, "airfoil_param"):
                 if child.hasChildren():
                     if child.children()[0].name() == 'Equation Definition':
+                        # print(f"Setting value of {child.name()}")
                         child.setValue(child.airfoil_param.value)
                     else:
                         self.plot_change_recursive(child.children())

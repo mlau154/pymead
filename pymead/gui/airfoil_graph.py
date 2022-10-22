@@ -309,6 +309,16 @@ class AirfoilGraph(pg.GraphItem):
         # self.updateGraph()
         # self.plot_change_recursive(self.airfoil_parameters.child(self.airfoil.tag).children())
 
+        self.plot_change_recursive(self.airfoil_parameters.child('Custom').children())
+
+        for ap in self.airfoil.anchor_points:
+            if ap.tag not in ['te_1', 'le', 'te_2']:
+                # print(f"ap xp is {ap.xp.value}")
+                # print(f"ap yp is {ap.yp.value}")
+                # ap.ctrlpt.xp = ap.xp.value
+                # ap.ctrlpt.yp = ap.yp.value
+                pass
+
         # for a_tag in set(other_airfoils_affected):  # Use set to ignore duplicate values
         for a_tag, airfoil in self.airfoil.mea.airfoils.items():
             # airfoil = self.airfoil.mea.airfoils[a_tag].airfoil_graph
@@ -316,6 +326,8 @@ class AirfoilGraph(pg.GraphItem):
             airfoil.airfoil_graph.data['pos'] = airfoil.control_point_array
             airfoil.airfoil_graph.updateGraph()
             airfoil.airfoil_graph.plot_change_recursive(airfoil.airfoil_graph.airfoil_parameters.child(a_tag).children())
+
+        # print(f"alf = {self.airfoil.alf.value}")
 
         ev.accept()
 

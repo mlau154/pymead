@@ -11,20 +11,24 @@ import time
 
 
 def calculate_aero_data(airfoil_coord_dir: str, airfoil_name: str, alpha, airfoil: Airfoil,
-                        tool: str = 'panel_fort', xfoil_settings: dict = None, export_Cp: bool = True):
+                        tool: str = 'panel_fort', xfoil_settings: dict = None, export_Cp: bool = True,
+                        body_fixed_csys: bool = True):
     tool_list = ['panel_fort', 'xfoil', 'mses']
     if tool not in tool_list:
         raise ValueError(f"\'tool\' must be one of {tool_list}")
+
+    # Check for self-intersection and early return if self-intersecting:
     airfoil.get_coords(body_fixed_csys=True)
     if airfoil.check_self_intersection():
-        raise GeometryError("Airfoil is self-intersecting")
+        return False
+
     aero_data = {}
     base_dir = os.path.join(airfoil_coord_dir, airfoil_name)
     if not os.path.exists(base_dir):
         os.mkdir(base_dir)
     if tool == 'panel_fort':
         f = os.path.join(base_dir, airfoil_name + '.dat')
-        n_data_pts = airfoil.write_coords_to_file(f, 'w', body_fixed_csys=True)
+        n_data_pts = airfoil.write_coords_to_file(f, 'w', body_fixed_csys=body_fixed_csys)
         subprocess.run((["panel_fort", airfoil_coord_dir, airfoil_name + '.dat', str(n_data_pts - 1), str(alpha)]),
                        stdout=subprocess.DEVNULL)  # stdout=subprocess.DEVNULL suppresses output to console
         aero_data['Cl'] = read_Cl_from_file_panel_fort(os.path.join(airfoil_coord_dir, 'LIFT.dat'))
@@ -36,7 +40,7 @@ def calculate_aero_data(airfoil_coord_dir: str, airfoil_name: str, alpha, airfoi
             raise ValueError(f"\'xfoil_settings\' must be set if \'xfoil\' tool is selected")
         f = os.path.join(base_dir, airfoil_name + ".dat")
         # print(repr(f).replace('\\\\', '\\\\\\\\'))
-        n_coords = airfoil.write_coords_to_file(f, 'w', body_fixed_csys=True, downsample=True, ratio_thresh=1.000005,
+        n_coords = airfoil.write_coords_to_file(f, 'w', body_fixed_csys=body_fixed_csys, downsample=True, ratio_thresh=1.000005,
                                      abs_thresh=0.1)
         print(f"len coords = {n_coords}")
         xfoil_input_file = os.path.join(base_dir, 'xfoil_input.txt')

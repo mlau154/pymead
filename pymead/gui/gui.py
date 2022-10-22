@@ -75,16 +75,16 @@ class GUI(QMainWindow):
         # self.airfoil_graphs.append(AirfoilGraph(self.mea.airfoils['A1'], w=self.w, v=self.v))
         self.main_layout = QHBoxLayout()
         self.setStatusBar(QStatusBar(self))
-        self.param_tree_instance = MEAParamTree(self.mea, self.statusBar())
+        self.param_tree_instance = MEAParamTree(self.mea, self.statusBar(), parent=self)
         self.mea.airfoils['A0'].airfoil_graph.param_tree = self.param_tree_instance
         self.mea.airfoils['A0'].airfoil_graph.airfoil_parameters = self.param_tree_instance.p.param('Airfoil Parameters')
         # print(f"param_tree_instance = {self.param_tree_instance}")
         self.design_tree_widget = self.param_tree_instance.t
-        self.design_tree_widget.setAlternatingRowColors(False)
+        # self.design_tree_widget.setAlternatingRowColors(False)
         # self.design_tree_widget.setStyleSheet("selection-background-color: #36bacfaa; selection-color: black;")
-        self.design_tree_widget.setStyleSheet('''QTreeWidget {color: black; alternate-background-color: red;
-                selection-background-color: #36bacfaa;} 
-                QTreeView::item:hover {background: #36bacfaa;} QTreeView::item {border: 0px solid gray; color: black}''')
+        # self.design_tree_widget.setStyleSheet('''QTreeWidget {color: black; alternate-background-color: red;
+        #         selection-background-color: #36bacfaa;}
+        #         QTreeView::item:hover {background: #36bacfaa;} QTreeView::item {border: 0px solid gray; color: black}''')
         self.setStyleSheet("color: black; font-family: DejaVu; font-size: 12px;")
         self.text_area = ConsoleTextArea()
         self.right_widget_layout = QVBoxLayout()
@@ -108,6 +108,14 @@ class GUI(QMainWindow):
         self.set_title_and_icon()
         self.create_menu_bar()
         self.main_icon_toolbar = MainIconToolbar(self)
+
+    def set_dark_mode(self):
+        self.setStyleSheet("background-color: #3e3f40; color: #dce1e6; font-family: DejaVu; font-size: 12px;")
+        self.w.setBackground('#2a2a2b')
+
+    def set_light_mode(self):
+        self.setStyleSheet("font-family: DejaVu; font-size: 12px;")
+        self.w.setBackground('w')
 
     def set_title_and_icon(self):
         self.setWindowTitle("pymead")
@@ -173,9 +181,10 @@ class GUI(QMainWindow):
         self.v.clear()
         for idx, airfoil in enumerate(self.mea.airfoils.values()):
             self.mea.add_airfoil_graph_to_airfoil(airfoil, idx, None, w=self.w, v=self.v)
-        self.param_tree_instance = MEAParamTree(self.mea, self.statusBar())
+        self.param_tree_instance = MEAParamTree(self.mea, self.statusBar(), parent=self)
         for a in self.mea.airfoils.values():
             a.airfoil_graph.param_tree = self.param_tree_instance
+            a.airfoil_graph.airfoil_parameters = a.airfoil_graph.param_tree.p.param('Airfoil Parameters')
         self.design_tree_widget = self.param_tree_instance.t
         self.main_layout.replaceWidget(self.main_layout.itemAt(0).widget(), self.design_tree_widget)
         self.v.autoRange()

@@ -1,7 +1,10 @@
+import numpy as np
 from PyQt5.QtWidgets import QToolBar, QToolButton
 from PyQt5.QtGui import QIcon
 from matplotlib.pyplot import imread
 from PIL import Image
+from pymead import DATA_DIR
+import matplotlib.pyplot as plt
 
 import sys
 import os
@@ -41,7 +44,7 @@ class MainIconToolbar(QToolBar):
         self.change_background_color_icon = QIcon(os.path.join(self.icon_dir, 'color_palette.png'))
         self.change_background_color_button = QToolButton(self)
         self.change_background_color_button.setStatusTip("Change background color")
-        self.change_background_color_button.setCheckable(False)
+        self.change_background_color_button.setCheckable(True)
         self.change_background_color_button.setIcon(self.change_background_color_icon)
         self.change_background_color_button.clicked.connect(self.change_background_color_button_toggled)
         self.addWidget(self.change_background_color_button)
@@ -68,6 +71,17 @@ class MainIconToolbar(QToolBar):
         else:
             self.parent.v.showGrid(x=False, y=False)
         self.parent.mea.extract_parameters()
+        parameter_list = np.loadtxt(os.path.join(DATA_DIR, 'parameter_list.dat'))
+        self.parent.mea.update_parameters(parameter_list)
+        # Need to now update the parameter tree and airfoil graph to reflect these changes
+        # fig_, axs_ = plt.subplots()
+        # for a in self.parent.mea.airfoils.values():
+        #     # a.update()
+        #     a.plot_airfoil(axs=axs_)
+        #     a.plot_control_points(axs=axs_, marker='o', color='gray')
+        # axs_.set_aspect('equal')
+        # plt.show()
+
 
     # def add_image_button_toggled(self, checked):
     #     if checked:
@@ -84,19 +98,27 @@ class MainIconToolbar(QToolBar):
     #         self.figure_to_remove.remove()
     #     self.parent.mplcanvas1.draw()
 
-    def change_background_color_button_toggled(self):
-        self.parent.dark_mode = True
-        self.parent.setStyleSheet("background-color: #3e3f40; color: #dce1e6; font-family: DejaVu; font-size: 12px;")
-        self.parent.w.setBackground('#2a2a2b')
+    def change_background_color_button_toggled(self, checked):
+        if checked:
+            self.parent.dark_mode = True
+            self.parent.set_dark_mode()
+        else:
+            self.parent.dark_mode = False
+            self.parent.set_light_mode()
+
         if self.parent.analysis_graph is not None:
-            self.parent.analysis_graph.set_background('#2a2a2b')
-        self.parent.design_tree_widget.setStyleSheet('''QTreeWidget {color: #dce1e6; alternate-background-color: #dce1e6;
-        selection-background-color: #36bacfaa;} 
-        QTreeView::item:hover {background: #36bacfaa;} QTreeView::item {border: 0px solid gray; color: #dce1e6}''')
+            if checked:
+                self.parent.analysis_graph.set_background('#2a2a2b')
+            else:
+                self.parent.analysis_graph.set_background('w')
+        if checked:
+            self.parent.param_tree_instance.set_dark_mode()
+        else:
+            self.parent.param_tree_instance.set_light_mode()
         # QTreeView::branch:closed {color: white;} QTreeView::branch:open {color: white;}''')
         # QTreeView::item {border: 1px solid black;}''')  # need to use image, not
         # color for open closed arrows
-        self.parent.design_tree_widget.updatePalette()
+        # self.parent.design_tree_widget.updatePalette()
         self.parent.show()
 
     def add_airfoil_button_toggled(self):

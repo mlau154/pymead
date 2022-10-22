@@ -275,6 +275,7 @@ class AnchorPoint(ControlPoint):
         #     self.set_ctrlpt_value2()
         # else:
         self.set_ctrlpt_value()
+        # print(f"set ctrlpt value to {self.ctrlpt.xp}, {self.ctrlpt.yp}")
         return other_airfoils_affected
 
     def update_xy(self):

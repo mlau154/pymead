@@ -1,9 +1,10 @@
 from PyQt5.QtWidgets import QLineEdit, QCompleter
-from pyqtgraph.parametertree.parameterTypes.basetypes import WidgetParameterItem, Parameter
+from PyQt5.QtCore import Qt
+from pyqtgraph.parametertree.parameterTypes.basetypes import WidgetParameterItem
 
 
 class AutoStrParameterItem(WidgetParameterItem):
-    """Registered parameter type which displays a QLineEdit"""
+    """Parameter type which displays a QLineEdit with an auto-completion mechanism built in"""
 
     def __init__(self, param, depth):
         self.widget = None
@@ -11,13 +12,44 @@ class AutoStrParameterItem(WidgetParameterItem):
 
     def makeWidget(self):
         w = QLineEdit()
-        completer = QCompleter(['Apple', 'Banana'])
+        completer = Completer()
         w.setCompleter(completer)
         w.setStyleSheet('border: 0px')
         w.sigChanged = w.editingFinished
         w.value = w.text
         w.setValue = w.setText
         w.sigChanging = w.textChanged
+        w.setPlaceholderText("$")
         self.widget = w
         # print(f"widget = {self.widget}")
         return w
+
+
+class Completer(QCompleter):
+    """
+    From https://gitter.im/baudren/NoteOrganiser?at=55afbefdcce129d570a3c188
+    """
+
+    def __init__(self, parent=None):
+        super(Completer, self).__init__(parent)
+
+        self.setCaseSensitivity(Qt.CaseInsensitive)
+        self.setCompletionMode(QCompleter.PopupCompletion)
+        self.setWrapAround(False)
+
+    # Add texts instead of replace
+    def pathFromIndex(self, index):
+        path = QCompleter.pathFromIndex(self, index)
+
+        lst = str(self.widget().text()).split('$')
+
+        if len(lst) > 1:
+            path = '%s%s' % ('$'.join(lst[:-1]), path)
+
+        return path
+
+    # Add operator to separate between texts
+    def splitPath(self, path):
+        for ch in [' ', '+', '-', '*', '/']:
+            path = str(path.split(ch)[-1]).lstrip(' ')
+        return [path]

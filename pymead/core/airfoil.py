@@ -325,21 +325,29 @@ class Airfoil:
         # Translate back to origin if not already at origin
         if self.control_points is not None and self.control_points != []:
             current_le_pos = np.array([[cp.xp, cp.yp] for cp in self.control_points if cp.tag == 'le'])
-            self.translate(-current_le_pos[0, 0], -current_le_pos[0, 1])
+            # self.translate(-current_le_pos[0, 0], -current_le_pos[0, 1])
+            self.translate(-self.dx.value, -self.dy.value)
 
         # Rotate to zero degree angle of attack
         if self.control_points is not None and self.control_points != []:
             current_te_1_pos = np.array([[cp.xp, cp.yp] for cp in self.control_points if cp.tag == 'te_1']).flatten()
+            # current_te_2_pos = np.array([[cp.xp, cp.yp] for cp in self.control_points if cp.tag == 'te_2']).flatten()
             current_alf = -np.arctan2(current_te_1_pos[1], current_te_1_pos[0])
             # print(current_alf * 180/np.pi)
-            self.rotate(current_alf)
+            # self.rotate(current_alf)
+            self.rotate(self.alf.value)
 
         # Scale so that the chord length is equal to 1.0
         if self.control_points is not None and self.control_points != []:
             current_te_1_pos = np.array([[cp.xp, cp.yp] for cp in self.control_points if cp.tag == 'te_1']).flatten()
             # print(f"control_points = {self.control_points}")
             current_chord = current_te_1_pos[0]
-            self.scale(1 / current_chord)
+            # self.scale(1 / current_chord)
+            self.scale(1 / self.c.value)
+
+        # for ap in self.anchor_points:
+        #     if ap.tag not in ['te_1', 'le', 'te_2']:
+        #         print(f"Before airfoil update, xp, yp = {ap.ctrlpt.xp}, {ap.ctrlpt.yp}")
 
         if not skip_fp_ap_regen:
             # Generate anchor point branches
@@ -453,6 +461,15 @@ class Airfoil:
         return P_list
 
     def update_control_point_array(self):
+        for ap in self.anchor_points:
+            if ap.tag not in ['te_1', 'le', 'te_2']:
+                for cp in self.control_points:
+                    if ap.ctrlpt is cp:
+                        # print(f"{ap.xp}")
+                        # print(f"Found match for {ap.tag} ctrlpt. Setting xp, yp to {ap.xp.value}, {ap.yp.value}")
+                        # cp.xp = ap.xp.value
+                        # cp.yp = ap.yp.value
+                        break
         self.control_point_array = np.array([[cp.xp, cp.yp] for cp in self.control_points])
         return self.control_point_array
 

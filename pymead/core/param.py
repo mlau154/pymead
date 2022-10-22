@@ -96,6 +96,8 @@ class Param:
         else:
             self._value = v
             self.at_boundary = False
+        # self.update_function(False)
+        # self.update_value()
         if len(self.affects) > 0:
             idx = 0
             any_affected_params_at_boundary = False
@@ -204,6 +206,8 @@ class Param:
                 self.func += '_'
             else:
                 self.func += ch
+        # print(f"tag matrix = {self.tag_matrix}")
+        # print(f"func = {self.func}")
 
         def concatenate_strings(lst: list):
             tag = ''
@@ -219,39 +223,24 @@ class Param:
 
     def add_dependencies(self, show_q_error_messages: bool):
 
-
-        # def iter_through_dict_recursively(d: dict):
-        #     for k, v in d.items():
-        #         if isinstance(v, dict):
-        #
-        #             iter_through_dict_recursively(v)
-        #         else:
-        #             print(k, ":", v)
-
         def get_nested_dict_val(d: dict, lst: list):
             if isinstance(d, dict):
-                # print(lst[0] in d.keys())
                 if lst[0] in d.keys():
-                    # print(f"Good to go")
                     return get_nested_dict_val(d[lst[0]], lst[1:])
                 else:
-                    # print(f'Returning None')
                     return None
             else:
                 return d
 
         for idx, t in enumerate(self.tag_list):
-            # print(f"tag_matrix_idx = {self.tag_matrix[idx]}")
             self.depends_on[t] = get_nested_dict_val(self.mea.param_dict, self.tag_matrix[idx])
             if self.depends_on[t] is not None:
                 if self not in self.depends_on[t].affects:
                     self.depends_on[t].affects.append(self)
-            # print(f"self.depends_on = {self.depends_on}")
             if self.depends_on[t] is None:
                 self.depends_on = {}
                 message = f"Could not compile input function string: {self.func_str}"
                 self.remove_func()
-                # print(f"depends_on = {self.depends_on}")
                 if show_q_error_messages:
                     from PyQt5.QtWidgets import QErrorMessage
                     err = QErrorMessage()
