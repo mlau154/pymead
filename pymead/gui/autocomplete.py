@@ -50,6 +50,6 @@ class Completer(QCompleter):
 
     # Add operator to separate between texts
     def splitPath(self, path):
-        for ch in [' ', '+', '-', '*', '/']:
+        for ch in [' ', '+', '-', '*', '/', '(']:
             path = str(path.split(ch)[-1]).lstrip(' ')
         return [path]

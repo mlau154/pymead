@@ -130,14 +130,22 @@ class Param:
         if self.func_str is None:
             pass
         else:
-            # if 'math' not in self.function_dict.values():
-            #     self.function_dict = {**self.function_dict, **vars(math)}
-            self.parse_update_function_str()  # Convert the function string into a Python function and extract vars
-            execute = self.add_dependencies(show_q_error_messages)  # Add the variables the function depends on to the function_dict
-            # To-do: Add function for parsing function string for common math function here (addresses problem with
-            # pickling entire modules)
+            # Convert the function string into a Python function and determine parameters present in string:
+            math_function_list = self.parse_update_function_str()
+
+            # Add any math functions detected from the func_str:
+            for s in math_function_list:
+                if s not in self.function_dict.keys():
+                    if s in vars(math).keys():
+                        self.function_dict[s] = vars(math)[s]
+
+            # Add the variables the function depends on to the function_dict and detect whether the function should be
+            # executed:
+            execute = self.add_dependencies(show_q_error_messages)
+
+            # Update the function (not the result) in the function_dict
             if execute:
-                exec(self.func, self.function_dict)  # Update the function (not the result) in the function_dict
+                exec(self.func, self.function_dict)
 
     def update_value(self):
         if self.func_str is None:
@@ -193,7 +201,9 @@ class Param:
     def parse_update_function_str(self):
         self.tag_matrix = []
         self.func = 'def f(): return '
+        math_functions_to_include = []
         appending = False
+        append_new_to_math_function_list = True
         for ch in self.func_str:
             if appending:
                 if ch.isalnum() or ch == '_':
@@ -209,8 +219,13 @@ class Param:
                 self.func += '_'
             else:
                 self.func += ch
-        # print(f"tag matrix = {self.tag_matrix}")
-        # print(f"func = {self.func}")
+            if not appending and ch.isalnum():
+                if append_new_to_math_function_list:
+                    math_functions_to_include.append('')
+                math_functions_to_include[-1] += ch
+                append_new_to_math_function_list = False
+            if not appending and not ch.isalnum():
+                append_new_to_math_function_list = True
 
         def concatenate_strings(lst: list):
             tag = ''
@@ -223,6 +238,8 @@ class Param:
         self.tag_list = [concatenate_strings(tl) for tl in self.tag_matrix]
         for t in self.tag_list:
             self.depends_on[t] = None
+
+        return math_functions_to_include
 
     def add_dependencies(self, show_q_error_messages: bool):
 
