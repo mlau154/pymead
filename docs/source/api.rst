@@ -1,4 +1,5 @@
 .. autosummary::
    :toctree: generated
 
-   lumache
+.. automodule:: pymead.core
+   :members:
