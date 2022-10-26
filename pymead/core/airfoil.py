@@ -23,38 +23,26 @@ import pandas as pd
 
 
 class Airfoil:
-
+    """A class for Bézier-parametrized airfoil creation."""
     def __init__(self,
                  number_coordinates: int = 300,
-                 base_airfoil_params: BaseAirfoilParams or SymmetricBaseAirfoilParams = None,
-                 override_parameters: list = None,
+                 base_airfoil_params: BaseAirfoilParams = None,
                  tag: str = None
                  ):
         """
-        ### Description:
+        Parameters
+        __________
 
-        `pymead.core.airfoil.Airfoil` is the base class for Bézier-parametrized airfoil creation.
+        number_coordinates : int
+         Represents the number of discrete \\(x\\) - \\(y\\) coordinate pairs in each Bézier curve. Gets \\
+         passed to a :class:`pymead.core.bezier.Bezier` object.
 
-        .. image:: complex_airfoil-3.png
+        base_airfoil_params: BaseAirfoilParams
+            Defines the base set of parameters to be used (chord length, angle of attack, leading edge parameters, \\
+            and trailing edge parameters)
 
-        ### Args:
-
-        `number_coordinates`: an `int` representing the number of discrete \\(x\\) - \\(y\\) coordinate pairs in each
-        Bézier curve. Gets passed to the `bezier` function.
-
-        `base_airfoil_params`: an instance of either the `pymead.core.base_airfoil_params.BaseAirfoilParams` class or
-        the `pymead.symmetric.symmetric_base_airfoil_params.SymmetricBaseAirfoilParams` class which defines the base
-        set of parameters to be used
-
-        `anchor_point_tuple`: a `tuple` of `pymead.core.anchor_point.AnchorPoint` objects. To specify a single
-        anchor point, use `(pymead.core.anchor_point.AnchorPoint(),)`. Default: `()`
-
-        `free_point_tuple`: a `tuple` of `pymead.core.free_point.FreePoint` objects. To specify a single free
-        point, use `(pymead.core.free_point.FreePoint(),)`. Default: `()`
-
-        ### Returns:
-
-        An instance of the `Airfoil` class
+        tag: str
+            Specifies the name of the Airfoil
         """
 
         self.nt = number_coordinates
@@ -63,14 +51,6 @@ class Airfoil:
         self.base_airfoil_params = base_airfoil_params
         if not self.base_airfoil_params:
             self.base_airfoil_params = BaseAirfoilParams(airfoil_tag=self.tag)
-        self.override_parameters = override_parameters
-
-        self.override_parameter_start_idx = 0
-        self.override_parameter_end_idx = self.base_airfoil_params.n_overrideable_parameters
-        if self.override_parameters is not None:
-            self.base_airfoil_params.override(
-                self.override_parameters[self.override_parameter_start_idx:self.override_parameter_end_idx])
-        self.override_parameter_start_idx += self.base_airfoil_params.n_overrideable_parameters
 
         self.param_dicts = {'Base': {}, 'AnchorPoints': {}, 'FreePoints': {'te_1': {}, 'le': {}}, 'Custom': {}}
 
@@ -126,25 +106,6 @@ class Airfoil:
 
         self.needs_update = True
 
-        if self.override_parameters is not None:
-            for anchor_point in self.anchor_point_tuple:
-                if self.base_airfoil_params.non_dim_by_chord:
-                    anchor_point.length_scale_dimension = self.base_airfoil_params.c.value
-                self.override_parameter_end_idx = self.override_parameter_start_idx + \
-                                                  anchor_point.n_overrideable_parameters
-                anchor_point.override(
-                    self.override_parameters[self.override_parameter_start_idx:self.override_parameter_end_idx])
-                self.override_parameter_start_idx += anchor_point.n_overrideable_parameters
-
-            for free_point in self.free_point_tuple:
-                if self.base_airfoil_params.non_dim_by_chord:
-                    free_point.length_scale_dimension = self.base_airfoil_params.c.value
-                self.override_parameter_end_idx = self.override_parameter_start_idx + \
-                                                  free_point.n_overrideable_parameters
-                free_point.override(
-                    self.override_parameters[self.override_parameter_start_idx:self.override_parameter_end_idx])
-                self.override_parameter_start_idx += free_point.n_overrideable_parameters
-
         self.transformed_anchor_points = None
         self.anchor_point_order = ['te_1', 'le', 'te_2']
         self.free_points = {'te_1': {}, 'le': {}}
@@ -176,38 +137,14 @@ class Airfoil:
         state['airfoil_graph'] = None  # Delete GraphItem object from state (contains several unpicklable object)
         return state
 
-    def extract_parameters(self):
-        """
-        ### Description:
-
-        This function extracts every parameter from the `pymead.core.base_airfoil_params.BaseAirfoilParams`, all the
-        `pymead.core.anchor_point.AnchorPoint`s, and all the `pymead.core.free_point.FreePoint`s with
-        `active=True` and `linked=False` as a `list` of parameter values.
-        """
-
-        self.params = [var for var in vars(self.base_airfoil_params).values()
-                       if isinstance(var, Param) and var.active and not var.linked]
-
-        for anchor_point in self.anchor_point_tuple:
-
-            self.params.extend([var for var in vars(anchor_point).values()
-                                if isinstance(var, Param) and var.active and not var.linked])
-
-        for free_point in self.free_point_tuple:
-
-            self.params.extend([var for var in vars(free_point).values()
-                                if isinstance(var, Param) and var.active and not var.linked])
-
     def insert_free_point(self, free_point: FreePoint):
-        """
-        ### Description:
+        """Method used to insert a :class:`pymead.core.free_point.FreePoint` into an already instantiated
+        :class:`pymead.core.airfoil.Airfoil`.
 
-        Public method used to insert a `pymead.core.free_point.FreePoint` into an already instantiated
-        `pymead.core.airfoil.Airfoil`.
-
-        ### Args:
-
-        `free_point`: a `pymead.core.free_point.FreePoint` to add to a Bézier curve
+        Parameters
+        ==========
+        free_point: FreePoint
+          FreePoint to add to a Bézier curve
         """
         fp_dict = self.free_points[free_point.anchor_point_tag]
         free_point.x.x = True
@@ -261,6 +198,16 @@ class Airfoil:
                                                           'yp': free_point.yp}
 
     def delete_free_point(self, free_point_tag: str, anchor_point_tag: str):
+        """Deletes a :class:`pymead.core.free_point.FreePoint` from the Airfoil.
+
+        Parameters
+        ==========
+        free_point_tag: str
+          Label identifying the FreePoint from a dictionary
+
+        anchor_point_tag: str
+          Label identifying the FreePoint's previous AnchorPoint from a dictionary
+        """
         fp_dict = self.free_points[anchor_point_tag]
         fp_idx = next((idx for idx, fp_tag in enumerate(self.free_point_order[anchor_point_tag])
                        if fp_tag == free_point_tag))
@@ -293,6 +240,14 @@ class Airfoil:
             self.param_dicts['FreePoints'][anchor_point_tag][kp[1]] = self.param_dicts['FreePoints'][anchor_point_tag].pop(kp[0])
 
     def insert_anchor_point(self, ap: AnchorPoint):
+        """Method used to insert a :class:`pymead.core.anchor_point.AnchorPoint` into an already instantiated
+        :class:`pymead.core.airfoil.Airfoil`.
+
+        Parameters
+        ==========
+        ap: AnchorPoint
+          AnchorPoint to add to a Bézier curve
+        """
         ap.x.x = True
         ap.x.airfoil_tag = self.tag
         ap.y.y = True
@@ -319,8 +274,12 @@ class Airfoil:
         self.param_dicts['FreePoints'][ap.tag] = {}
 
     def update(self, skip_fp_ap_regen: bool = False, generate_curves: bool = True):
-        r"""
-        ### Description:
+        """Used to update the state of the airfoil, including the Bézier curves, after a change in any parameter
+
+        Parameters
+        ==========
+        generate_curves: bool
+          Determines whether the curves should be re-generated during the update
         """
         # Translate back to origin if not already at origin
         if self.control_points is not None and self.control_points != []:
@@ -398,6 +357,7 @@ class Airfoil:
             self.generate_curves()
 
     def generate_curves(self):
+        """Generates the Bézier curves from the control point array"""
         # Make Bézier curves from the control point array
         self.curve_list_generated = True
         previous_number_of_curves = 0
@@ -407,39 +367,9 @@ class Airfoil:
         else:
             previous_number_of_curves = len(self.curve_list)
 
-        # print(f"curve_list = {self.curve_list}")
-
         P_list = self.get_list_of_control_point_arrays()
-        # arc_length_list = []
-        # nt_list = []
-
-        # for idx, P in enumerate(P_list):
-        #     arc_length_list.append(Bezier.approximate_arc_length(P, 50))
-
-        # total_arc_length = sum(arc_length_list)
-        #
-        # for idx in range(len(P_list)):
-        #     nt_list.append(int(arc_length_list[idx] / total_arc_length * self.nt))
-        #
-        # while sum(nt_list) != self.nt:
-        #     if sum(nt_list) < self.nt:
-        #         nt_list[np.random.choice(len(nt_list))] += 1
-        #     else:
-        #         nt_list[np.random.choice(len(nt_list))] -= 1
-        #
-        # print(nt_list)
-
-        # cp_end_idx, cp_start_idx = 0, 1
-        # for idx, ap_tag in enumerate(self.anchor_point_order[:-1]):
-        #     if idx == 0:
-        #         cp_end_idx += self.N[ap_tag] + 1
-        #     else:
-        #         cp_end_idx += self.N[ap_tag]
-        #     P = self.control_point_array[cp_start_idx - 1:cp_end_idx]
         for idx, P in enumerate(P_list):
-            # print(f"P = {P}")
             if self.curve_list_generated and previous_number_of_curves == len(self.anchor_point_order) - 1:
-                # print(f"previous_number_of_curves = {previous_number_of_curves}, airfoil_tag = {self.tag}")
                 self.curve_list[idx].update(P, 150)
             else:
                 self.curve_list.append(Bezier(P, 150))
@@ -448,6 +378,13 @@ class Airfoil:
         self.n_control_points = len(self.control_points)
 
     def get_list_of_control_point_arrays(self):
+        """Converts the control point array for the Airfoil into a separate control point array for each Bézier curve
+
+        Returns
+        =======
+        list
+          A list of control point arrays for each Bézier curve
+        """
         P_list = []
         cp_end_idx, cp_start_idx = 0, 1
         for idx, ap_tag in enumerate(self.anchor_point_order[:-1]):
@@ -461,48 +398,27 @@ class Airfoil:
         return P_list
 
     def update_control_point_array(self):
-        for ap in self.anchor_points:
-            if ap.tag not in ['te_1', 'le', 'te_2']:
-                for cp in self.control_points:
-                    if ap.ctrlpt is cp:
-                        # print(f"{ap.xp}")
-                        # print(f"Found match for {ap.tag} ctrlpt. Setting xp, yp to {ap.xp.value}, {ap.yp.value}")
-                        # cp.xp = ap.xp.value
-                        # cp.yp = ap.yp.value
-                        break
+        r"""Updates the control point array from the list of :class:`pymead.core.control_point.ControlPoint` objects
+
+        Returns
+        =======
+        np.ndarray
+          2D array of control points (each row is a different control point, and the two columns are :math:`x` and
+          :math:`y`)
+        """
         self.control_point_array = np.array([[cp.xp, cp.yp] for cp in self.control_points])
         return self.control_point_array
 
-    def update_free_point_only(self):
-        pass
-
-    def override(self, parameters):
-        """
-        ### Description:
-
-        This function re-initializes the `Airfoil` object using the list of `override_parameters`
-
-        ### Args:
-
-        `parameters`: a list of `override_parameters` generated by `extract_parameters` and possibly modified.
-        """
-        self.__init__(self.nt, self.base_airfoil_params, override_parameters=parameters)
-
     def translate(self, dx: float, dy: float, update_ap_fp: bool = False):
-        """
-        ### Description:
+        r"""Translates all the control points and anchor points by :math:`\Delta x` and :math:`\Delta y`.
 
-        Translates all the control points and anchor points by \\(\\Delta x\\) and \\(\\Delta y\\).
+        Parameters
+        ==========
+        dx: float
+          :math:`x`-direction translation magnitude
 
-        ### Args:
-
-        `dx`: \\(x\\)-direction translation magnitude
-
-        `dy`: \\(y\\)-direction translation magnitude
-
-        ### Returns:
-
-        The translated control point and anchor point arrays
+        dy: float
+          :math:`y`-direction translation magnitude
         """
         for cp in self.control_points:
             cp.xp += dx
@@ -566,14 +482,13 @@ class Airfoil:
                 ap.yp.value = ap.y.value * scale_value
 
     def compute_area(self):
-        """
-        ### Description:
+        """Computes the area of the airfoil as the area of a many-sided polygon enclosed by the airfoil coordinates
+        using the `shapely <https://shapely.readthedocs.io/en/stable/manual.html>`_ library.
 
-        Computes the area of the airfoil as the area of a many-sided polygon enclosed by the airfoil coordinates using
-        the [shapely](https://shapely.readthedocs.io/en/stable/manual.html) library.
-
-        ### Returns:
-        The area of the airfoil
+        Returns
+        =======
+        float
+          The area of the airfoil
         """
         if self.needs_update:
             self.update()
@@ -584,15 +499,13 @@ class Airfoil:
         return area
 
     def check_self_intersection(self):
-        """
-        ### Description:
+        """Determines whether the airfoil intersects itself using the `is_simple()` function of the
+        `shapely <https://shapely.readthedocs.io/en/stable/manual.html>`_ library.
 
-        Determines whether the airfoil intersects itself using the `is_simple()` function of the
-        [`shapely`](https://shapely.readthedocs.io/en/stable/manual.html) library.
-
-        ### Returns:
-
-        A `bool` value describing whether the airfoil intersects itself
+        Returns
+        =======
+        bool
+          Describes whether the airfoil intersects itself
         """
         if self.needs_update:
             self.update()

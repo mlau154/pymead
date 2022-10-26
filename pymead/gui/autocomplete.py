@@ -21,8 +21,10 @@ class AutoStrParameterItem(WidgetParameterItem):
         w.sigChanging = w.textChanged
         w.setPlaceholderText("$")
         self.widget = w
-        # print(f"widget = {self.widget}")
         return w
+
+    def printHi(self, sel):
+        print(f'Hi! Selected? {sel}')
 
 
 class Completer(QCompleter):

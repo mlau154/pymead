@@ -1,6 +1,6 @@
 import os
 import sys
-sys.path.insert(0, os.path.abspath('../../pymead'))
+sys.path.insert(0, os.path.abspath('../..'))
 # Project Information
 
 project = 'pymead'
@@ -15,6 +15,9 @@ extensions = [
     'sphinx.ext.autodoc',
     'sphinx.ext.doctest',
     'sphinx.ext.intersphinx',
+    'sphinx.ext.napoleon',
+    'sphinx.ext.viewcode',
+    'sphinx.ext.mathjax',
 ]
 
 intersphinx_mapping = {
@@ -22,4 +25,6 @@ intersphinx_mapping = {
     'sphinx': ('https://www.sphinx-doc.org/en/master/', None),
 }
 
-html_theme = 'sphinx_rtd_theme'
+templates_path = ['_templates']
+
+html_theme = 'sphinx_material'

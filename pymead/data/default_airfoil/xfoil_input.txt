@@ -3,6 +3,10 @@ oper
 iter 150
 visc
 100000.0
+vpar
+xtr 1.0 1.0
+N 9.0
+
 alfa 0.0
 cpwr default_airfoil_Cp.dat
 

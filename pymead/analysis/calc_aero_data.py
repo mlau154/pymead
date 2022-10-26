@@ -38,13 +38,17 @@ def calculate_aero_data(airfoil_coord_dir: str, airfoil_name: str, alpha, airfoi
     elif tool == 'xfoil':
         if xfoil_settings is None:
             raise ValueError(f"\'xfoil_settings\' must be set if \'xfoil\' tool is selected")
+        if 'xtr' not in xfoil_settings.keys():
+            xfoil_settings['xtr'] = [1.0, 1.0]
+        if 'N' not in xfoil_settings.keys():
+            xfoil_settings['N'] = 9.0
         f = os.path.join(base_dir, airfoil_name + ".dat")
-        # print(repr(f).replace('\\\\', '\\\\\\\\'))
-        n_coords = airfoil.write_coords_to_file(f, 'w', body_fixed_csys=body_fixed_csys, downsample=True, ratio_thresh=1.000005,
+        airfoil.write_coords_to_file(f, 'w', body_fixed_csys=body_fixed_csys, downsample=True, ratio_thresh=1.000005,
                                      abs_thresh=0.1)
-        # print(f"len coords = {n_coords}")
         xfoil_input_file = os.path.join(base_dir, 'xfoil_input.txt')
-        xfoil_input_list = ['', 'oper', f'iter {xfoil_settings["iter"]}', 'visc', str(xfoil_settings['Re'])]
+        xfoil_input_list = ['', 'oper', f'iter {xfoil_settings["iter"]}', 'visc', str(xfoil_settings['Re']),
+                            'vpar', f'xtr {xfoil_settings["xtr"][0]} {xfoil_settings["xtr"][1]}',
+                            f'N {xfoil_settings["N"]}', '']
         if not isinstance(alpha, list):
             alpha = [alpha]
         for idx, alf in enumerate(alpha):
