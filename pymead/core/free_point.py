@@ -23,8 +23,6 @@ class FreePoint(ControlPoint):
         an \\(x\\) - \\(y\\) coordinate pair to be added to the `P` matrix (see `pymead.core.airfoil.bezier` for
         usage). An example showing some possible locations of `FreePoint`s is shown below.
 
-        .. image:: complex_airfoil_free_points.png
-
         ### Args:
 
         `x`: `Param` describing the x-location of the `FreePoint`

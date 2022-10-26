@@ -6,7 +6,7 @@ Bézier-parametrized airfoil design. This Bézier parametrization framework is b
 Conference in Chicago, IL under the title "A Parametrization Framework for Multi-Element Airfoil Systems Using Bézier
 curves."
 
-.. image:: complex_1.png
+
 
 ## Motivation
 
@@ -17,7 +17,7 @@ multi-element airfoil system is comprised of a main airfoil (either the fuselage
 airfoil (representing the cross-section of an axisymmetric hub), and a nacelle airfoil (representing the cross-section
 of an axisymmetric nacelle).
 
-.. image:: pai.png
+
 
 By using a well-defined parametrization framework, this airfoil system can be morphed or deformed in a variety of
 ways simply by changing the value of any of the input parameters. These parameters are represented by
@@ -38,21 +38,21 @@ varying complexities, from simple, single-airfoil design to high-fidelity, multi
 Other common multi-element airfoil systems, such as the high-lift configuration on an aircraft, are also target
 applications for this software package.
 
-.. image:: high_lift.png
+
 
 One utility provided in this software package which may be useful in the start-up phase of airfoil design is
 `pymead.utils.airfoil_matching.match_airfoil()`. This modules allows the matching of a particular parametrization
 to any public airfoil geometry at [airfoiltools.com](http://airfoiltools.com/) using the gradient-based "SLSQP"
 optimizer.
 
-.. image:: sd7062_matching.png
+
 
 ## Acknowledgments
 
 This work was supported by NASA under award number 80NSSC19M0125 as part of the Center for High-Efficiency Electrical
 Technologies for Aircraft (CHEETA). Logo courtesy of [NASA](https://www.nasa.gov/).
 
-.. image:: nasa_cheeta_logo.png
+
 
 ## Contact Information
 

@@ -1,7 +1,7 @@
 import numpy as np
 from typing import List
 from PyQt5.QtWidgets import QDialog, QDialogButtonBox, QFormLayout, QDoubleSpinBox, QComboBox, QLineEdit, QSpinBox, \
-    QTabWidget, QLabel, QMessageBox
+    QTabWidget, QLabel, QMessageBox, QCheckBox
 from PyQt5.QtCore import QEvent
 from pymead.gui.infty_doublespinbox import InftyDoubleSpinBox
 
@@ -180,6 +180,9 @@ class SingleAirfoilViscousDialog(QDialog):
             elif item[1] == 'string':
                 self.inputs.append(QLineEdit(self))
                 self.inputs[-1].setText(item[2])
+            elif item[1] == 'checkbox':
+                self.inputs.append(QCheckBox(self))
+                self.inputs[-1].setCheckState(item[2])
             else:
                 raise ValueError(f"AnchorPointInputDialog item types must be \'double\', \'combo\', or \'string\'")
             layout.addRow(item[0], self.inputs[-1])
@@ -204,6 +207,8 @@ class SingleAirfoilViscousDialog(QDialog):
                 return_vals.append(val.currentText())
             elif isinstance(val, QSpinBox):
                 return_vals.append(val.value())
+            elif isinstance(val, QCheckBox):
+                return_vals.append(val.checkState())
             else:
                 raise TypeError(f'QFormLayout widget must be of type {type(QComboBox)}, {type(QDoubleSpinBox)}, '
                                 f'or {type(QLineEdit)}')

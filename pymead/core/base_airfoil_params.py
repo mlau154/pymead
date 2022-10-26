@@ -34,8 +34,6 @@ class BaseAirfoilParams:
         A geometric description of an example airfoil generated (from `pymead.examples.simple_airfoil.run()`) is
         shown below (it may be helpful to open the image in a new tab to adequately view the details):
 
-        .. image:: simple_airfoil_annotated.png
-
         ### Args:
 
         `c`: ( \\(c\\) ) chord length `pymead.core.param.Param`: Default value: `1.0`.

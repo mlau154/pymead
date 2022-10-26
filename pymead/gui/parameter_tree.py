@@ -11,6 +11,8 @@ from pymead.gui.input_dialog import FreePointInputDialog, AnchorPointInputDialog
 from pymead.analysis.single_element_inviscid import single_element_inviscid
 from pymead.core.airfoil import Airfoil
 from PyQt5.QtWidgets import QCompleter, QWidget, QGridLayout, QLabel, QInputDialog, QHeaderView
+from PyQt5.QtWidgets import QAbstractItemView
+from PyQt5 import QtCore
 from pymead.utils.downsampling_schemes import fractal_downsampler2
 from pymead.gui.autocomplete import Completer
 from PyQt5.QtCore import Qt
@@ -483,6 +485,7 @@ class MEAParamTree:
         # self.t.header().setStretchLastSection(False)
         # for idx in [0, 1]:
         #     self.t.resizeColumnToContents(idx)
+        self.t.setSelectionMode(QAbstractItemView.ExtendedSelection)
         self.t.setParameters(self.p, showTop=False)
         self.t.setWindowTitle('pymead ParameterTree')
         # header_view = QHeaderView(Qt.Horizontal, self.t)
@@ -596,6 +599,42 @@ class MEAParamTree:
             else:
                 if child.hasChildren():
                     self.plot_change_recursive(child.children())
+
+
+# class CustomParameterTree(ParameterTree):
+#     def __init__(self, parent=None):
+#         super().__init__(parent=parent)
+#
+#     def addParameters(self, param, root=None, depth=0, showTop=True):
+#         """
+#         Adds one top-level :class:`Parameter <pyqtgraph.parametertree.Parameter>`
+#         to the view.
+#
+#         ============== ==========================================================
+#         **Arguments:**
+#         param          The :class:`Parameter <pyqtgraph.parametertree.Parameter>`
+#                        to add.
+#         root           The item within the tree to which *param* should be added.
+#                        By default, *param* is added as a top-level item.
+#         showTop        If False, then *param* will be hidden, and only its
+#                        children will be visible in the tree.
+#         ============== ==========================================================
+#         """
+#         item = param.makeTreeItem(depth=depth)
+#         if root is None:
+#             root = self.invisibleRootItem()
+#             ## Hide top-level item
+#             if not showTop:
+#                 item.setText(0, '')
+#                 item.setSizeHint(0, QtCore.QSize(1, 1))
+#                 item.setSizeHint(1, QtCore.QSize(1, 1))
+#                 item.setSelectionMode(QAbstractItemView.MultiSelection)
+#                 depth -= 1
+#         root.addChild(item)
+#         item.treeWidgetChanged()
+#
+#         for ch in param:
+#             self.addParameters(ch, root=item, depth=depth + 1)
 
 
 if __name__ == '__main__':

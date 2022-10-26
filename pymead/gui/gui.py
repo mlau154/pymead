@@ -193,8 +193,13 @@ class GUI(QMainWindow):
         pass
 
     def single_airfoil_viscous_analysis(self):
-        self.dialog = SingleAirfoilViscousDialog(items=[("Re", "double", 1e5), ("Iterations", "int", 150), ("Timeout (seconds)", "double", 15), ("Angle of Attack (degrees)", "double", 0.0),
-                                                        ("Airfoil", "combo"), ("Name", "string", "default_airfoil")],
+        self.dialog = SingleAirfoilViscousDialog(items=[("Re", "double", 1e5), ("Iterations", "int", 150),
+                                                        ("Timeout (seconds)", "double", 15),
+                                                        ("Angle of Attack (degrees)", "double", 0.0),
+                                                        ("Airfoil", "combo"), ("Name", "string", "default_airfoil"),
+                                                        ("xtr upper", "double", 1.0), ("xtr lower", "double", 1.0),
+                                                        ("Ncrit", "double", 9.0),
+                                                        ("Use body-fixed CSYS", "checkbox", False)],
                                                  a_list=[k for k in self.mea.airfoils.keys()])
         if self.dialog.exec():
             inputs = self.dialog.getInputs()
@@ -202,8 +207,10 @@ class GUI(QMainWindow):
             inputs = None
 
         if inputs is not None:
-            xfoil_settings = {'Re': inputs[0], 'timeout': inputs[2], 'iter': inputs[1]}
-            aero_data, _ = calculate_aero_data(DATA_DIR, inputs[5], inputs[3], self.mea.airfoils[inputs[4]], 'xfoil', xfoil_settings)
+            xfoil_settings = {'Re': inputs[0], 'timeout': inputs[2], 'iter': inputs[1], 'xtr': [inputs[6], inputs[7]],
+                              'N': inputs[8]}
+            aero_data, _ = calculate_aero_data(DATA_DIR, inputs[5], inputs[3], self.mea.airfoils[inputs[4]], 'xfoil',
+                                               xfoil_settings, body_fixed_csys=inputs[9])
             if not aero_data['converged'] or aero_data['errored_out'] or aero_data['timed_out']:
                 self.text_area.insertPlainText(f"[{self.n_analyses:2.0f}] Converged = {aero_data['converged']} | Errored out = "
                                                f"{aero_data['errored_out']} | Timed out = {aero_data['timed_out']}\n")

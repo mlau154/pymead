@@ -1,6 +1,6 @@
-Welcome!
-
-`link`
+============================================
+Python Multi-Element Airfoil Design (PyMEAD)
+============================================
 
 Contents
 --------

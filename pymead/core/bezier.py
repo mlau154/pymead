@@ -28,8 +28,6 @@ class Bezier(ParametricCurve):
         \\(P_2\\) and \\(P_3\\). These properties of Bézier curves allow us to easily enforce \\(G^0\\) and \\(G^1\\)
         continuity at Bézier curve "joints" (common endpoints of connected Bézier curves).
 
-        .. image:: bezier_curve.png
-
         ### Args:
 
         `P`: The control point `np.ndarray` of `shape=(n+1, 2)`, where `n` is the order of the Bézier curve and `n+1` is

@@ -1,5 +1,11 @@
-.. autosummary::
-   :toctree: generated
+===
+API
+===
 
-.. automodule:: pymead.core
-   :members:
+.. autosummary::
+   :toctree: _autosummary
+   :template: custom-module-template.rst
+   :recursive:
+
+    pymead.analysis
+    pymead.core

@@ -107,6 +107,26 @@ class MEA:
     def extract_parameters(self):
         parameter_list = []
 
+        def check_for_bounds_recursively(d: dict, bounds_error_=False):
+            for k, v in d.items():
+                print(f"bounds_error_ = {bounds_error_}")
+                if not bounds_error_:
+                    print(f"k = {k}")
+                    if isinstance(v, dict):
+                        bounds_error_ = check_for_bounds_recursively(v, bounds_error_)
+                    else:
+                        if isinstance(v, Param):
+                            if v.active and not v.linked:
+                                if v.bounds[0] == -np.inf or v.bounds[0] == np.inf or v.bounds[1] == -np.inf or v.bounds[1] == np.inf:
+                                    bounds_error_ = True
+                                    print(f"Setting bounds_error_ to True!")
+                                    return bounds_error_
+                        else:
+                            raise ValueError('Found value in dictionary not of type \'Param\'')
+                else:
+                    return bounds_error_
+            return bounds_error_
+
         def extract_parameters_recursively(d: dict):
             for k, v in d.items():
                 if isinstance(v, dict):
@@ -114,79 +134,91 @@ class MEA:
                 else:
                     if isinstance(v, Param):
                         if v.active and not v.linked:
-                            if v.bounds[0] == -np.inf or v.bounds[0] == np.inf or v.bounds[1] == -np.inf or v.bounds[1] == np.inf:
-                                raise ValueError('Bounds for parameter must be set to finite values for extraction')
-                            else:
-                                if self.xy_update_rule(v):
-                                    parameter_list.append((v.value - v.bounds[0]) / (v.bounds[1] - v.bounds[0]))
-                                    # print(f"extracting {k}")
-                                    # print(f"value = {v.value}")
-                                    # print(f"bounds[0] = {v.bounds[0]}")
-                                    # print(f"bounds[1] = {v.bounds[1]}")
+                            if self.xy_update_rule(v):
+                                parameter_list.append((v.value - v.bounds[0]) / (v.bounds[1] - v.bounds[0]))
                     else:
                         raise ValueError('Found value in dictionary not of type \'Param\'')
 
-        extract_parameters_recursively(self.param_dict)
-        np.savetxt(os.path.join(DATA_DIR, 'parameter_list.dat'), np.array(parameter_list))
-        # parameter_list = np.loadtxt(os.path.join(DATA_DIR, 'parameter_list.dat'))
-        # self.update_parameters(parameter_list)
-        # fig_.savefig(os.path.join(DATA_DIR, 'test_airfoil.png'))
-        return parameter_list
+        bounds_error = check_for_bounds_recursively(self.param_dict)
+        print(f"bounds_error now = {bounds_error}")
+        if bounds_error:
+            raise ValueError('Bounds must be set for each active and unlinked parameter for parameter extraction')
+        else:
+            extract_parameters_recursively(self.param_dict)
+            np.savetxt(os.path.join(DATA_DIR, 'parameter_list.dat'), np.array(parameter_list))
+            # parameter_list = np.loadtxt(os.path.join(DATA_DIR, 'parameter_list.dat'))
+            # self.update_parameters(parameter_list)
+            # fig_.savefig(os.path.join(DATA_DIR, 'test_airfoil.png'))
+            return parameter_list
 
     def update_parameters(self, parameter_list: list or np.ndarray):
 
+        def check_for_bounds_recursively(d: dict, bounds_error_=False):
+            for k, v in d.items():
+                print(f"bounds_error_ = {bounds_error_}")
+                if not bounds_error_:
+                    print(f"k = {k}")
+                    if isinstance(v, dict):
+                        bounds_error_ = check_for_bounds_recursively(v, bounds_error_)
+                    else:
+                        if isinstance(v, Param):
+                            if v.active and not v.linked:
+                                if v.bounds[0] == -np.inf or v.bounds[0] == np.inf or v.bounds[1] == -np.inf or \
+                                        v.bounds[1] == np.inf:
+                                    bounds_error_ = True
+                                    print(f"Setting bounds_error_ to True!")
+                                    return bounds_error_
+                        else:
+                            raise ValueError('Found value in dictionary not of type \'Param\'')
+                else:
+                    return bounds_error_
+            return bounds_error_
+
         def update_parameters_recursively(d: dict, list_counter: int):
-            # print(f"list_counter = {list_counter}")
             for k, v in d.items():
                 if isinstance(v, dict):
                     list_counter = update_parameters_recursively(v, list_counter)
                 else:
                     if isinstance(v, Param):
                         if v.active and not v.linked:
-                            if v.bounds[0] == -np.inf or v.bounds[0] == np.inf or v.bounds[1] == -np.inf or v.bounds[1] == np.inf:
-                                raise ValueError('Bounds for parameter must be set to finite values for update')
-                            else:
-                                if self.xy_update_rule(v):
-                                    # print(f"Updating value! list_counter before is {list_counter}, after is {list_counter + 1}")
-                                    v.value = parameter_list[list_counter] * (v.bounds[1] - v.bounds[0]) + v.bounds[0]
-                                    if v.x or v.y or v.xp or v.yp:
-                                        if v.free_point is not None:
-                                            fp_or_ap = v.free_point
-                                        elif v.anchor_point is not None:
-                                            fp_or_ap = v.anchor_point
-                                        else:
-                                            raise ValueError('x, y, xp, or yp parameter not associated with FreePoint'
-                                                             'or AnchorPoint')
-                                        if v.x:
-                                            fp_or_ap.set_xy(x=fp_or_ap.x.value, y=fp_or_ap.y.value)
-                                        elif v.y:
-                                            fp_or_ap.set_xy(y=fp_or_ap.y.value, x=fp_or_ap.x.value)
-                                        elif v.xp:
-                                            fp_or_ap.set_xy(xp=fp_or_ap.xp.value, yp=fp_or_ap.yp.value)
-                                        elif v.yp:
-                                            fp_or_ap.set_xy(yp=fp_or_ap.yp.value, xp=fp_or_ap.xp.value)
-                                    # v.update()
-                                    list_counter += 1
+                            if self.xy_update_rule(v):
+                                v.value = parameter_list[list_counter] * (v.bounds[1] - v.bounds[0]) + v.bounds[0]
+                                if v.x or v.y or v.xp or v.yp:
+                                    if v.free_point is not None:
+                                        fp_or_ap = v.free_point
+                                    elif v.anchor_point is not None:
+                                        fp_or_ap = v.anchor_point
+                                    else:
+                                        raise ValueError('x, y, xp, or yp parameter not associated with FreePoint'
+                                                         'or AnchorPoint')
+                                    if v.x:
+                                        fp_or_ap.set_xy(x=fp_or_ap.x.value, y=fp_or_ap.y.value)
+                                    elif v.y:
+                                        fp_or_ap.set_xy(y=fp_or_ap.y.value, x=fp_or_ap.x.value)
+                                    elif v.xp:
+                                        fp_or_ap.set_xy(xp=fp_or_ap.xp.value, yp=fp_or_ap.yp.value)
+                                    elif v.yp:
+                                        fp_or_ap.set_xy(yp=fp_or_ap.yp.value, xp=fp_or_ap.xp.value)
+                                # v.update()
+                                list_counter += 1
                     else:
                         raise ValueError('Found value in dictionary not of type \'Param\'')
             return list_counter
 
-        update_parameters_recursively(self.param_dict, 0)
+        bounds_error = check_for_bounds_recursively(self.param_dict)
+        if bounds_error:
+            raise ValueError('Bounds must be set for each active and unlinked parameter for parameter extraction')
+        else:
+            update_parameters_recursively(self.param_dict, 0)
 
-        for a_tag, airfoil in self.airfoils.items():
-            # airfoil = self.airfoil.mea.airfoils[a_tag].airfoil_graph
-            # for ap in airfoil.anchor_points:
-                # if ap.tag not in ['te_1', 'le', 'te_2']:
-                    # print(f"Before update, xp, yp = {ap.ctrlpt.xp}, {ap.ctrlpt.yp}")
-            airfoil.update()
-            # for ap in airfoil.anchor_points:
-            #     if ap.tag not in ['te_1', 'le', 'te_2']:
-            #         print(f"After update, xp, yp = {ap.ctrlpt.xp}, {ap.ctrlpt.yp}")
-            if self.airfoil_graphs_active:
-                airfoil.airfoil_graph.data['pos'] = airfoil.control_point_array
-                airfoil.airfoil_graph.updateGraph()
-                airfoil.airfoil_graph.plot_change_recursive(
-                    airfoil.airfoil_graph.airfoil_parameters.child(a_tag).children())
+            for a_tag, airfoil in self.airfoils.items():
+                airfoil.update()
+                if self.airfoil_graphs_active:
+                    airfoil.airfoil_graph.data['pos'] = airfoil.control_point_array
+                    airfoil.airfoil_graph.updateGraph()
+                    airfoil.airfoil_graph.plot_change_recursive(
+                        airfoil.airfoil_graph.airfoil_parameters.child(a_tag).children())
+        print('hereS')
 
     @staticmethod
     def xy_update_rule(p: Param):

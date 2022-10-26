@@ -1,5 +1,5 @@
 from pymead.core.airfoil import Airfoil
-from mplcanvas import MplCanvas
+from pymead.gui.mplcanvas import MplCanvas
 import numpy as np
 
 
