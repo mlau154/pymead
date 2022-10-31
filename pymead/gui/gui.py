@@ -1,36 +1,26 @@
-from mplcanvas import MplCanvas
 from rename_popup import RenamePopup
 from main_icon_toolbar import MainIconToolbar
 
-from PyQt5.QtWidgets import QMainWindow, QApplication, QVBoxLayout, QHBoxLayout, QTreeWidget, QTreeWidgetItem, \
-    QWidget, QDoubleSpinBox, QLineEdit, QLabel, QMenu, QStatusBar, QAction, QToolButton, QTabWidget, QDockWidget
-from PyQt5.QtGui import QIcon, QMouseEvent, QFont, QFontDatabase
+from PyQt5.QtWidgets import QMainWindow, QApplication, QVBoxLayout, QHBoxLayout, \
+    QWidget, QMenu, QStatusBar, QAction
+from PyQt5.QtGui import QIcon, QFont, QFontDatabase
 from PyQt5.QtCore import QEvent, QObject, Qt
 from functools import partial
 
 import pyqtgraph as pg
 import numpy as np
 
-import pickle
 import dill
 from pymead.core.airfoil import Airfoil
-from pymead.core.base_airfoil_params import BaseAirfoilParams
-from pymead.core.param import Param
 from pymead import DATA_DIR, RESOURCE_DIR
-from pymead.gui.input_dialog import SingleAirfoilInviscidDialog, SingleAirfoilViscousDialog
-from pymead.core.free_point import FreePoint
-from pymead.gui.mpl_color_helper import MplColorHelper
+from pymead.gui.input_dialog import SingleAirfoilViscousDialog
 from pymead.gui.analysis_graph import AnalysisGraph
-from pymead.gui.recalculate_airfoil_parameters import recalculate_airfoil_parameters
-from pymead.gui.airfoil_graph import AirfoilGraph
 from pymead.gui.parameter_tree import MEAParamTree
 from pymead.analysis.single_element_inviscid import single_element_inviscid
 from pymead.gui.text_area import ConsoleTextArea
 from pymead.gui.dockable_tab_widget import DockableTabWidget
 from pymead.core.mea import MEA
 from pymead.analysis.calc_aero_data import calculate_aero_data
-from pymead.gui.parameter_tree import HeaderParameter
-from draggable_line import DraggableLine
 
 import sys
 import os
@@ -56,7 +46,6 @@ class GUI(QMainWindow):
         self.dark_mode = False
         self.n_analyses = 0
         self.n_converged_analyses = 0
-        self.color_helper = MplColorHelper("jet", 0, 255)
         self.pens = [('#d4251c', Qt.SolidLine), ('darkorange', Qt.SolidLine), ('gold', Qt.SolidLine),
                      ('limegreen', Qt.SolidLine), ('cyan', Qt.SolidLine), ('mediumpurple', Qt.SolidLine),
                      ('deeppink', Qt.SolidLine), ('#d4251c', Qt.DashLine), ('darkorange', Qt.DashLine),

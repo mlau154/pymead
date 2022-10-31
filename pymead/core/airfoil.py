@@ -1,24 +1,18 @@
 import numpy as np
-from pymead.core.param import Param
 from pymead.core.anchor_point import AnchorPoint
 from pymead.core.free_point import FreePoint
 from pymead.core.base_airfoil_params import BaseAirfoilParams
 from pymead.core.bezier import Bezier
 from pymead.core.trailing_edge_point import TrailingEdgePoint
-from pymead.symmetric.symmetric_base_airfoil_params import SymmetricBaseAirfoilParams
 from pymead.utils.increment_string_index import increment_string_index, decrement_string_index, get_prefix_and_index_from_string
 from pymead.utils.transformations import translate_matrix, rotate_matrix, scale_matrix
 from pymead.utils.downsampling_schemes import fractal_downsampler2
-from matplotlib.axes import Axes
-from matplotlib.figure import Figure
 import matplotlib.pyplot as plt
-import typing
 from shapely.geometry import Polygon, LineString
 from copy import deepcopy
 from pymead import DATA_DIR
 import os
 import subprocess
-from time import time
 import pandas as pd
 
 
