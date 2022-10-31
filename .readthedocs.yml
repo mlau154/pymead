@@ -20,4 +20,4 @@ formats:
 
 python:
    install:
-      - requirements: setup.py
+      - requirements: docs/source/requirements.txt

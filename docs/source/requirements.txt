@@ -1,1 +1,2 @@
 sphinx-press-theme==0.8.0
+pymead==2.0.0
