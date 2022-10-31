@@ -1,1 +1,1 @@
-sphinx-press-theme
+sphinx_press_theme==0.8.0
