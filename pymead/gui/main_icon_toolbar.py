@@ -2,7 +2,6 @@ import numpy as np
 from PyQt5.QtWidgets import QToolBar, QToolButton
 from PyQt5.QtGui import QIcon
 from matplotlib.pyplot import imread
-from PIL import Image
 from pymead import DATA_DIR
 import matplotlib.pyplot as plt
 
