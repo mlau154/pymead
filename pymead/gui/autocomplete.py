@@ -23,9 +23,6 @@ class AutoStrParameterItem(WidgetParameterItem):
         self.widget = w
         return w
 
-    def printHi(self, sel):
-        print(f'Hi! Selected? {sel}')
-
 
 class Completer(QCompleter):
     """

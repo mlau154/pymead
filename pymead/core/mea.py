@@ -67,7 +67,7 @@ class MEA:
         airfoil.mea = self
         self.airfoils[airfoil.tag] = airfoil
         self.param_dict[airfoil.tag] = airfoil.param_dicts
-        print(f"param_dict = {self.param_dict}")
+        # print(f"param_dict = {self.param_dict}")
 
         set_all_dict_values(self.param_dict[airfoil.tag])
 
@@ -109,9 +109,7 @@ class MEA:
 
         def check_for_bounds_recursively(d: dict, bounds_error_=False):
             for k, v in d.items():
-                print(f"bounds_error_ = {bounds_error_}")
                 if not bounds_error_:
-                    print(f"k = {k}")
                     if isinstance(v, dict):
                         bounds_error_ = check_for_bounds_recursively(v, bounds_error_)
                     else:
@@ -119,7 +117,6 @@ class MEA:
                             if v.active and not v.linked:
                                 if v.bounds[0] == -np.inf or v.bounds[0] == np.inf or v.bounds[1] == -np.inf or v.bounds[1] == np.inf:
                                     bounds_error_ = True
-                                    print(f"Setting bounds_error_ to True!")
                                     return bounds_error_
                         else:
                             raise ValueError('Found value in dictionary not of type \'Param\'')
@@ -140,7 +137,6 @@ class MEA:
                         raise ValueError('Found value in dictionary not of type \'Param\'')
 
         bounds_error = check_for_bounds_recursively(self.param_dict)
-        print(f"bounds_error now = {bounds_error}")
         if bounds_error:
             raise ValueError('Bounds must be set for each active and unlinked parameter for parameter extraction')
         else:
@@ -153,11 +149,12 @@ class MEA:
 
     def update_parameters(self, parameter_list: list or np.ndarray):
 
+        if parameter_list.ndim == 0:
+            parameter_list = np.array([parameter_list])
+
         def check_for_bounds_recursively(d: dict, bounds_error_=False):
             for k, v in d.items():
-                print(f"bounds_error_ = {bounds_error_}")
                 if not bounds_error_:
-                    print(f"k = {k}")
                     if isinstance(v, dict):
                         bounds_error_ = check_for_bounds_recursively(v, bounds_error_)
                     else:
@@ -166,7 +163,6 @@ class MEA:
                                 if v.bounds[0] == -np.inf or v.bounds[0] == np.inf or v.bounds[1] == -np.inf or \
                                         v.bounds[1] == np.inf:
                                     bounds_error_ = True
-                                    print(f"Setting bounds_error_ to True!")
                                     return bounds_error_
                         else:
                             raise ValueError('Found value in dictionary not of type \'Param\'')
@@ -218,7 +214,6 @@ class MEA:
                     airfoil.airfoil_graph.updateGraph()
                     airfoil.airfoil_graph.plot_change_recursive(
                         airfoil.airfoil_graph.airfoil_parameters.child(a_tag).children())
-        print('hereS')
 
     @staticmethod
     def xy_update_rule(p: Param):

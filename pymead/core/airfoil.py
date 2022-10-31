@@ -285,7 +285,7 @@ class Airfoil:
         if self.control_points is not None and self.control_points != []:
             current_le_pos = np.array([[cp.xp, cp.yp] for cp in self.control_points if cp.tag == 'le'])
             # self.translate(-current_le_pos[0, 0], -current_le_pos[0, 1])
-            self.translate(-self.dx.value, -self.dy.value)
+            self.translate(-self.dx.value, -self.dy.value, update_ap_fp=False)
 
         # Rotate to zero degree angle of attack
         if self.control_points is not None and self.control_points != []:
@@ -294,7 +294,7 @@ class Airfoil:
             current_alf = -np.arctan2(current_te_1_pos[1], current_te_1_pos[0])
             # print(current_alf * 180/np.pi)
             # self.rotate(current_alf)
-            self.rotate(self.alf.value)
+            self.rotate(self.alf.value, update_ap_fp=False)
 
         # Scale so that the chord length is equal to 1.0
         if self.control_points is not None and self.control_points != []:
@@ -302,7 +302,7 @@ class Airfoil:
             # print(f"control_points = {self.control_points}")
             current_chord = current_te_1_pos[0]
             # self.scale(1 / current_chord)
-            self.scale(1 / self.c.value)
+            self.scale(1 / self.c.value, update_ap_fp=False)
 
         # for ap in self.anchor_points:
         #     if ap.tag not in ['te_1', 'le', 'te_2']:
@@ -334,14 +334,22 @@ class Airfoil:
                                                 if cp.cp_type == 'g2_plus' and cp.anchor_point_tag == key)) + 1
                     self.control_points[insertion_index:insertion_index] = [fp_dict[k].ctrlpt for k in self.free_point_order[key]]
 
+        # if 'FP0' in self.free_points['te_1'].keys():
+        #     print(f"Before, fp xp = {self.free_points['te_1']['FP0'].xp.value}, yp = {self.free_points['te_1']['FP0'].yp.value}")
+
         # Scale airfoil by chord length
-        self.scale(self.c.value)
+        self.scale(self.c.value, update_ap_fp=False)
 
         # Rotate by airfoil angle of attack (alf)
-        self.rotate(-self.alf.value)
+        self.rotate(-self.alf.value, update_ap_fp=False)
 
         # Translate by airfoil dx, dy
-        self.translate(self.dx.value, self.dy.value)
+        self.translate(self.dx.value, self.dy.value, update_ap_fp=False)
+
+        # print(f"fp = {self.free_points}")
+
+        # if 'FP0' in self.free_points['te_1'].keys():
+        #     print(f"After, fp xp = {self.free_points['te_1']['FP0'].xp.value}, yp = {self.free_points['te_1']['FP0'].yp.value}")
 
         # Get the control point array
         self.update_control_point_array()
@@ -409,7 +417,7 @@ class Airfoil:
         self.control_point_array = np.array([[cp.xp, cp.yp] for cp in self.control_points])
         return self.control_point_array
 
-    def translate(self, dx: float, dy: float, update_ap_fp: bool = False):
+    def translate(self, dx: float, dy: float, update_ap_fp: bool = True, skip_le: bool = False):
         r"""Translates all the control points and anchor points by :math:`\Delta x` and :math:`\Delta y`.
 
         Parameters
@@ -421,18 +429,23 @@ class Airfoil:
           :math:`y`-direction translation magnitude
         """
         for cp in self.control_points:
-            cp.xp += dx
-            cp.yp += dy
-        if update_ap_fp:
-            for ap_key, ap_val in self.free_points.items():
-                for fp_key, fp_val in ap_val.items():
-                    fp_val.xp.value = fp_val.x.value + dx
-                    fp_val.yp.value = fp_val.y.value + dy
-            for ap in self.anchor_points:
-                ap.xp.value = ap.x.value + dx
-                ap.yp.value = ap.y.value + dy
+            if cp.tag == 'le':
+                cp.xp = self.dx.value
+                cp.yp = self.dy.value
+            else:
+                cp.xp += dx
+                cp.yp += dy
+        # if update_ap_fp:
+        #     for ap_key, ap_val in self.free_points.items():
+        #         for fp_key, fp_val in ap_val.items():
+        #             fp_val.xp.value = fp_val.x.value + dx
+        #             fp_val.yp.value = fp_val.y.value + dy
+        #     for ap in self.anchor_points:
+        #         if ap.tag not in ['te_1', 'le', 'te_2']:
+        #             ap.xp.value = ap.x.value + dx
+        #             ap.yp.value = ap.y.value + dy
 
-    def rotate(self, angle: float, update_ap_fp: bool = False):
+    def rotate(self, angle: float, update_ap_fp: bool = True):
         """
         ### Description:
 
@@ -452,18 +465,19 @@ class Airfoil:
             rotated_point = (rot_mat @ np.array([[cp.xp], [cp.yp]])).flatten()
             cp.xp = rotated_point[0]
             cp.yp = rotated_point[1]
-        if update_ap_fp:
-            for ap_key, ap_val in self.free_points.items():
-                for fp_key, fp_val in ap_val.items():
-                    rotated_point = (rot_mat @ np.array([[fp_val.x.value], [fp_val.y.value]])).flatten()
-                    fp_val.xp.value = rotated_point[0]
-                    fp_val.yp.value = rotated_point[1]
-            for ap in self.anchor_points:
-                rotated_point = (rot_mat @ np.array([[ap.x.value], [ap.y.value]])).flatten()
-                ap.xp.value = rotated_point[0]
-                ap.yp.value = rotated_point[1]
+        # if update_ap_fp:
+        #     for ap_key, ap_val in self.free_points.items():
+        #         for fp_key, fp_val in ap_val.items():
+        #             rotated_point = (rot_mat @ np.array([[fp_val.x.value], [fp_val.y.value]])).flatten()
+        #             fp_val.xp.value = rotated_point[0]
+        #             fp_val.yp.value = rotated_point[1]
+        #     for ap in self.anchor_points:
+        #         if ap.tag not in ['te_1', 'le', 'te_2']:
+        #             rotated_point = (rot_mat @ np.array([[ap.x.value], [ap.y.value]])).flatten()
+        #             ap.xp.value = rotated_point[0]
+        #             ap.yp.value = rotated_point[1]
 
-    def scale(self, scale_value, update_ap_fp: bool = False):
+    def scale(self, scale_value, update_ap_fp: bool = True):
         """
         ### Description:
 
@@ -472,14 +486,15 @@ class Airfoil:
         for cp in self.control_points:
             cp.xp *= scale_value
             cp.yp *= scale_value
-        if update_ap_fp:
-            for ap_key, ap_val in self.free_points.items():
-                for fp_key, fp_val in ap_val.items():
-                    fp_val.xp.value = fp_val.x.value * scale_value
-                    fp_val.yp.value = fp_val.y.value * scale_value
-            for ap in self.anchor_points:
-                ap.xp.value = ap.x.value * scale_value
-                ap.yp.value = ap.y.value * scale_value
+        # if update_ap_fp:
+        #     for ap_key, ap_val in self.free_points.items():
+        #         for fp_key, fp_val in ap_val.items():
+        #             fp_val.xp.value = fp_val.x.value * scale_value
+        #             fp_val.yp.value = fp_val.y.value * scale_value
+        #     for ap in self.anchor_points:
+        #         if ap.tag not in ['te_1', 'le', 'te_2']:
+        #             ap.xp.value = ap.x.value * scale_value
+        #             ap.yp.value = ap.y.value * scale_value
 
     def compute_area(self):
         """Computes the area of the airfoil as the area of a many-sided polygon enclosed by the airfoil coordinates
