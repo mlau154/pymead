@@ -2,7 +2,7 @@
 API
 ===
 
-.. autosummary::
+.. autosummary:: pymead
    :toctree: _autosummary
    :template: custom-module-template.rst
    :recursive:
