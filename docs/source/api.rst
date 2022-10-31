@@ -9,3 +9,12 @@ API
 
     analysis
     core
+
+
+pymead.core.airfoil module
+--------------------------
+
+.. automodule:: pymead.core.airfoil
+   :members:
+   :undoc-members:
+   :show-inheritance:
