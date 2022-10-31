@@ -1,5 +1,5 @@
 import pyqtgraph.parametertree.parameterTypes as pTypes
-from pyqtgraph.parametertree import Parameter, ParameterTree, registerParameterItemType
+from pyqtgraph.parametertree import Parameter, ParameterTree, registerParameterItemType, ParameterItem
 from pymead.core.mea import MEA
 import pyqtgraph as pg
 from pymead.core.param import Param
@@ -332,12 +332,14 @@ class MEAParamTree:
                     self.add_equation_box(param)
 
                 if change == 'contextMenu' and data == 'deactivate':
-                    param.airfoil_param.active = False
-                    param.setReadonly(True)
+                    for p in self.t.multi_select:
+                        p.param.airfoil_param.active = False
+                        p.param.setReadonly(True)
 
                 if change == 'contextMenu' and data == 'activate':
-                    param.airfoil_param.active = True
-                    param.setReadonly(False)
+                    for p in self.t.multi_select:
+                        p.param.airfoil_param.active = True
+                        p.param.setReadonly(False)
 
                 if change == 'contextMenu' and data == 'setbounds':
                     self.dialog = BoundsDialog(param.airfoil_param.bounds, parent=self.t)
@@ -480,7 +482,7 @@ class MEAParamTree:
 
         self.p.param('Save/Restore functionality', 'Save State').sigActivated.connect(save)
         self.p.param('Save/Restore functionality', 'Restore State').sigActivated.connect(restore)
-        self.t = ParameterTree(parent=parent)
+        self.t = CustomParameterTree(parent=parent)
         # self.t.header().setResizeMode(QHeaderView.ResizeToContents)
         # self.t.header().setStretchLastSection(False)
         # for idx in [0, 1]:
@@ -509,15 +511,20 @@ class MEAParamTree:
                          0, 0, 1, 2)
         self.layout.addWidget(self.t, 1, 0, 1, 1)
 
+    def printHi(self, arg1):
+        print(f'Hi! {arg1}')
+
     def set_dark_mode(self):
-        self.t.setStyleSheet('''QTreeWidget {color: #dce1e6; alternate-background-color: #dce1e6;
-                            selection-background-color: #36bacfaa;} 
-                            QTreeView::item:hover {background: #36bacfaa;} QTreeView::item {border: 0px solid gray; color: #dce1e6}''')
+        self.t.setStyleSheet('''QTreeWidget {color: #3e3f40; alternate-background-color: #3e3f40;
+                            selection-background-color: #3e3f40;}
+                            QTreeView::item:hover {background: #36bacfaa;} QTreeWidget::item {border: 0px solid gray; color: #dce1e6}
+                            QTreeWidget::item:selected {background-color: #36bacfaa; alternate-background-color: #36bacfaa}''')
 
     def set_light_mode(self):
         self.t.setStyleSheet('''QTreeWidget {color: white; alternate-background-color: white; 
-                    selection-background-color: #36bacfaa}
-                    QTreeView::item::hover {background: #36bacfaa;} QTreeView::item {border: 0px solid gray; color: black}''')
+                    selection-background-color: white;}
+                    QTreeView::item::hover {background: #36bacfaa;} QTreeView::item {border: 0px solid gray; color: black}
+                    QTreeWidget::item:selected {background-color: #36bacfaa; alternate-background-color: #36bacfaa}''')
 
     def add_equation_box(self, pg_param, equation: str = None):
         if equation is None:
@@ -601,40 +608,35 @@ class MEAParamTree:
                     self.plot_change_recursive(child.children())
 
 
-# class CustomParameterTree(ParameterTree):
-#     def __init__(self, parent=None):
-#         super().__init__(parent=parent)
-#
-#     def addParameters(self, param, root=None, depth=0, showTop=True):
-#         """
-#         Adds one top-level :class:`Parameter <pyqtgraph.parametertree.Parameter>`
-#         to the view.
-#
-#         ============== ==========================================================
-#         **Arguments:**
-#         param          The :class:`Parameter <pyqtgraph.parametertree.Parameter>`
-#                        to add.
-#         root           The item within the tree to which *param* should be added.
-#                        By default, *param* is added as a top-level item.
-#         showTop        If False, then *param* will be hidden, and only its
-#                        children will be visible in the tree.
-#         ============== ==========================================================
-#         """
-#         item = param.makeTreeItem(depth=depth)
-#         if root is None:
-#             root = self.invisibleRootItem()
-#             ## Hide top-level item
-#             if not showTop:
-#                 item.setText(0, '')
-#                 item.setSizeHint(0, QtCore.QSize(1, 1))
-#                 item.setSizeHint(1, QtCore.QSize(1, 1))
-#                 item.setSelectionMode(QAbstractItemView.MultiSelection)
-#                 depth -= 1
-#         root.addChild(item)
-#         item.treeWidgetChanged()
-#
-#         for ch in param:
-#             self.addParameters(ch, root=item, depth=depth + 1)
+class CustomParameterTree(ParameterTree):
+    def __init__(self, parent=None):
+        super().__init__(parent=parent)
+        self.multi_select = None
+
+    def selectionChanged(self, *args):
+        """Override method in pyqtgraph's ParameterTree and make some modifications"""
+        sel = self.selectedItems()
+        self.multi_select = sel
+        if len(sel) != 1:
+            sel = None
+        if self.lastSel is not None and isinstance(self.lastSel, ParameterItem):
+            self.lastSel.selected(False)
+        if sel is None:
+            self.lastSel = None
+            return
+        self.lastSel = sel[0]
+        if hasattr(sel[0], 'selected'):
+            sel[0].selected(True)
+            # print(f"vars in sel[0]: {vars(sel[0])}")
+        for selection in self.multi_select:
+            if hasattr(selection, 'widget'):
+                # selection.selected(True)
+                selection.widget.setMinimumHeight(20)
+            # selection.defaultBtn.setStyleSheet('''color: blue; background-color: blue''')
+            # selection.displayLabel.setStyleSheet('''background-color: blue; color: blue;''')
+            # selection.displayLabel.setText("Hi!")
+            # selection.widget.setStyleSheet('''background-color: blue; color: blue''')
+        return super().selectionChanged(*args)
 
 
 if __name__ == '__main__':

@@ -212,25 +212,19 @@ class AirfoilGraph(pg.GraphItem):
 
         elif self.airfoil.control_points[ind].tag == 'le':
             if self.airfoil.dx.active and not self.airfoil.dx.linked:
-                # old_dx_value = self.airfoil.dx.value
                 self.airfoil.dx.value = x[ind]
-                # other_airfoils_affected = self.update_affected_parameters(self.airfoil, ['dx'], other_airfoils_affected)
-                # if any([affected_param.at_boundary for affected_param in self.airfoil.dx.affects]):
-                #     self.airfoil.dx.value = old_dx_value
-                #     other_airfoils_affected = self.update_affected_parameters(self.airfoil, ['dx'],
-                #                                                               other_airfoils_affected)
             if self.airfoil.dy.active and not self.airfoil.dy.linked:
                 self.airfoil.dy.value = y[ind]
-                # other_airfoils_affected = self.update_affected_parameters(self.airfoil, ['dy'], other_airfoils_affected)
-            self.airfoil.update(generate_curves=False)
+            # self.airfoil.update(generate_curves=False)
             for ap_key, ap_val in self.airfoil.free_points.items():
                 for fp_key, fp_val in ap_val.items():
                     fp_val.set_xy(x=fp_val.x.value, y=fp_val.y.value)
             for ap in self.airfoil.anchor_points:
                 if ap.tag not in ['te_1', 'le', 'te_2']:
                     ap.set_xy(x=ap.x.value, y=ap.y.value)
-            self.airfoil.update_control_point_array()
-            self.airfoil.generate_curves()
+            # self.airfoil.update_control_point_array()
+            # self.airfoil.generate_curves()
+            # self.airfoil.update()
 
         elif self.airfoil.control_points[ind].tag in ['te_1', 'te_2']:
             if self.te_thickness_edit_mode:
@@ -279,18 +273,18 @@ class AirfoilGraph(pg.GraphItem):
                 if self.airfoil.alf.active and not self.airfoil.alf.linked:
                     self.airfoil.alf.value = angle_of_attack
                     # other_airfoils_affected = self.update_affected_parameters(self.airfoil, ['alf'], other_airfoils_affected)
-                self.airfoil.update(generate_curves=False)
+                # self.airfoil.update(generate_curves=False)
 
             for ap_key, ap_val in self.airfoil.free_points.items():
                 for fp_key, fp_val in ap_val.items():
                     fp_val.set_xy(x=fp_val.x.value, y=fp_val.y.value)
-                    self.airfoil.update_control_point_array()
-                    self.airfoil.generate_curves()
+                    # self.airfoil.update_control_point_array()
+                    # self.airfoil.generate_curves()
             for ap in self.airfoil.anchor_points:
                 if ap.tag not in ['te_1', 'le', 'te_2']:
                     ap.set_xy(x=ap.x.value, y=ap.y.value)
-                    self.airfoil.update_control_point_array()
-                    self.airfoil.generate_curves()
+                    # self.airfoil.update_control_point_array()
+                    # self.airfoil.generate_curves()
 
         elif self.airfoil.control_points[ind].cp_type == 'free_point':
             ap_tag = self.airfoil.control_points[ind].anchor_point_tag
