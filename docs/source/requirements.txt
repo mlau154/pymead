@@ -1,2 +1,10 @@
 sphinx-press-theme==0.8.0
 numpy
+scipy
+shapely
+matplotlib
+requests
+PyQt5
+pyqtgraph
+python-benedict
+pandas
