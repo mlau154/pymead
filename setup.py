@@ -27,5 +27,5 @@ setup(
               "pymead/tests", "pymead/resources", "pymead/analysis", "pymead/data", "pymead/icons"],
     include_package_data=True,
     install_requires=["scipy", "numpy", "shapely", "matplotlib", "requests", "PyQt5", "pyqtgraph", "python-benedict",
-                      "pandas"],
+                      "pandas", "dill"],
 )
