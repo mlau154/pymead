@@ -1,6 +1,4 @@
 import matplotlib.pyplot as plt
-import numpy as np
-import pyqtgraph as pg
 from abc import abstractmethod
 
 
