@@ -13,9 +13,10 @@ import numpy as np
 import dill
 from pymead.core.airfoil import Airfoil
 from pymead import DATA_DIR, RESOURCE_DIR
-from pymead.gui.input_dialog import SingleAirfoilViscousDialog
+from pymead.gui.input_dialog import SingleAirfoilViscousDialog, LoadDialog, SaveAsDialog
 from pymead.gui.analysis_graph import AnalysisGraph
 from pymead.gui.parameter_tree import MEAParamTree
+from pymead.utils.airfoil_matching import match_airfoil
 from pymead.analysis.single_element_inviscid import single_element_inviscid
 from pymead.gui.text_area import ConsoleTextArea
 from pymead.gui.dockable_tab_widget import DockableTabWidget
@@ -131,6 +132,10 @@ class GUI(QMainWindow):
         self.file_menu.addAction(self.open_action)
         self.open_action.triggered.connect(self.load_mea)
 
+        self.save_as_action = QAction("Save As", self)
+        self.file_menu.addAction(self.save_as_action)
+        self.save_as_action.triggered.connect(self.save_as_mea)
+
         self.save_action = QAction("Save", self)
         self.file_menu.addAction(self.save_action)
         self.save_action.triggered.connect(self.save_mea)
@@ -156,8 +161,23 @@ class GUI(QMainWindow):
         self.single_menu.addAction(self.single_viscous_action)
         self.single_viscous_action.triggered.connect(self.single_airfoil_viscous_analysis)
 
+        self.tools_menu = QMenu("&Tools", self)
+        self.menu_bar.addMenu(self.tools_menu)
+
+        self.match_airfoil_action = QAction("Match Airfoil", self)
+        self.tools_menu.addAction(self.match_airfoil_action)
+        self.match_airfoil_action.triggered.connect(self.match_airfoil)
+
+    def save_as_mea(self):
+        dialog = SaveAsDialog(self)
+        if dialog.exec_():
+            self.mea.file_name = dialog.selectedFiles()[0]
+        else:
+            pass
+        self.save_mea()
+
     def save_mea(self):
-        with open(os.path.join(os.getcwd(), 'test_mea.mead'), "wb") as f:
+        with open(os.path.join(os.getcwd(), self.mea.file_name), "wb") as f:
             dill.dump(self.mea, f)
         for idx, airfoil in enumerate(self.mea.airfoils.values()):
             self.mea.add_airfoil_graph_to_airfoil(airfoil, idx, self.param_tree_instance, w=self.w, v=self.v)
@@ -165,18 +185,24 @@ class GUI(QMainWindow):
             a.airfoil_graph.scatter.sigPlotChanged.connect(partial(self.param_tree_instance.plot_changed, a_name))
 
     def load_mea(self):
-        with open(os.path.join(os.getcwd(), 'test_mea.mead'), "rb") as f:
-            self.mea = dill.load(f)
-        self.v.clear()
-        for idx, airfoil in enumerate(self.mea.airfoils.values()):
-            self.mea.add_airfoil_graph_to_airfoil(airfoil, idx, None, w=self.w, v=self.v)
-        self.param_tree_instance = MEAParamTree(self.mea, self.statusBar(), parent=self)
-        for a in self.mea.airfoils.values():
-            a.airfoil_graph.param_tree = self.param_tree_instance
-            a.airfoil_graph.airfoil_parameters = a.airfoil_graph.param_tree.p.param('Airfoil Parameters')
-        self.design_tree_widget = self.param_tree_instance.t
-        self.main_layout.replaceWidget(self.main_layout.itemAt(0).widget(), self.design_tree_widget)
-        self.v.autoRange()
+        dialog = LoadDialog(self)
+        if dialog.exec_():
+            file_name = dialog.selectedFiles()[0]
+        else:
+            file_name = None
+        if file_name is not None:
+            with open(os.path.join(os.getcwd(), file_name), "rb") as f:
+                self.mea = dill.load(f)
+            self.v.clear()
+            for idx, airfoil in enumerate(self.mea.airfoils.values()):
+                self.mea.add_airfoil_graph_to_airfoil(airfoil, idx, None, w=self.w, v=self.v)
+            self.param_tree_instance = MEAParamTree(self.mea, self.statusBar(), parent=self)
+            for a in self.mea.airfoils.values():
+                a.airfoil_graph.param_tree = self.param_tree_instance
+                a.airfoil_graph.airfoil_parameters = a.airfoil_graph.param_tree.p.param('Airfoil Parameters')
+            self.design_tree_widget = self.param_tree_instance.t
+            self.main_layout.replaceWidget(self.main_layout.itemAt(0).widget(), self.design_tree_widget)
+            self.v.autoRange()
 
     def single_airfoil_inviscid_analysis(self):
         pass
@@ -228,6 +254,10 @@ class GUI(QMainWindow):
                 self.n_analyses += 1
             else:
                 self.n_analyses += 1
+
+    def match_airfoil(self):
+        target_airfoil = 'A0'
+        match_airfoil(self.mea, target_airfoil, 'sc20010-il')
 
     # def add_airfoil(self, airfoil: Airfoil = None):
     #     if not airfoil:

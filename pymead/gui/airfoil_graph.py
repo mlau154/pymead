@@ -5,18 +5,13 @@ Simple example of subclassing GraphItem.
 import numpy as np
 
 import pyqtgraph as pg
-from pyqtgraph.Qt import QtCore
+# from pyqtgraph.Qt import QtCore
+from PyQt5.QtCore import Qt
 
-from PyQt5.QtGui import QPen, QFont
 from PyQt5.QtCore import pyqtSignal, pyqtSlot
 from pymead.gui.polygon_item import PolygonItem
 
 from pymead.core.airfoil import Airfoil
-from time import time
-
-import typing
-
-from pymead.utils.transformations import rotate, translate, scale, transform
 
 
 class AirfoilGraph(pg.GraphItem):
@@ -145,7 +140,7 @@ class AirfoilGraph(pg.GraphItem):
 
     def mouseDragEvent(self, ev):
         # print(f"event = {ev}")
-        if ev.button() != QtCore.Qt.MouseButton.LeftButton:
+        if ev.button() != Qt.MouseButton.LeftButton:
             ev.ignore()
             return
 
