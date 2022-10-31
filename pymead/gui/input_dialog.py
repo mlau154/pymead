@@ -1,7 +1,7 @@
 import numpy as np
 from typing import List
 from PyQt5.QtWidgets import QDialog, QDialogButtonBox, QFormLayout, QDoubleSpinBox, QComboBox, QLineEdit, QSpinBox, \
-    QTabWidget, QLabel, QMessageBox, QCheckBox
+    QTabWidget, QLabel, QMessageBox, QCheckBox, QFileDialog
 from PyQt5.QtCore import QEvent
 from pymead.gui.infty_doublespinbox import InftyDoubleSpinBox
 
@@ -277,3 +277,19 @@ class BoundsDialog(QDialog):
         elif event.type() == QEvent.LeaveWhatsThisMode:
             pass
         return super().event(event)
+
+
+class LoadDialog(QFileDialog):
+    def __init__(self, parent):
+        super().__init__(parent=parent)
+        self.setFileMode(QFileDialog.ExistingFile)
+        self.setNameFilter(self.tr("PyMEAD Files (*.mead)"))
+        self.setViewMode(QFileDialog.Detail)
+
+
+class SaveAsDialog(QFileDialog):
+    def __init__(self, parent):
+        super().__init__(parent=parent)
+        self.setFileMode(QFileDialog.AnyFile)
+        self.setNameFilter(self.tr("PyMEAD Files (*.mead)"))
+        self.setViewMode(QFileDialog.Detail)

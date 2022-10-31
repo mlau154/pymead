@@ -21,6 +21,7 @@ class MEA:
     def __init__(self, param_tree, airfoils: Airfoil or typing.List[Airfoil, ...] or None = None,
                  airfoil_graphs_active: bool = False):
         self.airfoils = {}
+        self.file_name = None
         self.param_dict = {'Custom': {}}
         self.airfoil_graphs_active = airfoil_graphs_active
         self.te_thickness_edit_mode = False
@@ -104,8 +105,9 @@ class MEA:
         airfoil_graph.param_tree = param_tree
         airfoil.airfoil_graph = airfoil_graph
 
-    def extract_parameters(self):
+    def extract_parameters(self, write_to_txt_file: bool = True):
         parameter_list = []
+        norm_value_list = []
 
         def check_for_bounds_recursively(d: dict, bounds_error_=False):
             for k, v in d.items():
@@ -132,7 +134,8 @@ class MEA:
                     if isinstance(v, Param):
                         if v.active and not v.linked:
                             if self.xy_update_rule(v):
-                                parameter_list.append((v.value - v.bounds[0]) / (v.bounds[1] - v.bounds[0]))
+                                norm_value_list.append((v.value - v.bounds[0]) / (v.bounds[1] - v.bounds[0]))
+                                parameter_list.append(v)
                     else:
                         raise ValueError('Found value in dictionary not of type \'Param\'')
 
@@ -141,16 +144,17 @@ class MEA:
             raise ValueError('Bounds must be set for each active and unlinked parameter for parameter extraction')
         else:
             extract_parameters_recursively(self.param_dict)
-            np.savetxt(os.path.join(DATA_DIR, 'parameter_list.dat'), np.array(parameter_list))
+            if write_to_txt_file:
+                np.savetxt(os.path.join(DATA_DIR, 'parameter_list.dat'), np.array(norm_value_list))
             # parameter_list = np.loadtxt(os.path.join(DATA_DIR, 'parameter_list.dat'))
             # self.update_parameters(parameter_list)
             # fig_.savefig(os.path.join(DATA_DIR, 'test_airfoil.png'))
-            return parameter_list
+            return norm_value_list, parameter_list
 
-    def update_parameters(self, parameter_list: list or np.ndarray):
+    def update_parameters(self, norm_value_list: list or np.ndarray):
 
-        if parameter_list.ndim == 0:
-            parameter_list = np.array([parameter_list])
+        if norm_value_list.ndim == 0:
+            norm_value_list = np.array([norm_value_list])
 
         def check_for_bounds_recursively(d: dict, bounds_error_=False):
             for k, v in d.items():
@@ -178,7 +182,7 @@ class MEA:
                     if isinstance(v, Param):
                         if v.active and not v.linked:
                             if self.xy_update_rule(v):
-                                v.value = parameter_list[list_counter] * (v.bounds[1] - v.bounds[0]) + v.bounds[0]
+                                v.value = norm_value_list[list_counter] * (v.bounds[1] - v.bounds[0]) + v.bounds[0]
                                 if v.x or v.y or v.xp or v.yp:
                                     if v.free_point is not None:
                                         fp_or_ap = v.free_point
@@ -234,6 +238,52 @@ class MEA:
                 if p.xp or p.yp:
                     return False
         return True
+
+    def deactivate_airfoil_matching_params(self, target_airfoil: str):
+        def deactivate_recursively(d: dict):
+            for k, v in d.items():
+                if isinstance(v, dict):
+                    # If the dictionary key is equal to the target_airfoil_str, stop the recursion for this branch,
+                    # otherwise continue with the recursion:
+                    if k != target_airfoil:
+                        deactivate_recursively(v)
+                elif isinstance(v, Param):
+                    if v.active:
+                        v.active = False
+                        v.deactivated_for_airfoil_matching = True
+                else:
+                    raise ValueError('Found value in dictionary not of type \'Param\'')
+
+        deactivate_recursively(self.param_dict)
+        deactivate_target_params = ['dx', 'dy', 'alf', 'c', 't_te', 'r_te', 'phi_te']
+        for p_str in deactivate_target_params:
+            p = self.airfoils[target_airfoil].param_dicts['Base'][p_str]
+            if p.active:
+                p.active = False
+                p.deactivated_for_airfoil_matching = True
+
+    def activate_airfoil_matching_params(self, target_airfoil: str):
+        def activate_recursively(d: dict):
+            for k, v in d.items():
+                if isinstance(v, dict):
+                    # If the dictionary key is equal to the target_airfoil_str, stop the recursion for this branch,
+                    # otherwise continue with the recursion:
+                    if k != target_airfoil:
+                        activate_recursively(v)
+                elif isinstance(v, Param):
+                    if v.deactivated_for_airfoil_matching:
+                        v.active = True
+                        v.deactivated_for_airfoil_matching = False
+                else:
+                    raise ValueError('Found value in dictionary not of type \'Param\'')
+
+        activate_recursively(self.param_dict)
+        activate_target_params = ['dx', 'dy', 'alf', 'c']
+        for p_str in activate_target_params:
+            p = self.airfoils[target_airfoil].param_dicts['Base'][p_str]
+            if p.deactivated_for_airfoil_matching:
+                p.active = True
+                p.deactivated_for_airfoil_matching = False
 
     # @staticmethod
     # def more_than_one_xy_linked_or_inactive(fp_or_ap: FreePoint or AnchorPoint):

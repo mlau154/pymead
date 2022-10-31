@@ -72,6 +72,7 @@ class Param:
         self.tag_list = None
         self.airfoil_tag = None
         self.mea = None
+        self.deactivated_for_airfoil_matching = False
         self.at_boundary = False
         self.x = x
         self.y = y

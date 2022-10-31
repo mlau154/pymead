@@ -5,7 +5,8 @@ Simple example of subclassing GraphItem.
 import numpy as np
 
 import pyqtgraph as pg
-from pyqtgraph.Qt import QtCore
+# from pyqtgraph.Qt import QtCore
+from PyQt5.QtCore import Qt
 
 # Enable antialiasing for prettier plots
 pg.setConfigOptions(antialias=True)
@@ -49,7 +50,7 @@ class Graph(pg.GraphItem):
             item.setPos(*self.data['pos'][i])
 
     def mouseDragEvent(self, ev):
-        if ev.button() != QtCore.Qt.MouseButton.LeftButton:
+        if ev.button() != Qt.MouseButton.LeftButton:
             ev.ignore()
             return
 
