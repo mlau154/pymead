@@ -18,7 +18,6 @@ extensions = [
     'sphinx.ext.napoleon',
     'sphinx.ext.viewcode',
     'sphinx.ext.mathjax',
-    'sphinx-press-theme',
 ]
 
 intersphinx_mapping = {
@@ -28,4 +27,4 @@ intersphinx_mapping = {
 
 templates_path = ['_templates']
 
-html_theme = 'press'
+html_theme = 'sphinx_press_theme'
