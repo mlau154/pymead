@@ -18,7 +18,7 @@ extensions = [
     'sphinx.ext.napoleon',
     'sphinx.ext.viewcode',
     'sphinx.ext.mathjax',
-    'sphinx_press_theme',
+    'sphinx-press-theme',
 ]
 
 intersphinx_mapping = {
