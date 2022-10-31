@@ -7,4 +7,4 @@ API
    :template: custom-module-template.rst
    :recursive:
 
-    pymead.core.param
+    pymead.core.test_mod
