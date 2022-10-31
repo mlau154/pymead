@@ -7,5 +7,5 @@ API
    :template: custom-module-template.rst
    :recursive:
 
-    pymead.analysis
-    pymead.core
+    analysis
+    core
