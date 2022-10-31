@@ -20,6 +20,8 @@ extensions = [
     'sphinx.ext.mathjax',
 ]
 
+autodoc_mock_imports = ['PyQt5']
+
 intersphinx_mapping = {
     'python': ('https://docs.python.org/3/', None),
     'sphinx': ('https://www.sphinx-doc.org/en/master/', None),
