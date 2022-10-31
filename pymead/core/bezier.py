@@ -1,9 +1,10 @@
-from pymead.utils.nchoosek import nchoosek, nchoosek_matrix
+from pymead.utils.nchoosek import nchoosek
 from pymead.core.parametric_curve import ParametricCurve
 import numpy as np
 
 
 class Bezier(ParametricCurve):
+    """Bezier Class"""
 
     def __init__(self, P, nt: int = 100, t: np.ndarray = None):
         """
