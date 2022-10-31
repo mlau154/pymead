@@ -27,4 +27,4 @@ intersphinx_mapping = {
 
 templates_path = ['_templates']
 
-html_theme = 'sphinx_press_theme'
+html_theme = 'press'
