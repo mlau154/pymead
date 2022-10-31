@@ -1,11 +1,9 @@
 ===
 API
 ===
+.. py:currentmodule:: pymead
 
-.. autosummary:: pymead
+.. autosummary::
    :toctree: _autosummary
    :template: custom-module-template.rst
    :recursive:
-
-    analysis
-    core
