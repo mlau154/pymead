@@ -1,5 +1,5 @@
-from rename_popup import RenamePopup
-from main_icon_toolbar import MainIconToolbar
+from pymead.gui.rename_popup import RenamePopup
+from pymead.gui.main_icon_toolbar import MainIconToolbar
 
 from PyQt5.QtWidgets import QMainWindow, QApplication, QVBoxLayout, QHBoxLayout, \
     QWidget, QMenu, QStatusBar, QAction
@@ -25,14 +25,13 @@ from pymead.analysis.calc_aero_data import calculate_aero_data
 
 import sys
 import os
-# import matplotlib
-# matplotlib.use('Qt5Agg')
 
 
 class GUI(QMainWindow):
-    def __init__(self):
+    def __init__(self, path=None):
         # super().__init__(flags=Qt.FramelessWindowHint)
         super().__init__()
+        self.path = path
         single_element_inviscid(np.array([[1, 0], [0, 0], [1, 0]]), 0.0)
         for font_name in ["DejaVuSans", "DejaVuSansMono", "DejaVuSerif"]:
             QFontDatabase.addApplicationFont(os.path.join(RESOURCE_DIR, "dejavu-fonts-ttf-2.37", "ttf",
@@ -62,6 +61,10 @@ class GUI(QMainWindow):
         # self.airfoil_graphs = [AirfoilGraph(self.mea.airfoils['A0'])]
         self.w = self.mea.airfoils['A0'].airfoil_graph.w
         self.v = self.mea.airfoils['A0'].airfoil_graph.v
+        # internal_geometry_xy = np.loadtxt(os.path.join(DATA_DIR, 'sec_3.txt'))
+        # print(f"geometry = {internal_geometry_xy}")
+        # self.internal_geometry = self.v.plot(internal_geometry_xy[:, 0], internal_geometry_xy[:, 1],
+        #                                      pen=pg.mkPen(color='orange', width=1))
         # self.airfoil_graphs.append(AirfoilGraph(self.mea.airfoils['A1'], w=self.w, v=self.v))
         self.main_layout = QHBoxLayout()
         self.setStatusBar(QStatusBar(self))
@@ -98,6 +101,8 @@ class GUI(QMainWindow):
         self.set_title_and_icon()
         self.create_menu_bar()
         self.main_icon_toolbar = MainIconToolbar(self)
+        if self.path is not None:
+            self.load_mea_no_dialog(self.path)
 
     def set_dark_mode(self):
         self.setStyleSheet("background-color: #3e3f40; color: #dce1e6; font-family: DejaVu; font-size: 12px;")
@@ -191,18 +196,21 @@ class GUI(QMainWindow):
         else:
             file_name = None
         if file_name is not None:
-            with open(os.path.join(os.getcwd(), file_name), "rb") as f:
-                self.mea = dill.load(f)
-            self.v.clear()
-            for idx, airfoil in enumerate(self.mea.airfoils.values()):
-                self.mea.add_airfoil_graph_to_airfoil(airfoil, idx, None, w=self.w, v=self.v)
-            self.param_tree_instance = MEAParamTree(self.mea, self.statusBar(), parent=self)
-            for a in self.mea.airfoils.values():
-                a.airfoil_graph.param_tree = self.param_tree_instance
-                a.airfoil_graph.airfoil_parameters = a.airfoil_graph.param_tree.p.param('Airfoil Parameters')
-            self.design_tree_widget = self.param_tree_instance.t
-            self.main_layout.replaceWidget(self.main_layout.itemAt(0).widget(), self.design_tree_widget)
-            self.v.autoRange()
+            self.load_mea_no_dialog(file_name)
+
+    def load_mea_no_dialog(self, file_name):
+        with open(os.path.join(os.getcwd(), file_name), "rb") as f:
+            self.mea = dill.load(f)
+        self.v.clear()
+        for idx, airfoil in enumerate(self.mea.airfoils.values()):
+            self.mea.add_airfoil_graph_to_airfoil(airfoil, idx, None, w=self.w, v=self.v)
+        self.param_tree_instance = MEAParamTree(self.mea, self.statusBar(), parent=self)
+        for a in self.mea.airfoils.values():
+            a.airfoil_graph.param_tree = self.param_tree_instance
+            a.airfoil_graph.airfoil_parameters = a.airfoil_graph.param_tree.p.param('Airfoil Parameters')
+        self.design_tree_widget = self.param_tree_instance.t
+        self.main_layout.replaceWidget(self.main_layout.itemAt(0).widget(), self.design_tree_widget)
+        self.v.autoRange()
 
     def single_airfoil_inviscid_analysis(self):
         pass
@@ -283,7 +291,10 @@ class GUI(QMainWindow):
 def main():
     app = QApplication(sys.argv)
     app.setStyle('Fusion')
-    gui = GUI()
+    if len(sys.argv) > 1:
+        gui = GUI(sys.argv[1])
+    else:
+        gui = GUI()
     gui.show()
     app.exec()
 

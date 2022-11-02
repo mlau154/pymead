@@ -1,18 +1,12 @@
 import numpy as np
 from PyQt5.QtWidgets import QToolBar, QToolButton
 from PyQt5.QtGui import QIcon
-from matplotlib.pyplot import imread
 from pymead import DATA_DIR
-import matplotlib.pyplot as plt
-
-import sys
 import os
-
-from pymead.utils.read_write_json import read_json
-from pymead.gui.airfoil_graph import AirfoilGraph
 from pymead.core.airfoil import Airfoil
 from pymead.core.base_airfoil_params import BaseAirfoilParams
 from pymead.core.param import Param
+from pymead import ICON_DIR
 from functools import partial
 
 
@@ -21,7 +15,7 @@ class MainIconToolbar(QToolBar):
         super().__init__(parent=parent)
         self.parent = parent
         self.new_airfoil_location = None
-        self.icon_dir = os.path.join(os.path.dirname(os.getcwd()), 'icons')
+        self.icon_dir = ICON_DIR
         self.parent.addToolBar(self)
         self.grid_icon = QIcon(os.path.join(self.icon_dir, 'grid_icon.png'))
         self.grid_button = QToolButton(self)
@@ -29,7 +23,7 @@ class MainIconToolbar(QToolBar):
         self.grid_button.setCheckable(True)
         self.grid_button.setIcon(self.grid_icon)
         self.grid_button.toggled.connect(self.on_grid_button_pressed)
-        self.grid_kwargs = read_json(os.path.join('gui_settings', 'grid_settings.json'))
+        # self.grid_kwargs = read_json(os.path.join('gui_settings', 'grid_settings.json'))
         self.addWidget(self.grid_button)
 
         # self.add_image_icon = QIcon(os.path.join(self.icon_dir, 'add_image.png'))
