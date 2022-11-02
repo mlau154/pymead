@@ -1,5 +1,4 @@
 from pymead.core.parametric_curve import ParametricCurve
-import numpy as np
 
 
 class Line(ParametricCurve):

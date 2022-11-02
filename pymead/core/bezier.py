@@ -57,41 +57,82 @@ class Bezier(ParametricCurve):
         else:
             self.t = np.linspace(0, 1, nt)
 
-        t = self.t
+        n_ctrl_points = len(P)
 
-        n = len(P)
+        self.x, self.y = np.zeros(self.t.shape), np.zeros(self.t.shape)
 
-        self.x, self.y, self.px, self.py, self.ppx, self.ppy = np.zeros(self.t.shape), np.zeros(self.t.shape), \
-                                                               np.zeros(self.t.shape), np.zeros(self.t.shape), \
-                                                               np.zeros(self.t.shape), np.zeros(self.t.shape)
+        for i in range(n_ctrl_points):
+            # Calculate the x- and y-coordinates of the Bézier curve given the input vector t
+            self.x += P[i, 0] * self.bernstein_poly(self.n, i, self.t)
+            self.y += P[i, 1] * self.bernstein_poly(self.n, i, self.t)
 
-        for i in range(n):
-            # Calculate the x- and y-coordinates of the of the Bezier curve given the input vector t
-            self.x += P[i, 0] * nchoosek(n - 1, i) * t ** i * (1 - t) ** (n - 1 - i)
-            self.y += P[i, 1] * nchoosek(n - 1, i) * t ** i * (1 - t) ** (n - 1 - i)
-        for i in range(n - 1):
-            # Calculate the first derivatives of the Bezier curve with respect to t, that is C_x'(t) and C_y'(t). Here,
-            # C_x'(t) is the x-component of the vector derivative dC(t)/dt, and C_y'(t) is the y-component
-            self.px += (n - 1) * (P[i + 1, 0] - P[i, 0]) * nchoosek(n - 2, i) * t ** i * (1 - t) ** (n - 2 - i)
-            self.py += (n - 1) * (P[i + 1, 1] - P[i, 1]) * nchoosek(n - 2, i) * t ** i * (1 - t) ** (n - 2 - i)
-        for i in range(n - 2):
-            # Calculate the second derivatives of the Bezier curve with respect to t, that is C_x''(t) and C_y''(t).
-            # Here, C_x''(t) is the x-component of the vector derivative d^2C(t)/dt^2, and C_y''(t) is the y-component.
-            self.ppx += (n - 1) * (n - 2) * (P[i + 2, 0] - 2 * P[i + 1, 0] + P[i, 0]) * nchoosek(n - 3, i) * t ** (
-                           i) * (1 - t) ** (n - 3 - i)
-            self.ppy += (n - 1) * (n - 2) * (P[i + 2, 1] - 2 * P[i + 1, 1] + P[i, 1]) * nchoosek(n - 3, i) * t ** (
-                           i) * (1 - t) ** (n - 3 - i)
+        first_deriv = self.derivative(1)
+        self.px = first_deriv[:, 0]
+        self.py = first_deriv[:, 1]
+        second_deriv = self.derivative(2)
+        self.ppx = second_deriv[:, 0]
+        self.ppy = second_deriv[:, 1]
 
-            with np.errstate(divide='ignore', invalid='ignore'):
-                # Calculate the curvature of the Bezier curve (k = kappa = 1 / R, where R is the radius of curvature)
-                self.k = np.true_divide((self.px * self.ppy - self.py * self.ppx),
-                                        (self.px ** 2 + self.py ** 2) ** (3 / 2))
+        with np.errstate(divide='ignore', invalid='ignore'):
+            # Calculate the curvature of the Bézier curve (k = kappa = 1 / R, where R is the radius of curvature)
+            self.k = np.true_divide((self.px * self.ppy - self.py * self.ppx),
+                                    (self.px ** 2 + self.py ** 2) ** (3 / 2))
 
         with np.errstate(divide='ignore', invalid='ignore'):
             self.R = np.true_divide(1, self.k)
 
         super().__init__(self.t, self.x, self.y, self.px, self.py, self.ppx, self.ppy, self.k, self.R)
-        # print('Finished initialization of Bezier curve.')
+
+    @staticmethod
+    def bernstein_poly(n: int, i: int, t):
+        """Calculates the Bernstein polynomial for a given Bézier curve order, index, and parameter vector
+
+        Arguments
+        =========
+        n: int
+            Bézier curve order (one less than the number of control points in the Bézier curve)
+        i: int
+            Bézier curve index
+        t: int, float, or np.ndarray
+            Parameter vector for the Bézier curve
+
+        Returns
+        =======
+        np.ndarray
+            Array of values of the Bernstein polynomial evaluated for each point in the parameter vector
+        """
+        return nchoosek(n, i) * t ** i * (1 - t) ** (n - i)
+
+    @staticmethod
+    def finite_diff_P(P: np.ndarray, k: int, i: int):
+        """Calculates the finite difference of the control points as shown in
+        https://pages.mtu.edu/~shene/COURSES/cs3621/NOTES/spline/Bezier/bezier-der.html
+
+        Arguments
+        =========
+        P: np.ndarray
+            Array of control points for the Bézier curve
+        k: int
+            Finite difference level (e.g., k = 1 is the first derivative finite difference)
+        i: int
+            An index referencing a location in the control point array
+        x_or_y: str
+            Choose 'x' to return the 'x'-value of the point, or choose 'y' to return the 'y'-value of the point
+        """
+        def finite_diff_recursive(_k, _i):
+            if _k > 1:
+                return finite_diff_recursive(_k - 1, _i + 1) - finite_diff_recursive(_k - 1, _i)
+            else:
+                return P[_i + 1, :] - P[_i, :]
+
+        return finite_diff_recursive(k, i)
+
+    def derivative(self, order: int):
+        n_ctrlpts = len(self.P)
+        return np.sum(np.array([np.prod(np.array([self.n - idx for idx in range(order)])) *
+                                np.array([self.finite_diff_P(self.P, order, i)]).T *
+                                np.array([self.bernstein_poly(self.n - order, i, self.t)])
+                                for i in range(n_ctrlpts - order)]), axis=0).T
 
     @staticmethod
     def approximate_arc_length(P, nt):
@@ -118,40 +159,27 @@ class Bezier(ParametricCurve):
                 self.t = t
         else:
             self.t = np.linspace(0, 1, nt)
-            # self.t = np.zeros(nt)
-            # for idx, val in enumerate(self.t):
-            #     self.t[idx] += idx / (nt - 1)
-            # self.t = np.array([idx / (nt - 1) for idx in range(nt)])
 
-        t = self.t
+        n_ctrl_points = len(P)
 
-        n = len(P)
+        self.x, self.y = np.zeros(self.t.shape), np.zeros(self.t.shape)
 
-        self.x, self.y, self.px, self.py, self.ppx, self.ppy = np.zeros(self.t.shape), np.zeros(self.t.shape), \
-                                                               np.zeros(self.t.shape), np.zeros(self.t.shape), \
-                                                               np.zeros(self.t.shape), np.zeros(self.t.shape)
+        for i in range(n_ctrl_points):
+            # Calculate the x- and y-coordinates of the Bézier curve given the input vector t
+            self.x += P[i, 0] * self.bernstein_poly(self.n, i, self.t)
+            self.y += P[i, 1] * self.bernstein_poly(self.n, i, self.t)
 
-        for i in range(n):
-            # Calculate the x- and y-coordinates of the of the Bezier curve given the input vector t
-            self.x += P[i, 0] * nchoosek(n - 1, i) * t ** i * (1 - t) ** (n - 1 - i)
-            self.y += P[i, 1] * nchoosek(n - 1, i) * t ** i * (1 - t) ** (n - 1 - i)
-        for i in range(n - 1):
-            # Calculate the first derivatives of the Bezier curve with respect to t, that is C_x'(t) and C_y'(t). Here,
-            # C_x'(t) is the x-component of the vector derivative dC(t)/dt, and C_y'(t) is the y-component
-            self.px += (n - 1) * (P[i + 1, 0] - P[i, 0]) * nchoosek(n - 2, i) * t ** i * (1 - t) ** (n - 2 - i)
-            self.py += (n - 1) * (P[i + 1, 1] - P[i, 1]) * nchoosek(n - 2, i) * t ** i * (1 - t) ** (n - 2 - i)
-        for i in range(n - 2):
-            # Calculate the second derivatives of the Bezier curve with respect to t, that is C_x''(t) and C_y''(t).
-            # Here, C_x''(t) is the x-component of the vector derivative d^2C(t)/dt^2, and C_y''(t) is the y-component.
-            self.ppx += (n - 1) * (n - 2) * (P[i + 2, 0] - 2 * P[i + 1, 0] + P[i, 0]) * nchoosek(n - 3, i) * t ** (
-                i) * (1 - t) ** (n - 3 - i)
-            self.ppy += (n - 1) * (n - 2) * (P[i + 2, 1] - 2 * P[i + 1, 1] + P[i, 1]) * nchoosek(n - 3, i) * t ** (
-                i) * (1 - t) ** (n - 3 - i)
+        first_deriv = self.derivative(1)
+        self.px = first_deriv[:, 0]
+        self.py = first_deriv[:, 1]
+        second_deriv = self.derivative(2)
+        self.ppx = second_deriv[:, 0]
+        self.ppy = second_deriv[:, 1]
 
-            with np.errstate(divide='ignore', invalid='ignore'):
-                # Calculate the curvature of the Bezier curve (k = kappa = 1 / R, where R is the radius of curvature)
-                self.k = np.true_divide((self.px * self.ppy - self.py * self.ppx),
-                                        (self.px ** 2 + self.py ** 2) ** (3 / 2))
+        with np.errstate(divide='ignore', invalid='ignore'):
+            # Calculate the curvature of the Bézier curve (k = kappa = 1 / R, where R is the radius of curvature)
+            self.k = np.true_divide((self.px * self.ppy - self.py * self.ppx),
+                                    (self.px ** 2 + self.py ** 2) ** (3 / 2))
 
         with np.errstate(divide='ignore', invalid='ignore'):
             self.R = np.true_divide(1, self.k)

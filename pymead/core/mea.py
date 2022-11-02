@@ -1,9 +1,6 @@
 from pymead.core.airfoil import Airfoil
-from pymead.core.free_point import FreePoint
-from pymead.core.anchor_point import AnchorPoint
 from pymead.core.param import Param
 from pymead.utils.dict_recursion import set_all_dict_values, assign_airfoil_tags_to_param_dict
-import matplotlib.pyplot as plt
 import typing
 import benedict
 import numpy as np

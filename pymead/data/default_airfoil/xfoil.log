@@ -15,15 +15,15 @@ Output:
  Plain airfoil file
 
 Enter airfoil name   s>  
- Number of input coordinate points: 133
+ Number of input coordinate points: 191
  Counterclockwise ordering
- Max thickness =     0.100631  at x =   0.384
- Max camber    =    -0.000005  at x =   0.811
+ Max thickness =     0.152217  at x =   0.393
+ Max camber    =    -0.000025  at x =   0.915
 
   LE  x,y  =   0.00000   0.00000  |   Chord =   1.00000
   TE  x,y  =   1.00000   0.00000  |
 
- Current airfoil nodes set from buffer airfoil nodes ( 133 )
+ Current airfoil nodes set from buffer airfoil nodes ( 191 )
 
    QUIT    Exit program
 
@@ -88,80 +88,125 @@ Enter Reynolds number   r>
 
  Initializing BL ...
     side            1  ...
- MRCHUE: Inverse mode at  30     Hk =   3.800
- MRCHUE: Inverse mode at  31     Hk =   4.038
- MRCHUE: Inverse mode at  32     Hk =   4.272
- MRCHUE: Inverse mode at  33     Hk =   4.504
- MRCHUE: Inverse mode at  34     Hk =   4.734
- MRCHUE: Inverse mode at  35     Hk =   4.964
- MRCHUE: Inverse mode at  36     Hk =   5.193
- MRCHUE: Inverse mode at  37     Hk =   5.423
- MRCHUE: Inverse mode at  38     Hk =   5.653
- MRCHUE: Inverse mode at  39     Hk =   5.884
- MRCHUE: Inverse mode at  40     Hk =   6.116
- MRCHUE: Inverse mode at  41     Hk =   6.349
- MRCHUE: Inverse mode at  42     Hk =   6.584
- MRCHUE: Inverse mode at  43     Hk =   6.821
- MRCHUE: Inverse mode at  44     Hk =   7.059
- MRCHUE: Inverse mode at  45     Hk =   7.298
- MRCHUE: Inverse mode at  46     Hk =   7.539
- MRCHUE: Inverse mode at  47     Hk =   7.782
- MRCHUE: Inverse mode at  48     Hk =   8.279
- MRCHUE: Inverse mode at  49     Hk =   8.782
- MRCHUE: Inverse mode at  50     Hk =   9.290
- MRCHUE: Inverse mode at  51     Hk =   9.805
- MRCHUE: Inverse mode at  52     Hk =  10.324
- MRCHUE: Inverse mode at  53     Hk =   6.714
- MRCHUE: Inverse mode at  54     Hk =   4.736
- MRCHUE: Inverse mode at  55     Hk =   3.396
- MRCHUE: Inverse mode at  76     Hk =   2.500
+ MRCHUE: Inverse mode at  79     Hk =   3.800
+ MRCHUE: Inverse mode at  80     Hk =   4.132
+ MRCHUE: Inverse mode at  81     Hk =   4.453
+ MRCHUE: Inverse mode at  82     Hk =   4.762
+ MRCHUE: Inverse mode at  83     Hk =   5.059
+ MRCHUE: Inverse mode at  84     Hk =   5.347
+ MRCHUE: Inverse mode at  85     Hk =   5.623
+ MRCHUE: Inverse mode at  86     Hk =   6.019
+ MRCHUE: Inverse mode at  87     Hk =   6.389
+ MRCHUE: Inverse mode at  88     Hk =   6.735
+ MRCHUE: Convergence failed at  89  side 1    Res =  0.1135E+02
+ MRCHUE: Inverse mode at  90     Hk =   6.873
+ MRCHUE: Inverse mode at  91     Hk =   6.937
+ MRCHUE: Inverse mode at  92     Hk =   6.997
+ MRCHUE: Inverse mode at  93     Hk =   7.053
+ MRCHUE: Inverse mode at  94     Hk =   7.106
+ MRCHUE: Inverse mode at  95     Hk =   7.155
+ MRCHUE: Inverse mode at  96     Hk =   7.201
     side            2  ...
- MRCHUE: Inverse mode at  56     Hk =   4.463
- MRCHUE: Inverse mode at  57     Hk =   6.418
- MRCHUE: Inverse mode at  58     Hk =   7.093
- MRCHUE: Inverse mode at  59     Hk =   7.228
+ MRCHUE: Inverse mode at  79     Hk =   3.800
+ MRCHUE: Inverse mode at  80     Hk =   4.138
+ MRCHUE: Inverse mode at  81     Hk =   4.464
+ MRCHUE: Inverse mode at  82     Hk =   4.779
+ MRCHUE: Inverse mode at  83     Hk =   5.083
+ MRCHUE: Inverse mode at  84     Hk =   5.376
+ MRCHUE: Inverse mode at  85     Hk =   5.658
+ MRCHUE: Inverse mode at  86     Hk =   6.063
+ MRCHUE: Inverse mode at  87     Hk =   6.443
+ MRCHUE: Inverse mode at  88     Hk =   6.799
+ MRCHUE: Inverse mode at  89     Hk =   7.335
+ MRCHUE: Inverse mode at  90     Hk =   8.034
+ MRCHUE: Inverse mode at  91     Hk =   8.173
+ MRCHUE: Inverse mode at  92     Hk =   8.238
+ MRCHUE: Inverse mode at  93     Hk =   8.299
+ MRCHUE: Inverse mode at  94     Hk =   8.356
+ MRCHUE: Inverse mode at  95     Hk =   8.410
+ MRCHUE: Inverse mode at  96     Hk =   8.460
+ MRCHUE: Inverse mode at  97     Hk =   8.506
+ MRCHUE: Inverse mode at  99     Hk =   5.610
+ MRCHUE: Inverse mode at 100     Hk =   4.523
+ MRCHUE: Inverse mode at 101     Hk =   3.878
+ MRCHUE: Inverse mode at 102     Hk =   3.449
+ MRCHUE: Inverse mode at 103     Hk =   3.139
 
- Side 1  free  transition at x/c =  0.1199   53
- Side 2 forced transition at x/c =  1.0000   59
+ MRCHDU: Convergence failed at  89  side 1    Res =  0.7543E+01
+ MRCHDU: Convergence failed at  90  side 1    Res =  0.5106E+01
+ MRCHDU: Convergence failed at  91  side 1    Res =  0.4703E+01
+ MRCHDU: Convergence failed at  92  side 1    Res =  0.4491E+01
+ MRCHDU: Convergence failed at  93  side 1    Res =  0.4252E+01
+ MRCHDU: Convergence failed at  94  side 1    Res =  0.4051E+01
+ MRCHDU: Convergence failed at  95  side 1    Res =  0.3814E+01
+ MRCHDU: Convergence failed at  96  side 1    Res =  0.4651E+01
+ Side 1 forced transition at x/c =  1.0000   96
+ Side 2 forced transition at x/c =  1.0000   97
 
-   1   rms: 0.1704E+00   max: -.1074E+01   D at   55  1   RLX: 0.466
-       a =  3.500      CL =  0.4735
-      Cm = -0.0018     CD =  0.01881   =>   CDf =  0.00975    CDp =  0.00906
+   1   rms: 0.6802E+00   max: 0.6179E+01   D at  104  2   RLX: 0.243
+       a =  0.000      CL =  0.0038
+      Cm = -0.0008     CD =  0.00523   =>   CDf =  0.00781    CDp = -0.00258
 
- Side 1  free  transition at x/c =  0.1164   52
- Side 2 forced transition at x/c =  1.0000   59
+ Side 1 forced transition at x/c =  1.0000   96
+ Side 2 forced transition at x/c =  1.0000   97
 
-   2   rms: 0.7960E-01   max: -.6011E+00   D at   76  1   RLX: 0.832
-       a =  3.500      CL =  0.4807
-      Cm = -0.0119     CD =  0.01873   =>   CDf =  0.00982    CDp =  0.00890
+   2   rms: 0.4261E+00   max: 0.2856E+01   D at  106  2   RLX: 0.525
+       a =  0.000      CL = -0.0019
+      Cm =  0.0004     CD =  0.01083   =>   CDf =  0.00774    CDp =  0.00309
 
- Side 1  free  transition at x/c =  0.1131   52
- Side 2 forced transition at x/c =  1.0000   59
+ MRCHDU: Convergence failed at 105  side 2    Res =  0.1619E+01
+ MRCHDU: Convergence failed at 106  side 2    Res =  0.1247E+02
+ MRCHDU: Convergence failed at 107  side 2    Res =  0.1814E+01
+ Side 1 forced transition at x/c =  1.0000   96
+ Side 2 forced transition at x/c =  1.0000   97
 
-   3   rms: 0.6766E-01   max: -.3830E+00   T at   52  1
-       a =  3.500      CL =  0.4273
-      Cm = -0.0031     CD =  0.01864   =>   CDf =  0.00994    CDp =  0.00870
+   3   rms: 0.2483E+00   max: 0.1339E+01   D at  104  2
+       a =  0.000      CL = -0.0016
+      Cm =  0.0003     CD =  0.02385   =>   CDf =  0.00756    CDp =  0.01628
 
- Side 1  free  transition at x/c =  0.1231   53
- Side 2 forced transition at x/c =  1.0000   59
+ Side 1  free  transition at x/c =  0.9943   95
+ Side 2  free  transition at x/c =  0.9946   96
 
-   4   rms: 0.1044E-01   max: -.8952E-01   T at   53  1
-       a =  3.500      CL =  0.4223
-      Cm = -0.0020     CD =  0.01825   =>   CDf =  0.00988    CDp =  0.00836
+   4   rms: 0.1205E+00   max: 0.1115E+01   T at   96  2
+       a =  0.000      CL =  0.0005
+      Cm = -0.0001     CD =  0.03286   =>   CDf =  0.00725    CDp =  0.02562
 
- Side 1  free  transition at x/c =  0.1250   53
- Side 2 forced transition at x/c =  1.0000   59
+ Side 1  free  transition at x/c =  0.9656   91
+ Side 2  free  transition at x/c =  0.9657   90
+ idif Ue xi dudx           1  6.39580861E-02  1.65724754E-03   38.592960    
+ Uenew xinew           2  5.06070319E-05  1.31130219E-06
 
-   5   rms: 0.5633E-03   max: -.6799E-02   D at   54  1
-       a =  3.500      CL =  0.4223
-      Cm = -0.0020     CD =  0.01829   =>   CDf =  0.00981    CDp =  0.00848
+   5   rms: 0.7761E-01   max: 0.7928E+00   D at  108  2
+       a =  0.000      CL =  0.0002
+      Cm = -0.0000     CD =  0.03297   =>   CDf =  0.00706    CDp =  0.02591
 
- Side 1  free  transition at x/c =  0.1250   53
- Side 2 forced transition at x/c =  1.0000   59
+ Side 1  free  transition at x/c =  0.9736   90
+ Side 2  free  transition at x/c =  0.9736   91
 
-   6   rms: 0.5607E-05   max: -.3313E-04   D at    4  1
-       a =  3.500      CL =  0.4223
-      Cm = -0.0020     CD =  0.01829   =>   CDf =  0.00981    CDp =  0.00848
+   6   rms: 0.2007E-01   max: -.2202E+00   D at  110  2
+       a =  0.000      CL =  0.0003
+      Cm = -0.0000     CD =  0.03040   =>   CDf =  0.00712    CDp =  0.02328
+
+ Side 1  free  transition at x/c =  0.9780   92
+ Side 2  free  transition at x/c =  0.9780   91
+
+   7   rms: 0.1240E-01   max: 0.6639E-01   D at  107  2
+       a =  0.000      CL =  0.0001
+      Cm = -0.0000     CD =  0.03042   =>   CDf =  0.00714    CDp =  0.02328
+
+ Side 1  free  transition at x/c =  0.9762   92
+ Side 2  free  transition at x/c =  0.9762   91
+
+   8   rms: 0.1546E-02   max: -.8341E-02   D at  105  2
+       a =  0.000      CL =  0.0002
+      Cm = -0.0000     CD =  0.03039   =>   CDf =  0.00713    CDp =  0.02326
+
+ Side 1  free  transition at x/c =  0.9764   92
+ Side 2  free  transition at x/c =  0.9764   91
+
+   9   rms: 0.2652E-04   max: 0.1494E-03   D at    4  1
+       a =  0.000      CL =  0.0002
+      Cm = -0.0000     CD =  0.03039   =>   CDf =  0.00713    CDp =  0.02326
 
 .OPERv   c>  
 .OPERv   c>  

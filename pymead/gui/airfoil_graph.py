@@ -5,7 +5,6 @@ Simple example of subclassing GraphItem.
 import numpy as np
 
 import pyqtgraph as pg
-# from pyqtgraph.Qt import QtCore
 from PyQt5.QtCore import Qt
 
 from PyQt5.QtCore import pyqtSignal, pyqtSlot

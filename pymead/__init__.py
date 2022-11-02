@@ -71,7 +71,7 @@ Technologies for Aircraft (CHEETA). Logo courtesy of [NASA](https://www.nasa.gov
 - Made corrections on BaseAirfoilParams and AnchorPoint Args domains
 - Added support for zero-curvature anchor points
 using 180-degree curvature control arm angles (or 90-degree curvature control arm angles for the leading edge)
-- Added support for sharp-juncture anchor points with \\(R=0\\) or \\(R_{LE}=0\\). Adding multiple consecutive sharp
+- Added support for sharp-juncture anchor points with \(R=0\) or \\(R_{LE}=0\\). Adding multiple consecutive sharp
 juncture anchor points creates line segments. Adding sharp-juncture anchor points violates the principle of slope and
 curvature continuity, but may be useful in some cases.
 
@@ -80,3 +80,5 @@ import os
 from matplotlib import colormaps
 DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")
 RESOURCE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "resources")
+ICON_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "icons")
+pass

@@ -1,6 +1,5 @@
 import numpy as np
 import math
-from pymead.utils.misc import count_dollar_signs
 from pymead.utils.transformations import transform
 
 
