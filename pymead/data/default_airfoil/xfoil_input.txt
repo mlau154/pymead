@@ -2,9 +2,9 @@
 oper
 iter 150
 visc
-100000.0
+706031.73
 vpar
-xtr 1.0 1.0
+xtr 0.05 0.1
 N 9.0
 
 alfa 0.0

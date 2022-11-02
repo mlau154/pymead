@@ -539,7 +539,8 @@ class Airfoil:
         The list of \(x\)-values used for the thickness distribution calculation, the thickness distribution, and the
         maximum value of the thickness distribution.
         """
-        points_shapely = list(map(tuple, self.non_transformed_coords))
+        self.get_coords(body_fixed_csys=True)
+        points_shapely = list(map(tuple, self.coords))
         airfoil_line_string = LineString(points_shapely)
         x_thickness = np.linspace(0.0, self.c.value, n_lines)
         thickness = []
