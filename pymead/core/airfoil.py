@@ -518,6 +518,7 @@ class Airfoil:
         """
         if self.needs_update:
             self.update()
+        self.get_coords(body_fixed_csys=True)
         points_shapely = list(map(tuple, self.coords))
         line_string = LineString(points_shapely)
         is_simple = line_string.is_simple
