@@ -95,14 +95,14 @@ class FreePoint(ControlPoint):
                                                        1 / self.airfoil_transformation['c'].value,
                                                        ['translate', 'rotate', 'scale'])
             else:
-                print(f"self.xp before is {self.xp.value}, yp was {self.yp.value}")
+                # print(f"self.xp before is {self.xp.value}, yp was {self.yp.value}")
                 self.xp.value, self.yp.value = transform(self.x.value, self.y.value,
                                                          self.airfoil_transformation['dx'].value,
                                                          self.airfoil_transformation['dy'].value,
                                                          -self.airfoil_transformation['alf'].value,
                                                          self.airfoil_transformation['c'].value,
                                                          ['scale', 'rotate', 'translate'])
-                print(f"After, xp is {self.xp.value} and yp is {self.yp.value}")
+                # print(f"After, xp is {self.xp.value} and yp is {self.yp.value}")
             # If other airfoils are affected by this change in FreePoint location, we need to mark the airfoil for
             # change:
             # other_airfoils_affected.extend(self.update_xy())

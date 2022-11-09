@@ -8,7 +8,7 @@ from pymead.utils.increment_string_index import increment_string_index, decremen
 from pymead.utils.transformations import translate_matrix, rotate_matrix, scale_matrix
 from pymead.utils.downsampling_schemes import fractal_downsampler2
 import matplotlib.pyplot as plt
-from shapely.geometry import Polygon, LineString
+from shapely.geometry import Polygon, LineString, Point
 from copy import deepcopy
 from pymead import DATA_DIR
 import os
@@ -557,6 +557,19 @@ class Airfoil:
         self.max_thickness = max(thickness)
         return self.x_thickness, self.thickness, self.max_thickness
 
+    def contains_point(self, point: np.ndarray):
+        self.get_coords(body_fixed_csys=False)
+        points_shapely = list(map(tuple, self.coords))
+        polygon = Polygon(points_shapely)
+        return polygon.contains(Point(point[0], point[1]))
+
+    def contains_line_string(self, points: np.ndarray):
+        self.get_coords(body_fixed_csys=False)
+        points_shapely = list(map(tuple, self.coords))
+        polygon = Polygon(points_shapely)
+        line_string = LineString(list(map(tuple, points)))
+        return polygon.contains(line_string)
+
     def plot_airfoil(self, axs: plt.axes, **plot_kwargs):
         """
         Plots each of the airfoil's Bézier curves on a specified matplotlib axis
@@ -615,7 +628,8 @@ class Airfoil:
         return self.coords
 
     def write_coords_to_file(self, f: str, read_write_mode: str, body_fixed_csys: bool = False,
-                             downsample: bool = False, ratio_thresh=None, abs_thresh=None) -> int:
+                             scale_factor: float = None, downsample: bool = False, ratio_thresh=None,
+                             abs_thresh=None) -> int:
         """
         Note: If downsample is set to true and either ratio_thresh or abs_thresh is not specified, the default values of
         1.001 and 0.1 will be used for ratio_thresh and abs_thresh, respectively.
@@ -629,9 +643,14 @@ class Airfoil:
                     coord_file.write(f"{row[0]} {row[1]}\n")
         else:
             n_data_pts = len(self.coords)
-            with open(f, read_write_mode) as coord_file:
-                for row in self.coords:
-                    coord_file.write(f"{row[0]} {row[1]}\n")
+            if scale_factor is not None:
+                with open(f, read_write_mode) as coord_file:
+                    for row in self.coords * scale_factor:
+                        coord_file.write(f"{row[0]} {row[1]}\n")
+            else:
+                with open(f, read_write_mode) as coord_file:
+                    for row in self.coords:
+                        coord_file.write(f"{row[0]} {row[1]}\n")
         return n_data_pts
 
     def read_Cl_from_file(self, f: str):

@@ -2,7 +2,7 @@
 oper
 iter 150
 visc
-706031.73
+7100000.0
 vpar
 xtr 0.05 0.1
 N 9.0

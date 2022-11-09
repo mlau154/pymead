@@ -15,15 +15,15 @@ Output:
  Plain airfoil file
 
 Enter airfoil name   s>  
- Number of input coordinate points: 191
+ Number of input coordinate points: 198
  Counterclockwise ordering
- Max thickness =     0.152217  at x =   0.393
- Max camber    =    -0.000025  at x =   0.915
+ Max thickness =     0.200223  at x =   0.340
+ Max camber    =    -0.009519  at x =   0.322
 
   LE  x,y  =   0.00000   0.00000  |   Chord =   1.00000
-  TE  x,y  =   1.00000   0.00000  |
+  TE  x,y  =   0.99863  -0.05224  |
 
- Current airfoil nodes set from buffer airfoil nodes ( 191 )
+ Current airfoil nodes set from buffer airfoil nodes ( 198 )
 
    QUIT    Exit program
 
@@ -65,7 +65,7 @@ Enter airfoil name   s>
 .OPERi   c>  
 Enter Reynolds number   r>  
  M  =    0.0000
- Re =    706031
+ Re =   7100000
 
 .OPERv   c>  
  Xtr/c     =  1.0000    top    side
@@ -88,62 +88,41 @@ Enter Reynolds number   r>
 
  Initializing BL ...
     side            1  ...
- MRCHUE: Inverse mode at  35     Hk =   2.500
- MRCHUE: Inverse mode at  36     Hk =   2.500
- MRCHUE: Inverse mode at  89     Hk =   2.500
- MRCHUE: Inverse mode at  90     Hk =   2.500
- MRCHUE: Inverse mode at  91     Hk =   2.500
- MRCHUE: Inverse mode at  92     Hk =   2.500
- MRCHUE: Inverse mode at  93     Hk =   2.500
- MRCHUE: Inverse mode at  94     Hk =   2.500
- MRCHUE: Inverse mode at  95     Hk =   2.500
- MRCHUE: Inverse mode at  96     Hk =   2.500
+ MRCHUE: Inverse mode at  40     Hk =   2.500
+ MRCHUE: Inverse mode at 100     Hk =   2.500
+ MRCHUE: Inverse mode at 101     Hk =   2.500
+ MRCHUE: Convergence failed at 102  side 1    Res =  0.7404E+01
     side            2  ...
- MRCHUE: Inverse mode at  47     Hk =   2.500
- MRCHUE: Inverse mode at  91     Hk =   2.500
- MRCHUE: Inverse mode at  92     Hk =   2.500
- MRCHUE: Inverse mode at  93     Hk =   2.500
- MRCHUE: Inverse mode at  94     Hk =   2.500
- MRCHUE: Inverse mode at  95     Hk =   2.500
- MRCHUE: Inverse mode at  96     Hk =   2.500
- MRCHUE: Inverse mode at  97     Hk =   2.500
+ MRCHUE: Convergence failed at  98  side 2    Res =  0.7375E+01
 
- Side 1 forced transition at x/c =  0.0500   35
- Side 2 forced transition at x/c =  0.1000   47
+ MRCHDU: Convergence failed at 102  side 1    Res =  0.5560E+01
+ Side 1 forced transition at x/c =  0.0500   40
+ Side 2 forced transition at x/c =  0.1000   44
 
-   1   rms: 0.1587E+00   max: 0.7782E+00   D at  104  2   RLX: 0.871
-       a =  0.000      CL = -0.0008
-      Cm =  0.0002     CD =  0.01118   =>   CDf =  0.00963    CDp =  0.00155
+   1   rms: 0.2872E+00   max: 0.1520E+01   D at  100  2   RLX: 0.741
+       a =  0.000      CL =  0.2803
+      Cm =  0.0063     CD =  0.00712   =>   CDf =  0.00682    CDp =  0.00030
 
- Side 1 forced transition at x/c =  0.0500   36
- Side 2 forced transition at x/c =  0.1000   46
- idif Ue xi dudx           1  6.78098202E-02  1.68240070E-03   40.305393    
- Uenew xinew           2  1.06666051E-03  2.64644623E-05
+ Side 1 forced transition at x/c =  0.0500   40
+ Side 2 forced transition at x/c =  0.1000   44
 
-   2   rms: 0.3780E-01   max: -.2202E+00   D at   90  1
-       a =  0.000      CL = -0.0024
-      Cm =  0.0004     CD =  0.01264   =>   CDf =  0.00982    CDp =  0.00282
+   2   rms: 0.6406E-01   max: 0.3066E+00   D at  101  2
+       a =  0.000      CL =  0.2425
+      Cm =  0.0133     CD =  0.00933   =>   CDf =  0.00685    CDp =  0.00248
 
- Side 1 forced transition at x/c =  0.0500   35
- Side 2 forced transition at x/c =  0.1000   47
+ Side 1 forced transition at x/c =  0.0500   40
+ Side 2 forced transition at x/c =  0.1000   44
 
-   3   rms: 0.5283E-02   max: -.3380E-01   D at   97  2
-       a =  0.000      CL = -0.0022
-      Cm =  0.0003     CD =  0.01269   =>   CDf =  0.00977    CDp =  0.00292
+   3   rms: 0.3799E-02   max: -.3117E-01   D at  100  1
+       a =  0.000      CL =  0.2377
+      Cm =  0.0142     CD =  0.00949   =>   CDf =  0.00682    CDp =  0.00267
 
- Side 1 forced transition at x/c =  0.0500   35
- Side 2 forced transition at x/c =  0.1000   47
+ Side 1 forced transition at x/c =  0.0500   40
+ Side 2 forced transition at x/c =  0.1000   44
 
-   4   rms: 0.1749E-03   max: -.1762E-02   D at    4  2
-       a =  0.000      CL = -0.0021
-      Cm =  0.0003     CD =  0.01269   =>   CDf =  0.00977    CDp =  0.00292
-
- Side 1 forced transition at x/c =  0.0500   35
- Side 2 forced transition at x/c =  0.1000   47
-
-   5   rms: 0.8312E-05   max: -.1153E-03   D at    4  2
-       a =  0.000      CL = -0.0021
-      Cm =  0.0003     CD =  0.01269   =>   CDf =  0.00977    CDp =  0.00292
+   4   rms: 0.5054E-04   max: -.6648E-03   D at  101  1
+       a =  0.000      CL =  0.2377
+      Cm =  0.0142     CD =  0.00949   =>   CDf =  0.00682    CDp =  0.00267
 
 .OPERv   c>  
 .OPERv   c>  
