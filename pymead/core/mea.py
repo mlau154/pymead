@@ -15,7 +15,7 @@ class MEA:
     Class for multi-element airfoils. Serves as a container for `pymead.core.airfoil.Airfoil`s and adds a few methods
     important for the Graphical User Interface.
     """
-    def __init__(self, param_tree, airfoils: Airfoil or typing.List[Airfoil, ...] or None = None,
+    def __init__(self, param_tree=None, airfoils: Airfoil or typing.List[Airfoil, ...] or None = None,
                  airfoil_graphs_active: bool = False):
         self.airfoils = {}
         self.file_name = None
@@ -28,6 +28,8 @@ class MEA:
         if not isinstance(airfoils, list):
             if airfoils is not None:
                 self.add_airfoil(airfoils, 0, param_tree)
+            else:
+                self.add_airfoil(Airfoil(), 0, param_tree)
         else:
             for idx, airfoil in enumerate(airfoils):
                 self.add_airfoil(airfoil, idx, param_tree)

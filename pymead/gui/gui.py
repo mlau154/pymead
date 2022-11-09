@@ -62,8 +62,11 @@ class GUI(QMainWindow):
         self.w = self.mea.airfoils['A0'].airfoil_graph.w
         self.v = self.mea.airfoils['A0'].airfoil_graph.v
         # internal_geometry_xy = np.loadtxt(os.path.join(DATA_DIR, 'sec_3.txt'))
-        # print(f"geometry = {internal_geometry_xy}")
-        # self.internal_geometry = self.v.plot(internal_geometry_xy[:, 0], internal_geometry_xy[:, 1],
+        # # print(f"geometry = {internal_geometry_xy}")
+        # scale_factor = 0.728967
+        # x_start = 0.051039494
+        # self.internal_geometry = self.v.plot(internal_geometry_xy[:, 0] * scale_factor + x_start,
+        #                                      internal_geometry_xy[:, 1] * scale_factor,
         #                                      pen=pg.mkPen(color='orange', width=1))
         # self.airfoil_graphs.append(AirfoilGraph(self.mea.airfoils['A1'], w=self.w, v=self.v))
         self.main_layout = QHBoxLayout()

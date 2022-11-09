@@ -59,10 +59,17 @@ class MainIconToolbar(QToolBar):
         self.addWidget(self.te_thickness_button)
 
     def on_grid_button_pressed(self, checked):
+        import pyqtgraph as pg
         if checked:
             self.parent.v.showGrid(x=True, y=True)
         else:
             self.parent.v.showGrid(x=False, y=False)
+        internal_geometry_xy = np.loadtxt(os.path.join(DATA_DIR, 'sec_10.txt'))
+        scale_factor = 0.658160
+        x_start = 0.070053987
+        internal_geometry = self.parent.v.plot(internal_geometry_xy[:, 0] * scale_factor + x_start,
+                                               internal_geometry_xy[:, 1] * scale_factor,
+                                               pen=pg.mkPen(color='orange', width=1))
         self.parent.mea.extract_parameters()
         parameter_list = np.loadtxt(os.path.join(DATA_DIR, 'parameter_list.dat'))
         self.parent.mea.update_parameters(parameter_list)
