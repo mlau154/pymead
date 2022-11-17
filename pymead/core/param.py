@@ -8,7 +8,7 @@ class Param:
     def __init__(self, value: float, units: str or None = None,
                  bounds: list or np.ndarray = np.array([-np.inf, np.inf]), scale_value: float or None = None,
                  active: bool = True, linked: bool = False, func_str: str = None, x: bool = False, y: bool = False,
-                 xp: bool = False, yp: bool = False):
+                 xp: bool = False, yp: bool = False, name: str = None):
         """
         ### Description:
 
@@ -49,6 +49,7 @@ class Param:
         self.scale_value = scale_value
         self._value = None
         self.bounds = bounds
+        self.name = name
 
         if self.units == 'length' and self.scale_value is not None:
             self._value = value * self.scale_value

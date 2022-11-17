@@ -1,6 +1,7 @@
 from pymead.core.airfoil import Airfoil
 from pymead.core.param import Param
-from pymead.utils.dict_recursion import set_all_dict_values, assign_airfoil_tags_to_param_dict
+from pymead.utils.dict_recursion import set_all_dict_values, assign_airfoil_tags_to_param_dict, \
+    assign_names_to_params_in_param_dict
 import typing
 import benedict
 import numpy as np
@@ -38,10 +39,7 @@ class MEA:
         """
         Reimplemented to ensure MEA picklability
         """
-        print(f"MEA __getstate__ called")
         state = self.__dict__.copy()
-        print(f"state v = {state['v']}")
-        print(f"state = {state}")
         if state['v'] is not None:
             state['v'].clear()
         state['w'] = None  # Set unpicklable GraphicsLayoutWidget object to None
@@ -72,6 +70,8 @@ class MEA:
         set_all_dict_values(self.param_dict[airfoil.tag])
 
         assign_airfoil_tags_to_param_dict(self.param_dict[airfoil.tag], airfoil_tag=airfoil.tag)
+
+        assign_names_to_params_in_param_dict(self.param_dict)
 
         if self.airfoil_graphs_active:
             self.add_airfoil_graph_to_airfoil(airfoil, idx, param_tree)
@@ -104,29 +104,29 @@ class MEA:
         airfoil_graph.param_tree = param_tree
         airfoil.airfoil_graph = airfoil_graph
 
-    def extract_parameters(self, write_to_txt_file: bool = True):
+    def extract_parameters(self, write_to_txt_file: bool = False):
         parameter_list = []
         norm_value_list = []
 
         def check_for_bounds_recursively(d: dict, bounds_error_=False):
-            for k, v in d.items():
+            for k_, v in d.items():
                 if not bounds_error_:
                     if isinstance(v, dict):
-                        bounds_error_ = check_for_bounds_recursively(v, bounds_error_)
+                        bounds_error_, param_name_ = check_for_bounds_recursively(v, bounds_error_)
                     else:
                         if isinstance(v, Param):
                             if v.active and not v.linked:
                                 if v.bounds[0] == -np.inf or v.bounds[0] == np.inf or v.bounds[1] == -np.inf or v.bounds[1] == np.inf:
                                     bounds_error_ = True
-                                    return bounds_error_
+                                    return bounds_error_, v.name
                         else:
                             raise ValueError('Found value in dictionary not of type \'Param\'')
                 else:
-                    return bounds_error_
-            return bounds_error_
+                    return bounds_error_, None
+            return bounds_error_, None
 
         def extract_parameters_recursively(d: dict):
-            for k, v in d.items():
+            for k_, v in d.items():
                 if isinstance(v, dict):
                     extract_parameters_recursively(v)
                 else:
@@ -138,9 +138,12 @@ class MEA:
                     else:
                         raise ValueError('Found value in dictionary not of type \'Param\'')
 
-        bounds_error = check_for_bounds_recursively(self.param_dict)
+        bounds_error, param_name = check_for_bounds_recursively(self.param_dict)
         if bounds_error:
-            raise ValueError('Bounds must be set for each active and unlinked parameter for parameter extraction')
+            error_message = f'Bounds must be set for each active and unlinked parameter for parameter extraction (at ' \
+                            f'least one infinite bound found for {param_name})'
+            print(error_message)
+            return error_message
         else:
             extract_parameters_recursively(self.param_dict)
             if write_to_txt_file:
@@ -152,6 +155,9 @@ class MEA:
 
     def update_parameters(self, norm_value_list: list or np.ndarray):
 
+        if isinstance(norm_value_list, list):
+            norm_value_list = np.array(norm_value_list)
+
         if norm_value_list.ndim == 0:
             norm_value_list = np.array([norm_value_list])
 
@@ -159,19 +165,19 @@ class MEA:
             for k, v in d.items():
                 if not bounds_error_:
                     if isinstance(v, dict):
-                        bounds_error_ = check_for_bounds_recursively(v, bounds_error_)
+                        bounds_error_, param_name_ = check_for_bounds_recursively(v, bounds_error_)
                     else:
                         if isinstance(v, Param):
                             if v.active and not v.linked:
                                 if v.bounds[0] == -np.inf or v.bounds[0] == np.inf or v.bounds[1] == -np.inf or \
                                         v.bounds[1] == np.inf:
                                     bounds_error_ = True
-                                    return bounds_error_
+                                    return bounds_error_, v.name
                         else:
                             raise ValueError('Found value in dictionary not of type \'Param\'')
                 else:
-                    return bounds_error_
-            return bounds_error_
+                    return bounds_error_, None
+            return bounds_error_, None
 
         def update_parameters_recursively(d: dict, list_counter: int):
             for k, v in d.items():
@@ -204,9 +210,12 @@ class MEA:
                         raise ValueError('Found value in dictionary not of type \'Param\'')
             return list_counter
 
-        bounds_error = check_for_bounds_recursively(self.param_dict)
+        bounds_error, param_name = check_for_bounds_recursively(self.param_dict)
         if bounds_error:
-            raise ValueError('Bounds must be set for each active and unlinked parameter for parameter extraction')
+            error_message = f'Bounds must be set for each active and unlinked parameter for parameter update ' \
+                            f'(at least one infinite bound found for {param_name})'
+            print(error_message)
+            return error_message
         else:
             update_parameters_recursively(self.param_dict, 0)
 

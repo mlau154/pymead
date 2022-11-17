@@ -3,6 +3,7 @@ import os
 from pymead.analysis.read_aero_data import read_Cl_from_file_panel_fort, read_Cp_from_file_panel_fort, \
     read_aero_data_from_xfoil, read_Cp_from_file_xfoil
 from pymead.core.airfoil import Airfoil
+from pymead.core.mea import MEA
 from pymead.core.base_airfoil_params import BaseAirfoilParams
 from pymead.core.param import Param
 from pymead import DATA_DIR
@@ -10,12 +11,15 @@ import re
 import time
 
 
-def calculate_aero_data(airfoil_coord_dir: str, airfoil_name: str, alpha, airfoil: Airfoil,
+def calculate_aero_data(airfoil_coord_dir: str, airfoil_name: str, mea: MEA, mea_airfoil_name: str,
+                        alpha=None, Cl=None, CLI=None,
                         tool: str = 'panel_fort', xfoil_settings: dict = None, export_Cp: bool = True,
-                        body_fixed_csys: bool = True):
+                        body_fixed_csys: bool = True, downsample: bool = False, ratio_thresh=None, abs_thresh=None):
+    # ratio_thresh of 1.000005 and abs_thresh = 0.1 works well
     tool_list = ['panel_fort', 'xfoil', 'mses']
     if tool not in tool_list:
         raise ValueError(f"\'tool\' must be one of {tool_list}")
+    airfoil = mea.airfoils[mea_airfoil_name]
 
     # Check for self-intersection and early return if self-intersecting:
     airfoil.get_coords(body_fixed_csys=True)
@@ -43,16 +47,34 @@ def calculate_aero_data(airfoil_coord_dir: str, airfoil_name: str, alpha, airfoi
         if 'N' not in xfoil_settings.keys():
             xfoil_settings['N'] = 9.0
         f = os.path.join(base_dir, airfoil_name + ".dat")
-        airfoil.write_coords_to_file(f, 'w', body_fixed_csys=body_fixed_csys, downsample=True, ratio_thresh=1.000005,
-                                     abs_thresh=0.1)
+        airfoil.write_coords_to_file(f, 'w', body_fixed_csys=body_fixed_csys, downsample=downsample,
+                                     ratio_thresh=ratio_thresh, abs_thresh=abs_thresh)
         xfoil_input_file = os.path.join(base_dir, 'xfoil_input.txt')
         xfoil_input_list = ['', 'oper', f'iter {xfoil_settings["iter"]}', 'visc', str(xfoil_settings['Re']),
                             'vpar', f'xtr {xfoil_settings["xtr"][0]} {xfoil_settings["xtr"][1]}',
                             f'N {xfoil_settings["N"]}', '']
-        if not isinstance(alpha, list):
-            alpha = [alpha]
-        for idx, alf in enumerate(alpha):
-            xfoil_input_list.append('alfa ' + str(alf))
+
+        # alpha/Cl input setup (must choose exactly one of alpha, Cl, or CLI)
+        if len([0 for prescribed_xfoil_val in (alpha, Cl, CLI) if prescribed_xfoil_val is not None]) > 1:
+            raise ValueError('More than one of alpha, Cl, or CLI was set. Choose only one for XFOIL analysis.')
+        if alpha is not None:
+            if not isinstance(alpha, list):
+                alpha = [alpha]
+            for idx, alf in enumerate(alpha):
+                xfoil_input_list.append('alfa ' + str(alf))
+        elif Cl is not None:
+            if not isinstance(Cl, list):
+                Cl = [Cl]
+            for idx, Cl_ in enumerate(Cl):
+                xfoil_input_list.append('Cl ' + str(Cl_))
+        elif CLI is not None:
+            if not isinstance(CLI, list):
+                CLI = [CLI]
+            for idx, CLI_ in enumerate(CLI):
+                xfoil_input_list.append('CLI ' + str(CLI_))
+        else:
+            raise ValueError('At least one of alpha, Cl, or CLI must be set for XFOIL analysis.')
+
         if export_Cp:
             xfoil_input_list.append('cpwr ' + f"{airfoil_name}_Cp.dat")
         xfoil_input_list.append('')
@@ -121,6 +143,7 @@ def convert_xfoil_string_to_aero_data(line1: str, line2: str, aero_data: dict):
         if last_ch == '=' and not ch == '>':
             appending = True
             data_list.append('')
+    aero_data['alf'] = float(data_list[4])
     aero_data['Cm'] = float(data_list[0])
     aero_data['Cd'] = float(data_list[1])
     aero_data['Cdf'] = float(data_list[2])
@@ -136,11 +159,13 @@ class GeometryError(Exception):
 
 if __name__ == '__main__':
     d = DATA_DIR
-    airfoil = Airfoil(base_airfoil_params=BaseAirfoilParams(R_le=Param(0.04), L_le=Param(0.12)))
+    airfoil_ = Airfoil(base_airfoil_params=BaseAirfoilParams(R_le=Param(0.04), L_le=Param(0.12)))
+    mea_ = MEA(airfoils=[airfoil_])
     a_name = "test_airfoil"
     xfoil_settings = {'Re': 1e5, 'timeout': 15, 'iter': 150}
     # line1, line2 = read_aero_data_from_xfoil(os.path.join(d, a_name, 'xfoil.log'), {})
-    aero_data, xfoil_log = calculate_aero_data(d, a_name, [2.0], airfoil, 'xfoil', xfoil_settings)
+    aero_data, xfoil_log = calculate_aero_data(d, a_name, mea_, 'A0', Cl=[0.35], tool='xfoil',
+                                               xfoil_settings=xfoil_settings)
     print(aero_data)
     # print(xfoil_log)
     pass

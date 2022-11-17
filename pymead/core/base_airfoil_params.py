@@ -25,7 +25,7 @@ class BaseAirfoilParams:
                  phi_te: Param = None,  # blunt trailing edge 'tilt' angle
                  dx: Param = None,  # dx to translate
                  dy: Param = None,  # dy to translate
-                 non_dim_by_chord: bool = True,
+                 non_dim_by_chord: bool = False,
                  ):
         """
         ### Description:

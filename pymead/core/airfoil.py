@@ -124,7 +124,6 @@ class Airfoil:
         # pymead.core.mea.MEA re-adds the airfoil_graph (and thus pg_curve_handle) objects to each airfoil
         state = self.__dict__.copy()
         for curve in state['curve_list']:
-            print(f"curve = {curve}")
             if hasattr(curve, 'pg_curve_handle'):
                 # curve.pg_curve_handle.clear()
                 curve.pg_curve_handle = None  # Delete unpicklable PlotDataItem object from state
@@ -557,17 +556,30 @@ class Airfoil:
         self.max_thickness = max(thickness)
         return self.x_thickness, self.thickness, self.max_thickness
 
-    def contains_point(self, point: np.ndarray):
+    def contains_point(self, point: np.ndarray or list):
+        if isinstance(point, list):
+            point = np.array(point)
         self.get_coords(body_fixed_csys=False)
         points_shapely = list(map(tuple, self.coords))
         polygon = Polygon(points_shapely)
         return polygon.contains(Point(point[0], point[1]))
 
-    def contains_line_string(self, points: np.ndarray):
+    def contains_line_string(self, points: np.ndarray or list) -> bool:
+        if isinstance(points, list):
+            points = np.array(points)
         self.get_coords(body_fixed_csys=False)
         points_shapely = list(map(tuple, self.coords))
         polygon = Polygon(points_shapely)
         line_string = LineString(list(map(tuple, points)))
+        return polygon.contains(line_string)
+
+    def within_line_string_until_point(self, points: np.ndarray or list, cutoff_point) -> bool:
+        if isinstance(points, list):
+            points = np.array(points)
+        self.get_coords(body_fixed_csys=False)
+        points_shapely = list(map(tuple, points))
+        polygon = Polygon(points_shapely)
+        line_string = LineString(list(map(tuple, self.coords)))
         return polygon.contains(line_string)
 
     def plot_airfoil(self, axs: plt.axes, **plot_kwargs):

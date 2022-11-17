@@ -12,7 +12,8 @@ with open((HERE / "README.md"), encoding="utf-8") as f:
 setup(
     name="pymead",
     version="2.0.0",
-    description="Generate Bézier-parametrized airfoils and airfoil systems",
+    description="Python library for generation, aerodynamic analysis, and aerodynamic shape optimize of "
+                "Bézier-parametrized airfoils and airfoil systems",
     long_description=README,
     long_description_content_type="text/markdown",
     url="https://github.com/mlau154/pymead",
@@ -24,8 +25,9 @@ setup(
         "Programming Language :: Python :: 3",
     ],
     packages=["pymead", "pymead/core", "pymead/symmetric", "pymead/examples", "pymead/utils", "pymead/gui",
-              "pymead/tests", "pymead/resources", "pymead/analysis", "pymead/data", "pymead/icons"],
+              "pymead/tests", "pymead/resources", "pymead/analysis", "pymead/data", "pymead/icons",
+              "pymead/optimization", "pymead/plugins"],
     include_package_data=True,
     install_requires=["scipy", "numpy", "shapely", "matplotlib", "requests", "PyQt5", "pyqtgraph", "python-benedict",
-                      "pandas", "dill"],
+                      "pandas", "dill", "pymoo"],
 )
