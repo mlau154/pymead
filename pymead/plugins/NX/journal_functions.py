@@ -19,20 +19,13 @@ def write_user_expression(expression: str, units: str or None):
             f"(input type: {type(units)}, accepted types: {str} or {None})")
 
 
-def add_sketch(points: list, curve_orders: list):
+def add_sketch(airfoil_data: dict):
     theSession = NXOpen.Session.GetSession()
     workPart = theSession.Parts.Work
     displayPart = theSession.Parts.Display
     # ----------------------------------------------
     #   Menu: Insert->Sketch
     # ----------------------------------------------
-    # markId1 = theSession.SetUndoMark(NXOpen.Session.MarkVisibility.Visible, "Enter Sketch")
-    #
-    # markId2 = theSession.SetUndoMark(NXOpen.Session.MarkVisibility.Visible, "Update Model from Sketch")
-    #
-    # theSession.BeginTaskEnvironment()
-    #
-    # markId3 = theSession.SetUndoMark(NXOpen.Session.MarkVisibility.Visible, "Start")
 
     sketchInPlaceBuilder1 = workPart.Sketches.CreateSketchInPlaceBuilder2(NXOpen.Sketch.Null)
 
@@ -151,7 +144,7 @@ def add_sketch(points: list, curve_orders: list):
 
     theSession.Preferences.Sketch.CreateDimensionForTypedValues = True
 
-    theSession.Preferences.Sketch.ScaleOnFirstDrivingDimension = True
+    theSession.Preferences.Sketch.ScaleOnFirstDrivingDimension = False
 
     nXObject1 = simpleSketchInPlaceBuilder1.Commit()
 
@@ -201,19 +194,35 @@ def add_sketch(points: list, curve_orders: list):
 
     theSession.Preferences.Sketch.SectionView = False
 
-    point_list = [NXOpen.Point3d(point[0], point[1], point[2]) for point in points]
-    lines = [workPart.Curves.CreateLine(point_list[idx], point_list[idx + 1]) for idx in range(len(point_list) - 1)]
+    for airfoil_name, airfoil in airfoil_data.items():
+        points = airfoil['control_point_list_string']
+        point_list = [NXOpen.Point3d(point[0], point[1], point[2]) for point in points]
+        lines = [workPart.Curves.CreateLine(point_list[idx], point_list[idx + 1]) for idx in range(len(point_list) - 1)]
 
-    convertToFromReferenceBuilder1 = workPart.Sketches.CreateConvertToFromReferenceBuilder()
-    convert_lines_to_reference_list = convertToFromReferenceBuilder1.InputObjects
+        le_point = NXOpen.Point3d(airfoil['dx'], 0.0, airfoil['dy'])
+        te_point = NXOpen.Point3d(airfoil['dx'] + airfoil['c'] * math.cos(-airfoil['alf']),
+                                   0.0,
+                                   airfoil['dy'] + airfoil['c'] * math.sin(-airfoil['alf']))
 
-    for idx, line in enumerate(lines):
-        theSession.ActiveSketch.AddGeometry(line, NXOpen.Sketch.InferConstraintsOption.InferNoConstraints)
-        convert_lines_to_reference_list.Add(line)
+        chord_line = workPart.Curves.CreateLine(le_point, te_point)
+        te_thickness_upper_line = workPart.Curves.CreateLine(te_point, point_list[0])
+        te_thickness_lower_line = workPart.Curves.CreateLine(te_point, point_list[-1])
+        lines.insert(0, te_thickness_upper_line)
+        lines.insert(0, chord_line)
+        lines.append(te_thickness_lower_line)
 
-    convertToFromReferenceBuilder1.OutputState = NXOpen.ConvertToFromReferenceBuilder.OutputType.Reference
-    convertToFromReferenceBuilder1.Commit()
-    convertToFromReferenceBuilder1.Destroy()
+        airfoil_data[airfoil_name]['lines'] = lines
+
+        convertToFromReferenceBuilder1 = workPart.Sketches.CreateConvertToFromReferenceBuilder()
+        convert_lines_to_reference_list = convertToFromReferenceBuilder1.InputObjects
+
+        for idx, line in enumerate(lines):
+            theSession.ActiveSketch.AddGeometry(line, NXOpen.Sketch.InferConstraintsOption.InferNoConstraints)
+            convert_lines_to_reference_list.Add(line)
+
+        convertToFromReferenceBuilder1.OutputState = NXOpen.ConvertToFromReferenceBuilder.OutputType.Reference
+        convertToFromReferenceBuilder1.Commit()
+        convertToFromReferenceBuilder1.Destroy()
 
     # -------------------------------------------
 
@@ -221,8 +230,8 @@ def add_sketch(points: list, curve_orders: list):
     #   Menu: Insert->Curve->Spline...
     # ----------------------------------------------
 
-    def generate_splines():
-        starting_point = 0
+    def generate_splines(curve_orders):
+        starting_point = 2
         for curve_order in curve_orders:
             sketchSplineBuilder = workPart.Features.CreateSketchSplineBuilder(NXOpen.Spline.Null)
 
@@ -397,47 +406,283 @@ def add_sketch(points: list, curve_orders: list):
             starting_point += curve_order
             # -------------------------------------------
 
-    generate_splines()
+    for airfoil_name, airfoil in airfoil_data.items():
+        generate_splines(airfoil['curve_orders'])
 
     # # ================================= ADD ANGULAR DIMENSION =======================================
 
-    sketchAngularDimensionBuilder2 = workPart.Sketches.CreateAngularDimensionBuilder(
-        NXOpen.Annotations.AngularDimension.Null)
+    lines = airfoil_data['A0']['lines']
 
-    sketchAngularDimensionBuilder2.Driving.DrivingMethod = NXOpen.Annotations.DrivingValueBuilder.DrivingValueMethod.Driving
+    for airfoil_name, airfoil in airfoil_data.items():
+        for idx, line in enumerate(airfoil['lines']):
+            if any(substr in airfoil_data[airfoil_name]['line_tags'][idx] for substr in ['theta_te_upper',
+                                                                                         'theta_te_lower', 'psi1_le',
+                                                                                         'psi2_le', 'le_angle_180']):
+                if any(substr in airfoil_data[airfoil_name]['line_tags'][idx] for substr in ['theta_te_upper',
+                                                                                         'theta_te_lower']):
+                    line1 = line
+                    line2 = airfoil['lines'][0]
+                else:
+                    line1 = line
+                    line2 = airfoil['lines'][idx + 1]
+                sketchAngularDimensionBuilder2 = workPart.Sketches.CreateAngularDimensionBuilder(
+                    NXOpen.Annotations.AngularDimension.Null)
 
-    # sketchAngularDimensionBuilder2.Driving.DimensionValue = 139.0
+                sketchAngularDimensionBuilder2.Driving.DrivingMethod = NXOpen.Annotations.DrivingValueBuilder.DrivingValueMethod.Driving
 
-    scalar1 = workPart.Scalars.CreateScalar(0.0, NXOpen.Scalar.DimensionalityType.NotSet,
-                                            NXOpen.SmartObject.UpdateOption.WithinModeling)
-    point1 = workPart.Points.CreatePoint(lines[2], scalar1, NXOpen.SmartObject.UpdateOption.WithinModeling)
-    point1_3d = point1.Coordinates
-    # point1_3d = NXOpen.Point3d(0.0, 0.0, 0.0)
+                # sketchAngularDimensionBuilder2.Driving.DimensionValue = 139.0
 
-    sketchAngularDimensionBuilder2.FirstAssociativity.SetValue(lines[2], workPart.ModelingViews.WorkView, point1_3d)
+                scalar1 = workPart.Scalars.CreateScalar(0.0, NXOpen.Scalar.DimensionalityType.NotSet,
+                                                        NXOpen.SmartObject.UpdateOption.WithinModeling)
+                point1 = workPart.Points.CreatePoint(line1, scalar1, NXOpen.SmartObject.UpdateOption.WithinModeling)
+                point1_3d = point1.Coordinates
+                # point1_3d = NXOpen.Point3d(0.0, 0.0, 0.0)
 
-    scalar2 = workPart.Scalars.CreateScalar(1.0, NXOpen.Scalar.DimensionalityType.NotSet,
-                                            NXOpen.SmartObject.UpdateOption.WithinModeling)
-    point2 = workPart.Points.CreatePoint(lines[3], scalar2, NXOpen.SmartObject.UpdateOption.WithinModeling)
+                sketchAngularDimensionBuilder2.FirstAssociativity.SetValue(line1, workPart.ModelingViews.WorkView, point1_3d)
 
-    point2_3d = point2.Coordinates
-    # point2_3d = NXOpen.Point3d(0.5, 0.0, 0.0)
+                scalar2 = workPart.Scalars.CreateScalar(1.0, NXOpen.Scalar.DimensionalityType.NotSet,
+                                                        NXOpen.SmartObject.UpdateOption.WithinModeling)
+                point2 = workPart.Points.CreatePoint(line2, scalar2, NXOpen.SmartObject.UpdateOption.WithinModeling)
 
-    sketchAngularDimensionBuilder2.SecondAssociativity.SetValue(lines[3], workPart.ModelingViews.WorkView, point2_3d)
+                point2_3d = point2.Coordinates
+                # point2_3d = NXOpen.Point3d(0.5, 0.0, 0.0)
 
-    sketchAngularDimensionBuilder2.Commit()
+                sketchAngularDimensionBuilder2.SecondAssociativity.SetValue(line2, workPart.ModelingViews.WorkView, point2_3d)
 
-    sketchAngularDimensionBuilder2.Destroy()
+                sketchAngularDimensionBuilder2.Commit()
+
+                sketchAngularDimensionBuilder2.Destroy()
+
+                # # Add second angular dimension: -------------------------------------------------------------------
+                #
+                # sketchAngularDimensionBuilder2 = workPart.Sketches.CreateAngularDimensionBuilder(
+                #     NXOpen.Annotations.AngularDimension.Null)
+                #
+                # sketchAngularDimensionBuilder2.Driving.DrivingMethod = NXOpen.Annotations.DrivingValueBuilder.DrivingValueMethod.Driving
+                #
+                # scalar1 = workPart.Scalars.CreateScalar(0.0, NXOpen.Scalar.DimensionalityType.NotSet,
+                #                                         NXOpen.SmartObject.UpdateOption.WithinModeling)
+                # point1 = workPart.Points.CreatePoint(lines[3], scalar1, NXOpen.SmartObject.UpdateOption.WithinModeling)
+                # point1_3d = point1.Coordinates
+                # # point1_3d = NXOpen.Point3d(0.0, 0.0, 0.0)
+                #
+                # sketchAngularDimensionBuilder2.FirstAssociativity.SetValue(lines[3], workPart.ModelingViews.WorkView, point1_3d)
+                #
+                # scalar2 = workPart.Scalars.CreateScalar(1.0, NXOpen.Scalar.DimensionalityType.NotSet,
+                #                                         NXOpen.SmartObject.UpdateOption.WithinModeling)
+                # point2 = workPart.Points.CreatePoint(lines[4], scalar2, NXOpen.SmartObject.UpdateOption.WithinModeling)
+                #
+                # point2_3d = point2.Coordinates
+                # # point2_3d = NXOpen.Point3d(0.5, 0.0, 0.0)
+                #
+                # sketchAngularDimensionBuilder2.SecondAssociativity.SetValue(lines[4], workPart.ModelingViews.WorkView, point2_3d)
+                #
+                # sketchAngularDimensionBuilder2.Commit()
+                #
+                # sketchAngularDimensionBuilder2.Destroy()
 
     # =============================== END ADD ANGULAR DIMENSION =====================================
+
+    # =============================== BEGIN ADD LINEAR DIMENSION ====================================
+
+    for airfoil_name, airfoil in airfoil_data.items():
+        for idx, line in enumerate(airfoil['lines']):
+            if 'pt2pt_linear' in airfoil_data[airfoil_name]['line_tags'][idx]:
+                #
+                # if idx == 1:
+                #     continue
+
+                sketchLinearDimensionBuilder = workPart.Sketches.CreateLinearDimensionBuilder(NXOpen.Annotations.Dimension.Null)
+
+                # lines9 = []
+                # sketchLinearDimensionBuilder.AppendedText.SetBefore(lines9)
+                #
+                # lines10 = []
+                # sketchLinearDimensionBuilder.AppendedText.SetAfter(lines10)
+                #
+                # lines11 = []
+                # sketchLinearDimensionBuilder.AppendedText.SetAbove(lines11)
+                #
+                # lines12 = []
+                # sketchLinearDimensionBuilder.AppendedText.SetBelow(lines12)
+
+                # sketchLinearDimensionBuilder.Origin.SetInferRelativeToGeometry(True)
+
+                sketchLinearDimensionBuilder.Measurement.Method = NXOpen.Annotations.DimensionMeasurementBuilder.MeasurementMethod.PointToPoint
+
+                # sketchLinearDimensionBuilder.Style.DimensionStyle.LimitFitDeviation = "H"
+                #
+                # sketchLinearDimensionBuilder.Style.DimensionStyle.LimitFitShaftDeviation = "g"
+
+                # sketchLinearDimensionBuilder.Driving.DimensionValue = 3.3333333333000001
+
+                # theSession.SetUndoMarkName(markId6, "Linear Dimension Dialog")
+                #
+                # sketchLinearDimensionBuilder.Origin.Plane.PlaneMethod = NXOpen.Annotations.PlaneBuilder.PlaneMethodType.XyPlane
+                #
+                # sketchLinearDimensionBuilder.Origin.SetInferRelativeToGeometry(True)
+
+                sketchLinearDimensionBuilder.Driving.DrivingMethod = NXOpen.Annotations.DrivingValueBuilder.DrivingValueMethod.Driving
+
+                # sketchLinearDimensionBuilder.Origin.Anchor = NXOpen.Annotations.OriginBuilder.AlignmentPosition.MidCenter
+                #
+                # sketchLinearDimensionBuilder.Origin.SetInferRelativeToGeometry(False)
+                #
+                # sketchLinearDimensionBuilder.Origin.SetInferRelativeToGeometry(False)
+                #
+                # sketchLinearDimensionBuilder.Measurement.Direction = NXOpen.Direction.Null
+                #
+                # sketchLinearDimensionBuilder.Measurement.DirectionView = NXOpen.View.Null
+                #
+                # sketchLinearDimensionBuilder.Origin.SetInferRelativeToGeometry(False)
+                #
+                # sketchLinearDimensionBuilder.Style.DimensionStyle.NarrowDisplayType = NXOpen.Annotations.NarrowDisplayOption.NotSet
+                #
+                # sketchLinearDimensionBuilder.Driving.DrivingMethod = NXOpen.Annotations.DrivingValueBuilder.DrivingValueMethod.Driving
+
+                sketchLinearDimensionBuilder.Origin.SetInferRelativeToGeometry(True)
+
+                # scaleAboutPoint11 = NXOpen.Point3d(-30.83415263885805, -7.9847398527335898, 0.0)
+                # viewCenter11 = NXOpen.Point3d(30.83415263885805, 7.9847398527336049, 0.0)
+                # workPart.ModelingViews.WorkView.ZoomAboutPoint(1.25, scaleAboutPoint11, viewCenter11)
+                #
+                # scaleAboutPoint12 = NXOpen.Point3d(-24.667322111086438, -6.3877918821868729, 0.0)
+                # viewCenter12 = NXOpen.Point3d(24.667322111086438, 6.3877918821868853, 0.0)
+                # workPart.ModelingViews.WorkView.ZoomAboutPoint(1.25, scaleAboutPoint12, viewCenter12)
+                #
+                # scaleAboutPoint13 = NXOpen.Point3d(-19.733857688869154, -5.1102335057494974, 0.0)
+                # viewCenter13 = NXOpen.Point3d(19.733857688869154, 5.1102335057495125, 0.0)
+                # workPart.ModelingViews.WorkView.ZoomAboutPoint(1.25, scaleAboutPoint13, viewCenter13)
+                #
+                # scaleAboutPoint14 = NXOpen.Point3d(-15.787086151095325, -4.0881868045995908, 0.0)
+                # viewCenter14 = NXOpen.Point3d(15.787086151095325, 4.0881868045996104, 0.0)
+                # workPart.ModelingViews.WorkView.ZoomAboutPoint(1.25, scaleAboutPoint14, viewCenter14)
+                #
+                # scaleAboutPoint15 = NXOpen.Point3d(-12.629668920876258, -3.2705494436796698, 0.0)
+                # viewCenter15 = NXOpen.Point3d(12.629668920876258, 3.270549443679692, 0.0)
+                # workPart.ModelingViews.WorkView.ZoomAboutPoint(1.25, scaleAboutPoint15, viewCenter15)
+                #
+                # scaleAboutPoint16 = NXOpen.Point3d(-10.103735136701006, -2.6164395549437351, 0.0)
+                # viewCenter16 = NXOpen.Point3d(10.103735136701006, 2.6164395549437556, 0.0)
+                # workPart.ModelingViews.WorkView.ZoomAboutPoint(1.25, scaleAboutPoint16, viewCenter16)
+                #
+                # origin3 = NXOpen.Point3d(4.8998729536255894, 0.0, -6.8372906550088608)
+                # workPart.ModelingViews.WorkView.SetOrigin(origin3)
+                #
+                # origin4 = NXOpen.Point3d(4.8998729536255894, 0.0, -6.8372906550088608)
+                # workPart.ModelingViews.WorkView.SetOrigin(origin4)
+
+                # line2 = theSession.ActiveSketch.FindObject("Curve Line6")
+                # point1_5 = NXOpen.Point3d(-5.4636959873285264e-16, 0.0, -4.9999999999999858)
+                # point2_5 = NXOpen.Point3d(0.0, 0.0, 0.0)
+                # sketchLinearDimensionBuilder.FirstAssociativity.SetValue(NXOpen.InferSnapType.SnapType.Start, line2,
+                #                                                           workPart.ModelingViews.WorkView, point1_5,
+                #                                                           NXOpen.TaggedObject.Null, NXOpen.View.Null, point2_5)
+                #
+                # sketchLinearDimensionBuilder.Origin.SetInferRelativeToGeometry(True)
+                #
+                # point1_6 = NXOpen.Point3d(3.333333333333397, 0.0, -5.0000000000000044)
+                # point2_6 = NXOpen.Point3d(0.0, 0.0, 0.0)
+                # sketchLinearDimensionBuilder.SecondAssociativity.SetValue(NXOpen.InferSnapType.SnapType.End, line2,
+                #                                                            workPart.ModelingViews.WorkView, point1_6,
+                #                                                            NXOpen.TaggedObject.Null, NXOpen.View.Null, point2_6)
+
+                scalar1 = workPart.Scalars.CreateScalar(0.0, NXOpen.Scalar.DimensionalityType.NotSet,
+                                                        NXOpen.SmartObject.UpdateOption.WithinModeling)
+                point1 = workPart.Points.CreatePoint(line, scalar1, NXOpen.SmartObject.UpdateOption.WithinModeling)
+                point1_3d = point1.Coordinates
+                # point1_3d = NXOpen.Point3d(0.0, 0.0, 0.0)
+
+                # sketchAngularDimensionBuilder2.FirstAssociativity.SetValue(lines[3], workPart.ModelingViews.WorkView, point1_3d)
+
+                # point1_7 = NXOpen.Point3d(-5.4636959873285264e-16, 0.0, -4.9999999999999858)
+                point2_7 = NXOpen.Point3d(0.0, 0.0, 0.0)
+                sketchLinearDimensionBuilder.FirstAssociativity.SetValue(NXOpen.InferSnapType.SnapType.Start, line,
+                                                                          workPart.ModelingViews.WorkView, point1_3d,
+                                                                          NXOpen.TaggedObject.Null, NXOpen.View.Null, point2_7)
+                # sketchLinearDimensionBuilder.FirstAssociativity.SetValue(lines[2], workPart.ModelingViews.WorkView, point1_3d)
+
+                scalar2 = workPart.Scalars.CreateScalar(1.0, NXOpen.Scalar.DimensionalityType.NotSet,
+                                                        NXOpen.SmartObject.UpdateOption.WithinModeling)
+                point2 = workPart.Points.CreatePoint(line, scalar2, NXOpen.SmartObject.UpdateOption.WithinModeling)
+                point2_3d = point2.Coordinates
+
+                # point1_8 = NXOpen.Point3d(3.333333333333397, 0.0, -5.0000000000000044)
+                point2_8 = NXOpen.Point3d(0.0, 0.0, 0.0)
+                sketchLinearDimensionBuilder.SecondAssociativity.SetValue(NXOpen.InferSnapType.SnapType.End, line,
+                                                                           workPart.ModelingViews.WorkView, point2_3d,
+                                                                           NXOpen.TaggedObject.Null, NXOpen.View.Null, point2_8)
+
+                # sketchLinearDimensionBuilder.SecondAssociativity.SetValue(lines[2], workPart.ModelingViews.WorkView, point2_3d)
+
+                sketchLinearDimensionBuilder.Origin.SetInferRelativeToGeometry(True)
+
+                # scaleAboutPoint17 = NXOpen.Point3d(-1.0268291083552799, -6.3584417863538469, 0.0)
+                # viewCenter17 = NXOpen.Point3d(1.0268291083552799, 6.3584417863538709, 0.0)
+                # workPart.ModelingViews.WorkView.ZoomAboutPoint(0.80000000000000004, scaleAboutPoint17, viewCenter17)
+
+                # basePart9 = theSession.Parts.BaseWork
+
+                # sketchLinearDimensionBuilder.Origin.SetInferRelativeToGeometryFromLeader(True)
+
+                # assocOrigin2 = NXOpen.Annotations.Annotation.AssociativeOriginData()
+                #
+                # assocOrigin2.OriginType = NXOpen.Annotations.AssociativeOriginType.RelativeToGeometry
+                # assocOrigin2.View = NXOpen.View.Null
+                # assocOrigin2.ViewOfGeometry = workPart.ModelingViews.WorkView
+                # point3 = workPart.Points.FindObject("ENTITY 2 2")
+                # assocOrigin2.PointOnGeometry = point3
+                # assocOrigin2.VertAnnotation = NXOpen.Annotations.Annotation.Null
+                # assocOrigin2.VertAlignmentPosition = NXOpen.Annotations.AlignmentPosition.TopLeft
+                # assocOrigin2.HorizAnnotation = NXOpen.Annotations.Annotation.Null
+                # assocOrigin2.HorizAlignmentPosition = NXOpen.Annotations.AlignmentPosition.TopLeft
+                # assocOrigin2.AlignedAnnotation = NXOpen.Annotations.Annotation.Null
+                # assocOrigin2.DimensionLine = 0
+                # assocOrigin2.AssociatedView = NXOpen.View.Null
+                # assocOrigin2.AssociatedPoint = NXOpen.Point.Null
+                # assocOrigin2.OffsetAnnotation = NXOpen.Annotations.Annotation.Null
+                # assocOrigin2.OffsetAlignmentPosition = NXOpen.Annotations.AlignmentPosition.TopLeft
+                # assocOrigin2.XOffsetFactor = 0.0
+                # assocOrigin2.YOffsetFactor = 0.0
+                # assocOrigin2.StackAlignmentPosition = NXOpen.Annotations.StackAlignmentPosition.Above
+                # sketchLinearDimensionBuilder.Origin.SetAssociativeOrigin(assocOrigin2)
+
+                # point4 = NXOpen.Point3d(0.97685918067848476, 0.0, -8.7527218763638981)
+                # sketchLinearDimensionBuilder.Origin.Origin.SetValue(NXOpen.TaggedObject.Null, NXOpen.View.Null, point4)
+                #
+                # sketchLinearDimensionBuilder.Origin.SetInferRelativeToGeometry(True)
+
+                # sketchLinearDimensionBuilder.Style.LineArrowStyle.LeaderOrientation = NXOpen.Annotations.LeaderSide.Right
+                #
+                # sketchLinearDimensionBuilder.Style.DimensionStyle.TextCentered = True
+
+                # markId7 = theSession.SetUndoMark(NXOpen.Session.MarkVisibility.Invisible, "Linear Dimension")
+
+                sketchLinearDimensionBuilder.Commit()
+
+                # sketchFindMovableObjectsBuilder3 = workPart.Sketches.CreateFindMovableObjectsBuilder()
+                #
+                # sketchFindMovableObjectsBuilder3.Commit()
+
+                # sketchFindMovableObjectsBuilder3.Destroy()
+
+                sketchLinearDimensionBuilder.Destroy()
+
+    # =============================== END ADD LINEAR DIMENSION ======================================
 
     theSession.ActiveSketch.Update()
 
     theSession.ActiveSketch.Deactivate(NXOpen.Sketch.ViewReorient.TrueValue, NXOpen.Sketch.UpdateLevel.Model)
 
-    # theSession.DeleteUndoMarksSetInTaskEnvironment()
+    # expression1 = workPart.Expressions.FindObject("p7")
+    # unit1 = workPart.UnitCollection.FindObject("Inch")
+    # workPart.Expressions.EditExpressionWithUnits(expression1, unit1, "A0_Base_L2_te * A0_Base_c")
+    # expression1 = workPart.Expressions.FindObject("p2")
+    # workPart.Expressions.EditExpressionWithUnits(expression1, unit1, "A0_Base_L1_te * A0_Base_c")
     #
-    # theSession.EndTaskEnvironment()
+    # markId4 = theSession.SetUndoMark(NXOpen.Session.MarkVisibility.Invisible, "NX update")
+    #
+    # nErrs1 = theSession.UpdateManager.DoUpdate(markId4)
 
 
 def create_connected_lines_from_points(points: list):
