@@ -7,6 +7,7 @@ from pymead.core.trailing_edge_point import TrailingEdgePoint
 from pymead.utils.increment_string_index import increment_string_index, decrement_string_index, get_prefix_and_index_from_string
 from pymead.utils.transformations import translate_matrix, rotate_matrix, scale_matrix
 from pymead.utils.downsampling_schemes import fractal_downsampler2
+from pymead.core.transformation import Transformation2D
 import matplotlib.pyplot as plt
 from shapely.geometry import Polygon, LineString, Point
 from copy import deepcopy
@@ -573,14 +574,20 @@ class Airfoil:
         line_string = LineString(list(map(tuple, points)))
         return polygon.contains(line_string)
 
-    def within_line_string_until_point(self, points: np.ndarray or list, cutoff_point) -> bool:
+    def within_line_string_until_point(self, points: np.ndarray or list, cutoff_point,
+                                       transformation_kwargs: dict) -> bool:
         if isinstance(points, list):
             points = np.array(points)
-        self.get_coords(body_fixed_csys=False)
         points_shapely = list(map(tuple, points))
-        polygon = Polygon(points_shapely)
-        line_string = LineString(list(map(tuple, self.coords)))
-        return polygon.contains(line_string)
+        exterior_polygon = Polygon(points_shapely)
+
+        self.get_coords(body_fixed_csys=True)
+        airfoil_points = self.coords[self.coords[:, 0] < cutoff_point, :]
+        transform2d = Transformation2D(**transformation_kwargs)
+        airfoil_points = transform2d.transform(airfoil_points)
+        line_string = LineString(list(map(tuple, airfoil_points)))
+
+        return exterior_polygon.contains(line_string)
 
     def plot_airfoil(self, axs: plt.axes, **plot_kwargs):
         """
