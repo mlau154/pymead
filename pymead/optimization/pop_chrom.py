@@ -97,8 +97,13 @@ class Chromosome:
             if self.param_set['min_area_active']:
                 self.check_min_area()
         if self.valid_geometry:
-            if self.param_set['point_matrix'] is not None:
-                self.check_contains_points()
+            if self.param_set['internal_point_matrix'] is not None:
+                if self.param_set['int_geometry_timing'] == 'Before Aerodynamic Evaluation':
+                    self.check_contains_points()
+        if self.valid_geometry:
+            if self.param_set['external_point_matrix'] is not None:
+                if self.param_set['ext_geometry_timing'] == 'Before Aerodynamic Evaluation':
+                    self.check_if_inside_points()
 
     def generate_airfoil_sys_from_genes(self) -> dict:
         """
@@ -180,7 +185,17 @@ class Chromosome:
 
     def check_contains_points(self) -> bool:
         if self.airfoil_sys_generated:
-            if not self.mea.airfoils['A0'].contains_line_string(self.param_set['point_matrix']):
+            if not self.mea.airfoils['A0'].contains_line_string(self.param_set['internal_point_matrix']):
+                self.valid_geometry = False
+                return self.valid_geometry
+        self.valid_geometry = True
+        return self.valid_geometry
+
+    def check_if_inside_points(self) -> bool:
+        if self.airfoil_sys_generated:
+            if not self.mea.airfoils['A0'].within_line_string_until_point(self.param_set['external_point_matrix'],
+                                                                          self.param_set['cutoff_point'],
+                                                                          self.param_set['ext_transform_kwargs']):
                 self.valid_geometry = False
                 return self.valid_geometry
         self.valid_geometry = True
@@ -318,12 +333,8 @@ class Population:
                                                        chromosome.param_set['name'][chromosome.population_idx],
                                                        mea=chromosome.mea,
                                                        mea_airfoil_name='A0', tool='xfoil',
-                                                       xfoil_settings={'Re': chromosome.param_set['Re'],
-                                                                       'iter': chromosome.param_set['iter'],
-                                                                       'timeout': chromosome.param_set['xfoil_timeout'],
-                                                                       'xtr': chromosome.param_set['xtr'],
-                                                                       'N': chromosome.param_set['N']},
-                                                       export_Cp=False, body_fixed_csys=False)
+                                                       xfoil_settings=chromosome.param_set['xfoil_settings'],
+                                                       export_Cp=True, body_fixed_csys=False)
             if chromosome.forces['converged'] and not chromosome.forces['errored_out'] and not chromosome.forces['timed_out']:
                 chromosome.fitness = 1  # Set to any value that is not False and not None
             if self.verbose:

@@ -7,12 +7,9 @@ from pymead.core.mea import MEA
 from pymead.core.base_airfoil_params import BaseAirfoilParams
 from pymead.core.param import Param
 from pymead import DATA_DIR
-import re
-import time
 
 
 def calculate_aero_data(airfoil_coord_dir: str, airfoil_name: str, mea: MEA, mea_airfoil_name: str,
-                        alpha=None, Cl=None, CLI=None,
                         tool: str = 'panel_fort', xfoil_settings: dict = None, export_Cp: bool = True,
                         body_fixed_csys: bool = True, downsample: bool = False, ratio_thresh=None, abs_thresh=None):
     # ratio_thresh of 1.000005 and abs_thresh = 0.1 works well
@@ -51,12 +48,24 @@ def calculate_aero_data(airfoil_coord_dir: str, airfoil_name: str, mea: MEA, mea
                                      ratio_thresh=ratio_thresh, abs_thresh=abs_thresh)
         xfoil_input_file = os.path.join(base_dir, 'xfoil_input.txt')
         xfoil_input_list = ['', 'oper', f'iter {xfoil_settings["iter"]}', 'visc', str(xfoil_settings['Re']),
+                            f'M {xfoil_settings["Ma"]}',
                             'vpar', f'xtr {xfoil_settings["xtr"][0]} {xfoil_settings["xtr"][1]}',
                             f'N {xfoil_settings["N"]}', '']
 
         # alpha/Cl input setup (must choose exactly one of alpha, Cl, or CLI)
-        if len([0 for prescribed_xfoil_val in (alpha, Cl, CLI) if prescribed_xfoil_val is not None]) > 1:
-            raise ValueError('More than one of alpha, Cl, or CLI was set. Choose only one for XFOIL analysis.')
+        if len([0 for prescribed_xfoil_val in (
+                'alfa', 'Cl', 'CLI') if prescribed_xfoil_val in xfoil_settings.keys()]) != 1:
+            raise ValueError('Either none or more than one of alpha, Cl, or CLI was set. '
+                             'Choose exactly one for XFOIL analysis.')
+        alpha = None
+        Cl = None
+        CLI = None
+        if 'alfa' in xfoil_settings.keys():
+            alpha = xfoil_settings['alfa']
+        elif 'Cl' in xfoil_settings.keys():
+            Cl = xfoil_settings['Cl']
+        elif 'CLI' in xfoil_settings.keys():
+            CLI = xfoil_settings['CLI']
         if alpha is not None:
             if not isinstance(alpha, list):
                 alpha = [alpha]

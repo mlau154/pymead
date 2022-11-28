@@ -33,10 +33,15 @@ def opt_settings_default():
                      'current_text': 'XFOIL'},
             'J': {'label': 'Objective Functions:', 'widget_type': 'QLineEdit', 'text': '$Cd',
                   'tool_tip': 'Enter the objective functions to be minimized, separated by commas.\n'
-                              'Variables can be started with the dollar sign ($).'},
+                              'Variables can be started with the dollar sign ($).',
+                  'text_changed_callback': 'objectives_changed'},
             'G': {'label': 'Constraints:', 'widget_type': 'QLineEdit', 'text': '',
                   'tool_tip': 'Enter the constraint functions to be applied, separated by commas.\n'
-                              'Variables can be started with the dollar sign ($).'},
+                              'Variables can be started with the dollar sign ($).',
+                  'text_changed_callback': 'constraints_changed'},
+            'additional_data': {'label': 'Additional Data', 'widget_type': 'QPlainTextEdit',
+                                'texts': [''],
+                                'tool_tip': 'Additional variables to feed to the\nobjective or constraint functions'},
             'pop_size': {'label': 'Population Size:', 'widget_type': 'QSpinBox', 'value': 50,
                          'lower_bound': 1, 'upper_bound': int(2 ** 32 / 2 - 1)},
             'n_offspring': {'label': 'Number of Offspring', 'widget_type': 'QSpinBox', 'value': 150,
@@ -72,17 +77,31 @@ def opt_settings_default():
                          'decimals': 16, 'lower_bound': 0.0, 'upper_bound': np.inf, 'value': 0.04,
                          'active_checkbox': 0},
             'use_internal_geometry': {'label': 'Internal Geometry Check?', 'widget_type': 'QCheckBox', 'state': 0},
-            'internal_geometry_timing': {'label': 'Geometry Check Timing', 'widget_type': 'QComboBox',
+            'internal_geometry_timing': {'label': 'Int. Geometry Timing', 'widget_type': 'QComboBox',
                                          'items': ['Before Aerodynamic Evaluation', 'After Aerodynamic Evaluation'],
+                                         'current_text': 'Before Aerodynamic Evaluation',
                                          'tool_tip': 'The timing of the internal geometry fit check can be important\n'
                                                      'depending on whether the internal geometry should be rotated\n'
                                                      'with the airfoil angle of attack. If the internal geometry\n'
                                                      'can move with the airfoil angle of attack, '
                                                      'choose \'Before Aerodynamic Evaluation\' (faster).\nOtherwise, '
                                                      'choose \'After Aerodynamic Evaluation\' (slower).'},
-            'internal_geometries': {'label': 'Internal Geometry Files', 'widget_type': 'QPlainTextEdit',
-                                    'texts': [''], 'push_button': 'Choose files',
-                                    'push_button_action': 'select_multiple_coord_files'},
+            'internal_geometry': {'label': 'Internal Geometry File', 'widget_type': 'QLineEdit',
+                                  'text': '', 'push_button': 'Choose file',
+                                  'push_button_action': 'select_coord_file'},
+            'use_external_geometry': {'label': 'External Geometry Check?', 'widget_type': 'QCheckBox', 'state': 0},
+            'external_geometry_timing': {'label': 'Ext. Geometry Timing', 'widget_type': 'QComboBox',
+                                         'items': ['Before Aerodynamic Evaluation', 'After Aerodynamic Evaluation'],
+                                         'current_text': 'Before Aerodynamic Evaluation',
+                                         'tool_tip': 'The timing of the external geometry fit check can be important\n'
+                                                     'depending on whether the internal geometry should be rotated\n'
+                                                     'with the airfoil angle of attack. If the external geometry\n'
+                                                     'can move with the airfoil angle of attack, '
+                                                     'choose \'Before Aerodynamic Evaluation\' (faster).\nOtherwise, '
+                                                     'choose \'After Aerodynamic Evaluation\' (slower).'},
+            'external_geometry': {'label': 'External Geometry File', 'widget_type': 'QLineEdit',
+                                  'text': '', 'push_button': 'Choose file',
+                                  'push_button_action': 'select_coord_file'},
         },
         'Termination': {
             'f_tol': {'label': 'Function Tolerance', 'widget_type': 'ScientificDoubleSpinBox', 'value': 2.5e-3,
@@ -148,4 +167,42 @@ def opt_settings_default():
                                 'click_connect': 'saveas_opt_settings', 'button_title': 'Save As'},
         },
     }
+    return settings
+
+
+def xfoil_settings_default(mea_keys: list):
+    settings = {
+            'airfoil': {'label': 'Airfoil', 'widget_type': 'QComboBox', 'items': mea_keys, 'current_text': 'A0'},
+            'Re': {'label': 'Reynolds Number', 'widget_type': 'QDoubleSpinBox', 'value': 1e5,
+                   'decimals': 16, 'lower_bound': 0.00001, 'upper_bound': np.inf},
+            'Ma': {'label': 'Mach Number', 'widget_type': 'QDoubleSpinBox', 'value': 0.0,
+                   'decimals': 16, 'lower_bound': 0.0, 'upper_bound': 1.3},
+            'prescribe': {'label': 'Prescribe ɑ/Cl/CLI', 'widget_type': 'QComboBox',
+                          'items': ['Angle of Attack (deg)', 'Viscous Cl', 'Inviscid Cl'],
+                          'combo_callback': 'change_prescribed_aero_parameter',
+                          'current_text': 'Angle of Attack (deg)'},
+            'alfa': {'label': 'Angle of Attack (deg)', 'widget_type': 'QDoubleSpinBox', 'value': 0.0,
+                     'decimals': 16, 'lower_bound': -np.inf, 'upper_bound': np.inf, 'editable': True},
+            'Cl': {'label': 'Viscous Cl', 'widget_type': 'QDoubleSpinBox', 'value': 0.0,
+                   'decimals': 16, 'lower_bound': -np.inf, 'upper_bound': np.inf, 'editable': False},
+            'CLI': {'label': 'Inviscid Cl', 'widget_type': 'QDoubleSpinBox', 'value': 0.0,
+                    'decimals': 16, 'lower_bound': -np.inf, 'upper_bound': np.inf, 'editable': False},
+            'xtr_upper': {'label': 'Transition x/c (upper)', 'widget_type': 'QDoubleSpinBox', 'value': 1.0,
+                          'decimals': 16, 'lower_bound': 0.0, 'upper_bound': 1.0},
+            'xtr_lower': {'label': 'Transition x/c (lower)', 'widget_type': 'QDoubleSpinBox', 'value': 1.0,
+                          'decimals': 16, 'lower_bound': 0.0, 'upper_bound': 1.0},
+            'N': {'label': 'Turbulence (NCrit)', 'widget_type': 'QDoubleSpinBox', 'value': 9.0,
+                  'decimals': 16, 'lower_bound': 0.0, 'upper_bound': 20.0},
+            'iter': {'label': 'Maximum Iterations', 'widget_type': 'QSpinBox', 'value': 150,
+                     'lower_bound': 1, 'upper_bound': 10000},
+            'timeout': {'label': 'Timeout (sec)', 'widget_type': 'QDoubleSpinBox', 'value': 8.0,
+                        'lower_bound': 0.0, 'upper_bound': 10000.0},
+            'body_fixed_csys': {'label': 'Body-fixed CSYS?', 'widget_type': 'QCheckBox', 'state': 0,
+                                'tool_tip': 'Select if the airfoil should be analyzed with dx=dy=alf=0.0 and c=1'},
+            'airfoil_analysis_dir': {'label': 'Analysis Directory', 'widget_type': 'QLineEdit',
+                                     'push_button': 'Choose folder',
+                                     'push_button_action': 'select_directory_for_airfoil_analysis', 'text': ''},
+            'airfoil_coord_file_name': {'label': 'Airfoil Coord. Filename', 'widget_type': 'QLineEdit',
+                                        'text': 'default_airfoil'},
+        }
     return settings
