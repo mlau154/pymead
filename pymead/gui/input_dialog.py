@@ -12,7 +12,9 @@ import os
 from functools import partial
 from pymead.utils.read_write_files import load_data, save_data
 from pymead.utils.dict_recursion import recursive_get
-from pymead.gui.opt_settings_default import opt_settings_default
+from pymead.gui.default_settings import opt_settings_default, xfoil_settings_default
+from pymead.optimization.objectives_and_constraints import Objective, Constraint, FunctionCompileError
+from pymead.analysis import cfd_output_templates
 
 
 class FreePointInputDialog(QDialog):
@@ -159,72 +161,207 @@ class SingleAirfoilInviscidDialog(QDialog):
 
 
 class SingleAirfoilViscousDialog(QDialog):
-    def __init__(self, items: List[tuple], a_list: list, parent=None):
+    def __init__(self, parent=None):
         super().__init__(parent)
 
         self.setFont(self.parent().font())
         self.setWindowTitle("Single Airfoil Viscous Analysis")
+        self.widget_dict = None
 
-        buttonBox = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel, self)
-        layout = QFormLayout(self)
+        buttonBox = QDialogButtonBox(self)
+        buttonBox.addButton("Run", QDialogButtonBox.AcceptRole)
+        buttonBox.addButton(QDialogButtonBox.Cancel)
+        self.layout = QGridLayout(self)
+        self.widget = QWidget(self)
+        self.layout.addWidget(self.widget)
 
-        self.inputs = []
-        for item in items:
-            if item[1] == 'double':
-                self.inputs.append(QDoubleSpinBox(self))
-                if item[0] == "Reynolds Number":
-                    self.inputs[-1].setMinimum(0.0)
-                else:
-                    self.inputs[-1].setMinimum(-np.inf)
-                self.inputs[-1].setMaximum(np.inf)
-                self.inputs[-1].setValue(item[2])
-                self.inputs[-1].setSingleStep(1.0)
-                self.inputs[-1].setDecimals(5)
-            elif item[1] == 'int':
-                self.inputs.append(QSpinBox(self))
-                self.inputs[-1].setMaximum(99999)
-                self.inputs[-1].setValue(item[2])
-            elif item[1] == 'combo':
-                self.inputs.append(QComboBox(self))
-                if item[0] == "Airfoil":
-                    self.inputs[-1].addItems(a_list)
-                    # self.inputs[-1].valueChanged.connect(self.set_airfoil_name)
-            elif item[1] == 'string':
-                self.inputs.append(QLineEdit(self))
-                self.inputs[-1].setText(item[2])
-            elif item[1] == 'checkbox':
-                self.inputs.append(QCheckBox(self))
-                self.inputs[-1].setCheckState(item[2])
-            else:
-                raise ValueError(f"AnchorPointInputDialog item types must be \'double\', \'combo\', or \'string\'")
-            layout.addRow(item[0], self.inputs[-1])
+        if parent.xfoil_settings is None:
+            self.inputs = xfoil_settings_default(self.parent().airfoil_name_list)
+        else:
+            self.inputs = parent.xfoil_settings
+            self.inputs['airfoil']['items'] = self.parent().airfoil_name_list
 
-        layout.addWidget(buttonBox)
+        self.setInputs()
+
+        parent.xfoil_settings = self.inputs
+
+        self.layout.addWidget(buttonBox)
 
         buttonBox.accepted.connect(self.accept)
         buttonBox.rejected.connect(self.reject)
 
-    # def set_airfoil_name(self, value):
-    #     for item in self.inputs:
-    #         if item.
+    def select_directory_for_airfoil_analysis(self, line_edit: QLineEdit):
+        file_dialog = QFileDialog(self)
+        file_dialog.setFileMode(QFileDialog.DirectoryOnly)
+        if file_dialog.exec_():
+            line_edit.setText(file_dialog.selectedFiles()[0])
+
+    def enable_disable_from_checkbox(self, key: str):
+        widget = self.widget_dict[key]['widget']
+        if 'widgets_to_enable' in self.inputs[key].keys() and widget.checkState() or (
+                'widgets_to_disable' in self.inputs[key].keys() and not widget.checkState()
+        ):
+            enable_disable_key = 'widgets_to_enable' if 'widgets_to_enable' in self.inputs[
+                key].keys() else 'widgets_to_disable'
+            for enable_list in self.inputs[key][enable_disable_key]:
+                dict_to_enable = recursive_get(self.widget_dict, *enable_list)
+                if not isinstance(dict_to_enable['widget'], QPushButton):
+                    dict_to_enable['widget'].setReadOnly(False)
+                    if 'push_button' in dict_to_enable.keys():
+                        dict_to_enable['push_button'].setEnabled(True)
+                    if 'checkbox' in dict_to_enable.keys():
+                        dict_to_enable['checkbox'].setReadOnly(False)
+                else:
+                    dict_to_enable['widget'].setEnabled(True)
+        elif 'widgets_to_enable' in self.inputs[key].keys() and not widget.checkState() or (
+                'widgets_to_disable' in self.inputs[key].keys() and widget.checkState()
+        ):
+            enable_disable_key = 'widgets_to_enable' if 'widgets_to_enable' in self.inputs[
+                key].keys() else 'widgets_to_disable'
+            for disable_list in self.inputs[key][enable_disable_key]:
+                dict_to_enable = recursive_get(self.widget_dict, *disable_list)
+                if not isinstance(dict_to_enable['widget'], QPushButton):
+                    dict_to_enable['widget'].setReadOnly(True)
+                    if 'push_button' in dict_to_enable.keys():
+                        dict_to_enable['push_button'].setEnabled(False)
+                    if 'checkbox' in dict_to_enable.keys():
+                        dict_to_enable['checkbox'].setReadOnly(True)
+                else:
+                    dict_to_enable['widget'].setEnabled(False)
+
+    def dict_connection(self,
+                        widget: QLineEdit | QSpinBox | QDoubleSpinBox | ScientificDoubleSpinBox | QComboBox | QCheckBox,
+                        key: str):
+        if isinstance(widget, QLineEdit):
+            self.inputs[key]['text'] = widget.text()
+        elif isinstance(widget, QPlainTextEdit):
+            if key == 'additional_data':
+                self.inputs[key]['texts'] = widget.toPlainText().split('\n')
+            else:
+                self.inputs[key]['texts'] = widget.toPlainText().split('\n\n')
+        elif isinstance(widget, QComboBox):
+            self.inputs[key]['current_text'] = widget.currentText()
+        elif isinstance(widget, QSpinBox) or isinstance(widget, QDoubleSpinBox) or isinstance(
+                widget, ScientificDoubleSpinBox):
+            self.inputs[key]['value'] = widget.value()
+        elif isinstance(widget, QCheckBox):
+            if 'active_checkbox' in self.inputs[key].keys():
+                self.inputs[key]['active_checkbox'] = widget.checkState()
+            else:
+                self.inputs[key]['state'] = widget.checkState()
+
+        self.enable_disable_from_checkbox(key)
+
+    def change_prescribed_aero_parameter(self, current_text: str):
+        w1 = self.widget_dict['alfa']['widget']
+        w2 = self.widget_dict['Cl']['widget']
+        w3 = self.widget_dict['CLI']['widget']
+        if current_text == 'Angle of Attack (deg)':
+            bools = (False, True, True)
+        elif current_text == 'Viscous Cl':
+            bools = (True, False, True)
+        elif current_text == 'Inviscid Cl':
+            bools = (True, True, False)
+        else:
+            raise ValueError('Invalid value of currentText for QComboBox (alfa/Cl/CLI')
+        w1.setReadOnly(bools[0])
+        w2.setReadOnly(bools[1])
+        w3.setReadOnly(bools[2])
+
+    def setInputs(self):
+        # self.widget.clear()
+        self.widget_dict = {}
+        grid_counter = 0
+        for k, v in self.inputs.items():
+            label = QLabel(v['label'], self)
+            widget = getattr(sys.modules[__name__], v['widget_type'])(self)
+            self.widget_dict[k] = {'widget': widget}
+            if 'text' in v.keys():
+                widget.setText(v['text'])
+                widget.textChanged.connect(partial(self.dict_connection, widget, k))
+            if 'texts' in v.keys():
+                if k == 'additional_data':
+                    widget.insertPlainText('\n'.join(v['texts']))
+                else:
+                    widget.insertPlainText('\n\n'.join(v['texts']))
+                widget.textChanged.connect(partial(self.dict_connection, widget, k))
+            if 'items' in v.keys():
+                widget.addItems(v['items'])
+            if 'current_text' in v.keys():
+                widget.setCurrentText(v['current_text'])
+                widget.currentTextChanged.connect(partial(self.dict_connection, widget, k))
+            if 'lower_bound' in v.keys():
+                widget.setMinimum(v['lower_bound'])
+            if 'upper_bound' in v.keys():
+                widget.setMaximum(v['upper_bound'])
+            if 'value' in v.keys():
+                # print(f"Setting value of {v_['label']} to {v_['value']}")
+                widget.setValue(v['value'])
+                widget.valueChanged.connect(partial(self.dict_connection, widget, k))
+                # print(f"Actual returned value is {widget.value()}")
+            if 'state' in v.keys():
+                widget.setCheckState(v['state'])
+                widget.setTristate(False)
+                widget.stateChanged.connect(partial(self.dict_connection, widget, k))
+            if isinstance(widget, QPushButton):
+                if 'button_title' in v.keys():
+                    widget.setText(v['button_title'])
+                if 'click_connect' in v.keys():
+                    push_button_action = getattr(self, v['click_connect'])
+                    widget.clicked.connect(push_button_action)
+            if 'decimals' in v.keys():
+                widget.setDecimals(v['decimals'])
+            if 'tool_tip' in v.keys():
+                label.setToolTip(v['tool_tip'])
+                widget.setToolTip(v['tool_tip'])
+            push_button = None
+            checkbox = None
+            if 'push_button' in v.keys():
+                push_button = QPushButton(v['push_button'], self)
+                push_button_action = getattr(self, v['push_button_action'])
+                push_button.clicked.connect(partial(push_button_action, widget))
+                self.widget_dict[k]['push_button'] = push_button
+            if 'active_checkbox' in v.keys():
+                checkbox = QCheckBox('Active?', self)
+                checkbox.setCheckState(v['active_checkbox'])
+                checkbox.setTristate(False)
+                checkbox_action = getattr(self, 'activate_deactivate_checkbox')
+                checkbox.stateChanged.connect(partial(checkbox_action, widget))
+                checkbox.stateChanged.connect(partial(self.dict_connection, checkbox, k))
+                self.widget_dict[k]['checkbox'] = checkbox_action
+            if 'combo_callback' in v.keys():
+                combo_callback_action = getattr(self, v['combo_callback'])
+                widget.currentTextChanged.connect(combo_callback_action)
+            if 'editable' in v.keys():
+                widget.setReadOnly(not v['editable'])
+            if 'text_changed_callback' in v.keys():
+                action = getattr(self, v['text_changed_callback'])
+                widget.textChanged.connect(partial(action, widget))
+                action(widget, v['text'])
+            if k == 'mea_dir' and self.widget_dict[k]['use_current_mea']['widget'].checkState():
+                widget.setReadOnly(True)
+                self.widget_dict[k]['push_button'].setEnabled(False)
+            if k == 'additional_data':
+                widget.setMaximumHeight(50)
+            self.layout.addWidget(label, grid_counter, 0)
+            if push_button is None:
+                if checkbox is None:
+                    self.layout.addWidget(widget, grid_counter, 1, 1, 3)
+                else:
+                    self.layout.addWidget(widget, grid_counter, 1, 1, 2)
+                    self.layout.addWidget(checkbox, grid_counter, 3)
+            else:
+                self.layout.addWidget(widget, grid_counter, 1, 1, 2)
+                self.layout.addWidget(push_button, grid_counter, 3)
+            grid_counter += 1
+
+        for k, v in self.inputs.items():
+            self.enable_disable_from_checkbox(k)
+
+        self.change_prescribed_aero_parameter(self.inputs['prescribe']['current_text'])
 
     def getInputs(self):
-        return_vals = []
-        for val in self.inputs:
-            if isinstance(val, QDoubleSpinBox):
-                return_vals.append(val.value())
-            elif isinstance(val, QLineEdit):
-                return_vals.append(val.text())
-            elif isinstance(val, QComboBox):
-                return_vals.append(val.currentText())
-            elif isinstance(val, QSpinBox):
-                return_vals.append(val.value())
-            elif isinstance(val, QCheckBox):
-                return_vals.append(val.checkState())
-            else:
-                raise TypeError(f'QFormLayout widget must be of type {type(QComboBox)}, {type(QDoubleSpinBox)}, '
-                                f'or {type(QLineEdit)}')
-        return tuple(return_vals)
+        return self.inputs
 
 
 class SettingsDialog(QDialog):
@@ -385,6 +522,13 @@ class OptimizationSetupDialog(QDialog):
         if file_dialog.exec_():
             line_edit.setText(file_dialog.selectedFiles()[0])
 
+    def select_coord_file(self, line_edit: QLineEdit):
+        file_dialog = QFileDialog(self)
+        file_dialog.setFileMode(QFileDialog.ExistingFile)
+        file_dialog.setNameFilter(self.tr("Data Files (*.txt *.dat *.csv)"))
+        if file_dialog.exec_():
+            line_edit.setText(file_dialog.selectedFiles()[0])
+
     def select_multiple_coord_files(self, text_edit: QPlainTextEdit):
         file_dialog = QFileDialog(self)
         file_dialog.setFileMode(QFileDialog.ExistingFiles)
@@ -405,6 +549,7 @@ class OptimizationSetupDialog(QDialog):
         msg_box = QMessageBox()
         msg_box.setText(f"Settings saved as {input_filename}")
         msg_box.setWindowTitle('Save Notification')
+        msg_box.setIcon(QMessageBox.Information)
         msg_box.setFont(self.parent().font())
         msg_box.exec()
 
@@ -419,8 +564,57 @@ class OptimizationSetupDialog(QDialog):
         msg_box = QMessageBox()
         msg_box.setText(f"Settings saved as {input_filename}")
         msg_box.setWindowTitle('Save Notification')
+        msg_box.setIcon(QMessageBox.Information)
         msg_box.setFont(self.parent().font())
         msg_box.exec()
+
+    def objectives_changed(self, widget, text: str):
+        self.parent().objectives = []
+        for obj_func_str in text.split(','):
+            objective = Objective(obj_func_str)
+            self.parent().objectives.append(objective)
+            if text == '':
+                widget.setStyleSheet("QLineEdit {background-color: rgba(176,25,25,50)}")
+                return
+            try:
+                function_input_data1 = getattr(cfd_output_templates, self.inputs['Genetic Algorithm'][
+                    'tool']['current_text'])
+                function_input_data2 = self.convert_text_array_to_dict(
+                    self.inputs['Genetic Algorithm']['additional_data']['texts'])
+                objective.update({**function_input_data1, **function_input_data2})
+                widget.setStyleSheet("QLineEdit {background-color: rgba(16,201,87,50)}")
+            except FunctionCompileError:
+                widget.setStyleSheet("QLineEdit {background-color: rgba(176,25,25,50)}")
+                return
+
+    def constraints_changed(self, widget, text: str):
+        print(f"text = {text}")
+        self.parent().constraints = []
+        for constraint_func_str in text.split(','):
+            if len(constraint_func_str) > 0:
+                constraint = Constraint(constraint_func_str)
+                self.parent().constraints.append(constraint)
+                try:
+                    function_input_data1 = getattr(cfd_output_templates, self.inputs['Genetic Algorithm'][
+                        'tool']['current_text'])
+                    function_input_data2 = self.convert_text_array_to_dict(
+                        self.inputs['Genetic Algorithm']['additional_data']['texts'])
+                    constraint.update({**function_input_data1, **function_input_data2})
+                    widget.setStyleSheet("QLineEdit {background-color: rgba(16,201,87,50)}")
+                except FunctionCompileError:
+                    widget.setStyleSheet("QLineEdit {background-color: rgba(176,25,25,50)}")
+                    return
+
+    @staticmethod
+    def convert_text_array_to_dict(text_array: list):
+        data_dict = {}
+        for text in text_array:
+            text_split = text.split(': ')
+            if len(text_split) > 1:
+                k = text_split[0]
+                v = float(text_split[1])
+                data_dict[k] = v
+        return data_dict
 
     def enable_disable_from_checkbox(self, key1: str, key2: str):
         widget = self.widget_dict[key1][key2]['widget']
@@ -460,7 +654,10 @@ class OptimizationSetupDialog(QDialog):
         if isinstance(widget, QLineEdit):
             self.inputs[key1][key2]['text'] = widget.text()
         elif isinstance(widget, QPlainTextEdit):
-            self.inputs[key1][key2]['texts'] = widget.toPlainText().split('\n\n')
+            if key2 == 'additional_data':
+                self.inputs[key1][key2]['texts'] = widget.toPlainText().split('\n')
+            else:
+                self.inputs[key1][key2]['texts'] = widget.toPlainText().split('\n\n')
         elif isinstance(widget, QComboBox):
             self.inputs[key1][key2]['current_text'] = widget.currentText()
         elif isinstance(widget, QSpinBox) or isinstance(widget, QDoubleSpinBox) or isinstance(
@@ -473,6 +670,12 @@ class OptimizationSetupDialog(QDialog):
                 self.inputs[key1][key2]['state'] = widget.checkState()
 
         self.enable_disable_from_checkbox(key1, key2)
+
+        if key2 == 'tool':
+            self.objectives_changed(self.widget_dict['Genetic Algorithm']['J']['widget'],
+                                    self.inputs['Genetic Algorithm']['J']['text'])
+            self.constraints_changed(self.widget_dict['Genetic Algorithm']['G']['widget'],
+                                     self.inputs['Genetic Algorithm']['G']['text'])
 
         if key2 == 'pop_size':
             self.widget_dict[key1]['n_offspring']['widget'].setMinimum(widget.value())
@@ -508,7 +711,10 @@ class OptimizationSetupDialog(QDialog):
                     widget.setText(v_['text'])
                     widget.textChanged.connect(partial(self.dict_connection, widget, k, k_))
                 if 'texts' in v_.keys():
-                    widget.insertPlainText('\n\n'.join(v_['texts']))
+                    if k_ == 'additional_data':
+                        widget.insertPlainText('\n'.join(v_['texts']))
+                    else:
+                        widget.insertPlainText('\n\n'.join(v_['texts']))
                     widget.textChanged.connect(partial(self.dict_connection, widget, k, k_))
                 if 'items' in v_.keys():
                     widget.addItems(v_['items'])
@@ -559,9 +765,15 @@ class OptimizationSetupDialog(QDialog):
                     widget.currentTextChanged.connect(combo_callback_action)
                 if 'editable' in v_.keys():
                     widget.setReadOnly(not v_['editable'])
+                if 'text_changed_callback' in v_.keys():
+                    action = getattr(self, v_['text_changed_callback'])
+                    widget.textChanged.connect(partial(action, widget))
+                    action(widget, v_['text'])
                 if k_ == 'mea_dir' and self.widget_dict[k]['use_current_mea']['widget'].checkState():
                     widget.setReadOnly(True)
                     self.widget_dict[k][k_]['push_button'].setEnabled(False)
+                if k_ == 'additional_data':
+                    widget.setMaximumHeight(50)
                 self.grid_layout.addWidget(label, grid_counter, 0)
                 if push_button is None:
                     if checkbox is None:
@@ -577,6 +789,8 @@ class OptimizationSetupDialog(QDialog):
         for k, v in self.inputs.items():
             for k_ in v.keys():
                 self.enable_disable_from_checkbox(k, k_)
+
+        self.change_prescribed_aero_parameter(self.inputs['XFOIL']['prescribe']['current_text'])
 
     def getInputs(self):
         return self.inputs

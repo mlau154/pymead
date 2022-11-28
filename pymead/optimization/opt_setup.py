@@ -44,7 +44,7 @@ def convert_opt_settings_to_param_dict(opt_settings: dict) -> dict:
     param_dict = {'tool': opt_settings['Genetic Algorithm']['tool']['current_text'],
                   'algorithm_save_frequency': opt_settings['Genetic Algorithm']['algorithm_save_frequency']['value'],
                   'n_obj': len(opt_settings['Genetic Algorithm']['J']['text'].split(',')),
-                  'n_constr': len(opt_settings['Genetic Algorithm']['G']['text'].split(',')),
+                  'n_constr': len(opt_settings['Genetic Algorithm']['G']['text'].split(',')) if opt_settings['Genetic Algorithm']['G']['text'] != '' else 0,
                   'population_size': opt_settings['Genetic Algorithm']['pop_size']['value'],
                   'n_ref_dirs': opt_settings['Genetic Algorithm']['pop_size']['value'],
                   'n_offsprings': opt_settings['Genetic Algorithm']['n_offspring']['value'],
@@ -140,20 +140,28 @@ class CustomDisplay(Display):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.term = MultiObjectiveSpaceToleranceTermination()
+        self.progress_dict = None
+
+    def set_progress_dict(self, progress_dict: dict):
+        self.progress_dict = progress_dict
 
     def _do(self, problem, evaluator, algorithm):
         super()._do(problem, evaluator, algorithm)
         F = algorithm.pop.get("F")
+        # G = algorithm.pop.get("G")
+        # CV = algorithm.pop.get("CV")
         weights = np.array([0.5, 0.5])
         decomp = get_decomposition("asf")
         I = decomp.do(F, weights).argmin()
         n_nds = len(algorithm.opt)
         f1_best = F[I][0]
-        f2_best = F[I][1]
         f1_min = F[:, 0].min()
-        f2_min = F[:, 1].min()
         f1_mean = np.mean(F[:, 0])
-        f2_mean = np.mean(F[:, 1])
+        # g1_min = G[:, 0].min()
+        # cv_min = CV[:, 0].min()
+        # g1_mean = np.mean(G[:, 0])
+        # cv_mean = np.mean(CV[:, 0])
+        self.set_progress_dict({'f1_best': f1_best})
         self.output.append("n_nds", n_nds, width=7)
         self.term.do_continue(algorithm)
 
@@ -177,8 +185,13 @@ class CustomDisplay(Display):
         self.output.append("eps", eps)
         self.output.append("indicator", max_from)
         self.output.append("f1_best", f1_best)
-        self.output.append("f2_best", f2_best)
+        # self.output.append("f2_best", f2_best)
         self.output.append("f1_min", f1_min)
-        self.output.append("f2_min", f2_min)
+        # self.output.append("f2_min", f2_min)
         self.output.append("f1_mean", f1_mean)
-        self.output.append("f2_mean", f2_mean)
+        # self.output.append("f2_mean", f2_mean)
+        # self.output.append("g1_min", g1_min)
+        # self.output.append("cv_min", cv_min)
+        # self.output.append("g1_mean", g1_mean)
+        # self.output.append("cv_mean", cv_mean)
+        pass
