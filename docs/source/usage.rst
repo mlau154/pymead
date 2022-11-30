@@ -1,6 +1,8 @@
 =========================
 Installation instructions
 =========================
+Dependencies
+------------
 
 **pymead** relies on several external libraries for low- and medium-fidelity
 aerodynamic analysis. All the geometry tools in **pymead** are built-in, apart
