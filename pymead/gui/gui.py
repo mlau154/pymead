@@ -2,14 +2,16 @@ from pymead.gui.rename_popup import RenamePopup
 from pymead.gui.main_icon_toolbar import MainIconToolbar
 
 from PyQt5.QtWidgets import QMainWindow, QApplication, QVBoxLayout, QHBoxLayout, \
-    QWidget, QMenu, QStatusBar, QAction
-from PyQt5.QtGui import QIcon, QFont, QFontDatabase
+    QWidget, QMenu, QStatusBar, QAction, QGraphicsScene, QGridLayout
+from PyQt5.QtGui import QIcon, QFont, QFontDatabase, QPainter
 from PyQt5.QtCore import QEvent, QObject, Qt, QThreadPool
+from PyQt5.QtSvg import QSvgWidget
 
 
 from pymead.core.airfoil import Airfoil
 from pymead import DATA_DIR, RESOURCE_DIR
-from pymead.gui.input_dialog import SingleAirfoilViscousDialog, LoadDialog, SaveAsDialog, OptimizationSetupDialog
+from pymead.gui.input_dialog import SingleAirfoilViscousDialog, LoadDialog, SaveAsDialog, OptimizationSetupDialog, \
+    MultiAirfoilDialog
 from pymead.gui.analysis_graph import AnalysisGraph
 from pymead.gui.parameter_tree import MEAParamTree
 from pymead.utils.airfoil_matching import match_airfoil
@@ -30,6 +32,9 @@ from pymead.gui.message_box import disp_message_box
 from pymead.gui.worker import Worker
 from pymead.optimization.opt_callback import PlotAirfoilCallback, ParallelCoordsCallback, OptCallback, \
     DragPlotCallback, CpPlotCallback
+from pymead.gui.input_dialog import convert_dialog_to_mset_settings, convert_dialog_to_mses_settings
+from pymead.gui.custom_graphics_view import CustomGraphicsView
+from pymead.utils.file_conversion import convert_ps_to_svg
 
 import pymoo.core.population
 from pymoo.algorithms.moo.unsga3 import UNSGA3
@@ -67,6 +72,9 @@ class GUI(QMainWindow):
         self.dialog = None
         self.opt_settings = None
         self.xfoil_settings = None
+        self.mset_settings = None
+        self.mses_settings = None
+        self.mplot_settings = None
         self.objectives = []
         self.constraints = []
         self.airfoil_name_list = ['A0']
@@ -75,6 +83,7 @@ class GUI(QMainWindow):
         self.parallel_coords_graph = None
         self.drag_graph = None
         self.Cp_graph = None
+        self.Mach_contour_widget = None
         # self.finished_optimization = False
         self.opt_airfoil_plot_handles = []
         self.parallel_coords_plot_handles = []
@@ -211,8 +220,9 @@ class GUI(QMainWindow):
 
         self.single_menu = QMenu("Single Airfoil", self)
         self.analysis_menu.addMenu(self.single_menu)
-        self.multi_menu = QMenu("Multi-Element Airfoil", self)
-        self.analysis_menu.addMenu(self.multi_menu)
+        self.multi_action = QAction("Multi-Element Airfoil", self)
+        self.analysis_menu.addAction(self.multi_action)
+        self.multi_action.triggered.connect(self.multi_airfoil_analysis_setup)
 
         self.single_inviscid_action = QAction("Invisid", self)
         self.single_menu.addAction(self.single_inviscid_action)
@@ -353,6 +363,78 @@ class GUI(QMainWindow):
                 self.n_analyses += 1
             else:
                 self.n_analyses += 1
+
+    def multi_airfoil_analysis_setup(self):
+        self.dialog = MultiAirfoilDialog(parent=self)
+        if self.dialog.exec():
+            inputs = self.dialog.getInputs()
+        else:
+            inputs = None
+
+        if inputs is not None:
+            mset_settings = convert_dialog_to_mset_settings(inputs['mset'])
+            mses_settings = convert_dialog_to_mses_settings(inputs['mses'])
+            mses_settings['n_airfoils'] = mset_settings['n_airfoils']
+            mplot_settings = {'timeout': 10.0, 'Mach': True, 'Grid': True}
+            self.multi_airfoil_analysis(mset_settings, mses_settings, mplot_settings)
+
+    def multi_airfoil_analysis(self, mset_settings: dict, mses_settings: dict,
+                               mplot_settings: dict):
+        aero_data, _ = calculate_aero_data(mset_settings['airfoil_analysis_dir'],
+                                           mset_settings['airfoil_coord_file_name'],
+                                           self.mea,
+                                           '',
+                                           tool='mses',
+                                           export_Cp=True,
+                                           mset_settings=mset_settings,
+                                           mses_settings=mses_settings,
+                                           mplot_settings=mplot_settings)
+        aero_data['converged'] = True
+        aero_data['errored_out'] = False
+        aero_data['timed_out'] = False
+        if not aero_data['converged'] or aero_data['errored_out'] or aero_data['timed_out']:
+            self.text_area.insertPlainText(
+                f"[{self.n_analyses:2.0f}] Converged = {aero_data['converged']} | Errored out = "
+                f"{aero_data['errored_out']} | Timed out = {aero_data['timed_out']}\n")
+        else:
+            self.text_area.insertPlainText(
+                f"[{self.n_analyses:2.0f}] (Re = {mses_settings['REYNIN']:.3E}, Ma = {mses_settings['MACHIN']:.3f}): "
+                f"Cl = {aero_data['Cl']:7.4f} | Cd = {aero_data['Cd']:.5f} | Cm = {aero_data['Cm']:7.4f}\n")
+        sb = self.text_area.verticalScrollBar()
+        sb.setValue(sb.maximum())
+
+        if aero_data['converged'] and not aero_data['errored_out'] and not aero_data['timed_out']:
+            if self.analysis_graph is None:
+                # Need to set analysis_graph to None if analysis window is closed! Might also not want to allow geometry docking window to be closed
+                if self.dark_mode:
+                    bcolor = '#2a2a2b'
+                else:
+                    bcolor = 'w'
+                self.analysis_graph = AnalysisGraph(background_color=bcolor)
+                self.dockable_tab_window.add_new_tab_widget(self.analysis_graph.w, "Analysis")
+            pg_plot_handle = self.analysis_graph.v.plot(pen=pg.mkPen(color=self.pens[self.n_converged_analyses][0],
+                                                                     style=self.pens[self.n_converged_analyses][1]),
+                                                        name=str(self.n_analyses))
+            pg_plot_handle.setData(aero_data['BL'][0]['x'], aero_data['BL'][0]['Cp'])
+            # pen = pg.mkPen(color='green')
+            self.n_converged_analyses += 1
+            self.n_analyses += 1
+            image = QSvgWidget(os.path.join(mset_settings['airfoil_analysis_dir'],
+                                            mset_settings['airfoil_coord_file_name'],
+                                            'Mach_contours.svg'))
+            graphics_scene = QGraphicsScene()
+            self.Mach_contour_scene = graphics_scene.addWidget(image)
+            view = CustomGraphicsView(graphics_scene, parent=self)
+            view.setRenderHint(QPainter.Antialiasing)
+            self.Mach_contour_widget = QWidget(self)
+            widget_layout = QGridLayout()
+            self.Mach_contour_widget.setLayout(widget_layout)
+            widget_layout.addWidget(view, 0, 0, 4, 4)
+            # new_image = QSvgWidget(os.path.join(RESOURCE_DIR, 'sec_34.svg'))
+            # temp_widget.setWidget(new_image)
+            self.dockable_tab_window.add_new_tab_widget(self.Mach_contour_widget, 'Mach Contours')
+        else:
+            self.n_analyses += 1
 
     def match_airfoil(self):
         target_airfoil = 'A0'

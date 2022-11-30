@@ -1,5 +1,6 @@
 import os
 import numpy as np
+import typing
 
 
 def opt_settings_default():
@@ -172,7 +173,7 @@ def opt_settings_default():
 
 def xfoil_settings_default(mea_keys: list):
     settings = {
-            'airfoil': {'label': 'Airfoil', 'widget_type': 'QComboBox', 'items': mea_keys, 'current_text': 'A0'},
+            'airfoil': {'label': 'Airfoil', 'widget_type': 'QComboBox', 'items': mea_keys, 'current_text': mea_keys[0]},
             'Re': {'label': 'Reynolds Number', 'widget_type': 'QDoubleSpinBox', 'value': 1e5,
                    'decimals': 16, 'lower_bound': 0.00001, 'upper_bound': np.inf},
             'Ma': {'label': 'Mach Number', 'widget_type': 'QDoubleSpinBox', 'value': 0.0,
@@ -205,4 +206,139 @@ def xfoil_settings_default(mea_keys: list):
             'airfoil_coord_file_name': {'label': 'Airfoil Coord. Filename', 'widget_type': 'QLineEdit',
                                         'text': 'default_airfoil'},
         }
+    return settings
+
+
+def mset_settings_default(mea_keys: typing.List[str]):
+    settings = {
+        'airfoil_order': {'label': 'Airfoil Order', 'widget_type': 'QLineEdit', 'text': ','.join(mea_keys)},
+        'grid_bounds': {'widget_type': 'GridBounds', 'values': [-5.0, 5.0, -5.0, 5.0]},
+        'airfoil_side_points': {'label': 'Airfoil Side Points', 'widget_type': 'QSpinBox', 'value': 150,
+                                'lower_bound': 1, 'upper_bound': int(2 ** 32 / 2 - 1)},
+        'exp_side_points': {'label': 'Side Points Exponent', 'widget_type': 'QDoubleSpinBox', 'value': 0.9,
+                            'lower_bound': 0.0, 'upper_bound': np.inf},
+        'inlet_pts_left_stream': {'label': 'Inlet Points Left', 'widget_type': 'QSpinBox', 'value': 41,
+                                  'lower_bound': 1, 'upper_bound': int(2 ** 32 / 2 - 1)},
+        'outlet_pts_right_stream': {'label': 'Outlet Points Right', 'widget_type': 'QSpinBox', 'value': 41,
+                                    'lower_bound': 1, 'upper_bound': int(2 ** 32 / 2 - 1)},
+        'num_streams_top': {'label': 'Number Top Streamlines', 'widget_type': 'QSpinBox', 'value': 17,
+                            'lower_bound': 1, 'upper_bound': int(2 ** 32 / 2 - 1)},
+        'num_streams_bot': {'label': 'Number Bottom Streamlines', 'widget_type': 'QSpinBox', 'value': 23,
+                            'lower_bound': 1, 'upper_bound': int(2 ** 32 / 2 - 1)},
+        'max_streams_between': {'label': 'Max Streamlines Between', 'widget_type': 'QSpinBox', 'value': 15,
+                                'lower_bound': 1, 'upper_bound': int(2 ** 32 / 2 - 1)},
+        'elliptic_param': {'label': 'Elliptic Parameter', 'widget_type': 'QDoubleSpinBox', 'value': 1.3,
+                           'lower_bound': 0.0, 'upper_bound': np.inf},
+        'stag_pt_aspect_ratio': {'label': 'Stag. Pt. Aspect Ratio', 'widget_type': 'QDoubleSpinBox', 'value': 2.5,
+                                 'lower_bound': 0.0, 'upper_bound': np.inf},
+        'x_spacing_param': {'label': 'X-Spacing Parameter', 'widget_type': 'QDoubleSpinBox', 'value': 0.85,
+                            'lower_bound': 0.0, 'upper_bound': np.inf},
+        'alf0_stream_gen': {'label': 'Streamline Gen. Alpha', 'widget_type': 'QDoubleSpinBox', 'value': 0.0,
+                            'lower_bound': -np.inf, 'upper_bound': np.inf},
+        'timeout': {'label': 'Timeout', 'widget_type': 'QDoubleSpinBox', 'value': 10.0,
+                    'lower_bound': 0.0, 'upper_bound': np.inf},
+        'verbose': {'label': 'Verbose?', 'widget_type': 'QCheckBox', 'state': 0},
+        'multi_grid_label': {'widget_type': 'QLabel', 'text': 'MEA Grid Settings',
+                             'restart_grid_counter': True, 'col': 4, 'align': 'c'},
+        'multi_airfoil_grid': {'widget_type': 'MSETMultiGridWidget',
+                               'values': {'A0': {
+                                            'dsLE_dsAvg': 0.35,
+                                            'dsTE_dsAvg': 0.8,
+                                            'curvature_exp': 1.3,
+                                            'U_s_smax_min': 1,
+                                            'U_s_smax_max': 1,
+                                            'L_s_smax_min': 1,
+                                            'L_s_smax_max': 1,
+                                            'U_local_avg_spac_ratio': 0,
+                                            'L_local_avg_spac_ratio': 0,
+                                        }},
+                               'col': 4, 'row_span': 9},
+        'airfoil_analysis_dir': {'label': 'Analysis Directory', 'widget_type': 'QLineEdit',
+                                 'push_button': 'Choose folder',
+                                 'push_button_action': 'select_directory_for_airfoil_analysis', 'text': ''},
+        'airfoil_coord_file_name': {'label': 'Airfoil Coord. Filename', 'widget_type': 'QLineEdit',
+                                    'text': 'default_airfoil'},
+    }
+    return settings
+
+
+def mses_settings_default():
+    settings = {
+        'viscous_flag': {'label': 'Viscosity On?', 'widget_type': 'QCheckBox', 'state': 1},
+        'spec_Re': {'label': 'Specify Reynolds Number?', 'widget_type': 'QCheckBox', 'state': 0,
+                    'checkbox_callback': 'change_Re_active_state'},
+        'REYNIN': {'label': 'Reynolds Number', 'widget_type': 'QDoubleSpinBox', 'value': 1e6,
+                   'lower_bound': 0.0, 'upper_bound': np.inf, 'decimals': 16},
+        'MACHIN': {'label': 'Mach Number', 'widget_type': 'QDoubleSpinBox', 'value': 0.7,
+                   'lower_bound': 0.0, 'upper_bound': np.inf, 'decimals': 16},
+        'spec_P_T_rho': {'label': 'Specify Flow Variables', 'widget_type': 'QComboBox',
+                         'items': ['Specify Pressure, Temperature', 'Specify Pressure, Density',
+                                   'Specify Temperature, Density'],
+                         'current_text': 'Specify Pressure, Temperature',
+                         'combo_callback': 'change_prescribed_flow_variables'},
+        'P': {'label': 'Pressure (Pa)', 'widget_type': 'QDoubleSpinBox', 'value': 101325.0,
+              'lower_bound': 0.0, 'upper_bound': np.inf, 'decimals': 16},
+        'T': {'label': 'Temperature (K)', 'widget_type': 'QDoubleSpinBox', 'value': 300,
+              'lower_bound': 0.0, 'upper_bound': np.inf, 'decimals': 16},
+        'rho': {'label': 'Density (kg/m^3)', 'widget_type': 'QDoubleSpinBox', 'value': 101325.0 / (287 * 300),
+                'lower_bound': 0.0, 'upper_bound': np.inf, 'decimals': 16},
+        'gam': {'label': 'Specific Heat Ratio', 'widget_type': 'QDoubleSpinBox', 'value': 1.4,
+                'lower_bound': 0.0, 'upper_bound': np.inf, 'decimals': 16},
+        'L': {'label': 'Length Scale (m)', 'widget_type': 'QDoubleSpinBox', 'value': 1.0,
+              'lower_bound': 0.0, 'upper_bound': np.inf, 'decimals': 16},
+        'R': {'label': 'Gas Constant (J/(kg*K))', 'widget_type': 'QDoubleSpinBox', 'value': 287.0,
+              'lower_bound': 0.0, 'upper_bound': np.inf, 'decimals': 16},
+        'spec_alfa_Cl': {'label': 'Specify Alpha/Cl', 'widget_type': 'QComboBox',
+                         'items': ['Specify Angle of Attack', 'Specify Lift Coefficient'],
+                         'current_text': 'Specify Angle of Attack',
+                         'combo_callback': 'change_prescribed_aero_parameter'},
+        'ALFAIN': {'label': 'Angle of Attack (deg)', 'widget_type': 'QDoubleSpinBox', 'value': 0.0,
+                   'lower_bound': -np.inf, 'upper_bound': np.inf, 'decimals': 16},
+        'CLIFIN': {'label': 'Lift Coefficient', 'widget_type': 'QDoubleSpinBox', 'value': 0.0,
+                   'lower_bound': -np.inf, 'upper_bound': np.inf, 'decimals': 16},
+        'ISMOM': {'label': 'Isentropic/Momentum', 'widget_type': 'QComboBox',
+                  'items': ['S-momentum equation', 'isentropic condition',
+                            'S-momentum equation, isentropic @ LE',
+                            'isentropic condition, S-mom. where diss. active'],
+                  'current_text': 'S-momentum equation, isentropic @ LE'},
+        'IFFBC': {'label': 'Far-Field Boundary', 'widget_type': 'QComboBox',
+                  'items': ['solid wall airfoil far-field BCs', 'vortex+source+doublet airfoil far-field BCs',
+                            'freestream pressure airfoil far-field BCs', 'supersonic wave freestream BCs',
+                            'supersonic solid wall far-field BCs'],
+                  'current_text': 'vortex+source+doublet airfoil far-field BCs'},
+        'ACRIT': {'label': 'Crit. Amp. Factor', 'widget_type': 'QDoubleSpinBox', 'value': 9.0,
+                  'lower_bound': 0.0, 'upper_bound': np.inf, 'decimals': 4},
+        'MCRIT': {'label': 'Critical Mach Number', 'widget_type': 'QDoubleSpinBox', 'value': 0.95,
+                  'lower_bound': 0.0, 'upper_bound': 1.0, 'decimals': 4},
+        'MUCON': {'label': 'Artificial Dissipation', 'widget_type': 'QDoubleSpinBox', 'value': 1.05,
+                  'lower_bound': 1.0, 'upper_bound': np.inf, 'decimals': 4},
+        'timeout': {'label': 'Timeout', 'widget_type': 'QDoubleSpinBox', 'value': 15.0,
+                    'lower_bound': 0.0, 'upper_bound': np.inf, 'restart_grid_counter': True, 'col': 5, 'label_col': 4},
+        'iter': {'label': 'Maximum Iterations', 'widget_type': 'QSpinBox', 'value': 100,
+                 'lower_bound': 1, 'upper_bound': 1000000, 'col': 5, 'label_col': 4},
+        'verbose': {'label': 'Verbose?', 'widget_type': 'QCheckBox', 'state': 0, 'label_col': 4, 'col': 5},
+        'xtrs_label': {'widget_type': 'QLabel', 'text': 'Transition Location',
+                       'col': 4, 'align': 'c'},
+        'xtrs': {'widget_type': 'XTRSWidget',
+                 'values': {'A0': {'XTRSupper': 1.0, 'XTRSlower': 1.0}}, 'col': 4, 'row_span': 3, 'col_span': 2},
+        'AD_active': {'label': 'Actuator Disks Active?', 'widget_type': 'QCheckBox', 'state': 0, 'col': 5,
+                      'label_col': 4},
+        'AD_number': {'label': 'Num. Actuator Disks', 'widget_type': 'QSpinBox', 'value': 1,
+                      'lower_bound': 1, 'upper_bound': 5, 'col': 5, 'label_col': 4},
+        'AD_label': {'widget_type': 'QLabel', 'text': 'Actuator Disks',
+                     'col': 4, 'align': 'c', 'col_span': 2},
+        'AD': {'widget_type': 'ADWidget',
+               'values': {'1': {'ISDELH': 1, 'XCDELH': 0.1, 'PTRHIN': 1.1, 'ETAH': 0.95}}, 'col': 4, 'row_span': 5,
+               'col_span': 2},
+    }
+    return settings
+
+
+def mplot_settings_default():
+    settings = {
+        'timeout': {'label': 'Timeout (sec)', 'widget_type': 'QDoubleSpinBox', 'value': 15.0,
+                    'lower_bound': 0.0, 'upper_bound': np.inf, 'decimals': 4},
+        'Mach': {'label': 'Output Mach Contours', 'widget_type': 'QCheckBox', 'state': 1},
+        'Grid': {'label': 'Output Grid', 'widget_type': 'QCheckBox', 'state': 1}
+    }
     return settings
