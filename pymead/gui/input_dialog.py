@@ -2,8 +2,10 @@ import numpy as np
 from typing import List, Any
 from PyQt5.QtWidgets import QDialog, QDialogButtonBox, QFormLayout, QDoubleSpinBox, QComboBox, QLineEdit, QSpinBox, \
     QTabWidget, QLabel, QMessageBox, QCheckBox, QFileDialog, QVBoxLayout, QWidget, QRadioButton, QHBoxLayout, \
-    QButtonGroup, QGridLayout, QPushButton, QPlainTextEdit
-from PyQt5.QtCore import QEvent
+    QButtonGroup, QGridLayout, QPushButton, QPlainTextEdit, QGraphicsScene, QGraphicsView
+from PyQt5.QtCore import QEvent, Qt
+from PyQt5.QtGui import QPixmap, QPainter
+from PyQt5.QtSvg import QSvgWidget
 from pymead.gui.infty_doublespinbox import InftyDoubleSpinBox
 from pymead.gui.scientificspinbox_master.ScientificDoubleSpinBox import ScientificDoubleSpinBox
 from pymead.gui.pyqt_vertical_tab_widget.pyqt_vertical_tab_widget.verticalTabWidget import VerticalTabWidget
@@ -12,9 +14,98 @@ import os
 from functools import partial
 from pymead.utils.read_write_files import load_data, save_data
 from pymead.utils.dict_recursion import recursive_get
-from pymead.gui.default_settings import opt_settings_default, xfoil_settings_default
+from pymead.gui.default_settings import opt_settings_default, xfoil_settings_default, mset_settings_default, \
+    mses_settings_default, mplot_settings_default
 from pymead.optimization.objectives_and_constraints import Objective, Constraint, FunctionCompileError
 from pymead.analysis import cfd_output_templates
+from pymead.gui.grid_bounds_widget import GridBounds
+from pymead.gui.mset_multigrid_widget import MSETMultiGridWidget, XTRSWidget, ADWidget
+from pymead.analysis.utils import viscosity_calculator
+from pymead.gui.custom_graphics_view import CustomGraphicsView
+from pymead import RESOURCE_DIR, DATA_DIR
+
+
+def convert_dialog_to_mset_settings(dialog_input: dict):
+    mset_settings = {
+        'airfoil_order': dialog_input['airfoil_order']['text'].split(','),
+        'grid_bounds': dialog_input['grid_bounds']['values'],
+        'verbose': dialog_input['verbose']['state'],
+        'airfoil_analysis_dir': dialog_input['airfoil_analysis_dir']['text'],
+        'airfoil_coord_file_name': dialog_input['airfoil_coord_file_name']['text'],
+    }
+    values_list = ['airfoil_side_points', 'exp_side_points', 'inlet_pts_left_stream', 'outlet_pts_right_stream',
+                   'num_streams_top', 'num_streams_bot', 'max_streams_between', 'elliptic_param',
+                   'stag_pt_aspect_ratio', 'x_spacing_param', 'alf0_stream_gen', 'timeout']
+    for value in values_list:
+        mset_settings[value] = dialog_input[value]['value']
+    for idx, airfoil in enumerate(dialog_input['multi_airfoil_grid']['values'].values()):
+        for k, v in airfoil.items():
+            if idx == 0:
+                mset_settings[k] = [v]
+            else:
+                mset_settings[k].append(v)
+    mset_settings['n_airfoils'] = len(mset_settings['airfoil_order'])
+    for k, v in mset_settings.items():
+        print(f"{k}: {v}")
+    return mset_settings
+
+
+def convert_dialog_to_mses_settings(dialog_input: dict):
+    mses_settings = {
+        'ISMOVE': 0,
+        'ISPRES': 0,
+        'NMODN': 0,
+        'NPOSN': 0,
+        'viscous_flag': dialog_input['viscous_flag']['state'],
+        'inverse_flag': 0,
+        'inverse_side': 1,
+        'verbose': dialog_input['verbose']['state'],
+    }
+
+    for idx, item in enumerate(dialog_input['ISMOM']['items']):
+        if dialog_input['ISMOM']['current_text'] == item:
+            mses_settings['ISMOM'] = idx + 1
+            break
+
+    for idx, item in enumerate(dialog_input['IFFBC']['items']):
+        if dialog_input['IFFBC']['current_text'] == item:
+            mses_settings['IFFBC'] = idx + 1
+            break
+
+    if dialog_input['AD_active']['state']:
+        mses_settings['AD_flags'] = [1 for _ in range(dialog_input['AD_number']['value'])]
+    else:
+        mses_settings['AD_flags'] = [0 for _ in range(dialog_input['AD_number']['value'])]
+
+    values_list = ['REYNIN', 'MACHIN', 'ALFAIN', 'CLIFIN', 'ACRIT', 'MCRIT', 'MUCON',
+                   'timeout', 'iter']
+    for value in values_list:
+        mses_settings[value] = dialog_input[value]['value']
+
+    if dialog_input['spec_alfa_Cl']['current_text'] == 'Specify Angle of Attack':
+        mses_settings['target'] = 'alfa'
+    elif dialog_input['spec_alfa_Cl']['current_text'] == 'Specify Lift Coefficient':
+        mses_settings['target'] = 'Cl'
+
+    for idx, airfoil in enumerate(dialog_input['xtrs']['values'].values()):
+        for k, v in airfoil.items():
+            if idx == 0:
+                mses_settings[k] = [v]
+            else:
+                mses_settings[k].append(v)
+
+    for k, v in mses_settings.items():
+        print(f"{k}: {v}")
+    return mses_settings
+
+
+def convert_dialog_to_mplot_settings(dialog_input: dict):
+    mplot_settings = {
+        'timeout': dialog_input['timeout']['value'],
+        'Mach': dialog_input['Mach']['state'],
+        'Grid': dialog_input['Grid']['state'],
+    }
+    return mplot_settings
 
 
 class FreePointInputDialog(QDialog):
@@ -165,7 +256,7 @@ class SingleAirfoilViscousDialog(QDialog):
         super().__init__(parent)
 
         self.setFont(self.parent().font())
-        self.setWindowTitle("Single Airfoil Viscous Analysis")
+        self.setWindowTitle("Single Airfoil Analysis")
         self.widget_dict = None
 
         buttonBox = QDialogButtonBox(self)
@@ -359,6 +450,495 @@ class SingleAirfoilViscousDialog(QDialog):
             self.enable_disable_from_checkbox(k)
 
         self.change_prescribed_aero_parameter(self.inputs['prescribe']['current_text'])
+
+    def getInputs(self):
+        return self.inputs
+
+
+class MultiAirfoilDialog(QDialog):
+    def __init__(self, parent):
+        super().__init__(parent=parent)
+
+        self.setWindowTitle("Multi-Element-Airfoil Analysis")
+        self.setFont(self.parent().font())
+
+        self.grid_widget = None
+        self.grid_layout = None
+
+        buttonBox = QDialogButtonBox(self)
+        buttonBox.addButton("Run", QDialogButtonBox.AcceptRole)
+        buttonBox.addButton(QDialogButtonBox.Cancel)
+        layout = QVBoxLayout(self)
+        self.tab_widget = VerticalTabWidget(self)
+        layout.addWidget(self.tab_widget)
+
+        if parent.mset_settings is None:
+            self.inputs = {'mset': mset_settings_default(self.parent().airfoil_name_list)}
+        else:
+            self.inputs = {'mset': parent.mset_settings}
+
+        if parent.mses_settings is None:
+            self.inputs['mses'] = mses_settings_default()
+        else:
+            self.inputs['mses'] = parent.mses_settings
+
+        if parent.mplot_settings is None:
+            self.inputs['mplot'] = mplot_settings_default()
+        else:
+            self.inputs['mplot'] = parent.mplot_settings
+
+        self.setInputs()
+
+        parent.mset_settings = self.inputs['mset']
+        parent.mses_settings = self.inputs['mses']
+        parent.mplot_settings = self.inputs['mplot']
+
+        layout.addWidget(buttonBox)
+
+        buttonBox.accepted.connect(self.accept)
+        buttonBox.rejected.connect(self.reject)
+
+    def add_tab(self, name: str):
+        self.grid_widget = QWidget()
+        self.grid_layout = QGridLayout(self)
+        self.grid_widget.setLayout(self.grid_layout)
+        self.tab_widget.addTab(self.grid_widget, name)
+
+    def select_directory(self, line_edit: QLineEdit):
+        selected_dir = QFileDialog.getExistingDirectory(self, "Select a directory", os.path.expanduser("~"),
+                                                        QFileDialog.ShowDirsOnly)
+        if selected_dir:
+            line_edit.setText(selected_dir)
+
+    def select_directory_for_airfoil_analysis(self, line_edit: QLineEdit):
+        file_dialog = QFileDialog(self)
+        file_dialog.setFileMode(QFileDialog.DirectoryOnly)
+        if file_dialog.exec_():
+            line_edit.setText(file_dialog.selectedFiles()[0])
+
+    @staticmethod
+    def activate_deactivate_checkbox(widget: QLineEdit or QSpinBox or QDoubleSpinBox, checked: bool):
+        if checked:
+            widget.setReadOnly(False)
+        else:
+            widget.setReadOnly(True)
+
+    def select_existing_json_file(self, line_edit: QLineEdit):
+        file_dialog = QFileDialog(self)
+        file_dialog.setFileMode(QFileDialog.ExistingFile)
+        file_dialog.setNameFilter(self.tr("JSON Settings Files (*.json)"))
+        if file_dialog.exec_():
+            line_edit.setText(file_dialog.selectedFiles()[0])
+
+    def select_any_json_file(self, line_edit: QLineEdit):
+        file_dialog = QFileDialog(self)
+        file_dialog.setFileMode(QFileDialog.AnyFile)
+        file_dialog.setNameFilter(self.tr("JSON Settings Files (*.json)"))
+        if file_dialog.exec_():
+            line_edit.setText(file_dialog.selectedFiles()[0])
+
+    def select_directory_for_json_file(self, line_edit: QLineEdit):
+        file_dialog = QFileDialog(self)
+        file_dialog.setFileMode(QFileDialog.DirectoryOnly)
+        if file_dialog.exec_():
+            line_edit.setText(file_dialog.selectedFiles()[0])
+
+    def select_coord_file(self, line_edit: QLineEdit):
+        file_dialog = QFileDialog(self)
+        file_dialog.setFileMode(QFileDialog.ExistingFile)
+        file_dialog.setNameFilter(self.tr("Data Files (*.txt *.dat *.csv)"))
+        if file_dialog.exec_():
+            line_edit.setText(file_dialog.selectedFiles()[0])
+
+    def select_multiple_coord_files(self, text_edit: QPlainTextEdit):
+        file_dialog = QFileDialog(self)
+        file_dialog.setFileMode(QFileDialog.ExistingFiles)
+        file_dialog.setNameFilter(self.tr("Data Files (*.txt *.dat *.csv)"))
+        if file_dialog.exec_():
+            text_edit.insertPlainText('\n\n'.join(file_dialog.selectedFiles()))
+
+    def select_multiple_json_files(self, text_edit: QPlainTextEdit):
+        file_dialog = QFileDialog(self)
+        file_dialog.setFileMode(QFileDialog.ExistingFiles)
+        file_dialog.setNameFilter(self.tr("JSON Settings Files (*.json)"))
+        if file_dialog.exec_():
+            text_edit.insertPlainText('\n\n'.join(file_dialog.selectedFiles()))
+
+    def save_opt_settings(self):
+        input_filename = self.inputs['Save/Load Settings']['settings_save_dir']['text']
+        save_data(self.inputs, input_filename)
+        msg_box = QMessageBox()
+        msg_box.setText(f"Settings saved as {input_filename}")
+        msg_box.setWindowTitle('Save Notification')
+        msg_box.setIcon(QMessageBox.Information)
+        msg_box.setFont(self.parent().font())
+        msg_box.exec()
+
+    def load_opt_settings(self):
+        self.inputs = load_data(self.inputs['Save/Load Settings']['settings_load_dir']['text'])
+        self.setInputs()
+
+    def saveas_opt_settings(self):
+        input_filename = os.path.join(self.inputs['Save/Load Settings']['settings_saveas_dir']['text'],
+                                      self.inputs['Save/Load Settings']['settings_saveas_filename']['text'])
+        save_data(self.inputs, input_filename)
+        msg_box = QMessageBox()
+        msg_box.setText(f"Settings saved as {input_filename}")
+        msg_box.setWindowTitle('Save Notification')
+        msg_box.setIcon(QMessageBox.Information)
+        msg_box.setFont(self.parent().font())
+        msg_box.exec()
+
+    @staticmethod
+    def convert_text_array_to_dict(text_array: list):
+        data_dict = {}
+        for text in text_array:
+            text_split = text.split(': ')
+            if len(text_split) > 1:
+                k = text_split[0]
+                v = float(text_split[1])
+                data_dict[k] = v
+        return data_dict
+
+    def enable_disable_from_checkbox(self, key1: str, key2: str):
+        widget = self.widget_dict[key1][key2]['widget']
+        if 'widgets_to_enable' in self.inputs[key1][key2].keys() and widget.checkState() or (
+                'widgets_to_disable' in self.inputs[key1][key2].keys() and not widget.checkState()
+        ):
+            enable_disable_key = 'widgets_to_enable' if 'widgets_to_enable' in self.inputs[
+                key1][key2].keys() else 'widgets_to_disable'
+            for enable_list in self.inputs[key1][key2][enable_disable_key]:
+                dict_to_enable = recursive_get(self.widget_dict, *enable_list)
+                if not isinstance(dict_to_enable['widget'], QPushButton):
+                    dict_to_enable['widget'].setReadOnly(False)
+                    if 'push_button' in dict_to_enable.keys():
+                        dict_to_enable['push_button'].setEnabled(True)
+                    if 'checkbox' in dict_to_enable.keys():
+                        dict_to_enable['checkbox'].setReadOnly(False)
+                else:
+                    dict_to_enable['widget'].setEnabled(True)
+        elif 'widgets_to_enable' in self.inputs[key1][key2].keys() and not widget.checkState() or (
+                'widgets_to_disable' in self.inputs[key1][key2].keys() and widget.checkState()
+        ):
+            enable_disable_key = 'widgets_to_enable' if 'widgets_to_enable' in self.inputs[
+                key1][key2].keys() else 'widgets_to_disable'
+            for disable_list in self.inputs[key1][key2][enable_disable_key]:
+                dict_to_enable = recursive_get(self.widget_dict, *disable_list)
+                if not isinstance(dict_to_enable['widget'], QPushButton):
+                    dict_to_enable['widget'].setReadOnly(True)
+                    if 'push_button' in dict_to_enable.keys():
+                        dict_to_enable['push_button'].setEnabled(False)
+                    if 'checkbox' in dict_to_enable.keys():
+                        dict_to_enable['checkbox'].setReadOnly(True)
+                else:
+                    dict_to_enable['widget'].setEnabled(False)
+
+    def dict_connection(self,
+                        widget: QLineEdit | QSpinBox | QDoubleSpinBox | ScientificDoubleSpinBox | QComboBox | QCheckBox,
+                        key1: str, key2: str):
+        if isinstance(widget, QLineEdit):
+            self.inputs[key1][key2]['text'] = widget.text()
+        elif isinstance(widget, QPlainTextEdit):
+            if key2 == 'additional_data':
+                self.inputs[key1][key2]['texts'] = widget.toPlainText().split('\n')
+            else:
+                self.inputs[key1][key2]['texts'] = widget.toPlainText().split('\n\n')
+        elif isinstance(widget, QComboBox):
+            self.inputs[key1][key2]['current_text'] = widget.currentText()
+        elif isinstance(widget, QSpinBox) or isinstance(widget, QDoubleSpinBox) or isinstance(
+                widget, ScientificDoubleSpinBox):
+            self.inputs[key1][key2]['value'] = widget.value()
+        elif isinstance(widget, QCheckBox):
+            if 'active_checkbox' in self.inputs[key1][key2].keys():
+                self.inputs[key1][key2]['active_checkbox'] = widget.checkState()
+            else:
+                self.inputs[key1][key2]['state'] = widget.checkState()
+        elif isinstance(widget, GridBounds):
+            self.inputs[key1][key2]['values'] = widget.values()
+        elif isinstance(widget, MSETMultiGridWidget):
+            self.inputs[key1][key2]['values'] = widget.values()
+
+        self.enable_disable_from_checkbox(key1, key2)
+
+        if key2 in ['P', 'T', 'rho', 'R', 'gam', 'L', 'MACHIN'] and not widget.isReadOnly():
+            P = self.inputs['mses']['P']['value']
+            T = self.inputs['mses']['T']['value']
+            rho = self.inputs['mses']['rho']['value']
+            R = self.inputs['mses']['R']['value']
+            # gam = self.inputs['mses']['gam']['value']
+            # L = self.inputs['mses']['L']['value']
+            # M = self.inputs['mses']['MACHIN']['value']
+            P_widget = self.widget_dict['mses']['P']['widget']
+            T_widget = self.widget_dict['mses']['T']['widget']
+            rho_widget = self.widget_dict['mses']['rho']['widget']
+            # Re_widget = self.widget_dict['mses']['REYNIN']['widget']
+            if P_widget.isReadOnly():
+                P_widget.setValue(rho * R * T)
+            elif T_widget.isReadOnly():
+                T_widget.setValue(P / R / rho)
+            elif rho_widget.isReadOnly():
+                rho_widget.setValue(P / R / T)
+            self.calculate_and_set_Reynolds_number()
+
+    def calculate_and_set_Reynolds_number(self):
+        T = self.inputs['mses']['T']['value']
+        rho = self.inputs['mses']['rho']['value']
+        R = self.inputs['mses']['R']['value']
+        gam = self.inputs['mses']['gam']['value']
+        L = self.inputs['mses']['L']['value']
+        M = self.inputs['mses']['MACHIN']['value']
+        print(f"M = {M}")
+        Re_widget = self.widget_dict['mses']['REYNIN']['widget']
+        nu = viscosity_calculator(T, rho=rho)
+        a = np.sqrt(gam * R * T)
+        V = M * a
+        Re_widget.setValue(V * L / nu)
+
+    def change_prescribed_aero_parameter(self, current_text: str):
+        w1 = self.widget_dict['mses']['ALFAIN']['widget']
+        w2 = self.widget_dict['mses']['CLIFIN']['widget']
+        if current_text == 'Specify Angle of Attack':
+            bools = (False, True)
+        elif current_text == 'Specify Lift Coefficient':
+            bools = (True, False)
+        else:
+            raise ValueError('Invalid value of currentText for QComboBox (alfa/Cl')
+        w1.setReadOnly(bools[0])
+        w2.setReadOnly(bools[1])
+
+    def change_prescribed_flow_variables(self, current_text: str):
+        print('Changing prescribed flow variables!')
+        w1 = self.widget_dict['mses']['P']['widget']
+        w2 = self.widget_dict['mses']['T']['widget']
+        w3 = self.widget_dict['mses']['rho']['widget']
+        if current_text == 'Specify Pressure, Temperature':
+            bools = (False, False, True)
+        elif current_text == 'Specify Pressure, Density':
+            bools = (False, True, False)
+        elif current_text == 'Specify Temperature, Density':
+            bools = (True, False, False)
+        else:
+            raise ValueError('Invalid value of currentText for QComboBox (P/T/rho)')
+        w1.setReadOnly(bools[0])
+        w2.setReadOnly(bools[1])
+        w3.setReadOnly(bools[2])
+        print(f"bools = {bools}")
+        print(f"isReadOnly: w1 = {w1.isReadOnly()}, w2 = {w2.isReadOnly()}, w3 = {w3.isReadOnly()}")
+
+    def change_Re_active_state(self, state):
+        if state == 0 or state is None:
+            active = False
+        else:
+            active = True
+        widget_names = ['P', 'T', 'rho', 'L', 'R', 'gam']
+        skip_P, skip_T, skip_rho = False, False, False
+        if (self.inputs['mses']['spec_P_T_rho']['current_text'] == 'Specify Pressure, Temperature' and
+                self.widget_dict['mses']['rho']['widget'].isReadOnly()):
+            skip_rho = True
+        if (self.inputs['mses']['spec_P_T_rho']['current_text'] == 'Specify Pressure, Density' and
+                self.widget_dict['mses']['T']['widget'].isReadOnly()):
+            skip_T = True
+        if (self.inputs['mses']['spec_P_T_rho']['current_text'] == 'Specify Temperature, Density' and
+                self.widget_dict['mses']['P']['widget'].isReadOnly()):
+            skip_P = True
+        for widget_name in widget_names:
+            if not (skip_rho and widget_name == 'rho') and not (skip_P and widget_name == 'P') and not (
+                    skip_T and widget_name == 'T'):
+                self.widget_dict['mses'][widget_name]['widget'].setReadOnly(active)
+        self.widget_dict['mses']['REYNIN']['widget'].setReadOnly(not active)
+        self.widget_dict['mses']['spec_P_T_rho']['widget'].setEnabled(not active)
+        if not active:
+            self.calculate_and_set_Reynolds_number()
+
+    def setInputs(self):
+        self.tab_widget.clear()
+        self.widget_dict = {}
+        for k, v in self.inputs.items():
+            self.widget_dict[k] = {}
+            grid_counter = 0
+            self.add_tab(k)
+            for k_, v_ in v.items():
+                if 'label' in v_.keys():
+                    label = QLabel(v_['label'], self)
+                else:
+                    label = None
+                widget = getattr(sys.modules[__name__], v_['widget_type'])(self)
+                self.widget_dict[k][k_] = {'widget': widget}
+                if 'text' in v_.keys():
+                    widget.setText(v_['text'])
+                    if hasattr(widget, 'textChanged'):
+                        widget.textChanged.connect(partial(self.dict_connection, widget, k, k_))
+                if 'texts' in v_.keys():
+                    if k_ == 'additional_data':
+                        widget.insertPlainText('\n'.join(v_['texts']))
+                    else:
+                        widget.insertPlainText('\n\n'.join(v_['texts']))
+                    widget.textChanged.connect(partial(self.dict_connection, widget, k, k_))
+                if 'items' in v_.keys():
+                    widget.addItems(v_['items'])
+                if 'current_text' in v_.keys():
+                    widget.setCurrentText(v_['current_text'])
+                    widget.currentTextChanged.connect(partial(self.dict_connection, widget, k, k_))
+                if 'lower_bound' in v_.keys():
+                    widget.setMinimum(v_['lower_bound'])
+                if 'upper_bound' in v_.keys():
+                    widget.setMaximum(v_['upper_bound'])
+                if 'value' in v_.keys():
+                    # print(f"Setting value of {v_['label']} to {v_['value']}")
+                    widget.setValue(v_['value'])
+                    widget.valueChanged.connect(partial(self.dict_connection, widget, k, k_))
+                    # print(f"Actual returned value is {widget.value()}")
+                if 'state' in v_.keys():
+                    widget.setCheckState(v_['state'])
+                    widget.setTristate(False)
+                    widget.stateChanged.connect(partial(self.dict_connection, widget, k, k_))
+                if isinstance(widget, QPushButton):
+                    if 'button_title' in v_.keys():
+                        widget.setText(v_['button_title'])
+                    if 'click_connect' in v_.keys():
+                        push_button_action = getattr(self, v_['click_connect'])
+                        widget.clicked.connect(push_button_action)
+                if 'decimals' in v_.keys():
+                    widget.setDecimals(v_['decimals'])
+                if 'tool_tip' in v_.keys():
+                    label.setToolTip(v_['tool_tip'])
+                    widget.setToolTip(v_['tool_tip'])
+                push_button = None
+                checkbox = None
+                if 'push_button' in v_.keys():
+                    push_button = QPushButton(v_['push_button'], self)
+                    push_button_action = getattr(self, v_['push_button_action'])
+                    push_button.clicked.connect(partial(push_button_action, widget))
+                    self.widget_dict[k][k_]['push_button'] = push_button
+                if 'active_checkbox' in v_.keys():
+                    checkbox = QCheckBox('Active?', self)
+                    checkbox.setCheckState(v_['active_checkbox'])
+                    checkbox.setTristate(False)
+                    checkbox_action = getattr(self, 'activate_deactivate_checkbox')
+                    checkbox.stateChanged.connect(partial(checkbox_action, widget))
+                    checkbox.stateChanged.connect(partial(self.dict_connection, checkbox, k, k_))
+                    self.widget_dict[k][k_]['checkbox'] = checkbox_action
+                if 'combo_callback' in v_.keys():
+                    combo_callback_action = getattr(self, v_['combo_callback'])
+                    widget.currentTextChanged.connect(combo_callback_action)
+                if 'checkbox_callback' in v_.keys():
+                    checkbox_callback_action = getattr(self, v_['checkbox_callback'])
+                    widget.stateChanged.connect(checkbox_callback_action)
+                if 'values' in v_.keys():
+                    widget.setValues(v_['values'])
+                    if isinstance(widget, GridBounds):
+                        widget.boundsChanged.connect(partial(self.dict_connection, widget, k, k_))
+                    elif isinstance(widget, MSETMultiGridWidget):
+                        widget.multiGridChanged.connect(partial(self.dict_connection, widget, k, k_))
+                    elif isinstance(widget, XTRSWidget):
+                        widget.XTRSChanged.connect(partial(self.dict_connection, widget, k, k_))
+                    elif isinstance(widget, ADWidget):
+                        widget.ADChanged.connect(partial(self.dict_connection, widget, k, k_))
+                if 'editable' in v_.keys():
+                    widget.setReadOnly(not v_['editable'])
+                if 'text_changed_callback' in v_.keys():
+                    action = getattr(self, v_['text_changed_callback'])
+                    widget.textChanged.connect(partial(action, widget))
+                    action(widget, v_['text'])
+                if k_ == 'mea_dir' and self.widget_dict[k]['use_current_mea']['widget'].checkState():
+                    widget.setReadOnly(True)
+                    self.widget_dict[k][k_]['push_button'].setEnabled(False)
+                if k_ == 'additional_data':
+                    widget.setMaximumHeight(50)
+
+                if 'restart_grid_counter' in v_.keys() and v_['restart_grid_counter']:
+                    grid_counter = 0
+
+                if 'label_col' in v_.keys():
+                    label_col = v_['label_col']
+                else:
+                    label_col = 0
+                if label is not None:
+                    if 'label_align' in v_.keys():
+                        if v_['label_align'] == 'l':
+                            label_alignment = Qt.AlignLeft
+                        elif v_['label_align'] == 'c':
+                            label_alignment = Qt.AlignCenter
+                        elif v_['label_align'] == 'r':
+                            label_alignment = Qt.AlignRight
+                        else:
+                            raise ValueError('\'label_align\' must be one of: \'l\', \'c\', or \'r\'')
+                    else:
+                        label_alignment = Qt.AlignLeft
+                    self.grid_layout.addWidget(label, grid_counter, label_col, label_alignment)
+                    widget_starting_col = 1
+                else:
+                    widget_starting_col = 0
+
+                if 'align' in v_.keys():
+                    if v_['align'] == 'l':
+                        alignment = Qt.AlignLeft
+                    elif v_['align'] == 'c':
+                        alignment = Qt.AlignCenter
+                    elif v_['align'] == 'r':
+                        alignment = Qt.AlignRight
+                    else:
+                        raise ValueError('\'align\' must be one of: \'l\', \'c\', or \'r\'')
+                else:
+                    alignment = None
+
+                if push_button is None:
+                    if checkbox is None:
+                        if 'col' in v_.keys():
+                            col = v_['col']
+                        else:
+                            col = widget_starting_col
+                        if 'row_span' in v_.keys():
+                            row_span = v_['row_span']
+                        else:
+                            row_span = 1
+                        if 'col_span' in v_.keys():
+                            col_span = v_['col_span']
+                        else:
+                            col_span = 3
+                        if alignment is not None:
+                            self.grid_layout.addWidget(widget, grid_counter, col, row_span, col_span, alignment)
+                        else:
+                            self.grid_layout.addWidget(widget, grid_counter, col, row_span, col_span)
+                    else:
+                        if alignment is not None:
+                            self.grid_layout.addWidget(widget, grid_counter, widget_starting_col, 1, 2, alignment)
+                        else:
+                            self.grid_layout.addWidget(widget, grid_counter, widget_starting_col, 1, 2)
+                        self.grid_layout.addWidget(checkbox, grid_counter, 3)
+                else:
+                    if alignment is not None:
+                        self.grid_layout.addWidget(widget, grid_counter, widget_starting_col, 1, 2, alignment)
+                    else:
+                        self.grid_layout.addWidget(widget, grid_counter, widget_starting_col, 1, 2)
+                    self.grid_layout.addWidget(push_button, grid_counter, 3)
+
+                if 'next_on_same_row' in v_.keys() and v_['next_on_same_row']:
+                    pass
+                else:
+                    if 'row_span' in v_.keys():
+                        grid_counter += v_['row_span']
+                    else:
+                        grid_counter += 1
+
+        # self.add_tab("Image Test")
+        # image = QSvgWidget(os.path.join(RESOURCE_DIR, 'grid_test.svg'))
+        # graphics_scene = QGraphicsScene()
+        # temp_widget = graphics_scene.addWidget(image)
+        # view = CustomGraphicsView(graphics_scene, parent=self)
+        # view.setRenderHint(QPainter.Antialiasing)
+        # self.grid_layout.addWidget(view, 0, 0, 4, 4)
+        # new_image = QSvgWidget(os.path.join(RESOURCE_DIR, 'sec_34.svg'))
+        # temp_widget.setWidget(new_image)
+
+        for k, v in self.inputs.items():
+            for k_ in v.keys():
+                self.enable_disable_from_checkbox(k, k_)
+
+        # Need to run these functions because self.dict_connection is not run on startup
+        self.change_prescribed_aero_parameter(self.inputs['mses']['spec_alfa_Cl']['current_text'])
+        self.change_Re_active_state(self.inputs['mses']['spec_Re']['state'])
+        self.change_prescribed_flow_variables(self.inputs['mses']['spec_P_T_rho']['current_text'])
 
     def getInputs(self):
         return self.inputs
