@@ -3,12 +3,12 @@ oper
 iter 150
 visc
 1000000.0
-M 0.0
+M 0.2
 vpar
-xtr 0.05 0.05
+xtr 0.1 0.05
 N 9.0
 
-Cl 0.3
+alfa 0.0
 cpwr default_airfoil_Cp.dat
 
 quit
