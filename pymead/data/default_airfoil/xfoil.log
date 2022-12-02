@@ -17,10 +17,10 @@ Output:
 Enter airfoil name   s>  
  Number of input coordinate points: 299
  Counterclockwise ordering
- Max thickness =     0.160504  at x =   0.315
- Max camber    =     0.015490  at x =   0.263
+ Max thickness =     0.138553  at x =   0.259
+ Max camber    =     0.030838  at x =   0.274
 
-  LE  x,y  =  -0.00000  -0.00000  |   Chord =   1.00000
+  LE  x,y  =  -0.00203   0.01174  |   Chord =   1.00210
   TE  x,y  =   1.00000   0.00000  |
 
  Current airfoil nodes set from buffer airfoil nodes ( 299 )
@@ -68,6 +68,9 @@ Enter Reynolds number   r>
  Re =   1000000
 
 .OPERv   c>  
+ Sonic Cp =    -16.31      Sonic Q/Qinf =     4.583
+
+
 .OPERv   c>  
  Xtr/c     =  1.0000    top    side
  Xtr/c     =  1.0000    bottom side
@@ -90,44 +93,47 @@ Enter Reynolds number   r>
 
  Initializing BL ...
     side            1  ...
- MRCHUE: Inverse mode at 153     Hk =   2.500
+ MRCHUE: Inverse mode at 141     Hk =   2.500
     side            2  ...
- MRCHUE: Inverse mode at 148     Hk =   2.500
+ MRCHUE: Inverse mode at  42     Hk =   2.500
+ MRCHUE: Inverse mode at  43     Hk =   2.500
+ MRCHUE: Inverse mode at  44     Hk =   2.500
+ MRCHUE: Inverse mode at 160     Hk =   2.500
 
- Side 1 forced transition at x/c =  0.0500   38
- Side 2 forced transition at x/c =  0.0500   31
+ Side 1 forced transition at x/c =  0.1000   45
+ Side 2 forced transition at x/c =  0.0500   42
 
-   1   rms: 0.9657E-01   max: -.8243E+00   D at  148  2   RLX: 0.607
-       a =  2.145      CL =  0.3003
-      Cm =  0.0039     CD =  0.01142   =>   CDf =  0.00920    CDp =  0.00222
+   1   rms: 0.5092E-01   max: -.5608E+00   D at  141  1   RLX: 0.892
+       a =  0.000      CL =  0.2456
+      Cm = -0.0039     CD =  0.01125   =>   CDf =  0.00871    CDp =  0.00255
 
- Side 1 forced transition at x/c =  0.0500   38
- Side 2 forced transition at x/c =  0.0500   31
+ Side 1 forced transition at x/c =  0.1000   45
+ Side 2 forced transition at x/c =  0.0500   42
 
-   2   rms: 0.4199E-01   max: -.4733E+00   D at  148  2
-       a =  1.958      CL =  0.3000
-      Cm = -0.0013     CD =  0.01221   =>   CDf =  0.00926    CDp =  0.00295
+   2   rms: 0.2046E-01   max: -.2988E+00   D at  141  1
+       a =  0.000      CL =  0.2338
+      Cm = -0.0016     CD =  0.01139   =>   CDf =  0.00875    CDp =  0.00264
 
- Side 1 forced transition at x/c =  0.0500   38
- Side 2 forced transition at x/c =  0.0500   31
+ Side 1 forced transition at x/c =  0.1000   45
+ Side 2 forced transition at x/c =  0.0500   42
 
-   3   rms: 0.1125E-01   max: -.1551E+00   D at  153  1
-       a =  1.893      CL =  0.3000
-      Cm = -0.0030     CD =  0.01226   =>   CDf =  0.00930    CDp =  0.00296
+   3   rms: 0.5015E-02   max: -.7034E-01   D at  141  1
+       a =  0.000      CL =  0.2300
+      Cm = -0.0008     CD =  0.01139   =>   CDf =  0.00875    CDp =  0.00264
 
- Side 1 forced transition at x/c =  0.0500   38
- Side 2 forced transition at x/c =  0.0500   31
+ Side 1 forced transition at x/c =  0.1000   45
+ Side 2 forced transition at x/c =  0.0500   42
 
-   4   rms: 0.1019E-02   max: -.1500E-01   D at  153  1
-       a =  1.896      CL =  0.3000
-      Cm = -0.0029     CD =  0.01228   =>   CDf =  0.00930    CDp =  0.00299
+   4   rms: 0.2153E-03   max: -.3390E-02   D at  160  2
+       a =  0.000      CL =  0.2300
+      Cm = -0.0008     CD =  0.01140   =>   CDf =  0.00875    CDp =  0.00265
 
- Side 1 forced transition at x/c =  0.0500   38
- Side 2 forced transition at x/c =  0.0500   31
+ Side 1 forced transition at x/c =  0.1000   45
+ Side 2 forced transition at x/c =  0.0500   42
 
-   5   rms: 0.8694E-05   max: -.1231E-03   D at  153  1
-       a =  1.896      CL =  0.3000
-      Cm = -0.0029     CD =  0.01229   =>   CDf =  0.00930    CDp =  0.00299
+   5   rms: 0.1647E-05   max: -.1454E-04   D at  160  2
+       a =  0.000      CL =  0.2300
+      Cm = -0.0008     CD =  0.01140   =>   CDf =  0.00875    CDp =  0.00265
 
 .OPERv   c>  
 .OPERv   c>  

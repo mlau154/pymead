@@ -267,7 +267,7 @@ class Airfoil:
         self.free_points[ap.tag] = {}
         self.param_dicts['FreePoints'][ap.tag] = {}
 
-    def update(self, skip_fp_ap_regen: bool = False, generate_curves: bool = True):
+    def update(self, skip_fp_ap_regen: bool = False, generate_curves: bool = True, update_ap_fp: bool = True):
         """Used to update the state of the airfoil, including the Bézier curves, after a change in any parameter
 
         Parameters
@@ -275,41 +275,24 @@ class Airfoil:
         generate_curves: bool
           Determines whether the curves should be re-generated during the update
         """
+        print('Called update!')
         # Translate back to origin if not already at origin
         if self.control_points is not None and self.control_points != []:
-            current_le_pos = np.array([[cp.xp, cp.yp] for cp in self.control_points if cp.tag == 'le'])
-            # self.translate(-current_le_pos[0, 0], -current_le_pos[0, 1])
-            self.translate(-self.dx.value, -self.dy.value, update_ap_fp=False)
+            self.translate(-self.dx.value, -self.dy.value)
 
         # Rotate to zero degree angle of attack
         if self.control_points is not None and self.control_points != []:
-            current_te_1_pos = np.array([[cp.xp, cp.yp] for cp in self.control_points if cp.tag == 'te_1']).flatten()
-            # current_te_2_pos = np.array([[cp.xp, cp.yp] for cp in self.control_points if cp.tag == 'te_2']).flatten()
-            current_alf = -np.arctan2(current_te_1_pos[1], current_te_1_pos[0])
-            # print(current_alf * 180/np.pi)
-            # self.rotate(current_alf)
-            self.rotate(self.alf.value, update_ap_fp=False)
+            self.rotate(self.alf.value)
 
         # Scale so that the chord length is equal to 1.0
         if self.control_points is not None and self.control_points != []:
-            current_te_1_pos = np.array([[cp.xp, cp.yp] for cp in self.control_points if cp.tag == 'te_1']).flatten()
-            # print(f"control_points = {self.control_points}")
-            current_chord = current_te_1_pos[0]
-            # self.scale(1 / current_chord)
-            self.scale(1 / self.c.value, update_ap_fp=False)
-
-        # for ap in self.anchor_points:
-        #     if ap.tag not in ['te_1', 'le', 'te_2']:
-        #         print(f"Before airfoil update, xp, yp = {ap.ctrlpt.xp}, {ap.ctrlpt.yp}")
+            self.scale(1 / self.c.value)
 
         if not skip_fp_ap_regen:
             # Generate anchor point branches
             for ap in self.anchor_points:
                 if isinstance(ap, AnchorPoint):
                     ap.set_minus_plus_bezier_curve_orders(self.N[ap.previous_anchor_point], self.N[ap.tag])
-                    # if ap.tag == 'ap0':
-                    #     print(f"Generating anchor point branch ap0 with xp = {ap.xp.value}, yp = {ap.yp.value}, x = {ap.x.value}, y = {ap.y.value}")
-                    #     print(f"ctrlpt: x = {ap.ctrlpt.x_val}, y = {ap.ctrlpt.y_val}, xp = {ap.ctrlpt.xp}, yp = {ap.ctrlpt.yp}")
                     ap.generate_anchor_point_branch(self.anchor_point_order)
                 elif isinstance(ap, TrailingEdgePoint):
                     ap.generate_anchor_point_branch()  # trailing edge anchor points do not need to know the ap order
@@ -328,32 +311,41 @@ class Airfoil:
                                                 if cp.cp_type == 'g2_plus' and cp.anchor_point_tag == key)) + 1
                     self.control_points[insertion_index:insertion_index] = [fp_dict[k].ctrlpt for k in self.free_point_order[key]]
 
-        # if 'FP0' in self.free_points['te_1'].keys():
-        #     print(f"Before, fp xp = {self.free_points['te_1']['FP0'].xp.value}, yp = {self.free_points['te_1']['FP0'].yp.value}")
-
         # Scale airfoil by chord length
-        self.scale(self.c.value, update_ap_fp=False)
+        self.scale(self.c.value)
 
         # Rotate by airfoil angle of attack (alf)
-        self.rotate(-self.alf.value, update_ap_fp=False)
+        self.rotate(-self.alf.value)
 
         # Translate by airfoil dx, dy
-        self.translate(self.dx.value, self.dy.value, update_ap_fp=False)
-
-        # print(f"fp = {self.free_points}")
-
-        # if 'FP0' in self.free_points['te_1'].keys():
-        #     print(f"After, fp xp = {self.free_points['te_1']['FP0'].xp.value}, yp = {self.free_points['te_1']['FP0'].yp.value}")
+        self.translate(self.dx.value, self.dy.value)
 
         # Get the control point array
         self.update_control_point_array()
 
-        # for ap in self.anchor_points:
-        #     if isinstance(ap, AnchorPoint):
-        #         # ap.set_minus_plus_bezier_curve_orders(self.N[ap.previous_anchor_point], self.N[ap.tag])
-        #         if ap.tag == 'ap0':
-        #             print(
-        #                 f"ctrlpt now is: x = {ap.ctrlpt.x_val}, y = {ap.ctrlpt.y_val}, xp = {ap.ctrlpt.xp}, yp = {ap.ctrlpt.yp}")
+        if update_ap_fp:
+            for ap_key, ap_val in self.free_points.items():
+                for fp_key, fp_val in ap_val.items():
+                    fp_val.xp.value = fp_val.x.value * self.c.value
+                    fp_val.yp.value = fp_val.y.value * self.c.value
+                    rot_mat = np.array([[np.cos(-self.alf.value), -np.sin(-self.alf.value)],
+                                        [np.sin(-self.alf.value), np.cos(-self.alf.value)]])
+                    rotated_point = (rot_mat @ np.array([[fp_val.xp.value], [fp_val.yp.value]])).flatten()
+                    fp_val.xp.value = rotated_point[0]
+                    fp_val.yp.value = rotated_point[1]
+                    fp_val.xp.value += self.dx.value
+                    fp_val.yp.value += self.dy.value
+            for ap in self.anchor_points:
+                if ap.tag not in ['te_1', 'le', 'te_2']:
+                    ap.xp.value = ap.x.value * self.c.value
+                    ap.yp.value = ap.y.value * self.c.value
+                    rot_mat = np.array([[np.cos(-self.alf.value), -np.sin(-self.alf.value)],
+                                        [np.sin(-self.alf.value), np.cos(-self.alf.value)]])
+                    rotated_point = (rot_mat @ np.array([[ap.xp.value], [ap.yp.value]])).flatten()
+                    ap.xp.value = rotated_point[0]
+                    ap.yp.value = rotated_point[1]
+                    ap.xp.value += self.dx.value
+                    ap.yp.value += self.dy.value
 
         if generate_curves:
             self.generate_curves()
@@ -411,7 +403,7 @@ class Airfoil:
         self.control_point_array = np.array([[cp.xp, cp.yp] for cp in self.control_points])
         return self.control_point_array
 
-    def translate(self, dx: float, dy: float, update_ap_fp: bool = True, skip_le: bool = False):
+    def translate(self, dx: float, dy: float):
         r"""Translates all the control points and anchor points by :math:`\Delta x` and :math:`\Delta y`.
 
         Parameters
@@ -423,23 +415,15 @@ class Airfoil:
           :math:`y`-direction translation magnitude
         """
         for cp in self.control_points:
+            print(f"cp = {hex(id(cp))}")
             if cp.tag == 'le':
                 cp.xp = self.dx.value
                 cp.yp = self.dy.value
             else:
                 cp.xp += dx
                 cp.yp += dy
-        # if update_ap_fp:
-        #     for ap_key, ap_val in self.free_points.items():
-        #         for fp_key, fp_val in ap_val.items():
-        #             fp_val.xp.value = fp_val.x.value + dx
-        #             fp_val.yp.value = fp_val.y.value + dy
-        #     for ap in self.anchor_points:
-        #         if ap.tag not in ['te_1', 'le', 'te_2']:
-        #             ap.xp.value = ap.x.value + dx
-        #             ap.yp.value = ap.y.value + dy
 
-    def rotate(self, angle: float, update_ap_fp: bool = True):
+    def rotate(self, angle: float):
         """
         ### Description:
 
@@ -459,19 +443,8 @@ class Airfoil:
             rotated_point = (rot_mat @ np.array([[cp.xp], [cp.yp]])).flatten()
             cp.xp = rotated_point[0]
             cp.yp = rotated_point[1]
-        # if update_ap_fp:
-        #     for ap_key, ap_val in self.free_points.items():
-        #         for fp_key, fp_val in ap_val.items():
-        #             rotated_point = (rot_mat @ np.array([[fp_val.x.value], [fp_val.y.value]])).flatten()
-        #             fp_val.xp.value = rotated_point[0]
-        #             fp_val.yp.value = rotated_point[1]
-        #     for ap in self.anchor_points:
-        #         if ap.tag not in ['te_1', 'le', 'te_2']:
-        #             rotated_point = (rot_mat @ np.array([[ap.x.value], [ap.y.value]])).flatten()
-        #             ap.xp.value = rotated_point[0]
-        #             ap.yp.value = rotated_point[1]
 
-    def scale(self, scale_value, update_ap_fp: bool = True):
+    def scale(self, scale_value):
         """
         ### Description:
 
@@ -480,15 +453,6 @@ class Airfoil:
         for cp in self.control_points:
             cp.xp *= scale_value
             cp.yp *= scale_value
-        # if update_ap_fp:
-        #     for ap_key, ap_val in self.free_points.items():
-        #         for fp_key, fp_val in ap_val.items():
-        #             fp_val.xp.value = fp_val.x.value * scale_value
-        #             fp_val.yp.value = fp_val.y.value * scale_value
-        #     for ap in self.anchor_points:
-        #         if ap.tag not in ['te_1', 'le', 'te_2']:
-        #             ap.xp.value = ap.x.value * scale_value
-        #             ap.yp.value = ap.y.value * scale_value
 
     def compute_area(self):
         """Computes the area of the airfoil as the area of a many-sided polygon enclosed by the airfoil coordinates
@@ -517,6 +481,7 @@ class Airfoil:
           Describes whether the airfoil intersects itself
         """
         if self.needs_update:
+            print("Calling update in self intersection!")
             self.update()
         self.get_coords(body_fixed_csys=True)
         points_shapely = list(map(tuple, self.coords))

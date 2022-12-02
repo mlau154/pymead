@@ -310,7 +310,7 @@ class AirfoilGraph(pg.GraphItem):
         # for a_tag in set(other_airfoils_affected):  # Use set to ignore duplicate values
         for a_tag, airfoil in self.airfoil.mea.airfoils.items():
             # airfoil = self.airfoil.mea.airfoils[a_tag].airfoil_graph
-            airfoil.update()
+            airfoil.update(update_ap_fp=False)
             airfoil.airfoil_graph.data['pos'] = airfoil.control_point_array
             airfoil.airfoil_graph.updateGraph()
             airfoil.airfoil_graph.plot_change_recursive(airfoil.airfoil_graph.airfoil_parameters.child(a_tag).children())
