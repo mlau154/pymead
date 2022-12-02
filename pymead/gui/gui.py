@@ -32,7 +32,8 @@ from pymead.gui.message_box import disp_message_box
 from pymead.gui.worker import Worker
 from pymead.optimization.opt_callback import PlotAirfoilCallback, ParallelCoordsCallback, OptCallback, \
     DragPlotCallback, CpPlotCallback
-from pymead.gui.input_dialog import convert_dialog_to_mset_settings, convert_dialog_to_mses_settings
+from pymead.gui.input_dialog import convert_dialog_to_mset_settings, convert_dialog_to_mses_settings, \
+    convert_dialog_to_mplot_settings
 from pymead.gui.custom_graphics_view import CustomGraphicsView
 from pymead.utils.file_conversion import convert_ps_to_svg
 
@@ -44,6 +45,7 @@ from pymoo.config import Config
 from pymoo.core.evaluator import Evaluator
 from pymoo.factory import get_reference_directions
 from pymoo.core.evaluator import set_cv
+from pymead.analysis.calc_aero_data import SVG_PLOTS
 
 import pyqtgraph as pg
 import numpy as np
@@ -83,7 +85,8 @@ class GUI(QMainWindow):
         self.parallel_coords_graph = None
         self.drag_graph = None
         self.Cp_graph = None
-        self.Mach_contour_widget = None
+        # self.Mach_contour_widget = None
+        # self.grid_widget = None
         # self.finished_optimization = False
         self.opt_airfoil_plot_handles = []
         self.parallel_coords_plot_handles = []
@@ -375,7 +378,7 @@ class GUI(QMainWindow):
             mset_settings = convert_dialog_to_mset_settings(inputs['mset'])
             mses_settings = convert_dialog_to_mses_settings(inputs['mses'])
             mses_settings['n_airfoils'] = mset_settings['n_airfoils']
-            mplot_settings = {'timeout': 10.0, 'Mach': True, 'Grid': True}
+            mplot_settings = convert_dialog_to_mplot_settings(inputs['mplot'])
             self.multi_airfoil_analysis(mset_settings, mses_settings, mplot_settings)
 
     def multi_airfoil_analysis(self, mset_settings: dict, mses_settings: dict,
@@ -405,7 +408,8 @@ class GUI(QMainWindow):
 
         if aero_data['converged'] and not aero_data['errored_out'] and not aero_data['timed_out']:
             if self.analysis_graph is None:
-                # Need to set analysis_graph to None if analysis window is closed! Might also not want to allow geometry docking window to be closed
+                # Need to set analysis_graph to None if analysis window is closed! Might also not want to allow
+                # geometry docking window to be closed
                 if self.dark_mode:
                     bcolor = '#2a2a2b'
                 else:
@@ -419,20 +423,30 @@ class GUI(QMainWindow):
             # pen = pg.mkPen(color='green')
             self.n_converged_analyses += 1
             self.n_analyses += 1
-            image = QSvgWidget(os.path.join(mset_settings['airfoil_analysis_dir'],
-                                            mset_settings['airfoil_coord_file_name'],
-                                            'Mach_contours.svg'))
-            graphics_scene = QGraphicsScene()
-            self.Mach_contour_scene = graphics_scene.addWidget(image)
-            view = CustomGraphicsView(graphics_scene, parent=self)
-            view.setRenderHint(QPainter.Antialiasing)
-            self.Mach_contour_widget = QWidget(self)
-            widget_layout = QGridLayout()
-            self.Mach_contour_widget.setLayout(widget_layout)
-            widget_layout.addWidget(view, 0, 0, 4, 4)
-            # new_image = QSvgWidget(os.path.join(RESOURCE_DIR, 'sec_34.svg'))
-            # temp_widget.setWidget(new_image)
-            self.dockable_tab_window.add_new_tab_widget(self.Mach_contour_widget, 'Mach Contours')
+            for svg_plot in SVG_PLOTS:
+                f_name = os.path.join(mset_settings['airfoil_analysis_dir'], mset_settings['airfoil_coord_file_name'],
+                                      f"{svg_plot}.svg")
+                if os.path.exists(f_name):
+                    image = QSvgWidget(f_name)
+                    graphics_scene = QGraphicsScene()
+                    graphics_scene.addWidget(image)
+                    view = CustomGraphicsView(graphics_scene, parent=self)
+                    view.setRenderHint(QPainter.Antialiasing)
+                    Mach_contour_widget = QWidget(self)
+                    widget_layout = QGridLayout()
+                    Mach_contour_widget.setLayout(widget_layout)
+                    widget_layout.addWidget(view, 0, 0, 4, 4)
+                    # new_image = QSvgWidget(os.path.join(RESOURCE_DIR, 'sec_34.svg'))
+                    # temp_widget.setWidget(new_image)
+                    start_counter = 1
+                    max_tab_name_search = 1000
+                    for idx in range(max_tab_name_search):
+                        name = f"{svg_plot}_{start_counter}"
+                        if name in self.dockable_tab_window.names:
+                            start_counter += 1
+                        else:
+                            self.dockable_tab_window.add_new_tab_widget(Mach_contour_widget, name)
+                            break
         else:
             self.n_analyses += 1
 

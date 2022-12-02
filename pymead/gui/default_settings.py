@@ -339,6 +339,7 @@ def mplot_settings_default():
         'timeout': {'label': 'Timeout (sec)', 'widget_type': 'QDoubleSpinBox', 'value': 15.0,
                     'lower_bound': 0.0, 'upper_bound': np.inf, 'decimals': 4},
         'Mach': {'label': 'Output Mach Contours', 'widget_type': 'QCheckBox', 'state': 1},
-        'Grid': {'label': 'Output Grid', 'widget_type': 'QCheckBox', 'state': 1}
+        'Grid': {'label': 'Output Grid', 'widget_type': 'QCheckBox', 'state': 1},
+        'Grid_Zoom': {'label': 'Output Zoomed-In Grid', 'widget_type': 'QCheckBox', 'state': 1},
     }
     return settings
