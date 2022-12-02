@@ -104,6 +104,7 @@ def convert_dialog_to_mplot_settings(dialog_input: dict):
         'timeout': dialog_input['timeout']['value'],
         'Mach': dialog_input['Mach']['state'],
         'Grid': dialog_input['Grid']['state'],
+        'Grid_Zoom': dialog_input['Grid_Zoom']['state'],
     }
     return mplot_settings
 

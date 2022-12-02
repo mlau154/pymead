@@ -13,6 +13,9 @@ from math import sqrt
 import typing
 
 
+SVG_PLOTS = ['Mach_contours', 'grid', 'grid_zoom']
+
+
 def calculate_aero_data(airfoil_coord_dir: str, airfoil_name: str, mea: MEA, mea_airfoil_name: str,
                         tool: str = 'panel_fort', xfoil_settings: dict = None, mset_settings: dict = None,
                         mses_settings: dict = None, mplot_settings: dict = None, export_Cp: bool = True,
@@ -155,15 +158,9 @@ def calculate_aero_data(airfoil_coord_dir: str, airfoil_name: str, mea: MEA, mea
                 run_mplot(airfoil_name, airfoil_coord_dir, mplot_settings, mode='Cp')
                 aero_data['BL'] = read_bl_data_from_mses(os.path.join(airfoil_coord_dir, airfoil_name,
                                                                       f"bl.{airfoil_name}"))
-            if mplot_settings['Mach']:
-                run_mplot(airfoil_name, airfoil_coord_dir, mplot_settings, mode='Mach')
-            if mplot_settings['Grid']:
-                plot_ps = os.path.join(airfoil_coord_dir, airfoil_name, 'plot.ps')
-                print(f"plot_ps = {plot_ps}")
-                if os.path.exists(plot_ps):
-                    print(f"Removing {plot_ps}!")
-                    os.remove(plot_ps)
-                run_mplot(airfoil_name, airfoil_coord_dir, mplot_settings, mode='Grid')
+            for mplot_output_name in ['Mach', 'Grid', 'Grid_Zoom']:
+                if mplot_settings[mplot_output_name]:
+                    run_mplot(airfoil_name, airfoil_coord_dir, mplot_settings, mode=mplot_output_name)
 
         logs = {'mset': mset_log, 'mses': mses_log, 'mplot': mplot_log}
         return aero_data, logs
@@ -249,10 +246,14 @@ def run_mplot(name: str, base_dir: str, mplot_settings: dict, mode: str = "force
         mplot_input_name = "mplot_dump_flowfield.txt"
         mplot_input_list = ['11', '', '0']
         mplot_log = os.path.join(base_dir, name, 'mplot_flowfield.log')
+    elif mode in ['grid_zoom', 'Grid_Zoom', 'GRID_ZOOM']:
+        mplot_input_name = "mplot_input_grid_zoom.txt"
+        mplot_input_list = ['3', '1', '9', 'B', '', '6', '-0.441', '0.722', '1.937', '-0.626', '1',
+                            '8', '', '0']
+        mplot_log = os.path.join(base_dir, name, 'mplot_grid_zoom.log')
     elif mode in ['grid', 'Grid', 'GRID']:
         mplot_input_name = "mplot_input_grid.txt"
-        mplot_input_list = ['3', '1', '', '9', 'B', '', '6', '-0.441', '0.722', '1.937', '-0.626', '1', '',
-                            '8', '', '0']
+        mplot_input_list = ['3', '1', '8', '', '0']
         mplot_log = os.path.join(base_dir, name, 'mplot_grid.log')
     elif mode in ["Mach", "mach", "M", "m", "Mach contours", "Mach Contours", "mach contours"]:
         mplot_input_name = "mplot_inputMachContours.txt"
@@ -291,6 +292,8 @@ def run_mplot(name: str, base_dir: str, mplot_settings: dict, mode: str = "force
                           'Mach_contours.svg')
     elif mode in ['grid', 'Grid', 'GRID']:
         convert_ps_to_svg(os.path.join(base_dir, name), 'plot.ps', 'grid.pdf', 'grid.svg')
+    elif mode in ['grid_zoom', 'Grid_Zoom', 'GRID_ZOOM']:
+        convert_ps_to_svg(os.path.join(base_dir, name), 'plot.ps', 'grid_zoom.pdf', 'grid_zoom.svg')
     return mplot_log
 
 
