@@ -329,12 +329,29 @@ class Population:
                 print(f'Chromosome {chromosome.population_idx + 1} of {self.ga_settings.population_size} '
                       f'(generation: {chromosome.generation}, category: {chromosome.category}, '
                       f'mutated: {chromosome.mutated}): Evaluating fitness...')
+            xfoil_settings, mset_settings, mses_settings, mplot_settings = None, None, None, None
+            # print(f"tool = {chromosome.param_set['tool']}")
+            if chromosome.param_set['tool'] == 'xfoil':
+                tool = 'XFOIL'
+                xfoil_settings = chromosome.param_set['xfoil_settings']
+            elif chromosome.param_set['tool'] == 'MSES':
+                tool = 'MSES'
+                mset_settings = chromosome.param_set['mset_settings']
+                mses_settings = chromosome.param_set['mses_settings']
+                mplot_settings = chromosome.param_set['mplot_settings']
+            else:
+                raise ValueError('Only XFOIL and MSES are supported as tools in the optimization framework')
+
             chromosome.forces, _ = calculate_aero_data(chromosome.param_set['base_folder'],
                                                        chromosome.param_set['name'][chromosome.population_idx],
                                                        mea=chromosome.mea,
-                                                       mea_airfoil_name='A0', tool='xfoil',
-                                                       xfoil_settings=chromosome.param_set['xfoil_settings'],
+                                                       mea_airfoil_name='A0', tool=tool,
+                                                       xfoil_settings=xfoil_settings,
+                                                       mset_settings=mset_settings,
+                                                       mses_settings=mses_settings,
+                                                       mplot_settings=mplot_settings,
                                                        export_Cp=True, body_fixed_csys=False)
+            # print(f"forces now = {chromosome.forces}")
             if chromosome.forces['converged'] and not chromosome.forces['errored_out'] and not chromosome.forces['timed_out']:
                 chromosome.fitness = 1  # Set to any value that is not False and not None
             if self.verbose:

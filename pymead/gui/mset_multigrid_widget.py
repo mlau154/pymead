@@ -201,17 +201,18 @@ class ADWidget(QTabWidget):
         for k1, v1 in self.input_dict.items():
             self.widget_dict[k1] = {}
             for k2, v2 in v1.items():
-                if v2 != 'ISDELH':
+                print(f"k2 = {k2}")
+                if k2 != 'ISDELH':
                     w = QDoubleSpinBox(self)
                 else:
                     w = QSpinBox(self)
-                if v2 in ['XCDELH', 'ETAH']:
+                if k2 in ['XCDELH', 'ETAH']:
                     w.setMinimum(0.0)
                     w.setMaximum(1.0)
-                elif v2 == 'ISDELH':
+                elif k2 == 'ISDELH':
                     w.setMinimum(1)
                     w.setMaximum(100)
-                elif v2 == 'PTRHIN':
+                elif k2 == 'PTRHIN':
                     w.setMinimum(1.0)
                     w.setMaximum(np.inf)
 
