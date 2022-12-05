@@ -275,7 +275,7 @@ class Airfoil:
         generate_curves: bool
           Determines whether the curves should be re-generated during the update
         """
-        print('Called update!')
+        # print('Called update!')
         # Translate back to origin if not already at origin
         if self.control_points is not None and self.control_points != []:
             self.translate(-self.dx.value, -self.dy.value)
@@ -415,7 +415,6 @@ class Airfoil:
           :math:`y`-direction translation magnitude
         """
         for cp in self.control_points:
-            print(f"cp = {hex(id(cp))}")
             if cp.tag == 'le':
                 cp.xp = self.dx.value
                 cp.yp = self.dy.value
@@ -481,7 +480,7 @@ class Airfoil:
           Describes whether the airfoil intersects itself
         """
         if self.needs_update:
-            print("Calling update in self intersection!")
+            # print("Calling update in self intersection!")
             self.update()
         self.get_coords(body_fixed_csys=True)
         points_shapely = list(map(tuple, self.coords))
@@ -489,7 +488,7 @@ class Airfoil:
         is_simple = line_string.is_simple
         return not is_simple
 
-    def compute_thickness(self, n_lines: int = 201):
+    def compute_thickness(self, n_lines: int = 201, return_max_thickness_loc: bool = False):
         r"""
         ### Description:
 
@@ -508,7 +507,7 @@ class Airfoil:
         self.get_coords(body_fixed_csys=True)
         points_shapely = list(map(tuple, self.coords))
         airfoil_line_string = LineString(points_shapely)
-        x_thickness = np.linspace(0.0, self.c.value, n_lines)
+        x_thickness = np.linspace(0.0, 1.0, n_lines)
         thickness = []
         for idx in range(n_lines):
             line_string = LineString([(x_thickness[idx], -1), (x_thickness[idx], 1)])
@@ -520,7 +519,17 @@ class Airfoil:
         self.x_thickness = x_thickness
         self.thickness = thickness
         self.max_thickness = max(thickness)
-        return self.x_thickness, self.thickness, self.max_thickness
+        if return_max_thickness_loc:
+            x_c_loc_idx = np.argmax(thickness)
+            x_c_loc = self.x_thickness[x_c_loc_idx]
+            return {
+                'x/c': self.x_thickness,
+                't/c': self.thickness,
+                't/c_max': self.max_thickness,
+                't/c_max_x/c_loc': x_c_loc
+            }
+        else:
+            return self.x_thickness, self.thickness, self.max_thickness
 
     def contains_point(self, point: np.ndarray or list):
         if isinstance(point, list):
@@ -657,7 +666,7 @@ class Airfoil:
         Calculates the lift coefficient and surface pressure coefficient distribution for the Airfoil.
         Note that the angle of attack (alpha) should be entered in degrees.
         """
-        tool_list = ['panel_fort', 'xfoil', 'mses']
+        tool_list = ['panel_fort', 'XFOIL', 'MSES']
         if tool not in tool_list:
             raise ValueError(f"\'tool\' must be one of {tool_list}")
         coord_file_name = 'airfoil_coords_ClCp_calc.dat'
@@ -668,7 +677,7 @@ class Airfoil:
                            stdout=subprocess.DEVNULL)
             self.read_Cl_from_file(os.path.join(DATA_DIR, 'LIFT.dat'))
             self.read_Cp_from_file(os.path.join(DATA_DIR, 'CPLV.DAT'))
-        elif tool == 'xfoil':
+        elif tool == 'XFOIL':
             subprocess.run((['xfoil', os.path.join(DATA_DIR, coord_file_name)]))
 
     def plot_control_point_skeleton(self, axs: plt.axes, **plot_kwargs):

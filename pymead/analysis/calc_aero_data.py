@@ -21,10 +21,10 @@ def calculate_aero_data(airfoil_coord_dir: str, airfoil_name: str, mea: MEA, mea
                         mses_settings: dict = None, mplot_settings: dict = None, export_Cp: bool = True,
                         body_fixed_csys: bool = True, downsample: bool = False, ratio_thresh=None, abs_thresh=None):
     # ratio_thresh of 1.000005 and abs_thresh = 0.1 works well
-    tool_list = ['panel_fort', 'xfoil', 'mses']
+    tool_list = ['panel_fort', 'XFOIL', 'MSES']
     if tool not in tool_list:
         raise ValueError(f"\'tool\' must be one of {tool_list}")
-    if tool in ['panel_fort', 'xfoil']:
+    if tool in ['panel_fort', 'XFOIL']:
         airfoil = mea.airfoils[mea_airfoil_name]
 
         # Check for self-intersection and early return if self-intersecting:
@@ -45,7 +45,7 @@ def calculate_aero_data(airfoil_coord_dir: str, airfoil_name: str, mea: MEA, mea
         if export_Cp:
             aero_data['Cp'] = read_Cp_from_file_panel_fort(os.path.join(airfoil_coord_dir, 'CPLV.DAT'))
         return aero_data
-    elif tool == 'xfoil':
+    elif tool == 'XFOIL':
         if xfoil_settings is None:
             raise ValueError(f"\'xfoil_settings\' must be set if \'xfoil\' tool is selected")
         if 'xtr' not in xfoil_settings.keys():
@@ -139,6 +139,9 @@ def calculate_aero_data(airfoil_coord_dir: str, airfoil_name: str, mea: MEA, mea
         return aero_data, xfoil_log
 
     elif tool in ['mses', 'Mses', 'MSES']:
+        aero_data['converged'] = False
+        aero_data['timed_out'] = False
+        aero_data['errored_out'] = False
         if mset_settings is None:
             raise ValueError(f"\'mset_settings\' must be set if \'mses\' tool is selected")
         if mses_settings is None:
@@ -161,6 +164,10 @@ def calculate_aero_data(airfoil_coord_dir: str, airfoil_name: str, mea: MEA, mea
             for mplot_output_name in ['Mach', 'Grid', 'Grid_Zoom']:
                 if mplot_settings[mplot_output_name]:
                     run_mplot(airfoil_name, airfoil_coord_dir, mplot_settings, mode=mplot_output_name)
+        if converged:
+            aero_data['converged'] = True
+            aero_data['timed_out'] = False
+            aero_data['errored_out'] = False
 
         logs = {'mset': mset_log, 'mses': mses_log, 'mplot': mplot_log}
         return aero_data, logs

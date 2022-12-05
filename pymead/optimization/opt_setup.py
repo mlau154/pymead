@@ -6,6 +6,8 @@ from pymoo.util.display import Display
 from pymoo.factory import get_decomposition
 from copy import deepcopy
 from pymead.optimization.pop_chrom import Chromosome
+from pymead.gui.input_dialog import convert_dialog_to_mset_settings, convert_dialog_to_mses_settings, \
+    convert_dialog_to_mplot_settings
 import os
 import numpy as np
 import re
@@ -68,9 +70,9 @@ def convert_opt_settings_to_param_dict(opt_settings: dict) -> dict:
                       'iter': opt_settings['XFOIL']['iter']['value'],
                       'timeout': opt_settings['XFOIL']['timeout']['value'],
                   },
-                  'mset_settings': {},
-                  'mses_settings': {},
-                  'mplot_settings': {},
+                  'mset_settings': convert_dialog_to_mset_settings(opt_settings['MSET']),
+                  'mses_settings': convert_dialog_to_mses_settings(opt_settings['MSES']),
+                  'mplot_settings': convert_dialog_to_mplot_settings(opt_settings['MPLOT']),
                   'min_val_of_max_thickness': opt_settings['Constraints/Validation']['min_val_of_max_thickness'][
                       'value'],
                   'min_thickness_active': opt_settings['Constraints/Validation']['min_val_of_max_thickness'][
@@ -88,6 +90,7 @@ def convert_opt_settings_to_param_dict(opt_settings: dict) -> dict:
         param_dict['xfoil_settings']['Cl'] = opt_settings['XFOIL']['Cl']['value']
     elif opt_settings['XFOIL']['prescribe']['current_text'] == 'Viscous Cl':
         param_dict['xfoil_settings']['CLI'] = opt_settings['XFOIL']['CLI']['value']
+    param_dict['mses_settings']['n_airfoils'] = param_dict['mset_settings']['n_airfoils']
     return param_dict
 
 

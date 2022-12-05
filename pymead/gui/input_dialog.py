@@ -474,25 +474,25 @@ class MultiAirfoilDialog(QDialog):
         layout.addWidget(self.tab_widget)
 
         if parent.mset_settings is None:
-            self.inputs = {'mset': mset_settings_default(self.parent().airfoil_name_list)}
+            self.inputs = {'MSET': mset_settings_default(self.parent().airfoil_name_list)}
         else:
-            self.inputs = {'mset': parent.mset_settings}
+            self.inputs = {'MSET': parent.mset_settings}
 
         if parent.mses_settings is None:
-            self.inputs['mses'] = mses_settings_default()
+            self.inputs['MSES'] = mses_settings_default()
         else:
-            self.inputs['mses'] = parent.mses_settings
+            self.inputs['MSES'] = parent.mses_settings
 
         if parent.mplot_settings is None:
-            self.inputs['mplot'] = mplot_settings_default()
+            self.inputs['MPLOT'] = mplot_settings_default()
         else:
-            self.inputs['mplot'] = parent.mplot_settings
+            self.inputs['MPLOT'] = parent.mplot_settings
 
         self.setInputs()
 
-        parent.mset_settings = self.inputs['mset']
-        parent.mses_settings = self.inputs['mses']
-        parent.mplot_settings = self.inputs['mplot']
+        parent.mset_settings = self.inputs['MSET']
+        parent.mses_settings = self.inputs['MSES']
+        parent.mplot_settings = self.inputs['MPLOT']
 
         layout.addWidget(buttonBox)
 
@@ -658,21 +658,25 @@ class MultiAirfoilDialog(QDialog):
             self.inputs[key1][key2]['values'] = widget.values()
         elif isinstance(widget, MSETMultiGridWidget):
             self.inputs[key1][key2]['values'] = widget.values()
+        elif isinstance(widget, XTRSWidget):
+            self.inputs[key1][key2]['values'] = widget.values()
+        elif isinstance(widget, ADWidget):
+            self.inputs[key1][key2]['values'] = widget.values()
 
         self.enable_disable_from_checkbox(key1, key2)
 
         if key2 in ['P', 'T', 'rho', 'R', 'gam', 'L', 'MACHIN'] and not widget.isReadOnly():
-            P = self.inputs['mses']['P']['value']
-            T = self.inputs['mses']['T']['value']
-            rho = self.inputs['mses']['rho']['value']
-            R = self.inputs['mses']['R']['value']
-            # gam = self.inputs['mses']['gam']['value']
-            # L = self.inputs['mses']['L']['value']
-            # M = self.inputs['mses']['MACHIN']['value']
-            P_widget = self.widget_dict['mses']['P']['widget']
-            T_widget = self.widget_dict['mses']['T']['widget']
-            rho_widget = self.widget_dict['mses']['rho']['widget']
-            # Re_widget = self.widget_dict['mses']['REYNIN']['widget']
+            P = self.inputs['MSES']['P']['value']
+            T = self.inputs['MSES']['T']['value']
+            rho = self.inputs['MSES']['rho']['value']
+            R = self.inputs['MSES']['R']['value']
+            # gam = self.inputs['MSES']['gam']['value']
+            # L = self.inputs['MSES']['L']['value']
+            # M = self.inputs['MSES']['MACHIN']['value']
+            P_widget = self.widget_dict['MSES']['P']['widget']
+            T_widget = self.widget_dict['MSES']['T']['widget']
+            rho_widget = self.widget_dict['MSES']['rho']['widget']
+            # Re_widget = self.widget_dict['MSES']['REYNIN']['widget']
             if P_widget.isReadOnly():
                 P_widget.setValue(rho * R * T)
             elif T_widget.isReadOnly():
@@ -682,22 +686,22 @@ class MultiAirfoilDialog(QDialog):
             self.calculate_and_set_Reynolds_number()
 
     def calculate_and_set_Reynolds_number(self):
-        T = self.inputs['mses']['T']['value']
-        rho = self.inputs['mses']['rho']['value']
-        R = self.inputs['mses']['R']['value']
-        gam = self.inputs['mses']['gam']['value']
-        L = self.inputs['mses']['L']['value']
-        M = self.inputs['mses']['MACHIN']['value']
+        T = self.inputs['MSES']['T']['value']
+        rho = self.inputs['MSES']['rho']['value']
+        R = self.inputs['MSES']['R']['value']
+        gam = self.inputs['MSES']['gam']['value']
+        L = self.inputs['MSES']['L']['value']
+        M = self.inputs['MSES']['MACHIN']['value']
         print(f"M = {M}")
-        Re_widget = self.widget_dict['mses']['REYNIN']['widget']
+        Re_widget = self.widget_dict['MSES']['REYNIN']['widget']
         nu = viscosity_calculator(T, rho=rho)
         a = np.sqrt(gam * R * T)
         V = M * a
         Re_widget.setValue(V * L / nu)
 
     def change_prescribed_aero_parameter(self, current_text: str):
-        w1 = self.widget_dict['mses']['ALFAIN']['widget']
-        w2 = self.widget_dict['mses']['CLIFIN']['widget']
+        w1 = self.widget_dict['MSES']['ALFAIN']['widget']
+        w2 = self.widget_dict['MSES']['CLIFIN']['widget']
         if current_text == 'Specify Angle of Attack':
             bools = (False, True)
         elif current_text == 'Specify Lift Coefficient':
@@ -709,9 +713,9 @@ class MultiAirfoilDialog(QDialog):
 
     def change_prescribed_flow_variables(self, current_text: str):
         print('Changing prescribed flow variables!')
-        w1 = self.widget_dict['mses']['P']['widget']
-        w2 = self.widget_dict['mses']['T']['widget']
-        w3 = self.widget_dict['mses']['rho']['widget']
+        w1 = self.widget_dict['MSES']['P']['widget']
+        w2 = self.widget_dict['MSES']['T']['widget']
+        w3 = self.widget_dict['MSES']['rho']['widget']
         if current_text == 'Specify Pressure, Temperature':
             bools = (False, False, True)
         elif current_text == 'Specify Pressure, Density':
@@ -733,21 +737,21 @@ class MultiAirfoilDialog(QDialog):
             active = True
         widget_names = ['P', 'T', 'rho', 'L', 'R', 'gam']
         skip_P, skip_T, skip_rho = False, False, False
-        if (self.inputs['mses']['spec_P_T_rho']['current_text'] == 'Specify Pressure, Temperature' and
-                self.widget_dict['mses']['rho']['widget'].isReadOnly()):
+        if (self.inputs['MSES']['spec_P_T_rho']['current_text'] == 'Specify Pressure, Temperature' and
+                self.widget_dict['MSES']['rho']['widget'].isReadOnly()):
             skip_rho = True
-        if (self.inputs['mses']['spec_P_T_rho']['current_text'] == 'Specify Pressure, Density' and
-                self.widget_dict['mses']['T']['widget'].isReadOnly()):
+        if (self.inputs['MSES']['spec_P_T_rho']['current_text'] == 'Specify Pressure, Density' and
+                self.widget_dict['MSES']['T']['widget'].isReadOnly()):
             skip_T = True
-        if (self.inputs['mses']['spec_P_T_rho']['current_text'] == 'Specify Temperature, Density' and
-                self.widget_dict['mses']['P']['widget'].isReadOnly()):
+        if (self.inputs['MSES']['spec_P_T_rho']['current_text'] == 'Specify Temperature, Density' and
+                self.widget_dict['MSES']['P']['widget'].isReadOnly()):
             skip_P = True
         for widget_name in widget_names:
             if not (skip_rho and widget_name == 'rho') and not (skip_P and widget_name == 'P') and not (
                     skip_T and widget_name == 'T'):
-                self.widget_dict['mses'][widget_name]['widget'].setReadOnly(active)
-        self.widget_dict['mses']['REYNIN']['widget'].setReadOnly(not active)
-        self.widget_dict['mses']['spec_P_T_rho']['widget'].setEnabled(not active)
+                self.widget_dict['MSES'][widget_name]['widget'].setReadOnly(active)
+        self.widget_dict['MSES']['REYNIN']['widget'].setReadOnly(not active)
+        self.widget_dict['MSES']['spec_P_T_rho']['widget'].setEnabled(not active)
         if not active:
             self.calculate_and_set_Reynolds_number()
 
@@ -883,36 +887,37 @@ class MultiAirfoilDialog(QDialog):
                 else:
                     alignment = None
 
+                if 'col' in v_.keys():
+                    col = v_['col']
+                else:
+                    col = widget_starting_col
+                if 'row_span' in v_.keys():
+                    row_span = v_['row_span']
+                else:
+                    row_span = 1
+                if 'col_span' in v_.keys():
+                    col_span = v_['col_span']
+                else:
+                    col_span = 3
+
                 if push_button is None:
                     if checkbox is None:
-                        if 'col' in v_.keys():
-                            col = v_['col']
-                        else:
-                            col = widget_starting_col
-                        if 'row_span' in v_.keys():
-                            row_span = v_['row_span']
-                        else:
-                            row_span = 1
-                        if 'col_span' in v_.keys():
-                            col_span = v_['col_span']
-                        else:
-                            col_span = 3
                         if alignment is not None:
                             self.grid_layout.addWidget(widget, grid_counter, col, row_span, col_span, alignment)
                         else:
                             self.grid_layout.addWidget(widget, grid_counter, col, row_span, col_span)
                     else:
                         if alignment is not None:
-                            self.grid_layout.addWidget(widget, grid_counter, widget_starting_col, 1, 2, alignment)
+                            self.grid_layout.addWidget(widget, grid_counter, col, 1, 2, alignment)
                         else:
-                            self.grid_layout.addWidget(widget, grid_counter, widget_starting_col, 1, 2)
-                        self.grid_layout.addWidget(checkbox, grid_counter, 3)
+                            self.grid_layout.addWidget(widget, grid_counter, col, 1, 2)
+                        self.grid_layout.addWidget(checkbox, grid_counter, col + 3)
                 else:
                     if alignment is not None:
-                        self.grid_layout.addWidget(widget, grid_counter, widget_starting_col, 1, 2, alignment)
+                        self.grid_layout.addWidget(widget, grid_counter, col, 1, 2, alignment)
                     else:
-                        self.grid_layout.addWidget(widget, grid_counter, widget_starting_col, 1, 2)
-                    self.grid_layout.addWidget(push_button, grid_counter, 3)
+                        self.grid_layout.addWidget(widget, grid_counter, col, 1, 2)
+                    self.grid_layout.addWidget(push_button, grid_counter, col + 2)
 
                 if 'next_on_same_row' in v_.keys() and v_['next_on_same_row']:
                     pass
@@ -937,9 +942,9 @@ class MultiAirfoilDialog(QDialog):
                 self.enable_disable_from_checkbox(k, k_)
 
         # Need to run these functions because self.dict_connection is not run on startup
-        self.change_prescribed_aero_parameter(self.inputs['mses']['spec_alfa_Cl']['current_text'])
-        self.change_Re_active_state(self.inputs['mses']['spec_Re']['state'])
-        self.change_prescribed_flow_variables(self.inputs['mses']['spec_P_T_rho']['current_text'])
+        self.change_prescribed_aero_parameter(self.inputs['MSES']['spec_alfa_Cl']['current_text'])
+        self.change_Re_active_state(self.inputs['MSES']['spec_Re']['state'])
+        self.change_prescribed_flow_variables(self.inputs['MSES']['spec_P_T_rho']['current_text'])
 
     def getInputs(self):
         return self.inputs
@@ -1044,7 +1049,7 @@ class OptimizationSetupDialog(QDialog):
         layout.addWidget(self.tab_widget)
 
         if parent.opt_settings is None:
-            self.inputs = opt_settings_default()
+            self.inputs = opt_settings_default(self.parent().airfoil_name_list)
         else:
             self.inputs = parent.opt_settings
 
@@ -1249,6 +1254,14 @@ class OptimizationSetupDialog(QDialog):
                 self.inputs[key1][key2]['active_checkbox'] = widget.checkState()
             else:
                 self.inputs[key1][key2]['state'] = widget.checkState()
+        elif isinstance(widget, GridBounds):
+            self.inputs[key1][key2]['values'] = widget.values()
+        elif isinstance(widget, MSETMultiGridWidget):
+            self.inputs[key1][key2]['values'] = widget.values()
+        elif isinstance(widget, XTRSWidget):
+            self.inputs[key1][key2]['values'] = widget.values()
+        elif isinstance(widget, ADWidget):
+            self.inputs[key1][key2]['values'] = widget.values()
 
         self.enable_disable_from_checkbox(key1, key2)
 
@@ -1261,7 +1274,41 @@ class OptimizationSetupDialog(QDialog):
         if key2 == 'pop_size':
             self.widget_dict[key1]['n_offspring']['widget'].setMinimum(widget.value())
 
-    def change_prescribed_aero_parameter(self, current_text: str):
+        if key2 in ['P', 'T', 'rho', 'R', 'gam', 'L', 'MACHIN'] and not widget.isReadOnly():
+            P = self.inputs['MSES']['P']['value']
+            T = self.inputs['MSES']['T']['value']
+            rho = self.inputs['MSES']['rho']['value']
+            R = self.inputs['MSES']['R']['value']
+            # gam = self.inputs['MSES']['gam']['value']
+            # L = self.inputs['MSES']['L']['value']
+            # M = self.inputs['MSES']['MACHIN']['value']
+            P_widget = self.widget_dict['MSES']['P']['widget']
+            T_widget = self.widget_dict['MSES']['T']['widget']
+            rho_widget = self.widget_dict['MSES']['rho']['widget']
+            # Re_widget = self.widget_dict['MSES']['REYNIN']['widget']
+            if P_widget.isReadOnly():
+                P_widget.setValue(rho * R * T)
+            elif T_widget.isReadOnly():
+                T_widget.setValue(P / R / rho)
+            elif rho_widget.isReadOnly():
+                rho_widget.setValue(P / R / T)
+            self.calculate_and_set_Reynolds_number()
+
+    def calculate_and_set_Reynolds_number(self):
+        T = self.inputs['MSES']['T']['value']
+        rho = self.inputs['MSES']['rho']['value']
+        R = self.inputs['MSES']['R']['value']
+        gam = self.inputs['MSES']['gam']['value']
+        L = self.inputs['MSES']['L']['value']
+        M = self.inputs['MSES']['MACHIN']['value']
+        print(f"M = {M}")
+        Re_widget = self.widget_dict['MSES']['REYNIN']['widget']
+        nu = viscosity_calculator(T, rho=rho)
+        a = np.sqrt(gam * R * T)
+        V = M * a
+        Re_widget.setValue(V * L / nu)
+
+    def change_prescribed_aero_parameter_xfoil(self, current_text: str):
         w1 = self.widget_dict['XFOIL']['alfa']['widget']
         w2 = self.widget_dict['XFOIL']['Cl']['widget']
         w3 = self.widget_dict['XFOIL']['CLI']['widget']
@@ -1277,6 +1324,68 @@ class OptimizationSetupDialog(QDialog):
         w2.setReadOnly(bools[1])
         w3.setReadOnly(bools[2])
 
+    def change_prescribed_aero_parameter(self, current_text: str):
+        w1 = self.widget_dict['MSES']['ALFAIN']['widget']
+        w2 = self.widget_dict['MSES']['CLIFIN']['widget']
+        if current_text == 'Specify Angle of Attack':
+            bools = (False, True)
+        elif current_text == 'Specify Lift Coefficient':
+            bools = (True, False)
+        else:
+            raise ValueError('Invalid value of currentText for QComboBox (alfa/Cl')
+        w1.setReadOnly(bools[0])
+        w2.setReadOnly(bools[1])
+
+    def change_prescribed_flow_variables(self, current_text: str):
+        print('Changing prescribed flow variables!')
+        w1 = self.widget_dict['MSES']['P']['widget']
+        w2 = self.widget_dict['MSES']['T']['widget']
+        w3 = self.widget_dict['MSES']['rho']['widget']
+        if current_text == 'Specify Pressure, Temperature':
+            bools = (False, False, True)
+        elif current_text == 'Specify Pressure, Density':
+            bools = (False, True, False)
+        elif current_text == 'Specify Temperature, Density':
+            bools = (True, False, False)
+        else:
+            raise ValueError('Invalid value of currentText for QComboBox (P/T/rho)')
+        w1.setReadOnly(bools[0])
+        w2.setReadOnly(bools[1])
+        w3.setReadOnly(bools[2])
+        print(f"bools = {bools}")
+        print(f"isReadOnly: w1 = {w1.isReadOnly()}, w2 = {w2.isReadOnly()}, w3 = {w3.isReadOnly()}")
+
+    def change_Re_active_state(self, state):
+        if state == 0 or state is None:
+            active = False
+        else:
+            active = True
+        widget_names = ['P', 'T', 'rho', 'L', 'R', 'gam']
+        skip_P, skip_T, skip_rho = False, False, False
+        if (self.inputs['MSES']['spec_P_T_rho']['current_text'] == 'Specify Pressure, Temperature' and
+                self.widget_dict['MSES']['rho']['widget'].isReadOnly()):
+            skip_rho = True
+        if (self.inputs['MSES']['spec_P_T_rho']['current_text'] == 'Specify Pressure, Density' and
+                self.widget_dict['MSES']['T']['widget'].isReadOnly()):
+            skip_T = True
+        if (self.inputs['MSES']['spec_P_T_rho']['current_text'] == 'Specify Temperature, Density' and
+                self.widget_dict['MSES']['P']['widget'].isReadOnly()):
+            skip_P = True
+        for widget_name in widget_names:
+            if not (skip_rho and widget_name == 'rho') and not (skip_P and widget_name == 'P') and not (
+                    skip_T and widget_name == 'T'):
+                self.widget_dict['MSES'][widget_name]['widget'].setReadOnly(active)
+        self.widget_dict['MSES']['REYNIN']['widget'].setReadOnly(not active)
+        self.widget_dict['MSES']['spec_P_T_rho']['widget'].setEnabled(not active)
+        if not active:
+            self.calculate_and_set_Reynolds_number()
+
+    def select_directory_for_airfoil_analysis(self, line_edit: QLineEdit):
+        file_dialog = QFileDialog(self)
+        file_dialog.setFileMode(QFileDialog.DirectoryOnly)
+        if file_dialog.exec_():
+            line_edit.setText(file_dialog.selectedFiles()[0])
+
     def setInputs(self):
         self.tab_widget.clear()
         self.widget_dict = {}
@@ -1285,12 +1394,16 @@ class OptimizationSetupDialog(QDialog):
             grid_counter = 0
             self.add_tab(k)
             for k_, v_ in v.items():
-                label = QLabel(v_['label'], self)
+                if 'label' in v_.keys():
+                    label = QLabel(v_['label'], self)
+                else:
+                    label = None
                 widget = getattr(sys.modules[__name__], v_['widget_type'])(self)
                 self.widget_dict[k][k_] = {'widget': widget}
                 if 'text' in v_.keys():
                     widget.setText(v_['text'])
-                    widget.textChanged.connect(partial(self.dict_connection, widget, k, k_))
+                    if hasattr(widget, 'textChanged'):
+                        widget.textChanged.connect(partial(self.dict_connection, widget, k, k_))
                 if 'texts' in v_.keys():
                     if k_ == 'additional_data':
                         widget.insertPlainText('\n'.join(v_['texts']))
@@ -1344,6 +1457,19 @@ class OptimizationSetupDialog(QDialog):
                 if 'combo_callback' in v_.keys():
                     combo_callback_action = getattr(self, v_['combo_callback'])
                     widget.currentTextChanged.connect(combo_callback_action)
+                if 'checkbox_callback' in v_.keys():
+                    checkbox_callback_action = getattr(self, v_['checkbox_callback'])
+                    widget.stateChanged.connect(checkbox_callback_action)
+                if 'values' in v_.keys():
+                    widget.setValues(v_['values'])
+                    if isinstance(widget, GridBounds):
+                        widget.boundsChanged.connect(partial(self.dict_connection, widget, k, k_))
+                    elif isinstance(widget, MSETMultiGridWidget):
+                        widget.multiGridChanged.connect(partial(self.dict_connection, widget, k, k_))
+                    elif isinstance(widget, XTRSWidget):
+                        widget.XTRSChanged.connect(partial(self.dict_connection, widget, k, k_))
+                    elif isinstance(widget, ADWidget):
+                        widget.ADChanged.connect(partial(self.dict_connection, widget, k, k_))
                 if 'editable' in v_.keys():
                     widget.setReadOnly(not v_['editable'])
                 if 'text_changed_callback' in v_.keys():
@@ -1355,23 +1481,90 @@ class OptimizationSetupDialog(QDialog):
                     self.widget_dict[k][k_]['push_button'].setEnabled(False)
                 if k_ == 'additional_data':
                     widget.setMaximumHeight(50)
-                self.grid_layout.addWidget(label, grid_counter, 0)
+
+                if 'restart_grid_counter' in v_.keys() and v_['restart_grid_counter']:
+                    grid_counter = 0
+
+                if 'label_col' in v_.keys():
+                    label_col = v_['label_col']
+                else:
+                    label_col = 0
+                if label is not None:
+                    if 'label_align' in v_.keys():
+                        if v_['label_align'] == 'l':
+                            label_alignment = Qt.AlignLeft
+                        elif v_['label_align'] == 'c':
+                            label_alignment = Qt.AlignCenter
+                        elif v_['label_align'] == 'r':
+                            label_alignment = Qt.AlignRight
+                        else:
+                            raise ValueError('\'label_align\' must be one of: \'l\', \'c\', or \'r\'')
+                    else:
+                        label_alignment = Qt.AlignLeft
+                    self.grid_layout.addWidget(label, grid_counter, label_col, label_alignment)
+                    widget_starting_col = 1
+                else:
+                    widget_starting_col = 0
+
+                if 'align' in v_.keys():
+                    if v_['align'] == 'l':
+                        alignment = Qt.AlignLeft
+                    elif v_['align'] == 'c':
+                        alignment = Qt.AlignCenter
+                    elif v_['align'] == 'r':
+                        alignment = Qt.AlignRight
+                    else:
+                        raise ValueError('\'align\' must be one of: \'l\', \'c\', or \'r\'')
+                else:
+                    alignment = None
+
                 if push_button is None:
                     if checkbox is None:
-                        self.grid_layout.addWidget(widget, grid_counter, 1, 1, 3)
+                        if 'col' in v_.keys():
+                            col = v_['col']
+                        else:
+                            col = widget_starting_col
+                        if 'row_span' in v_.keys():
+                            row_span = v_['row_span']
+                        else:
+                            row_span = 1
+                        if 'col_span' in v_.keys():
+                            col_span = v_['col_span']
+                        else:
+                            col_span = 3
+                        if alignment is not None:
+                            self.grid_layout.addWidget(widget, grid_counter, col, row_span, col_span, alignment)
+                        else:
+                            self.grid_layout.addWidget(widget, grid_counter, col, row_span, col_span)
                     else:
-                        self.grid_layout.addWidget(widget, grid_counter, 1, 1, 2)
+                        if alignment is not None:
+                            self.grid_layout.addWidget(widget, grid_counter, widget_starting_col, 1, 2, alignment)
+                        else:
+                            self.grid_layout.addWidget(widget, grid_counter, widget_starting_col, 1, 2)
                         self.grid_layout.addWidget(checkbox, grid_counter, 3)
                 else:
-                    self.grid_layout.addWidget(widget, grid_counter, 1, 1, 2)
+                    if alignment is not None:
+                        self.grid_layout.addWidget(widget, grid_counter, widget_starting_col, 1, 2, alignment)
+                    else:
+                        self.grid_layout.addWidget(widget, grid_counter, widget_starting_col, 1, 2)
                     self.grid_layout.addWidget(push_button, grid_counter, 3)
-                grid_counter += 1
+
+                if 'next_on_same_row' in v_.keys() and v_['next_on_same_row']:
+                    pass
+                else:
+                    if 'row_span' in v_.keys():
+                        grid_counter += v_['row_span']
+                    else:
+                        grid_counter += 1
 
         for k, v in self.inputs.items():
             for k_ in v.keys():
                 self.enable_disable_from_checkbox(k, k_)
 
-        self.change_prescribed_aero_parameter(self.inputs['XFOIL']['prescribe']['current_text'])
+        self.change_prescribed_aero_parameter_xfoil(self.inputs['XFOIL']['prescribe']['current_text'])
+        self.change_prescribed_aero_parameter(self.inputs['MSES']['spec_alfa_Cl']['current_text'])
+        self.change_Re_active_state(self.inputs['MSES']['spec_Re']['state'])
+        self.change_prescribed_flow_variables(self.inputs['MSES']['spec_P_T_rho']['current_text'])
 
     def getInputs(self):
         return self.inputs

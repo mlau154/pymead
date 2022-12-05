@@ -20,7 +20,7 @@ from pymead.gui.text_area import ConsoleTextArea
 from pymead.gui.dockable_tab_widget import DockableTabWidget
 from pymead.core.mea import MEA
 from pymead.analysis.calc_aero_data import calculate_aero_data
-from pymead.analysis.cfd_output_templates import XFOIL_BLANK
+from pymead.analysis.cfd_output_templates import XFOIL_BLANK, MSES_BLANK
 from pymead.optimization.opt_setup import CustomDisplay, TPAIOPT, SelfIntersectionRepair
 from pymead.utils.read_write_files import load_data, save_data
 from pymead.utils.misc import make_ga_opt_dir
@@ -31,9 +31,10 @@ from pymead.optimization.opt_setup import termination_condition, calculate_warm_
 from pymead.gui.message_box import disp_message_box
 from pymead.gui.worker import Worker
 from pymead.optimization.opt_callback import PlotAirfoilCallback, ParallelCoordsCallback, OptCallback, \
-    DragPlotCallback, CpPlotCallback
+    DragPlotCallbackXFOIL, CpPlotCallbackXFOIL, DragPlotCallbackMSES, CpPlotCallbackMSES
 from pymead.gui.input_dialog import convert_dialog_to_mset_settings, convert_dialog_to_mses_settings, \
     convert_dialog_to_mplot_settings
+from pymead.gui.airfoil_statistics import AirfoilStatisticsDialog, AirfoilStatistics
 from pymead.gui.custom_graphics_view import CustomGraphicsView
 from pymead.utils.file_conversion import convert_ps_to_svg
 
@@ -91,7 +92,7 @@ class GUI(QMainWindow):
         self.opt_airfoil_plot_handles = []
         self.parallel_coords_plot_handles = []
         self.Cp_graph_plot_handles = []
-        self.forces_xfoil = XFOIL_BLANK
+        self.forces_dict = {}
         self.te_thickness_edit_mode = False
         self.dark_mode = False
         self.worker = None
@@ -249,6 +250,10 @@ class GUI(QMainWindow):
         self.tools_menu.addAction(self.match_airfoil_action)
         self.match_airfoil_action.triggered.connect(self.match_airfoil)
 
+        self.airfoil_stats_action = QAction("Airfoil Statistics", self)
+        self.tools_menu.addAction(self.airfoil_stats_action)
+        self.airfoil_stats_action.triggered.connect(self.display_airfoil_statistics)
+
     def save_as_mea(self):
         dialog = SaveAsDialog(self)
         if dialog.exec_():
@@ -303,6 +308,11 @@ class GUI(QMainWindow):
         self.text_area.insertPlainText(text)
         sb = self.text_area.verticalScrollBar()
         sb.setValue(sb.maximum())
+
+    def display_airfoil_statistics(self):
+        airfoil_stats = AirfoilStatistics(mea=self.mea)
+        dialog = AirfoilStatisticsDialog(parent=self, airfoil_stats=airfoil_stats)
+        dialog.exec()
 
     def single_airfoil_inviscid_analysis(self):
         """Inviscid analysis not yet implemented here"""
@@ -375,10 +385,10 @@ class GUI(QMainWindow):
             inputs = None
 
         if inputs is not None:
-            mset_settings = convert_dialog_to_mset_settings(inputs['mset'])
-            mses_settings = convert_dialog_to_mses_settings(inputs['mses'])
+            mset_settings = convert_dialog_to_mset_settings(inputs['MSET'])
+            mses_settings = convert_dialog_to_mses_settings(inputs['MSES'])
             mses_settings['n_airfoils'] = mset_settings['n_airfoils']
-            mplot_settings = convert_dialog_to_mplot_settings(inputs['mplot'])
+            mplot_settings = convert_dialog_to_mplot_settings(inputs['MPLOT'])
             self.multi_airfoil_analysis(mset_settings, mses_settings, mplot_settings)
 
     def multi_airfoil_analysis(self, mset_settings: dict, mses_settings: dict,
@@ -387,7 +397,7 @@ class GUI(QMainWindow):
                                            mset_settings['airfoil_coord_file_name'],
                                            self.mea,
                                            '',
-                                           tool='mses',
+                                           tool='MSES',
                                            export_Cp=True,
                                            mset_settings=mset_settings,
                                            mses_settings=mses_settings,
@@ -607,14 +617,10 @@ class GUI(QMainWindow):
             self.setup_optimization()
 
         if not early_return:
-            print('Running shape optimization!')
-            print(f"mea_list = {mea_list}")
             for (opt_settings, param_dict, mea) in zip(opt_settings_list, param_dict_list, mea_list):
                 # The next two lines are just to make sure any calls to the GUI are performed before the optimization
                 dialog.inputs = opt_settings
                 dialog.setInputs()
-                # self.finished_optimization = False
-                print(f"mea = {mea}")
                 self.run_shape_optimization(param_dict, opt_settings, mea)
 
     def run_shape_optimization(self, param_dict: dict, opt_settings: dict, mea: MEA):
@@ -890,19 +896,27 @@ class GUI(QMainWindow):
                 best_in_previous_generation = True
 
             if best_in_previous_generation:
-                for k, v in self.forces_xfoil.items():
-                    self.forces_xfoil[k].append(v[-1])
+                for k, v in self.forces_dict.items():
+                    if k not in self.forces_dict.keys():
+                        self.forces_dict[k] = []
+                    self.forces_dict[k].append(v[-1])
             else:
                 best_forces = forces[forces_index]
                 for k, v in best_forces.items():
-                    if param_dict['tool'] in ['xfoil', 'XFOIL']:
+                    if param_dict['tool'] in ['xfoil', 'XFOIL', 'mses', 'MSES', 'Mses']:
                         if k not in ['converged', 'timed_out', 'errored_out']:
-                            self.forces_xfoil[k].append(v)
+                            if k not in self.forces_dict.keys():
+                                self.forces_dict[k] = []
+                            self.forces_dict[k].append(v)
 
             progress_callback.emit(PlotAirfoilCallback(parent=self, mea=mea, X=X.tolist(), background_color=bcolor))
             progress_callback.emit(ParallelCoordsCallback(parent=self, mea=mea, X=X.tolist(), background_color=bcolor))
-            progress_callback.emit(CpPlotCallback(parent=self, background_color=bcolor))
-            progress_callback.emit(DragPlotCallback(parent=self, background_color=bcolor))
+            if param_dict['tool'] == 'XFOIL':
+                progress_callback.emit(CpPlotCallbackXFOIL(parent=self, background_color=bcolor))
+                progress_callback.emit(DragPlotCallbackXFOIL(parent=self, background_color=bcolor))
+            elif param_dict['tool'] == 'MSES':
+                progress_callback.emit(CpPlotCallbackMSES(parent=self, background_color=bcolor))
+                progress_callback.emit(DragPlotCallbackMSES(parent=self, background_color=bcolor))
 
             # do same more things, printing, logging, storing or even modifying the algorithm object
             if n_generation % param_dict['algorithm_save_frequency'] == 0:

@@ -15,6 +15,7 @@ from pymead.core.airfoil import Airfoil
 
 class AirfoilGraph(pg.GraphItem):
     my_signal = pyqtSignal(str)
+
     def __init__(self, airfoil: Airfoil = None, pen=None,
                  size: tuple = (1000, 300), background_color: str = 'w', w=None, v=None):
         # Enable antialiasing for prettier plots
