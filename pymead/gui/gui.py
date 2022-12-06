@@ -46,7 +46,7 @@ from pymoo.config import Config
 from pymoo.core.evaluator import Evaluator
 from pymoo.factory import get_reference_directions
 from pymoo.core.evaluator import set_cv
-from pymead.analysis.calc_aero_data import SVG_PLOTS
+from pymead.analysis.calc_aero_data import SVG_PLOTS, SVG_SETTINGS_TR
 
 import pyqtgraph as pg
 import numpy as np
@@ -402,10 +402,8 @@ class GUI(QMainWindow):
                                            mset_settings=mset_settings,
                                            mses_settings=mses_settings,
                                            mplot_settings=mplot_settings)
-        aero_data['converged'] = True
-        aero_data['errored_out'] = False
-        aero_data['timed_out'] = False
         if not aero_data['converged'] or aero_data['errored_out'] or aero_data['timed_out']:
+            self.disp_message_box("MSES Analysis Failed", message_mode='error')
             self.text_area.insertPlainText(
                 f"[{self.n_analyses:2.0f}] Converged = {aero_data['converged']} | Errored out = "
                 f"{aero_data['errored_out']} | Timed out = {aero_data['timed_out']}\n")
@@ -426,37 +424,55 @@ class GUI(QMainWindow):
                     bcolor = 'w'
                 self.analysis_graph = AnalysisGraph(background_color=bcolor)
                 self.dockable_tab_window.add_new_tab_widget(self.analysis_graph.w, "Analysis")
-            pg_plot_handle = self.analysis_graph.v.plot(pen=pg.mkPen(color=self.pens[self.n_converged_analyses][0],
-                                                                     style=self.pens[self.n_converged_analyses][1]),
-                                                        name=str(self.n_analyses))
-            pg_plot_handle.setData(aero_data['BL'][0]['x'], aero_data['BL'][0]['Cp'])
+            pen_idx = self.n_converged_analyses % len(self.pens)
+            x_max = self.mea.calculate_max_x_extent()
+            print(f"x_max = {x_max}")
+            print(f"aero_data = {aero_data}")
+            for side in aero_data['BL']:
+                print(f"side = {side}")
+                pg_plot_handle = self.analysis_graph.v.plot(pen=pg.mkPen(color=self.pens[pen_idx][0],
+                                                                         style=self.pens[pen_idx][1]),
+                                                            name=str(self.n_analyses))
+                x = side['x']
+                Cp = side['Cp']
+                if not isinstance(x, np.ndarray):
+                    x = np.array(x)
+                if not isinstance(Cp, np.ndarray):
+                    Cp = np.array(Cp)
+                pg_plot_handle.setData(x[np.where(x <= x_max)[0]], Cp[np.where(x <= x_max)[0]])
+            # pg_plot_handle = self.analysis_graph.v.plot(pen=pg.mkPen(color=self.pens[pen_idx][0],
+            #                                                          style=self.pens[pen_idx][1]),
+            #                                             name=str(self.n_analyses))
+            # pg_plot_handle.setData(aero_data['BL'][0]['x'], aero_data['BL'][0]['Cp'])
             # pen = pg.mkPen(color='green')
             self.n_converged_analyses += 1
             self.n_analyses += 1
             for svg_plot in SVG_PLOTS:
-                f_name = os.path.join(mset_settings['airfoil_analysis_dir'], mset_settings['airfoil_coord_file_name'],
-                                      f"{svg_plot}.svg")
-                if os.path.exists(f_name):
-                    image = QSvgWidget(f_name)
-                    graphics_scene = QGraphicsScene()
-                    graphics_scene.addWidget(image)
-                    view = CustomGraphicsView(graphics_scene, parent=self)
-                    view.setRenderHint(QPainter.Antialiasing)
-                    Mach_contour_widget = QWidget(self)
-                    widget_layout = QGridLayout()
-                    Mach_contour_widget.setLayout(widget_layout)
-                    widget_layout.addWidget(view, 0, 0, 4, 4)
-                    # new_image = QSvgWidget(os.path.join(RESOURCE_DIR, 'sec_34.svg'))
-                    # temp_widget.setWidget(new_image)
-                    start_counter = 1
-                    max_tab_name_search = 1000
-                    for idx in range(max_tab_name_search):
-                        name = f"{svg_plot}_{start_counter}"
-                        if name in self.dockable_tab_window.names:
-                            start_counter += 1
-                        else:
-                            self.dockable_tab_window.add_new_tab_widget(Mach_contour_widget, name)
-                            break
+                if mplot_settings[SVG_SETTINGS_TR[svg_plot]]:
+                    f_name = os.path.join(mset_settings['airfoil_analysis_dir'],
+                                          mset_settings['airfoil_coord_file_name'],
+                                          f"{svg_plot}.svg")
+                    if os.path.exists(f_name):
+                        image = QSvgWidget(f_name)
+                        graphics_scene = QGraphicsScene()
+                        graphics_scene.addWidget(image)
+                        view = CustomGraphicsView(graphics_scene, parent=self)
+                        view.setRenderHint(QPainter.Antialiasing)
+                        Mach_contour_widget = QWidget(self)
+                        widget_layout = QGridLayout()
+                        Mach_contour_widget.setLayout(widget_layout)
+                        widget_layout.addWidget(view, 0, 0, 4, 4)
+                        # new_image = QSvgWidget(os.path.join(RESOURCE_DIR, 'sec_34.svg'))
+                        # temp_widget.setWidget(new_image)
+                        start_counter = 1
+                        max_tab_name_search = 1000
+                        for idx in range(max_tab_name_search):
+                            name = f"{svg_plot}_{start_counter}"
+                            if name in self.dockable_tab_window.names:
+                                start_counter += 1
+                            else:
+                                self.dockable_tab_window.add_new_tab_widget(Mach_contour_widget, name)
+                                break
         else:
             self.n_analyses += 1
 
@@ -514,15 +530,12 @@ class GUI(QMainWindow):
                 else:
                     n_settings = 1
 
-                print(f"n_settings = {n_settings}")
-
                 if not loop_through_settings:
                     opt_settings_list = []
                 param_dict_list = []
                 mea_list = []
 
                 for settings_idx in range(n_settings):
-                    print(f"settings_idx = {settings_idx}")
 
                     if loop_through_settings:
                         opt_settings = opt_settings_list[settings_idx]
@@ -608,7 +621,6 @@ class GUI(QMainWindow):
                         opt_settings_list = [opt_settings]
                     param_dict_list.append(param_dict)
                     mea_list.append(mea)
-                    print('Made it to the end!')
                     exit_the_dialog = True
         else:
             return

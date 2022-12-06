@@ -370,6 +370,7 @@ class MEAParamTree:
                                        previous_anchor_point=inputs[2], previous_free_point=pfp)
                         self.mea.airfoils[a_tag].insert_free_point(fp)
                         self.mea.airfoils[a_tag].update()
+                        self.mea.assign_names_to_params_in_param_dict()
                         self.dialog.update_fp_ap_tags()
                         pos, adj, symbols = self.mea.airfoils[a_tag].airfoil_graph.update_airfoil_data()
                         self.mea.airfoils[a_tag].airfoil_graph.setData(pos=pos, adj=adj, size=8, pxMode=True, symbol=symbols)
@@ -412,6 +413,7 @@ class MEAParamTree:
                                          psi2=Param(inputs[7]), previous_anchor_point=inputs[8], tag=inputs[9], airfoil_tag=a_tag)
                         self.mea.airfoils[a_tag].insert_anchor_point(ap)
                         self.mea.airfoils[a_tag].update()
+                        self.mea.assign_names_to_params_in_param_dict()
                         self.mea.airfoils[a_tag].init_airfoil_curve_pg(self.mea.airfoils[a_tag].airfoil_graph.v,
                                                                        pen=pg.mkPen(color='cornflowerblue', width=2))
 

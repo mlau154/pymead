@@ -14,6 +14,11 @@ import typing
 
 
 SVG_PLOTS = ['Mach_contours', 'grid', 'grid_zoom']
+SVG_SETTINGS_TR = {
+    SVG_PLOTS[0]: 'Mach',
+    SVG_PLOTS[1]: 'Grid',
+    SVG_PLOTS[2]: 'Grid_Zoom',
+}
 
 
 def calculate_aero_data(airfoil_coord_dir: str, airfoil_name: str, mea: MEA, mea_airfoil_name: str,
@@ -159,8 +164,13 @@ def calculate_aero_data(airfoil_coord_dir: str, airfoil_name: str, mea: MEA, mea
             aero_data = read_forces_from_mses(mplot_log)
             if export_Cp:
                 run_mplot(airfoil_name, airfoil_coord_dir, mplot_settings, mode='Cp')
-                aero_data['BL'] = read_bl_data_from_mses(os.path.join(airfoil_coord_dir, airfoil_name,
-                                                                      f"bl.{airfoil_name}"))
+                aero_data['BL'] = []
+                bl = read_bl_data_from_mses(os.path.join(airfoil_coord_dir, airfoil_name,
+                                                         f"bl.{airfoil_name}"))
+                for side in range(len(bl)):
+                    aero_data['BL'].append({})
+                    for output_var in ['x', 'y', 'Cp']:
+                        aero_data['BL'][-1][output_var] = bl[side][output_var]
             for mplot_output_name in ['Mach', 'Grid', 'Grid_Zoom']:
                 if mplot_settings[mplot_output_name]:
                     run_mplot(airfoil_name, airfoil_coord_dir, mplot_settings, mode=mplot_output_name)
