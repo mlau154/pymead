@@ -108,8 +108,10 @@ class DragPlotCallbackMSES(OptCallback):
         self.background_color = background_color
         self.forces = self.parent.forces_dict
         self.Cd = self.forces['Cd']
-        # self.Cdp = self.forces['Cdp']
-        # self.Cdf = self.forces['Cdf']
+        self.Cdp = self.forces['Cdp']
+        self.Cdf = self.forces['Cdf']
+        self.Cdv = self.forces['Cdv']
+        self.Cdw = self.forces['Cdw']
 
     def exec_callback(self):
         if self.parent.drag_graph is None:
@@ -118,8 +120,10 @@ class DragPlotCallbackMSES(OptCallback):
         if tab_name not in self.parent.dockable_tab_window.names:
             self.parent.dockable_tab_window.add_new_tab_widget(self.parent.drag_graph.w, tab_name)
         self.parent.drag_graph.pg_plot_handle_Cd.setData(1e4 * np.array(self.Cd))
-        # self.parent.drag_graph.pg_plot_handle_Cdp.setData(1e4 * np.array(self.Cdp))
-        # self.parent.drag_graph.pg_plot_handle_Cdf.setData(1e4 * np.array(self.Cdf))
+        self.parent.drag_graph.pg_plot_handle_Cdp.setData(1e4 * np.array(self.Cdp))
+        self.parent.drag_graph.pg_plot_handle_Cdf.setData(1e4 * np.array(self.Cdf))
+        self.parent.drag_graph.pg_plot_handle_Cdv.setData(1e4 * np.array(self.Cdv))
+        self.parent.drag_graph.pg_plot_handle_Cdw.setData(1e4 * np.array(self.Cdw))
 
 
 class CpPlotCallbackXFOIL(OptCallback):
