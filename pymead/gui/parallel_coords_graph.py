@@ -15,7 +15,7 @@ class ParallelCoordsGraph:
         self.v.setYRange(0, 1, padding=0)
         self.v.setLabel(axis='bottom', text='parameter')
         self.v.setLabel(axis='left', text='normalized value')
-        self.legend = self.v.addLegend(offset=(300, 20))
+        self.v.showGrid(x=True, y=True)
 
     def set_background(self, background_color: str):
         self.w.setBackground(background_color)

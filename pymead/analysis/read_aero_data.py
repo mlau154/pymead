@@ -126,13 +126,13 @@ def read_forces_from_mses(search_file: str):
 
     # Find the viscous drag and wave drag coefficients in the drag breakdown (these two values should add to Cd)
     vw_line = vw_line.split('=')
-    forces['CDv'] = float(vw_line[-2].split()[0])
-    forces['CDw'] = float(vw_line[-1].split()[0])
+    forces['Cdv'] = float(vw_line[-2].split()[0])
+    forces['Cdw'] = float(vw_line[-1].split()[0])
 
     # Find the friction drag and pressure drag coefficients in the drag breakdown (these two values should add to Cd)
     fp_line = fp_line.split('=')
-    forces['CDf'] = float(fp_line[-2].split()[0])
-    forces['CDp'] = float(fp_line[-1].split()[0])
+    forces['Cdf'] = float(fp_line[-2].split()[0])
+    forces['Cdp'] = float(fp_line[-1].split()[0])
     return forces
 
 

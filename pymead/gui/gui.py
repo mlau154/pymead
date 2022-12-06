@@ -47,6 +47,7 @@ from pymoo.core.evaluator import Evaluator
 from pymoo.factory import get_reference_directions
 from pymoo.core.evaluator import set_cv
 from pymead.analysis.calc_aero_data import SVG_PLOTS, SVG_SETTINGS_TR
+from pyqtgraph.exporters import CSVExporter, SVGExporter, ImageExporter
 
 import pyqtgraph as pg
 import numpy as np
@@ -937,7 +938,27 @@ class GUI(QMainWindow):
         # obtain the result objective from the algorithm
         res = algorithm.result()
         save_data(res, os.path.join(param_dict['opt_dir'], 'res.pkl'))
+        save_data(self.forces_dict, os.path.join(param_dict['opt_dir'], 'force_history.json'))
+        self.save_opt_plots(param_dict['opt_dir'])
 
+    def save_opt_plots(self, opt_dir: str):
+        opt_plots = {
+            'opt_airfoil_graph': 'opt_airfoil',
+            'parallel_coords_graph': 'parallel_coordinates',
+            'drag_graph': 'drag',
+            'Cp_graph': 'Cp'
+        }
+        for opt_plot in opt_plots.keys():
+            if not hasattr(self, opt_plot):
+                raise AttributeError(f'No attribute \'{opt_plot}\' found in the GUI')
+            attr = getattr(self, opt_plot)
+            if attr is not None:
+                view = attr.v.getViewBox()
+                view.autoRange()
+                svg_exporter = SVGExporter(item=attr.v)
+                csv_exporter = CSVExporter(item=attr.v)
+                svg_exporter.export(os.path.join(opt_dir, f"{opt_plots[opt_plot]}.svg"))
+                csv_exporter.export(os.path.join(opt_dir, f"{opt_plots[opt_plot]}.csv"))
 
     def eventFilter(self, source: QObject, event: QEvent) -> bool:
         if event.type() == QEvent.ContextMenu and source is self.design_tree:
