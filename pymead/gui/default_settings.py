@@ -81,7 +81,7 @@ def mses_settings_default():
                 'lower_bound': 0.0, 'upper_bound': np.inf, 'decimals': 16},
         'L': {'label': 'Length Scale (m)', 'widget_type': 'QDoubleSpinBox', 'value': 1.0,
               'lower_bound': 0.0, 'upper_bound': np.inf, 'decimals': 16},
-        'R': {'label': 'Gas Constant (J/(kg*K))', 'widget_type': 'QDoubleSpinBox', 'value': 287.0,
+        'R': {'label': 'Gas Constant (J/(kg*K))', 'widget_type': 'QDoubleSpinBox', 'value': 287.05,
               'lower_bound': 0.0, 'upper_bound': np.inf, 'decimals': 16},
         'spec_alfa_Cl': {'label': 'Specify Alpha/Cl', 'widget_type': 'QComboBox',
                          'items': ['Specify Angle of Attack', 'Specify Lift Coefficient'],

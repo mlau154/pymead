@@ -76,6 +76,9 @@ class MEA:
         if self.airfoil_graphs_active:
             self.add_airfoil_graph_to_airfoil(airfoil, idx, param_tree)
 
+    def assign_names_to_params_in_param_dict(self):
+        assign_names_to_params_in_param_dict(self.param_dict)
+
     def add_airfoil_graph_to_airfoil(self, airfoil: Airfoil, idx: int, param_tree, w=None, v=None):
         """
         Add a `pyqtgraph`-based `pymead.gui.airfoil_graph.AirfoilGraph` to the airfoil at index `int`.
@@ -293,26 +296,16 @@ class MEA:
                 p.active = True
                 p.deactivated_for_airfoil_matching = False
 
-    # @staticmethod
-    # def more_than_one_xy_linked_or_inactive(fp_or_ap: FreePoint or AnchorPoint):
-    #     linked_or_inactive_counter = 0
-    #     for xy in ['x', 'y', 'xp', 'yp']:
-    #         if getattr(fp_or_ap, xy).linked or not getattr(fp_or_ap, xy).active:
-    #             linked_or_inactive_counter += 1
-    #     if linked_or_inactive_counter > 1:
-    #         return True
-    #     else:
-    #         return False
-    #
-    # @staticmethod
-    # def x_or_y_linked_or_inactive(fp_or_ap: FreePoint or AnchorPoint):
-    #     for xy in ['x', 'y']:
-    #         if getattr(fp_or_ap, xy).linked or not getattr(fp_or_ap, xy).active:
-    #             return True
-    #     return False
-    #
-    # @staticmethod
-    # def xp_or_yp_linked_or_inactive(fp_or_ap: FreePoint or AnchorPoint):
+    def calculate_max_x_extent(self):
+        x = None
+        for a in self.airfoils.values():
+            x_max = a.c.value * np.cos(a.alf.value) + a.dx.value
+            if x is None:
+                x = x_max
+            else:
+                if x_max > x:
+                    x = x_max
+        return x
 
     def add_custom_parameters(self, params: dict):
         if 'Custom' not in self.param_dict.keys():

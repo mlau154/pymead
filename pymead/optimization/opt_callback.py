@@ -156,6 +156,7 @@ class CpPlotCallbackMSES(OptCallback):
         self.forces = self.parent.forces_dict
         # print(f"forces = {self.forces}")
         self.Cp = self.forces['BL'][-1]
+        self.x_max = self.parent.mea.calculate_max_x_extent()
 
     def exec_callback(self):
         if self.parent.Cp_graph is None:
@@ -168,8 +169,16 @@ class CpPlotCallbackMSES(OptCallback):
         else:
             pen = pg.mkPen(color='lightcoral', width=2)
         old_pen = pg.mkPen(color=pg.mkColor('l'), width=1)
-        pg_plot_handle = self.parent.Cp_graph.v.plot(pen=pen)
-        pg_plot_handle.setData(self.Cp[0]['x'], self.Cp[0]['Cp'])
+        pg_plot_handles = [self.parent.Cp_graph.v.plot(pen=pen), self.parent.Cp_graph.v.plot(pen=pen)]
+        for idx, side in enumerate(self.Cp):
+            x = side['x']
+            Cp = side['Cp']
+            if not isinstance(x, np.ndarray):
+                x = np.array(x)
+            if not isinstance(Cp, np.ndarray):
+                Cp = np.array(Cp)
+            pg_plot_handles[idx].setData(x[np.where(x <= self.x_max)[0]], Cp[np.where(x <= self.x_max)[0]])
         if len(self.parent.Cp_graph_plot_handles) > 1:
-            self.parent.Cp_graph_plot_handles[-1].setPen(old_pen)
-        self.parent.Cp_graph_plot_handles.append(pg_plot_handle)
+            for handle in self.parent.Cp_graph_plot_handles[-1]:
+                handle.setPen(old_pen)
+        self.parent.Cp_graph_plot_handles.append(pg_plot_handles)

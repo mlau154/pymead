@@ -99,18 +99,40 @@ def read_forces_from_mses(search_file: str):
     'CD': <CD value>, 'CM': <CM value>})
     """
     CL_lines = []
+    alpha_line, vw_line, fp_line = None, None, None
     with open(search_file, 'r') as f:
         file_out = f.readlines()
     for line in file_out:
         if re.search("CL", line):
             CL_lines.append(line)
+        if 'alpha' in line:
+            alpha_line = line
+        if 'viscous' in line:
+            vw_line = line
+        if 'friction' in line:
+            fp_line = line
     required_line = CL_lines[1]  # line we need happens the second time the string "CL" is mentioned
-    split_line = required_line.split()  # split the line up to grab the actual numbers
+    split_line = required_line.split()  # split the up the line to grab the actual numbers
     forces = {  # write as a dictionary
         'Cl': float(split_line[2]),  # CL = VALUE
         'Cd': float(split_line[5]),  # CD = VALUE
         'Cm': float(split_line[8])  # CM = VALUE
     }
+
+    # Find the angle of attack
+    alpha_line = alpha_line.split('=')
+    alpha_line = alpha_line[-1].split()
+    forces['alf'] = float(alpha_line[-2])
+
+    # Find the viscous drag and wave drag coefficients in the drag breakdown (these two values should add to Cd)
+    vw_line = vw_line.split('=')
+    forces['CDv'] = float(vw_line[-2].split()[0])
+    forces['CDw'] = float(vw_line[-1].split()[0])
+
+    # Find the friction drag and pressure drag coefficients in the drag breakdown (these two values should add to Cd)
+    fp_line = fp_line.split('=')
+    forces['CDf'] = float(fp_line[-2].split()[0])
+    forces['CDp'] = float(fp_line[-1].split()[0])
     return forces
 
 
@@ -144,3 +166,9 @@ def read_bl_data_from_mses(src_file: str):
                 for var_name in df.columns:
                     bl[side_idx][var_name].append(getattr(df, var_name)[idx])
     return bl
+
+
+if __name__ == '__main__':
+    f_ = os.path.join(os.path.dirname(os.getcwd()), 'data', 'test_airfoil', 'mplot.log')
+    forces_ = read_forces_from_mses(f_)
+    print(f"forces = {forces_}")

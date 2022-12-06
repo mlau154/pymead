@@ -45,8 +45,8 @@ def convert_dialog_to_mset_settings(dialog_input: dict):
             else:
                 mset_settings[k].append(v)
     mset_settings['n_airfoils'] = len(mset_settings['airfoil_order'])
-    for k, v in mset_settings.items():
-        print(f"{k}: {v}")
+    # for k, v in mset_settings.items():
+    #     print(f"{k}: {v}")
     return mset_settings
 
 
@@ -94,8 +94,8 @@ def convert_dialog_to_mses_settings(dialog_input: dict):
             else:
                 mses_settings[k].append(v)
 
-    for k, v in mses_settings.items():
-        print(f"{k}: {v}")
+    # for k, v in mses_settings.items():
+    #     print(f"{k}: {v}")
     return mses_settings
 
 
@@ -106,6 +106,8 @@ def convert_dialog_to_mplot_settings(dialog_input: dict):
         'Grid': dialog_input['Grid']['state'],
         'Grid_Zoom': dialog_input['Grid_Zoom']['state'],
     }
+    # for k, v in mplot_settings.items():
+    #     print(f"{k}: {v}")
     return mplot_settings
 
 
@@ -692,7 +694,6 @@ class MultiAirfoilDialog(QDialog):
         gam = self.inputs['MSES']['gam']['value']
         L = self.inputs['MSES']['L']['value']
         M = self.inputs['MSES']['MACHIN']['value']
-        print(f"M = {M}")
         Re_widget = self.widget_dict['MSES']['REYNIN']['widget']
         nu = viscosity_calculator(T, rho=rho)
         a = np.sqrt(gam * R * T)
@@ -712,7 +713,6 @@ class MultiAirfoilDialog(QDialog):
         w2.setReadOnly(bools[1])
 
     def change_prescribed_flow_variables(self, current_text: str):
-        print('Changing prescribed flow variables!')
         w1 = self.widget_dict['MSES']['P']['widget']
         w2 = self.widget_dict['MSES']['T']['widget']
         w3 = self.widget_dict['MSES']['rho']['widget']
@@ -727,8 +727,6 @@ class MultiAirfoilDialog(QDialog):
         w1.setReadOnly(bools[0])
         w2.setReadOnly(bools[1])
         w3.setReadOnly(bools[2])
-        print(f"bools = {bools}")
-        print(f"isReadOnly: w1 = {w1.isReadOnly()}, w2 = {w2.isReadOnly()}, w3 = {w3.isReadOnly()}")
 
     def change_Re_active_state(self, state):
         if state == 0 or state is None:
@@ -1174,7 +1172,6 @@ class OptimizationSetupDialog(QDialog):
                 return
 
     def constraints_changed(self, widget, text: str):
-        print(f"text = {text}")
         self.parent().constraints = []
         for constraint_func_str in text.split(','):
             if len(constraint_func_str) > 0:
@@ -1301,7 +1298,6 @@ class OptimizationSetupDialog(QDialog):
         gam = self.inputs['MSES']['gam']['value']
         L = self.inputs['MSES']['L']['value']
         M = self.inputs['MSES']['MACHIN']['value']
-        print(f"M = {M}")
         Re_widget = self.widget_dict['MSES']['REYNIN']['widget']
         nu = viscosity_calculator(T, rho=rho)
         a = np.sqrt(gam * R * T)
@@ -1337,7 +1333,6 @@ class OptimizationSetupDialog(QDialog):
         w2.setReadOnly(bools[1])
 
     def change_prescribed_flow_variables(self, current_text: str):
-        print('Changing prescribed flow variables!')
         w1 = self.widget_dict['MSES']['P']['widget']
         w2 = self.widget_dict['MSES']['T']['widget']
         w3 = self.widget_dict['MSES']['rho']['widget']
@@ -1352,8 +1347,6 @@ class OptimizationSetupDialog(QDialog):
         w1.setReadOnly(bools[0])
         w2.setReadOnly(bools[1])
         w3.setReadOnly(bools[2])
-        print(f"bools = {bools}")
-        print(f"isReadOnly: w1 = {w1.isReadOnly()}, w2 = {w2.isReadOnly()}, w3 = {w3.isReadOnly()}")
 
     def change_Re_active_state(self, state):
         if state == 0 or state is None:
@@ -1518,36 +1511,37 @@ class OptimizationSetupDialog(QDialog):
                 else:
                     alignment = None
 
+                if 'col' in v_.keys():
+                    col = v_['col']
+                else:
+                    col = widget_starting_col
+                if 'row_span' in v_.keys():
+                    row_span = v_['row_span']
+                else:
+                    row_span = 1
+                if 'col_span' in v_.keys():
+                    col_span = v_['col_span']
+                else:
+                    col_span = 3
+
                 if push_button is None:
                     if checkbox is None:
-                        if 'col' in v_.keys():
-                            col = v_['col']
-                        else:
-                            col = widget_starting_col
-                        if 'row_span' in v_.keys():
-                            row_span = v_['row_span']
-                        else:
-                            row_span = 1
-                        if 'col_span' in v_.keys():
-                            col_span = v_['col_span']
-                        else:
-                            col_span = 3
                         if alignment is not None:
                             self.grid_layout.addWidget(widget, grid_counter, col, row_span, col_span, alignment)
                         else:
                             self.grid_layout.addWidget(widget, grid_counter, col, row_span, col_span)
                     else:
                         if alignment is not None:
-                            self.grid_layout.addWidget(widget, grid_counter, widget_starting_col, 1, 2, alignment)
+                            self.grid_layout.addWidget(widget, grid_counter, col, 1, 2, alignment)
                         else:
-                            self.grid_layout.addWidget(widget, grid_counter, widget_starting_col, 1, 2)
-                        self.grid_layout.addWidget(checkbox, grid_counter, 3)
+                            self.grid_layout.addWidget(widget, grid_counter, col, 1, 2)
+                        self.grid_layout.addWidget(checkbox, grid_counter, col + 3)
                 else:
                     if alignment is not None:
-                        self.grid_layout.addWidget(widget, grid_counter, widget_starting_col, 1, 2, alignment)
+                        self.grid_layout.addWidget(widget, grid_counter, col, 1, 2, alignment)
                     else:
-                        self.grid_layout.addWidget(widget, grid_counter, widget_starting_col, 1, 2)
-                    self.grid_layout.addWidget(push_button, grid_counter, 3)
+                        self.grid_layout.addWidget(widget, grid_counter, col, 1, 2)
+                    self.grid_layout.addWidget(push_button, grid_counter, col + 2)
 
                 if 'next_on_same_row' in v_.keys() and v_['next_on_same_row']:
                     pass
