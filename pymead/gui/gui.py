@@ -9,7 +9,7 @@ from PyQt5.QtSvg import QSvgWidget
 
 
 from pymead.core.airfoil import Airfoil
-from pymead import DATA_DIR, RESOURCE_DIR
+from pymead import RESOURCE_DIR
 from pymead.gui.input_dialog import SingleAirfoilViscousDialog, LoadDialog, SaveAsDialog, OptimizationSetupDialog, \
     MultiAirfoilDialog
 from pymead.gui.analysis_graph import AnalysisGraph
@@ -20,7 +20,6 @@ from pymead.gui.text_area import ConsoleTextArea
 from pymead.gui.dockable_tab_widget import DockableTabWidget
 from pymead.core.mea import MEA
 from pymead.analysis.calc_aero_data import calculate_aero_data
-from pymead.analysis.cfd_output_templates import XFOIL_BLANK, MSES_BLANK
 from pymead.optimization.opt_setup import CustomDisplay, TPAIOPT, SelfIntersectionRepair
 from pymead.utils.read_write_files import load_data, save_data
 from pymead.utils.misc import make_ga_opt_dir
@@ -36,7 +35,7 @@ from pymead.gui.input_dialog import convert_dialog_to_mset_settings, convert_dia
     convert_dialog_to_mplot_settings
 from pymead.gui.airfoil_statistics import AirfoilStatisticsDialog, AirfoilStatistics
 from pymead.gui.custom_graphics_view import CustomGraphicsView
-from pymead.utils.file_conversion import convert_ps_to_svg
+from pymead.utils.dict_recursion import unravel_param_dict
 
 import pymoo.core.population
 from pymoo.algorithms.moo.unsga3 import UNSGA3
@@ -47,7 +46,7 @@ from pymoo.core.evaluator import Evaluator
 from pymoo.factory import get_reference_directions
 from pymoo.core.evaluator import set_cv
 from pymead.analysis.calc_aero_data import SVG_PLOTS, SVG_SETTINGS_TR
-from pyqtgraph.exporters import CSVExporter, SVGExporter, ImageExporter
+from pyqtgraph.exporters import CSVExporter, SVGExporter
 
 import pyqtgraph as pg
 import numpy as np
@@ -219,6 +218,31 @@ class GUI(QMainWindow):
         self.file_menu.addAction(self.settings_action)
         # self.settings_action.triggered.connect()
 
+        self.import_menu = QMenu("&Import", self)
+        self.file_menu.addMenu(self.import_menu)
+
+        self.parameter_list_action = QAction("Parameter List", self)
+        self.import_menu.addAction(self.parameter_list_action)
+        self.parameter_list_action.triggered.connect(self.import_parameter_list)
+
+        self.export_menu = QMenu("&Export", self)
+        self.file_menu.addMenu(self.export_menu)
+
+        self.param_dict_menu = QMenu("Parameter Dictionary", self)
+        self.export_menu.addMenu(self.param_dict_menu)
+
+        self.param_dict_dill_action = QAction("Dill Serialization", self)
+        self.param_dict_menu.addAction(self.param_dict_dill_action)
+        self.param_dict_dill_action.triggered.connect(partial(self.export_param_dict, 'dill'))
+
+        self.param_dict_pkl_action = QAction("Pickle Serialization", self)
+        self.param_dict_menu.addAction(self.param_dict_pkl_action)
+        self.param_dict_pkl_action.triggered.connect(partial(self.export_param_dict, 'pkl'))
+
+        self.param_dict_json_action = QAction("JSON Serialization", self)
+        self.param_dict_menu.addAction(self.param_dict_json_action)
+        self.param_dict_json_action.triggered.connect(partial(self.export_param_dict, 'json'))
+
         # Analysis Menu set-up
         self.analysis_menu = QMenu("&Analysis", self)
         self.menu_bar.addMenu(self.analysis_menu)
@@ -287,6 +311,33 @@ class GUI(QMainWindow):
             file_name = None
         if file_name is not None:
             self.load_mea_no_dialog(file_name)
+
+    def import_parameter_list(self):
+        file_filter = "DAT Files (*.dat)"
+        dialog = LoadDialog(self, file_filter=file_filter)
+        if dialog.exec_():
+            file_name = dialog.selectedFiles()[0]
+            parameter_list = np.loadtxt(file_name).tolist()
+            self.mea.update_parameters(parameter_list)
+
+    def export_param_dict(self, serialize_mode: str):
+        if serialize_mode in ['pkl', 'pickle', 'PICKLE', 'Pickle', '.pkl']:
+            dialog = SaveAsDialog(self, file_filter="Pickle Files (*.pkl)")
+            if dialog.exec_():
+                file_name = dialog.selectedFiles()[0]
+                save_data(self.mea.param_dict, file_name)
+        elif serialize_mode in ['dill', 'Dill', 'DILL', '.dill']:
+            dialog = SaveAsDialog(self, file_filter="Dill Files (*.dill)")
+            if dialog.exec_():
+                file_name = dialog.selectedFiles()[0]
+                save_data(self.mea.param_dict, file_name)
+        elif serialize_mode in ['json', 'Json', 'JSON', 'jason', 'Jason', 'JASON', '.json']:
+            dialog = SaveAsDialog(self, file_filter="JSON Files (*.json)")
+            if dialog.exec_():
+                file_name = dialog.selectedFiles()[0]
+                output_dict_ = {}
+                unravel_param_dict(self.mea.param_dict, output_dict=output_dict_, prep_for_json=True)
+                save_data(output_dict_, file_name)
 
     def load_mea_no_dialog(self, file_name):
         with open(os.path.join(os.getcwd(), file_name), "rb") as f:
@@ -939,9 +990,11 @@ class GUI(QMainWindow):
         res = algorithm.result()
         save_data(res, os.path.join(param_dict['opt_dir'], 'res.pkl'))
         save_data(self.forces_dict, os.path.join(param_dict['opt_dir'], 'force_history.json'))
-        self.save_opt_plots(param_dict['opt_dir'])
+        np.savetxt(os.path.join(param_dict['opt_dir'], 'opt_X.dat'), res.X)
+        # self.save_opt_plots(param_dict['opt_dir'])  # not working at the moment
 
     def save_opt_plots(self, opt_dir: str):
+        # Not working at the moment
         opt_plots = {
             'opt_airfoil_graph': 'opt_airfoil',
             'parallel_coords_graph': 'parallel_coordinates',

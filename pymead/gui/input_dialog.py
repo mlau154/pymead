@@ -219,11 +219,11 @@ class SingleAirfoilInviscidDialog(QDialog):
         for item in items:
             if item[1] == 'double':
                 self.inputs.append(QDoubleSpinBox(self))
+                self.inputs[-1].setDecimals(5)
                 self.inputs[-1].setValue(item[2])
                 self.inputs[-1].setMinimum(0.0)
                 self.inputs[-1].setMaximum(np.inf)
                 self.inputs[-1].setSingleStep(1.0)
-                self.inputs[-1].setDecimals(5)
             elif item[1] == 'combo':
                 self.inputs.append(QComboBox(self))
                 if item[0] == "Airfoil":
@@ -370,6 +370,8 @@ class SingleAirfoilViscousDialog(QDialog):
             label = QLabel(v['label'], self)
             widget = getattr(sys.modules[__name__], v['widget_type'])(self)
             self.widget_dict[k] = {'widget': widget}
+            if 'decimals' in v.keys():
+                widget.setDecimals(v['decimals'])
             if 'text' in v.keys():
                 widget.setText(v['text'])
                 widget.textChanged.connect(partial(self.dict_connection, widget, k))
@@ -403,8 +405,6 @@ class SingleAirfoilViscousDialog(QDialog):
                 if 'click_connect' in v.keys():
                     push_button_action = getattr(self, v['click_connect'])
                     widget.clicked.connect(push_button_action)
-            if 'decimals' in v.keys():
-                widget.setDecimals(v['decimals'])
             if 'tool_tip' in v.keys():
                 label.setToolTip(v['tool_tip'])
                 widget.setToolTip(v['tool_tip'])
@@ -767,6 +767,8 @@ class MultiAirfoilDialog(QDialog):
                     label = None
                 widget = getattr(sys.modules[__name__], v_['widget_type'])(self)
                 self.widget_dict[k][k_] = {'widget': widget}
+                if 'decimals' in v_.keys():
+                    widget.setDecimals(v_['decimals'])
                 if 'text' in v_.keys():
                     widget.setText(v_['text'])
                     if hasattr(widget, 'textChanged'):
@@ -801,8 +803,6 @@ class MultiAirfoilDialog(QDialog):
                     if 'click_connect' in v_.keys():
                         push_button_action = getattr(self, v_['click_connect'])
                         widget.clicked.connect(push_button_action)
-                if 'decimals' in v_.keys():
-                    widget.setDecimals(v_['decimals'])
                 if 'tool_tip' in v_.keys():
                     label.setToolTip(v_['tool_tip'])
                     widget.setToolTip(v_['tool_tip'])
@@ -1014,18 +1014,18 @@ class BoundsDialog(QDialog):
 
 
 class LoadDialog(QFileDialog):
-    def __init__(self, parent):
+    def __init__(self, parent, file_filter: str = "PyMEAD Files (*.mead)"):
         super().__init__(parent=parent)
         self.setFileMode(QFileDialog.ExistingFile)
-        self.setNameFilter(self.tr("PyMEAD Files (*.mead)"))
+        self.setNameFilter(self.tr(file_filter))
         self.setViewMode(QFileDialog.Detail)
 
 
 class SaveAsDialog(QFileDialog):
-    def __init__(self, parent):
+    def __init__(self, parent, file_filter: str = "PyMEAD Files (*.mead)"):
         super().__init__(parent=parent)
         self.setFileMode(QFileDialog.AnyFile)
-        self.setNameFilter(self.tr("PyMEAD Files (*.mead)"))
+        self.setNameFilter(self.tr(file_filter))
         self.setViewMode(QFileDialog.Detail)
 
 
@@ -1393,6 +1393,8 @@ class OptimizationSetupDialog(QDialog):
                     label = None
                 widget = getattr(sys.modules[__name__], v_['widget_type'])(self)
                 self.widget_dict[k][k_] = {'widget': widget}
+                if 'decimals' in v_.keys():
+                    widget.setDecimals(v_['decimals'])
                 if 'text' in v_.keys():
                     widget.setText(v_['text'])
                     if hasattr(widget, 'textChanged'):
@@ -1427,8 +1429,6 @@ class OptimizationSetupDialog(QDialog):
                     if 'click_connect' in v_.keys():
                         push_button_action = getattr(self, v_['click_connect'])
                         widget.clicked.connect(push_button_action)
-                if 'decimals' in v_.keys():
-                    widget.setDecimals(v_['decimals'])
                 if 'tool_tip' in v_.keys():
                     label.setToolTip(v_['tool_tip'])
                     widget.setToolTip(v_['tool_tip'])
