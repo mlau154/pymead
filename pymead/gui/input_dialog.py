@@ -23,6 +23,7 @@ from pymead.gui.mset_multigrid_widget import MSETMultiGridWidget, XTRSWidget, AD
 from pymead.analysis.utils import viscosity_calculator
 from pymead.gui.custom_graphics_view import CustomGraphicsView
 from pymead import RESOURCE_DIR, DATA_DIR
+import pyqtgraph as pg
 
 
 def convert_dialog_to_mset_settings(dialog_input: dict):
@@ -252,6 +253,29 @@ class SingleAirfoilInviscidDialog(QDialog):
                 raise TypeError(f'QFormLayout widget must be of type {type(QComboBox)}, {type(QDoubleSpinBox)}, '
                                 f'or {type(QLineEdit)}')
         return tuple(return_vals)
+
+
+class ColorInputDialog(QDialog):
+    def __init__(self, parent, default_color: tuple):
+        super().__init__(parent=parent)
+
+        self.setFont(self.parent().font())
+        self.setWindowTitle("Color Selector")
+
+        buttonBox = QDialogButtonBox(self)
+        buttonBox.addButton("Apply", QDialogButtonBox.AcceptRole)
+        buttonBox.addButton(QDialogButtonBox.Cancel)
+        self.layout = QGridLayout(self)
+        self.widget = QWidget(self)
+        self.layout.addWidget(self.widget)
+
+        self.color_button_widget = pg.ColorButton(parent=self, color=default_color)
+        self.layout.addWidget(self.color_button_widget)
+
+        self.layout.addWidget(buttonBox)
+
+        buttonBox.accepted.connect(self.accept)
+        buttonBox.rejected.connect(self.reject)
 
 
 class SingleAirfoilViscousDialog(QDialog):
