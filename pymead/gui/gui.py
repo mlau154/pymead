@@ -11,7 +11,7 @@ from PyQt5.QtSvg import QSvgWidget
 from pymead.core.airfoil import Airfoil
 from pymead import RESOURCE_DIR
 from pymead.gui.input_dialog import SingleAirfoilViscousDialog, LoadDialog, SaveAsDialog, OptimizationSetupDialog, \
-    MultiAirfoilDialog
+    MultiAirfoilDialog, ColorInputDialog
 from pymead.gui.analysis_graph import AnalysisGraph
 from pymead.gui.parameter_tree import MEAParamTree
 from pymead.utils.airfoil_matching import match_airfoil
@@ -86,6 +86,7 @@ class GUI(QMainWindow):
         self.parallel_coords_graph = None
         self.drag_graph = None
         self.Cp_graph = None
+        self.geometry_plot_handles = {}
         # self.Mach_contour_widget = None
         # self.grid_widget = None
         # self.finished_optimization = False
@@ -279,6 +280,13 @@ class GUI(QMainWindow):
         self.tools_menu.addAction(self.airfoil_stats_action)
         self.airfoil_stats_action.triggered.connect(self.display_airfoil_statistics)
 
+        self.plot_menu = QMenu("&Plot", self)
+        self.menu_bar.addMenu(self.plot_menu)
+
+        self.plot_geometry_from_file_action = QAction("Geometry From File", self)
+        self.plot_menu.addAction(self.plot_geometry_from_file_action)
+        self.plot_geometry_from_file_action.triggered.connect(self.plot_geometry)
+
     def save_as_mea(self):
         dialog = SaveAsDialog(self)
         if dialog.exec_():
@@ -313,12 +321,37 @@ class GUI(QMainWindow):
             self.load_mea_no_dialog(file_name)
 
     def import_parameter_list(self):
+        """This function imports """
         file_filter = "DAT Files (*.dat)"
         dialog = LoadDialog(self, file_filter=file_filter)
         if dialog.exec_():
             file_name = dialog.selectedFiles()[0]
             parameter_list = np.loadtxt(file_name).tolist()
+            for airfoil in self.mea.airfoils.values():
+                airfoil.airfoil_graph.airfoil_parameters = self.param_tree_instance.p.param('Airfoil Parameters')
             self.mea.update_parameters(parameter_list)
+
+    def plot_geometry(self):
+        file_filter = "DAT Files (*.dat)"
+        dialog = LoadDialog(self, file_filter=file_filter)
+        if dialog.exec_():
+            file_name = dialog.selectedFiles()[0]
+            coords = np.loadtxt(file_name)
+            geometry_idx = 0
+            while True:
+                geometry_name = f"Geometry_{geometry_idx}"
+                if geometry_name in self.geometry_plot_handles.keys():
+                    geometry_idx += 1
+                else:
+                    default_color = (214, 147, 39)
+                    color_dialog = ColorInputDialog(parent=self, default_color=default_color)
+                    if color_dialog.exec_():
+                        color = color_dialog.color_button_widget.color()
+                    else:
+                        color = default_color
+                    self.geometry_plot_handles[geometry_name] = self.v.plot(pen=pg.mkPen(color=color), lw=1.4)
+                    self.geometry_plot_handles[geometry_name].setData(coords[:, 0], coords[:, 1])
+                    break
 
     def export_param_dict(self, serialize_mode: str):
         if serialize_mode in ['pkl', 'pickle', 'PICKLE', 'Pickle', '.pkl']:
@@ -336,7 +369,8 @@ class GUI(QMainWindow):
             if dialog.exec_():
                 file_name = dialog.selectedFiles()[0]
                 output_dict_ = {}
-                unravel_param_dict(self.mea.param_dict, output_dict=output_dict_, prep_for_json=True)
+                param_dict_copy = deepcopy(self.mea.param_dict)
+                unravel_param_dict(param_dict_copy, output_dict=output_dict_, prep_for_json=True)
                 save_data(output_dict_, file_name)
 
     def load_mea_no_dialog(self, file_name):
@@ -809,7 +843,8 @@ class GUI(QMainWindow):
 
             # prepare the algorithm to solve the specific problem (same arguments as for the minimize function)
             algorithm.setup(problem, termination, display=display, seed=param_dict['seed'], verbose=True,
-                            save_history=True)
+                            save_history=False)  # Changed save_history to False in order to help prevent paging errors
+            # (running out of RAM because each generation of the algorithm stores the entire algorithm history)
 
             save_data(algorithm, os.path.join(param_dict['opt_dir'], 'algorithm_gen_0.pkl'))
 
