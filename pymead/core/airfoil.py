@@ -188,8 +188,8 @@ class Airfoil:
                 free_point.anchor_point_tag].pop(kp[0])
         self.free_point_order[free_point.anchor_point_tag] = [f"FP{idx}" for idx in range(len(fp_dict))]
         self.N[free_point.anchor_point_tag] += 1
-        self.param_dicts['FreePoints'][free_point.anchor_point_tag][free_point.tag] = {'x': free_point.x, 'y': free_point.y, 'xp': free_point.xp,
-                                                          'yp': free_point.yp}
+        self.param_dicts['FreePoints'][free_point.anchor_point_tag][free_point.tag] = {
+            'x': free_point.x, 'y': free_point.y, 'xp': free_point.xp, 'yp': free_point.yp}
 
     def delete_free_point(self, free_point_tag: str, anchor_point_tag: str):
         """Deletes a :class:`pymead.core.free_point.FreePoint` from the Airfoil.
@@ -423,18 +423,12 @@ class Airfoil:
                 cp.yp += dy
 
     def rotate(self, angle: float):
-        """
-        ### Description:
+        """Rotates all the control points and anchor points by a specified angle. Used to implement the angle of attack.
 
-        Rotates all the control points and anchor points by a specified angle. Used to implement the angle of attack.
-
-        ### Args:
-
-        `angle`: Angle (in radians) by which to rotate the airfoil.
-
-        ### Returns:
-
-        The rotated control point and anchor point arrays
+        Parameters
+        ==========
+        angle: float
+          Angle (in radians) by which to rotate the airfoil.
         """
         rot_mat = np.array([[np.cos(angle), -np.sin(angle)],
                             [np.sin(angle), np.cos(angle)]])
@@ -445,9 +439,12 @@ class Airfoil:
 
     def scale(self, scale_value):
         """
-        ### Description:
-
         Scales the airfoil about the origin.
+
+        Parameters
+        ==========
+        scale_value: float
+          A value by which to scale the airfoil uniformly in both the :math:`x`- and :math:`y`-directions
         """
         for cp in self.control_points:
             cp.xp *= scale_value
@@ -489,20 +486,24 @@ class Airfoil:
         return not is_simple
 
     def compute_thickness(self, n_lines: int = 201, return_max_thickness_loc: bool = False):
-        r"""
-        ### Description:
+        r"""Calculates the thickness distribution and maximum thickness of the airfoil.
 
-        Calculates the thickness distribution and maximum thickness of the airfoil.
+        Parameters
+        ==========
+        n_lines: int
+          Describes the number of lines evenly spaced along the chordline produced to determine the thickness
+          distribution. Default: :code:`201`
 
-        ### Args:
+        return_max_thickness_loc: bool
+          Whether to return the :math:`x/c`-location of the maximum thickness. Return type will be a :code:`dict`
+          rather than a :code:`tuple` if this value is selected to be :code:`True`. Default: :code:`False`
 
-        `n_lines`: Optional `int` describing the number of lines evenly spaced along the chordline produced to
-        determine the thickness distribution. Default: `201`.
-
-        ### Returns:
-
-        The list of \(x\)-values used for the thickness distribution calculation, the thickness distribution, and the
-        maximum value of the thickness distribution.
+        Returns
+        =======
+        tuple or dict
+          The list of \(x\)-values used for the thickness distribution calculation, the thickness distribution, the
+          maximum value of the thickness distribution, and, if :code:`return_max_thickness_location=True`,
+          the :math:`x/c`-location of the maximum thickness value.
         """
         self.get_coords(body_fixed_csys=True)
         points_shapely = list(map(tuple, self.coords))
@@ -532,6 +533,19 @@ class Airfoil:
             return self.x_thickness, self.thickness, self.max_thickness
 
     def contains_point(self, point: np.ndarray or list):
+        """Determines whether a point is contained inside the airfoil
+
+        Parameters
+        ==========
+        point: np.ndarray or list
+          The point to test. Should be either a 1-D :code:`ndarray` of the format :code:`array([<x_val>,<y_val>])` or a
+          list of the format :code:`[<x_val>,<y_val>]`
+
+        Returns
+        =======
+        bool
+          Whether the point is contained inside the airfoil
+        """
         if isinstance(point, list):
             point = np.array(point)
         self.get_coords(body_fixed_csys=False)
@@ -540,6 +554,18 @@ class Airfoil:
         return polygon.contains(Point(point[0], point[1]))
 
     def contains_line_string(self, points: np.ndarray or list) -> bool:
+        """Whether a connected string of points is contained the airfoil
+
+        Parameters
+        ==========
+        points: np.ndarray or list
+          Should be a 2-D array or list of the form :code:`[[<x_val_1>, <y_val_1>], [<x_val_2>, <y_val_2>], ...]
+
+        Returns
+        =======
+        bool
+          Whether the line string is contained inside the airfoil
+        """
         if isinstance(points, list):
             points = np.array(points)
         self.get_coords(body_fixed_csys=False)
@@ -549,7 +575,26 @@ class Airfoil:
         return polygon.contains(line_string)
 
     def within_line_string_until_point(self, points: np.ndarray or list, cutoff_point,
-                                       transformation_kwargs: dict) -> bool:
+                                       **transformation_kwargs) -> bool:
+        """Whether the airfoil is contained inside a connected string of points until a cutoff point
+
+        Parameters
+        ==========
+        points: np.ndarray or list
+          Should be a 2-D array or list of the form :code:`[[<x_val_1>, <y_val_1>], [<x_val_2>, <y_val_2>], ...]
+
+        cutoff_point: float
+          The :math:`x`-location to set the end of the constraint
+
+        **transformation_kwargs
+          Keyword arguments to be fed into a transformation function to transform the airfoil prior to the line string
+          containment check
+
+        Returns
+        =======
+        bool
+          Whether the airfoil is contained inside the connected string of points before the cutoff point
+        """
         if isinstance(points, list):
             points = np.array(points)
         points_shapely = list(map(tuple, points))
@@ -564,8 +609,20 @@ class Airfoil:
         return exterior_polygon.contains(line_string)
 
     def plot_airfoil(self, axs: plt.axes, **plot_kwargs):
-        """
-        Plots each of the airfoil's Bézier curves on a specified matplotlib axis
+        """Plots each of the airfoil's Bézier curves on a specified matplotlib axis
+
+        Parameters
+        ==========
+        axs: plt.axes
+          A :code:`matplotlib.axes.Axes` object on which to plot each of the airfoil's Bézier curves
+
+        **plot_kwargs
+          Arguments to feed to the `matplotlib` "plot" function
+
+        Returns
+        =======
+        list
+          A list of the `matplotlib` plot handles
         """
         plt_curves = []
         for curve in self.curve_list:
@@ -574,35 +631,63 @@ class Airfoil:
         return plt_curves
 
     def plot_control_points(self, axs: plt.axes, **plot_kwargs):
-        """
-        Plots the airfoil's control point skeleton on a specified matplotlib axis
+        """Plots the airfoil's control point skeleton on a specified `matplotlib` axis
+
+        Parameters
+        ==========
+        axs: plt.axes
+          A :code:`matplotlib.axes.Axes` object on which to plot each of the airfoil's control point skeleton
+
+        **plot_kwargs
+          Arguments to feed to the `matplotlib` "plot" function
         """
         axs.plot(self.control_point_array[:, 0], self.control_point_array[:, 1], **plot_kwargs)
 
     def init_airfoil_curve_pg(self, v, pen):
-        """
-        Initializes the pyqtgraph PlotDataItem for each of the airfoil's Bézier curves
+        """Initializes the `pyqtgraph.PlotDataItem` for each of the airfoil's Bézier curves
+
+        Parameters
+        ==========
+        v
+          The `pyqtgraph` axis on which to draw the airfoil
+
+        pen: QPen
+          The pen to use to draw the airfoil curves
         """
         for curve in self.curve_list:
             curve.init_curve_pg(v, pen)
 
     def set_airfoil_pen(self, pen):
-        """
-        Sets the QPen for each curve in the airfoil object
+        """Sets the QPen for each curve in the airfoil object
         """
         for curve in self.curve_list:
             if curve.pg_curve_handle:
                 curve.pg_curve_handle.setPen(pen)
 
     def update_airfoil_curve(self):
+        """Updates each airfoil `matplotlib` axis curve handle"""
         for curve in self.curve_list:
             curve.update_curve()
 
     def update_airfoil_curve_pg(self):
+        """Updates each airfoil `pyqtgraph` axis curve handle"""
         for curve in self.curve_list:
             curve.update_curve_pg()
 
     def get_coords(self, body_fixed_csys: bool = False):
+        """Gets the set of discrete airfoil coordinates for the airfoil
+
+        Parameters
+        ==========
+        body_fixed_csys: bool
+          Whether to internally transform the airfoil such that :math:`(0,0)` is located at the leading edge and
+          :math:`(1,0)` is located at the trailing edge prior to the coordinate output
+
+        Returns
+        =======
+        np.ndarray
+          A 2-D array of the airfoil coordinates
+        """
         x = np.array([])
         y = np.array([])
         self.coords = []
@@ -623,9 +708,37 @@ class Airfoil:
     def write_coords_to_file(self, f: str, read_write_mode: str, body_fixed_csys: bool = False,
                              scale_factor: float = None, downsample: bool = False, ratio_thresh=None,
                              abs_thresh=None) -> int:
-        """
-        Note: If downsample is set to true and either ratio_thresh or abs_thresh is not specified, the default values of
-        1.001 and 0.1 will be used for ratio_thresh and abs_thresh, respectively.
+        """Writes the coordinates to a file.
+
+        Parameters
+        ==========
+        f: str
+          The file in which to write the coordinates
+
+        read_write_mode: str
+          Use 'w' to write to a new file, or 'a' to append to an existing file
+
+        body_fixed_csys: bool
+          Whether to internally transform the airfoil such that :math:`(0,0)` is located at the leading edge and
+          :math:`(1,0)` is located at the trailing edge prior to the coordinate output. Default: `False`
+
+        scale_factor: float
+          A value by which to internally scale the airfoil uniformly in the :math:`x`- and :math:`y`-directions
+          prior to writing the coordinates. Default: `None`
+
+        downsample: bool
+          Whether to downsample the airfoil coordinates before writing to the file. Default: `False`
+
+        ratio_thresh: float
+          The threshold ratio used by the downsampler (`1.001` by default, ignored if `downsample=False`)
+
+        abs_thresh: float
+          The absolute threshold used by the downsampler (`0.1` by default, ignored if `downsample=False`)
+
+        Returns
+        =======
+        int
+          The number of airfoil coordinates
         """
         self.get_coords(body_fixed_csys)
         if downsample:
