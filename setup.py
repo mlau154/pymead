@@ -29,5 +29,5 @@ setup(
               "pymead/optimization", "pymead/plugins"],
     include_package_data=True,
     install_requires=["scipy", "numpy", "shapely", "matplotlib", "requests", "PyQt5", "pyqtgraph", "python-benedict",
-                      "pandas", "dill", "pymoo"],
+                      "pandas", "dill", "pymoo", "numba"],
 )
