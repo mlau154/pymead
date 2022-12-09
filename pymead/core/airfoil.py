@@ -559,7 +559,7 @@ class Airfoil:
         Parameters
         ==========
         points: np.ndarray or list
-          Should be a 2-D array or list of the form :code:`[[<x_val_1>, <y_val_1>], [<x_val_2>, <y_val_2>], ...]
+          Should be a 2-D array or list of the form :code:`[[<x_val_1>, <y_val_1>], [<x_val_2>, <y_val_2>], ...]`
 
         Returns
         =======
@@ -581,7 +581,7 @@ class Airfoil:
         Parameters
         ==========
         points: np.ndarray or list
-          Should be a 2-D array or list of the form :code:`[[<x_val_1>, <y_val_1>], [<x_val_2>, <y_val_2>], ...]
+          Should be a 2-D array or list of the form :code:`[[<x_val_1>, <y_val_1>], [<x_val_2>, <y_val_2>], ...]`
 
         cutoff_point: float
           The :math:`x`-location to set the end of the constraint
