@@ -532,6 +532,44 @@ class Airfoil:
         else:
             return self.x_thickness, self.thickness, self.max_thickness
 
+    def compute_thickness_at_points(self, x_over_c: float or list or np.ndarray, start_y_over_c=-1.0, end_y_over_c=1.0):
+        """Calculates the thickness (t/c) at a set of x-locations (x/c)
+
+        Parameters
+        ==========
+        x_over_c: float or list or np.ndarray
+          The :math:`x/c` locations at which to evaluate the thickness
+
+        start_y_over_c: float
+          The :math:`y/c` location to draw the first point in a line whose intersection with the airfoil is checked. May
+          need to decrease this value for unusually thick airfoils
+
+        end_y_over_c: float
+          The :math:`y/c` location to draw the last point in a line whose intersection with the airfoil is checked. May
+          need to increase this value for unusually thick airfoils
+
+        Returns
+        =======
+        list
+          An array of thickness (:math:`t/c`) values corresponding to the input :math:`x/c` values
+        """
+        # If x_over_c is not iterable (i.e., just a float), convert to list
+        if not hasattr(x_over_c, '__iter__'):
+            x_over_c = [x_over_c]
+
+        self.get_coords(body_fixed_csys=True)  # Get the airfoil coordinates
+        points_shapely = list(map(tuple, self.coords))  # Convert the coordinates to Shapely input format
+        airfoil_line_string = LineString(points_shapely)  # Create a LineString from the points
+        thickness = []
+        for pt in x_over_c:
+            line_string = LineString([(pt, start_y_over_c), (pt, end_y_over_c)])
+            x_inters = line_string.intersection(airfoil_line_string)
+            if x_inters.is_empty:  # If no intersection between line and airfoil LineString,
+                thickness.append(0.0)
+            else:
+                thickness.append(x_inters.convex_hull.length)
+        return thickness  # Return an array of t/c values corresponding to the x/c locations
+
     def contains_point(self, point: np.ndarray or list):
         """Determines whether a point is contained inside the airfoil
 

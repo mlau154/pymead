@@ -111,28 +111,32 @@ def read_forces_from_mses(search_file: str):
             vw_line = line
         if 'friction' in line:
             fp_line = line
-    required_line = CL_lines[1]  # line we need happens the second time the string "CL" is mentioned
-    split_line = required_line.split()  # split the up the line to grab the actual numbers
-    forces = {  # write as a dictionary
-        'Cl': float(split_line[2]),  # CL = VALUE
-        'Cd': float(split_line[5]),  # CD = VALUE
-        'Cm': float(split_line[8])  # CM = VALUE
-    }
+    try:
+        required_line = CL_lines[1]  # line we need happens the second time the string "CL" is mentioned
+        split_line = required_line.split()  # split the up the line to grab the actual numbers
+        forces = {  # write as a dictionary
+            'Cl': float(split_line[2]),  # CL = VALUE
+            'Cd': float(split_line[5]),  # CD = VALUE
+            'Cm': float(split_line[8])  # CM = VALUE
+        }
 
-    # Find the angle of attack
-    alpha_line = alpha_line.split('=')
-    alpha_line = alpha_line[-1].split()
-    forces['alf'] = float(alpha_line[-2])
+        # Find the angle of attack
+        alpha_line = alpha_line.split('=')
+        alpha_line = alpha_line[-1].split()
+        forces['alf'] = float(alpha_line[-2])
 
-    # Find the viscous drag and wave drag coefficients in the drag breakdown (these two values should add to Cd)
-    vw_line = vw_line.split('=')
-    forces['Cdv'] = float(vw_line[-2].split()[0])
-    forces['Cdw'] = float(vw_line[-1].split()[0])
+        # Find the viscous drag and wave drag coefficients in the drag breakdown (these two values should add to Cd)
+        vw_line = vw_line.split('=')
+        forces['Cdv'] = float(vw_line[-2].split()[0])
+        forces['Cdw'] = float(vw_line[-1].split()[0])
 
-    # Find the friction drag and pressure drag coefficients in the drag breakdown (these two values should add to Cd)
-    fp_line = fp_line.split('=')
-    forces['Cdf'] = float(fp_line[-2].split()[0])
-    forces['Cdp'] = float(fp_line[-1].split()[0])
+        # Find the friction drag and pressure drag coefficients in the drag breakdown (these two values should add to Cd)
+        fp_line = fp_line.split('=')
+        forces['Cdf'] = float(fp_line[-2].split()[0])
+        forces['Cdp'] = float(fp_line[-1].split()[0])
+    except:
+        forces = {'Cl': 0.0, 'Cd': 1000.0, 'Cm': 1000.0, 'alf': 0.0, 'Cdv': 1000.0, 'Cdw': 1000.0,
+                  'Cdf': 1000.0, 'Cdp': 1000.0}
     return forces
 
 
