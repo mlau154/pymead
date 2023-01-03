@@ -1016,6 +1016,7 @@ class GUI(QMainWindow):
             elif param_dict['tool'] == 'MSES':
                 progress_callback.emit(CpPlotCallbackMSES(parent=self, background_color=bcolor))
                 progress_callback.emit(DragPlotCallbackMSES(parent=self, background_color=bcolor))
+                pass
 
             # do same more things, printing, logging, storing or even modifying the algorithm object
             if n_generation % param_dict['algorithm_save_frequency'] == 0:
