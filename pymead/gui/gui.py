@@ -652,26 +652,53 @@ class GUI(QMainWindow):
 
                     param_dict['n_var'] = len(norm_val_list)
 
+                    # Thickness distribution check parameters
+                    if opt_settings['Constraints/Validation']['check_thickness_at_points']['state']:
+                        param_dict['thickness_dist_file'] = \
+                            opt_settings['Constraints/Validation']['thickness_at_points']['text']
+                        try:
+                            data = np.loadtxt(param_dict['thickness_dist_file'])
+                            param_dict['thickness_dist'] = data.tolist()
+                        except FileNotFoundError:
+                            message = f'Thickness file {param_dict["thickness_dist"]} not found'
+                            self.disp_message_box(message=message, message_mode='error')
+                            raise FileNotFoundError(message)
+                    else:
+                        param_dict['thickness_dist'] = None
+
+                    # Internal geometry check parameters
                     if opt_settings['Constraints/Validation']['use_internal_geometry']['state']:
                         param_dict['internal_geometry_file'] = \
                             opt_settings['Constraints/Validation']['internal_geometry']['text']
-                        data = np.loadtxt(param_dict['internal_geometry_file'])
-                        param_dict['internal_point_matrix'] = data.tolist()
+                        try:
+                            data = np.loadtxt(param_dict['internal_geometry_file'])
+                            param_dict['internal_point_matrix'] = data.tolist()
+                        except FileNotFoundError:
+                            message = f'Internal geometry file {param_dict["internal_geometry_file"]} not found'
+                            self.disp_message_box(message=message, message_mode='error')
+                            raise FileNotFoundError(message)
                     else:
                         param_dict['internal_point_matrix'] = None
                     param_dict['int_geometry_timing'] = opt_settings['Constraints/Validation']['internal_geometry_timing'][
                         'current_text']
 
+                    # External geometry check parameters
                     if opt_settings['Constraints/Validation']['use_external_geometry']['state']:
                         param_dict['external_geometry_file'] = \
                             opt_settings['Constraints/Validation']['external_geometry']['text']
-                        data = np.loadtxt(param_dict['external_geometry_file'])
-                        param_dict['external_point_matrix'] = data.tolist()
+                        try:
+                            data = np.loadtxt(param_dict['external_geometry_file'])
+                            param_dict['external_point_matrix'] = data.tolist()
+                        except FileNotFoundError:
+                            message = f'External geometry file {param_dict["external-geometry_file"]} not found'
+                            self.disp_message_box(message=message, message_mode='error')
+                            raise FileNotFoundError(message)
                     else:
                         param_dict['external_point_matrix'] = None
                     param_dict['ext_geometry_timing'] = opt_settings['Constraints/Validation']['external_geometry_timing'][
                         'current_text']
 
+                    # Warm start parameters
                     if opt_settings['Warm Start/Batch Mode']['warm_start_active']['state']:
                         opt_dir = opt_settings['Warm Start/Batch Mode']['warm_start_dir']['text']
                     else:

@@ -94,6 +94,9 @@ class Chromosome:
             if self.param_set['min_thickness_active']:
                 self.chk_max_thickness()
         if self.valid_geometry:
+            if self.param_set['thickness_dist'] is not None:
+                self.check_thickness_at_points()
+        if self.valid_geometry:
             if self.param_set['min_area_active']:
                 self.check_min_area()
         if self.valid_geometry:
@@ -165,6 +168,23 @@ class Chromosome:
                 if self.verbose:
                     print(f'Max thickness is {max_thickness}. Passed thickness test. Continuing...')
                 return max_thickness_too_small_flag
+        else:
+            raise Exception('Airfoil system has not yet been generated. Aborting self-intersection check.')
+
+    def check_thickness_at_points(self):
+        if self.airfoil_sys_generated:
+            thickness_array = np.array(self.param_set['thickness_dist'])
+            x_over_c_array = thickness_array[:, 0]
+            t_over_c_array = thickness_array[:, 1]
+            thickness = self.mea.airfoils['A0'].compute_thickness_at_points(x_over_c_array)
+            if np.any(thickness < t_over_c_array):
+                if self.verbose:
+                    print(f"Minimum required thickness condition not met at some point. Trying again")
+                self.valid_geometry = False
+            else:
+                if self.verbose:
+                    print(f"Minimum required thickness condition met everywhere [success]")
+                self.valid_geometry = True
         else:
             raise Exception('Airfoil system has not yet been generated. Aborting self-intersection check.')
 
@@ -331,7 +351,7 @@ class Population:
                       f'mutated: {chromosome.mutated}): Evaluating fitness...')
             xfoil_settings, mset_settings, mses_settings, mplot_settings = None, None, None, None
             # print(f"tool = {chromosome.param_set['tool']}")
-            if chromosome.param_set['tool'] == 'xfoil':
+            if chromosome.param_set['tool'] == 'XFOIL':
                 tool = 'XFOIL'
                 xfoil_settings = chromosome.param_set['xfoil_settings']
             elif chromosome.param_set['tool'] == 'MSES':
