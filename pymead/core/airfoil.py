@@ -550,7 +550,7 @@ class Airfoil:
 
         Returns
         =======
-        list
+        np.ndarray
           An array of thickness (:math:`t/c`) values corresponding to the input :math:`x/c` values
         """
         # If x_over_c is not iterable (i.e., just a float), convert to list
@@ -560,14 +560,14 @@ class Airfoil:
         self.get_coords(body_fixed_csys=True)  # Get the airfoil coordinates
         points_shapely = list(map(tuple, self.coords))  # Convert the coordinates to Shapely input format
         airfoil_line_string = LineString(points_shapely)  # Create a LineString from the points
-        thickness = []
+        thickness = np.array([])
         for pt in x_over_c:
             line_string = LineString([(pt, start_y_over_c), (pt, end_y_over_c)])
             x_inters = line_string.intersection(airfoil_line_string)
             if x_inters.is_empty:  # If no intersection between line and airfoil LineString,
-                thickness.append(0.0)
+                thickness = np.append(thickness, 0.0)
             else:
-                thickness.append(x_inters.convex_hull.length)
+                thickness = np.append(thickness, x_inters.convex_hull.length)
         return thickness  # Return an array of t/c values corresponding to the x/c locations
 
     def contains_point(self, point: np.ndarray or list):
