@@ -6,6 +6,8 @@ from PyQt5.QtWidgets import QDialog, QDialogButtonBox, QFormLayout, QDoubleSpinB
 from PyQt5.QtCore import QEvent, Qt
 from PyQt5.QtGui import QPixmap, QPainter
 from PyQt5.QtSvg import QSvgWidget
+from functools import partial
+from PyQt5.QtCore import pyqtSlot
 from pymead.gui.infty_doublespinbox import InftyDoubleSpinBox
 from pymead.gui.scientificspinbox_master.ScientificDoubleSpinBox import ScientificDoubleSpinBox
 from pymead.gui.pyqt_vertical_tab_widget.pyqt_vertical_tab_widget.verticalTabWidget import VerticalTabWidget
@@ -1593,3 +1595,49 @@ class OptimizationSetupDialog(QDialog):
 
     def getInputs(self):
         return self.inputs
+
+
+class SymmetryDialog(QDialog):
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.setWindowTitle("Set symmetry")
+        self.setFont(self.parent().font())
+        self.current_param_path = None
+        self.current_form_idx = 1
+
+        buttonBox = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel, self)
+        layout = QFormLayout(self)
+
+        self.inputs = self.setInputs()
+        for i in self.inputs:
+            layout.addRow(i[0], i[1])
+
+        for idx, input_row in enumerate(self.inputs):
+            if not idx % 2 and isinstance(input_row[1], QPushButton):  # only evaluate the odd rows
+                input_row[1].clicked.connect(partial(self.switch_row, idx + 1))
+                print('Switching row')
+
+        layout.addWidget(buttonBox)
+
+        buttonBox.accepted.connect(self.accept)
+        buttonBox.rejected.connect(self.reject)
+
+    def setInputs(self):
+        r0 = ["Target", QPushButton("Select Parameter", self)]
+        r1 = ["Selected target", QLineEdit(self)]
+        r2 = ["Tool", QPushButton("Select Parameter", self)]
+        r3 = ["Selected tool", QLineEdit(self)]
+        r4 = ["x1", QPushButton("Select Parameter", self)]
+        r5 = ["Selected x1", QLineEdit(self)]
+        r6 = ["y1", QPushButton("Select Parameter", self)]
+        r7 = ["Selected y1", QLineEdit(self)]
+        r8 = ["Line angle", QPushButton("Select Parameter", self)]
+        r9 = ["Selected line angle", QLineEdit(self)]
+        return [r0, r1, r2, r3, r4, r5, r6, r7, r8, r9]
+
+    @pyqtSlot(int)
+    def switch_row(self, row: int):
+        self.current_form_idx = row
+
+    def getInputs(self):
+        return tuple(val[1].text() for val in self.inputs if isinstance(val[1], QLineEdit))

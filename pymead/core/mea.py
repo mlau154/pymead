@@ -76,6 +76,13 @@ class MEA:
         if self.airfoil_graphs_active:
             self.add_airfoil_graph_to_airfoil(airfoil, idx, param_tree)
 
+    def mirror(self, airfoil_target: str, airfoil_tool: str, fp_or_ap_target: str, fp_or_ap_tool: str):
+        d1 = benedict.benedict(self.param_dict[airfoil_target])
+        d2 = benedict.benedict(self.param_dict[airfoil_tool])
+        subdict1 = d1.search(fp_or_ap_target)
+        subdict2 = d2.search(fp_or_ap_tool)
+
+
     def assign_names_to_params_in_param_dict(self):
         assign_names_to_params_in_param_dict(self.param_dict)
 

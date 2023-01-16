@@ -13,6 +13,7 @@ from pymead.core.airfoil import Airfoil
 from PyQt5.QtWidgets import QCompleter, QWidget, QGridLayout, QLabel, QInputDialog, QHeaderView
 from PyQt5.QtWidgets import QAbstractItemView
 from PyQt5 import QtCore
+from PyQt5.QtCore import pyqtSignal, pyqtSlot
 from pymead.utils.downsampling_schemes import fractal_downsampler2
 from pymead.gui.autocomplete import Completer
 from PyQt5.QtCore import Qt
@@ -513,9 +514,6 @@ class MEAParamTree:
                          0, 0, 1, 2)
         self.layout.addWidget(self.t, 1, 0, 1, 1)
 
-    def printHi(self, arg1):
-        print(f'Hi! {arg1}')
-
     def set_dark_mode(self):
         self.t.setStyleSheet('''QTreeWidget {color: #3e3f40; alternate-background-color: #3e3f40;
                             selection-background-color: #3e3f40;}
@@ -611,6 +609,9 @@ class MEAParamTree:
 
 
 class CustomParameterTree(ParameterTree):
+    """A custom version of pyqtgraph's ParameterTree (allows for multiple selection and custom signal emitting)"""
+    sigSymmetry = pyqtSignal(str)
+
     def __init__(self, parent=None):
         super().__init__(parent=parent)
         self.multi_select = None
@@ -618,6 +619,14 @@ class CustomParameterTree(ParameterTree):
     def selectionChanged(self, *args):
         """Override method in pyqtgraph's ParameterTree and make some modifications"""
         sel = self.selectedItems()
+        if sel and len(sel) > 0:
+            # Emit signals required for symmetry enforcement
+            param = sel[-1].param
+            parent = sel[-1].param.parent()
+            if (parent and isinstance(parent, CustomGroup)) or isinstance(param, HeaderParameter):
+                self.sigSymmetry.emit(self.get_full_param_name_path(param))
+            elif isinstance(param, AirfoilParameter):
+                self.sigSymmetry.emit(f"${param.name()}")
         self.multi_select = sel
         if len(sel) != 1:
             sel = None
@@ -639,6 +648,17 @@ class CustomParameterTree(ParameterTree):
             # selection.displayLabel.setText("Hi!")
             # selection.widget.setStyleSheet('''background-color: blue; color: blue''')
         return super().selectionChanged(*args)
+
+    @staticmethod
+    def get_full_param_name_path(param: Parameter):
+        """Get the full path of the parameter in the parameter tree (dot seperator, leading $)"""
+        path_list = []
+        for idx in range(5):
+            if not param.name() or param.name() == 'Airfoil Parameters':
+                break
+            path_list.append(param.name())
+            param = param.parent()
+        return f"${'.'.join(path_list[::-1])}"
 
 
 if __name__ == '__main__':
