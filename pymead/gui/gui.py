@@ -169,6 +169,8 @@ class GUI(QMainWindow):
         self.set_title_and_icon()
         self.create_menu_bar()
         self.main_icon_toolbar = MainIconToolbar(self)
+        if self.main_icon_toolbar.buttons["change-background-color"]["button"].isChecked():
+            self.set_dark_mode()
         if self.path is not None:
             self.load_mea_no_dialog(self.path)
 

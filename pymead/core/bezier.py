@@ -50,10 +50,7 @@ class Bezier(ParametricCurve):
         self.n = len(self.P) - 1
 
         if t is not None:
-            if np.min(t) != 0 or np.max(t) != 1:
-                raise ValueError('\'t\' array must have a minimum at 0 and a maximum at 1')
-            else:
-                self.t = t
+            self.t = t
         else:
             self.t = np.linspace(0, 1, nt)
 

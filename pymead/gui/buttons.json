@@ -1,0 +1,42 @@
+{
+  "grid": {
+    "icon": "grid_icon.png",
+    "status_tip": "Activate grid",
+    "checkable": true,
+    "checked-by-default": true,
+    "function": "on_grid_button_pressed"
+  },
+  "change-background-color": {
+    "icon": "color_palette.png",
+    "status_tip": "Change background color",
+    "checkable": true,
+    "checked-by-default": true,
+    "function": "change_background_color_button_toggled"
+  },
+  "add-airfoil": {
+    "icon": "Add-icon3.png",
+    "status_tip": "Add airfoil (click on the graph to complete action)",
+    "checkable": false,
+    "function": "add_airfoil_button_toggled"
+  },
+  "te-thickness": {
+    "icon": "thickness_icon.png",
+    "status_tip": "Toggle trailing edge thickness edit mode",
+    "checkable": true,
+    "checked-by-default": false,
+    "function": "te_thickness_mode_toggled"
+  },
+  "symmetry": {
+    "icon": "symmetry.png",
+    "status_tip": "Make a pair of FreePoints or AnchorPoints symmetric about a specified line",
+    "checkable": false,
+    "function": "on_symmetry_button_pressed"
+  },
+  "template": {
+    "icon": "picture.png",
+    "status_tip": "A helpful hint",
+    "checkable": true,
+    "checked-by-default": false,
+    "function": "on_button_pressed"
+  }
+}

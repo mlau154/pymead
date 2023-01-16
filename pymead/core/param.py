@@ -67,9 +67,12 @@ class Param:
             self.linked = True
         self.function_dict = {}
         self.depends_on = {}
+        self.depends_on_full_params = {}
         self.affects = []
         self.tag_matrix = None
+        self.tag_matrix_full_params = None
         self.tag_list = None
+        self.tag_list_full_params = None
         self.airfoil_tag = None
         self.mea = None
         self.deactivated_for_airfoil_matching = False
@@ -201,9 +204,12 @@ class Param:
 
     def parse_update_function_str(self):
         self.tag_matrix = []
+        self.tag_matrix_full_params = []
         self.func = 'def f(): return '
+        dollar_signs = 0
         math_functions_to_include = []
         appending = False
+        appending_full = False
         append_new_to_math_function_list = True
         for ch in self.func_str:
             if appending:
@@ -213,13 +219,34 @@ class Param:
                     self.tag_matrix[-1].append('')
                 else:
                     appending = False
+            if appending_full:
+                if ch.isalnum() or ch == '_':
+                    self.tag_matrix_full_params[-1][-1] += ch
+                elif ch == '.':
+                    self.tag_matrix_full_params[-1].append('')
+                else:
+                    appending_full = False
             if ch == '$':
-                self.tag_matrix.append([''])
-                appending = True
+                dollar_signs += 1
+                if dollar_signs == 1:
+                    self.tag_matrix.append([''])
+                    appending = True
+                elif dollar_signs == 2:
+                    self.tag_matrix_full_params.append([''])
+                    self.tag_matrix.pop(-1)
+                    appending_full = True
+                else:
+                    raise ValueError('Too many consecutive dollar signs! Write one dollar signs to get the parameter '
+                                     'value, or write two dollar signs to get the parameter itself.')
             elif ch == '.' and appending:
                 self.func += '_'
+                dollar_signs = 0
+            elif ch == '.' and appending_full:
+                self.func += '_'
+                dollar_signs = 0
             else:
                 self.func += ch
+                dollar_signs = 0
             if not appending and ch.isalnum():
                 if append_new_to_math_function_list:
                     math_functions_to_include.append('')
@@ -237,8 +264,11 @@ class Param:
             return tag
 
         self.tag_list = [concatenate_strings(tl) for tl in self.tag_matrix]
+        self.tag_list_full_params = [concatenate_strings(tl) for tl in self.tag_matrix_full_params]
         for t in self.tag_list:
             self.depends_on[t] = None
+        for t in self.tag_list_full_params:
+            self.depends_on_full_params[t] = None
 
         return math_functions_to_include
 
@@ -271,15 +301,29 @@ class Param:
                     print(message)
                 return False
 
+        for idx, t in enumerate(self.tag_list_full_params):
+            self.depends_on_full_params[t] = get_nested_dict_val(self.mea.param_dict, self.tag_matrix_full_params[idx])
+            if self.depends_on_full_params[t] is not None:
+                if self not in self.depends_on_full_params[t].affects:
+                    self.depends_on_full_params[t].affects.append(self)
+            if self.depends_on_full_params[t] is None:
+                self.depends_on_full_params = {}
+                message = f"Could not compile input function string: {self.func_str}"
+                self.remove_func()
+                if show_q_error_messages:
+                    from PyQt5.QtWidgets import QErrorMessage
+                    err = QErrorMessage()
+                    print("Showing error message")
+                    err.showMessage(message)
+                else:
+                    print(message)
+                return False
+
         for key, value in self.depends_on.items():
-            # print(f"updating depends on! val = {value.value}")
-            # print(f"param_dict = {self.param_dict}")
-            # print(f"key, val = {key}, {value}")
-            # print(f"function_dict = {self.function_dict}")
-            # if value is not None:
             self.function_dict[key] = value.value
-            # else:
-            #     self.depends_on.pop(key)
+
+        for key, value in self.depends_on_full_params.items():
+            self.function_dict[key] = value
 
         return True
 
