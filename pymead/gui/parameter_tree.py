@@ -140,6 +140,7 @@ class CustomGroup(pTypes.GroupParameter):
 # Create two ParameterTree widgets, both accessing the same data
 class MEAParamTree:
     def __init__(self, mea: MEA, status_bar, parent=None):
+        self.dialog = None
         self.params = [
             {'name': 'Save/Restore functionality', 'type': 'group', 'children': [
                 {'name': 'Save State', 'type': 'action'},
@@ -197,57 +198,19 @@ class MEAParamTree:
         def change(_, changes):
 
             for param, change, data in changes:
-                # print(f"change = {change}")
-                # print(f"param = {param}")
-                # print(f"data = {data}")
 
                 # Removing an equation:
                 if change == 'childRemoved' and data.opts['name'] == 'Equation Definition':
-                    # print('Removing equation...')
                     param.airfoil_param.remove_func()
                     param.setReadonly(False)
                     self.equation_strings.pop(param.name())
 
                 path = self.p.childPath(param)
-                # print(f"path = {path}")
                 if path is not None:
                     # Defining an equation:
                     if path[-1] == 'Equation Definition':
                         if change == 'value':
-
-                            param.parent().setReadonly()
-                            param.parent().airfoil_param.mea = mea
-                            param.parent().airfoil_param.set_func_str(str(data))
-                            param.parent().airfoil_param.update()
-                            if len(param.parent().airfoil_param.depends_on) > 0:
-                                for air_par in param.parent().airfoil_param.depends_on.values():
-                                    air_par.update()
-                                if param.parent().airfoil_param.linked:
-                                    param.parent().setValue(param.parent().airfoil_param.value)
-                                self.equation_widget(param).setStyleSheet('border: 0px; color: green;')
-                                if param.parent().parent().parent().parent().name() == 'FreePoints':
-                                    fp_name = param.parent().parent().name()
-                                    ap_name = param.parent().parent().parent().name()
-                                    a_name = param.parent().parent().parent().parent().parent().name()
-                                    param_name = param.parent().name().split('.')[-1]
-                                    fp = self.mea.airfoils[a_name].free_points[ap_name][fp_name]
-                                    if param_name in ['x', 'y']:
-                                        fp.set_x_value(None)
-                                        fp.set_y_value(None)
-                                    fp.set_ctrlpt_value()
-                                elif param.parent().parent().parent().name() == 'AnchorPoints':
-                                    ap_name = param.parent().parent().name()
-                                    a_name = param.parent().parent().parent().parent().name()
-                                    param_name = param.parent().name().split('.')[-1]
-                                    ap = self.mea.airfoils[a_name].anchor_points[self.mea.airfoils[a_name].anchor_point_order.index(ap_name)]
-                                    if param_name in ['x', 'y']:
-                                        ap.set_x_value(None)
-                                        ap.set_y_value(None)
-                                    ap.set_ctrlpt_value()
-                            else:
-                                # print(f"parent name is {param.parent().name()}")
-                                param.parent().setReadonly(False)
-                                self.equation_widget(param).setStyleSheet('border: 0px; color: red;')
+                            self.update_equation(param, data)
 
                 def block_changes(pg_param):
                     pg_param.blockTreeChangeSignal()
@@ -353,88 +316,11 @@ class MEAParamTree:
 
                 # Adding a FreePoint
                 if change == 'contextMenu' and data == 'add_fp':
-                    a_tag = param.name()
-                    self.dialog = FreePointInputDialog(items=[("x", "double"), ("y", "double"),
-                                                              ("Previous Anchor Point", "combo"),
-                                                              ("Previous Free Point", "combo")],
-                                                       fp=self.mea.airfoils[a_tag].free_points)
-                    if self.dialog.exec():
-                        inputs = self.dialog.getInputs()
-                    else:
-                        inputs = None
-                    if inputs:
-                        if inputs[3] == 'None':
-                            pfp = None
-                        else:
-                            pfp = inputs[3]
-                        fp = FreePoint(Param(inputs[0]), Param(inputs[1]), airfoil_tag=a_tag,
-                                       previous_anchor_point=inputs[2], previous_free_point=pfp)
-                        self.mea.airfoils[a_tag].insert_free_point(fp)
-                        self.mea.airfoils[a_tag].update()
-                        self.mea.assign_names_to_params_in_param_dict()
-                        self.dialog.update_fp_ap_tags()
-                        pos, adj, symbols = self.mea.airfoils[a_tag].airfoil_graph.update_airfoil_data()
-                        self.mea.airfoils[a_tag].airfoil_graph.setData(pos=pos, adj=adj, size=8, pxMode=True, symbol=symbols)
-                        if not fp.anchor_point_tag in [p.name() for p in self.params[-1].child(a_tag).child('FreePoints')]:
-                            self.params[-1].child(a_tag).child('FreePoints').addChild(HeaderParameter(name=fp.anchor_point_tag, type='bool', value='true'))
-                        self.params[-1].child(a_tag).child('FreePoints').child(fp.anchor_point_tag).addChild(
-                            HeaderParameter(name=fp.tag, type='bool', value='true'))
-                        # print(self.mea.param_dict['A0'])
-                        for p_key, p_val in self.mea.param_dict[a_tag]['FreePoints'][fp.anchor_point_tag][fp.tag].items():
-                            self.params[-1].child(a_tag).child('FreePoints').child(fp.anchor_point_tag).child(fp.tag).addChild(AirfoilParameter(self.mea.param_dict[a_tag]['FreePoints'][fp.anchor_point_tag][fp.tag][p_key],
-                                                 name=f"{a_tag}.FreePoints.{fp.anchor_point_tag}.{fp.tag}.{p_key}", type='float',
-                                                 value=self.mea.param_dict[a_tag]['FreePoints'][fp.anchor_point_tag][fp.tag][p_key].value,
-                                                 context={'add_eq': 'Define by equation',
-                                                          'deactivate': 'Deactivate parameter',
-                                                          'activate': 'Activate parameter',
-                                                          'setbounds': 'Set parameter bounds'}))
+                    self.add_free_point(param)
 
                 # Adding an AnchorPoint
                 if change == 'contextMenu' and data == 'add_ap':
-                    a_tag = param.name()
-                    self.dialog = AnchorPointInputDialog(items=[("x", "double"), ("y", "double"),
-                                                                ("L", "double"), ("R", "double"),
-                                                                ("r", "double"), ("phi", "double"),
-                                                                ("psi1", "double"), ("psi2", "double"),
-                                                                ("Previous Anchor Point", "combo"),
-                                                                ("Anchor Point Name", "string")],
-                                                         ap=self.mea.airfoils[a_tag].anchor_points)
-                    if self.dialog.exec():
-                        inputs = self.dialog.getInputs()
-                    else:
-                        inputs = None
-                    if inputs:
-                        # id_list = []
-                        for curve in self.mea.airfoils[a_tag].curve_list:
-                            # print(f'curve_handle = {curve.pg_curve_handle}')
-                            # id_list.append(id(curve.pg_curve_handle))
-                            curve.pg_curve_handle.clear()
-                        ap = AnchorPoint(x=Param(inputs[0]), y=Param(inputs[1]), L=Param(inputs[2]), R=Param(inputs[3]),
-                                         r=Param(inputs[4]), phi=Param(inputs[5]), psi1=Param(inputs[6]),
-                                         psi2=Param(inputs[7]), previous_anchor_point=inputs[8], tag=inputs[9], airfoil_tag=a_tag)
-                        self.mea.airfoils[a_tag].insert_anchor_point(ap)
-                        self.mea.airfoils[a_tag].update()
-                        self.mea.assign_names_to_params_in_param_dict()
-                        self.mea.airfoils[a_tag].init_airfoil_curve_pg(self.mea.airfoils[a_tag].airfoil_graph.v,
-                                                                       pen=pg.mkPen(color='cornflowerblue', width=2))
-
-                        # for curve in self.mea.airfoils[a_tag].curve_list:
-                        #     print(f'curve_handle = {curve.pg_curve_handle}')
-                        self.dialog.update_ap_tags()
-                        pos, adj, symbols = self.mea.airfoils[a_tag].airfoil_graph.update_airfoil_data()
-                        self.mea.airfoils[a_tag].airfoil_graph.setData(pos=pos, adj=adj, size=8, pxMode=True,
-                                                                       symbol=symbols)
-                        self.params[-1].child(a_tag).child('AnchorPoints').addChild(
-                            HeaderParameter(name=ap.tag, type='bool', value='true'))
-                        # print(self.mea.param_dict['A0'])
-                        for p_key, p_val in self.mea.param_dict[a_tag]['AnchorPoints'][ap.tag].items():
-                            self.params[-1].child(a_tag).child('AnchorPoints').child(ap.tag).addChild(AirfoilParameter(
-                                self.mea.param_dict[a_tag]['AnchorPoints'][ap.tag][p_key],
-                                name=f"{a_tag}.AnchorPoints.{ap.tag}.{p_key}", type='float',
-                                value=self.mea.param_dict[a_tag]['AnchorPoints'][ap.tag][
-                                    p_key].value,
-                                context={'add_eq': 'Define by equation', 'deactivate': 'Deactivate parameter',
-                                         'activate': 'Activate parameter', 'setbounds': 'Set parameter bounds'}))
+                    self.add_anchor_point(param)
 
                 # Different value in QComboBox for the inviscid CL calculation is selected
                 if change == 'value' and param.name() == 'Inviscid Cl Calc':
@@ -448,7 +334,7 @@ class MEAParamTree:
                             key_to_change = k
                             break
                     if key_to_change == '':
-                        raise ValueError('This shouldn\'t be possible...')
+                        raise ValueError('This should not be possible...')
                     self.mea.param_dict['Custom'][new_name] = self.mea.param_dict['Custom'].pop(key_to_change)
                     # print(f"new param_dict = {self.mea.param_dict['Custom']}")
 
@@ -486,15 +372,9 @@ class MEAParamTree:
         self.p.param('Save/Restore functionality', 'Save State').sigActivated.connect(save)
         self.p.param('Save/Restore functionality', 'Restore State').sigActivated.connect(restore)
         self.t = CustomParameterTree(parent=parent)
-        # self.t.header().setResizeMode(QHeaderView.ResizeToContents)
-        # self.t.header().setStretchLastSection(False)
-        # for idx in [0, 1]:
-        #     self.t.resizeColumnToContents(idx)
         self.t.setSelectionMode(QAbstractItemView.ExtendedSelection)
         self.t.setParameters(self.p, showTop=False)
         self.t.setWindowTitle('pymead ParameterTree')
-        # header_view = QHeaderView(Qt.Horizontal, self.t)
-        # print(header_view)
         self.t.header().setSectionResizeMode(0, QHeaderView.Interactive)
         self.t.header().setSectionResizeMode(1, QHeaderView.Interactive)
         self.t.setAlternatingRowColors(False)
@@ -510,36 +390,32 @@ class MEAParamTree:
         self.win = QWidget()
         self.layout = QGridLayout()
         self.win.setLayout(self.layout)
-        self.layout.addWidget(QLabel("These are two views of the same data. They should always display the same values."),
-                         0, 0, 1, 2)
+        self.layout.addWidget(QLabel("These are two views of the same data. "
+                                     "They should always display the same values."), 0, 0, 1, 2)
         self.layout.addWidget(self.t, 1, 0, 1, 1)
 
     def set_dark_mode(self):
+        """Sets the theme of the ParameterTree to dark by modifying the CSS"""
         self.t.setStyleSheet('''QTreeWidget {color: #3e3f40; alternate-background-color: #3e3f40;
                             selection-background-color: #3e3f40;}
                             QTreeView::item:hover {background: #36bacfaa;} QTreeWidget::item {border: 0px solid gray; color: #dce1e6}
                             QTreeWidget::item:selected {background-color: #36bacfaa; alternate-background-color: #36bacfaa}''')
 
     def set_light_mode(self):
+        """Sets the theme of the ParameterTree to light by modifying the CSS"""
         self.t.setStyleSheet('''QTreeWidget {color: white; alternate-background-color: white; 
                     selection-background-color: white;}
                     QTreeView::item::hover {background: #36bacfaa;} QTreeView::item {border: 0px solid gray; color: black}
                     QTreeWidget::item:selected {background-color: #36bacfaa; alternate-background-color: #36bacfaa}''')
 
     def add_equation_box(self, pg_param, equation: str = None):
+        """Adds a QLineEdit to the ParameterTreeItem for equation editing"""
         if equation is None:
             value = ''
         else:
             value = equation
         if not pg_param.hasChildren():
             pg_param.addChild(dict(name='Equation Definition', type='auto_str', value=value, removable=True))
-            # for k in pg_param.children()[0].items.data.keys():
-            #     id_val = ''
-            #     for ch in str(k)[-19:-1]:
-            #         id_val += ch
-            #     self.equation_strings[pg_param.name()] = ctypes.cast(int(id_val, 0), ctypes.py_object).value
-            #     # print(f"line edit refs in add equation box is {self.line_edit_refs}")
-            #     self.update_auto_complete()
             self.equation_strings[pg_param.name()] = self.equation_widget(pg_param.child('Equation Definition'))
             self.update_auto_complete()
 
@@ -571,14 +447,157 @@ class MEAParamTree:
                     if child.hasChildren():
                         plot_change_recursive(child.children())
 
-        # plot_change_recursive(self.params[-1].child(airfoil_name).children())
         pass
 
     def update_auto_complete(self):
+        """Update the auto-completer for the equation text"""
         for v in self.equation_strings.values():
             v.setCompleter(Completer(self.mea.get_keys()))
 
+    def update_equation(self, pg_param: Parameter, equation_str: str, **func_dict_kwargs):
+        """Updates the parameter equation based on user input inside the GUI. The text is colored green if the equation
+        compiles successfully and the text is colored red otherwise.
+
+        Parameters
+        ==========
+        pg_param: Parameter
+          The pyqtgraph parameter representing the equation box
+
+        equation_str: str
+          The string to apply as an equation to pg_param's parent
+
+        **func_dict_kwargs
+          Key-value pairs to merge into the airfoil parameter's function dictionary, useful for custom functions. For
+          example, to add a custom function named "foo" with required input "bar" (a str with value "h"), simply add
+          foo=foo and bar="h" as keyword arguments to update_equation.
+        """
+        pg_eq_parent = pg_param.parent()
+        airfoil_param = pg_eq_parent.airfoil_param
+        pg_eq_parent.setReadonly()
+        airfoil_param.mea = self.mea
+        airfoil_param.function_dict = {**airfoil_param.function_dict, **func_dict_kwargs}
+        airfoil_param.set_func_str(equation_str)
+        airfoil_param.update()
+
+        # Update the parameter's dependencies
+        if len(airfoil_param.depends_on) > 0:
+            for air_par in airfoil_param.depends_on.values():
+                air_par.update()
+            if airfoil_param.linked:
+                pg_eq_parent.setValue(airfoil_param.value)
+            self.equation_widget(pg_param).setStyleSheet('border: 0px; color: green;')
+            if pg_eq_parent.parent().parent().parent().name() == 'FreePoints':
+                fp_name = pg_eq_parent.parent().name()
+                ap_name = pg_eq_parent.parent().parent().name()
+                a_name = pg_eq_parent.parent().parent().parent().parent().name()
+                param_name = pg_eq_parent.name().split('.')[-1]
+                fp = self.mea.airfoils[a_name].free_points[ap_name][fp_name]
+                if param_name in ['x', 'y']:
+                    fp.set_x_value(None)
+                    fp.set_y_value(None)
+                fp.set_ctrlpt_value()
+            elif pg_eq_parent.parent().parent().name() == 'AnchorPoints':
+                ap_name = pg_eq_parent.parent().name()
+                a_name = pg_eq_parent.parent().parent().parent().name()
+                param_name = pg_eq_parent.name().split('.')[-1]
+                ap = self.mea.airfoils[a_name].anchor_points[
+                    self.mea.airfoils[a_name].anchor_point_order.index(ap_name)]
+                if param_name in ['x', 'y']:
+                    ap.set_x_value(None)
+                    ap.set_y_value(None)
+                ap.set_ctrlpt_value()
+        else:
+            pg_eq_parent.setReadonly(False)
+            self.equation_widget(pg_param).setStyleSheet('border: 0px; color: red;')
+
+    def add_free_point(self, pg_param: Parameter):
+        a_tag = pg_param.name()
+        self.dialog = FreePointInputDialog(items=[("x", "double"), ("y", "double"),
+                                                  ("Previous Anchor Point", "combo"),
+                                                  ("Previous Free Point", "combo")],
+                                           fp=self.mea.airfoils[a_tag].free_points)
+        if self.dialog.exec():
+            inputs = self.dialog.getInputs()
+        else:
+            inputs = None
+        if inputs:
+            if inputs[3] == 'None':
+                pfp = None
+            else:
+                pfp = inputs[3]
+            fp = FreePoint(Param(inputs[0]), Param(inputs[1]), airfoil_tag=a_tag,
+                           previous_anchor_point=inputs[2], previous_free_point=pfp)
+            self.mea.airfoils[a_tag].insert_free_point(fp)
+            self.mea.airfoils[a_tag].update()
+            self.mea.assign_names_to_params_in_param_dict()
+            self.dialog.update_fp_ap_tags()
+            pos, adj, symbols = self.mea.airfoils[a_tag].airfoil_graph.update_airfoil_data()
+            self.mea.airfoils[a_tag].airfoil_graph.setData(pos=pos, adj=adj, size=8, pxMode=True, symbol=symbols)
+            if fp.anchor_point_tag not in [p.name() for p in self.params[-1].child(a_tag).child('FreePoints')]:
+                self.params[-1].child(a_tag).child('FreePoints').addChild(
+                    HeaderParameter(name=fp.anchor_point_tag, type='bool', value='true'))
+            self.params[-1].child(a_tag).child('FreePoints').child(fp.anchor_point_tag).addChild(
+                HeaderParameter(name=fp.tag, type='bool', value='true'))
+            # print(self.mea.param_dict['A0'])
+            for p_key, p_val in self.mea.param_dict[a_tag]['FreePoints'][fp.anchor_point_tag][fp.tag].items():
+                self.params[-1].child(a_tag).child('FreePoints').child(fp.anchor_point_tag).child(fp.tag).addChild(
+                    AirfoilParameter(self.mea.param_dict[a_tag]['FreePoints'][fp.anchor_point_tag][fp.tag][p_key],
+                                     name=f"{a_tag}.FreePoints.{fp.anchor_point_tag}.{fp.tag}.{p_key}", type='float',
+                                     value=self.mea.param_dict[a_tag]['FreePoints'][fp.anchor_point_tag][fp.tag][
+                                         p_key].value,
+                                     context={'add_eq': 'Define by equation',
+                                              'deactivate': 'Deactivate parameter',
+                                              'activate': 'Activate parameter',
+                                              'setbounds': 'Set parameter bounds'}))
+
+    def add_anchor_point(self, pg_param: Parameter):
+        a_tag = pg_param.name()
+        self.dialog = AnchorPointInputDialog(items=[("x", "double"), ("y", "double"),
+                                                    ("L", "double"), ("R", "double"),
+                                                    ("r", "double"), ("phi", "double"),
+                                                    ("psi1", "double"), ("psi2", "double"),
+                                                    ("Previous Anchor Point", "combo"),
+                                                    ("Anchor Point Name", "string")],
+                                             ap=self.mea.airfoils[a_tag].anchor_points)
+        if self.dialog.exec():
+            inputs = self.dialog.getInputs()
+        else:
+            inputs = None
+        if inputs:
+            # id_list = []
+            for curve in self.mea.airfoils[a_tag].curve_list:
+                # print(f'curve_handle = {curve.pg_curve_handle}')
+                # id_list.append(id(curve.pg_curve_handle))
+                curve.pg_curve_handle.clear()
+            ap = AnchorPoint(x=Param(inputs[0]), y=Param(inputs[1]), L=Param(inputs[2]), R=Param(inputs[3]),
+                             r=Param(inputs[4]), phi=Param(inputs[5]), psi1=Param(inputs[6]),
+                             psi2=Param(inputs[7]), previous_anchor_point=inputs[8], tag=inputs[9], airfoil_tag=a_tag)
+            self.mea.airfoils[a_tag].insert_anchor_point(ap)
+            self.mea.airfoils[a_tag].update()
+            self.mea.assign_names_to_params_in_param_dict()
+            self.mea.airfoils[a_tag].init_airfoil_curve_pg(self.mea.airfoils[a_tag].airfoil_graph.v,
+                                                           pen=pg.mkPen(color='cornflowerblue', width=2))
+
+            # for curve in self.mea.airfoils[a_tag].curve_list:
+            #     print(f'curve_handle = {curve.pg_curve_handle}')
+            self.dialog.update_ap_tags()
+            pos, adj, symbols = self.mea.airfoils[a_tag].airfoil_graph.update_airfoil_data()
+            self.mea.airfoils[a_tag].airfoil_graph.setData(pos=pos, adj=adj, size=8, pxMode=True,
+                                                           symbol=symbols)
+            self.params[-1].child(a_tag).child('AnchorPoints').addChild(
+                HeaderParameter(name=ap.tag, type='bool', value='true'))
+            # print(self.mea.param_dict['A0'])
+            for p_key, p_val in self.mea.param_dict[a_tag]['AnchorPoints'][ap.tag].items():
+                self.params[-1].child(a_tag).child('AnchorPoints').child(ap.tag).addChild(AirfoilParameter(
+                    self.mea.param_dict[a_tag]['AnchorPoints'][ap.tag][p_key],
+                    name=f"{a_tag}.AnchorPoints.{ap.tag}.{p_key}", type='float',
+                    value=self.mea.param_dict[a_tag]['AnchorPoints'][ap.tag][
+                        p_key].value,
+                    context={'add_eq': 'Define by equation', 'deactivate': 'Deactivate parameter',
+                             'activate': 'Activate parameter', 'setbounds': 'Set parameter bounds'}))
+
     def equation_widget(self, pg_param):
+        """Acquires the equation's container QWidget"""
         return next((p for p in self.t.listAllItems() if hasattr(p, 'param') and p.param is pg_param)).widget
 
     @staticmethod
@@ -592,6 +611,8 @@ class MEAParamTree:
         pg_param.unblockTreeChangeSignal()
 
     def plot_change_recursive(self, child_list: list):
+        """Moves through the pyqtgraph ParameterTree recursively, setting the value of each pyqtgraph Parameter to the
+        value of the contained pymead parameter value."""
         for idx, child in enumerate(child_list):
             # print(f"child name is {child.name()}")
             if hasattr(child, "airfoil_param"):

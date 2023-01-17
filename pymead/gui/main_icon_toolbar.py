@@ -9,6 +9,7 @@ from pymead.core.base_airfoil_params import BaseAirfoilParams
 from pymead.core.param import Param
 from pymead.utils.read_write_files import load_data
 from pymead.gui.input_dialog import SymmetryDialog
+from pymead.core.symmetry import symmetry
 from pymead import ICON_DIR
 from functools import partial
 
@@ -117,11 +118,46 @@ class MainIconToolbar(QToolBar):
             self.symmetry_dialog.inputs[self.symmetry_dialog.current_form_idx][1].setText(obj)
 
     def on_symmetry_button_pressed(self):
-        self.parent.param_tree_instance.t.sigSymmetry.connect(self.symmetry_connection)
-        self.symmetry_dialog = SymmetryDialog(self)
-        self.symmetry_dialog.show()
-        self.symmetry_dialog.accepted.connect(self.make_symmetric)
+        self.parent.param_tree_instance.t.sigSymmetry.connect(self.symmetry_connection)  # connect parameter selection
+        # to the QLineEdits in the dialog
+        self.symmetry_dialog = SymmetryDialog(self)  # generate the dialog
+        self.symmetry_dialog.show()  # show the dialog
+        self.symmetry_dialog.accepted.connect(self.make_symmetric)  # apply symmetry equations once OK is pressed
 
     def make_symmetric(self):
-        outputs = self.symmetry_dialog.getInputs()
-        print(f"outputs = {outputs}")
+        def get_grandchild(param_tree, child_list: list, param_name: str):
+            current_param = param_tree.child(target_list[0])
+            for idx in range(1, len(child_list)):
+                current_param = current_param.child(child_list[idx])
+            full_param_name = f"{'.'.join(child_list)}.{param_name}"
+            return current_param.child(full_param_name)
+
+        airfoil_param_tree = self.parent.param_tree_instance.p.child('Airfoil Parameters')
+        out = self.symmetry_dialog.getInputs()
+        target = out['target'].replace('$', '')
+        target_list = target.split('.')
+        if 'FreePoints' in target_list:
+            xp = get_grandchild(airfoil_param_tree, target_list, 'xp')
+            self.parent.param_tree_instance.add_equation_box(xp)
+            eq = xp.child('Equation Definition')
+            eq_string = f"symmetry({out['tool']}.xp, {out['tool']}.yp, param_name, x1={out['x1']}, " \
+                        f"y1={out['y1']}, theta_rad={out['angle']})"
+            self.parent.param_tree_instance.block_changes(eq)
+            eq.setValue(eq_string)
+            self.parent.param_tree_instance.flush_changes(eq)
+            self.parent.param_tree_instance.update_equation(eq, eq_string, symmetry=symmetry, param_name='xp')
+
+            yp = get_grandchild(airfoil_param_tree, target_list, 'yp')
+            self.parent.param_tree_instance.add_equation_box(yp)
+            eq = yp.child('Equation Definition')
+            eq_string = f"symmetry({out['tool']}.xp, {out['tool']}.yp, param_name, x1={out['x1']}, " \
+                        f"y1={out['y1']}, theta_rad={out['angle']})"
+            self.parent.param_tree_instance.block_changes(eq)
+            eq.setValue(eq_string)
+            self.parent.param_tree_instance.flush_changes(eq)
+            self.parent.param_tree_instance.update_equation(eq, eq_string, symmetry=symmetry, param_name='yp')
+        elif 'AnchorPoints' in target_list:
+            fp_or_ap = 'ap'
+        else:
+            raise ValueError('Target selection must be either a FreePoint or an AnchorPoint')
+        # self.parent.param_tree_instance.update_equation()
