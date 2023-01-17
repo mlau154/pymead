@@ -1640,4 +1640,8 @@ class SymmetryDialog(QDialog):
         self.current_form_idx = row
 
     def getInputs(self):
-        return tuple(val[1].text() for val in self.inputs if isinstance(val[1], QLineEdit))
+        return {'target': self.inputs[1][1].text(),
+                'tool': self.inputs[3][1].text(),
+                'x1': self.inputs[5][1].text(),
+                'y1': self.inputs[7][1].text(),
+                'angle': self.inputs[9][1].text()}
