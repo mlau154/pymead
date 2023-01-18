@@ -60,7 +60,6 @@ class MainIconToolbar(QToolBar):
             self.parent.v.showGrid(x=False, y=False)
 
     def change_background_color_button_toggled(self, checked):
-        print(f"checked = {checked}")
         if checked:
             self.parent.dark_mode = True
             self.parent.set_dark_mode()
@@ -132,32 +131,53 @@ class MainIconToolbar(QToolBar):
             full_param_name = f"{'.'.join(child_list)}.{param_name}"
             return current_param.child(full_param_name)
 
+        def assign_equation(param_name: str):
+            param = get_grandchild(airfoil_param_tree, target_list, param_name)
+            self.parent.param_tree_instance.add_equation_box(param)
+            eq = param.child('Equation Definition')
+            upper_target, upper_tool = False, False
+            if fp_or_ap == 'ap':
+                ap_order_target = self.parent.mea.airfoils[target_list[0]].anchor_point_order
+                ap_order_tool = self.parent.mea.airfoils[tool_list[0]].anchor_point_order
+                ap_target = target_list[2]  # e.g., 'ap0'
+                ap_tool = tool_list[2]  # e.g., 'ap1'
+                if ap_order_target.index(ap_target) < ap_order_target.index('le'):
+                    upper_target = True
+                if ap_order_tool.index(ap_tool) < ap_order_tool.index('le'):
+                    upper_tool = True
+            extra_args = {
+                'xp': f"x1={out['x1']}, y1={out['y1']}, theta_rad={out['angle']}, xp={out['tool']}.xp, "
+                      f"yp={out['tool']}.yp",
+                'yp': f"x1={out['x1']}, y1={out['y1']}, theta_rad={out['angle']}, xp={out['tool']}.xp, "
+                      f"yp={out['tool']}.yp",
+                'phi': f"x1={out['x1']}, y1={out['y1']}, theta_rad={out['angle']}, alf_tool=${tool_list[0]}.Base.alf, "
+                       f"alf_target=${target_list[0]}.Base.alf, phi={out['tool']}.phi, upper_target={upper_target}, "
+                       f"upper_tool={upper_tool}",
+                'psi1': f"psi1={out['tool']}.psi2",
+                'psi2': f"psi2={out['tool']}.psi1",
+                'r': f"r={out['tool']}.r",
+                'L': f"L={out['tool']}.L",
+                'R': f"R={out['tool']}.R",
+            }
+            eq_string = f"symmetry(param_name, {extra_args[param_name]})"
+            self.parent.param_tree_instance.block_changes(eq)
+            eq.setValue(eq_string)
+            self.parent.param_tree_instance.flush_changes(eq)
+            self.parent.param_tree_instance.update_equation(eq, eq_string, symmetry=symmetry, param_name=param_name)
+
         airfoil_param_tree = self.parent.param_tree_instance.p.child('Airfoil Parameters')
         out = self.symmetry_dialog.getInputs()
         target = out['target'].replace('$', '')
         target_list = target.split('.')
+        tool = out['tool'].replace('$', '')
+        tool_list = tool.split('.')
         if 'FreePoints' in target_list:
-            xp = get_grandchild(airfoil_param_tree, target_list, 'xp')
-            self.parent.param_tree_instance.add_equation_box(xp)
-            eq = xp.child('Equation Definition')
-            eq_string = f"symmetry({out['tool']}.xp, {out['tool']}.yp, param_name, x1={out['x1']}, " \
-                        f"y1={out['y1']}, theta_rad={out['angle']})"
-            self.parent.param_tree_instance.block_changes(eq)
-            eq.setValue(eq_string)
-            self.parent.param_tree_instance.flush_changes(eq)
-            self.parent.param_tree_instance.update_equation(eq, eq_string, symmetry=symmetry, param_name='xp')
-
-            yp = get_grandchild(airfoil_param_tree, target_list, 'yp')
-            self.parent.param_tree_instance.add_equation_box(yp)
-            eq = yp.child('Equation Definition')
-            eq_string = f"symmetry({out['tool']}.xp, {out['tool']}.yp, param_name, x1={out['x1']}, " \
-                        f"y1={out['y1']}, theta_rad={out['angle']})"
-            self.parent.param_tree_instance.block_changes(eq)
-            eq.setValue(eq_string)
-            self.parent.param_tree_instance.flush_changes(eq)
-            self.parent.param_tree_instance.update_equation(eq, eq_string, symmetry=symmetry, param_name='yp')
+            fp_or_ap = 'fp'
+            for param_str in ['xp', 'yp']:
+                assign_equation(param_str)
         elif 'AnchorPoints' in target_list:
             fp_or_ap = 'ap'
+            for param_str in ['xp', 'yp', 'phi', 'psi1', 'psi2', 'L', 'r', 'R']:
+                assign_equation(param_str)
         else:
             raise ValueError('Target selection must be either a FreePoint or an AnchorPoint')
-        # self.parent.param_tree_instance.update_equation()
