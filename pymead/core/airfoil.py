@@ -4,7 +4,8 @@ from pymead.core.free_point import FreePoint
 from pymead.core.base_airfoil_params import BaseAirfoilParams
 from pymead.core.bezier import Bezier
 from pymead.core.trailing_edge_point import TrailingEdgePoint
-from pymead.utils.increment_string_index import increment_string_index, decrement_string_index, get_prefix_and_index_from_string
+from pymead.utils.increment_string_index import increment_string_index, max_string_index_plus_one, \
+    get_prefix_and_index_from_string
 from pymead.utils.transformations import translate_matrix, rotate_matrix, scale_matrix
 from pymead.utils.downsampling_schemes import fractal_downsampler2
 from pymead.core.transformation import Transformation2D
@@ -151,42 +152,43 @@ class Airfoil:
         free_point.yp.airfoil_tag = self.tag
         free_point.airfoil_transformation = {'dx': self.dx, 'dy': self.dy, 'alf': self.alf, 'c': self.c}
 
-        if free_point.previous_free_point is None:
-            free_point.set_tag('FP0')
-            fp_idx = 0
-        else:
-            # Name the free point the previous free point with index incremented by one
-            free_point.set_tag(increment_string_index(free_point.previous_free_point))
-            fp_idx = get_prefix_and_index_from_string(free_point.tag)[1]
+        # Name the FreePoint by incrementing the max of the FreePoint tag indexes by one (or use 0 if no FreePoints)
+        free_point.set_tag(max_string_index_plus_one(self.free_point_order[free_point.anchor_point_tag]))
+        # fp_idx = get_prefix_and_index_from_string(free_point.tag)[1]
 
         if free_point.anchor_point_tag in self.free_points.keys():
-            temp_dict = {}
-            keys_to_pop = []
-            for key, fp in fp_dict.items():
-                idx = get_prefix_and_index_from_string(key)[1]
-                if idx >= fp_idx:
-                    new_key = increment_string_index(fp.tag)
-                    temp_dict[new_key] = fp
-                    fp.set_tag(new_key)
-                    keys_to_pop.append(key)
-            for k in keys_to_pop[::-1]:
-                fp_dict.pop(k)
-            fp_dict = {**fp_dict, **temp_dict}
+            # temp_dict = {}
+            # keys_to_pop = []
+            # for key, fp in fp_dict.items():
+            #     idx = get_prefix_and_index_from_string(key)[1]
+            #     if idx >= fp_idx:
+            #         new_key = increment_string_index(fp.tag)
+            #         temp_dict[new_key] = fp
+            #         fp.set_tag(new_key)
+            #         keys_to_pop.append(key)
+            # for k in keys_to_pop[::-1]:
+            #     fp_dict.pop(k)
+            # fp_dict = {**fp_dict, **temp_dict}
             fp_dict[free_point.tag] = free_point
             # print(f"id of fp_dict is {hex(id(fp_dict))}")
             self.free_points[free_point.anchor_point_tag] = fp_dict
             # print(f"id of fp_dict after assignment is {hex(id(self.free_points[free_point.previous_anchor_point]))}")
 
-        key_pairs = []
-        for k in self.param_dicts['FreePoints'][free_point.anchor_point_tag].keys():
-            idx = get_prefix_and_index_from_string(k)[1]
-            if idx >= fp_idx:
-                new_key = increment_string_index(k)
-                key_pairs.append((k, new_key))
-        for kp in key_pairs:
-            self.param_dicts['FreePoints'][free_point.anchor_point_tag][kp[1]] = self.param_dicts['FreePoints'][
-                free_point.anchor_point_tag].pop(kp[0])
-        self.free_point_order[free_point.anchor_point_tag] = [f"FP{idx}" for idx in range(len(fp_dict))]
+        # key_pairs = []
+        # for k in self.param_dicts['FreePoints'][free_point.anchor_point_tag].keys():
+        #     idx = get_prefix_and_index_from_string(k)[1]
+        #     if idx >= fp_idx:
+        #         new_key = increment_string_index(k)
+        #         key_pairs.append((k, new_key))
+        # for kp in key_pairs:
+        #     self.param_dicts['FreePoints'][free_point.anchor_point_tag][kp[1]] = self.param_dicts['FreePoints'][
+        #         free_point.anchor_point_tag].pop(kp[0])
+        # self.free_point_order[free_point.anchor_point_tag] = [f"FP{idx}" for idx in range(len(fp_dict))]
+        print(f"Before, {self.free_point_order = }")
+        self.free_point_order[free_point.anchor_point_tag].insert(
+            self.free_point_order[free_point.anchor_point_tag].index(free_point.previous_free_point) + 1 if free_point.
+            previous_free_point else 0, free_point.tag)
+        print(f"After, {self.free_point_order = }")
         self.N[free_point.anchor_point_tag] += 1
         self.param_dicts['FreePoints'][free_point.anchor_point_tag][free_point.tag] = {
             'x': free_point.x, 'y': free_point.y, 'xp': free_point.xp, 'yp': free_point.yp}
@@ -208,29 +210,32 @@ class Airfoil:
         # self.free_point_order[anchor_point_tag].pop(fp_idx)
         self.free_points[anchor_point_tag].pop(free_point_tag)
         self.param_dicts['FreePoints'][anchor_point_tag].pop(free_point_tag)
-        temp_dict = {}
-        keys_to_pop = []
-        for key, fp in fp_dict.items():
-            idx = get_prefix_and_index_from_string(key)[1]
-            if idx >= fp_idx:
-                new_key = decrement_string_index(key)
-                temp_dict[new_key] = fp
-                fp.set_tag(new_key)
-                keys_to_pop.append(key)
-        for k in keys_to_pop[::-1]:
-            fp_dict.pop(k)
-        fp_dict = {**fp_dict, **temp_dict}
-        self.free_points[anchor_point_tag] = fp_dict
-        self.free_point_order[anchor_point_tag] = [f"FP{idx}" for idx in range(len(fp_dict))]
+        # temp_dict = {}
+        # keys_to_pop = []
+        # for key, fp in fp_dict.items():
+        #     idx = get_prefix_and_index_from_string(key)[1]
+        #     if idx >= fp_idx:
+        #         new_key = decrement_string_index(key)
+        #         temp_dict[new_key] = fp
+        #         fp.set_tag(new_key)
+        #         keys_to_pop.append(key)
+        # for k in keys_to_pop[::-1]:
+        #     fp_dict.pop(k)
+        # fp_dict = {**fp_dict, **temp_dict}
+        # self.free_points[anchor_point_tag] = fp_dict
+        print(f"{self.free_point_order = }")
+        self.free_point_order[anchor_point_tag].remove(free_point_tag)
+        print(f"{self.free_point_order = }")
+        # self.free_point_order[anchor_point_tag] = [f"FP{idx}" for idx in range(len(fp_dict))]
         self.N[anchor_point_tag] -= 1
-        key_pairs = []
-        for k in self.param_dicts['FreePoints'][anchor_point_tag].keys():
-            idx = get_prefix_and_index_from_string(k)[1]
-            if idx >= fp_idx:
-                new_key = decrement_string_index(k)
-                key_pairs.append((k, new_key))
-        for kp in key_pairs:
-            self.param_dicts['FreePoints'][anchor_point_tag][kp[1]] = self.param_dicts['FreePoints'][anchor_point_tag].pop(kp[0])
+        # key_pairs = []
+        # for k in self.param_dicts['FreePoints'][anchor_point_tag].keys():
+        #     idx = get_prefix_and_index_from_string(k)[1]
+        #     if idx >= fp_idx:
+        #         new_key = decrement_string_index(k)
+        #         key_pairs.append((k, new_key))
+        # for kp in key_pairs:
+        #     self.param_dicts['FreePoints'][anchor_point_tag][kp[1]] = self.param_dicts['FreePoints'][anchor_point_tag].pop(kp[0])
 
     def insert_anchor_point(self, ap: AnchorPoint):
         """Method used to insert a :class:`pymead.core.anchor_point.AnchorPoint` into an already instantiated

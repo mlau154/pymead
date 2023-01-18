@@ -1,3 +1,4 @@
+import typing
 
 
 def get_prefix_and_index_from_string(s: str):
@@ -26,3 +27,12 @@ def increment_string_index(s: str):
     prefix, idx = get_prefix_and_index_from_string(s)
     # Return an incremented version of the string index
     return prefix + str(idx + 1)
+
+
+def max_string_index_plus_one(str_list: typing.List[str]):
+    if str_list and len(str_list) > 0:
+        print(f"{str_list = }")
+        idx_list = [int([ch for ch in s if ch.isnumeric()][0]) for s in str_list]
+        return 'FP' + str(max(idx_list) + 1)
+    else:
+        return 'FP0'
