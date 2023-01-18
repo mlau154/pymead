@@ -115,8 +115,10 @@ def convert_dialog_to_mplot_settings(dialog_input: dict):
 
 
 class FreePointInputDialog(QDialog):
-    def __init__(self, items: List[tuple], fp: dict, parent=None):
+    def __init__(self, items: List[tuple], fp: dict, parent):
         super().__init__(parent)
+        self.setWindowTitle('Insert FreePoint')
+        self.setFont(self.parent().font())
         self.fp = fp
         self.ap_list = [k for k in self.fp.keys()]
         self.fp_list = ['None']
@@ -133,6 +135,7 @@ class FreePointInputDialog(QDialog):
                 self.inputs[-1].setMaximum(np.inf)
                 self.inputs[-1].setSingleStep(0.01)
                 self.inputs[-1].setDecimals(16)
+                self.inputs[-1].setValue(item[2])
             elif item[1] == 'combo':
                 self.inputs.append(QComboBox(self))
                 if item[0] == "Previous Anchor Point":
@@ -162,8 +165,10 @@ class FreePointInputDialog(QDialog):
 
 
 class AnchorPointInputDialog(QDialog):
-    def __init__(self, items: List[tuple], ap: dict, parent=None):
+    def __init__(self, items: List[tuple], ap: dict, parent):
         super().__init__(parent)
+        self.setWindowTitle('Insert AnchorPoint')
+        self.setFont(self.parent().font())
         self.ap = ap
         self.ap_list = [anchor_point.tag for anchor_point in self.ap]
 
@@ -178,6 +183,7 @@ class AnchorPointInputDialog(QDialog):
                 self.inputs[-1].setMaximum(np.inf)
                 self.inputs[-1].setSingleStep(0.01)
                 self.inputs[-1].setDecimals(16)
+                self.inputs[-1].setValue(item[2])
             elif item[1] == 'combo':
                 self.inputs.append(QComboBox(self))
                 if item[0] == "Previous Anchor Point":

@@ -118,8 +118,11 @@ class Param:
                     affected_param._value = old_affected_param_values[idx2]
 
     def set_func_str(self, func_str: str):
-        self.func_str = func_str
-        self.linked = True
+        if len(func_str) == 0:
+            self.remove_func()
+        else:
+            self.func_str = func_str
+            self.linked = True
 
     def remove_func(self):
         self.func_str = None
@@ -292,12 +295,7 @@ class Param:
                 self.depends_on = {}
                 message = f"Could not compile input function string: {self.func_str}"
                 self.remove_func()
-                if show_q_error_messages:
-                    from PyQt5.QtWidgets import QErrorMessage
-                    err = QErrorMessage()
-                    print("Showing error message")
-                    err.showMessage(message)
-                else:
+                if not show_q_error_messages:
                     print(message)
                 return False
 

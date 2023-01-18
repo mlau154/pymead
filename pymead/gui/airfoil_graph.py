@@ -163,13 +163,13 @@ class AirfoilGraph(pg.GraphItem):
 
         if self.airfoil.control_points[ind].cp_type == 'g2_minus':
             new_Lc = np.sqrt((x[ind] - x[ind + 1]) ** 2 + (y[ind] - y[ind + 1]) ** 2) / self.airfoil.c.value
-            new_psi1_abs_angle = np.arctan2(y[ind] - y[ind + 1], x[ind] - x[ind + 1]) + self.airfoil.alf.value
-            anchor_point.recalculate_ap_branch_props_from_g2_pt('minus', new_psi1_abs_angle, new_Lc)
+            new_psi_abs_angle = np.arctan2(y[ind] - y[ind + 1], x[ind] - x[ind + 1]) + self.airfoil.alf.value
+            anchor_point.recalculate_ap_branch_props_from_g2_pt('minus', new_psi_abs_angle, new_Lc)
 
         elif self.airfoil.control_points[ind].cp_type == 'g2_plus':
             new_Lc = np.sqrt((x[ind] - x[ind - 1]) ** 2 + (y[ind] - y[ind - 1]) ** 2) / self.airfoil.c.value
-            new_psi2_abs_angle = np.arctan2(y[ind] - y[ind - 1], x[ind] - x[ind - 1]) + self.airfoil.alf.value
-            anchor_point.recalculate_ap_branch_props_from_g2_pt('plus', new_psi2_abs_angle, new_Lc)
+            new_psi_abs_angle = np.arctan2(y[ind] - y[ind - 1], x[ind] - x[ind - 1]) + self.airfoil.alf.value
+            anchor_point.recalculate_ap_branch_props_from_g2_pt('plus', new_psi_abs_angle, new_Lc)
 
         elif self.airfoil.control_points[ind].cp_type == 'g1_minus':
             new_Lt = np.sqrt((x[ind] - x[ind + 1]) ** 2 + (y[ind] - y[ind + 1]) ** 2) / self.airfoil.c.value
