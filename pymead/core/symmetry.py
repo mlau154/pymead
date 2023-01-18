@@ -24,21 +24,16 @@ def symmetry(param_name: str, xp=None, yp=None, alf_target=None, alf_tool=None, 
             new_xp = xp + 2 * distance * np.cos(angle)
             new_yp = yp + 2 * distance * np.sin(angle)
         else:
-            print(f"{upper_tool = }, {upper_target = }")
             if upper_tool:
                 abs_phi_tool = phi + (-alf_tool)
             else:
                 abs_phi_tool = -phi + (-alf_tool)
-            print(f"{abs_phi_tool = }")
             delta_angle = abs_phi_tool - inf_line.theta_rad
-            print(f"{delta_angle = }")
             abs_phi_target = inf_line.theta_rad - delta_angle
-            print(f"{abs_phi_target = }")
             if upper_target:
                 rel_phi_target = abs_phi_target + (-alf_target)
             else:
                 rel_phi_target = -abs_phi_target + (-alf_target)
-            print(f"{rel_phi_target = }")
 
     output_dict = {
         'xp': new_xp,

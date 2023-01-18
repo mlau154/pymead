@@ -84,7 +84,6 @@ class MainIconToolbar(QToolBar):
         self.parent.show()
 
     def add_airfoil_button_toggled(self):
-        print('Add airfoil button toggled!')
 
         def scene_clicked(ev):
             self.new_airfoil_location = self.parent.mea.v.vb.mapSceneToView(ev.scenePos())
@@ -153,8 +152,8 @@ class MainIconToolbar(QToolBar):
                 'phi': f"x1={out['x1']}, y1={out['y1']}, theta_rad={out['angle']}, alf_tool=${tool_list[0]}.Base.alf, "
                        f"alf_target=${target_list[0]}.Base.alf, phi={out['tool']}.phi, upper_target={upper_target}, "
                        f"upper_tool={upper_tool}",
-                'psi1': f"psi1={out['tool']}.psi2",
-                'psi2': f"psi2={out['tool']}.psi1",
+                'psi1': f"psi1={out['tool']}.psi1",
+                'psi2': f"psi2={out['tool']}.psi2",
                 'r': f"r={out['tool']}.r",
                 'L': f"L={out['tool']}.L",
                 'R': f"R={out['tool']}.R",

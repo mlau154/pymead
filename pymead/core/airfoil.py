@@ -212,7 +212,6 @@ class Airfoil:
         keys_to_pop = []
         for key, fp in fp_dict.items():
             idx = get_prefix_and_index_from_string(key)[1]
-            # print(f"free_point.tag = {free_point.tag}")
             if idx >= fp_idx:
                 new_key = decrement_string_index(key)
                 temp_dict[new_key] = fp
@@ -223,7 +222,7 @@ class Airfoil:
         fp_dict = {**fp_dict, **temp_dict}
         self.free_points[anchor_point_tag] = fp_dict
         self.free_point_order[anchor_point_tag] = [f"FP{idx}" for idx in range(len(fp_dict))]
-        self.N[anchor_point_tag] += 1
+        self.N[anchor_point_tag] -= 1
         key_pairs = []
         for k in self.param_dicts['FreePoints'][anchor_point_tag].keys():
             idx = get_prefix_and_index_from_string(k)[1]

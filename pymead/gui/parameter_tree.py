@@ -51,9 +51,7 @@ class MEAParameters(pTypes.GroupParameter):
     def add_airfoil(self, airfoil: Airfoil, idx: int):
         self.airfoil_headers.append(self.addChild(dict(name=airfoil.tag, type='selectable_header', value=True,
                                                        context={"add_fp": "Add FreePoint",
-                                                                "remove_fp": "Remove FreePoint",
-                                                                "add_ap": "Add AnchorPoint",
-                                                                "remove_ap": "Remove AnchorPoint"})))
+                                                                "add_ap": "Add AnchorPoint"})))
         header_params = ['Base', 'AnchorPoints', 'FreePoints', 'Custom']
         for hp in header_params:
             # print(f"children = {self.airfoil_headers[idx].children()}")
@@ -70,7 +68,7 @@ class MEAParameters(pTypes.GroupParameter):
         # print(f"param_dict = {self.mea.param_dict}")
         for ap_key, ap_val in self.mea.param_dict[airfoil.tag]['AnchorPoints'].items():
             self.child(airfoil.tag).child('AnchorPoints').addChild(
-                HeaderParameter(name=ap_key, type='bool', value='true'))
+                HeaderParameter(name=ap_key, type='bool', value='true', context={'remove_ap': 'Remove AnchorPoint'}))
             for p_key, p_val in self.mea.param_dict[airfoil.tag]['AnchorPoints'][ap_key].items():
                 self.child(airfoil.tag).child('AnchorPoints').child(ap_key).addChild(AirfoilParameter(
                     self.mea.param_dict[airfoil.tag]['AnchorPoints'][ap_key][p_key],
@@ -84,7 +82,7 @@ class MEAParameters(pTypes.GroupParameter):
                 HeaderParameter(name=ap_key, type='bool', value='true'))
             for fp_key, fp_val in ap_val.items():
                 self.child(airfoil.tag).child('FreePoints').child(ap_key).addChild(
-                    HeaderParameter(name=fp_key, type='bool', value='true'))
+                    HeaderParameter(name=fp_key, type='bool', value='true', context={'remove_fp': 'Remove FreePoint'}))
                 for p_key, p_val in fp_val.items():
                     self.child(airfoil.tag).child('FreePoints').child(ap_key).child(fp_key).addChild(
                         AirfoilParameter(self.mea.param_dict[airfoil.tag]['FreePoints'][ap_key][fp_key][p_key],
@@ -330,6 +328,10 @@ class MEAParamTree:
                 if change == 'contextMenu' and data == 'add_ap':
                     self.add_anchor_point(param)
 
+                # Removing a FreePoint
+                if change == 'contextMenu' and data == 'remove_fp':
+                    self.remove_free_point(param)
+
                 # Different value in QComboBox for the inviscid CL calculation is selected
                 if change == 'value' and param.name() == 'Inviscid Cl Calc':
                     self.cl_airfoil_tag = data
@@ -553,7 +555,7 @@ class MEAParamTree:
                 self.params[-1].child(a_tag).child('FreePoints').addChild(
                     HeaderParameter(name=fp.anchor_point_tag, type='bool', value='true'))
             self.params[-1].child(a_tag).child('FreePoints').child(fp.anchor_point_tag).addChild(
-                HeaderParameter(name=fp.tag, type='bool', value='true'))
+                HeaderParameter(name=fp.tag, type='bool', value='true', context={'remove_fp': 'Remove FreePoint'}))
             # print(self.mea.param_dict['A0'])
             for p_key, p_val in self.mea.param_dict[a_tag]['FreePoints'][fp.anchor_point_tag][fp.tag].items():
                 self.params[-1].child(a_tag).child('FreePoints').child(fp.anchor_point_tag).child(fp.tag).addChild(
@@ -601,7 +603,7 @@ class MEAParamTree:
             self.mea.airfoils[a_tag].airfoil_graph.setData(pos=pos, adj=adj, size=8, pxMode=True,
                                                            symbol=symbols)
             self.params[-1].child(a_tag).child('AnchorPoints').addChild(
-                HeaderParameter(name=ap.tag, type='bool', value='true'))
+                HeaderParameter(name=ap.tag, type='bool', value='true', context={'remove_ap': 'Remove AnchorPoint'}))
             # print(self.mea.param_dict['A0'])
             for p_key, p_val in self.mea.param_dict[a_tag]['AnchorPoints'][ap.tag].items():
                 self.params[-1].child(a_tag).child('AnchorPoints').child(ap.tag).addChild(AirfoilParameter(
@@ -611,6 +613,33 @@ class MEAParamTree:
                         p_key].value,
                     context={'add_eq': 'Define by equation', 'deactivate': 'Deactivate parameter',
                              'activate': 'Activate parameter', 'setbounds': 'Set parameter bounds'}))
+
+    def remove_free_point(self, pg_param: Parameter):
+        """Removes a FreePoint from an Airfoil and updates the graph"""
+        # First, make sure that a FreePoint parameter was selected:
+        if not pg_param.parent() or not pg_param.parent().parent() or not pg_param.parent().parent().name() == 'FreePoints':
+            self.parent.disp_message_box('A FreePoint must be selected to remove; e.g., \'FP0\'')
+            return
+
+        # Get the Airfoil from which to remove the FreePoint:
+        airfoil_name = pg_param.parent().parent().parent().name()
+        ap_name = pg_param.parent().name()
+        fp_name = pg_param.name()
+        airfoil = self.mea.airfoils[airfoil_name]
+
+        # Delete the FreePoint from the Airfoil:
+        airfoil.delete_free_point(fp_name, ap_name)
+        airfoil.update()
+
+        # Delete the FreePoint from the parameter tree:
+        pg_param.clearChildren()
+        pg_param.remove()
+
+        # Update the Graph:
+        self.dialog.update_fp_ap_tags()
+        pos, adj, symbols = self.mea.airfoils[airfoil_name].airfoil_graph.update_airfoil_data()
+        self.mea.airfoils[airfoil_name].airfoil_graph.setData(pos=pos, adj=adj, size=8, pxMode=True,
+                                                              symbol=symbols)
 
     def equation_widget(self, pg_param):
         """Acquires the equation's container QWidget"""
