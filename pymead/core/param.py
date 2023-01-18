@@ -116,6 +116,7 @@ class Param:
                 self._value = old_value
                 for idx2, affected_param in enumerate(self.affects[:idx + 1]):
                     affected_param._value = old_affected_param_values[idx2]
+        # print(f"{self.name = }, {self._value = }")
 
     def set_func_str(self, func_str: str):
         if len(func_str) == 0:
