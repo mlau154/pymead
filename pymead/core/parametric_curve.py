@@ -37,6 +37,9 @@ class ParametricCurve:
     def update_curve_pg(self):
         self.pg_curve_handle.setData(self.x, self.y)
 
+    def clear_curve_pg(self):
+        self.pg_curve_handle.clear()
+
     @abstractmethod
     def get_curvature_comb(self, max_k_normalized_scale_factor, interval: int = 1):
         pass
