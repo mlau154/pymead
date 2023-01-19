@@ -204,38 +204,10 @@ class Airfoil:
         anchor_point_tag: str
           Label identifying the FreePoint's previous AnchorPoint from a dictionary
         """
-        fp_dict = self.free_points[anchor_point_tag]
-        fp_idx = next((idx for idx, fp_tag in enumerate(self.free_point_order[anchor_point_tag])
-                       if fp_tag == free_point_tag))
-        # self.free_point_order[anchor_point_tag].pop(fp_idx)
         self.free_points[anchor_point_tag].pop(free_point_tag)
         self.param_dicts['FreePoints'][anchor_point_tag].pop(free_point_tag)
-        # temp_dict = {}
-        # keys_to_pop = []
-        # for key, fp in fp_dict.items():
-        #     idx = get_prefix_and_index_from_string(key)[1]
-        #     if idx >= fp_idx:
-        #         new_key = decrement_string_index(key)
-        #         temp_dict[new_key] = fp
-        #         fp.set_tag(new_key)
-        #         keys_to_pop.append(key)
-        # for k in keys_to_pop[::-1]:
-        #     fp_dict.pop(k)
-        # fp_dict = {**fp_dict, **temp_dict}
-        # self.free_points[anchor_point_tag] = fp_dict
-        print(f"{self.free_point_order = }")
         self.free_point_order[anchor_point_tag].remove(free_point_tag)
-        print(f"{self.free_point_order = }")
-        # self.free_point_order[anchor_point_tag] = [f"FP{idx}" for idx in range(len(fp_dict))]
         self.N[anchor_point_tag] -= 1
-        # key_pairs = []
-        # for k in self.param_dicts['FreePoints'][anchor_point_tag].keys():
-        #     idx = get_prefix_and_index_from_string(k)[1]
-        #     if idx >= fp_idx:
-        #         new_key = decrement_string_index(k)
-        #         key_pairs.append((k, new_key))
-        # for kp in key_pairs:
-        #     self.param_dicts['FreePoints'][anchor_point_tag][kp[1]] = self.param_dicts['FreePoints'][anchor_point_tag].pop(kp[0])
 
     def insert_anchor_point(self, ap: AnchorPoint):
         """Method used to insert a :class:`pymead.core.anchor_point.AnchorPoint` into an already instantiated
@@ -269,7 +241,31 @@ class Airfoil:
         ap_param_list = ['x', 'y', 'xp', 'yp', 'L', 'R', 'r', 'phi', 'psi1', 'psi2']
         self.param_dicts['AnchorPoints'][ap.tag] = {p: getattr(ap, p) for p in ap_param_list}
         self.free_points[ap.tag] = {}
+        self.free_point_order[ap.tag] = []
         self.param_dicts['FreePoints'][ap.tag] = {}
+
+    def delete_anchor_point(self, anchor_point_tag: str):
+        """Deletes a :class:`pymead.core.anchor_point.AnchorPoint` from the Airfoil.
+
+        Parameters
+        ==========
+        anchor_point_tag: str
+          Label identifying the AnchorPoint
+        """
+        self.anchor_points = [ap for ap in self.anchor_points if ap.tag != anchor_point_tag]
+        self.param_dicts['AnchorPoints'].pop(anchor_point_tag)
+        self.param_dicts['FreePoints'].pop(anchor_point_tag)
+        current_curve = self.curve_list[self.anchor_point_order.index(anchor_point_tag)]
+        if current_curve.pg_curve_handle:
+            current_curve.clear_curve_pg()
+        self.curve_list.pop(self.anchor_point_order.index(anchor_point_tag))
+        current_ap_order_index = self.anchor_point_order.index(anchor_point_tag)
+        next_ap_tag = self.anchor_point_order[current_ap_order_index + 1]
+        next_ap = next((ap for ap in self.anchor_points if ap.tag == next_ap_tag), None)
+        next_ap.previous_anchor_point = self.anchor_point_order[current_ap_order_index - 1]
+        self.anchor_point_order.remove(anchor_point_tag)
+        self.free_point_order.pop(anchor_point_tag)
+        self.N.pop(anchor_point_tag)
 
     def update(self, skip_fp_ap_regen: bool = False, generate_curves: bool = True, update_ap_fp: bool = True):
         """Used to update the state of the airfoil, including the Bézier curves, after a change in any parameter

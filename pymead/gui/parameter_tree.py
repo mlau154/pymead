@@ -332,6 +332,9 @@ class MEAParamTree:
                 if change == 'contextMenu' and data == 'remove_fp':
                     self.remove_free_point(param)
 
+                if change == 'contextMenu' and data == 'remove_ap':
+                    self.remove_anchor_point(param)
+
                 # Different value in QComboBox for the inviscid CL calculation is selected
                 if change == 'value' and param.name() == 'Inviscid Cl Calc':
                     self.cl_airfoil_tag = data
@@ -584,8 +587,6 @@ class MEAParamTree:
         if inputs:
             # id_list = []
             for curve in self.mea.airfoils[a_tag].curve_list:
-                # print(f'curve_handle = {curve.pg_curve_handle}')
-                # id_list.append(id(curve.pg_curve_handle))
                 curve.pg_curve_handle.clear()
             ap = AnchorPoint(x=Param(inputs[0]), y=Param(inputs[1]), L=Param(inputs[2]), R=Param(inputs[3]),
                              r=Param(inputs[4]), phi=Param(inputs[5]), psi1=Param(inputs[6]),
@@ -596,15 +597,15 @@ class MEAParamTree:
             self.mea.airfoils[a_tag].init_airfoil_curve_pg(self.mea.airfoils[a_tag].airfoil_graph.v,
                                                            pen=pg.mkPen(color='cornflowerblue', width=2))
 
-            # for curve in self.mea.airfoils[a_tag].curve_list:
-            #     print(f'curve_handle = {curve.pg_curve_handle}')
             self.dialog.update_ap_tags()
             pos, adj, symbols = self.mea.airfoils[a_tag].airfoil_graph.update_airfoil_data()
             self.mea.airfoils[a_tag].airfoil_graph.setData(pos=pos, adj=adj, size=8, pxMode=True,
                                                            symbol=symbols)
             self.params[-1].child(a_tag).child('AnchorPoints').addChild(
                 HeaderParameter(name=ap.tag, type='bool', value='true', context={'remove_ap': 'Remove AnchorPoint'}))
-            # print(self.mea.param_dict['A0'])
+            self.params[-1].child(a_tag).child('FreePoints').addChild(
+                HeaderParameter(name=ap.tag, type='bool', value='true'))
+
             for p_key, p_val in self.mea.param_dict[a_tag]['AnchorPoints'][ap.tag].items():
                 self.params[-1].child(a_tag).child('AnchorPoints').child(ap.tag).addChild(AirfoilParameter(
                     self.mea.param_dict[a_tag]['AnchorPoints'][ap.tag][p_key],
@@ -637,6 +638,37 @@ class MEAParamTree:
 
         # Update the Graph:
         self.dialog.update_fp_ap_tags()
+        pos, adj, symbols = self.mea.airfoils[airfoil_name].airfoil_graph.update_airfoil_data()
+        self.mea.airfoils[airfoil_name].airfoil_graph.setData(pos=pos, adj=adj, size=8, pxMode=True,
+                                                              symbol=symbols)
+
+    def remove_anchor_point(self, pg_param: Parameter):
+        """Removes an AnchorPoint from an Airfoil and updates the graph"""
+        # First, make sure that a FreePoint parameter was selected:
+        if not pg_param.parent() or not pg_param.parent().name() == 'AnchorPoints':
+            self.parent.disp_message_box('A FreePoint must be selected to remove; e.g., \'FP0\'')
+            return
+
+        # Get the Airfoil from which to remove the AnchorPoint:
+        airfoil_name = pg_param.parent().parent().name()
+        ap_name = pg_param.name()
+        airfoil = self.mea.airfoils[airfoil_name]
+
+        # Delete the AnchorPoint from the Airfoil:
+        airfoil.delete_anchor_point(ap_name)
+        airfoil.update()
+
+        # Delete the AnchorPoint and its children from the FreePoint header in the parameter tree:
+        fp_ap_param = pg_param.parent().parent().child('FreePoints').child(ap_name)
+        fp_ap_param.clearChildren()
+        fp_ap_param.remove()
+
+        # Delete the AnchorPoint from the parameter tree:
+        pg_param.clearChildren()
+        pg_param.remove()
+
+        # Update the Graph:
+        self.dialog.update_ap_tags()
         pos, adj, symbols = self.mea.airfoils[airfoil_name].airfoil_graph.update_airfoil_data()
         self.mea.airfoils[airfoil_name].airfoil_graph.setData(pos=pos, adj=adj, size=8, pxMode=True,
                                                               symbol=symbols)

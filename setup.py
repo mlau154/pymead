@@ -12,7 +12,7 @@ with open((HERE / "README.md"), encoding="utf-8") as f:
 setup(
     name="pymead",
     version="2.0.0",
-    description="Python library for generation, aerodynamic analysis, and aerodynamic shape optimize of "
+    description="Python library for generation, aerodynamic analysis, and aerodynamic shape optimization of "
                 "Bézier-parametrized airfoils and airfoil systems",
     long_description=README,
     long_description_content_type="text/markdown",
@@ -30,5 +30,5 @@ setup(
               "pymead/gui/pyqt_vertical_tab_widget/pyqt_vertical_tab_widget"],
     include_package_data=True,
     install_requires=["scipy", "numpy", "shapely", "matplotlib", "requests", "PyQt5", "pyqtgraph", "python-benedict",
-                      "pandas", "dill", "pymoo", "numba"],
+                      "pandas", "dill", "pymoo==0.5.0", "numba"],
 )
