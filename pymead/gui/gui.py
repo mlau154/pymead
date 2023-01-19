@@ -1095,6 +1095,7 @@ class GUI(QMainWindow):
 
 def main():
     app = QApplication(sys.argv)
+    app.processEvents()
     app.setStyle('Fusion')
     if len(sys.argv) > 1:
         gui = GUI(sys.argv[1])
