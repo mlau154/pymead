@@ -1,16 +1,18 @@
 import sys
 from PyQt5.QtCore import Qt
-from PyQt5.QtWidgets import QMainWindow, QDockWidget, QGridLayout, QApplication
+from PyQt5.QtWidgets import QMainWindow, QDockWidget, QGridLayout, QApplication, QWidget
 
 
 class DockableTabWidget(QMainWindow):
     def __init__(self, parent=None, cancel_if_tab_name_exists: bool = False):
         super(DockableTabWidget, self).__init__(parent)
         self.setDockNestingEnabled(True)
+        self.w = QWidget()
         layout = QGridLayout()
         self.dock_widgets = []
         self.names = []
-        self.setLayout(layout)
+        self.w.setLayout(layout)
+        self.setCentralWidget(self.w)
         self.setWindowTitle('Dock')
         self.cancel_if_tab_name_exists = cancel_if_tab_name_exists
 
