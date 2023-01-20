@@ -10,18 +10,13 @@ from pymead.gui.selectable_header import SelectableHeaderParameterItem
 from pymead.gui.input_dialog import FreePointInputDialog, AnchorPointInputDialog, BoundsDialog
 from pymead.analysis.single_element_inviscid import single_element_inviscid
 from pymead.core.airfoil import Airfoil
-from PyQt5.QtWidgets import QCompleter, QWidget, QGridLayout, QLabel, QInputDialog, QHeaderView
+from PyQt5.QtWidgets import QWidget, QGridLayout, QLabel, QHeaderView
 from PyQt5.QtWidgets import QAbstractItemView
-from PyQt5 import QtCore
-from PyQt5.QtCore import pyqtSignal, pyqtSlot
+from PyQt5.QtCore import pyqtSignal
 from pymead.utils.downsampling_schemes import fractal_downsampler2
 from pymead.gui.autocomplete import Completer
-from PyQt5.QtCore import Qt
 from functools import partial
 import numpy as np
-from time import time
-
-import ctypes
 
 app = pg.mkQApp("Parameter Tree")
 
@@ -29,6 +24,7 @@ app = pg.mkQApp("Parameter Tree")
 # test subclassing parameters
 # This parameter automatically generates two child parameters which are always reciprocals of each other
 class MEAParameters(pTypes.GroupParameter):
+    """Class for storage of all the Multi-Element Airfoil Parameters."""
     def __init__(self, mea: MEA, status_bar, **opts):
         registerParameterItemType('selectable_header', SelectableHeaderParameterItem, override=True)
         opts['type'] = 'bool'
@@ -49,6 +45,7 @@ class MEAParameters(pTypes.GroupParameter):
             self.add_airfoil(a, idx)
 
     def add_airfoil(self, airfoil: Airfoil, idx: int):
+        """Adds an airfoil, along with its associated Parameters, into a Multi-Element Airfoil system using the GUI."""
         self.airfoil_headers.append(self.addChild(dict(name=airfoil.tag, type='selectable_header', value=True,
                                                        context={"add_fp": "Add FreePoint",
                                                                 "add_ap": "Add AnchorPoint"})))
@@ -95,18 +92,21 @@ class MEAParameters(pTypes.GroupParameter):
 
 
 class AirfoilParameter(pTypes.SimpleParameter):
+    """Subclass of SimpleParameter which adds the airfoil_param attribute (a `pymead.core.param.Param`)."""
     def __init__(self, airfoil_param: Param, **opts):
         self.airfoil_param = airfoil_param
         pTypes.SimpleParameter.__init__(self, **opts)
 
 
 class HeaderParameter(pTypes.GroupParameter):
+    """Simple class for containing Parameters with no value. HeaderParameter has a similar purpose to a key in a
+    nested dictionary."""
     def __init__(self, **opts):
         pTypes.GroupParameter.__init__(self, **opts)
 
 
-# this group includes a menu allowing the user to add new parameters into its child list
 class CustomGroup(pTypes.GroupParameter):
+    """Class for addition of Custom Parameters to the Multi-Element Airfoil system within the GUI"""
     def __init__(self, mea: MEA, **opts):
         opts['type'] = 'group'
         opts['addText'] = 'Add'
@@ -125,23 +125,10 @@ class CustomGroup(pTypes.GroupParameter):
                                       ))
         pg_param.airfoil_param = airfoil_param
         self.mea.param_dict['Custom'][default_name] = airfoil_param
-        # pg_param.sigNameChanged.connect(self.name_changed_action)
-
-    # def name_changed_action(self, pg_param):
-    # new_name = pg_param.name()
-    # key_to_change = ''
-    # for k, v in self.mea.param_dict['Custom'].items():
-    #     if v is pg_param.airfoil_param:
-    #         key_to_change = k
-    #         break
-    # if key_to_change == '':
-    #     raise ValueError('This shouldn\'t be possible...')
-    # self.mea.param_dict['Custom'][new_name] = self.mea.param_dict['Custom'].pop(key_to_change)
-    # print(f"new param_dict = {self.mea.param_dict['Custom']}")
 
 
-# Create two ParameterTree widgets, both accessing the same data
 class MEAParamTree:
+    """Class for containment of all Multi-Element Airfoil Parameters in the GUI"""
     def __init__(self, mea: MEA, status_bar, parent):
         self.dialog = None
         self.parent = parent
@@ -168,6 +155,7 @@ class MEAParamTree:
         self.equation_strings = {}
 
         def add_equation_boxes_recursively(child_list):
+            """Adds equation boxes for each loaded Airfoil Param which already contains an equation."""
             for child in child_list:
                 if hasattr(child, 'airfoil_param'):
                     if len(child.airfoil_param.function_dict) > 0:
@@ -179,6 +167,7 @@ class MEAParamTree:
                         add_equation_boxes_recursively(child.children())
 
         def set_readonly_recursively(child_list):
+            """Sets the state to ReadOnly for each Airfoil Parameter which has an equation."""
             for child in child_list:
                 if hasattr(child, 'airfoil_param'):
                     if child.airfoil_param.linked or not child.airfoil_param.active:
@@ -202,6 +191,8 @@ class MEAParamTree:
 
         # For any change in the tree:
         def change(_, changes):
+            """This function gets called any time the state of the ParameterTree or any of its child Parameters is
+            changed."""
 
             for param, change, data in changes:
 
@@ -371,19 +362,6 @@ class MEAParamTree:
                     recursive_refactor(self.p.param('Airfoil Parameters').children())
 
         self.p.sigTreeStateChanged.connect(change)
-
-        def save():
-            global state
-            state = self.p.saveState()
-
-        def restore():
-            global state
-            add = self.p['Save/Restore functionality', 'Restore State', 'Add missing items']
-            rem = self.p['Save/Restore functionality', 'Restore State', 'Remove extra items']
-            self.p.restoreState(state, addChildren=add, removeChildren=rem)
-
-        self.p.param('Save/Restore functionality', 'Save State').sigActivated.connect(save)
-        self.p.param('Save/Restore functionality', 'Restore State').sigActivated.connect(restore)
         self.t = CustomParameterTree(parent=parent)
         self.t.setSelectionMode(QAbstractItemView.ExtendedSelection)
         self.t.setParameters(self.p, showTop=False)
@@ -432,7 +410,15 @@ class MEAParamTree:
             self.equation_strings[pg_param.name()] = self.equation_widget(pg_param.child('Equation Definition'))
             self.update_auto_complete()
 
-    def plot_changed(self, airfoil_name: str):
+    @staticmethod
+    def plot_changed(airfoil_name: str):
+        """This function gets called any time an Airfoil is added or removed
+
+        Parameters
+        ==========
+        airfoil_name: str
+          Name of the airfoil being added or removed
+        """
 
         def block_changes(pg_param):
             pg_param.blockTreeChangeSignal()
@@ -532,6 +518,13 @@ class MEAParamTree:
             self.parent.disp_message_box("Could not compile function")
 
     def add_free_point(self, pg_param: Parameter):
+        """Adds a FreePoint to the specified Airfoil and updates the graph.
+
+        Parameters
+        ==========
+        pg_param: Parameter
+          HeaderParameter within the ParameterTree named with the FreePoint's Airfoil tag
+        """
         a_tag = pg_param.name()
         self.dialog = FreePointInputDialog(items=[("x", "double", 0.5), ("y", "double", 0.1),
                                                   ("Previous Anchor Point", "combo"),
@@ -572,6 +565,13 @@ class MEAParamTree:
                                               'setbounds': 'Set parameter bounds'}))
 
     def add_anchor_point(self, pg_param: Parameter):
+        """Adds an AnchorPoint to the specified Airfoil and updates the graph.
+
+        Parameters
+        ==========
+        pg_param: Parameter
+          HeaderParameter within the ParameterTree named with the AnchorPoint's Airfoil tag
+        """
         a_tag = pg_param.name()
         self.dialog = AnchorPointInputDialog(items=[("x", "double", 0.5), ("y", "double", 0.1),
                                                     ("L", "double", 0.1), ("R", "double", 2.0),
@@ -584,15 +584,24 @@ class MEAParamTree:
             inputs = self.dialog.getInputs()
         else:
             inputs = None
-        if inputs:
-            # id_list = []
+
+        if inputs:  # Continue only if the dialog was accepted:
             for curve in self.mea.airfoils[a_tag].curve_list:
-                curve.pg_curve_handle.clear()
+                curve.clear_curve_pg()
             ap = AnchorPoint(x=Param(inputs[0]), y=Param(inputs[1]), L=Param(inputs[2]), R=Param(inputs[3]),
                              r=Param(inputs[4]), phi=Param(inputs[5]), psi1=Param(inputs[6]),
                              psi2=Param(inputs[7]), previous_anchor_point=inputs[8], tag=inputs[9], airfoil_tag=a_tag)
+
+            # Stop execution if the AnchorPoint tag already exists for the airfoil
+            if ap.tag in self.mea.airfoils[a_tag].anchor_point_order:
+                self.parent.disp_message_box(f"AnchorPoint tag {ap.tag} already exists in Airfoil {a_tag}. "
+                                             f"Please choose a different name.")
+                return
+
+            # Insert the AnchorPoint and update the Airfoil
             self.mea.airfoils[a_tag].insert_anchor_point(ap)
             self.mea.airfoils[a_tag].update()
+
             self.mea.assign_names_to_params_in_param_dict()
             self.mea.airfoils[a_tag].init_airfoil_curve_pg(self.mea.airfoils[a_tag].airfoil_graph.v,
                                                            pen=pg.mkPen(color='cornflowerblue', width=2))
@@ -601,11 +610,14 @@ class MEAParamTree:
             pos, adj, symbols = self.mea.airfoils[a_tag].airfoil_graph.update_airfoil_data()
             self.mea.airfoils[a_tag].airfoil_graph.setData(pos=pos, adj=adj, size=8, pxMode=True,
                                                            symbol=symbols)
+
+            # Add the appropriate Headers to the ParameterTree:
             self.params[-1].child(a_tag).child('AnchorPoints').addChild(
                 HeaderParameter(name=ap.tag, type='bool', value='true', context={'remove_ap': 'Remove AnchorPoint'}))
             self.params[-1].child(a_tag).child('FreePoints').addChild(
                 HeaderParameter(name=ap.tag, type='bool', value='true'))
 
+            # Add the appropriate Parameters to the ParameterTree:
             for p_key, p_val in self.mea.param_dict[a_tag]['AnchorPoints'][ap.tag].items():
                 self.params[-1].child(a_tag).child('AnchorPoints').child(ap.tag).addChild(AirfoilParameter(
                     self.mea.param_dict[a_tag]['AnchorPoints'][ap.tag][p_key],
@@ -616,7 +628,13 @@ class MEAParamTree:
                              'activate': 'Activate parameter', 'setbounds': 'Set parameter bounds'}))
 
     def remove_free_point(self, pg_param: Parameter):
-        """Removes a FreePoint from an Airfoil and updates the graph"""
+        """Removes a FreePoint from an Airfoil and updates the graph
+
+        Parameters
+        ==========
+        pg_param: Parameter
+          HeaderParameter within the ParameterTree named with the FreePoint's tag
+        """
         # First, make sure that a FreePoint parameter was selected:
         if not pg_param.parent() or not pg_param.parent().parent() or not pg_param.parent().parent().name() == 'FreePoints':
             self.parent.disp_message_box('A FreePoint must be selected to remove; e.g., \'FP0\'')
@@ -643,10 +661,16 @@ class MEAParamTree:
                                                               symbol=symbols)
 
     def remove_anchor_point(self, pg_param: Parameter):
-        """Removes an AnchorPoint from an Airfoil and updates the graph"""
+        """Removes an AnchorPoint from an Airfoil and updates the graph
+
+        Parameters
+        ==========
+        pg_param: Parameter
+          HeaderParameter within the ParameterTree named with the AnchorPoint's tag
+        """
         # First, make sure that a FreePoint parameter was selected:
         if not pg_param.parent() or not pg_param.parent().name() == 'AnchorPoints':
-            self.parent.disp_message_box('A FreePoint must be selected to remove; e.g., \'FP0\'')
+            self.parent.disp_message_box('An AnchorPoint must be selected to remove; e.g., \'AP0\'')
             return
 
         # Get the Airfoil from which to remove the AnchorPoint:
@@ -673,16 +697,30 @@ class MEAParamTree:
         self.mea.airfoils[airfoil_name].airfoil_graph.setData(pos=pos, adj=adj, size=8, pxMode=True,
                                                               symbol=symbols)
 
-    def equation_widget(self, pg_param):
+    def equation_widget(self, pg_param: Parameter):
         """Acquires the equation's container QWidget"""
         return next((p for p in self.t.listAllItems() if hasattr(p, 'param') and p.param is pg_param)).widget
 
     @staticmethod
-    def block_changes(pg_param):
+    def block_changes(pg_param: Parameter):
+        """Blocks all changes to the specified parameter
+
+        Parameters
+        ==========
+        pg_param: Parameter
+          Parameter for which to block state changes
+        """
         pg_param.blockTreeChangeSignal()
 
     @staticmethod
     def flush_changes(pg_param):
+        """Flushes all changes from the specified parameter
+
+        Parameters
+        ==========
+        pg_param: Parameter
+          Parameter from which to flush state changes
+        """
         pg_param.treeStateChanges = []
         pg_param.blockTreeChangeEmit = 1
         pg_param.unblockTreeChangeSignal()
