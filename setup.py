@@ -1,5 +1,11 @@
 import pathlib
 from setuptools import setup
+from distutils.util import convert_path
+
+main_ns = {}
+ver_path = convert_path('mymodule/version.py')
+with open(ver_path) as ver_file:
+    exec(ver_file.read(), main_ns)
 
 # The directory containing this file
 HERE = pathlib.Path(__file__).parent
@@ -11,7 +17,7 @@ with open((HERE / "README.md"), encoding="utf-8") as f:
 # This call to setup() does all the work
 setup(
     name="pymead",
-    version="2.0.0",
+    version=main_ns['__version__'],
     description="Python library for generation, aerodynamic analysis, and aerodynamic shape optimization of "
                 "Bézier-parametrized airfoils and airfoil systems",
     long_description=README,
