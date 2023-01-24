@@ -326,6 +326,16 @@ class Param:
 
         return True
 
+    @classmethod
+    def from_param_dict(cls, param_dict: dict):
+        """Generates a Param from a JSON-saved param_dict (aids in backward/forward compatibility)"""
+        temp_dict = {'value': param_dict['_value']}
+        for attr_name, attr_value in param_dict.items():
+            if attr_name in ['units', 'bounds', 'scale_value', 'active', 'linked', 'func_str', 'x', 'y', 'xp',
+                             'yp', 'name']:
+                temp_dict[attr_name] = attr_value
+        return cls(**temp_dict)
+
 
 if __name__ == '__main__':
     from pymead.core.mea import MEA

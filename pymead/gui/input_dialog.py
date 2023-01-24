@@ -1046,7 +1046,7 @@ class BoundsDialog(QDialog):
 
 
 class LoadDialog(QFileDialog):
-    def __init__(self, parent, file_filter: str = "PyMEAD Files (*.mead)"):
+    def __init__(self, parent, file_filter: str = "JMEA Files (*.jmea)"):
         super().__init__(parent=parent)
         self.setFileMode(QFileDialog.ExistingFile)
         self.setNameFilter(self.tr(file_filter))
@@ -1054,7 +1054,7 @@ class LoadDialog(QFileDialog):
 
 
 class SaveAsDialog(QFileDialog):
-    def __init__(self, parent, file_filter: str = "PyMEAD Files (*.mead)"):
+    def __init__(self, parent, file_filter: str = "JMEA Files (*.jmea)"):
         super().__init__(parent=parent)
         self.setFileMode(QFileDialog.AnyFile)
         self.setNameFilter(self.tr(file_filter))

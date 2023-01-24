@@ -72,7 +72,7 @@ class AirfoilGraph(pg.GraphItem):
 
         # Update the graph
         self.setData(pos=pos, adj=adj, size=8, pxMode=True, symbol=symbols)
-        self.v.disableAutoRange()
+        # self.v.disableAutoRange()
         self.scatter.sigClicked.connect(self.clicked)
         # self.scatter.sigPlotChanged.connect(self.clicked)
         self.my_signal.connect(self.slot)
