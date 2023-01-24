@@ -1,5 +1,5 @@
 from functools import reduce
-
+from copy import deepcopy
 import numpy as np
 
 
@@ -49,3 +49,24 @@ def unravel_param_dict(d: dict, output_dict: dict, prep_for_json: bool = True):
                                     'function_dict', 'func']:
                         param_dict_attrs[attr_key] = None
             output_dict[k] = param_dict_attrs
+
+
+def unravel_param_dict_deepcopy(d: dict, output_dict: dict, prep_for_json: bool = True):
+    for k, v in d.items():
+        if isinstance(v, dict):
+            output_dict[k] = {}
+            unravel_param_dict_deepcopy(v, output_dict[k], prep_for_json=prep_for_json)
+        else:
+            param_dict_attrs = vars(v)
+            temp_dict = {}
+            for attr_key, attr in param_dict_attrs.items():
+                if prep_for_json:
+                    if isinstance(attr, np.ndarray):
+                        temp_dict[attr_key] = deepcopy(attr.tolist())
+                    if attr_key in ['mea', 'param_dict', 'free_point', 'anchor_point', 'affects', 'depends_on',
+                                    'function_dict', 'func']:
+                        temp_dict[attr_key] = None
+                    else:
+                        if not isinstance(attr, np.ndarray):
+                            temp_dict[attr_key] = deepcopy(attr)
+            output_dict[k] = temp_dict

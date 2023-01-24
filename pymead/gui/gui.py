@@ -35,7 +35,7 @@ from pymead.gui.input_dialog import convert_dialog_to_mset_settings, convert_dia
     convert_dialog_to_mplot_settings
 from pymead.gui.airfoil_statistics import AirfoilStatisticsDialog, AirfoilStatistics
 from pymead.gui.custom_graphics_view import CustomGraphicsView
-from pymead.utils.dict_recursion import unravel_param_dict
+from pymead.utils.dict_recursion import unravel_param_dict_deepcopy
 
 import pymoo.core.population
 from pymoo.algorithms.moo.unsga3 import UNSGA3
@@ -73,6 +73,7 @@ class GUI(QMainWindow):
 
         self.design_tree = None
         self.dialog = None
+        self.save_attempts = 0
         self.opt_settings = None
         self.xfoil_settings = None
         self.mset_settings = None
@@ -234,17 +235,17 @@ class GUI(QMainWindow):
         self.param_dict_menu = QMenu("Parameter Dictionary", self)
         self.export_menu.addMenu(self.param_dict_menu)
 
-        self.param_dict_dill_action = QAction("Dill Serialization", self)
-        self.param_dict_menu.addAction(self.param_dict_dill_action)
-        self.param_dict_dill_action.triggered.connect(partial(self.export_param_dict, 'dill'))
-
-        self.param_dict_pkl_action = QAction("Pickle Serialization", self)
-        self.param_dict_menu.addAction(self.param_dict_pkl_action)
-        self.param_dict_pkl_action.triggered.connect(partial(self.export_param_dict, 'pkl'))
-
-        self.param_dict_json_action = QAction("JSON Serialization", self)
-        self.param_dict_menu.addAction(self.param_dict_json_action)
-        self.param_dict_json_action.triggered.connect(partial(self.export_param_dict, 'json'))
+        # self.param_dict_dill_action = QAction("Dill Serialization", self)
+        # self.param_dict_menu.addAction(self.param_dict_dill_action)
+        # self.param_dict_dill_action.triggered.connect(partial(self.export_param_dict, 'dill'))
+        #
+        # self.param_dict_pkl_action = QAction("Pickle Serialization", self)
+        # self.param_dict_menu.addAction(self.param_dict_pkl_action)
+        # self.param_dict_pkl_action.triggered.connect(partial(self.export_param_dict, 'pkl'))
+        #
+        # self.param_dict_json_action = QAction("JSON Serialization", self)
+        # self.param_dict_menu.addAction(self.param_dict_json_action)
+        # self.param_dict_json_action.triggered.connect(partial(self.export_param_dict, 'json'))
 
         # Analysis Menu set-up
         self.analysis_menu = QMenu("&Analysis", self)
@@ -293,17 +294,32 @@ class GUI(QMainWindow):
         dialog = SaveAsDialog(self)
         if dialog.exec_():
             self.mea.file_name = dialog.selectedFiles()[0]
+            if self.mea.file_name[-5:] != '.jmea':
+                self.mea.file_name += '.jmea'
             self.save_mea()
         else:
-            pass
+            if self.save_attempts > 0:
+                self.save_attempts = 0
+                self.disp_message_box('No file name specified. File not saved.', message_mode='warn')
 
     def save_mea(self):
-        with open(os.path.join(os.getcwd(), self.mea.file_name), "wb") as f:
-            dill.dump(self.mea, f)
-        for idx, airfoil in enumerate(self.mea.airfoils.values()):
-            self.mea.add_airfoil_graph_to_airfoil(airfoil, idx, self.param_tree_instance, w=self.w, v=self.v)
-        for a_name, a in self.mea.airfoils.items():
-            a.airfoil_graph.scatter.sigPlotChanged.connect(partial(self.param_tree_instance.plot_changed, a_name))
+        if self.mea.file_name is None:
+            if self.save_attempts < 1:
+                self.save_attempts += 1
+                self.save_as_mea()
+            else:
+                self.save_attempts = 0
+                self.disp_message_box('No file name specified. File not saved.', message_mode='warn')
+        else:
+            output_dict_ = {}
+            unravel_param_dict_deepcopy(self.mea.param_dict, output_dict=output_dict_, prep_for_json=True)
+            for k, v in output_dict_.items():
+                if k != 'Custom':
+                    output_dict_[k]['anchor_point_order'] = deepcopy(self.mea.airfoils[k].anchor_point_order)
+                    output_dict_[k]['free_point_order'] = deepcopy(self.mea.airfoils[k].free_point_order)
+            output_dict_['file_name'] = self.mea.file_name
+            save_data(deepcopy(output_dict_), self.mea.file_name)
+            self.save_attempts = 0
 
     def copy_mea(self):
         mea_copy = dill.copy(self.mea)
@@ -355,29 +371,34 @@ class GUI(QMainWindow):
                     self.geometry_plot_handles[geometry_name].setData(coords[:, 0], coords[:, 1])
                     break
 
-    def export_param_dict(self, serialize_mode: str):
-        if serialize_mode in ['pkl', 'pickle', 'PICKLE', 'Pickle', '.pkl']:
-            dialog = SaveAsDialog(self, file_filter="Pickle Files (*.pkl)")
-            if dialog.exec_():
-                file_name = dialog.selectedFiles()[0]
-                save_data(self.mea.param_dict, file_name)
-        elif serialize_mode in ['dill', 'Dill', 'DILL', '.dill']:
-            dialog = SaveAsDialog(self, file_filter="Dill Files (*.dill)")
-            if dialog.exec_():
-                file_name = dialog.selectedFiles()[0]
-                save_data(self.mea.param_dict, file_name)
-        elif serialize_mode in ['json', 'Json', 'JSON', 'jason', 'Jason', 'JASON', '.json']:
-            dialog = SaveAsDialog(self, file_filter="JSON Files (*.json)")
-            if dialog.exec_():
-                file_name = dialog.selectedFiles()[0]
-                output_dict_ = {}
-                param_dict_copy = deepcopy(self.mea.param_dict)
-                unravel_param_dict(param_dict_copy, output_dict=output_dict_, prep_for_json=True)
-                save_data(output_dict_, file_name)
+    # def export_param_dict(self, serialize_mode: str):
+    #     if serialize_mode in ['pkl', 'pickle', 'PICKLE', 'Pickle', '.pkl']:
+    #         dialog = SaveAsDialog(self, file_filter="Pickle Files (*.pkl)")
+    #         if dialog.exec_():
+    #             file_name = dialog.selectedFiles()[0]
+    #             save_data(self.mea.param_dict, file_name)
+    #     elif serialize_mode in ['dill', 'Dill', 'DILL', '.dill']:
+    #         dialog = SaveAsDialog(self, file_filter="Dill Files (*.dill)")
+    #         if dialog.exec_():
+    #             file_name = dialog.selectedFiles()[0]
+    #             save_data(self.mea.param_dict, file_name)
+    #     elif serialize_mode in ['json', 'Json', 'JSON', 'jason', 'Jason', 'JASON', '.json']:
+    #         dialog = SaveAsDialog(self, file_filter="JSON Files (*.json)")
+    #         if dialog.exec_():
+    #             file_name = dialog.selectedFiles()[0]
+    #             output_dict_ = {}
+    #             unravel_param_dict_deepcopy(self.mea.param_dict, output_dict=output_dict_, prep_for_json=True)
+    #             for k, v in output_dict_.items():
+    #                 if k != 'Custom':
+    #                     output_dict_[k]['anchor_point_order'] = deepcopy(self.mea.airfoils[k].anchor_point_order)
+    #                     output_dict_[k]['free_point_order'] = deepcopy(self.mea.airfoils[k].free_point_order)
+    #             save_data(deepcopy(output_dict_), file_name)
+    #             mea = MEA.generate_from_param_dict(output_dict_)
 
     def load_mea_no_dialog(self, file_name):
-        with open(os.path.join(os.getcwd(), file_name), "rb") as f:
-            self.mea = dill.load(f)
+        self.mea = MEA.generate_from_param_dict(load_data(file_name))
+        for a in self.mea.airfoils.values():
+            a.update()
         self.v.clear()
         for idx, airfoil in enumerate(self.mea.airfoils.values()):
             self.mea.add_airfoil_graph_to_airfoil(airfoil, idx, None, w=self.w, v=self.v)
@@ -387,7 +408,8 @@ class GUI(QMainWindow):
             a.airfoil_graph.airfoil_parameters = a.airfoil_graph.param_tree.p.param('Airfoil Parameters')
         self.design_tree_widget = self.param_tree_instance.t
         self.main_layout.replaceWidget(self.main_layout.itemAt(0).widget(), self.design_tree_widget)
-        self.v.autoRange()
+        x_data_range, y_data_range = self.mea.get_curve_bounds()
+        self.v.getViewBox().setRange(xRange=x_data_range, yRange=y_data_range)
 
     def disp_message_box(self, message: str, message_mode: str = 'error'):
         disp_message_box(message, self, message_mode=message_mode)

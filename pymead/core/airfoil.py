@@ -153,7 +153,8 @@ class Airfoil:
         free_point.airfoil_transformation = {'dx': self.dx, 'dy': self.dy, 'alf': self.alf, 'c': self.c}
 
         # Name the FreePoint by incrementing the max of the FreePoint tag indexes by one (or use 0 if no FreePoints)
-        free_point.set_tag(max_string_index_plus_one(self.free_point_order[free_point.anchor_point_tag]))
+        if not free_point.tag:
+            free_point.set_tag(max_string_index_plus_one(self.free_point_order[free_point.anchor_point_tag]))
         # fp_idx = get_prefix_and_index_from_string(free_point.tag)[1]
 
         if free_point.anchor_point_tag in self.free_points.keys():

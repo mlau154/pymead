@@ -1,4 +1,7 @@
 from pymead.core.airfoil import Airfoil
+from pymead.core.base_airfoil_params import BaseAirfoilParams
+from pymead.core.anchor_point import AnchorPoint
+from pymead.core.free_point import FreePoint
 from pymead.core.param import Param
 from pymead.utils.dict_recursion import set_all_dict_values, assign_airfoil_tags_to_param_dict, \
     assign_names_to_params_in_param_dict
@@ -7,6 +10,7 @@ import benedict
 import numpy as np
 import os
 from pymead import DATA_DIR
+from copy import deepcopy
 
 
 class MEA:
@@ -75,13 +79,6 @@ class MEA:
 
         if self.airfoil_graphs_active:
             self.add_airfoil_graph_to_airfoil(airfoil, idx, param_tree)
-
-    def mirror(self, airfoil_target: str, airfoil_tool: str, fp_or_ap_target: str, fp_or_ap_tool: str):
-        d1 = benedict.benedict(self.param_dict[airfoil_target])
-        d2 = benedict.benedict(self.param_dict[airfoil_tool])
-        subdict1 = d1.search(fp_or_ap_target)
-        subdict2 = d2.search(fp_or_ap_tool)
-
 
     def assign_names_to_params_in_param_dict(self):
         assign_names_to_params_in_param_dict(self.param_dict)
@@ -344,10 +341,123 @@ class MEA:
 
         return keypaths
 
+    def get_curve_bounds(self):
+        x_range, y_range = (None, None), (None, None)
+        for a in self.airfoils.values():
+            if not a.airfoil_graph:
+                raise ValueError('pyqtgraph curves must be initialized to get curve bounds')
+            for c in a.curve_list:
+                curve = c.pg_curve_handle
+                x_lims = curve.dataBounds(ax=0)
+                y_lims = curve.dataBounds(ax=1)
+                if x_range[0] is None:
+                    x_range = x_lims
+                    y_range = y_lims
+                else:
+                    if x_lims[0] < x_range[0]:
+                        x_range = (x_lims[0], x_range[1])
+                    if x_lims[1] > x_range[1]:
+                        x_range = (x_range[0], x_lims[1])
+                    if y_lims[0] < y_range[0]:
+                        y_range = (y_lims[0], y_range[1])
+                    if y_lims[1] > y_range[1]:
+                        y_range = (y_range[0], y_lims[1])
+
+                # Check if control points are out of range
+                x_ctrlpt_range = (np.min(c.P[:, 0]), np.max(c.P[:, 0]))
+                y_ctrlpt_range = (np.min(c.P[:, 1]), np.max(c.P[:, 1]))
+                if x_ctrlpt_range[0] < x_range[0]:
+                    x_range = (x_ctrlpt_range[0], x_range[1])
+                if x_ctrlpt_range[1] > x_range[1]:
+                    x_range = (x_range[0], x_ctrlpt_range[1])
+                if y_ctrlpt_range[0] < y_range[0]:
+                    y_range = (y_ctrlpt_range[0], y_range[1])
+                if y_ctrlpt_range[1] > y_range[1]:
+                    y_range = (y_range[0], y_ctrlpt_range[1])
+        return x_range, y_range
+
+    @classmethod
+    def generate_from_param_dict(cls, param_dict: dict):
+        """Reconstruct an MEA from the MEA's JSON-saved param_dict"""
+        base_params_dict = {k: v['Base'] for k, v in param_dict.items() if isinstance(v, dict) and 'Base' in v.keys()}
+        base_params = {}
+        for airfoil_name, airfoil_base_dict in base_params_dict.items():
+            base_params[airfoil_name] = {}
+            for pname, pdict in airfoil_base_dict.items():
+                # temp_dict = {'value': pdict['_value']}
+                # for attr_name, attr_value in pdict.items():
+                #     if attr_name in ['units', 'bounds', 'scale_value', 'active', 'linked', 'func_str', 'x', 'y', 'xp',
+                #                      'yp', 'name']:
+                #         temp_dict[attr_name] = attr_value
+                base_params[airfoil_name][pname] = Param.from_param_dict(pdict)
+        airfoil_list = []
+        for airfoil_name, airfoil_base_dict in base_params.items():
+            base = BaseAirfoilParams(airfoil_tag=airfoil_name, **airfoil_base_dict)
+            airfoil_list.append(Airfoil(base_airfoil_params=base, tag=airfoil_name))
+        mea = cls(airfoils=airfoil_list)
+        mea.file_name = param_dict['file_name']
+        for a_name, airfoil in mea.airfoils.items():
+            ap_order = param_dict[a_name]['anchor_point_order']
+            aps = param_dict[a_name]['AnchorPoints']
+            for idx, ap_name in enumerate(ap_order):
+                if ap_name not in ['te_1', 'le', 'te_2']:
+                    ap_dict = aps[ap_name]
+                    ap_param_dict = {}
+                    for pname, pdict in ap_dict.items():
+                        if pname not in ['xp', 'yp']:
+                            ap_param_dict[pname] = Param.from_param_dict(pdict)
+
+                    # Create an AnchorPoint from the saved parameter dictionary:
+                    ap = AnchorPoint(airfoil_tag=a_name, tag=ap_name, previous_anchor_point=ap_order[idx - 1],
+                                     **ap_param_dict)
+
+                    # Override the global x and y position of the AnchorPoint because this is not an input to the AP:
+                    for pname, pdict in ap_dict.items():
+                        if pname in ['xp', 'yp']:
+                            setattr(ap, pname, Param.from_param_dict(pdict))
+
+                    # Now, insert the AnchorPoint into the Airfoil
+                    airfoil.insert_anchor_point(ap)
+
+            for ap_name, fp_list in param_dict[a_name]['free_point_order'].items():
+                print(f"{fp_list = }")
+                fps = param_dict[a_name]['FreePoints'][ap_name]
+                for idx, fp_name in enumerate(fp_list):
+                    fp_dict = fps[fp_name]
+                    fp_param_dict = {}
+                    for pname, pdict in fp_dict.items():
+                        if pname not in ['xp', 'yp']:
+                            fp_param_dict[pname] = Param.from_param_dict(pdict)
+
+                    previous_fp = fp_list[idx - 1] if idx > 0 else None
+                    # Create a FreePoint from the saved parameter dictionary:
+                    fp = FreePoint(airfoil_tag=a_name, tag=fp_name, previous_anchor_point=ap_name,
+                                   previous_free_point=previous_fp, **fp_param_dict)
+
+                    # Override the global x and y position of the FreePoint because this is not an input to the FP:
+                    for pname, pdict in fp_dict.items():
+                        if pname in ['xp', 'yp']:
+                            setattr(fp, pname, Param.from_param_dict(pdict))
+
+                    # Now, insert the FreePoint into the Airfoil
+                    airfoil.insert_free_point(fp)
+
+        for custom_name, custom_param in param_dict['Custom'].items():
+            custom_param_dict = {}
+            temp_dict = {'value': custom_param['_value']}
+            for attr_name, attr_value in custom_param.items():
+                if attr_name in ['units', 'bounds', 'scale_value', 'active', 'linked', 'func_str', 'x', 'y', 'xp',
+                                 'yp', 'name']:
+                    temp_dict[attr_name] = attr_value
+            custom_param_dict[custom_name] = deepcopy(temp_dict)  # Need deepcopy here?
+            mea.add_custom_parameters(custom_param_dict)
+        pass
+
+        return mea
+
 
 if __name__ == '__main__':
     from pymead.core.base_airfoil_params import BaseAirfoilParams
-    from pymead.core.param import Param
     from matplotlib.pyplot import subplots, show
     airfoil1 = Airfoil()
     airfoil2 = Airfoil(base_airfoil_params=BaseAirfoilParams(dy=Param(0.2)))
