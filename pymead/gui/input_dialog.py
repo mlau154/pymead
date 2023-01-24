@@ -1671,7 +1671,7 @@ class ExportCoordinatesDialog(QDialog):
 
         self.grid_widget['airfoil_order']['line'].setText(','.join([k for k in self.parent().mea.airfoils.keys()]))
 
-        self.grid_layout.addWidget(buttonBox, 6, 1, 1, 2)
+        self.grid_layout.addWidget(buttonBox, 7, 1, 1, 2)
 
         buttonBox.accepted.connect(self.accept)
         buttonBox.rejected.connect(self.reject)
@@ -1686,12 +1686,18 @@ class ExportCoordinatesDialog(QDialog):
                 if "text" in w_dict.keys() and isinstance(widget, (QLabel, QLineEdit, QPushButton)):
                     widget.setText(w_dict["text"])
                 if "func" in w_dict.keys() and isinstance(widget, QPushButton):
-                    widget.clicked.connect(partial(getattr(self, w_dict["func"]), self.grid_widget[row_name]["line"]))
+                    if row_name == 'choose_dir':
+                        widget.clicked.connect(partial(getattr(self, w_dict["func"]),
+                                                       self.grid_widget[row_name]["line"]))
+                    else:
+                        widget.clicked.connect(getattr(self, w_dict["func"]))
+                if "tool_tip" in w_dict.keys():
+                    widget.setToolTip(w_dict["tool_tip"])
                 self.grid_layout.addWidget(widget, w_dict["grid"][0], w_dict["grid"][1], w_dict["grid"][2],
                                            w_dict["grid"][3])
 
     def getInputs(self):
-        inputs = {k: v["line"].text() for k, v in self.grid_widget.items()}
+        inputs = {k: v["line"].text() if "line" in v.keys() else None for k, v in self.grid_widget.items()}
 
         # Make sure any newline characters are not double-escaped:
         for k, input_ in inputs.items():
@@ -1705,3 +1711,9 @@ class ExportCoordinatesDialog(QDialog):
                                                         QFileDialog.ShowDirsOnly)
         if selected_dir:
             line_edit.setText(selected_dir)
+
+    def format_mses(self):
+        self.grid_widget["header"]["line"].setText("airfoil_name\\n-3.0 3.0 -3.0 3.0")
+        self.grid_widget["separator"]["line"].setText("999.0 999.0\\n")
+        self.grid_widget["delimiter"]["line"].setText(" ")
+        self.grid_widget["file_name"]["line"].setText("blade.airfoil_name")
