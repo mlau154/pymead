@@ -1,0 +1,33 @@
+{
+  "File": {
+    "Open": "load_mea",
+    "Save As": "save_as_mea",
+    "Save": "save_mea",
+    "Import": {
+      "Parameter List": "import_parameter_list"
+    },
+    "Export": {
+      "Airfoil Coordinates": "export_coordinates"
+    }
+  },
+  "View": {
+    "Fit": "auto_range_geometry"
+  },
+  "Analysis": {
+    "Single Airfoil": {
+      "Inviscid": "single_airfoil_inviscid_analysis",
+      "Viscous": "single_airfoil_viscous_analysis"
+    },
+    "Multi-Element Airfoil": "multi_airfoil_analysis_setup"
+  },
+  "Optimization": {
+    "Run": "setup_optimization"
+  },
+  "Tools": {
+    "Match Airfoil": "match_airfoil",
+    "Airfoil Statistics": "display_airfoil_statistics"
+  },
+  "Plot": {
+    "Geometry From File": "plot_geometry"
+  }
+}

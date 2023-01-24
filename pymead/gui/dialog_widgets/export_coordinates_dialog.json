@@ -1,0 +1,80 @@
+{
+  "airfoil_order": {
+    "label": {
+      "w": "QLabel",
+      "text": "Airfoil Order",
+      "grid": [0, 0, 1, 1]
+    },
+    "line": {
+      "w": "QLineEdit",
+      "text": "A0",
+      "grid": [0, 1, 1, 2]
+    }
+  },
+  "header": {
+    "label": {
+      "w": "QLabel",
+      "text": "Header",
+      "grid": [1, 0, 1, 1]
+    },
+    "line": {
+      "w": "QLineEdit",
+      "text": "",
+      "grid": [1, 1, 1, 2]
+    }
+  },
+  "separator": {
+    "label": {
+      "w": "QLabel",
+      "text": "Separator",
+      "grid": [2, 0, 1, 1]
+    },
+    "line": {
+      "w": "QLineEdit",
+      "text": "",
+      "grid": [2, 1, 1, 2]
+    }
+  },
+  "delimiter": {
+    "label": {
+      "w": "QLabel",
+      "text": "Delimiter",
+      "grid": [3, 0, 1, 1]
+    },
+    "line": {
+      "w": "QLineEdit",
+      "text": " ",
+      "grid": [3, 1, 1, 1]
+    }
+  },
+  "choose_dir": {
+    "label": {
+      "w": "QLabel",
+      "text": "Choose directory",
+      "grid": [4, 0, 1, 1]
+    },
+    "line": {
+      "w": "QLineEdit",
+      "text": "",
+      "grid": [4, 1, 1, 1]
+    },
+    "button": {
+      "w": "QPushButton",
+      "text": "Select",
+      "grid": [4, 2, 1, 1],
+      "func": "select_directory"
+    }
+  },
+  "file_name": {
+    "label": {
+      "w": "QLabel",
+      "text": "File name",
+      "grid": [5, 0, 1, 1]
+    },
+    "line": {
+      "w": "QLineEdit",
+      "text": "coords.dat",
+      "grid": [5, 1, 1, 2]
+    }
+  }
+}

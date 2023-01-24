@@ -11,7 +11,7 @@ from PyQt5.QtSvg import QSvgWidget
 from pymead.core.airfoil import Airfoil
 from pymead import RESOURCE_DIR
 from pymead.gui.input_dialog import SingleAirfoilViscousDialog, LoadDialog, SaveAsDialog, OptimizationSetupDialog, \
-    MultiAirfoilDialog, ColorInputDialog
+    MultiAirfoilDialog, ColorInputDialog, ExportCoordinatesDialog
 from pymead.gui.analysis_graph import AnalysisGraph
 from pymead.gui.parameter_tree import MEAParamTree
 from pymead.utils.airfoil_matching import match_airfoil
@@ -53,6 +53,8 @@ import numpy as np
 import dill
 from copy import deepcopy
 from functools import partial
+from pymead.version import __version__
+import shutil
 import sys
 import os
 import random
@@ -125,7 +127,6 @@ class GUI(QMainWindow):
         #                                      internal_geometry_xy[:, 1] * scale_factor,
         #                                      pen=pg.mkPen(color='orange', width=1))
         # self.airfoil_graphs.append(AirfoilGraph(self.mea.airfoils['A1'], w=self.w, v=self.v))
-        self.main_layout_upper = QVBoxLayout()
         self.main_layout = QHBoxLayout()
         self.setStatusBar(QStatusBar(self))
         self.param_tree_instance = MEAParamTree(self.mea, self.statusBar(), parent=self)
@@ -174,6 +175,10 @@ class GUI(QMainWindow):
             self.set_dark_mode()
         if self.path is not None:
             self.load_mea_no_dialog(self.path)
+        self.auto_range_geometry()
+        self.output_area_text(f"<font color='#1fbbcc' size='5'>pymead</font> <font size='5'>version</font> "
+                              f"<font color='#44e37e' size='5'>{__version__}</font>",
+                              mode='html')
 
     def set_dark_mode(self):
         self.setStyleSheet("background-color: #3e3f40; color: #dce1e6; font-family: DejaVu; font-size: 12px;")
@@ -192,103 +197,100 @@ class GUI(QMainWindow):
 
     def create_menu_bar(self):
         self.menu_bar = self.menuBar()
+        menu_data = load_data('menu.json')
+
+        # for menu_name, menu_dict in menu_names.items():
+
         # print(self.menu_bar)
-        self.menu_names = {"&File": ["&Open", "&Save"]}
-        # def recursively_add_menus(menu: dict, menu_bar: QMenu):
-        #     for key, val in menu.items():
-        #         if isinstance(val, dict):
-        #             menu_bar.addMenu(QMenu(key, self))
-        #             recursively_add_menus(val, menu_bar.children()[0])
-        #         else:
+        # self.menu_names = {"&File": ["&Open", "&Save"]}
+        def recursively_add_menus(menu: dict, menu_bar: QObject):
+            for key, val in menu.items():
+                if isinstance(val, dict):
+                    menu_bar.addMenu(QMenu(key, parent=menu_bar))
+                    recursively_add_menus(val, menu_bar.children()[-1])
+                else:
+                    action = QAction(key, parent=menu_bar)
+                    action_parent = action.parent()
+                    if isinstance(action_parent, QMenu):
+                        action_parent.addAction(action)
+                    else:
+                        raise ValueError('Attempted to add QAction to an object not of type QMenu')
+                    action.triggered.connect(getattr(self, val))
+
+        recursively_add_menus(menu_data, self.menu_bar)
+
+        # # File Menu set-up
+        # self.file_menu = QMenu("&File", self)
+        # self.menu_bar.addMenu(self.file_menu)
         #
-
-        # File Menu set-up
-        self.file_menu = QMenu("&File", self)
-        self.menu_bar.addMenu(self.file_menu)
-
-        self.open_action = QAction("Open", self)
-        self.file_menu.addAction(self.open_action)
-        self.open_action.triggered.connect(self.load_mea)
-
-        self.save_as_action = QAction("Save As", self)
-        self.file_menu.addAction(self.save_as_action)
-        self.save_as_action.triggered.connect(self.save_as_mea)
-
-        self.save_action = QAction("Save", self)
-        self.file_menu.addAction(self.save_action)
-        self.save_action.triggered.connect(self.save_mea)
-
-        self.settings_action = QAction("Settings", self)
-        self.file_menu.addAction(self.settings_action)
-        # self.settings_action.triggered.connect()
-
-        self.import_menu = QMenu("&Import", self)
-        self.file_menu.addMenu(self.import_menu)
-
-        self.parameter_list_action = QAction("Parameter List", self)
-        self.import_menu.addAction(self.parameter_list_action)
-        self.parameter_list_action.triggered.connect(self.import_parameter_list)
-
-        self.export_menu = QMenu("&Export", self)
-        self.file_menu.addMenu(self.export_menu)
-
-        self.param_dict_menu = QMenu("Parameter Dictionary", self)
-        self.export_menu.addMenu(self.param_dict_menu)
-
-        # self.param_dict_dill_action = QAction("Dill Serialization", self)
-        # self.param_dict_menu.addAction(self.param_dict_dill_action)
-        # self.param_dict_dill_action.triggered.connect(partial(self.export_param_dict, 'dill'))
+        # self.open_action = QAction("Open", self)
+        # self.file_menu.addAction(self.open_action)
+        # self.open_action.triggered.connect(self.load_mea)
         #
-        # self.param_dict_pkl_action = QAction("Pickle Serialization", self)
-        # self.param_dict_menu.addAction(self.param_dict_pkl_action)
-        # self.param_dict_pkl_action.triggered.connect(partial(self.export_param_dict, 'pkl'))
+        # self.save_as_action = QAction("Save As", self)
+        # self.file_menu.addAction(self.save_as_action)
+        # self.save_as_action.triggered.connect(self.save_as_mea)
         #
-        # self.param_dict_json_action = QAction("JSON Serialization", self)
-        # self.param_dict_menu.addAction(self.param_dict_json_action)
-        # self.param_dict_json_action.triggered.connect(partial(self.export_param_dict, 'json'))
-
-        # Analysis Menu set-up
-        self.analysis_menu = QMenu("&Analysis", self)
-        self.menu_bar.addMenu(self.analysis_menu)
-
-        self.single_menu = QMenu("Single Airfoil", self)
-        self.analysis_menu.addMenu(self.single_menu)
-        self.multi_action = QAction("Multi-Element Airfoil", self)
-        self.analysis_menu.addAction(self.multi_action)
-        self.multi_action.triggered.connect(self.multi_airfoil_analysis_setup)
-
-        self.single_inviscid_action = QAction("Invisid", self)
-        self.single_menu.addAction(self.single_inviscid_action)
-        self.single_inviscid_action.triggered.connect(self.single_airfoil_inviscid_analysis)
-
-        self.single_viscous_action = QAction("Viscous", self)
-        self.single_menu.addAction(self.single_viscous_action)
-        self.single_viscous_action.triggered.connect(self.single_airfoil_viscous_analysis)
-
-        self.opt_menu = QMenu("&Optimization", self)
-        self.menu_bar.addMenu(self.opt_menu)
-
-        self.opt_run_action = QAction("Run", self)
-        self.opt_menu.addAction(self.opt_run_action)
-        self.opt_run_action.triggered.connect(self.setup_optimization)
-
-        self.tools_menu = QMenu("&Tools", self)
-        self.menu_bar.addMenu(self.tools_menu)
-
-        self.match_airfoil_action = QAction("Match Airfoil", self)
-        self.tools_menu.addAction(self.match_airfoil_action)
-        self.match_airfoil_action.triggered.connect(self.match_airfoil)
-
-        self.airfoil_stats_action = QAction("Airfoil Statistics", self)
-        self.tools_menu.addAction(self.airfoil_stats_action)
-        self.airfoil_stats_action.triggered.connect(self.display_airfoil_statistics)
-
-        self.plot_menu = QMenu("&Plot", self)
-        self.menu_bar.addMenu(self.plot_menu)
-
-        self.plot_geometry_from_file_action = QAction("Geometry From File", self)
-        self.plot_menu.addAction(self.plot_geometry_from_file_action)
-        self.plot_geometry_from_file_action.triggered.connect(self.plot_geometry)
+        # self.save_action = QAction("Save", self)
+        # self.file_menu.addAction(self.save_action)
+        # self.save_action.triggered.connect(self.save_mea)
+        #
+        # self.settings_action = QAction("Settings", self)
+        # self.file_menu.addAction(self.settings_action)
+        # # self.settings_action.triggered.connect()
+        #
+        # self.import_menu = QMenu("&Import", self)
+        # self.file_menu.addMenu(self.import_menu)
+        #
+        # self.parameter_list_action = QAction("Parameter List", self)
+        # self.import_menu.addAction(self.parameter_list_action)
+        # self.parameter_list_action.triggered.connect(self.import_parameter_list)
+        #
+        # self.export_menu = QMenu("&Export", self)
+        # self.file_menu.addMenu(self.export_menu)
+        #
+        # # Analysis Menu set-up
+        # self.analysis_menu = QMenu("&Analysis", self)
+        # self.menu_bar.addMenu(self.analysis_menu)
+        #
+        # self.single_menu = QMenu("Single Airfoil", self)
+        # self.analysis_menu.addMenu(self.single_menu)
+        # self.multi_action = QAction("Multi-Element Airfoil", self)
+        # self.analysis_menu.addAction(self.multi_action)
+        # self.multi_action.triggered.connect(self.multi_airfoil_analysis_setup)
+        #
+        # self.single_inviscid_action = QAction("Invisid", self)
+        # self.single_menu.addAction(self.single_inviscid_action)
+        # self.single_inviscid_action.triggered.connect(self.single_airfoil_inviscid_analysis)
+        #
+        # self.single_viscous_action = QAction("Viscous", self)
+        # self.single_menu.addAction(self.single_viscous_action)
+        # self.single_viscous_action.triggered.connect(self.single_airfoil_viscous_analysis)
+        #
+        # self.opt_menu = QMenu("&Optimization", self)
+        # self.menu_bar.addMenu(self.opt_menu)
+        #
+        # self.opt_run_action = QAction("Run", self)
+        # self.opt_menu.addAction(self.opt_run_action)
+        # self.opt_run_action.triggered.connect(self.setup_optimization)
+        #
+        # self.tools_menu = QMenu("&Tools", self)
+        # self.menu_bar.addMenu(self.tools_menu)
+        #
+        # self.match_airfoil_action = QAction("Match Airfoil", self)
+        # self.tools_menu.addAction(self.match_airfoil_action)
+        # self.match_airfoil_action.triggered.connect(self.match_airfoil)
+        #
+        # self.airfoil_stats_action = QAction("Airfoil Statistics", self)
+        # self.tools_menu.addAction(self.airfoil_stats_action)
+        # self.airfoil_stats_action.triggered.connect(self.display_airfoil_statistics)
+        #
+        # self.plot_menu = QMenu("&Plot", self)
+        # self.menu_bar.addMenu(self.plot_menu)
+        #
+        # self.plot_geometry_from_file_action = QAction("Geometry From File", self)
+        # self.plot_menu.addAction(self.plot_geometry_from_file_action)
+        # self.plot_geometry_from_file_action.triggered.connect(self.plot_geometry)
 
     def save_as_mea(self):
         dialog = SaveAsDialog(self)
@@ -338,8 +340,12 @@ class GUI(QMainWindow):
         if file_name is not None:
             self.load_mea_no_dialog(file_name)
 
+    def auto_range_geometry(self):
+        x_data_range, y_data_range = self.mea.get_curve_bounds()
+        self.v.getViewBox().setRange(xRange=x_data_range, yRange=y_data_range)
+
     def import_parameter_list(self):
-        """This function imports """
+        """This function imports a list of parameters normalized by their bounds"""
         file_filter = "DAT Files (*.dat)"
         dialog = LoadDialog(self, file_filter=file_filter)
         if dialog.exec_():
@@ -407,15 +413,21 @@ class GUI(QMainWindow):
             a.airfoil_graph.param_tree = self.param_tree_instance
             a.airfoil_graph.airfoil_parameters = a.airfoil_graph.param_tree.p.param('Airfoil Parameters')
         self.design_tree_widget = self.param_tree_instance.t
-        self.main_layout.replaceWidget(self.main_layout.itemAt(0).widget(), self.design_tree_widget)
-        x_data_range, y_data_range = self.mea.get_curve_bounds()
-        self.v.getViewBox().setRange(xRange=x_data_range, yRange=y_data_range)
+        widget0 = self.main_layout.itemAt(0).widget()
+        self.main_layout.replaceWidget(widget0, self.design_tree_widget)
+        widget0.deleteLater()
+        self.auto_range_geometry()
 
     def disp_message_box(self, message: str, message_mode: str = 'error'):
         disp_message_box(message, self, message_mode=message_mode)
 
-    def output_area_text(self, text: str):
-        self.text_area.insertPlainText(text)
+    def output_area_text(self, text: str, mode: str = 'plain'):
+        if mode == 'plain':
+            self.text_area.insertPlainText(text)
+        elif mode == 'html':
+            self.text_area.insertHtml(text)
+        else:
+            raise ValueError('Mode must be \'plain\' or \'html\'')
         sb = self.text_area.verticalScrollBar()
         sb.setValue(sb.maximum())
 
@@ -427,6 +439,40 @@ class GUI(QMainWindow):
     def single_airfoil_inviscid_analysis(self):
         """Inviscid analysis not yet implemented here"""
         pass
+
+    def export_coordinates(self):
+        """Airfoil coordinate exporter"""
+        dialog = ExportCoordinatesDialog(self)
+        if dialog.exec_():
+            inputs = dialog.getInputs()
+            f_ = os.path.join(inputs['choose_dir'], inputs['file_name'])
+
+            # Determine if output format should be JSON:
+            if os.path.splitext(f_) and os.path.splitext(f_)[-1] == '.json':
+                json = True
+            else:
+                json = False
+
+            airfoils = inputs['airfoil_order'].split(',')
+
+            if json:
+                coord_dict = {}
+                for a in airfoils:
+                    airfoil = self.mea.airfoils[a]
+                    coords = airfoil.get_coords(body_fixed_csys=False)
+                    coord_dict[a] = coords.tolist()
+                save_data(coord_dict, f_)
+            else:
+                with open(f_, 'w') as f:
+                    f.write(f"{inputs['header']}\n")
+                    for idx, a in enumerate(airfoils):
+                        airfoil = self.mea.airfoils[a]
+                        coords = airfoil.get_coords(body_fixed_csys=False)
+                        for coord in coords:
+                            f.write(f"{coord[0]}{inputs['delimiter']}{coord[1]}\n")
+                        if idx < len(airfoils) - 1:
+                            f.write(f"{inputs['separator']}")
+            self.disp_message_box(f"Airfoil coordinates saved to {f_}", message_mode='info')
 
     def single_airfoil_viscous_analysis(self):
         self.dialog = SingleAirfoilViscousDialog(parent=self)
@@ -488,6 +534,18 @@ class GUI(QMainWindow):
                 self.n_analyses += 1
 
     def multi_airfoil_analysis_setup(self):
+
+        # First check to make sure MSET, MSES, and MPLOT can be found on system path and marked as executable:
+        if shutil.which('mset') is None:
+            self.disp_message_box('MSES suite executable \'mset\' not found on system path')
+            return
+        if shutil.which('mses') is None:
+            self.disp_message_box('MSES suite executable \'mses\' not found on system path')
+            return
+        if shutil.which('mplot') is None:
+            self.disp_message_box('MPLOT suite executable \'mplot\' not found on system path')
+            return
+
         self.dialog = MultiAirfoilDialog(parent=self)
         if self.dialog.exec():
             inputs = self.dialog.getInputs()
