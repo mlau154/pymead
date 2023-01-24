@@ -38,6 +38,7 @@ def unravel_param_dict(d: dict, output_dict: dict, prep_for_json: bool = True):
     for k, v in d.items():
         if isinstance(v, dict):
             output_dict[k] = {}
+            pass
             unravel_param_dict(v, output_dict[k], prep_for_json=prep_for_json)
         else:
             param_dict_attrs = vars(v)
