@@ -1,6 +1,7 @@
 from functools import reduce
 from copy import deepcopy
 import numpy as np
+import benedict
 
 
 def set_all_dict_values(d: dict):
@@ -19,14 +20,13 @@ def assign_airfoil_tags_to_param_dict(d: dict, airfoil_tag: str):
             v.airfoil_tag = airfoil_tag
 
 
-def assign_names_to_params_in_param_dict(d: dict, name_str: str = ''):
-    for k, v in d.items():
-        if isinstance(v, dict):
-            if len(v) > 0:
-                name_str += f'{k}.'
-            assign_names_to_params_in_param_dict(v, name_str)
-        else:
-            v.name = name_str + k
+def assign_names_to_params_in_param_dict(d: dict):
+    dben = benedict.benedict(d)
+    keypaths = dben.keypaths()
+    for k in keypaths:
+        p = dben[k]
+        if not isinstance(p, dict):
+            p.name = k
 
 
 def recursive_get(d, *keys):
