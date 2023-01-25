@@ -1,3 +1,4 @@
+import benedict
 import numpy as np
 import math
 from pymead.utils.transformations import transform
@@ -60,19 +61,15 @@ class Param:
 
         self.active = active
         self.linked = linked
-        # self.tag = tag
         self.func_str = func_str
         self.func = None
         if self.func_str is not None:
             self.linked = True
-        self.function_dict = {}
+        self.function_dict = {'depends': {}}
         self.depends_on = {}
-        self.depends_on_full_params = {}
         self.affects = []
         self.tag_matrix = None
-        self.tag_matrix_full_params = None
         self.tag_list = None
-        self.tag_list_full_params = None
         self.airfoil_tag = None
         self.mea = None
         self.deactivated_for_airfoil_matching = False
@@ -109,6 +106,7 @@ class Param:
             for idx, affected_param in enumerate(self.affects):
                 old_affected_param_values.append(affected_param.value)
                 affected_param.update()
+                print(f"Updating {affected_param.name = }")
                 if affected_param.at_boundary:
                     any_affected_params_at_boundary = True
                     break
@@ -134,26 +132,29 @@ class Param:
                 parameter.affects.remove(self)
         self.depends_on = {}
 
-    def update_function(self, show_q_error_messages: bool):
+    def update_function(self, show_q_error_messages: bool, func_str_changed: bool = False):
         if self.func_str is None:
             pass
         else:
-            # Convert the function string into a Python function and determine parameters present in string:
-            math_function_list = self.parse_update_function_str()
+            if func_str_changed:
+                # Convert the function string into a Python function and determine parameters present in string:
+                math_function_list = self.parse_update_function_str()
 
-            # Add any math functions detected from the func_str:
-            for s in math_function_list:
-                if s not in self.function_dict.keys():
-                    if s in vars(math).keys():
-                        self.function_dict[s] = vars(math)[s]
+                # Add any math functions detected from the func_str:
+                for s in math_function_list:
+                    if s not in self.function_dict.keys():
+                        if s in vars(math).keys():
+                            self.function_dict[s] = vars(math)[s]
 
-            # Add the variables the function depends on to the function_dict and detect whether the function should be
-            # executed:
-            execute = self.add_dependencies(show_q_error_messages)
+                # Add the variables the function depends on to the function_dict and detect whether the function should be
+                # executed:
+                execute = self.add_dependencies(show_q_error_messages)
+
+            self.update_dependencies()
 
             # Update the function (not the result) in the function_dict
-            if execute:
-                exec(self.func, self.function_dict)
+            # if execute:
+            exec(self.func, self.function_dict)
 
     def update_value(self):
         if self.func_str is None:
@@ -161,10 +162,9 @@ class Param:
         else:
             self.value = self.function_dict['f']()  # no parameters passed as inputs (inputs all stored and updated
             # inside self.function_dict )
-            # print(f"self.value now is {self.value}")
 
-    def update(self, show_q_error_messages: bool = True):
-        self.update_function(show_q_error_messages)
+    def update(self, show_q_error_messages: bool = True, func_str_changed: bool = False):
+        self.update_function(show_q_error_messages, func_str_changed)
         self.update_value()
         self.update_fp_ap()
 
@@ -208,49 +208,29 @@ class Param:
 
     def parse_update_function_str(self):
         self.tag_matrix = []
-        self.tag_matrix_full_params = []
         self.func = 'def f(): return '
-        dollar_signs = 0
         math_functions_to_include = []
         appending = False
-        appending_full = False
         append_new_to_math_function_list = True
-        for ch in self.func_str:
+        for ch_idx, ch in enumerate(self.func_str):
             if appending:
                 if ch.isalnum() or ch == '_':
                     self.tag_matrix[-1][-1] += ch
                 elif ch == '.':
                     self.tag_matrix[-1].append('')
                 else:
+                    self.func += '"]'
                     appending = False
-            if appending_full:
-                if ch.isalnum() or ch == '_':
-                    self.tag_matrix_full_params[-1][-1] += ch
-                elif ch == '.':
-                    self.tag_matrix_full_params[-1].append('')
-                else:
-                    appending_full = False
             if ch == '$':
-                dollar_signs += 1
-                if dollar_signs == 1:
-                    self.tag_matrix.append([''])
-                    appending = True
-                elif dollar_signs == 2:
-                    self.tag_matrix_full_params.append([''])
-                    self.tag_matrix.pop(-1)
-                    appending_full = True
-                else:
-                    raise ValueError('Too many consecutive dollar signs! Write one dollar signs to get the parameter '
-                                     'value, or write two dollar signs to get the parameter itself.')
+                self.tag_matrix.append([''])
+                appending = True
+                self.func += 'depends["'
             elif ch == '.' and appending:
-                self.func += '_'
-                dollar_signs = 0
-            elif ch == '.' and appending_full:
-                self.func += '_'
-                dollar_signs = 0
+                self.func += '.'
             else:
                 self.func += ch
-                dollar_signs = 0
+            if appending and ch_idx == len(self.func_str) - 1:
+                self.func += '"]'
             if not appending and ch.isalnum():
                 if append_new_to_math_function_list:
                     math_functions_to_include.append('')
@@ -264,31 +244,24 @@ class Param:
             for idx, s in enumerate(lst):
                 tag += s
                 if idx < len(lst) - 1:
-                    tag += '_'
+                    tag += '.'
             return tag
 
         self.tag_list = [concatenate_strings(tl) for tl in self.tag_matrix]
-        self.tag_list_full_params = [concatenate_strings(tl) for tl in self.tag_matrix_full_params]
         for t in self.tag_list:
             self.depends_on[t] = None
-        for t in self.tag_list_full_params:
-            self.depends_on_full_params[t] = None
 
         return math_functions_to_include
 
     def add_dependencies(self, show_q_error_messages: bool):
+        print('Adding dependencies...')
 
-        def get_nested_dict_val(d: dict, lst: list):
-            if isinstance(d, dict):
-                if lst[0] in d.keys():
-                    return get_nested_dict_val(d[lst[0]], lst[1:])
-                else:
-                    return None
-            else:
-                return d
+        def get_nested_dict_val(d: dict, tag):
+            dben = benedict.benedict(d)
+            return dben[tag]
 
         for idx, t in enumerate(self.tag_list):
-            self.depends_on[t] = get_nested_dict_val(self.mea.param_dict, self.tag_matrix[idx])
+            self.depends_on[t] = get_nested_dict_val(self.mea.param_dict, t)
             if self.depends_on[t] is not None:
                 if self not in self.depends_on[t].affects:
                     self.depends_on[t].affects.append(self)
@@ -300,31 +273,11 @@ class Param:
                     print(message)
                 return False
 
-        for idx, t in enumerate(self.tag_list_full_params):
-            self.depends_on_full_params[t] = get_nested_dict_val(self.mea.param_dict, self.tag_matrix_full_params[idx])
-            if self.depends_on_full_params[t] is not None:
-                if self not in self.depends_on_full_params[t].affects:
-                    self.depends_on_full_params[t].affects.append(self)
-            if self.depends_on_full_params[t] is None:
-                self.depends_on_full_params = {}
-                message = f"Could not compile input function string: {self.func_str}"
-                self.remove_func()
-                if show_q_error_messages:
-                    from PyQt5.QtWidgets import QErrorMessage
-                    err = QErrorMessage()
-                    print("Showing error message")
-                    err.showMessage(message)
-                else:
-                    print(message)
-                return False
-
-        for key, value in self.depends_on.items():
-            self.function_dict[key] = value.value
-
-        for key, value in self.depends_on_full_params.items():
-            self.function_dict[key] = value
-
         return True
+
+    def update_dependencies(self):
+        for key, value in self.depends_on.items():
+            self.function_dict['depends'][key] = value.value
 
     @classmethod
     def from_param_dict(cls, param_dict: dict):

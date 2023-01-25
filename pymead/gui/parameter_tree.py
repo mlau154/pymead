@@ -158,8 +158,9 @@ class MEAParamTree:
             """Adds equation boxes for each loaded Airfoil Param which already contains an equation."""
             for child in child_list:
                 if hasattr(child, 'airfoil_param'):
-                    if len(child.airfoil_param.function_dict) > 0:
-                        print(f"Parameter {child.name()} has a non-zero-length function dictionary")
+                    # if len(child.airfoil_param.function_dict) > 0:
+                    #     print(f"{child.airfoil_param.function_dict = }")
+                    #     print(f"Parameter {child.name()} has a non-zero-length function dictionary")
                     if child.airfoil_param.func_str is not None:
                         self.add_equation_box(child, child.airfoil_param.func_str)
                 else:
@@ -272,7 +273,7 @@ class MEAParamTree:
                     self.plot_change_recursive(self.p.param('Airfoil Parameters').child('Custom').children())
 
                     for a in mea.airfoils.values():
-                        a.update()
+                        a.update(update_ap_fp=False)
                         a.airfoil_graph.data['pos'] = a.control_point_array
                         a.airfoil_graph.updateGraph()
 
@@ -280,8 +281,8 @@ class MEAParamTree:
                         if a.tag == self.cl_airfoil_tag:
                             a.get_coords(body_fixed_csys=True)
                             ds = fractal_downsampler2(a.coords, ratio_thresh=1.000005, abs_thresh=0.1)
-                            _, _, CL = single_element_inviscid(ds, a.alf.value * 180 / np.pi)
-                            self.cl_label.setText(f"{self.cl_airfoil_tag} Inviscid CL = {CL:.3f}")
+                            # _, _, CL = single_element_inviscid(ds, a.alf.value * 180 / np.pi)
+                            # self.cl_label.setText(f"{self.cl_airfoil_tag} Inviscid CL = {CL:.3f}")
 
                         self.plot_change_recursive(self.p.param('Airfoil Parameters').child(a.tag).children())
 
@@ -477,7 +478,7 @@ class MEAParamTree:
         airfoil_param.function_dict = {**airfoil_param.function_dict, **func_dict_kwargs}
         airfoil_param.set_func_str(equation_str)
         try:
-            airfoil_param.update()
+            airfoil_param.update(func_str_changed=True)
         except (SyntaxError, NameError, AttributeError):
             pg_eq_parent.setReadonly(False)
             airfoil_param.remove_func()

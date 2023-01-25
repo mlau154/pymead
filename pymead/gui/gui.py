@@ -66,7 +66,7 @@ class GUI(QMainWindow):
         super().__init__(parent=parent)
         # self.setWindowFlags(Qt.CustomizeWindowHint)
         self.path = path
-        single_element_inviscid(np.array([[1, 0], [0, 0], [1, 0]]), 0.0)
+        # single_element_inviscid(np.array([[1, 0], [0, 0], [1, 0]]), 0.0)
         for font_name in ["DejaVuSans", "DejaVuSansMono", "DejaVuSerif"]:
             QFontDatabase.addApplicationFont(os.path.join(RESOURCE_DIR, "dejavu-fonts-ttf-2.37", "ttf",
                                                           f"{font_name}.ttf"))
