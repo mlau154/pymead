@@ -1,15 +1,12 @@
 import benedict
 import numpy as np
 import math
-from pymead.utils.transformations import transform
 
 
 class Param:
 
-    def __init__(self, value: float, units: str or None = None,
-                 bounds: list or np.ndarray = np.array([-np.inf, np.inf]), scale_value: float or None = None,
-                 active: bool = True, linked: bool = False, func_str: str = None, x: bool = False, y: bool = False,
-                 xp: bool = False, yp: bool = False, name: str = None):
+    def __init__(self, value: float, bounds: list or np.ndarray = np.array([-np.inf, np.inf]),
+                 active: bool = True, linked: bool = False, func_str: str = None, name: str = None):
         """
         ### Description:
 
@@ -20,15 +17,9 @@ class Param:
 
         `value`: a `float` representing the value of the parameter
 
-        `units`: a `str` where, if not set to `None`, scales the parameters by the value contained in
-        `length_scale_dimension`. Must be one of `"length"`, `"inverse-length"`, or `None`. Default: `None`.
-
         `bounds`: a `list` or 1D `np.ndarray` with two elements of the form `[<lower bound>, <upper bound>]`. Used in
         `pymead.utils.airfoil_matching` and for normalization during parameter extraction. Default:
         `np.array([-np.inf, np.inf])` (no normalization).
-
-        `scale_value`: length scale used to non-dimensionalize the parameter if `units` is not `None`.
-        Default value: `None`.
 
         `active`: a `bool` stating whether the parameter is active. If `False`, direct and indirect write access to the
          parameter are restricted. Default: `True`.
@@ -45,19 +36,9 @@ class Param:
 
         An instance of the `pymead.core.param.Param` class.
         """
-
-        self.units = units
-        self.scale_value = scale_value
-        self._value = None
+        self._value = value
         self.bounds = bounds
         self.name = name
-
-        if self.units == 'length' and self.scale_value is not None:
-            self._value = value * self.scale_value
-        elif self.units == 'inverse-length' and self.scale_value is not None:
-            self._value = value / self.scale_value
-        else:
-            self._value = value
 
         self.active = active
         self.linked = linked
@@ -74,10 +55,6 @@ class Param:
         self.mea = None
         self.deactivated_for_airfoil_matching = False
         self.at_boundary = False
-        self.x = x
-        self.y = y
-        self.xp = xp
-        self.yp = yp
         self.free_point = None
         self.anchor_point = None
 
@@ -106,7 +83,7 @@ class Param:
             for idx, affected_param in enumerate(self.affects):
                 old_affected_param_values.append(affected_param.value)
                 affected_param.update()
-                print(f"Updating {affected_param.name = }")
+                self.update_ap_fp(affected_param)
                 if affected_param.at_boundary:
                     any_affected_params_at_boundary = True
                     break
@@ -114,18 +91,27 @@ class Param:
                 self._value = old_value
                 for idx2, affected_param in enumerate(self.affects[:idx + 1]):
                     affected_param._value = old_affected_param_values[idx2]
-        # print(f"{self.name = }, {self._value = }")
+                    self.update_ap_fp(affected_param)
+
+    @staticmethod
+    def update_ap_fp(param):
+        if param.free_point is not None:
+            param.free_point.set_ctrlpt_value()
+        elif param.anchor_point is not None:
+            param.anchor_point.set_ctrlpt_value()
 
     def set_func_str(self, func_str: str):
         if len(func_str) == 0:
             self.remove_func()
         else:
+            if len(self.function_dict) == 0:
+                self.function_dict = {'depends': {}}
             self.func_str = func_str
             self.linked = True
 
     def remove_func(self):
         self.func_str = None
-        self.function_dict = {}
+        self.function_dict = {'depends': {}}
         self.linked = False
         for parameter in self.depends_on.values():
             if self in parameter.affects:
@@ -146,9 +132,8 @@ class Param:
                         if s in vars(math).keys():
                             self.function_dict[s] = vars(math)[s]
 
-                # Add the variables the function depends on to the function_dict and detect whether the function should be
-                # executed:
-                execute = self.add_dependencies(show_q_error_messages)
+                # Add the variables the function depends on to the function_dict:
+                self.add_dependencies(show_q_error_messages)
 
             self.update_dependencies()
 
@@ -166,45 +151,6 @@ class Param:
     def update(self, show_q_error_messages: bool = True, func_str_changed: bool = False):
         self.update_function(show_q_error_messages, func_str_changed)
         self.update_value()
-        self.update_fp_ap()
-
-    def update_fp_ap(self):
-        if self.free_point is not None:
-            fp = self.free_point
-            if self.x or self.y:
-                fp.xp.value, fp.yp.value = transform(fp.x.value, fp.y.value,
-                                                     fp.airfoil_transformation['dx'].value,
-                                                     fp.airfoil_transformation['dy'].value,
-                                                     -fp.airfoil_transformation['alf'].value,
-                                                     fp.airfoil_transformation['c'].value,
-                                                     ['scale', 'rotate', 'translate'])
-            if self.xp or self.yp:
-                fp.x.value, fp.y.value = transform(fp.xp.value, fp.yp.value,
-                                                   -fp.airfoil_transformation['dx'].value,
-                                                   -fp.airfoil_transformation['dy'].value,
-                                                   fp.airfoil_transformation['alf'].value,
-                                                   1 / fp.airfoil_transformation['c'].value,
-                                                   ['translate', 'rotate', 'scale'])
-            if self.x or self.y or self.xp or self.yp:
-                fp.set_ctrlpt_value()
-        if self.anchor_point is not None:
-            ap = self.anchor_point
-            if self.x or self.y:
-                ap.xp.value, ap.yp.value = transform(ap.x.value, ap.y.value,
-                                                     ap.airfoil_transformation['dx'].value,
-                                                     ap.airfoil_transformation['dy'].value,
-                                                     -ap.airfoil_transformation['alf'].value,
-                                                     ap.airfoil_transformation['c'].value,
-                                                     ['scale', 'rotate', 'translate'])
-            if self.xp or self.yp:
-                ap.x.value, ap.y.value = transform(ap.xp.value, ap.yp.value,
-                                                   -ap.airfoil_transformation['dx'].value,
-                                                   -ap.airfoil_transformation['dy'].value,
-                                                   ap.airfoil_transformation['alf'].value,
-                                                   1 / ap.airfoil_transformation['c'].value,
-                                                   ['translate', 'rotate', 'scale'])
-            if self.x or self.y or self.xp or self.yp:
-                ap.set_ctrlpt_value()
 
     def parse_update_function_str(self):
         self.tag_matrix = []
@@ -254,7 +200,6 @@ class Param:
         return math_functions_to_include
 
     def add_dependencies(self, show_q_error_messages: bool):
-        print('Adding dependencies...')
 
         def get_nested_dict_val(d: dict, tag):
             dben = benedict.benedict(d)
@@ -284,8 +229,7 @@ class Param:
         """Generates a Param from a JSON-saved param_dict (aids in backward/forward compatibility)"""
         temp_dict = {'value': param_dict['_value']}
         for attr_name, attr_value in param_dict.items():
-            if attr_name in ['units', 'bounds', 'scale_value', 'active', 'linked', 'func_str', 'x', 'y', 'xp',
-                             'yp', 'name']:
+            if attr_name in ['bounds', 'active', 'linked', 'func_str', 'name']:
                 temp_dict[attr_name] = attr_value
         return cls(**temp_dict)
 
