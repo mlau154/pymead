@@ -4,8 +4,7 @@ from pymead.core.free_point import FreePoint
 from pymead.core.base_airfoil_params import BaseAirfoilParams
 from pymead.core.bezier import Bezier
 from pymead.core.trailing_edge_point import TrailingEdgePoint
-from pymead.utils.increment_string_index import increment_string_index, max_string_index_plus_one, \
-    get_prefix_and_index_from_string
+from pymead.utils.increment_string_index import max_string_index_plus_one
 from pymead.utils.transformations import translate_matrix, rotate_matrix, scale_matrix
 from pymead.utils.downsampling_schemes import fractal_downsampler2
 from pymead.core.transformation import Transformation2D
@@ -48,7 +47,7 @@ class Airfoil:
         if not self.base_airfoil_params:
             self.base_airfoil_params = BaseAirfoilParams(airfoil_tag=self.tag)
 
-        self.param_dicts = {'Base': {}, 'AnchorPoints': {}, 'FreePoints': {'te_1': {}, 'le': {}}, 'Custom': {}}
+        self.param_dicts = {'Base': {}, 'AnchorPoints': {}, 'FreePoints': {'te_1': {}, 'le': {}}}
 
         self.c = self.base_airfoil_params.c
         self.alf = self.base_airfoil_params.alf
@@ -70,7 +69,6 @@ class Airfoil:
 
         for bp in ['c', 'alf', 'R_le', 'L_le', 'r_le', 'phi_le', 'psi1_le', 'psi2_le', 'L1_te', 'L2_te', 'theta1_te',
                    'theta2_te', 't_te', 'r_te', 'phi_te', 'dx', 'dy']:
-            # setattr(self, bp, getattr(self.base_airfoil_params, bp))
             self.param_dicts['Base'][bp] = getattr(self, bp)
 
         self.control_point_array = None
@@ -146,53 +144,21 @@ class Airfoil:
         free_point.x.airfoil_tag = self.tag
         free_point.y.y = True
         free_point.y.airfoil_tag = self.tag
-        free_point.xp.xp = True
-        free_point.xp.airfoil_tag = self.tag
-        free_point.yp.yp = True
-        free_point.yp.airfoil_tag = self.tag
         free_point.airfoil_transformation = {'dx': self.dx, 'dy': self.dy, 'alf': self.alf, 'c': self.c}
 
         # Name the FreePoint by incrementing the max of the FreePoint tag indexes by one (or use 0 if no FreePoints)
         if not free_point.tag:
             free_point.set_tag(max_string_index_plus_one(self.free_point_order[free_point.anchor_point_tag]))
-        # fp_idx = get_prefix_and_index_from_string(free_point.tag)[1]
 
         if free_point.anchor_point_tag in self.free_points.keys():
-            # temp_dict = {}
-            # keys_to_pop = []
-            # for key, fp in fp_dict.items():
-            #     idx = get_prefix_and_index_from_string(key)[1]
-            #     if idx >= fp_idx:
-            #         new_key = increment_string_index(fp.tag)
-            #         temp_dict[new_key] = fp
-            #         fp.set_tag(new_key)
-            #         keys_to_pop.append(key)
-            # for k in keys_to_pop[::-1]:
-            #     fp_dict.pop(k)
-            # fp_dict = {**fp_dict, **temp_dict}
             fp_dict[free_point.tag] = free_point
-            # print(f"id of fp_dict is {hex(id(fp_dict))}")
             self.free_points[free_point.anchor_point_tag] = fp_dict
-            # print(f"id of fp_dict after assignment is {hex(id(self.free_points[free_point.previous_anchor_point]))}")
-
-        # key_pairs = []
-        # for k in self.param_dicts['FreePoints'][free_point.anchor_point_tag].keys():
-        #     idx = get_prefix_and_index_from_string(k)[1]
-        #     if idx >= fp_idx:
-        #         new_key = increment_string_index(k)
-        #         key_pairs.append((k, new_key))
-        # for kp in key_pairs:
-        #     self.param_dicts['FreePoints'][free_point.anchor_point_tag][kp[1]] = self.param_dicts['FreePoints'][
-        #         free_point.anchor_point_tag].pop(kp[0])
-        # self.free_point_order[free_point.anchor_point_tag] = [f"FP{idx}" for idx in range(len(fp_dict))]
-        print(f"Before, {self.free_point_order = }")
         self.free_point_order[free_point.anchor_point_tag].insert(
             self.free_point_order[free_point.anchor_point_tag].index(free_point.previous_free_point) + 1 if free_point.
             previous_free_point else 0, free_point.tag)
-        print(f"After, {self.free_point_order = }")
         self.N[free_point.anchor_point_tag] += 1
         self.param_dicts['FreePoints'][free_point.anchor_point_tag][free_point.tag] = {
-            'x': free_point.x, 'y': free_point.y, 'xp': free_point.xp, 'yp': free_point.yp}
+            'x': free_point.x, 'y': free_point.y}
 
     def delete_free_point(self, free_point_tag: str, anchor_point_tag: str):
         """Deletes a :class:`pymead.core.free_point.FreePoint` from the Airfoil.
@@ -223,10 +189,6 @@ class Airfoil:
         ap.x.airfoil_tag = self.tag
         ap.y.y = True
         ap.y.airfoil_tag = self.tag
-        ap.xp.xp = True
-        ap.xp.airfoil_tag = self.tag
-        ap.yp.yp = True
-        ap.yp.airfoil_tag = self.tag
         order_idx = next((idx for idx, anchor_point in enumerate(self.anchor_point_order)
                           if anchor_point == ap.previous_anchor_point))
         self.anchor_points[order_idx + 1].previous_anchor_point = ap.tag
@@ -238,8 +200,9 @@ class Airfoil:
             self.N[ap.tag] = 5
         if ap.previous_anchor_point == 'le':
             self.N['le'] = 5
+        # TODO: fix adding an AnchorPoint to le after le FreePoint is added creates an incorrect set of orders N
         ap.airfoil_transformation = {'c': self.c, 'alf': self.alf, 'dx': self.dx, 'dy': self.dy}
-        ap_param_list = ['x', 'y', 'xp', 'yp', 'L', 'R', 'r', 'phi', 'psi1', 'psi2']
+        ap_param_list = ['x', 'y', 'L', 'R', 'r', 'phi', 'psi1', 'psi2']
         self.param_dicts['AnchorPoints'][ap.tag] = {p: getattr(ap, p) for p in ap_param_list}
         self.free_points[ap.tag] = {}
         self.free_point_order[ap.tag] = []
@@ -268,7 +231,7 @@ class Airfoil:
         self.free_point_order.pop(anchor_point_tag)
         self.N.pop(anchor_point_tag)
 
-    def update(self, skip_fp_ap_regen: bool = False, generate_curves: bool = True, update_ap_fp: bool = True):
+    def update(self, skip_fp_ap_regen: bool = False, generate_curves: bool = True):
         """Used to update the state of the airfoil, including the Bézier curves, after a change in any parameter
 
         Parameters
@@ -276,7 +239,6 @@ class Airfoil:
         generate_curves: bool
           Determines whether the curves should be re-generated during the update
         """
-        # print('Called update!')
         # Translate back to origin if not already at origin
         if self.control_points is not None and self.control_points != []:
             self.translate(-self.dx.value, -self.dy.value)
@@ -303,6 +265,7 @@ class Airfoil:
             for ap_tag in self.anchor_point_order:
                 self.control_points.extend(next((ap.ctrlpt_branch_list for ap in self.anchor_points if ap.tag == ap_tag)))
 
+            # Update the FreePoints
             for key, fp_dict in self.free_points.items():
                 if len(fp_dict) > 0:
                     if key == 'te_1':
@@ -324,30 +287,7 @@ class Airfoil:
         # Get the control point array
         self.update_control_point_array()
 
-        if update_ap_fp:
-            for ap_key, ap_val in self.free_points.items():
-                for fp_key, fp_val in ap_val.items():
-                    fp_val.xp.value = fp_val.x.value * self.c.value
-                    fp_val.yp.value = fp_val.y.value * self.c.value
-                    rot_mat = np.array([[np.cos(-self.alf.value), -np.sin(-self.alf.value)],
-                                        [np.sin(-self.alf.value), np.cos(-self.alf.value)]])
-                    rotated_point = (rot_mat @ np.array([[fp_val.xp.value], [fp_val.yp.value]])).flatten()
-                    fp_val.xp.value = rotated_point[0]
-                    fp_val.yp.value = rotated_point[1]
-                    fp_val.xp.value += self.dx.value
-                    fp_val.yp.value += self.dy.value
-            for ap in self.anchor_points:
-                if ap.tag not in ['te_1', 'le', 'te_2']:
-                    ap.xp.value = ap.x.value * self.c.value
-                    ap.yp.value = ap.y.value * self.c.value
-                    rot_mat = np.array([[np.cos(-self.alf.value), -np.sin(-self.alf.value)],
-                                        [np.sin(-self.alf.value), np.cos(-self.alf.value)]])
-                    rotated_point = (rot_mat @ np.array([[ap.xp.value], [ap.yp.value]])).flatten()
-                    ap.xp.value = rotated_point[0]
-                    ap.yp.value = rotated_point[1]
-                    ap.xp.value += self.dx.value
-                    ap.yp.value += self.dy.value
-
+        # Generate the Bezier curves
         if generate_curves:
             self.generate_curves()
 

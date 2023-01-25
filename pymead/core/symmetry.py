@@ -1,14 +1,20 @@
 from pymead.core.line import InfiniteLine
+from pymead.utils.transformations import transform_matrix
 import numpy as np
 
 
-def symmetry(param_name: str, xp=None, yp=None, alf_target=None, alf_tool=None, upper_target=None, upper_tool=None,
+def symmetry(param_name: str, x=None, y=None, alf_target=None, alf_tool=None, c_target=None, c_tool=None,
+             dx_target=None, dx_tool=None, dy_target=None, dy_tool=None, upper_target=None, upper_tool=None,
              phi=None, psi1=None, psi2=None, r=None, L=None, R=None, x1=None, y1=None, x2=None, y2=None, m=None,
              theta_rad=None, theta_deg=None):
-    new_xp, new_yp, rel_phi_target = None, None, None
-    if param_name in ['xp', 'yp', 'phi']:
+    new_x, new_y, new_xp, new_yp, rel_phi_target = None, None, None, None, None
+    if param_name in ['x', 'y', 'phi']:
         inf_line = InfiniteLine(x1=x1, y1=y1, x2=x2, y2=y2, m=m, theta_rad=theta_rad, theta_deg=theta_deg)
-        if param_name in ['xp', 'yp']:
+        if param_name in ['x', 'y']:
+            new_xpyp = transform_matrix(np.array([[x, y]]), dx_tool, dy_tool, -alf_tool, c_tool,
+                                      ['scale', 'rotate', 'translate'])
+            xp = new_xpyp[0][0]
+            yp = new_xpyp[0][1]
             std_coeffs = inf_line.get_standard_form_coeffs()
             distance = (std_coeffs['A'] * xp + std_coeffs['B'] * yp + std_coeffs['C']
                         ) / np.hypot(std_coeffs['A'], std_coeffs['B'])
@@ -23,6 +29,10 @@ def symmetry(param_name: str, xp=None, yp=None, alf_target=None, alf_tool=None, 
             distance = abs(distance)
             new_xp = xp + 2 * distance * np.cos(angle)
             new_yp = yp + 2 * distance * np.sin(angle)
+            new_xy = transform_matrix(np.array([[new_xp, new_yp]]), -dx_target, -dy_target, alf_tool, 1 / c_target,
+                                      ['translate', 'rotate', 'scale'])
+            new_x = new_xy[0][0]
+            new_y = new_xy[0][1]
         else:
             if upper_tool:
                 abs_phi_tool = phi + (-alf_tool)
@@ -36,8 +46,8 @@ def symmetry(param_name: str, xp=None, yp=None, alf_target=None, alf_tool=None, 
                 rel_phi_target = -abs_phi_target + (-alf_target)
 
     output_dict = {
-        'xp': new_xp,
-        'yp': new_yp,
+        'x': new_x,
+        'y': new_y,
         'phi': rel_phi_target,
         'psi1': psi1,
         'psi2': psi2,

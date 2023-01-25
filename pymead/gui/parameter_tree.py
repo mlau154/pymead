@@ -223,70 +223,48 @@ class MEAParamTree:
                     param_name = param.name().split('.')[-1]
                     if param.airfoil_param.active and not param.airfoil_param.linked:
                         block_changes(param)
-                        if param_name not in ['x', 'y', 'xp', 'yp']:
-                            param.airfoil_param.value = data
-                        else:
-                            if 'FreePoints' in param.name():
-                                fp_name = param.parent().name()
-                                ap_name = param.parent().parent().name()
-                                a_name = param.parent().parent().parent().parent().name()
-                                fp_or_ap = self.mea.airfoils[a_name].airfoil_graph.airfoil.free_points[ap_name][fp_name]
-                            else:
-                                ap_name = param.parent().name()
-                                a_name = param.parent().parent().parent().name()
-                                airfoil = self.mea.airfoils[a_name].airfoil_graph.airfoil
-                                aps = airfoil.anchor_points
-                                ap_order = airfoil.anchor_point_order
-                                fp_or_ap = aps[ap_order.index(ap_name)]
-                            if param_name == 'x':
-                                fp_or_ap.set_xy(x=data, y=fp_or_ap.y.value)
-                            elif param_name == 'y':
-                                fp_or_ap.set_xy(y=data, x=fp_or_ap.x.value)
-                            elif param_name == 'xp':
-                                fp_or_ap.set_xy(xp=data, yp=fp_or_ap.yp.value)
-                            elif param_name == 'yp':
-                                fp_or_ap.set_xy(yp=data, xp=fp_or_ap.xp.value)
+                        param.airfoil_param.value = data
+                        Param.update_ap_fp(param.airfoil_param)
+                        param.airfoil_param.update()
 
-                    param.airfoil_param.update()
+                        if param.airfoil_param.linked:
+                            param.setValue(param.airfoil_param.value)
 
-                    if param.airfoil_param.linked:
-                        param.setValue(param.airfoil_param.value)
+                        list_of_vals = []
 
-                    list_of_vals = []
+                        def get_list_of_vals_from_dict(d):
+                            for k, v in d.items():
+                                if isinstance(v, dict):
+                                    get_list_of_vals_from_dict(v)
+                                else:
+                                    list_of_vals.append(v)
 
-                    def get_list_of_vals_from_dict(d):
-                        for k, v in d.items():
-                            if isinstance(v, dict):
-                                get_list_of_vals_from_dict(v)
-                            else:
-                                list_of_vals.append(v)
+                        # IMPORTANT
+                        if mea.param_dict is not None:
+                            get_list_of_vals_from_dict(mea.param_dict)
+                            for val in list_of_vals:
+                                for v in val.depends_on.values():
+                                    # print(f"v = {v}")
+                                    if param.airfoil_param is v:
+                                        val.update()
 
-                    # IMPORTANT
-                    if mea.param_dict is not None:
-                        get_list_of_vals_from_dict(mea.param_dict)
-                        for val in list_of_vals:
-                            for v in val.depends_on.values():
-                                # print(f"v = {v}")
-                                if param.airfoil_param is v:
-                                    val.update()
+                        self.plot_change_recursive(self.p.param('Airfoil Parameters').child('Custom').children())
 
-                    self.plot_change_recursive(self.p.param('Airfoil Parameters').child('Custom').children())
+                        for a in mea.airfoils.values():
+                            a.update()
+                            a.airfoil_graph.data['pos'] = a.control_point_array
+                            a.airfoil_graph.updateGraph()
 
-                    for a in mea.airfoils.values():
-                        a.update(update_ap_fp=False)
-                        a.airfoil_graph.data['pos'] = a.control_point_array
-                        a.airfoil_graph.updateGraph()
+                            # Run inviscid CL calculation after any geometry change
+                            if a.tag == self.cl_airfoil_tag:
+                                a.get_coords(body_fixed_csys=True)
+                                ds = fractal_downsampler2(a.coords, ratio_thresh=1.000005, abs_thresh=0.1)
+                                # _, _, CL = single_element_inviscid(ds, a.alf.value * 180 / np.pi)
+                                # self.cl_label.setText(f"{self.cl_airfoil_tag} Inviscid CL = {CL:.3f}")
 
-                        # Run inviscid CL calculation after any geometry change
-                        if a.tag == self.cl_airfoil_tag:
-                            a.get_coords(body_fixed_csys=True)
-                            ds = fractal_downsampler2(a.coords, ratio_thresh=1.000005, abs_thresh=0.1)
-                            # _, _, CL = single_element_inviscid(ds, a.alf.value * 180 / np.pi)
-                            # self.cl_label.setText(f"{self.cl_airfoil_tag} Inviscid CL = {CL:.3f}")
+                            self.plot_change_recursive(self.p.param('Airfoil Parameters').child(a.tag).children())
 
-                        self.plot_change_recursive(self.p.param('Airfoil Parameters').child(a.tag).children())
-
-                    flush_changes(param)
+                        flush_changes(param)
 
                 # Add equation child parameter if the change is the selection of the "equation" button in the
                 # contextMenu
@@ -493,30 +471,36 @@ class MEAParamTree:
             if airfoil_param.linked:
                 pg_eq_parent.setValue(airfoil_param.value)
             self.equation_widget(pg_param).setStyleSheet('border: 0px; color: #a1fa9d;')  # make the equation green
-            if pg_eq_parent.parent().parent().parent().name() == 'FreePoints':
-                fp_name = pg_eq_parent.parent().name()
-                ap_name = pg_eq_parent.parent().parent().name()
-                a_name = pg_eq_parent.parent().parent().parent().parent().name()
-                param_name = pg_eq_parent.name().split('.')[-1]
-                fp = self.mea.airfoils[a_name].free_points[ap_name][fp_name]
-                if param_name in ['x', 'y']:
-                    fp.set_x_value(None)
-                    fp.set_y_value(None)
-                fp.set_ctrlpt_value()
-            elif pg_eq_parent.parent().parent().name() == 'AnchorPoints':
-                ap_name = pg_eq_parent.parent().name()
-                a_name = pg_eq_parent.parent().parent().parent().name()
-                param_name = pg_eq_parent.name().split('.')[-1]
-                ap = self.mea.airfoils[a_name].anchor_points[
-                    self.mea.airfoils[a_name].anchor_point_order.index(ap_name)]
-                if param_name in ['x', 'y']:
-                    ap.set_x_value(None)
-                    ap.set_y_value(None)
-                ap.set_ctrlpt_value()
+            Param.update_ap_fp(airfoil_param)
+            # if pg_eq_parent.parent().parent().parent().name() == 'FreePoints':
+            #     fp_name = pg_eq_parent.parent().name()
+            #     ap_name = pg_eq_parent.parent().parent().name()
+            #     a_name = pg_eq_parent.parent().parent().parent().parent().name()
+            #     param_name = pg_eq_parent.name().split('.')[-1]
+            #     fp = self.mea.airfoils[a_name].free_points[ap_name][fp_name]
+            #     # if param_name in ['x', 'y']:
+            #     #     fp.set_x_value(None)
+            #     #     fp.set_y_value(None)
+            #     fp.set_ctrlpt_value()
+            # elif pg_eq_parent.parent().parent().name() == 'AnchorPoints':
+            #     ap_name = pg_eq_parent.parent().name()
+            #     a_name = pg_eq_parent.parent().parent().parent().name()
+            #     param_name = pg_eq_parent.name().split('.')[-1]
+            #     ap = self.mea.airfoils[a_name].anchor_points[
+            #         self.mea.airfoils[a_name].anchor_point_order.index(ap_name)]
+            #     # if param_name in ['x', 'y']:
+            #     #     ap.set_x_value(None)
+            #     #     ap.set_y_value(None)
+            #     ap.set_ctrlpt_value()
         else:
             pg_eq_parent.setReadonly(False)
             self.equation_widget(pg_param).setStyleSheet('border: 0px; color: #fa4b4b;')  # make the equation red
             self.parent.disp_message_box("Could not compile function")
+
+        for a in self.mea.airfoils.values():
+            a.update()
+            a.airfoil_graph.data['pos'] = a.control_point_array
+            a.airfoil_graph.updateGraph()
 
     def add_free_point(self, pg_param: Parameter):
         """Adds a FreePoint to the specified Airfoil and updates the graph.

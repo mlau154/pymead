@@ -1,5 +1,7 @@
 from pymead.core.param import Param
 from math import pi, sin, cos
+from pymead.utils.transformations import transform_matrix
+import numpy as np
 
 from copy import deepcopy
 
@@ -26,22 +28,23 @@ class ControlPoint:
     def __repr__(self):
         return f"control_point_{self.tag}"
 
-    def translate(self, dx, dy):
-        self.xp += dx
-        self.yp += dy
+    # def translate(self, dx, dy):
+    #     self.xp += dx
+    #     self.yp += dy
+    #
+    # def rotate(self, angle):
+    #     self.xp = self.xp * cos(angle) - self.yp * sin(angle)
+    #     self.yp = self.yp * cos(angle) + self.xp * sin(angle)
+    #
+    # def scale(self, sf):
+    #     self.xp *= sf
+    #     self.yp *= sf
 
-    def rotate(self, angle, units: str = 'deg'):
-        if units not in ['rad', 'deg']:
-            raise ValueError('Units must be either radians (\'rad\') or degrees (\'deg\')')
-        if units == 'deg':
-            angle = angle * pi / 180
-
-        self.xp = self.xp * cos(angle) - self.yp * sin(angle)
-        self.yp = self.yp * cos(angle) + self.xp * sin(angle)
-
-    def transform(self, dx: int or float, dy: int or float, angle: int or float, rotation_units: str = 'deg'):
-        self.rotate(angle, rotation_units)
-        self.translate(dx, dy)
+    def transform(self, dx, dy, angle, sf, transformation_order):
+        mat = np.array([[self.xp, self.yp]])
+        new_mat = transform_matrix(mat, dx, dy, angle, sf, transformation_order)
+        self.xp = new_mat[0][0]
+        self.yp = new_mat[0][1]
 
 
 if __name__ == '__main__':

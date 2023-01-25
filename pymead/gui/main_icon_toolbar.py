@@ -145,12 +145,16 @@ class MainIconToolbar(QToolBar):
                 if ap_order_tool.index(ap_tool) < ap_order_tool.index('le'):
                     upper_tool = True
             extra_args = {
-                'xp': f"x1={out['x1']}, y1={out['y1']}, theta_rad={out['angle']}, xp={out['tool']}.xp, "
-                      f"yp={out['tool']}.yp",
-                'yp': f"x1={out['x1']}, y1={out['y1']}, theta_rad={out['angle']}, xp={out['tool']}.xp, "
-                      f"yp={out['tool']}.yp",
-                'phi': f"x1={out['x1']}, y1={out['y1']}, theta_rad={out['angle']}, alf_tool=${tool_list[0]}.Base.alf, "
-                       f"alf_target=${target_list[0]}.Base.alf, phi={out['tool']}.phi, upper_target={upper_target}, "
+                'x': f"x1={out['x1']}, y1={out['y1']}, theta_rad={out['angle']}, x={out['tool']}.x, "
+                      f"y={out['tool']}.y, alf_tool={tool_base}.alf, alf_target={target_base}.alf, c_tool={tool_base}.c,"
+                     f" c_target={target_base}.c, dx_tool={tool_base}.dx, dx_target={target_base}.dx, "
+                     f"dy_tool={tool_base}.dy, dy_target={target_base}.dy",
+                'y': f"x1={out['x1']}, y1={out['y1']}, theta_rad={out['angle']}, x={out['tool']}.x, "
+                      f"y={out['tool']}.y, alf_tool={tool_base}.alf, alf_target={target_base}.alf, c_tool={tool_base}.c,"
+                     f" c_target={target_base}.c, dx_tool={tool_base}.dx, dx_target={target_base}.dx, "
+                     f"dy_tool={tool_base}.dy, dy_target={target_base}.dy",
+                'phi': f"x1={out['x1']}, y1={out['y1']}, theta_rad={out['angle']}, alf_tool={tool_base}.alf, "
+                       f"alf_target={target_base}.alf, phi={out['tool']}.phi, upper_target={upper_target}, "
                        f"upper_tool={upper_tool}",
                 'psi1': f"psi1={out['tool']}.psi1",
                 'psi2': f"psi2={out['tool']}.psi2",
@@ -170,13 +174,15 @@ class MainIconToolbar(QToolBar):
         target_list = target.split('.')
         tool = out['tool'].replace('$', '')
         tool_list = tool.split('.')
+        tool_base = f"${tool_list[0]}.Base"
+        target_base = f"${target_list[0]}.Base"
         if 'FreePoints' in target_list:
             fp_or_ap = 'fp'
-            for param_str in ['xp', 'yp']:
+            for param_str in ['x', 'y']:
                 assign_equation(param_str)
         elif 'AnchorPoints' in target_list:
             fp_or_ap = 'ap'
-            for param_str in ['xp', 'yp', 'phi', 'psi1', 'psi2', 'L', 'r', 'R']:
+            for param_str in ['x', 'y', 'phi', 'psi1', 'psi2', 'L', 'r', 'R']:
                 assign_equation(param_str)
         else:
             raise ValueError('Target selection must be either a FreePoint or an AnchorPoint')

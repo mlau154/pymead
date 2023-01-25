@@ -124,6 +124,14 @@ class AirfoilGraph(pg.GraphItem):
         self.polygon_item.data = self.airfoil.get_coords()
         self.polygon_item.generatePicture()
 
+    def update_ap_fp(self):
+        for ap_tag in self.airfoil.free_points.keys():
+            for fp in self.airfoil.free_points[ap_tag].values():
+                fp.set_ctrlpt_value()
+        for ap in self.airfoil.anchor_points:
+            if ap.tag not in ['te_1', 'le', 'te_2']:
+                ap.set_ctrlpt_value()
+
     def mouseDragEvent(self, ev):
         if ev.button() != Qt.MouseButton.LeftButton:
             ev.ignore()
@@ -186,12 +194,7 @@ class AirfoilGraph(pg.GraphItem):
                 self.airfoil.dx.value = x[ind]
             if self.airfoil.dy.active and not self.airfoil.dy.linked:
                 self.airfoil.dy.value = y[ind]
-            for ap_key, ap_val in self.airfoil.free_points.items():
-                for fp_key, fp_val in ap_val.items():
-                    fp_val.set_xy(x=fp_val.x.value, y=fp_val.y.value)
-            for ap in self.airfoil.anchor_points:
-                if ap.tag not in ['te_1', 'le', 'te_2']:
-                    ap.set_xy(x=ap.x.value, y=ap.y.value)
+            self.update_ap_fp()
 
         elif self.airfoil.control_points[ind].tag in ['te_1', 'te_2']:
             if self.te_thickness_edit_mode:
@@ -232,44 +235,39 @@ class AirfoilGraph(pg.GraphItem):
                     self.airfoil.c.value = chord
                 if self.airfoil.alf.active and not self.airfoil.alf.linked:
                     self.airfoil.alf.value = angle_of_attack
-
-            for ap_key, ap_val in self.airfoil.free_points.items():
-                for fp_key, fp_val in ap_val.items():
-                    fp_val.set_xy(x=fp_val.x.value, y=fp_val.y.value)
-            for ap in self.airfoil.anchor_points:
-                if ap.tag not in ['te_1', 'le', 'te_2']:
-                    ap.set_xy(x=ap.x.value, y=ap.y.value)
+                self.update_ap_fp()
 
         elif self.airfoil.control_points[ind].cp_type == 'free_point':
             ap_tag = self.airfoil.control_points[ind].anchor_point_tag
             fp_tag = self.airfoil.control_points[ind].tag
-            self.airfoil.free_points[ap_tag][fp_tag].set_xy(xp=x[ind], yp=y[ind])
+            self.airfoil.free_points[ap_tag][fp_tag].set_xp_yp_value(x[ind], y[ind])
 
         elif self.airfoil.control_points[ind].cp_type == 'anchor_point':
             selected_anchor_point = self.airfoil.anchor_points[
                 self.airfoil.anchor_point_order.index(self.airfoil.control_points[ind].tag)]
-            selected_anchor_point.set_xy(xp=x[ind], yp=y[ind])
+            selected_anchor_point.set_xp_yp_value(x[ind], y[ind])
 
         self.plot_change_recursive(self.airfoil_parameters.child('Custom').children())
 
         for a_tag, airfoil in self.airfoil.mea.airfoils.items():
-            airfoil.update(update_ap_fp=False)
+            airfoil.update()
             airfoil.airfoil_graph.data['pos'] = airfoil.control_point_array
             airfoil.airfoil_graph.updateGraph()
             airfoil.airfoil_graph.plot_change_recursive(airfoil.airfoil_graph.airfoil_parameters.child(a_tag).children())
 
         ev.accept()
-
-    @staticmethod
-    def update_affected_parameters(obj, param_name_list: list, affected_airfoil_list: list):
-        for param_name in param_name_list:
-            if hasattr(obj, param_name):
-                for affected_param in getattr(obj, param_name).affects:
-                    affected_param.update()
-                    if affected_param.airfoil_tag is not None:
-                        if affected_param.airfoil_tag not in affected_airfoil_list:
-                            affected_airfoil_list.append(affected_param.airfoil_tag)
-        return affected_airfoil_list
+    #
+    # @staticmethod
+    # def update_affected_parameters(obj, param_name_list: list, affected_airfoil_list: list):
+    #     for param_name in param_name_list:
+    #         if hasattr(obj, param_name):
+    #             for affected_param in getattr(obj, param_name).affects:
+    #                 print(f"{affected_param.name = }")
+    #                 affected_param.update()
+    #                 if affected_param.airfoil_tag is not None:
+    #                     if affected_param.airfoil_tag not in affected_airfoil_list:
+    #                         affected_airfoil_list.append(affected_param.airfoil_tag)
+    #     return affected_airfoil_list
 
     def plot_change_recursive(self, child_list: list):
 

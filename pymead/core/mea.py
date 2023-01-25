@@ -1,5 +1,4 @@
 from pymead.core.airfoil import Airfoil
-from pymead.core.base_airfoil_params import BaseAirfoilParams
 from pymead.core.anchor_point import AnchorPoint
 from pymead.core.free_point import FreePoint
 from pymead.core.param import Param
@@ -139,9 +138,8 @@ class MEA:
                 else:
                     if isinstance(v, Param):
                         if v.active and not v.linked:
-                            if self.xy_update_rule(v):
-                                norm_value_list.append((v.value - v.bounds[0]) / (v.bounds[1] - v.bounds[0]))
-                                parameter_list.append(v)
+                            norm_value_list.append((v.value - v.bounds[0]) / (v.bounds[1] - v.bounds[0]))
+                            parameter_list.append(v)
                     else:
                         raise ValueError('Found value in dictionary not of type \'Param\'')
 
@@ -193,26 +191,9 @@ class MEA:
                 else:
                     if isinstance(v, Param):
                         if v.active and not v.linked:
-                            if self.xy_update_rule(v):
-                                v.value = norm_value_list[list_counter] * (v.bounds[1] - v.bounds[0]) + v.bounds[0]
-                                if v.x or v.y or v.xp or v.yp:
-                                    if v.free_point is not None:
-                                        fp_or_ap = v.free_point
-                                    elif v.anchor_point is not None:
-                                        fp_or_ap = v.anchor_point
-                                    else:
-                                        raise ValueError('x, y, xp, or yp parameter not associated with FreePoint'
-                                                         'or AnchorPoint')
-                                    if v.x:
-                                        fp_or_ap.set_xy(x=fp_or_ap.x.value, y=fp_or_ap.y.value)
-                                    elif v.y:
-                                        fp_or_ap.set_xy(y=fp_or_ap.y.value, x=fp_or_ap.x.value)
-                                    elif v.xp:
-                                        fp_or_ap.set_xy(xp=fp_or_ap.xp.value, yp=fp_or_ap.yp.value)
-                                    elif v.yp:
-                                        fp_or_ap.set_xy(yp=fp_or_ap.yp.value, xp=fp_or_ap.xp.value)
-                                # v.update()
-                                list_counter += 1
+                            v.value = norm_value_list[list_counter] * (v.bounds[1] - v.bounds[0]) + v.bounds[0]
+                            # v.update()
+                            list_counter += 1
                     else:
                         raise ValueError('Found value in dictionary not of type \'Param\'')
             return list_counter
@@ -233,26 +214,6 @@ class MEA:
                     airfoil.airfoil_graph.updateGraph()
                     airfoil.airfoil_graph.plot_change_recursive(
                         airfoil.airfoil_graph.airfoil_parameters.child(a_tag).children())
-
-    @staticmethod
-    def xy_update_rule(p: Param):
-        if p.x or p.y or p.xp or p.yp:
-            if p.free_point:
-                fp_or_ap = p.free_point
-            elif p.anchor_point:
-                fp_or_ap = p.anchor_point
-            else:
-                raise ValueError(f'Neither FreePoint nor AnchorPoint was found for parameter {p}')
-            if fp_or_ap.more_than_one_xy_linked_or_inactive():
-                return False
-            if fp_or_ap.x_or_y_linked_or_inactive() and (p.xp or p.yp):
-                return False
-            if fp_or_ap.xp_or_yp_linked_or_inactive() and (p.x or p.y):
-                return False
-            if not fp_or_ap.x_or_y_linked_or_inactive and not fp_or_ap.xp_or_yp_linked_or_inactive:
-                if p.xp or p.yp:
-                    return False
-        return True
 
     def deactivate_airfoil_matching_params(self, target_airfoil: str):
         def deactivate_recursively(d: dict):
@@ -384,11 +345,6 @@ class MEA:
         for airfoil_name, airfoil_base_dict in base_params_dict.items():
             base_params[airfoil_name] = {}
             for pname, pdict in airfoil_base_dict.items():
-                # temp_dict = {'value': pdict['_value']}
-                # for attr_name, attr_value in pdict.items():
-                #     if attr_name in ['units', 'bounds', 'scale_value', 'active', 'linked', 'func_str', 'x', 'y', 'xp',
-                #                      'yp', 'name']:
-                #         temp_dict[attr_name] = attr_value
                 base_params[airfoil_name][pname] = Param.from_param_dict(pdict)
         airfoil_list = []
         for airfoil_name, airfoil_base_dict in base_params.items():
@@ -420,7 +376,6 @@ class MEA:
                     airfoil.insert_anchor_point(ap)
 
             for ap_name, fp_list in param_dict[a_name]['free_point_order'].items():
-                print(f"{fp_list = }")
                 fps = param_dict[a_name]['FreePoints'][ap_name]
                 for idx, fp_name in enumerate(fp_list):
                     fp_dict = fps[fp_name]
@@ -446,8 +401,7 @@ class MEA:
             custom_param_dict = {}
             temp_dict = {'value': custom_param['_value']}
             for attr_name, attr_value in custom_param.items():
-                if attr_name in ['units', 'bounds', 'scale_value', 'active', 'linked', 'func_str', 'x', 'y', 'xp',
-                                 'yp', 'name']:
+                if attr_name in ['bounds', 'active', 'func_str', 'name']:
                     temp_dict[attr_name] = attr_value
             custom_param_dict[custom_name] = deepcopy(temp_dict)  # Need deepcopy here?
             mea.add_custom_parameters(custom_param_dict)
@@ -461,10 +415,10 @@ if __name__ == '__main__':
     from matplotlib.pyplot import subplots, show
     airfoil1 = Airfoil()
     airfoil2 = Airfoil(base_airfoil_params=BaseAirfoilParams(dy=Param(0.2)))
-    mea = MEA(airfoils=[airfoil1, airfoil2])
+    mea_ = MEA(airfoils=[airfoil1, airfoil2])
     fig, axs = subplots()
     colors = ['cornflowerblue', 'indianred']
-    for _idx, _airfoil in enumerate(mea.airfoils):
+    for _idx, _airfoil in enumerate(mea_.airfoils):
         _airfoil.plot_airfoil(axs, color=colors[_idx], label=_airfoil.tag)
     axs.set_aspect('equal')
     axs.legend()

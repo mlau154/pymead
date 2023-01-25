@@ -219,78 +219,7 @@ class GUI(QMainWindow):
 
         recursively_add_menus(menu_data, self.menu_bar)
 
-        # # File Menu set-up
-        # self.file_menu = QMenu("&File", self)
-        # self.menu_bar.addMenu(self.file_menu)
-        #
-        # self.open_action = QAction("Open", self)
-        # self.file_menu.addAction(self.open_action)
-        # self.open_action.triggered.connect(self.load_mea)
-        #
-        # self.save_as_action = QAction("Save As", self)
-        # self.file_menu.addAction(self.save_as_action)
-        # self.save_as_action.triggered.connect(self.save_as_mea)
-        #
-        # self.save_action = QAction("Save", self)
-        # self.file_menu.addAction(self.save_action)
-        # self.save_action.triggered.connect(self.save_mea)
-        #
-        # self.settings_action = QAction("Settings", self)
-        # self.file_menu.addAction(self.settings_action)
-        # # self.settings_action.triggered.connect()
-        #
-        # self.import_menu = QMenu("&Import", self)
-        # self.file_menu.addMenu(self.import_menu)
-        #
-        # self.parameter_list_action = QAction("Parameter List", self)
-        # self.import_menu.addAction(self.parameter_list_action)
-        # self.parameter_list_action.triggered.connect(self.import_parameter_list)
-        #
-        # self.export_menu = QMenu("&Export", self)
-        # self.file_menu.addMenu(self.export_menu)
-        #
-        # # Analysis Menu set-up
-        # self.analysis_menu = QMenu("&Analysis", self)
-        # self.menu_bar.addMenu(self.analysis_menu)
-        #
-        # self.single_menu = QMenu("Single Airfoil", self)
-        # self.analysis_menu.addMenu(self.single_menu)
-        # self.multi_action = QAction("Multi-Element Airfoil", self)
-        # self.analysis_menu.addAction(self.multi_action)
-        # self.multi_action.triggered.connect(self.multi_airfoil_analysis_setup)
-        #
-        # self.single_inviscid_action = QAction("Invisid", self)
-        # self.single_menu.addAction(self.single_inviscid_action)
-        # self.single_inviscid_action.triggered.connect(self.single_airfoil_inviscid_analysis)
-        #
-        # self.single_viscous_action = QAction("Viscous", self)
-        # self.single_menu.addAction(self.single_viscous_action)
-        # self.single_viscous_action.triggered.connect(self.single_airfoil_viscous_analysis)
-        #
-        # self.opt_menu = QMenu("&Optimization", self)
-        # self.menu_bar.addMenu(self.opt_menu)
-        #
-        # self.opt_run_action = QAction("Run", self)
-        # self.opt_menu.addAction(self.opt_run_action)
-        # self.opt_run_action.triggered.connect(self.setup_optimization)
-        #
-        # self.tools_menu = QMenu("&Tools", self)
-        # self.menu_bar.addMenu(self.tools_menu)
-        #
-        # self.match_airfoil_action = QAction("Match Airfoil", self)
-        # self.tools_menu.addAction(self.match_airfoil_action)
-        # self.match_airfoil_action.triggered.connect(self.match_airfoil)
-        #
-        # self.airfoil_stats_action = QAction("Airfoil Statistics", self)
-        # self.tools_menu.addAction(self.airfoil_stats_action)
-        # self.airfoil_stats_action.triggered.connect(self.display_airfoil_statistics)
-        #
-        # self.plot_menu = QMenu("&Plot", self)
-        # self.menu_bar.addMenu(self.plot_menu)
-        #
-        # self.plot_geometry_from_file_action = QAction("Geometry From File", self)
-        # self.plot_menu.addAction(self.plot_geometry_from_file_action)
-        # self.plot_geometry_from_file_action.triggered.connect(self.plot_geometry)
+    # TODO: add "New" function to menu to allow for delete or save of current MEA and opening of new default MEA
 
     def save_as_mea(self):
         dialog = SaveAsDialog(self)
@@ -299,6 +228,7 @@ class GUI(QMainWindow):
             if self.mea.file_name[-5:] != '.jmea':
                 self.mea.file_name += '.jmea'
             self.save_mea()
+            self.disp_message_box(f"Multi-element airfoil saved as {self.mea.file_name}", message_mode='info')
         else:
             if self.save_attempts > 0:
                 self.save_attempts = 0
@@ -314,7 +244,7 @@ class GUI(QMainWindow):
                 self.disp_message_box('No file name specified. File not saved.', message_mode='warn')
         else:
             output_dict_ = {}
-            unravel_param_dict_deepcopy(self.mea.param_dict, output_dict=output_dict_, prep_for_json=True)
+            unravel_param_dict_deepcopy(self.mea.param_dict, output_dict=output_dict_)
             for k, v in output_dict_.items():
                 if k != 'Custom':
                     output_dict_[k]['anchor_point_order'] = deepcopy(self.mea.airfoils[k].anchor_point_order)

@@ -12,8 +12,7 @@ class TrailingEdgePoint(ControlPoint):
                  phi: Param,
                  L: Param,
                  theta: Param,
-                 upper: bool,
-                 length_scale_dimension: float = None
+                 upper: bool
                  ):
 
         self.c = c
@@ -23,7 +22,6 @@ class TrailingEdgePoint(ControlPoint):
         self.L = L
         self.theta = theta
         self.upper = upper
-        self.length_scale_dimension = length_scale_dimension
 
         self.ctrlpt = None
         self.tangent_ctrlpt = None
@@ -43,20 +41,6 @@ class TrailingEdgePoint(ControlPoint):
         super().__init__(xy[0], xy[1], tag, tag)
 
         self.ctrlpt = ControlPoint(xy[0], xy[1], tag, tag, cp_type='anchor_point')
-
-    def scale_vars(self):
-        """
-        ### Description:
-
-        Scales all of the `pymead.core.param.Param`s in the `AnchorPoint` with `units == 'length'` by the
-        `length_scale_dimension`. Scaling only occurs for each parameter if the `pymead.core.param.Param` has not yet
-        been scaled.
-        """
-        if self.length_scale_dimension is not None:  # only scale if the anchor point has a length scale dimension
-            for param in [var for var in vars(self).values()  # For each parameter in the anchor point,
-                          if isinstance(var, Param) and var.units == 'length']:
-                if param.scale_value is None:  # only scale if the parameter has not yet been scaled
-                    param.value = param.value * self.length_scale_dimension
 
     def __repr__(self):
         return f"anchor_point_{self.tag}"
@@ -111,50 +95,3 @@ class TrailingEdgePoint(ControlPoint):
                 self.theta.value = measured_phi - np.pi
             else:
                 self.theta.value = -measured_phi + np.pi
-
-    def count_overrideable_variables(self):
-        """
-        ### Description:
-
-        Counts all the overrideable `pymead.core.param.Param`s in the `AnchorPoint` (criteria:
-        `pymead.core.param.Param().active == True`, `pymead.core.param.Param().linked == False`)
-
-        ### Returns:
-
-        Number of overrideable variables (`int`)
-        """
-        n_overrideable_variables = len([var for var in vars(self).values()
-                                        if isinstance(var, Param) and var.active and not var.linked])
-        return n_overrideable_variables
-
-    def override(self, parameters: list):
-        """
-        ### Description:
-
-        Overrides all the `pymead.core.param.Param`s in `AnchorPoint` which are active and not linked using a list of
-        parameters. This list of parameters is likely a subset of parameters passed to either
-        `pymead.core.airfoil.Airfoil` or `pymead.core.parametrization.AirfoilParametrization`. This function is
-        useful whenever iteration over only the relevant parameters is required.
-
-        ### Args:
-
-        `parameters`: a `list` of parameters
-        """
-        override_param_obj_list = [var for var in vars(self).values()
-                                   if isinstance(var, Param) and var.active and not var.linked]
-        if len(parameters) != len(override_param_obj_list):
-            raise Exception('Number of base airfoil parameters does not match length of input override parameter list')
-        param_idx = 0
-        for param in override_param_obj_list:
-            setattr(param, 'value', parameters[param_idx])
-            param_idx += 1
-        self.scale_vars()
-
-    def set_all_as_linked(self):
-        """
-        ### Description:
-
-        Sets `linked=True` on all `pymead.core.param.Param`s in the `AnchorPoint`
-        """
-        for param in [var for var in vars(self).values() if isinstance(var, Param)]:
-            param.linked = True
