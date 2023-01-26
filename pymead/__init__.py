@@ -81,4 +81,4 @@ from matplotlib import colormaps
 DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")
 RESOURCE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "resources")
 ICON_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "icons")
-pass
+INCLUDE_FILES = [os.path.join(os.path.dirname(os.path.abspath(__file__)), "core", "symmetry.py")]

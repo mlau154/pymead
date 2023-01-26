@@ -24,6 +24,7 @@ class MEA:
                  airfoil_graphs_active: bool = False):
         self.airfoils = {}
         self.file_name = None
+        self.param_tree = param_tree
         self.param_dict = {'Custom': {}}
         self.airfoil_graphs_active = airfoil_graphs_active
         self.te_thickness_edit_mode = False
@@ -352,17 +353,11 @@ class MEA:
                     ap_dict = aps[ap_name]
                     ap_param_dict = {}
                     for pname, pdict in ap_dict.items():
-                        if pname not in ['xp', 'yp']:
-                            ap_param_dict[pname] = Param.from_param_dict(pdict)
+                        ap_param_dict[pname] = Param.from_param_dict(pdict)
 
                     # Create an AnchorPoint from the saved parameter dictionary:
                     ap = AnchorPoint(airfoil_tag=a_name, tag=ap_name, previous_anchor_point=ap_order[idx - 1],
                                      **ap_param_dict)
-
-                    # Override the global x and y position of the AnchorPoint because this is not an input to the AP:
-                    for pname, pdict in ap_dict.items():
-                        if pname in ['xp', 'yp']:
-                            setattr(ap, pname, Param.from_param_dict(pdict))
 
                     # Now, insert the AnchorPoint into the Airfoil
                     airfoil.insert_anchor_point(ap)
@@ -373,18 +368,12 @@ class MEA:
                     fp_dict = fps[fp_name]
                     fp_param_dict = {}
                     for pname, pdict in fp_dict.items():
-                        if pname not in ['xp', 'yp']:
-                            fp_param_dict[pname] = Param.from_param_dict(pdict)
+                        fp_param_dict[pname] = Param.from_param_dict(pdict)
 
                     previous_fp = fp_list[idx - 1] if idx > 0 else None
                     # Create a FreePoint from the saved parameter dictionary:
                     fp = FreePoint(airfoil_tag=a_name, tag=fp_name, previous_anchor_point=ap_name,
                                    previous_free_point=previous_fp, **fp_param_dict)
-
-                    # Override the global x and y position of the FreePoint because this is not an input to the FP:
-                    for pname, pdict in fp_dict.items():
-                        if pname in ['xp', 'yp']:
-                            setattr(fp, pname, Param.from_param_dict(pdict))
 
                     # Now, insert the FreePoint into the Airfoil
                     airfoil.insert_free_point(fp)
@@ -397,7 +386,6 @@ class MEA:
                     temp_dict[attr_name] = attr_value
             custom_param_dict[custom_name] = deepcopy(temp_dict)  # Need deepcopy here?
             mea.add_custom_parameters(custom_param_dict)
-        pass
 
         return mea
 

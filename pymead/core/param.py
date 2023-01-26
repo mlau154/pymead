@@ -46,10 +46,11 @@ class Param:
         self.func = None
         if self.func_str is not None:
             self.linked = True
-        self.function_dict = {'depends': {}}
+        self.function_dict = {'depends': {}, 'name': self.name.split('.')[-1] if self.name is not None else None}
         self.depends_on = {}
         self.affects = []
         self.tag_matrix = None
+        self.user_func_strs = None
         self.tag_list = None
         self.airfoil_tag = None
         self.mea = None
@@ -105,13 +106,13 @@ class Param:
             self.remove_func()
         else:
             if len(self.function_dict) == 0:
-                self.function_dict = {'depends': {}}
+                self.function_dict = {'depends': {}, 'name': self.name.split('.')[-1] if self.name is not None else None}
             self.func_str = func_str
             self.linked = True
 
     def remove_func(self):
         self.func_str = None
-        self.function_dict = {'depends': {}}
+        self.function_dict = {'depends': {}, 'name': self.name.split('.')[-1] if self.name is not None else None}
         self.linked = False
         for parameter in self.depends_on.values():
             if self in parameter.affects:
@@ -124,13 +125,20 @@ class Param:
         else:
             if func_str_changed:
                 # Convert the function string into a Python function and determine parameters present in string:
-                math_function_list = self.parse_update_function_str()
+                math_function_list, user_function_list = self.parse_update_function_str()
 
                 # Add any math functions detected from the func_str:
                 for s in math_function_list:
                     if s not in self.function_dict.keys():
                         if s in vars(math).keys():
                             self.function_dict[s] = vars(math)[s]
+
+                for s in user_function_list:
+                    if s not in self.function_dict.keys():
+                        s_list = s.split('.')
+                        mod_name = s_list[0]
+                        func_name = s_list[1]
+                        self.function_dict[func_name] = getattr(self.mea.param_tree.user_mods[mod_name], func_name)
 
                 # Add the variables the function depends on to the function_dict:
                 self.add_dependencies(show_q_error_messages)
@@ -139,6 +147,8 @@ class Param:
 
             # Update the function (not the result) in the function_dict
             # if execute:
+            self.func = self.func.replace('symmetrysymmetry', 'symmetry.symmetry')
+
             exec(self.func, self.function_dict)
 
     def update_value(self):
@@ -154,9 +164,10 @@ class Param:
 
     def parse_update_function_str(self):
         self.tag_matrix = []
+        self.user_func_strs = []
         self.func = 'def f(): return '
         math_functions_to_include = []
-        appending = False
+        appending, appending_user_func = False, False
         append_new_to_math_function_list = True
         for ch_idx, ch in enumerate(self.func_str):
             if appending:
@@ -167,12 +178,22 @@ class Param:
                 else:
                     self.func += '"]'
                     appending = False
+            if appending_user_func:
+                if ch == '(' and appending_user_func:
+                    appending_user_func = False
             if ch == '$':
                 self.tag_matrix.append([''])
                 appending = True
                 self.func += 'depends["'
-            elif ch == '.' and appending:
-                self.func += '.'
+            elif ch == '.':
+                if appending:
+                    self.func += '.'
+                if appending_user_func:
+                    self.func += '.'
+                    self.user_func_strs[-1] += '.'
+            elif ch == '^':
+                self.user_func_strs.append('')
+                appending_user_func = True
             else:
                 self.func += ch
             if appending and ch_idx == len(self.func_str) - 1:
@@ -182,8 +203,13 @@ class Param:
                     math_functions_to_include.append('')
                 math_functions_to_include[-1] += ch
                 append_new_to_math_function_list = False
+                if appending_user_func:
+                    self.user_func_strs[-1] += ch
             if not appending and not ch.isalnum():
                 append_new_to_math_function_list = True
+
+        for user_func_str in self.user_func_strs:
+            self.func = self.func.replace(user_func_str, user_func_str.split('.')[-1])
 
         def concatenate_strings(lst: list):
             tag = ''
@@ -197,7 +223,7 @@ class Param:
         for t in self.tag_list:
             self.depends_on[t] = None
 
-        return math_functions_to_include
+        return math_functions_to_include, self.user_func_strs
 
     def add_dependencies(self, show_q_error_messages: bool):
 
