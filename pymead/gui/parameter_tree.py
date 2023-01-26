@@ -1,3 +1,5 @@
+import os.path
+
 import pyqtgraph.parametertree.parameterTypes as pTypes
 from pyqtgraph.parametertree import Parameter, ParameterTree, registerParameterItemType, ParameterItem
 from pymead.core.mea import MEA
@@ -16,13 +18,11 @@ from PyQt5.QtCore import pyqtSignal
 from pymead.utils.downsampling_schemes import fractal_downsampler2
 from pymead.gui.autocomplete import Completer
 from functools import partial
+from pymead import INCLUDE_FILES
+import importlib.util
 import numpy as np
 
-app = pg.mkQApp("Parameter Tree")
 
-
-# test subclassing parameters
-# This parameter automatically generates two child parameters which are always reciprocals of each other
 class MEAParameters(pTypes.GroupParameter):
     """Class for storage of all the Multi-Element Airfoil Parameters."""
     def __init__(self, mea: MEA, status_bar, **opts):
@@ -130,6 +130,13 @@ class CustomGroup(pTypes.GroupParameter):
 class MEAParamTree:
     """Class for containment of all Multi-Element Airfoil Parameters in the GUI"""
     def __init__(self, mea: MEA, status_bar, parent):
+        self.user_mods = {}
+        for f in INCLUDE_FILES:
+            name = os.path.split(f)[-1]
+            name_no_ext = os.path.splitext(name)[-2]
+            spec = importlib.util.spec_from_file_location(name_no_ext, f)
+            self.user_mods[name_no_ext] = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(self.user_mods[name_no_ext])
         self.dialog = None
         self.parent = parent
         self.params = [
@@ -163,6 +170,7 @@ class MEAParamTree:
                     #     print(f"Parameter {child.name()} has a non-zero-length function dictionary")
                     if child.airfoil_param.func_str is not None:
                         self.add_equation_box(child, child.airfoil_param.func_str)
+                        self.update_equation(child.child('Equation Definition'), child.airfoil_param.func_str)
                 else:
                     if child.hasChildren():
                         add_equation_boxes_recursively(child.children())
@@ -178,6 +186,7 @@ class MEAParamTree:
                         set_readonly_recursively(child.children())
 
         self.mea = mea
+        self.mea.param_tree = self
         self.cl_label = pg.LabelItem(size="18pt")
         self.cl_label.setParentItem(self.mea.v)
         self.cl_label.anchor(itemPos=(1, 0), parentPos=(1, 0), offset=(-10, 10))
@@ -469,6 +478,13 @@ class MEAParamTree:
         airfoil_param = pg_eq_parent.airfoil_param
         pg_eq_parent.setReadonly()
         airfoil_param.mea = self.mea
+        temp_func_dict = {**func_dict_kwargs}
+        # INCLUDE_FILES.append('test2.py')
+        # for k, v in temp_func_dict.items():
+        #     if isinstance(v, str) and v[:2] == '$$':
+
+        if 'name' not in airfoil_param.function_dict.keys():
+            airfoil_param.function_dict['name'] = airfoil_param.name
         airfoil_param.function_dict = {**airfoil_param.function_dict, **func_dict_kwargs}
         airfoil_param.set_func_str(equation_str)
         try:
@@ -488,26 +504,6 @@ class MEAParamTree:
                 pg_eq_parent.setValue(airfoil_param.value)
             self.equation_widget(pg_param).setStyleSheet('border: 0px; color: #a1fa9d;')  # make the equation green
             Param.update_ap_fp(airfoil_param)
-            # if pg_eq_parent.parent().parent().parent().name() == 'FreePoints':
-            #     fp_name = pg_eq_parent.parent().name()
-            #     ap_name = pg_eq_parent.parent().parent().name()
-            #     a_name = pg_eq_parent.parent().parent().parent().parent().name()
-            #     param_name = pg_eq_parent.name().split('.')[-1]
-            #     fp = self.mea.airfoils[a_name].free_points[ap_name][fp_name]
-            #     # if param_name in ['x', 'y']:
-            #     #     fp.set_x_value(None)
-            #     #     fp.set_y_value(None)
-            #     fp.set_ctrlpt_value()
-            # elif pg_eq_parent.parent().parent().name() == 'AnchorPoints':
-            #     ap_name = pg_eq_parent.parent().name()
-            #     a_name = pg_eq_parent.parent().parent().parent().name()
-            #     param_name = pg_eq_parent.name().split('.')[-1]
-            #     ap = self.mea.airfoils[a_name].anchor_points[
-            #         self.mea.airfoils[a_name].anchor_point_order.index(ap_name)]
-            #     # if param_name in ['x', 'y']:
-            #     #     ap.set_x_value(None)
-            #     #     ap.set_y_value(None)
-            #     ap.set_ctrlpt_value()
         else:
             pg_eq_parent.setReadonly(False)
             self.equation_widget(pg_param).setStyleSheet('border: 0px; color: #fa4b4b;')  # make the equation red

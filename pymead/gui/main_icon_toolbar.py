@@ -1,8 +1,6 @@
-import numpy as np
 from PyQt5.QtWidgets import QToolBar, QToolButton
 from PyQt5.QtGui import QIcon
 from PyQt5.QtCore import pyqtSlot
-from pymead import DATA_DIR
 import os
 from pymead.core.airfoil import Airfoil
 from pymead.core.base_airfoil_params import BaseAirfoilParams
@@ -162,11 +160,11 @@ class MainIconToolbar(QToolBar):
                 'L': f"L={out['tool']}.L",
                 'R': f"R={out['tool']}.R",
             }
-            eq_string = f"symmetry(param_name, {extra_args[param_name]})"
+            eq_string = f"^symmetry.symmetry(name, {extra_args[param_name]})"
             self.parent.param_tree_instance.block_changes(eq)
             eq.setValue(eq_string)
             self.parent.param_tree_instance.flush_changes(eq)
-            self.parent.param_tree_instance.update_equation(eq, eq_string, symmetry=symmetry, param_name=param_name)
+            self.parent.param_tree_instance.update_equation(eq, eq_string)
 
         airfoil_param_tree = self.parent.param_tree_instance.p.child('Airfoil Parameters')
         out = self.symmetry_dialog.getInputs()

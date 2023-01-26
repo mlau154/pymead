@@ -3,14 +3,14 @@ from pymead.utils.transformations import transform_matrix
 import numpy as np
 
 
-def symmetry(param_name: str, x=None, y=None, alf_target=None, alf_tool=None, c_target=None, c_tool=None,
+def symmetry(name: str, x=None, y=None, alf_target=None, alf_tool=None, c_target=None, c_tool=None,
              dx_target=None, dx_tool=None, dy_target=None, dy_tool=None, upper_target=None, upper_tool=None,
              phi=None, psi1=None, psi2=None, r=None, L=None, R=None, x1=None, y1=None, x2=None, y2=None, m=None,
              theta_rad=None, theta_deg=None):
     new_x, new_y, new_xp, new_yp, rel_phi_target = None, None, None, None, None
-    if param_name in ['x', 'y', 'phi']:
+    if name in ['x', 'y', 'phi']:
         inf_line = InfiniteLine(x1=x1, y1=y1, x2=x2, y2=y2, m=m, theta_rad=theta_rad, theta_deg=theta_deg)
-        if param_name in ['x', 'y']:
+        if name in ['x', 'y']:
             new_xpyp = transform_matrix(np.array([[x, y]]), dx_tool, dy_tool, -alf_tool, c_tool,
                                       ['scale', 'rotate', 'translate'])
             xp = new_xpyp[0][0]
@@ -55,7 +55,7 @@ def symmetry(param_name: str, x=None, y=None, alf_target=None, alf_tool=None, c_
         'L': L,
         'R': R,
     }
-    return output_dict[param_name]
+    return output_dict[name]
 
 
 def _test():
