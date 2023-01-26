@@ -369,14 +369,30 @@ class MEAParamTree:
         self.t.setStyleSheet('''QTreeWidget {color: #3e3f40; alternate-background-color: #3e3f40;
                             selection-background-color: #3e3f40;}
                             QTreeView::item:hover {background: #36bacfaa;} QTreeWidget::item {border: 0px solid gray; color: #dce1e6}
-                            QTreeWidget::item:selected {background-color: #36bacfaa; alternate-background-color: #36bacfaa}''')
+                            QTreeWidget::item:selected {background-color: #36bacfaa; alternate-background-color: #36bacfaa} 
+                            QTreeView::branch:has-siblings:adjoins-item {border-image: url(../icons/branch-more.png) 0;}
+                            QTreeView::branch:!has-children:!has-siblings:adjoins-item {border-image: url(../icons/branch-end.png) 0;}
+                            QTreeView::branch:open:has-children:!has-siblings, QTreeView::branch:open:has-children:has-siblings  {
+                            border-image: none;
+                            image: url(../icons/closed-arrow.png);} 
+                            QTreeView::branch:has-siblings:!adjoins-item {border-image: url(../icons/vline.png) 0;} 
+                            QTreeView::branch:has-children:!has-siblings:closed,
+                            QTreeView::branch:closed:has-children:has-siblings {border-image: none; image: url(../icons/opened-arrow.png);}''')
 
     def set_light_mode(self):
         """Sets the theme of the ParameterTree to light by modifying the CSS"""
         self.t.setStyleSheet('''QTreeWidget {color: white; alternate-background-color: white; 
                     selection-background-color: white;}
                     QTreeView::item::hover {background: #36bacfaa;} QTreeView::item {border: 0px solid gray; color: black}
-                    QTreeWidget::item:selected {background-color: #36bacfaa; alternate-background-color: #36bacfaa}''')
+                    QTreeWidget::item:selected {background-color: #36bacfaa; alternate-background-color: #36bacfaa}
+                    QTreeView::branch:has-siblings:adjoins-item {border-image: url(../icons/branch-more.png) 0;}
+                    QTreeView::branch:!has-children:!has-siblings:adjoins-item {border-image: url(../icons/branch-end.png) 0;}
+                    QTreeView::branch:open:has-children:!has-siblings, QTreeView::branch:open:has-children:has-siblings  {
+                    border-image: none;
+                    image: url(../icons/closed-arrow.png);} 
+                    QTreeView::branch:has-siblings:!adjoins-item {border-image: url(../icons/vline.png) 0;} 
+                    QTreeView::branch:has-children:!has-siblings:closed,
+                    QTreeView::branch:closed:has-children:has-siblings {border-image: none; image: url(../icons/opened-arrow.png);}''')
 
     def add_equation_box(self, pg_param, equation: str = None):
         """Adds a QLineEdit to the ParameterTreeItem for equation editing"""
@@ -759,15 +775,9 @@ class CustomParameterTree(ParameterTree):
         self.lastSel = sel[0]
         if hasattr(sel[0], 'selected'):
             sel[0].selected(True)
-            # print(f"vars in sel[0]: {vars(sel[0])}")
         for selection in self.multi_select:
             if hasattr(selection, 'widget'):
-                # selection.selected(True)
                 selection.widget.setMinimumHeight(20)
-            # selection.defaultBtn.setStyleSheet('''color: blue; background-color: blue''')
-            # selection.displayLabel.setStyleSheet('''background-color: blue; color: blue;''')
-            # selection.displayLabel.setText("Hi!")
-            # selection.widget.setStyleSheet('''background-color: blue; color: blue''')
         return super().selectionChanged(*args)
 
     @staticmethod
