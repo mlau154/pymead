@@ -199,8 +199,7 @@ class Airfoil:
         else:
             self.N[ap.tag] = 5
         if ap.previous_anchor_point == 'le':
-            self.N['le'] = 5
-        # TODO: fix adding an AnchorPoint to le after le FreePoint is added creates an incorrect set of orders N
+            self.N['le'] = 5 + len(self.free_point_order['le'])
         ap.airfoil_transformation = {'c': self.c, 'alf': self.alf, 'dx': self.dx, 'dy': self.dy}
         ap_param_list = ['x', 'y', 'L', 'R', 'r', 'phi', 'psi1', 'psi2']
         self.param_dicts['AnchorPoints'][ap.tag] = {p: getattr(ap, p) for p in ap_param_list}

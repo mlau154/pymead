@@ -50,15 +50,6 @@ class MEA:
         state['v'] = None  # Set unpicklable ViewBox object to None
         return state
 
-    # def __setstate__(self, state):
-    #     """
-    #     Reimplemented to re-add GraphicsLayoutWidget and ViewBox objects to airfoils after unpickling
-    #     """
-    #     print(f"MEA __setstate__ called")
-    #     self.__dict__.update(state)
-    #     for idx, airfoil in enumerate(self.airfoils):
-    #         self.add_airfoil_graph_to_airfoil(airfoil, idx)
-
     def add_airfoil(self, airfoil: Airfoil, idx: int, param_tree):
         """
         Add an airfoil at index `idx` to the multi-element airfoil container.
