@@ -14,7 +14,7 @@
     "function": "change_background_color_button_toggled"
   },
   "add-airfoil": {
-    "icon": "Add-icon3.png",
+    "icon": "Add-Icon3.png",
     "status_tip": "Add airfoil (click on the graph to complete action)",
     "checkable": false,
     "function": "add_airfoil_button_toggled"

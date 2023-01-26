@@ -2,6 +2,7 @@ from pymead.core.airfoil import Airfoil
 from pymead.core.anchor_point import AnchorPoint
 from pymead.core.free_point import FreePoint
 from pymead.core.param import Param
+from pymead.core.base_airfoil_params import BaseAirfoilParams
 from pymead.utils.dict_recursion import set_all_dict_values, assign_airfoil_tags_to_param_dict, \
     assign_names_to_params_in_param_dict
 import typing
