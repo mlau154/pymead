@@ -192,7 +192,7 @@ class GUI(QMainWindow):
 
     def set_title_and_icon(self):
         self.setWindowTitle("pymead")
-        image_path = os.path.join(os.path.dirname(os.getcwd()), 'icons', 'airfoil_slat.png')
+        image_path = os.path.join(os.path.dirname(os.getcwd()), 'icons', 'pymead.png')
         self.setWindowIcon(QIcon(image_path))
 
     def create_menu_bar(self):
