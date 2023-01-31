@@ -1,0 +1,1313 @@
+{
+    "Custom": {
+        "alf_hub_abs": {
+            "_value": -0.01397554270318829,
+            "bounds": [
+                -Infinity,
+                Infinity
+            ],
+            "name": "Custom.alf_hub_abs",
+            "active": true,
+            "func_str": "-$A1.Base.alf"
+        }
+    },
+    "A0": {
+        "Base": {
+            "c": {
+                "_value": 1.0,
+                "bounds": [
+                    -Infinity,
+                    Infinity
+                ],
+                "name": "A0.Base.c",
+                "active": true,
+                "func_str": null
+            },
+            "alf": {
+                "_value": -0.0002647445237432269,
+                "bounds": [
+                    -Infinity,
+                    Infinity
+                ],
+                "name": "A0.Base.alf",
+                "active": true,
+                "func_str": null
+            },
+            "R_le": {
+                "_value": 0.04929155087542247,
+                "bounds": [
+                    -Infinity,
+                    Infinity
+                ],
+                "name": "A0.Base.R_le",
+                "active": true,
+                "func_str": null
+            },
+            "L_le": {
+                "_value": 0.1,
+                "bounds": [
+                    -Infinity,
+                    Infinity
+                ],
+                "name": "A0.Base.L_le",
+                "active": true,
+                "func_str": null
+            },
+            "r_le": {
+                "_value": 0.5,
+                "bounds": [
+                    -Infinity,
+                    Infinity
+                ],
+                "name": "A0.Base.r_le",
+                "active": true,
+                "func_str": null
+            },
+            "phi_le": {
+                "_value": 0.0,
+                "bounds": [
+                    -Infinity,
+                    Infinity
+                ],
+                "name": "A0.Base.phi_le",
+                "active": true,
+                "func_str": null
+            },
+            "psi1_le": {
+                "_value": 0.47715917044008654,
+                "bounds": [
+                    -Infinity,
+                    Infinity
+                ],
+                "name": "A0.Base.psi1_le",
+                "active": true,
+                "func_str": null
+            },
+            "psi2_le": {
+                "_value": 0.15358592722600237,
+                "bounds": [
+                    -Infinity,
+                    Infinity
+                ],
+                "name": "A0.Base.psi2_le",
+                "active": true,
+                "func_str": null
+            },
+            "L1_te": {
+                "_value": 0.10036888831900234,
+                "bounds": [
+                    -Infinity,
+                    Infinity
+                ],
+                "name": "A0.Base.L1_te",
+                "active": true,
+                "func_str": null
+            },
+            "L2_te": {
+                "_value": 0.38414101525560923,
+                "bounds": [
+                    -Infinity,
+                    Infinity
+                ],
+                "name": "A0.Base.L2_te",
+                "active": true,
+                "func_str": null
+            },
+            "theta1_te": {
+                "_value": 0.18697662263330495,
+                "bounds": [
+                    -Infinity,
+                    Infinity
+                ],
+                "name": "A0.Base.theta1_te",
+                "active": true,
+                "func_str": null
+            },
+            "theta2_te": {
+                "_value": -6.097335934261261,
+                "bounds": [
+                    -Infinity,
+                    Infinity
+                ],
+                "name": "A0.Base.theta2_te",
+                "active": true,
+                "func_str": null
+            },
+            "t_te": {
+                "_value": 0.0,
+                "bounds": [
+                    -Infinity,
+                    Infinity
+                ],
+                "name": "A0.Base.t_te",
+                "active": true,
+                "func_str": null
+            },
+            "r_te": {
+                "_value": 0.5,
+                "bounds": [
+                    -Infinity,
+                    Infinity
+                ],
+                "name": "A0.Base.r_te",
+                "active": true,
+                "func_str": null
+            },
+            "phi_te": {
+                "_value": 0.0,
+                "bounds": [
+                    -Infinity,
+                    Infinity
+                ],
+                "name": "A0.Base.phi_te",
+                "active": false,
+                "func_str": null
+            },
+            "dx": {
+                "_value": 0.0,
+                "bounds": [
+                    -Infinity,
+                    Infinity
+                ],
+                "name": "A0.Base.dx",
+                "active": true,
+                "func_str": null
+            },
+            "dy": {
+                "_value": 0.0,
+                "bounds": [
+                    -Infinity,
+                    Infinity
+                ],
+                "name": "A0.Base.dy",
+                "active": true,
+                "func_str": null
+            }
+        },
+        "AnchorPoints": {
+            "ap_fan_m": {
+                "x": {
+                    "_value": 0.8090177971259713,
+                    "bounds": [
+                        -Infinity,
+                        Infinity
+                    ],
+                    "name": "A0.AnchorPoints.ap_fan_m.x",
+                    "active": true,
+                    "func_str": null
+                },
+                "y": {
+                    "_value": 0.045020178277176845,
+                    "bounds": [
+                        -Infinity,
+                        Infinity
+                    ],
+                    "name": "A0.AnchorPoints.ap_fan_m.y",
+                    "active": true,
+                    "func_str": null
+                },
+                "L": {
+                    "_value": 0.056215572223729374,
+                    "bounds": [
+                        -Infinity,
+                        Infinity
+                    ],
+                    "name": "A0.AnchorPoints.ap_fan_m.L",
+                    "active": true,
+                    "func_str": null
+                },
+                "R": {
+                    "_value": 2.0,
+                    "bounds": [
+                        -Infinity,
+                        Infinity
+                    ],
+                    "name": "A0.AnchorPoints.ap_fan_m.R",
+                    "active": true,
+                    "func_str": null
+                },
+                "r": {
+                    "_value": 0.5159717985239547,
+                    "bounds": [
+                        -Infinity,
+                        Infinity
+                    ],
+                    "name": "A0.AnchorPoints.ap_fan_m.r",
+                    "active": true,
+                    "func_str": null
+                },
+                "phi": {
+                    "_value": -0.02467274399393915,
+                    "bounds": [
+                        -Infinity,
+                        Infinity
+                    ],
+                    "name": "A0.AnchorPoints.ap_fan_m.phi",
+                    "active": true,
+                    "func_str": null
+                },
+                "psi1": {
+                    "_value": 1.5,
+                    "bounds": [
+                        -Infinity,
+                        Infinity
+                    ],
+                    "name": "A0.AnchorPoints.ap_fan_m.psi1",
+                    "active": true,
+                    "func_str": null
+                },
+                "psi2": {
+                    "_value": 1.5,
+                    "bounds": [
+                        -Infinity,
+                        Infinity
+                    ],
+                    "name": "A0.AnchorPoints.ap_fan_m.psi2",
+                    "active": true,
+                    "func_str": null
+                }
+            },
+            "ap_inl_m": {
+                "x": {
+                    "_value": 0.6594762579530009,
+                    "bounds": [
+                        -Infinity,
+                        Infinity
+                    ],
+                    "name": "A0.AnchorPoints.ap_inl_m.x",
+                    "active": true,
+                    "func_str": null
+                },
+                "y": {
+                    "_value": 0.07587169206321953,
+                    "bounds": [
+                        -Infinity,
+                        Infinity
+                    ],
+                    "name": "A0.AnchorPoints.ap_inl_m.y",
+                    "active": true,
+                    "func_str": null
+                },
+                "L": {
+                    "_value": 0.059924160190569696,
+                    "bounds": [
+                        -Infinity,
+                        Infinity
+                    ],
+                    "name": "A0.AnchorPoints.ap_inl_m.L",
+                    "active": true,
+                    "func_str": null
+                },
+                "R": {
+                    "_value": 0.41715647351094887,
+                    "bounds": [
+                        -Infinity,
+                        Infinity
+                    ],
+                    "name": "A0.AnchorPoints.ap_inl_m.R",
+                    "active": true,
+                    "func_str": null
+                },
+                "r": {
+                    "_value": 0.43730225054158706,
+                    "bounds": [
+                        -Infinity,
+                        Infinity
+                    ],
+                    "name": "A0.AnchorPoints.ap_inl_m.r",
+                    "active": true,
+                    "func_str": null
+                },
+                "phi": {
+                    "_value": 0.0,
+                    "bounds": [
+                        -Infinity,
+                        Infinity
+                    ],
+                    "name": "A0.AnchorPoints.ap_inl_m.phi",
+                    "active": true,
+                    "func_str": null
+                },
+                "psi1": {
+                    "_value": 1.5,
+                    "bounds": [
+                        -Infinity,
+                        Infinity
+                    ],
+                    "name": "A0.AnchorPoints.ap_inl_m.psi1",
+                    "active": true,
+                    "func_str": null
+                },
+                "psi2": {
+                    "_value": 1.5,
+                    "bounds": [
+                        -Infinity,
+                        Infinity
+                    ],
+                    "name": "A0.AnchorPoints.ap_inl_m.psi2",
+                    "active": true,
+                    "func_str": null
+                }
+            }
+        },
+        "FreePoints": {
+            "te_1": {},
+            "le": {
+                "FP0": {
+                    "x": {
+                        "_value": 0.30699730482318693,
+                        "bounds": [
+                            -Infinity,
+                            Infinity
+                        ],
+                        "name": "A0.FreePoints.le.FP0.x",
+                        "active": true,
+                        "func_str": null
+                    },
+                    "y": {
+                        "_value": -0.0832832311264178,
+                        "bounds": [
+                            -Infinity,
+                            Infinity
+                        ],
+                        "name": "A0.FreePoints.le.FP0.y",
+                        "active": true,
+                        "func_str": null
+                    }
+                }
+            },
+            "ap_fan_m": {},
+            "ap_inl_m": {
+                "FP0": {
+                    "x": {
+                        "_value": 0.30881762432591525,
+                        "bounds": [
+                            -Infinity,
+                            Infinity
+                        ],
+                        "name": "A0.FreePoints.ap_inl_m.FP0.x",
+                        "active": true,
+                        "func_str": null
+                    },
+                    "y": {
+                        "_value": 0.11215765008987791,
+                        "bounds": [
+                            -Infinity,
+                            Infinity
+                        ],
+                        "name": "A0.FreePoints.ap_inl_m.FP0.y",
+                        "active": true,
+                        "func_str": null
+                    }
+                }
+            }
+        },
+        "anchor_point_order": [
+            "te_1",
+            "ap_fan_m",
+            "ap_inl_m",
+            "le",
+            "te_2"
+        ],
+        "free_point_order": {
+            "te_1": [],
+            "le": [
+                "FP0"
+            ],
+            "ap_fan_m": [],
+            "ap_inl_m": [
+                "FP0"
+            ]
+        }
+    },
+    "A1": {
+        "Base": {
+            "c": {
+                "_value": 0.5927549313660907,
+                "bounds": [
+                    -Infinity,
+                    Infinity
+                ],
+                "name": "A1.Base.c",
+                "active": true,
+                "func_str": null
+            },
+            "alf": {
+                "_value": 0.01397554270318829,
+                "bounds": [
+                    -Infinity,
+                    Infinity
+                ],
+                "name": "A1.Base.alf",
+                "active": true,
+                "func_str": null
+            },
+            "R_le": {
+                "_value": 0.06660154145515351,
+                "bounds": [
+                    -Infinity,
+                    Infinity
+                ],
+                "name": "A1.Base.R_le",
+                "active": true,
+                "func_str": null
+            },
+            "L_le": {
+                "_value": 0.11074059836799627,
+                "bounds": [
+                    -Infinity,
+                    Infinity
+                ],
+                "name": "A1.Base.L_le",
+                "active": true,
+                "func_str": null
+            },
+            "r_le": {
+                "_value": 0.5,
+                "bounds": [
+                    -Infinity,
+                    Infinity
+                ],
+                "name": "A1.Base.r_le",
+                "active": false,
+                "func_str": null
+            },
+            "phi_le": {
+                "_value": 0.0,
+                "bounds": [
+                    -Infinity,
+                    Infinity
+                ],
+                "name": "A1.Base.phi_le",
+                "active": false,
+                "func_str": null
+            },
+            "psi1_le": {
+                "_value": 0.5361318712995535,
+                "bounds": [
+                    -Infinity,
+                    Infinity
+                ],
+                "name": "A1.Base.psi1_le",
+                "active": true,
+                "func_str": null
+            },
+            "psi2_le": {
+                "_value": 0.5361318712995535,
+                "bounds": [
+                    -Infinity,
+                    Infinity
+                ],
+                "name": "A1.Base.psi2_le",
+                "active": true,
+                "func_str": "$A1.Base.psi1_le"
+            },
+            "L1_te": {
+                "_value": 0.2650331323469595,
+                "bounds": [
+                    -Infinity,
+                    Infinity
+                ],
+                "name": "A1.Base.L1_te",
+                "active": true,
+                "func_str": null
+            },
+            "L2_te": {
+                "_value": 0.2650331323469595,
+                "bounds": [
+                    -Infinity,
+                    Infinity
+                ],
+                "name": "A1.Base.L2_te",
+                "active": true,
+                "func_str": "$A1.Base.L1_te"
+            },
+            "theta1_te": {
+                "_value": 0.24748875299257422,
+                "bounds": [
+                    -Infinity,
+                    Infinity
+                ],
+                "name": "A1.Base.theta1_te",
+                "active": true,
+                "func_str": null
+            },
+            "theta2_te": {
+                "_value": 0.24748875299257422,
+                "bounds": [
+                    -Infinity,
+                    Infinity
+                ],
+                "name": "A1.Base.theta2_te",
+                "active": true,
+                "func_str": "$A1.Base.theta1_te"
+            },
+            "t_te": {
+                "_value": 0.0,
+                "bounds": [
+                    -Infinity,
+                    Infinity
+                ],
+                "name": "A1.Base.t_te",
+                "active": true,
+                "func_str": null
+            },
+            "r_te": {
+                "_value": 0.5,
+                "bounds": [
+                    -Infinity,
+                    Infinity
+                ],
+                "name": "A1.Base.r_te",
+                "active": true,
+                "func_str": null
+            },
+            "phi_te": {
+                "_value": 0.0,
+                "bounds": [
+                    -Infinity,
+                    Infinity
+                ],
+                "name": "A1.Base.phi_te",
+                "active": true,
+                "func_str": null
+            },
+            "dx": {
+                "_value": 0.6914910481147081,
+                "bounds": [
+                    -Infinity,
+                    Infinity
+                ],
+                "name": "A1.Base.dx",
+                "active": true,
+                "func_str": null
+            },
+            "dy": {
+                "_value": 0.16528880555120218,
+                "bounds": [
+                    -Infinity,
+                    Infinity
+                ],
+                "name": "A1.Base.dy",
+                "active": true,
+                "func_str": null
+            }
+        },
+        "AnchorPoints": {
+            "ap_noz_h_upp": {
+                "x": {
+                    "_value": 0.5283598913342796,
+                    "bounds": [
+                        -Infinity,
+                        Infinity
+                    ],
+                    "name": "A1.AnchorPoints.ap_noz_h_upp.x",
+                    "active": true,
+                    "func_str": null
+                },
+                "y": {
+                    "_value": 0.11424577330345936,
+                    "bounds": [
+                        -Infinity,
+                        Infinity
+                    ],
+                    "name": "A1.AnchorPoints.ap_noz_h_upp.y",
+                    "active": true,
+                    "func_str": null
+                },
+                "L": {
+                    "_value": 0.11492600194663567,
+                    "bounds": [
+                        -Infinity,
+                        Infinity
+                    ],
+                    "name": "A1.AnchorPoints.ap_noz_h_upp.L",
+                    "active": true,
+                    "func_str": null
+                },
+                "R": {
+                    "_value": 0.4899623917905508,
+                    "bounds": [
+                        -Infinity,
+                        Infinity
+                    ],
+                    "name": "A1.AnchorPoints.ap_noz_h_upp.R",
+                    "active": true,
+                    "func_str": null
+                },
+                "r": {
+                    "_value": 0.4350625546272533,
+                    "bounds": [
+                        -Infinity,
+                        Infinity
+                    ],
+                    "name": "A1.AnchorPoints.ap_noz_h_upp.r",
+                    "active": true,
+                    "func_str": null
+                },
+                "phi": {
+                    "_value": -0.0663578855200415,
+                    "bounds": [
+                        -Infinity,
+                        Infinity
+                    ],
+                    "name": "A1.AnchorPoints.ap_noz_h_upp.phi",
+                    "active": true,
+                    "func_str": null
+                },
+                "psi1": {
+                    "_value": 1.5,
+                    "bounds": [
+                        -Infinity,
+                        Infinity
+                    ],
+                    "name": "A1.AnchorPoints.ap_noz_h_upp.psi1",
+                    "active": true,
+                    "func_str": null
+                },
+                "psi2": {
+                    "_value": 1.5,
+                    "bounds": [
+                        -Infinity,
+                        Infinity
+                    ],
+                    "name": "A1.AnchorPoints.ap_noz_h_upp.psi2",
+                    "active": true,
+                    "func_str": null
+                }
+            },
+            "ap_fan_h_upp": {
+                "x": {
+                    "_value": 0.18529230006429726,
+                    "bounds": [
+                        -Infinity,
+                        Infinity
+                    ],
+                    "name": "A1.AnchorPoints.ap_fan_h_upp.x",
+                    "active": true,
+                    "func_str": null
+                },
+                "y": {
+                    "_value": 0.12050633302552581,
+                    "bounds": [
+                        -Infinity,
+                        Infinity
+                    ],
+                    "name": "A1.AnchorPoints.ap_fan_h_upp.y",
+                    "active": true,
+                    "func_str": null
+                },
+                "L": {
+                    "_value": 0.10116721036458623,
+                    "bounds": [
+                        -Infinity,
+                        Infinity
+                    ],
+                    "name": "A1.AnchorPoints.ap_fan_h_upp.L",
+                    "active": true,
+                    "func_str": null
+                },
+                "R": {
+                    "_value": 2.0,
+                    "bounds": [
+                        -Infinity,
+                        Infinity
+                    ],
+                    "name": "A1.AnchorPoints.ap_fan_h_upp.R",
+                    "active": true,
+                    "func_str": null
+                },
+                "r": {
+                    "_value": 0.49423128126010474,
+                    "bounds": [
+                        -Infinity,
+                        Infinity
+                    ],
+                    "name": "A1.AnchorPoints.ap_fan_h_upp.r",
+                    "active": true,
+                    "func_str": null
+                },
+                "phi": {
+                    "_value": 0.09139416569956132,
+                    "bounds": [
+                        -Infinity,
+                        Infinity
+                    ],
+                    "name": "A1.AnchorPoints.ap_fan_h_upp.phi",
+                    "active": true,
+                    "func_str": null
+                },
+                "psi1": {
+                    "_value": 1.5,
+                    "bounds": [
+                        -Infinity,
+                        Infinity
+                    ],
+                    "name": "A1.AnchorPoints.ap_fan_h_upp.psi1",
+                    "active": true,
+                    "func_str": null
+                },
+                "psi2": {
+                    "_value": 1.5,
+                    "bounds": [
+                        -Infinity,
+                        Infinity
+                    ],
+                    "name": "A1.AnchorPoints.ap_fan_h_upp.psi2",
+                    "active": true,
+                    "func_str": null
+                }
+            },
+            "ap_fan_h_low": {
+                "x": {
+                    "_value": 0.18529230006429734,
+                    "bounds": [
+                        -Infinity,
+                        Infinity
+                    ],
+                    "name": "A1.AnchorPoints.ap_fan_h_low.x",
+                    "active": true,
+                    "func_str": "^symmetry.symmetry(name, x1=$A1.Base.dx, y1=$A1.Base.dy, theta_rad=$Custom.alf_hub_abs, x=$A1.AnchorPoints.ap_fan_h_upp.x, y=$A1.AnchorPoints.ap_fan_h_upp.y, alf_tool=$A1.Base.alf, alf_target=$A1.Base.alf, c_tool=$A1.Base.c, c_target=$A1.Base.c, dx_tool=$A1.Base.dx, dx_target=$A1.Base.dx, dy_tool=$A1.Base.dy, dy_target=$A1.Base.dy)"
+                },
+                "y": {
+                    "_value": -0.12050633302552584,
+                    "bounds": [
+                        -Infinity,
+                        Infinity
+                    ],
+                    "name": "A1.AnchorPoints.ap_fan_h_low.y",
+                    "active": true,
+                    "func_str": "^symmetry.symmetry(name, x1=$A1.Base.dx, y1=$A1.Base.dy, theta_rad=$Custom.alf_hub_abs, x=$A1.AnchorPoints.ap_fan_h_upp.x, y=$A1.AnchorPoints.ap_fan_h_upp.y, alf_tool=$A1.Base.alf, alf_target=$A1.Base.alf, c_tool=$A1.Base.c, c_target=$A1.Base.c, dx_tool=$A1.Base.dx, dx_target=$A1.Base.dx, dy_tool=$A1.Base.dy, dy_target=$A1.Base.dy)"
+                },
+                "L": {
+                    "_value": 0.10116721036458623,
+                    "bounds": [
+                        -Infinity,
+                        Infinity
+                    ],
+                    "name": "A1.AnchorPoints.ap_fan_h_low.L",
+                    "active": true,
+                    "func_str": "^symmetry.symmetry(name, L=$A1.AnchorPoints.ap_fan_h_upp.L, c_target=$A1.Base.c, c_tool=$A1.Base.c)"
+                },
+                "R": {
+                    "_value": 2.0,
+                    "bounds": [
+                        -Infinity,
+                        Infinity
+                    ],
+                    "name": "A1.AnchorPoints.ap_fan_h_low.R",
+                    "active": true,
+                    "func_str": "^symmetry.symmetry(name, R=$A1.AnchorPoints.ap_fan_h_upp.R, c_target=$A1.Base.c, c_tool=$A1.Base.c)"
+                },
+                "r": {
+                    "_value": 0.49423128126010474,
+                    "bounds": [
+                        -Infinity,
+                        Infinity
+                    ],
+                    "name": "A1.AnchorPoints.ap_fan_h_low.r",
+                    "active": true,
+                    "func_str": "^symmetry.symmetry(name, r=$A1.AnchorPoints.ap_fan_h_upp.r, c_target=$A1.Base.c, c_tool=$A1.Base.c)"
+                },
+                "phi": {
+                    "_value": 0.09139416569956132,
+                    "bounds": [
+                        -Infinity,
+                        Infinity
+                    ],
+                    "name": "A1.AnchorPoints.ap_fan_h_low.phi",
+                    "active": true,
+                    "func_str": "^symmetry.symmetry(name, x1=$A1.Base.dx, y1=$A1.Base.dy, theta_rad=$Custom.alf_hub_abs, alf_tool=$A1.Base.alf, alf_target=$A1.Base.alf, phi=$A1.AnchorPoints.ap_fan_h_upp.phi, upper_target=False, upper_tool=True)"
+                },
+                "psi1": {
+                    "_value": 1.5,
+                    "bounds": [
+                        -Infinity,
+                        Infinity
+                    ],
+                    "name": "A1.AnchorPoints.ap_fan_h_low.psi1",
+                    "active": true,
+                    "func_str": "^symmetry.symmetry(name, psi1=$A1.AnchorPoints.ap_fan_h_upp.psi1)"
+                },
+                "psi2": {
+                    "_value": 1.5,
+                    "bounds": [
+                        -Infinity,
+                        Infinity
+                    ],
+                    "name": "A1.AnchorPoints.ap_fan_h_low.psi2",
+                    "active": true,
+                    "func_str": "^symmetry.symmetry(name, psi2=$A1.AnchorPoints.ap_fan_h_upp.psi2)"
+                }
+            },
+            "ap_noz_h_low": {
+                "x": {
+                    "_value": 0.52835989133428,
+                    "bounds": [
+                        -Infinity,
+                        Infinity
+                    ],
+                    "name": "A1.AnchorPoints.ap_noz_h_low.x",
+                    "active": true,
+                    "func_str": "^symmetry.symmetry(name, x1=$A1.Base.dx, y1=$A1.Base.dy, theta_rad=$Custom.alf_hub_abs, x=$A1.AnchorPoints.ap_noz_h_upp.x, y=$A1.AnchorPoints.ap_noz_h_upp.y, alf_tool=$A1.Base.alf, alf_target=$A1.Base.alf, c_tool=$A1.Base.c, c_target=$A1.Base.c, dx_tool=$A1.Base.dx, dx_target=$A1.Base.dx, dy_tool=$A1.Base.dy, dy_target=$A1.Base.dy)"
+                },
+                "y": {
+                    "_value": -0.1142457733034594,
+                    "bounds": [
+                        -Infinity,
+                        Infinity
+                    ],
+                    "name": "A1.AnchorPoints.ap_noz_h_low.y",
+                    "active": true,
+                    "func_str": "^symmetry.symmetry(name, x1=$A1.Base.dx, y1=$A1.Base.dy, theta_rad=$Custom.alf_hub_abs, x=$A1.AnchorPoints.ap_noz_h_upp.x, y=$A1.AnchorPoints.ap_noz_h_upp.y, alf_tool=$A1.Base.alf, alf_target=$A1.Base.alf, c_tool=$A1.Base.c, c_target=$A1.Base.c, dx_tool=$A1.Base.dx, dx_target=$A1.Base.dx, dy_tool=$A1.Base.dy, dy_target=$A1.Base.dy)"
+                },
+                "L": {
+                    "_value": 0.11492600194663567,
+                    "bounds": [
+                        -Infinity,
+                        Infinity
+                    ],
+                    "name": "A1.AnchorPoints.ap_noz_h_low.L",
+                    "active": true,
+                    "func_str": "^symmetry.symmetry(name, L=$A1.AnchorPoints.ap_noz_h_upp.L, c_target=$A1.Base.c, c_tool=$A1.Base.c)"
+                },
+                "R": {
+                    "_value": 0.4899623917905508,
+                    "bounds": [
+                        -Infinity,
+                        Infinity
+                    ],
+                    "name": "A1.AnchorPoints.ap_noz_h_low.R",
+                    "active": true,
+                    "func_str": "^symmetry.symmetry(name, R=$A1.AnchorPoints.ap_noz_h_upp.R, c_target=$A1.Base.c, c_tool=$A1.Base.c)"
+                },
+                "r": {
+                    "_value": 0.4350625546272533,
+                    "bounds": [
+                        -Infinity,
+                        Infinity
+                    ],
+                    "name": "A1.AnchorPoints.ap_noz_h_low.r",
+                    "active": true,
+                    "func_str": "^symmetry.symmetry(name, r=$A1.AnchorPoints.ap_noz_h_upp.r)"
+                },
+                "phi": {
+                    "_value": -0.0663578855200415,
+                    "bounds": [
+                        -Infinity,
+                        Infinity
+                    ],
+                    "name": "A1.AnchorPoints.ap_noz_h_low.phi",
+                    "active": true,
+                    "func_str": "^symmetry.symmetry(name, x1=$A1.Base.dx, y1=$A1.Base.dy, theta_rad=$Custom.alf_hub_abs, alf_tool=$A1.Base.alf, alf_target=$A1.Base.alf, phi=$A1.AnchorPoints.ap_noz_h_upp.phi, upper_target=False, upper_tool=True)"
+                },
+                "psi1": {
+                    "_value": 1.5,
+                    "bounds": [
+                        -Infinity,
+                        Infinity
+                    ],
+                    "name": "A1.AnchorPoints.ap_noz_h_low.psi1",
+                    "active": true,
+                    "func_str": "^symmetry.symmetry(name, psi1=$A1.AnchorPoints.ap_noz_h_upp.psi1)"
+                },
+                "psi2": {
+                    "_value": 1.5,
+                    "bounds": [
+                        -Infinity,
+                        Infinity
+                    ],
+                    "name": "A1.AnchorPoints.ap_noz_h_low.psi2",
+                    "active": true,
+                    "func_str": "^symmetry.symmetry(name, psi2=$A1.AnchorPoints.ap_noz_h_upp.psi2)"
+                }
+            }
+        },
+        "FreePoints": {
+            "te_1": {},
+            "le": {},
+            "ap_noz_h_upp": {},
+            "ap_fan_h_upp": {},
+            "ap_fan_h_low": {},
+            "ap_noz_h_low": {}
+        },
+        "anchor_point_order": [
+            "te_1",
+            "ap_noz_h_upp",
+            "ap_fan_h_upp",
+            "le",
+            "ap_fan_h_low",
+            "ap_noz_h_low",
+            "te_2"
+        ],
+        "free_point_order": {
+            "te_1": [],
+            "le": [],
+            "ap_noz_h_upp": [],
+            "ap_fan_h_upp": [],
+            "ap_fan_h_low": [],
+            "ap_noz_h_low": []
+        }
+    },
+    "A2": {
+        "Base": {
+            "c": {
+                "_value": 0.4195254675875676,
+                "bounds": [
+                    -Infinity,
+                    Infinity
+                ],
+                "name": "A2.Base.c",
+                "active": true,
+                "func_str": null
+            },
+            "alf": {
+                "_value": -0.03917270162792599,
+                "bounds": [
+                    -Infinity,
+                    Infinity
+                ],
+                "name": "A2.Base.alf",
+                "active": true,
+                "func_str": null
+            },
+            "R_le": {
+                "_value": 0.04,
+                "bounds": [
+                    -Infinity,
+                    Infinity
+                ],
+                "name": "A2.Base.R_le",
+                "active": true,
+                "func_str": null
+            },
+            "L_le": {
+                "_value": 0.1,
+                "bounds": [
+                    -Infinity,
+                    Infinity
+                ],
+                "name": "A2.Base.L_le",
+                "active": true,
+                "func_str": null
+            },
+            "r_le": {
+                "_value": 0.5,
+                "bounds": [
+                    -Infinity,
+                    Infinity
+                ],
+                "name": "A2.Base.r_le",
+                "active": true,
+                "func_str": null
+            },
+            "phi_le": {
+                "_value": 0.0,
+                "bounds": [
+                    -Infinity,
+                    Infinity
+                ],
+                "name": "A2.Base.phi_le",
+                "active": true,
+                "func_str": null
+            },
+            "psi1_le": {
+                "_value": 0.3,
+                "bounds": [
+                    -Infinity,
+                    Infinity
+                ],
+                "name": "A2.Base.psi1_le",
+                "active": true,
+                "func_str": null
+            },
+            "psi2_le": {
+                "_value": 0.1,
+                "bounds": [
+                    -Infinity,
+                    Infinity
+                ],
+                "name": "A2.Base.psi2_le",
+                "active": true,
+                "func_str": null
+            },
+            "L1_te": {
+                "_value": 0.4,
+                "bounds": [
+                    -Infinity,
+                    Infinity
+                ],
+                "name": "A2.Base.L1_te",
+                "active": true,
+                "func_str": null
+            },
+            "L2_te": {
+                "_value": 0.21846502624768704,
+                "bounds": [
+                    -Infinity,
+                    Infinity
+                ],
+                "name": "A2.Base.L2_te",
+                "active": true,
+                "func_str": null
+            },
+            "theta1_te": {
+                "_value": 0.1,
+                "bounds": [
+                    -Infinity,
+                    Infinity
+                ],
+                "name": "A2.Base.theta1_te",
+                "active": true,
+                "func_str": null
+            },
+            "theta2_te": {
+                "_value": -6.244836891423633,
+                "bounds": [
+                    -Infinity,
+                    Infinity
+                ],
+                "name": "A2.Base.theta2_te",
+                "active": true,
+                "func_str": null
+            },
+            "t_te": {
+                "_value": 0.0,
+                "bounds": [
+                    -Infinity,
+                    Infinity
+                ],
+                "name": "A2.Base.t_te",
+                "active": true,
+                "func_str": null
+            },
+            "r_te": {
+                "_value": 0.5,
+                "bounds": [
+                    -Infinity,
+                    Infinity
+                ],
+                "name": "A2.Base.r_te",
+                "active": true,
+                "func_str": null
+            },
+            "phi_te": {
+                "_value": 0.0,
+                "bounds": [
+                    -Infinity,
+                    Infinity
+                ],
+                "name": "A2.Base.phi_te",
+                "active": true,
+                "func_str": null
+            },
+            "dx": {
+                "_value": 0.5778508788974831,
+                "bounds": [
+                    -Infinity,
+                    Infinity
+                ],
+                "name": "A2.Base.dx",
+                "active": true,
+                "func_str": null
+            },
+            "dy": {
+                "_value": 0.2919725300080287,
+                "bounds": [
+                    -Infinity,
+                    Infinity
+                ],
+                "name": "A2.Base.dy",
+                "active": true,
+                "func_str": null
+            }
+        },
+        "AnchorPoints": {
+            "ap_inl_n": {
+                "x": {
+                    "_value": 0.1969242912593274,
+                    "bounds": [
+                        -Infinity,
+                        Infinity
+                    ],
+                    "name": "A2.AnchorPoints.ap_inl_n.x",
+                    "active": true,
+                    "func_str": "^symmetry.symmetry(name, x1=$A1.Base.dx, y1=$A1.Base.dy, theta_rad=$Custom.alf_hub_abs, x=$A0.AnchorPoints.ap_inl_m.x, y=$A0.AnchorPoints.ap_inl_m.y, alf_tool=$A0.Base.alf, alf_target=$A2.Base.alf, c_tool=$A0.Base.c, c_target=$A2.Base.c, dx_tool=$A0.Base.dx, dx_target=$A2.Base.dx, dy_tool=$A0.Base.dy, dy_target=$A2.Base.dy)"
+                },
+                "y": {
+                    "_value": -0.09498052736927994,
+                    "bounds": [
+                        -Infinity,
+                        Infinity
+                    ],
+                    "name": "A2.AnchorPoints.ap_inl_n.y",
+                    "active": true,
+                    "func_str": "^symmetry.symmetry(name, x1=$A1.Base.dx, y1=$A1.Base.dy, theta_rad=$Custom.alf_hub_abs, x=$A0.AnchorPoints.ap_inl_m.x, y=$A0.AnchorPoints.ap_inl_m.y, alf_tool=$A0.Base.alf, alf_target=$A2.Base.alf, c_tool=$A0.Base.c, c_target=$A2.Base.c, dx_tool=$A0.Base.dx, dx_target=$A2.Base.dx, dy_tool=$A0.Base.dy, dy_target=$A2.Base.dy)"
+                },
+                "L": {
+                    "_value": 0.14283795578646657,
+                    "bounds": [
+                        -Infinity,
+                        Infinity
+                    ],
+                    "name": "A2.AnchorPoints.ap_inl_n.L",
+                    "active": true,
+                    "func_str": "^symmetry.symmetry(name, L=$A0.AnchorPoints.ap_inl_m.L, c_target=$A2.Base.c, c_tool=$A0.Base.c)"
+                },
+                "R": {
+                    "_value": 0.9943531578899337,
+                    "bounds": [
+                        -Infinity,
+                        Infinity
+                    ],
+                    "name": "A2.AnchorPoints.ap_inl_n.R",
+                    "active": true,
+                    "func_str": "^symmetry.symmetry(name, R=$A0.AnchorPoints.ap_inl_m.R, c_target=$A2.Base.c, c_tool=$A0.Base.c)"
+                },
+                "r": {
+                    "_value": 0.43730225054158706,
+                    "bounds": [
+                        -Infinity,
+                        Infinity
+                    ],
+                    "name": "A2.AnchorPoints.ap_inl_n.r",
+                    "active": true,
+                    "func_str": "^symmetry.symmetry(name, r=$A0.AnchorPoints.ap_inl_m.r)"
+                },
+                "phi": {
+                    "_value": 0.0673885315580458,
+                    "bounds": [
+                        -Infinity,
+                        Infinity
+                    ],
+                    "name": "A2.AnchorPoints.ap_inl_n.phi",
+                    "active": true,
+                    "func_str": "^symmetry.symmetry(name, x1=$A1.Base.dx, y1=$A1.Base.dy, theta_rad=$Custom.alf_hub_abs, alf_tool=$A0.Base.alf, alf_target=$A2.Base.alf, phi=$A0.AnchorPoints.ap_inl_m.phi, upper_target=False, upper_tool=True)"
+                },
+                "psi1": {
+                    "_value": 1.5,
+                    "bounds": [
+                        -Infinity,
+                        Infinity
+                    ],
+                    "name": "A2.AnchorPoints.ap_inl_n.psi1",
+                    "active": true,
+                    "func_str": "^symmetry.symmetry(name, psi1=$A0.AnchorPoints.ap_inl_m.psi1)"
+                },
+                "psi2": {
+                    "_value": 1.5,
+                    "bounds": [
+                        -Infinity,
+                        Infinity
+                    ],
+                    "name": "A2.AnchorPoints.ap_inl_n.psi2",
+                    "active": true,
+                    "func_str": "^symmetry.symmetry(name, psi2=$A0.AnchorPoints.ap_inl_m.psi2)"
+                }
+            },
+            "ap_fan_n": {
+                "x": {
+                    "_value": 0.5575211900588193,
+                    "bounds": [
+                        -Infinity,
+                        Infinity
+                    ],
+                    "name": "A2.AnchorPoints.ap_fan_n.x",
+                    "active": true,
+                    "func_str": "^symmetry.symmetry(name, x1=$A1.Base.dx, y1=$A1.Base.dy, theta_rad=$Custom.alf_hub_abs, x=$A0.AnchorPoints.ap_fan_m.x, y=$A0.AnchorPoints.ap_fan_m.y, alf_tool=$A0.Base.alf, alf_target=$A2.Base.alf, c_tool=$A0.Base.c, c_target=$A2.Base.c, dx_tool=$A0.Base.dx, dx_target=$A2.Base.dx, dy_tool=$A0.Base.dy, dy_target=$A2.Base.dy)"
+                },
+                "y": {
+                    "_value": -0.04561110638506842,
+                    "bounds": [
+                        -Infinity,
+                        Infinity
+                    ],
+                    "name": "A2.AnchorPoints.ap_fan_n.y",
+                    "active": true,
+                    "func_str": "^symmetry.symmetry(name, x1=$A1.Base.dx, y1=$A1.Base.dy, theta_rad=$Custom.alf_hub_abs, x=$A0.AnchorPoints.ap_fan_m.x, y=$A0.AnchorPoints.ap_fan_m.y, alf_tool=$A0.Base.alf, alf_target=$A2.Base.alf, c_tool=$A0.Base.c, c_target=$A2.Base.c, dx_tool=$A0.Base.dx, dx_target=$A2.Base.dx, dy_tool=$A0.Base.dy, dy_target=$A2.Base.dy)"
+                },
+                "L": {
+                    "_value": 0.1339979967056362,
+                    "bounds": [
+                        -Infinity,
+                        Infinity
+                    ],
+                    "name": "A2.AnchorPoints.ap_fan_n.L",
+                    "active": true,
+                    "func_str": "^symmetry.symmetry(name, L=$A0.AnchorPoints.ap_fan_m.L, c_target=$A2.Base.c, c_tool=$A0.Base.c)"
+                },
+                "R": {
+                    "_value": 4.767291033607012,
+                    "bounds": [
+                        -Infinity,
+                        Infinity
+                    ],
+                    "name": "A2.AnchorPoints.ap_fan_n.R",
+                    "active": true,
+                    "func_str": "^symmetry.symmetry(name, R=$A0.AnchorPoints.ap_fan_m.R, c_target=$A2.Base.c, c_tool=$A0.Base.c)"
+                },
+                "r": {
+                    "_value": 0.5159717985239547,
+                    "bounds": [
+                        -Infinity,
+                        Infinity
+                    ],
+                    "name": "A2.AnchorPoints.ap_fan_n.r",
+                    "active": true,
+                    "func_str": "^symmetry.symmetry(name, r=$A0.AnchorPoints.ap_fan_m.r)"
+                },
+                "phi": {
+                    "_value": 0.04271578756410665,
+                    "bounds": [
+                        -Infinity,
+                        Infinity
+                    ],
+                    "name": "A2.AnchorPoints.ap_fan_n.phi",
+                    "active": true,
+                    "func_str": "^symmetry.symmetry(name, x1=$A1.Base.dx, y1=$A1.Base.dy, theta_rad=$Custom.alf_hub_abs, alf_tool=$A0.Base.alf, alf_target=$A2.Base.alf, phi=$A0.AnchorPoints.ap_fan_m.phi, upper_target=False, upper_tool=True)"
+                },
+                "psi1": {
+                    "_value": 1.5,
+                    "bounds": [
+                        -Infinity,
+                        Infinity
+                    ],
+                    "name": "A2.AnchorPoints.ap_fan_n.psi1",
+                    "active": true,
+                    "func_str": "^symmetry.symmetry(name, psi1=$A0.AnchorPoints.ap_fan_m.psi1)"
+                },
+                "psi2": {
+                    "_value": 1.5,
+                    "bounds": [
+                        -Infinity,
+                        Infinity
+                    ],
+                    "name": "A2.AnchorPoints.ap_fan_n.psi2",
+                    "active": true,
+                    "func_str": "^symmetry.symmetry(name, psi2=$A0.AnchorPoints.ap_fan_m.psi2)"
+                }
+            }
+        },
+        "FreePoints": {
+            "te_1": {},
+            "le": {},
+            "ap_inl_n": {},
+            "ap_fan_n": {}
+        },
+        "anchor_point_order": [
+            "te_1",
+            "le",
+            "ap_inl_n",
+            "ap_fan_n",
+            "te_2"
+        ],
+        "free_point_order": {
+            "te_1": [],
+            "le": [],
+            "ap_inl_n": [],
+            "ap_fan_n": []
+        }
+    },
+    "file_name": "/home/illinois/Documents/pymead/pymead/pymead/examples/pai.jmea",
+    "airfoil_graphs_active": true
+}
