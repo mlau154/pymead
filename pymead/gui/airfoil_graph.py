@@ -137,8 +137,8 @@ class AirfoilGraph(pg.GraphItem):
 
     def mouseDragEvent(self, ev):
         t1 = time()
-        if self.last_time is not None:
-            print(f"Time since last update: {t1 - self.last_time} seconds")
+        # if self.last_time is not None:
+        #     print(f"Time since last update: {t1 - self.last_time} seconds")
         if ev.button() != Qt.MouseButton.LeftButton:
             ev.ignore()
             return
