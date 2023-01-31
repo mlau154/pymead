@@ -28,14 +28,11 @@ class MEA:
         self.param_dict = {'Custom': {}}
         self.airfoil_graphs_active = airfoil_graphs_active
         self.te_thickness_edit_mode = False
-        if self.airfoil_graphs_active:
-            self.w = None
-            self.v = None
+        self.w = None
+        self.v = None
         if not isinstance(airfoils, list):
             if airfoils is not None:
                 self.add_airfoil(airfoils, 0, param_tree)
-            else:
-                self.add_airfoil(Airfoil(), 0, param_tree)
         else:
             for idx, airfoil in enumerate(airfoils):
                 self.add_airfoil(airfoil, idx, param_tree)
@@ -51,7 +48,7 @@ class MEA:
         state['v'] = None  # Set unpicklable ViewBox object to None
         return state
 
-    def add_airfoil(self, airfoil: Airfoil, idx: int, param_tree):
+    def add_airfoil(self, airfoil: Airfoil, idx: int, param_tree, w=None, v=None):
         """
         Add an airfoil at index `idx` to the multi-element airfoil container.
         """
@@ -70,7 +67,20 @@ class MEA:
         assign_names_to_params_in_param_dict(self.param_dict)
 
         if self.airfoil_graphs_active:
-            self.add_airfoil_graph_to_airfoil(airfoil, idx, param_tree)
+            self.add_airfoil_graph_to_airfoil(airfoil, idx, param_tree, w=w, v=v)
+
+        dben = benedict.benedict(self.param_dict)
+        for k in dben.keypaths():
+            param = dben[k]
+            if isinstance(param, Param):
+                if param.mea is None:
+                    param.mea = self
+                if param.mea.param_tree is None:
+                    param.mea.param_tree = self.param_tree
+
+    def remove_airfoil(self):
+        # TODO: implement airfoil removal feature
+        pass
 
     def assign_names_to_params_in_param_dict(self):
         assign_names_to_params_in_param_dict(self.param_dict)
@@ -94,6 +104,7 @@ class MEA:
                 # print(f"setting te_thickness_edit_mode of airfoil {airfoil.tag} to {self.te_thickness_edit_mode}")
                 airfoil_graph.te_thickness_edit_mode = self.te_thickness_edit_mode
         else:
+            print("Creating new AirfoilGraph!")
             airfoil_graph = AirfoilGraph(airfoil, w=w, v=v)
             # print(f"setting te_thickness_edit_mode of airfoil {airfoil.tag} to {self.te_thickness_edit_mode}")
             airfoil_graph.te_thickness_edit_mode = self.te_thickness_edit_mode
@@ -344,6 +355,8 @@ class MEA:
             base = BaseAirfoilParams(airfoil_tag=airfoil_name, **airfoil_base_dict)
             airfoil_list.append(Airfoil(base_airfoil_params=base, tag=airfoil_name))
         mea = cls(airfoils=airfoil_list)
+        mea.airfoil_graphs_active = param_dict['airfoil_graphs_active']  # set this after MEA instantiation to avoid
+        # initializing the graphs
         mea.file_name = param_dict['file_name']
         for a_name, airfoil in mea.airfoils.items():
             ap_order = param_dict[a_name]['anchor_point_order']

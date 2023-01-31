@@ -21,6 +21,7 @@ from functools import partial
 from pymead import INCLUDE_FILES
 import importlib.util
 import numpy as np
+from time import time
 
 
 class MEAParameters(pTypes.GroupParameter):
@@ -132,11 +133,12 @@ class MEAParamTree:
     def __init__(self, mea: MEA, status_bar, parent):
         self.user_mods = {}
         for f in INCLUDE_FILES:
-            name = os.path.split(f)[-1]
-            name_no_ext = os.path.splitext(name)[-2]
+            name = os.path.split(f)[-1]  # get the name of the file without the directory
+            name_no_ext = os.path.splitext(name)[-2]  # get the name of the file without the .py extension
             spec = importlib.util.spec_from_file_location(name_no_ext, f)
-            self.user_mods[name_no_ext] = importlib.util.module_from_spec(spec)
-            spec.loader.exec_module(self.user_mods[name_no_ext])
+            self.user_mods[name_no_ext] = importlib.util.module_from_spec(spec)  # generate the module from the name
+            spec.loader.exec_module(self.user_mods[name_no_ext])  # compile and execute the module
+            # TODO: implement "add user module" functionality into GUI
         self.dialog = None
         self.parent = parent
         self.params = [
@@ -187,15 +189,16 @@ class MEAParamTree:
 
         self.mea = mea
         self.mea.param_tree = self
-        self.cl_label = pg.LabelItem(size="18pt")
-        self.cl_label.setParentItem(self.mea.v)
-        self.cl_label.anchor(itemPos=(1, 0), parentPos=(1, 0), offset=(-10, 10))
-
+        # self.cl_label = pg.LabelItem(size="18pt")
+        # self.cl_label.setParentItem(self.mea.v)
+        # self.cl_label.anchor(itemPos=(1, 0), parentPos=(1, 0), offset=(-10, 10))
+        self.cl_label = None
+        #
         self.cl_airfoil_tag = 'A0'
 
         registerParameterItemType('auto_str', AutoStrParameterItem, override=True)
 
-        for a_name, a in mea.airfoils.items():
+        for a_name, a in self.mea.airfoils.items():
             a.airfoil_graph.scatter.sigPlotChanged.connect(
                 partial(self.plot_changed, a_name))  # Needs to change with airfoil added or removed
 
@@ -328,11 +331,11 @@ class MEAParamTree:
                     if key_to_change == '':
                         raise ValueError('This should not be possible...')
                     self.mea.param_dict['Custom'][new_name] = self.mea.param_dict['Custom'].pop(key_to_change)
+                    self.mea.param_dict['Custom'][new_name].name = new_name
                     # print(f"new param_dict = {self.mea.param_dict['Custom']}")
 
                 if change == 'childRemoved' and param.name() == 'Custom':
                     self.mea.param_dict['Custom'].pop(data.name())
-                    print(f"new custom param_dict = {self.mea.param_dict['Custom']}")
 
                     def recursive_refactor(child_list):
                         for child in child_list:

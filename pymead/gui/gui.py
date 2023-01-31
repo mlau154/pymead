@@ -9,6 +9,7 @@ from PyQt5.QtSvg import QSvgWidget
 
 
 from pymead.core.airfoil import Airfoil
+from pymead.core.base_airfoil_params import BaseAirfoilParams
 from pymead import RESOURCE_DIR
 from pymead.gui.input_dialog import SingleAirfoilViscousDialog, LoadDialog, SaveAsDialog, OptimizationSetupDialog, \
     MultiAirfoilDialog, ColorInputDialog, ExportCoordinatesDialog
@@ -36,6 +37,7 @@ from pymead.gui.input_dialog import convert_dialog_to_mset_settings, convert_dia
 from pymead.gui.airfoil_statistics import AirfoilStatisticsDialog, AirfoilStatistics
 from pymead.gui.custom_graphics_view import CustomGraphicsView
 from pymead.utils.dict_recursion import unravel_param_dict_deepcopy
+from pymead.core.param import Param
 
 import pymoo.core.population
 from pymoo.algorithms.moo.unsga3 import UNSGA3
@@ -54,6 +56,7 @@ import dill
 from copy import deepcopy
 from functools import partial
 from pymead.version import __version__
+import benedict
 import shutil
 import sys
 import os
@@ -65,6 +68,7 @@ class GUI(QMainWindow):
         # super().__init__(flags=Qt.FramelessWindowHint)
         super().__init__(parent=parent)
         # self.setWindowFlags(Qt.CustomizeWindowHint)
+        self.menu_bar = None
         self.path = path
         # single_element_inviscid(np.array([[1, 0], [0, 0], [1, 0]]), 0.0)
         for font_name in ["DejaVuSans", "DejaVuSansMono", "DejaVuSerif"]:
@@ -83,7 +87,7 @@ class GUI(QMainWindow):
         self.mplot_settings = None
         self.objectives = []
         self.constraints = []
-        self.airfoil_name_list = ['A0']
+        self.airfoil_name_list = []
         self.analysis_graph = None
         self.opt_airfoil_graph = None
         self.parallel_coords_graph = None
@@ -113,12 +117,19 @@ class GUI(QMainWindow):
         # self.setFont(QFont("DejaVu Serif"))
         self.setFont(QFont("DejaVu Sans"))
 
-        self.mea = MEA(None, [Airfoil()], airfoil_graphs_active=True)
+        self.mea = MEA(airfoil_graphs_active=True)
+        # self.mea.add_airfoil_graph_to_airfoil(self.mea.airfoils['A0'], 0, None)
+
         # self.mea.airfoils['A0'].insert_free_point(FreePoint(Param(0.5), Param(0.1), previous_anchor_point='te_1'))
         # self.mea.airfoils['A0'].update()
         # self.airfoil_graphs = [AirfoilGraph(self.mea.airfoils['A0'])]
-        self.w = self.mea.airfoils['A0'].airfoil_graph.w
-        self.v = self.mea.airfoils['A0'].airfoil_graph.v
+        self.w = pg.GraphicsLayoutWidget(show=True, size=(1000, 300))
+        self.w.setBackground('#2a2a2b')
+        self.v = self.w.addPlot()
+        self.v.setAspectLocked()
+        self.v.hideButtons()
+        # self.w = self.mea.airfoils['A0'].airfoil_graph.w
+        # self.v = self.mea.airfoils['A0'].airfoil_graph.v
         # internal_geometry_xy = np.loadtxt(os.path.join(DATA_DIR, 'sec_6.txt'))
         # # print(f"geometry = {internal_geometry_xy}")
         # scale_factor = 0.612745
@@ -130,9 +141,9 @@ class GUI(QMainWindow):
         self.main_layout = QHBoxLayout()
         self.setStatusBar(QStatusBar(self))
         self.param_tree_instance = MEAParamTree(self.mea, self.statusBar(), parent=self)
-        self.mea.airfoils['A0'].airfoil_graph.param_tree = self.param_tree_instance
-        self.mea.airfoils['A0'].airfoil_graph.airfoil_parameters = self.param_tree_instance.p.param(
-            'Airfoil Parameters')
+        # self.mea.airfoils['A0'].airfoil_graph.param_tree = self.param_tree_instance
+        # self.mea.airfoils['A0'].airfoil_graph.airfoil_parameters = self.param_tree_instance.p.param(
+        #     'Airfoil Parameters')
         # print(f"param_tree_instance = {self.param_tree_instance}")
         self.design_tree_widget = self.param_tree_instance.t
         # self.design_tree_widget.setAlternatingRowColors(False)
@@ -175,10 +186,12 @@ class GUI(QMainWindow):
             self.set_dark_mode()
         if self.path is not None:
             self.load_mea_no_dialog(self.path)
-        self.auto_range_geometry()
         self.output_area_text(f"<font color='#1fbbcc' size='5'>pymead</font> <font size='5'>version</font> "
                               f"<font color='#44e37e' size='5'>{__version__}</font>",
                               mode='html')
+        airfoil = Airfoil(base_airfoil_params=BaseAirfoilParams(dx=Param(0.0), dy=Param(0.0)))
+        self.add_airfoil(airfoil)
+        self.auto_range_geometry()
 
     def set_dark_mode(self):
         self.setStyleSheet("background-color: #3e3f40; color: #dce1e6; font-family: DejaVu; font-size: 12px;")
@@ -199,10 +212,6 @@ class GUI(QMainWindow):
         self.menu_bar = self.menuBar()
         menu_data = load_data('menu.json')
 
-        # for menu_name, menu_dict in menu_names.items():
-
-        # print(self.menu_bar)
-        # self.menu_names = {"&File": ["&Open", "&Save"]}
         def recursively_add_menus(menu: dict, menu_bar: QObject):
             for key, val in menu.items():
                 if isinstance(val, dict):
@@ -250,6 +259,7 @@ class GUI(QMainWindow):
                     output_dict_[k]['anchor_point_order'] = deepcopy(self.mea.airfoils[k].anchor_point_order)
                     output_dict_[k]['free_point_order'] = deepcopy(self.mea.airfoils[k].free_point_order)
             output_dict_['file_name'] = self.mea.file_name
+            output_dict_['airfoil_graphs_active'] = self.mea.airfoil_graphs_active
             save_data(deepcopy(output_dict_), self.mea.file_name)
             self.save_attempts = 0
 
@@ -319,11 +329,33 @@ class GUI(QMainWindow):
         for a in self.mea.airfoils.values():
             a.airfoil_graph.param_tree = self.param_tree_instance
             a.airfoil_graph.airfoil_parameters = a.airfoil_graph.param_tree.p.param('Airfoil Parameters')
+        dben = benedict.benedict(self.mea.param_dict)
+        for k in dben.keypaths():
+            param = dben[k]
+            if isinstance(param, Param):
+                if param.mea is None:
+                    param.mea = self.mea
+                if param.mea.param_tree is None:
+                    param.mea.param_tree = self.param_tree_instance
+        self.mea.param_tree = self.param_tree_instance
         self.design_tree_widget = self.param_tree_instance.t
         widget0 = self.main_layout.itemAt(0).widget()
         self.main_layout.replaceWidget(widget0, self.design_tree_widget)
         widget0.deleteLater()
         self.auto_range_geometry()
+
+    def add_airfoil(self, airfoil: Airfoil):
+        self.mea.te_thickness_edit_mode = self.te_thickness_edit_mode
+        self.mea.add_airfoil(airfoil, len(self.mea.airfoils), self.param_tree_instance,
+                                    w=self.w, v=self.v)
+        self.airfoil_name_list = [k for k in self.mea.airfoils.keys()]
+        # self.param_tree_instance.p.child("Analysis").child("Inviscid Cl Calc").setLimits([a.tag for a in self.mea.airfoils.values()])
+        self.param_tree_instance.params[-1].add_airfoil(airfoil, len(self.mea.airfoils) - 1)
+        for a in self.mea.airfoils.values():
+            if a.airfoil_graph.airfoil_parameters is None:
+                a.airfoil_graph.airfoil_parameters = self.param_tree_instance.p.param('Airfoil Parameters')
+        airfoil.airfoil_graph.scatter.sigPlotChanged.connect(partial(self.param_tree_instance.plot_changed,
+                                                                     f"A{len(self.mea.airfoils) - 1}"))
 
     def disp_message_box(self, message: str, message_mode: str = 'error'):
         disp_message_box(message, self, message_mode=message_mode)
@@ -501,10 +533,7 @@ class GUI(QMainWindow):
                 self.dockable_tab_window.add_new_tab_widget(self.analysis_graph.w, "Analysis")
             pen_idx = self.n_converged_analyses % len(self.pens)
             x_max = self.mea.calculate_max_x_extent()
-            print(f"x_max = {x_max}")
-            print(f"aero_data = {aero_data}")
             for side in aero_data['BL']:
-                print(f"side = {side}")
                 pg_plot_handle = self.analysis_graph.v.plot(pen=pg.mkPen(color=self.pens[pen_idx][0],
                                                                          style=self.pens[pen_idx][1]),
                                                             name=str(self.n_analyses))
@@ -554,6 +583,7 @@ class GUI(QMainWindow):
     def match_airfoil(self):
         target_airfoil = 'A0'
         match_airfoil(self.mea, target_airfoil, 'sc20010-il')
+        # TODO: implement this feature in "tools"
 
     def setup_optimization(self):
         exit_the_dialog = False
@@ -573,8 +603,6 @@ class GUI(QMainWindow):
                 loop_through_settings = False
 
                 if self.opt_settings['Warm Start/Batch Mode']['batch_mode_active']['state'] in [1, 2]:
-
-                    print('Batch mode active!')
 
                     loop_through_settings = True
 

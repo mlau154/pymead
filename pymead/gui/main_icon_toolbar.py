@@ -82,21 +82,26 @@ class MainIconToolbar(QToolBar):
         self.parent.show()
 
     def add_airfoil_button_toggled(self):
+        # TODO: fix bug where frame rate is low until a new Airfoil is added using the toolbar
 
         def scene_clicked(ev):
-            self.new_airfoil_location = self.parent.mea.v.vb.mapSceneToView(ev.scenePos())
+            self.new_airfoil_location = self.parent.v.vb.mapSceneToView(ev.scenePos())
+            self.parent.v.scene().sigMouseClicked.disconnect()
             airfoil = Airfoil(base_airfoil_params=BaseAirfoilParams(dx=Param(self.new_airfoil_location.x()),
                                                                     dy=Param(self.new_airfoil_location.y())))
-            self.parent.mea.te_thickness_edit_mode = self.parent.te_thickness_edit_mode
-            self.parent.mea.add_airfoil(airfoil, len(self.parent.mea.airfoils), self.parent.param_tree_instance)
-            self.parent.airfoil_name_list = [k for k in self.parent.mea.airfoils.keys()]
-            self.parent.param_tree_instance.p.child("Analysis").child("Inviscid Cl Calc").setLimits([a.tag for a in self.parent.mea.airfoils.values()])
-            self.parent.param_tree_instance.params[-1].add_airfoil(airfoil, len(self.parent.mea.airfoils) - 1)
-            self.parent.mea.v.scene().sigMouseClicked.disconnect()
-            airfoil.airfoil_graph.scatter.sigPlotChanged.connect(partial(self.parent.param_tree_instance.plot_changed,
-                                                                         f"A{len(self.parent.mea.airfoils) - 1}"))
+            # self.parent.mea.te_thickness_edit_mode = self.parent.te_thickness_edit_mode
+            # self.parent.mea.add_airfoil(airfoil, len(self.parent.mea.airfoils), self.parent.param_tree_instance, w=self.parent.w, v=self.parent.v)
+            # self.parent.airfoil_name_list = [k for k in self.parent.mea.airfoils.keys()]
+            # # self.parent.param_tree_instance.p.child("Analysis").child("Inviscid Cl Calc").setLimits([a.tag for a in self.parent.mea.airfoils.values()])
+            # self.parent.param_tree_instance.params[-1].add_airfoil(airfoil, len(self.parent.mea.airfoils) - 1)
+            # for a in self.parent.mea.airfoils.values():
+            #     if a.airfoil_graph.airfoil_parameters is None:
+            #         a.airfoil_graph.airfoil_parameters = self.parent.param_tree_instance.p.param('Airfoil Parameters')
+            # airfoil.airfoil_graph.scatter.sigPlotChanged.connect(partial(self.parent.param_tree_instance.plot_changed,
+            #                                                              f"A{len(self.parent.mea.airfoils) - 1}"))
+            self.parent.add_airfoil(airfoil)
 
-        self.parent.mea.v.scene().sigMouseClicked.connect(scene_clicked)
+        self.parent.v.scene().sigMouseClicked.connect(scene_clicked)
 
     def te_thickness_mode_toggled(self, checked):
         if checked:

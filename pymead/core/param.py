@@ -1,6 +1,7 @@
 import benedict
 import numpy as np
 import math
+from PyQt5.QtCore import pyqtSignal
 
 
 class Param:
@@ -58,6 +59,9 @@ class Param:
         self.at_boundary = False
         self.free_point = None
         self.anchor_point = None
+
+    def __setattr__(self, key, value):
+        return super().__setattr__(key, value)
 
     @property
     def value(self):

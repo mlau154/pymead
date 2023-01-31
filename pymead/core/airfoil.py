@@ -15,6 +15,7 @@ from pymead import DATA_DIR
 import os
 import subprocess
 import pandas as pd
+from time import time
 
 
 class Airfoil:
@@ -238,6 +239,7 @@ class Airfoil:
         generate_curves: bool
           Determines whether the curves should be re-generated during the update
         """
+        t1 = time()
         # Translate back to origin if not already at origin
         if self.control_points is not None and self.control_points != []:
             self.translate(-self.dx.value, -self.dy.value)
@@ -289,6 +291,9 @@ class Airfoil:
         # Generate the Bezier curves
         if generate_curves:
             self.generate_curves()
+
+        t2 = time()
+        print(f"Time to update airfoil {self.tag}: {t2 - t1} sec")
 
     def generate_curves(self):
         """Generates the Bézier curves from the control point array"""
