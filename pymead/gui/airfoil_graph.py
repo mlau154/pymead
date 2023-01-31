@@ -264,7 +264,7 @@ class AirfoilGraph(pg.GraphItem):
         ev.accept()
         t2 = time()
         self.last_time = t2
-        print(f"Time to update airfoil graph for {self.airfoil.tag}: {t2 - t1} seconds")
+        # print(f"Time to update airfoil graph for {self.airfoil.tag}: {t2 - t1} seconds")
     #
     # @staticmethod
     # def update_affected_parameters(obj, param_name_list: list, affected_airfoil_list: list):

@@ -162,8 +162,8 @@ class MainIconToolbar(QToolBar):
                 'psi1': f"psi1={out['tool']}.psi1",
                 'psi2': f"psi2={out['tool']}.psi2",
                 'r': f"r={out['tool']}.r",
-                'L': f"L={out['tool']}.L",
-                'R': f"R={out['tool']}.R",
+                'L': f"L={out['tool']}.L, c_target={target_base}.c, c_tool={tool_base}.c",
+                'R': f"R={out['tool']}.R, c_target={target_base}.c, c_tool={tool_base}.c",
             }
             eq_string = f"^symmetry.symmetry(name, {extra_args[param_name]})"
             self.parent.param_tree_instance.block_changes(eq)

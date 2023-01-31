@@ -293,7 +293,7 @@ class Airfoil:
             self.generate_curves()
 
         t2 = time()
-        print(f"Time to update airfoil {self.tag}: {t2 - t1} sec")
+        # print(f"Time to update airfoil {self.tag}: {t2 - t1} sec")
 
     def generate_curves(self):
         """Generates the Bézier curves from the control point array"""

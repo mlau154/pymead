@@ -29,7 +29,7 @@ def symmetry(name: str, x=None, y=None, alf_target=None, alf_tool=None, c_target
             distance = abs(distance)
             new_xp = xp + 2 * distance * np.cos(angle)
             new_yp = yp + 2 * distance * np.sin(angle)
-            new_xy = transform_matrix(np.array([[new_xp, new_yp]]), -dx_target, -dy_target, alf_tool, 1 / c_target,
+            new_xy = transform_matrix(np.array([[new_xp, new_yp]]), -dx_target, -dy_target, alf_target, 1 / c_target,
                                       ['translate', 'rotate', 'scale'])
             new_x = new_xy[0][0]
             new_y = new_xy[0][1]
@@ -44,7 +44,10 @@ def symmetry(name: str, x=None, y=None, alf_target=None, alf_tool=None, c_target
                 rel_phi_target = abs_phi_target + (-alf_target)
             else:
                 rel_phi_target = -abs_phi_target + (-alf_target)
-
+    if L is not None:
+        L *= c_tool / c_target
+    if R is not None:
+        R *= c_tool / c_target
     output_dict = {
         'x': new_x,
         'y': new_y,
