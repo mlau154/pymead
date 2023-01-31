@@ -12,6 +12,8 @@ from pymead.gui.polygon_item import PolygonItem
 
 from pymead.core.airfoil import Airfoil
 
+from time import time
+
 
 class AirfoilGraph(pg.GraphItem):
     my_signal = pyqtSignal(str)
@@ -41,6 +43,7 @@ class AirfoilGraph(pg.GraphItem):
             self.v = v
 
         self.airfoil = airfoil
+        self.last_time = None
         if not self.airfoil:
             self.airfoil = Airfoil()
         self.airfoil.init_airfoil_curve_pg(self.v, pen)
@@ -133,6 +136,9 @@ class AirfoilGraph(pg.GraphItem):
                 ap.set_ctrlpt_value()
 
     def mouseDragEvent(self, ev):
+        t1 = time()
+        if self.last_time is not None:
+            print(f"Time since last update: {t1 - self.last_time} seconds")
         if ev.button() != Qt.MouseButton.LeftButton:
             ev.ignore()
             return
@@ -256,6 +262,9 @@ class AirfoilGraph(pg.GraphItem):
             airfoil.airfoil_graph.plot_change_recursive(airfoil.airfoil_graph.airfoil_parameters.child(a_tag).children())
 
         ev.accept()
+        t2 = time()
+        self.last_time = t2
+        print(f"Time to update airfoil graph for {self.airfoil.tag}: {t2 - t1} seconds")
     #
     # @staticmethod
     # def update_affected_parameters(obj, param_name_list: list, affected_airfoil_list: list):
