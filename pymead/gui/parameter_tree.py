@@ -252,27 +252,33 @@ class MEAParamTree:
                                     list_of_vals.append(v)
 
                         # IMPORTANT
-                        if mea.param_dict is not None:
-                            get_list_of_vals_from_dict(mea.param_dict)
-                            for val in list_of_vals:
-                                for v in val.depends_on.values():
-                                    # print(f"v = {v}")
-                                    if param.airfoil_param is v:
-                                        val.update()
+                        # if mea.param_dict is not None:
+                        #     get_list_of_vals_from_dict(mea.param_dict)
+                        #     for val in list_of_vals:
+                        #         for v in val.depends_on.values():
+                        #             # print(f"v = {v}")
+                        #             if param.airfoil_param is v:
+                        #                 val.update()
 
                         self.plot_change_recursive(self.p.param('Airfoil Parameters').child('Custom').children())
 
                         for a in mea.airfoils.values():
+                            for ap in a.anchor_points:
+                                if ap.tag not in ['te_1', 'le', 'te_2']:
+                                    ap.set_ctrlpt_value()
+                            for fp_dict in a.free_points.values():
+                                for fp in fp_dict.values():
+                                    fp.set_ctrlpt_value()
                             a.update()
                             a.airfoil_graph.data['pos'] = a.control_point_array
                             a.airfoil_graph.updateGraph()
 
                             # Run inviscid CL calculation after any geometry change
-                            if a.tag == self.cl_airfoil_tag:
-                                a.get_coords(body_fixed_csys=True)
-                                ds = fractal_downsampler2(a.coords, ratio_thresh=1.000005, abs_thresh=0.1)
-                                # _, _, CL = single_element_inviscid(ds, a.alf.value * 180 / np.pi)
-                                # self.cl_label.setText(f"{self.cl_airfoil_tag} Inviscid CL = {CL:.3f}")
+                            # if a.tag == self.cl_airfoil_tag:
+                            #     a.get_coords(body_fixed_csys=True)
+                            #     ds = fractal_downsampler2(a.coords, ratio_thresh=1.000005, abs_thresh=0.1)
+                            #     _, _, CL = single_element_inviscid(ds, a.alf.value * 180 / np.pi)
+                            #     self.cl_label.setText(f"{self.cl_airfoil_tag} Inviscid CL = {CL:.3f}")
 
                             self.plot_change_recursive(self.p.param('Airfoil Parameters').child(a.tag).children())
 
