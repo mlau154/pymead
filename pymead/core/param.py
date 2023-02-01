@@ -1,13 +1,14 @@
 import benedict
 import numpy as np
 import math
-from PyQt5.QtCore import pyqtSignal
+import typing
 
 
 class Param:
 
-    def __init__(self, value: float, bounds: list or np.ndarray = np.array([-np.inf, np.inf]),
-                 active: bool = True, linked: bool = False, func_str: str = None, name: str = None):
+    def __init__(self, value: float or typing.Tuple[float], bounds: tuple = (-np.inf, np.inf),
+                 active: bool or typing.Tuple[bool] = True, linked: bool or typing.Tuple[bool] = False,
+                 func_str: str = None, name: str = None):
         """
         ### Description:
 
@@ -37,12 +38,12 @@ class Param:
 
         An instance of the `pymead.core.param.Param` class.
         """
-        self._value = value
-        self.bounds = bounds
+        self._value = list(value) if isinstance(value, tuple) else value
+        self.bounds = list(bounds) if isinstance(bounds, tuple) else bounds
         self.name = name
 
-        self.active = active
-        self.linked = linked
+        self.active = list(active) if isinstance(active, tuple) else active
+        self.linked = list(linked) if isinstance(linked, tuple) else linked
         self.func_str = func_str
         self.func = None
         if self.func_str is not None:
@@ -60,8 +61,8 @@ class Param:
         self.free_point = None
         self.anchor_point = None
 
-    def __setattr__(self, key, value):
-        return super().__setattr__(key, value)
+    # def __setattr__(self, key, value):
+    #     return super().__setattr__(key, value)
 
     @property
     def value(self):
@@ -69,18 +70,21 @@ class Param:
 
     @value.setter
     def value(self, v):
-        old_value = self._value
-        if v < self.bounds[0]:
-            self._value = self.bounds[0]
-            self.at_boundary = True
-        elif v > self.bounds[1]:
-            self._value = self.bounds[1]
-            self.at_boundary = True
-        else:
-            self._value = v
-            self.at_boundary = False
-        # self.update_function(False)
-        # self.update_value()
+        if self.active and not self.linked:
+            old_value = self._value
+            if v < self.bounds[0]:
+                self._value = self.bounds[0]
+                self.at_boundary = True
+            elif v > self.bounds[1]:
+                self._value = self.bounds[1]
+                self.at_boundary = True
+            else:
+                self._value = v
+                self.at_boundary = False
+
+            self.update_affected_params(old_value)
+
+    def update_affected_params(self, old_value):
         if len(self.affects) > 0:
             idx = 0
             any_affected_params_at_boundary = False
@@ -151,7 +155,7 @@ class Param:
 
             # Update the function (not the result) in the function_dict
             # if execute:
-            self.func = self.func.replace('symmetrysymmetry', 'symmetry.symmetry')
+            # self.func = self.func.replace('symmetrysymmetry', 'symmetry.symmetry')
 
             exec(self.func, self.function_dict)
 
@@ -190,10 +194,8 @@ class Param:
                 appending = True
                 self.func += 'depends["'
             elif ch == '.':
-                if appending:
-                    self.func += '.'
+                self.func += '.'
                 if appending_user_func:
-                    self.func += '.'
                     self.user_func_strs[-1] += '.'
             elif ch == '^':
                 self.user_func_strs.append('')
