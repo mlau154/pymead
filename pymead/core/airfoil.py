@@ -141,10 +141,10 @@ class Airfoil:
           FreePoint to add to a Bézier curve
         """
         fp_dict = self.free_points[free_point.anchor_point_tag]
-        free_point.x.x = True
-        free_point.x.airfoil_tag = self.tag
-        free_point.y.y = True
-        free_point.y.airfoil_tag = self.tag
+        # free_point.x.x = True
+        free_point.xy.airfoil_tag = self.tag
+        # free_point.y.y = True
+        # free_point.y.airfoil_tag = self.tag
         free_point.airfoil_transformation = {'dx': self.dx, 'dy': self.dy, 'alf': self.alf, 'c': self.c}
 
         # Name the FreePoint by incrementing the max of the FreePoint tag indexes by one (or use 0 if no FreePoints)
@@ -159,7 +159,7 @@ class Airfoil:
             previous_free_point else 0, free_point.tag)
         self.N[free_point.anchor_point_tag] += 1
         self.param_dicts['FreePoints'][free_point.anchor_point_tag][free_point.tag] = {
-            'x': free_point.x, 'y': free_point.y}
+            'xy': free_point.xy}
 
     def delete_free_point(self, free_point_tag: str, anchor_point_tag: str):
         """Deletes a :class:`pymead.core.free_point.FreePoint` from the Airfoil.

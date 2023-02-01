@@ -2,6 +2,7 @@ from pymead.core.airfoil import Airfoil
 from pymead.core.anchor_point import AnchorPoint
 from pymead.core.free_point import FreePoint
 from pymead.core.param import Param
+from pymead.core.pos_param import PosParam
 from pymead.core.base_airfoil_params import BaseAirfoilParams
 from pymead.utils.dict_recursion import set_all_dict_values, assign_airfoil_tags_to_param_dict, \
     assign_names_to_params_in_param_dict
@@ -280,8 +281,12 @@ class MEA:
         if 'Custom' not in self.param_dict.keys():
             self.param_dict['Custom'] = {}
         for k, v in params.items():
-            self.param_dict['Custom'][k] = Param(**v)
+            if hasattr(v['value'], '__iter__'):
+                self.param_dict['Custom'][k] = PosParam(**v)
+            else:
+                self.param_dict['Custom'][k] = Param(**v)
             self.param_dict['Custom'][k].param_dict = self.param_dict
+            self.param_dict['Custom'][k].mea = self
 
     def get_keys(self):
         """

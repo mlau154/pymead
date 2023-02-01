@@ -12,7 +12,7 @@ def symmetry(name: str, x=None, y=None, alf_target=None, alf_tool=None, c_target
         inf_line = InfiniteLine(x1=x1, y1=y1, x2=x2, y2=y2, m=m, theta_rad=theta_rad, theta_deg=theta_deg)
         if name in ['x', 'y']:
             new_xpyp = transform_matrix(np.array([[x, y]]), dx_tool, dy_tool, -alf_tool, c_tool,
-                                      ['scale', 'rotate', 'translate'])
+                                        ['scale', 'rotate', 'translate'])
             xp = new_xpyp[0][0]
             yp = new_xpyp[0][1]
             std_coeffs = inf_line.get_standard_form_coeffs()
