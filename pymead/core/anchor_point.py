@@ -1,14 +1,14 @@
 from pymead.core.param import Param
+from pymead.core.pos_param import PosParam
 from pymead.core.control_point import ControlPoint
-import numpy as np
 from pymead.utils.transformations import transform_matrix
+import numpy as np
 
 
 class AnchorPoint(ControlPoint):
 
     def __init__(self,
-                 x: Param,
-                 y: Param,
+                 xy: PosParam,
                  tag: str,
                  previous_anchor_point: str,
                  airfoil_tag: str,
@@ -77,9 +77,9 @@ class AnchorPoint(ControlPoint):
         An instance of the `AnchorPoint` class
         """
 
-        super().__init__(x.value, y.value, tag, previous_anchor_point)
+        super().__init__(xy.value[0], xy.value[1], tag, previous_anchor_point)
 
-        self.ctrlpt = ControlPoint(x.value, y.value, tag, previous_anchor_point, cp_type='anchor_point')
+        self.ctrlpt = ControlPoint(xy.value[0], xy.value[1], tag, previous_anchor_point, cp_type='anchor_point')
         self.ctrlpt_branch_list = None
 
         self.n1 = None
@@ -89,14 +89,12 @@ class AnchorPoint(ControlPoint):
         self.tag = tag
         self.previous_anchor_point = previous_anchor_point
 
-        self.x = x
-        self.y = y
+        self.xy = xy
         self.airfoil_transformation = None
         self.airfoil_tag = airfoil_tag
         self.L = L
         self.R = R
-        self.x.anchor_point = self
-        self.y.anchor_point = self
+        self.xy.anchor_point = self
 
         self.Lt_minus = None
         self.Lt_plus = None
@@ -141,40 +139,38 @@ class AnchorPoint(ControlPoint):
                              f'inclusive. '
                              f'A value of {psi2.value} was entered.')
 
-        self.xy = np.array([x.value, y.value])
-
     def __repr__(self):
         return f"anchor_point_{self.tag}"
 
     def set_xp_yp_value(self, xp, yp):
-        mat = np.array([[xp, yp]])
-        new_mat = transform_matrix(mat, -self.airfoil_transformation['dx'].value,
-                                   -self.airfoil_transformation['dy'].value,
-                                   self.airfoil_transformation['alf'].value,
-                                   1 / self.airfoil_transformation['c'].value,
-                                   ['translate', 'rotate', 'scale'])
         x_changed, y_changed = False, False
-        if self.x.active and not self.x.linked:
-            self.x.value = new_mat[0, 0]
+        if self.xy.active[0] and not self.xy.linked[0]:
+            new_x = xp
             x_changed = True
-        if self.y.active and not self.y.linked:
-            self.y.value = new_mat[0, 1]
+        else:
+            new_x = self.xy.value[0]
+        if self.xy.active[1] and not self.xy.linked[1]:
+            new_y = yp
             y_changed = True
+        else:
+            new_y = self.xy.value[1]
+        self.xy.value = [new_x, new_y]
+        # print(f"New FreePoint xy value is {self.xy.value}")
 
         # If x or y was changed, set the location of the control point to reflect this
         if x_changed or y_changed:
             self.set_ctrlpt_value()
 
+    def transform_xy(self, dx, dy, angle, sf, transformation_order):
+        mat = np.array([self.xy.value])
+        new_mat = transform_matrix(mat, dx, dy, angle, sf, transformation_order)
+        self.xy.value = new_mat[0].tolist()
+
     def set_ctrlpt_value(self):
-        self.ctrlpt.x_val = self.x.value
-        self.ctrlpt.y_val = self.y.value
-        self.ctrlpt.xp = self.x.value
-        self.ctrlpt.yp = self.y.value
-        self.ctrlpt.transform(self.airfoil_transformation['dx'].value,
-                              self.airfoil_transformation['dy'].value,
-                              -self.airfoil_transformation['alf'].value,
-                              self.airfoil_transformation['c'].value,
-                              transformation_order=['scale', 'rotate', 'translate'])
+        self.ctrlpt.x_val = self.xy.value[0]
+        self.ctrlpt.y_val = self.xy.value[1]
+        self.ctrlpt.xp = self.xy.value[0]
+        self.ctrlpt.yp = self.xy.value[1]
 
     def get_anchor_type(self, anchor_point_order):
         if self.tag == 'le':
@@ -196,8 +192,7 @@ class AnchorPoint(ControlPoint):
         psi1 = self.psi1.value
         psi2 = self.psi2.value
         tag = self.tag
-        x0 = self.x.value
-        y0 = self.y.value
+        xy0 = self.xy.value
         # if self.tag == 'ap0':
         #     print(f"Generating anchor point branch! x0 = {x0}, y0 = {y0}")
 
@@ -217,7 +212,7 @@ class AnchorPoint(ControlPoint):
 
         def generate_tangent_seg_ctrlpts(minus_plus: str):
             if R == 0:  # degenerate case 1: infinite curvature (sharp corner)
-                return ControlPoint(x0, y0, f'anchor_point_{tag}_g1_{minus_plus}', tag)
+                return ControlPoint(xy0[0], xy0[1], f'anchor_point_{tag}_g1_{minus_plus}', tag)
 
             def evaluate_tangent_segment_length():
                 if self.anchor_type == 'upper_surf':
@@ -256,14 +251,14 @@ class AnchorPoint(ControlPoint):
             map_tilt_angle()
 
             if minus_plus == 'minus':
-                xy = np.array([x0, y0]) + self.Lt_minus * np.array([np.cos(self.abs_phi1), np.sin(self.abs_phi1)])
+                xy = np.array(xy0) + self.Lt_minus * np.array([np.cos(self.abs_phi1), np.sin(self.abs_phi1)])
             else:
-                xy = np.array([x0, y0]) + self.Lt_plus * np.array([np.cos(self.abs_phi2), np.sin(self.abs_phi2)])
+                xy = np.array(xy0) + self.Lt_plus * np.array([np.cos(self.abs_phi2), np.sin(self.abs_phi2)])
             return ControlPoint(xy[0], xy[1], f'{repr(self)}_g1_{minus_plus}', tag, cp_type=f'g1_{minus_plus}')
 
         def generate_curvature_seg_ctrlpts(psi, tangent_ctrlpt: ControlPoint, n, minus_plus):
             if R == 0:  # degenerate case 1: infinite curvature (sharp corner)
-                return ControlPoint(x0, y0, f'{repr(self)}_g2_{minus_plus}', tag)
+                return ControlPoint(xy0[0], xy0[1], f'{repr(self)}_g2_{minus_plus}', tag)
             with np.errstate(divide='ignore'):  # accept divide by 0 as valid
                 if tag == 'le':
                     if np.sin(psi + np.pi / 2) == 0 or np.true_divide(1, R) == 0:

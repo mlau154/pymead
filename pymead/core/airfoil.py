@@ -186,10 +186,7 @@ class Airfoil:
         ap: AnchorPoint
           AnchorPoint to add to a Bézier curve
         """
-        ap.x.x = True
-        ap.x.airfoil_tag = self.tag
-        ap.y.y = True
-        ap.y.airfoil_tag = self.tag
+        ap.xy.airfoil_tag = self.tag
         order_idx = next((idx for idx, anchor_point in enumerate(self.anchor_point_order)
                           if anchor_point == ap.previous_anchor_point))
         self.anchor_points[order_idx + 1].previous_anchor_point = ap.tag
@@ -202,7 +199,7 @@ class Airfoil:
         if ap.previous_anchor_point == 'le':
             self.N['le'] = 5 + len(self.free_point_order['le'])
         ap.airfoil_transformation = {'c': self.c, 'alf': self.alf, 'dx': self.dx, 'dy': self.dy}
-        ap_param_list = ['x', 'y', 'L', 'R', 'r', 'phi', 'psi1', 'psi2']
+        ap_param_list = ['xy', 'L', 'R', 'r', 'phi', 'psi1', 'psi2']
         self.param_dicts['AnchorPoints'][ap.tag] = {p: getattr(ap, p) for p in ap_param_list}
         self.free_points[ap.tag] = {}
         self.free_point_order[ap.tag] = []
@@ -394,6 +391,9 @@ class Airfoil:
         for cp in self.control_points:
             cp.xp *= scale_value
             cp.yp *= scale_value
+
+    def get_airfoil_transformation(self):
+        return {p: getattr(getattr(self, 'p'), 'value') for p in ['dx', 'dy', 'alf', 'c']}
 
     def compute_area(self):
         """Computes the area of the airfoil as the area of a many-sided polygon enclosed by the airfoil coordinates
@@ -813,6 +813,40 @@ class Airfoil:
             curve.update_curvature_comb_curve()
 
 
+class AirfoilTransformation:
+    """Convenience class for computing transformations of coordinate pairs :math:`(x,y)` to and from the
+    airfoil-relative coordinate system."""
+    def __init__(self, airfoil: Airfoil):
+        self.transform_abs_obj = Transformation2D(tx=[airfoil.dx.value], ty=[airfoil.dy.value],
+                                                  r=[-airfoil.alf.value], sx=[airfoil.c.value],
+                                                  sy=[airfoil.c.value], rotation_units='rad', order='r,s,t')
+        self.transform_rel_obj = Transformation2D(tx=[-airfoil.dx.value], ty=[-airfoil.dy.value],
+                                                  r=[airfoil.alf.value], sx=[1.0 / airfoil.c.value],
+                                                  sy=[1.0 / airfoil.c.value], rotation_units='rad', order='t,s,r')
+
+    def transform_abs(self, coordinates: np.ndarray):
+        """Computes the transformation of the coordinates from the airfoil-relative coordinate system to the absolute
+        coordinate system.
+
+        Parameters
+        ==========
+        coordinates: np.ndarray
+          Size N x 2, where N is the number of coordinates. The columns represent :math:`x` and :math:`y`.
+        """
+        return self.transform_abs_obj.transform(coordinates)
+
+    def transform_rel(self, coordinates: np.ndarray):
+        """Computes the transformation of the coordinates from the absolute coordinate system to the airfoil-relative
+        coordinate system.
+
+        Parameters
+        ==========
+        coordinates: np.ndarray
+          Size N x 2, where N is the number of coordinates. The columns represent :math:`x` and :math:`y`.
+        """
+        return self.transform_rel_obj.transform(coordinates)
+
+
 if __name__ == '__main__':
-    airfoil = Airfoil()
-    airfoil.calculate_Cl_Cp(5.0)
+    airfoil_ = Airfoil()
+    airfoil_.calculate_Cl_Cp(5.0)

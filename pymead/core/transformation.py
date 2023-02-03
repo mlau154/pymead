@@ -66,6 +66,13 @@ class Transformation2D:
                                           f'(must be \'r\', \'s\', or \'t\'')
 
     def transform(self, coordinates: np.ndarray):
+        """Computes the transformation of the coordinates.
+
+        Parameters
+        ==========
+        coordinates: np.ndarray
+          Size N x 2, where N is the number of coordinates. The columns represent :math:`x` and :math:`y`.
+        """
         return (np.column_stack((coordinates, np.ones(len(coordinates)))) @ self.M)[:, :2]  # x' = x * M
 
 

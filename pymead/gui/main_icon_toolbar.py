@@ -5,6 +5,7 @@ import os
 from pymead.core.airfoil import Airfoil
 from pymead.core.base_airfoil_params import BaseAirfoilParams
 from pymead.core.param import Param
+from pymead.core.pos_param import PosParam
 from pymead.utils.read_write_files import load_data
 from pymead.gui.input_dialog import SymmetryDialog
 from pymead.core.symmetry import symmetry
@@ -148,14 +149,10 @@ class MainIconToolbar(QToolBar):
                 if ap_order_tool.index(ap_tool) < ap_order_tool.index('le'):
                     upper_tool = True
             extra_args = {
-                'x': f"x1={out['x1']}, y1={out['y1']}, theta_rad={out['angle']}, x={out['tool']}.x, "
-                      f"y={out['tool']}.y, alf_tool={tool_base}.alf, alf_target={target_base}.alf, c_tool={tool_base}.c,"
-                     f" c_target={target_base}.c, dx_tool={tool_base}.dx, dx_target={target_base}.dx, "
-                     f"dy_tool={tool_base}.dy, dy_target={target_base}.dy",
-                'y': f"x1={out['x1']}, y1={out['y1']}, theta_rad={out['angle']}, x={out['tool']}.x, "
-                      f"y={out['tool']}.y, alf_tool={tool_base}.alf, alf_target={target_base}.alf, c_tool={tool_base}.c,"
-                     f" c_target={target_base}.c, dx_tool={tool_base}.dx, dx_target={target_base}.dx, "
-                     f"dy_tool={tool_base}.dy, dy_target={target_base}.dy",
+                'xy': f"x1={out['x1']}, y1={out['y1']}, theta_rad={out['angle']}, xy={out['tool']}.xy, "
+                      f"alf_tool={tool_base}.alf, alf_target={target_base}.alf, c_tool={tool_base}.c,"
+                      f" c_target={target_base}.c, dx_tool={tool_base}.dx, dx_target={target_base}.dx, "
+                      f"dy_tool={tool_base}.dy, dy_target={target_base}.dy",
                 'phi': f"x1={out['x1']}, y1={out['y1']}, theta_rad={out['angle']}, alf_tool={tool_base}.alf, "
                        f"alf_target={target_base}.alf, phi={out['tool']}.phi, upper_target={upper_target}, "
                        f"upper_tool={upper_tool}",
@@ -170,6 +167,10 @@ class MainIconToolbar(QToolBar):
             eq.setValue(eq_string)
             self.parent.param_tree_instance.flush_changes(eq)
             self.parent.param_tree_instance.update_equation(eq, eq_string)
+            if isinstance(param.airfoil_param, PosParam):
+                param.airfoil_param.linked = (True, True)
+            else:
+                param.airfoil_param.linked = True
 
         airfoil_param_tree = self.parent.param_tree_instance.p.child('Airfoil Parameters')
         out = self.symmetry_dialog.getInputs()
@@ -181,11 +182,10 @@ class MainIconToolbar(QToolBar):
         target_base = f"${target_list[0]}.Base"
         if 'FreePoints' in target_list:
             fp_or_ap = 'fp'
-            for param_str in ['x', 'y']:
-                assign_equation(param_str)
+            assign_equation('xy')
         elif 'AnchorPoints' in target_list:
             fp_or_ap = 'ap'
-            for param_str in ['x', 'y', 'phi', 'psi1', 'psi2', 'L', 'r', 'R']:
+            for param_str in ['xy', 'phi', 'psi1', 'psi2', 'L', 'r', 'R']:
                 assign_equation(param_str)
         else:
             raise ValueError('Target selection must be either a FreePoint or an AnchorPoint')

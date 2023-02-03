@@ -40,11 +40,17 @@ class ControlPoint:
     #     self.xp *= sf
     #     self.yp *= sf
 
+    # def transform(self, dx, dy, angle, sf, transformation_order):
+    #     mat = np.array([[self.xp, self.yp]])
+    #     new_mat = transform_matrix(mat, dx, dy, angle, sf, transformation_order)
+    #     self.xp = new_mat[0][0]
+    #     self.yp = new_mat[0][1]
+
     def transform(self, dx, dy, angle, sf, transformation_order):
-        mat = np.array([[self.xp, self.yp]])
-        new_mat = transform_matrix(mat, dx, dy, angle, sf, transformation_order)
-        self.xp = new_mat[0][0]
-        self.yp = new_mat[0][1]
+        mat = np.array([[self.x_val, self.y_val]])
+        new_mat = transform_matrix(mat, -dx, -dy, -angle, 1 / sf, transformation_order[::-1])
+        self.x_val = new_mat[0][0]
+        self.y_val = new_mat[0][1]
 
 
 if __name__ == '__main__':

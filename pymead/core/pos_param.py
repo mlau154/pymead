@@ -9,6 +9,8 @@ class PosParam(Param):
                  active: typing.Tuple[bool] = (True, True), linked: typing.Tuple[bool] = (False, False),
                  func_str: str = None, name: str = None):
         super().__init__(value=value, active=active, bounds=bounds, linked=linked, func_str=func_str, name=name)
+        if self.func_str is not None:
+            self.parse_func_str_for_linked()  # override the singularly-valued linked bool with a list of bools
 
     @property
     def value(self):
@@ -16,8 +18,8 @@ class PosParam(Param):
 
     @value.setter
     def value(self, v):
-        update_x = self.active[0] and not self.linked[0]
-        update_y = self.active[1] and not self.linked[1]
+        update_x = self.active[0]
+        update_y = self.active[1]
         old_value = self._value
         if update_x:
             if v[0] < self.bounds[0][0]:
@@ -43,6 +45,8 @@ class PosParam(Param):
         if update_x or update_y:
             self.update_affected_params(old_value)
 
+        pass
+
     def set_func_str(self, func_str: str):
         if len(func_str) == 0:
             self.remove_func()
@@ -51,6 +55,15 @@ class PosParam(Param):
                 self.function_dict = {'depends': {}, 'name': self.name.split('.')[-1] if self.name is not None else None}
             self.func_str = func_str
             self.parse_func_str_for_linked()
+
+    def remove_func(self):
+        self.func_str = None
+        self.function_dict = {'depends': {}, 'name': self.name.split('.')[-1] if self.name is not None else None}
+        self.linked = [False, False]
+        for parameter in self.depends_on.values():
+            if self in parameter.affects:
+                parameter.affects.remove(self)
+        self.depends_on = {}
 
     def parse_func_str_for_linked(self):
         str_before_comma = ''

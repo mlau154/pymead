@@ -105,7 +105,7 @@ class MEA:
                 # print(f"setting te_thickness_edit_mode of airfoil {airfoil.tag} to {self.te_thickness_edit_mode}")
                 airfoil_graph.te_thickness_edit_mode = self.te_thickness_edit_mode
         else:
-            print("Creating new AirfoilGraph!")
+            # print("Creating new AirfoilGraph!")
             airfoil_graph = AirfoilGraph(airfoil, w=w, v=v)
             # print(f"setting te_thickness_edit_mode of airfoil {airfoil.tag} to {self.te_thickness_edit_mode}")
             airfoil_graph.te_thickness_edit_mode = self.te_thickness_edit_mode

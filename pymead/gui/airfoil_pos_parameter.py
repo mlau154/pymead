@@ -1,4 +1,5 @@
 from pyqtgraph.parametertree.parameterTypes import WidgetParameterItem
+from pyqtgraph import SpinBox
 from PyQt5.QtWidgets import QWidget, QHBoxLayout, QDoubleSpinBox
 from PyQt5.QtCore import pyqtSignal, pyqtSlot, QObject
 import numpy as np
@@ -23,12 +24,18 @@ class AirfoilPositionParameterItem(WidgetParameterItem):
         layout = QHBoxLayout()
         widget.setLayout(layout)
         SC = SignalContainer()
-        self.left_spin = QDoubleSpinBox(parent=widget)
+        self.left_spin = QDoubleSpinBox()
         self.left_spin.setMinimum(-np.inf)
         self.left_spin.setMaximum(np.inf)
-        self.right_spin = QDoubleSpinBox(parent=widget)
+        self.left_spin.setDecimals(12)
+        self.left_spin.setSingleStep(0.001)
+        self.left_spin.setKeyboardTracking(False)
+        self.right_spin = QDoubleSpinBox()
         self.right_spin.setMinimum(-np.inf)
         self.right_spin.setMaximum(np.inf)
+        self.right_spin.setDecimals(12)
+        self.right_spin.setSingleStep(0.001)
+        self.right_spin.setKeyboardTracking(False)
         layout.addWidget(self.left_spin)
         layout.addWidget(self.right_spin)
 
