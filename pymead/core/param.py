@@ -70,7 +70,7 @@ class Param:
 
     @value.setter
     def value(self, v):
-        if self.active and not self.linked:
+        if self.active:
             old_value = self._value
             if v < self.bounds[0]:
                 self._value = self.bounds[0]

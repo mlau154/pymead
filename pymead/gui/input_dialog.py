@@ -1003,22 +1003,46 @@ class InviscidCpCalcDialog(QDialog):
 
 
 class BoundsDialog(QDialog):
-    def __init__(self, bounds, parent=None):
+    def __init__(self, bounds, parent=None, pos_param: bool = False):
         super().__init__(parent)
+        self.pos_param = pos_param
         self.setWindowTitle("Parameter Bounds Modification")
         self.setFont(self.parent().font())
         buttonBox = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel, self)
         layout = QFormLayout(self)
 
         self.lower_bound = InftyDoubleSpinBox(lower=True)
-        self.lower_bound.setValue(bounds[0])
+        if self.pos_param:
+            self.lower_bound.setValue(bounds[0][0])
+        else:
+            self.lower_bound.setValue(bounds[0])
         self.lower_bound.setDecimals(16)
-        layout.addRow("Lower Bound", self.lower_bound)
+        if self.pos_param:
+            layout.addRow("Lower Bound (x)", self.lower_bound)
+        else:
+            layout.addRow("Lower Bound", self.lower_bound)
 
         self.upper_bound = InftyDoubleSpinBox(lower=False)
-        self.upper_bound.setValue(bounds[1])
+        if self.pos_param:
+            self.upper_bound.setValue(bounds[0][1])
+        else:
+            self.upper_bound.setValue(bounds[1])
         self.upper_bound.setDecimals(16)
-        layout.addRow("Upper Bound", self.upper_bound)
+        if self.pos_param:
+            layout.addRow("Upper Bound (x)", self.upper_bound)
+        else:
+            layout.addRow("Upper Bound", self.upper_bound)
+
+        if pos_param:
+            self.lower_bound2 = InftyDoubleSpinBox(lower=True)
+            self.lower_bound2.setValue(bounds[1][0])
+            self.lower_bound2.setDecimals(16)
+            layout.addRow("Lower Bound (y)", self.lower_bound2)
+
+            self.upper_bound2 = InftyDoubleSpinBox(lower=False)
+            self.upper_bound2.setValue(bounds[1][1])
+            self.upper_bound2.setDecimals(16)
+            layout.addRow("Upper Bound (y)", self.upper_bound2)
 
         self.hint_label = QLabel("<Home> key: +/-inf", parent=self)
         self.hint_label.setWordWrap(True)
@@ -1031,7 +1055,11 @@ class BoundsDialog(QDialog):
         buttonBox.rejected.connect(self.reject)
 
     def getInputs(self):
-        return self.lower_bound.value(), self.upper_bound.value()
+        if self.pos_param:
+            return [[self.lower_bound.value(), self.upper_bound.value()],
+                    [self.lower_bound2.value(), self.upper_bound2.value()]]
+        else:
+            return [self.lower_bound.value(), self.upper_bound.value()]
 
     def event(self, event):
         if event.type() == QEvent.EnterWhatsThisMode:

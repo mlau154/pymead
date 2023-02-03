@@ -53,7 +53,7 @@ class MEAParameters(pTypes.GroupParameter):
         self.airfoil_headers.append(self.addChild(dict(name=airfoil.tag, type='selectable_header', value=True,
                                                        context={"add_fp": "Add FreePoint",
                                                                 "add_ap": "Add AnchorPoint"})))
-        header_params = ['Base', 'AnchorPoints', 'FreePoints', 'Custom']
+        header_params = ['Base', 'AnchorPoints', 'FreePoints']
         for hp in header_params:
             # print(f"children = {self.airfoil_headers[idx].children()}")
             self.airfoil_headers[idx].addChild(HeaderParameter(name=hp, type='bool', value=True))
@@ -85,14 +85,17 @@ class MEAParameters(pTypes.GroupParameter):
                 self.child(airfoil.tag).child('FreePoints').child(ap_key).addChild(
                     HeaderParameter(name=fp_key, type='bool', value='true', context={'remove_fp': 'Remove FreePoint'}))
                 for p_key, p_val in fp_val.items():
-                    self.child(airfoil.tag).child('FreePoints').child(ap_key).child(fp_key).addChild(
-                        AirfoilParameter(self.mea.param_dict[airfoil.tag]['FreePoints'][ap_key][fp_key][p_key],
-                                         name=f"{airfoil.tag}.FreePoints.{ap_key}.{fp_key}.{p_key}", type='pos_parameter',
-                                         value=self.mea.param_dict[airfoil.tag]['FreePoints'][ap_key][fp_key][
-                                             p_key].value,
-                                         context={'add_eq': 'Define by equation', 'deactivate': 'Deactivate parameter',
-                                                  'activate': 'Activate parameter',
-                                                  'setbounds': 'Set parameter bounds'}))
+                    airfoil_param = self.mea.param_dict[airfoil.tag]['FreePoints'][ap_key][fp_key][p_key]
+                    pg_param = Parameter.create(name=f"{airfoil.tag}.FreePoints.{ap_key}.{fp_key}.{p_key}",
+                                                type='pos_parameter',
+                                                value=
+                                                self.mea.param_dict[airfoil.tag]['FreePoints'][ap_key][fp_key][
+                                                    p_key].value,
+                                                context={'add_eq': 'Define by equation',
+                                                         'deactivate': 'Deactivate parameter',
+                                                         'activate': 'Activate parameter',
+                                                         'setbounds': 'Set parameter bounds'})
+                    pg_param.airfoil_param = airfoil_param
 
 
 class AirfoilParameter(pTypes.SimpleParameter):
@@ -170,9 +173,6 @@ class MEAParamTree:
             """Adds equation boxes for each loaded Airfoil Param which already contains an equation."""
             for child in child_list:
                 if hasattr(child, 'airfoil_param'):
-                    # if len(child.airfoil_param.function_dict) > 0:
-                    #     print(f"{child.airfoil_param.function_dict = }")
-                    #     print(f"Parameter {child.name()} has a non-zero-length function dictionary")
                     if child.airfoil_param.func_str is not None:
                         self.add_equation_box(child, child.airfoil_param.func_str)
                         self.update_equation(child.child('Equation Definition'), child.airfoil_param.func_str)
@@ -184,7 +184,8 @@ class MEAParamTree:
             """Sets the state to ReadOnly for each Airfoil Parameter which has an equation."""
             for child in child_list:
                 if hasattr(child, 'airfoil_param'):
-                    if child.airfoil_param.linked or not child.airfoil_param.active:
+                    if not isinstance(child.airfoil_param,
+                                      PosParam) and child.airfoil_param.linked or not child.airfoil_param.active:
                         child.setReadonly(True)
                 else:
                     if child.hasChildren():
@@ -258,7 +259,6 @@ class MEAParamTree:
                     #     get_list_of_vals_from_dict(mea.param_dict)
                     #     for val in list_of_vals:
                     #         for v in val.depends_on.values():
-                    #             # print(f"v = {v}")
                     #             if param.airfoil_param is v:
                     #                 val.update()
 
@@ -302,13 +302,15 @@ class MEAParamTree:
                         p.param.setReadonly(False)
 
                 if change == 'contextMenu' and data == 'setbounds':
-                    self.dialog = BoundsDialog(param.airfoil_param.bounds, parent=self.t)
+                    pos_param = isinstance(param.airfoil_param, PosParam)
+                    self.dialog = BoundsDialog(param.airfoil_param.bounds, parent=self.t, pos_param=pos_param)
                     if self.dialog.exec():
                         inputs = self.dialog.getInputs()
                     else:
                         inputs = None
                     if inputs:
-                        param.airfoil_param.bounds = np.array([inputs[0], inputs[1]])
+                        # param.airfoil_param.bounds = np.array([inputs[0], inputs[1]])
+                        param.airfoil_param.bounds = inputs
 
                 # Adding a FreePoint
                 if change == 'contextMenu' and data == 'add_fp':
@@ -494,8 +496,8 @@ class MEAParamTree:
         # for k, v in temp_func_dict.items():
         #     if isinstance(v, str) and v[:2] == '$$':
 
-        if 'name' not in airfoil_param.function_dict.keys():
-            airfoil_param.function_dict['name'] = airfoil_param.name
+        # if 'name' not in airfoil_param.function_dict.keys():
+        airfoil_param.function_dict['name'] = airfoil_param.name.split('.')[-1]
         airfoil_param.function_dict = {**airfoil_param.function_dict, **func_dict_kwargs}
         airfoil_param.set_func_str(equation_str)
         try:
@@ -560,13 +562,11 @@ class MEAParamTree:
                     HeaderParameter(name=fp.anchor_point_tag, type='bool', value='true'))
             self.params[-1].child(a_tag).child('FreePoints').child(fp.anchor_point_tag).addChild(
                 HeaderParameter(name=fp.tag, type='bool', value='true', context={'remove_fp': 'Remove FreePoint'}))
-            # print(self.mea.param_dict['A0'])
             for p_key, p_val in self.mea.param_dict[a_tag]['FreePoints'][fp.anchor_point_tag][fp.tag].items():
                 airfoil_param = self.mea.param_dict[a_tag]['FreePoints'][fp.anchor_point_tag][fp.tag][p_key]
                 pg_param = Parameter.create(name=f"{a_tag}.FreePoints.{fp.anchor_point_tag}.{fp.tag}.{p_key}",
                                             type='pos_parameter',
-                                            value=self.mea.param_dict[a_tag]['FreePoints'][fp.anchor_point_tag][fp.tag][
-                                                p_key].value,
+                                            value=[-999.0, -999.0],
                                             context={'add_eq': 'Define by equation',
                                                      'deactivate': 'Deactivate parameter',
                                                      'activate': 'Activate parameter',
@@ -574,6 +574,7 @@ class MEAParamTree:
                 pg_param.airfoil_param = airfoil_param
                 self.params[-1].child(a_tag).child('FreePoints').child(fp.anchor_point_tag).child(
                     fp.tag).addChild(pg_param)
+                pg_param.setValue([pg_param.airfoil_param.value[0], pg_param.airfoil_param.value[1]])
 
     def add_anchor_point(self, pg_param: Parameter):
         """Adds an AnchorPoint to the specified Airfoil and updates the graph.
@@ -599,7 +600,7 @@ class MEAParamTree:
         if inputs:  # Continue only if the dialog was accepted:
             for curve in self.mea.airfoils[a_tag].curve_list:
                 curve.clear_curve_pg()
-            ap = AnchorPoint(x=Param(inputs[0]), y=Param(inputs[1]), L=Param(inputs[2]), R=Param(inputs[3]),
+            ap = AnchorPoint(xy=PosParam((inputs[0], inputs[1])), L=Param(inputs[2]), R=Param(inputs[3]),
                              r=Param(inputs[4]), phi=Param(inputs[5]), psi1=Param(inputs[6]),
                              psi2=Param(inputs[7]), previous_anchor_point=inputs[8], tag=inputs[9], airfoil_tag=a_tag)
 
@@ -630,13 +631,27 @@ class MEAParamTree:
 
             # Add the appropriate Parameters to the ParameterTree:
             for p_key, p_val in self.mea.param_dict[a_tag]['AnchorPoints'][ap.tag].items():
-                self.params[-1].child(a_tag).child('AnchorPoints').child(ap.tag).addChild(AirfoilParameter(
-                    self.mea.param_dict[a_tag]['AnchorPoints'][ap.tag][p_key],
-                    name=f"{a_tag}.AnchorPoints.{ap.tag}.{p_key}", type='float',
-                    value=self.mea.param_dict[a_tag]['AnchorPoints'][ap.tag][
-                        p_key].value,
-                    context={'add_eq': 'Define by equation', 'deactivate': 'Deactivate parameter',
-                             'activate': 'Activate parameter', 'setbounds': 'Set parameter bounds'}))
+                if p_key != 'xy':
+                    self.params[-1].child(a_tag).child('AnchorPoints').child(ap.tag).addChild(AirfoilParameter(
+                        self.mea.param_dict[a_tag]['AnchorPoints'][ap.tag][p_key],
+                        name=f"{a_tag}.AnchorPoints.{ap.tag}.{p_key}", type='float',
+                        value=self.mea.param_dict[a_tag]['AnchorPoints'][ap.tag][
+                            p_key].value,
+                        context={'add_eq': 'Define by equation', 'deactivate': 'Deactivate parameter',
+                                 'activate': 'Activate parameter', 'setbounds': 'Set parameter bounds'}))
+                else:
+                    airfoil_param = self.mea.param_dict[a_tag]['AnchorPoints'][ap.tag][p_key]
+                    pg_param = Parameter.create(name=f"{a_tag}.AnchorPoints.{ap.tag}.{p_key}",
+                                                type='pos_parameter',
+                                                value=[-999.0, -999.0],
+                                                context={'add_eq': 'Define by equation',
+                                                         'deactivate': 'Deactivate parameter',
+                                                         'activate': 'Activate parameter',
+                                                         'setbounds': 'Set parameter bounds'})
+                    pg_param.airfoil_param = airfoil_param
+                    self.params[-1].child(a_tag).child('AnchorPoints').child(
+                        ap.tag).addChild(pg_param)
+                    pg_param.setValue([pg_param.airfoil_param.value[0], pg_param.airfoil_param.value[1]])
 
     def remove_free_point(self, pg_param: Parameter):
         """Removes a FreePoint from an Airfoil and updates the graph
@@ -740,11 +755,9 @@ class MEAParamTree:
         """Moves through the pyqtgraph ParameterTree recursively, setting the value of each pyqtgraph Parameter to the
         value of the contained pymead parameter value."""
         for idx, child in enumerate(child_list):
-            # print(f"child name is {child.name()}")
             if hasattr(child, "airfoil_param"):
                 if child.hasChildren():
                     if child.children()[0].name() == 'Equation Definition':
-                        # print(f"Setting value of {child.name()}")
                         child.setValue(child.airfoil_param.value)
                     else:
                         self.plot_change_recursive(child.children())

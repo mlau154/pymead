@@ -59,19 +59,29 @@ class FreePoint(ControlPoint):
         x_changed, y_changed = False, False
         if self.xy.active[0] and not self.xy.linked[0]:
             new_x = xp
+            if self.anchor_point_tag == 'le':
+                print(f"{new_x = }")
             x_changed = True
         else:
             new_x = self.xy.value[0]
         if self.xy.active[1] and not self.xy.linked[1]:
             new_y = yp
+            if self.anchor_point_tag == 'le':
+                print(f"{new_y = }")
             y_changed = True
         else:
             new_y = self.xy.value[1]
         self.xy.value = [new_x, new_y]
+        # print(f"New FreePoint xy value is {self.xy.value}")
 
         # If x or y was changed, set the location of the control point to reflect this
         if x_changed or y_changed:
             self.set_ctrlpt_value()
+
+    def transform_xy(self, dx, dy, angle, sf, transformation_order):
+        mat = np.array([self.xy.value])
+        new_mat = transform_matrix(mat, dx, dy, angle, sf, transformation_order)
+        self.xy.value = new_mat[0].tolist()
 
     def set_ctrlpt_value(self):
         self.ctrlpt.x_val = self.xy.value[0]
