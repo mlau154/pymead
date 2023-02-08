@@ -7,7 +7,7 @@ from pymead.core.base_airfoil_params import BaseAirfoilParams
 from pymead.core.param import Param
 from pymead.core.pos_param import PosParam
 from pymead.utils.read_write_files import load_data
-from pymead.gui.input_dialog import SymmetryDialog
+from pymead.gui.input_dialog import SymmetryDialog, PosConstraintDialog
 from pymead.core.symmetry import symmetry
 from pymead import ICON_DIR
 from functools import partial
@@ -22,6 +22,7 @@ class MainIconToolbar(QToolBar):
         self.parent = parent
         self.new_airfoil_location = None
         self.symmetry_dialog = None
+        self.pos_constraint_dialog = None
         self.icon_dir = ICON_DIR
         self.parent.addToolBar(self)
         self.button_settings = load_data("buttons.json")
@@ -189,3 +190,44 @@ class MainIconToolbar(QToolBar):
                 assign_equation(param_str)
         else:
             raise ValueError('Target selection must be either a FreePoint or an AnchorPoint')
+
+    @pyqtSlot(str)
+    def pos_constraint_connection(self, obj: str):
+        if self.pos_constraint_dialog:
+            self.pos_constraint_dialog.inputs[self.pos_constraint_dialog.current_form_idx][1].setText(obj)
+
+    def on_pos_constraint_pressed(self):
+        self.parent.param_tree_instance.t.sigPosConstraint.connect(
+            self.pos_constraint_connection)  # connect parameter selection to the QLineEdits in the dialog
+        self.pos_constraint_dialog = PosConstraintDialog(self)  # generate the dialog
+        self.pos_constraint_dialog.show()  # show the dialog
+        self.pos_constraint_dialog.accepted.connect(self.constrain_position)  # apply symmetry equations once OK is pressed
+
+    def constrain_position(self):
+
+        def get_grandchild(param_tree, child_list: list, param_name: str):
+            current_param = param_tree.child(target_list[0])
+            for idx in range(1, len(child_list)):
+                current_param = current_param.child(child_list[idx])
+            full_param_name = f"{'.'.join(child_list)}.{param_name}"
+            return current_param.child(full_param_name)
+
+        airfoil_param_tree = self.parent.param_tree_instance.p.child('Airfoil Parameters')
+        out = self.pos_constraint_dialog.getInputs()
+        target = out['target'].replace('$', '')
+        target_list = target.split('.')
+        tool = out['tool'].replace('$', '')
+        tool_list = tool.split('.')
+        param = get_grandchild(airfoil_param_tree, target_list, 'xy')
+        self.parent.param_tree_instance.add_equation_box(param)
+        eq = param.child('Equation Definition')
+        if 'dx' in out.keys():
+            eq_string = "{%s.xy[0] + %s, %s.xy[1] + %s}" % (out['tool'], out['dx'], out['tool'], out['dy'])
+        else:
+            eq_string = "{%s.xy[0] + %s * cos(%s), %s.xy[1] + %s * sin(%s)}" % (out['tool'], out['dist'],
+                                                                                out['angle'], out['tool'],
+                                                                                out['dist'], out['angle'])
+        self.parent.param_tree_instance.block_changes(eq)
+        eq.setValue(eq_string)
+        self.parent.param_tree_instance.flush_changes(eq)
+        self.parent.param_tree_instance.update_equation(eq, eq_string)

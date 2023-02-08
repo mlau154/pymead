@@ -46,6 +46,7 @@ class MEAParameters(pTypes.GroupParameter):
                                                                                  'setbounds': 'Set parameter bounds'}))
             pg_param.airfoil_param = v
         for idx, a in enumerate(self.mea.airfoils.values()):
+            print('Adding airfoil!')
             self.add_airfoil(a, idx)
 
     def add_airfoil(self, airfoil: Airfoil, idx: int):
@@ -58,26 +59,42 @@ class MEAParameters(pTypes.GroupParameter):
             # print(f"children = {self.airfoil_headers[idx].children()}")
             self.airfoil_headers[idx].addChild(HeaderParameter(name=hp, type='bool', value=True))
         for p_key, p_val in self.mea.param_dict[airfoil.tag]['Base'].items():
-            self.airfoil_headers[idx].children()[0].addChild(
-                AirfoilParameter(self.mea.param_dict[airfoil.tag]['Base'][p_key],
-                                 name=f"{airfoil.tag}.Base.{p_key}",
-                                 type='float',
-                                 value=self.mea.param_dict[airfoil.tag]['Base'][
-                                     p_key].value,
-                                 context={'add_eq': 'Define by equation', 'deactivate': 'Deactivate parameter',
-                                          'activate': 'Activate parameter', 'setbounds': 'Set parameter bounds'}))
+            pg_param = AirfoilParameter(self.mea.param_dict[airfoil.tag]['Base'][p_key],
+                                        name=f"{airfoil.tag}.Base.{p_key}",
+                                        type='float',
+                                        value=self.mea.param_dict[airfoil.tag]['Base'][
+                                            p_key].value,
+                                        context={'add_eq': 'Define by equation', 'deactivate': 'Deactivate parameter',
+                                                 'activate': 'Activate parameter', 'setbounds': 'Set parameter bounds'})
+            self.airfoil_headers[idx].children()[0].addChild(pg_param)
+            pg_param.airfoil_param.name = pg_param.name()
         # print(f"param_dict = {self.mea.param_dict}")
         for ap_key, ap_val in self.mea.param_dict[airfoil.tag]['AnchorPoints'].items():
             self.child(airfoil.tag).child('AnchorPoints').addChild(
                 HeaderParameter(name=ap_key, type='bool', value='true', context={'remove_ap': 'Remove AnchorPoint'}))
             for p_key, p_val in self.mea.param_dict[airfoil.tag]['AnchorPoints'][ap_key].items():
-                self.child(airfoil.tag).child('AnchorPoints').child(ap_key).addChild(AirfoilParameter(
-                    self.mea.param_dict[airfoil.tag]['AnchorPoints'][ap_key][p_key],
-                    name=f"{airfoil.tag}.AnchorPoints.{ap_key}.{p_key}", type='float',
-                    value=self.mea.param_dict[airfoil.tag]['AnchorPoints'][ap_key][
-                        p_key].value,
-                    context={'add_eq': 'Define by equation', 'deactivate': 'Deactivate parameter',
-                             'activate': 'Activate parameter', 'setbounds': 'Set parameter bounds'}))
+                if p_key != 'xy':
+                    self.params[-1].child(airfoil.tag).child('AnchorPoints').child(ap_key).addChild(AirfoilParameter(
+                        self.mea.param_dict[airfoil.tag]['AnchorPoints'][ap_key][p_key],
+                        name=f"{airfoil.tag}.AnchorPoints.{ap_key}.{p_key}", type='float',
+                        value=self.mea.param_dict[airfoil.tag]['AnchorPoints'][ap_key][
+                            p_key].value,
+                        context={'add_eq': 'Define by equation', 'deactivate': 'Deactivate parameter',
+                                 'activate': 'Activate parameter', 'setbounds': 'Set parameter bounds'}))
+                else:
+                    airfoil_param = self.mea.param_dict[airfoil.tag]['AnchorPoints'][ap_key][p_key]
+                    pg_param = Parameter.create(name=f"{airfoil.tag}.AnchorPoints.{ap_key}.{p_key}",
+                                                type='pos_parameter',
+                                                value=[-999.0, -999.0],
+                                                context={'add_eq': 'Define by equation',
+                                                         'deactivate': 'Deactivate parameter',
+                                                         'activate': 'Activate parameter',
+                                                         'setbounds': 'Set parameter bounds'})
+                    pg_param.airfoil_param = airfoil_param
+                    airfoil_param.name = pg_param.name()
+                    self.params[-1].child(airfoil.tag).child('AnchorPoints').child(
+                        ap_key).addChild(pg_param)
+                    pg_param.setValue([pg_param.airfoil_param.value[0], pg_param.airfoil_param.value[1]])
         for ap_key, ap_val in self.mea.param_dict[airfoil.tag]['FreePoints'].items():
             self.child(airfoil.tag).child('FreePoints').addChild(
                 HeaderParameter(name=ap_key, type='bool', value='true'))
@@ -88,14 +105,17 @@ class MEAParameters(pTypes.GroupParameter):
                     airfoil_param = self.mea.param_dict[airfoil.tag]['FreePoints'][ap_key][fp_key][p_key]
                     pg_param = Parameter.create(name=f"{airfoil.tag}.FreePoints.{ap_key}.{fp_key}.{p_key}",
                                                 type='pos_parameter',
-                                                value=
-                                                self.mea.param_dict[airfoil.tag]['FreePoints'][ap_key][fp_key][
-                                                    p_key].value,
+                                                value=[-999.0, -999.0],
                                                 context={'add_eq': 'Define by equation',
                                                          'deactivate': 'Deactivate parameter',
                                                          'activate': 'Activate parameter',
                                                          'setbounds': 'Set parameter bounds'})
                     pg_param.airfoil_param = airfoil_param
+                    airfoil_param.name = pg_param.name()
+                    self.child(airfoil.tag).child('FreePoints').child(ap_key).child(
+                        fp_key).addChild(pg_param)
+                    pg_param.setValue([pg_param.airfoil_param.value[0], pg_param.airfoil_param.value[1]])
+                print(f"{self.child(airfoil.tag).child('FreePoints').child(ap_key).child(fp_key).children() = }")
 
 
 class AirfoilParameter(pTypes.SimpleParameter):
@@ -174,6 +194,7 @@ class MEAParamTree:
             for child in child_list:
                 if hasattr(child, 'airfoil_param'):
                     if child.airfoil_param.func_str is not None:
+                        print(f'{child.airfoil_param.name = }')
                         self.add_equation_box(child, child.airfoil_param.func_str)
                         self.update_equation(child.child('Equation Definition'), child.airfoil_param.func_str)
                 else:
@@ -771,6 +792,7 @@ class MEAParamTree:
 class CustomParameterTree(ParameterTree):
     """A custom version of pyqtgraph's ParameterTree (allows for multiple selection and custom signal emitting)"""
     sigSymmetry = pyqtSignal(str)
+    sigPosConstraint = pyqtSignal(str)
 
     def __init__(self, parent=None):
         super().__init__(parent=parent)
@@ -785,8 +807,10 @@ class CustomParameterTree(ParameterTree):
             parent = sel[-1].param.parent()
             if (parent and isinstance(parent, CustomGroup)) or isinstance(param, HeaderParameter):
                 self.sigSymmetry.emit(self.get_full_param_name_path(param))
+                self.sigPosConstraint.emit(self.get_full_param_name_path(param))
             elif isinstance(param, AirfoilParameter):
                 self.sigSymmetry.emit(f"${param.name()}")
+                self.sigPosConstraint.emit(f"${param.name()}")
         self.multi_select = sel
         if len(sel) != 1:
             sel = None

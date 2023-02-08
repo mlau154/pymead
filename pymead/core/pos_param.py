@@ -92,7 +92,7 @@ class PosParam(Param):
             self.linked[1] = False
 
     def update_value(self):
-        if self.func_str is None:
+        if self.func_str is None or 'f' not in self.function_dict.keys():
             pass
         else:
             temp_value = self.function_dict['f']()
@@ -181,7 +181,18 @@ class PosParam(Param):
         for t in self.tag_list:
             self.depends_on[t] = None
 
+        print(f"{self.func = }")
+
         return math_functions_to_include, self.user_func_strs
+
+    @classmethod
+    def from_param_dict(cls, param_dict: dict):
+        """Generates a Param from a JSON-saved param_dict (aids in backward/forward compatibility)"""
+        temp_dict = {'value': param_dict['_value']}
+        for attr_name, attr_value in param_dict.items():
+            if attr_name in ['bounds', 'active', 'linked', 'func_str', 'name']:
+                temp_dict[attr_name] = attr_value
+        return cls(**temp_dict)
 
 
 def main():

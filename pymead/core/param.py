@@ -2,6 +2,7 @@ import benedict
 import numpy as np
 import math
 import typing
+from pymead.core.transformation import AirfoilTransformation
 
 
 class Param:
@@ -40,14 +41,18 @@ class Param:
         """
         self._value = list(value) if isinstance(value, tuple) else value
         self.bounds = list(bounds) if isinstance(bounds, tuple) else bounds
+        self._name = None
         self.name = name
 
-        self.active = list(active) if isinstance(active, tuple) else active
-        self.linked = list(linked) if isinstance(linked, tuple) else linked
+        self.active = list(active) if isinstance(active, tuple) or isinstance(active, list) else active
+        self.linked = list(linked) if isinstance(linked, tuple) or isinstance(active, list) else linked
         self.func_str = func_str
         self.func = None
         if self.func_str is not None:
-            self.linked = True
+            if isinstance(self.linked, list):
+                self.linked = [True, True]
+            else:
+                self.linked = True
         self.function_dict = {'depends': {}, 'name': self.name.split('.')[-1] if self.name is not None else None}
         self.depends_on = {}
         self.affects = []
@@ -55,6 +60,7 @@ class Param:
         self.user_func_strs = None
         self.tag_list = None
         self.airfoil_tag = None
+        self.sets_airfoil_csys = False
         self.mea = None
         self.deactivated_for_airfoil_matching = False
         self.at_boundary = False
@@ -65,12 +71,27 @@ class Param:
     #     return super().__setattr__(key, value)
 
     @property
+    def name(self):
+        return self._name
+
+    @name.setter
+    def name(self, n: str):
+        self._name = n
+        if n is not None and n.split('.')[-1] in ['c', 'alf', 'dx', 'dy']:
+            self.sets_airfoil_csys = True
+
+    @property
     def value(self):
         return self._value
 
     @value.setter
     def value(self, v):
         if self.active:
+            old_transformation, new_transformation, airfoil = None, None, None
+            if self.sets_airfoil_csys and self.mea is not None and self.airfoil_tag is not None:
+                airfoil = self.mea.airfoils[self.airfoil_tag]
+                old_transformation = AirfoilTransformation(dx=airfoil.dx.value, dy=airfoil.dy.value,
+                                                           alf=airfoil.alf.value, c=airfoil.c.value)
             old_value = self._value
             if v < self.bounds[0]:
                 self._value = self.bounds[0]
@@ -83,6 +104,10 @@ class Param:
                 self.at_boundary = False
 
             self.update_affected_params(old_value)
+            if self.sets_airfoil_csys and self.mea is not None and self.airfoil_tag is not None:
+                new_transformation = AirfoilTransformation(dx=airfoil.dx.value, dy=airfoil.dy.value,
+                                                           alf=airfoil.alf.value, c=airfoil.c.value)
+                self.update_ap_fp(self, old_transformation=old_transformation, new_transformation=new_transformation)
 
     def update_affected_params(self, old_value):
         if len(self.affects) > 0:
@@ -103,11 +128,26 @@ class Param:
                     self.update_ap_fp(affected_param)
 
     @staticmethod
-    def update_ap_fp(param):
-        if param.free_point is not None:
-            param.free_point.set_ctrlpt_value()
-        elif param.anchor_point is not None:
-            param.anchor_point.set_ctrlpt_value()
+    def update_ap_fp(param, old_transformation: AirfoilTransformation = None,
+                     new_transformation: AirfoilTransformation = None):
+        if old_transformation is not None and new_transformation is not None:
+            for ap_tag in param.mea.airfoils[param.airfoil_tag].free_points.keys():
+                for fp in param.mea.airfoils[param.airfoil_tag].free_points[ap_tag].values():
+                    old_coords = np.array([fp.xy.value])
+                    new_coords = new_transformation.transform_abs(old_transformation.transform_rel(old_coords))
+                    fp.xy.value = new_coords[0].tolist()
+                    fp.set_ctrlpt_value()
+            for ap in param.mea.airfoils[param.airfoil_tag].anchor_points:
+                if ap.tag not in ['te_1', 'le', 'te_2']:
+                    old_coords = np.array([ap.xy.value])
+                    new_coords = new_transformation.transform_abs(old_transformation.transform_rel(old_coords))
+                    ap.xy.value = new_coords[0].tolist()
+                    ap.set_ctrlpt_value()
+        else:
+            if param.free_point is not None:
+                param.free_point.set_ctrlpt_value()
+            elif param.anchor_point is not None:
+                param.anchor_point.set_ctrlpt_value()
 
     def set_func_str(self, func_str: str):
         if len(func_str) == 0:
@@ -128,6 +168,7 @@ class Param:
         self.depends_on = {}
 
     def update_function(self, show_q_error_messages: bool, func_str_changed: bool = False):
+        print(f"{self.func_str = }")
         if self.func_str is None:
             pass
         else:
@@ -156,8 +197,13 @@ class Param:
             # Update the function (not the result) in the function_dict
             # if execute:
             # self.func = self.func.replace('symmetrysymmetry', 'symmetry.symmetry')
+            # print(f"{self.func = }")
+            # print(f"{self.function_dict = }")
+            print(f"{type(self.func) = }")
+            print(f"{type(self.function_dict) = }")
 
-            exec(self.func, self.function_dict)
+            if self.func is not None:
+                exec(self.func, self.function_dict)
 
     def update_value(self):
         if self.func_str is None:

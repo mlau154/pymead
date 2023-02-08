@@ -1649,7 +1649,6 @@ class SymmetryDialog(QDialog):
         for idx, input_row in enumerate(self.inputs):
             if not idx % 2 and isinstance(input_row[1], QPushButton):  # only evaluate the odd rows
                 input_row[1].clicked.connect(partial(self.switch_row, idx + 1))
-                print('Switching row')
 
         layout.addWidget(buttonBox)
 
@@ -1745,3 +1744,77 @@ class ExportCoordinatesDialog(QDialog):
         self.grid_widget["separator"]["line"].setText("999.0 999.0\\n")
         self.grid_widget["delimiter"]["line"].setText(" ")
         self.grid_widget["file_name"]["line"].setText("blade.airfoil_name")
+
+
+class PosConstraintDialog(QDialog):
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.setWindowTitle("Set Relative Positions")
+        self.setFont(self.parent().font())
+        self.current_param_path = None
+        self.current_form_idx = 1
+
+        buttonBox = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel, self)
+        self.layout = QFormLayout(self)
+
+        self.inputs = self.setInputs()
+        for i in self.inputs:
+            self.layout.addRow(i[0], i[1])
+
+        for idx, input_row in enumerate(self.inputs):
+            if isinstance(input_row[1], QPushButton):
+                input_row[1].clicked.connect(partial(self.switch_row, idx + 1))
+
+        self.layout.addWidget(buttonBox)
+
+        buttonBox.accepted.connect(self.accept)
+        buttonBox.rejected.connect(self.reject)
+
+    def setInputs(self):
+        r0 = ["Target", QPushButton("Select Parameter", self)]
+        r1 = ["Selected target", QLineEdit(self)]
+        r2 = ["Tool", QPushButton("Select Parameter", self)]
+        r3 = ["Selected tool", QLineEdit(self)]
+        r4 = ["Mode", QComboBox(self)]
+        r4[1].addItems(["distance, angle", "dx, dy"])
+        r4[1].currentTextChanged.connect(self.switchMode)
+        r5 = ["Distance", QPushButton("Select Parameter", self)]
+        r6 = ["Selected distance", QLineEdit(self)]
+        r7 = ["Angle", QPushButton("Select Parameter", self)]
+        r8 = ["Selected angle", QLineEdit(self)]
+        return [r0, r1, r2, r3, r4, r5, r6, r7, r8]
+
+    def switchMode(self, mode: str):
+        for idx in reversed(range(5, 9)):
+            self.layout.removeRow(idx)
+        if 'dx' in mode:
+            r5 = ["dx", QPushButton("Select Parameter", self)]
+            r6 = ["Selected dx", QLineEdit(self)]
+            r7 = ["dy", QPushButton("Select Parameter", self)]
+            r8 = ["Selected dy", QLineEdit(self)]
+        else:
+            r5 = ["Distance", QPushButton("Select Parameter", self)]
+            r6 = ["Selected distance", QLineEdit(self)]
+            r7 = ["Angle", QPushButton("Select Parameter", self)]
+            r8 = ["Selected angle", QLineEdit(self)]
+        for idx, r in enumerate([r5, r6, r7, r8]):
+            self.inputs[idx + 5] = r
+            if isinstance(r[1], QPushButton):
+                r[1].clicked.connect(partial(self.switch_row, idx + 6))
+            self.layout.insertRow(idx + 5, r[0], r[1])
+
+    @pyqtSlot(int)
+    def switch_row(self, row: int):
+        self.current_form_idx = row
+
+    def getInputs(self):
+        if 'dx' in self.inputs[4][1].currentText():
+            return {'target': self.inputs[1][1].text(),
+                    'tool': self.inputs[3][1].text(),
+                    'dx': self.inputs[6][1].text(),
+                    'dy': self.inputs[8][1].text()}
+        else:
+            return {'target': self.inputs[1][1].text(),
+                    'tool': self.inputs[3][1].text(),
+                    'dist': self.inputs[6][1].text(),
+                    'angle': self.inputs[8][1].text()}

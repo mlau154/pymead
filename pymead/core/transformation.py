@@ -80,6 +80,38 @@ class TransformationError(Exception):
     pass
 
 
+class AirfoilTransformation:
+    """Convenience class for computing transformations of coordinate pairs :math:`(x,y)` to and from the
+    airfoil-relative coordinate system."""
+    def __init__(self, dx, dy, alf, c):
+        self.transform_abs_obj = Transformation2D(tx=[dx], ty=[dy], r=[-alf], sx=[c], sy=[c],
+                                                  rotation_units='rad', order='r,s,t')
+        self.transform_rel_obj = Transformation2D(tx=[-dx], ty=[-dy], r=[alf], sx=[1.0 / c], sy=[1.0 / c],
+                                                  rotation_units='rad', order='t,s,r')
+
+    def transform_abs(self, coordinates: np.ndarray):
+        """Computes the transformation of the coordinates from the airfoil-relative coordinate system to the absolute
+        coordinate system.
+
+        Parameters
+        ==========
+        coordinates: np.ndarray
+          Size N x 2, where N is the number of coordinates. The columns represent :math:`x` and :math:`y`.
+        """
+        return self.transform_abs_obj.transform(coordinates)
+
+    def transform_rel(self, coordinates: np.ndarray):
+        """Computes the transformation of the coordinates from the absolute coordinate system to the airfoil-relative
+        coordinate system.
+
+        Parameters
+        ==========
+        coordinates: np.ndarray
+          Size N x 2, where N is the number of coordinates. The columns represent :math:`x` and :math:`y`.
+        """
+        return self.transform_rel_obj.transform(coordinates)
+
+
 if __name__ == '__main__':
     coords = np.array([[1, 0], [2, 1], [3, 3], [2, 0]])
     transform2d = Transformation2D(tx=[1], ty=[1], r=[90], sx=[2], sy=[2], rotation_units='deg', order='r,s,t')

@@ -60,7 +60,7 @@ def unravel_param_dict_deepcopy(d: dict, output_dict: dict):
             param_dict_attrs = vars(v)
             temp_dict = {}
             for attr_key, attr in param_dict_attrs.items():
-                if attr_key in ['name', '_value', 'active', 'func_str', 'bounds']:
+                if attr_key in ['name', '_value', 'active', 'linked', 'func_str', 'bounds']:
                     if isinstance(attr, np.ndarray):
                         temp_dict[attr_key] = deepcopy(attr.tolist())
                     else:
