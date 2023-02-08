@@ -32,6 +32,13 @@
     "checkable": false,
     "function": "on_symmetry_button_pressed"
   },
+  "pos-constraint": {
+    "icon": "target_icon.png",
+    "status_tip": "Constrain the relative position of two FreePoints or AnchorPoints",
+    "checkable": false,
+    "checked-by-default": false,
+    "function": "on_pos_constraint_pressed"
+  },
   "template": {
     "icon": "picture.png",
     "status_tip": "A helpful hint",

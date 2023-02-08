@@ -143,6 +143,7 @@ class Airfoil:
         fp_dict = self.free_points[free_point.anchor_point_tag]
         # free_point.x.x = True
         free_point.xy.airfoil_tag = self.tag
+        free_point.xy.mea = self.mea
         # free_point.y.y = True
         # free_point.y.airfoil_tag = self.tag
         free_point.airfoil_transformation = {'dx': self.dx, 'dy': self.dy, 'alf': self.alf, 'c': self.c}
@@ -201,6 +202,8 @@ class Airfoil:
         ap.airfoil_transformation = {'c': self.c, 'alf': self.alf, 'dx': self.dx, 'dy': self.dy}
         ap_param_list = ['xy', 'L', 'R', 'r', 'phi', 'psi1', 'psi2']
         self.param_dicts['AnchorPoints'][ap.tag] = {p: getattr(ap, p) for p in ap_param_list}
+        for p in ap_param_list:
+            getattr(ap, p).mea = self.mea
         self.free_points[ap.tag] = {}
         self.free_point_order[ap.tag] = []
         self.param_dicts['FreePoints'][ap.tag] = {}
@@ -236,7 +239,6 @@ class Airfoil:
         generate_curves: bool
           Determines whether the curves should be re-generated during the update
         """
-        t1 = time()
         # Translate back to origin if not already at origin
         if self.control_points is not None and self.control_points != []:
             self.translate(-self.dx.value, -self.dy.value)
@@ -288,9 +290,6 @@ class Airfoil:
         # Generate the Bezier curves
         if generate_curves:
             self.generate_curves()
-
-        t2 = time()
-        # print(f"Time to update airfoil {self.tag}: {t2 - t1} sec")
 
     def generate_curves(self):
         """Generates the Bézier curves from the control point array"""
@@ -361,6 +360,7 @@ class Airfoil:
                 cp.xp = self.dx.value
                 cp.yp = self.dy.value
             else:
+                # if not ('anchor_point' in cp.tag and all(t not in cp.tag for t in ['te_1', 'le', 'te_2'])):
                 cp.xp += dx
                 cp.yp += dy
 
@@ -375,6 +375,7 @@ class Airfoil:
         rot_mat = np.array([[np.cos(angle), -np.sin(angle)],
                             [np.sin(angle), np.cos(angle)]])
         for cp in self.control_points:
+            # if not ('anchor_point' in cp.tag and all(t not in cp.tag for t in ['te_1', 'le', 'te_2'])):
             rotated_point = (rot_mat @ np.array([[cp.xp], [cp.yp]])).flatten()
             cp.xp = rotated_point[0]
             cp.yp = rotated_point[1]
@@ -389,11 +390,9 @@ class Airfoil:
           A value by which to scale the airfoil uniformly in both the :math:`x`- and :math:`y`-directions
         """
         for cp in self.control_points:
+            # if not ('anchor_point' in cp.tag and all(t not in cp.tag for t in ['te_1', 'le', 'te_2'])):
             cp.xp *= scale_value
             cp.yp *= scale_value
-
-    def get_airfoil_transformation(self):
-        return {p: getattr(getattr(self, 'p'), 'value') for p in ['dx', 'dy', 'alf', 'c']}
 
     def compute_area(self):
         """Computes the area of the airfoil as the area of a many-sided polygon enclosed by the airfoil coordinates
@@ -811,40 +810,6 @@ class Airfoil:
     def update_curvature_comb_curve(self):
         for curve in self.curve_list:
             curve.update_curvature_comb_curve()
-
-
-class AirfoilTransformation:
-    """Convenience class for computing transformations of coordinate pairs :math:`(x,y)` to and from the
-    airfoil-relative coordinate system."""
-    def __init__(self, airfoil: Airfoil):
-        self.transform_abs_obj = Transformation2D(tx=[airfoil.dx.value], ty=[airfoil.dy.value],
-                                                  r=[-airfoil.alf.value], sx=[airfoil.c.value],
-                                                  sy=[airfoil.c.value], rotation_units='rad', order='r,s,t')
-        self.transform_rel_obj = Transformation2D(tx=[-airfoil.dx.value], ty=[-airfoil.dy.value],
-                                                  r=[airfoil.alf.value], sx=[1.0 / airfoil.c.value],
-                                                  sy=[1.0 / airfoil.c.value], rotation_units='rad', order='t,s,r')
-
-    def transform_abs(self, coordinates: np.ndarray):
-        """Computes the transformation of the coordinates from the airfoil-relative coordinate system to the absolute
-        coordinate system.
-
-        Parameters
-        ==========
-        coordinates: np.ndarray
-          Size N x 2, where N is the number of coordinates. The columns represent :math:`x` and :math:`y`.
-        """
-        return self.transform_abs_obj.transform(coordinates)
-
-    def transform_rel(self, coordinates: np.ndarray):
-        """Computes the transformation of the coordinates from the absolute coordinate system to the airfoil-relative
-        coordinate system.
-
-        Parameters
-        ==========
-        coordinates: np.ndarray
-          Size N x 2, where N is the number of coordinates. The columns represent :math:`x` and :math:`y`.
-        """
-        return self.transform_rel_obj.transform(coordinates)
 
 
 if __name__ == '__main__':

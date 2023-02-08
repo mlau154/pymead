@@ -2,6 +2,7 @@ from pymead.core.param import Param
 from pymead.core.pos_param import PosParam
 from pymead.core.control_point import ControlPoint
 from pymead.utils.transformations import transform_matrix
+from pymead.core.transformation import AirfoilTransformation
 import numpy as np
 
 
@@ -28,7 +29,8 @@ class AnchorPoint(ControlPoint):
 
         .. image:: complex_airfoil_anchor_points.png
 
-        ### Args:
+        Parameters
+        ==========
 
         `x`: ( \\(x\\) ) `pymead.core.param.Param` describing the x-location of the `AnchorPoint`
 
@@ -72,7 +74,8 @@ class AnchorPoint(ControlPoint):
         `length_scale_dimension`: a `float` giving the length scale by which to non-dimensionalize the `x` and `y`
         values (optional)
 
-        ### Returns:
+        Returns
+        =======
 
         An instance of the `AnchorPoint` class
         """
@@ -192,9 +195,14 @@ class AnchorPoint(ControlPoint):
         psi1 = self.psi1.value
         psi2 = self.psi2.value
         tag = self.tag
-        xy0 = self.xy.value
-        # if self.tag == 'ap0':
-        #     print(f"Generating anchor point branch! x0 = {x0}, y0 = {y0}")
+        if all(t not in tag for t in ['te_1', 'le', 'te_2']):  # for all inserted AnchorPoints:
+            xy0_abs = self.xy.value  # the absolute x-y position of the Anchor
+            abs_coords = np.array([xy0_abs])
+            transform = AirfoilTransformation(**{k: v.value for k, v in self.airfoil_transformation.items()})
+            xy = transform.transform_rel(abs_coords)
+            xy0 = xy[0].tolist()  # get the position of the Anchor relative to the airfoil coordinate system
+        else:
+            xy0 = self.xy.value
 
         if self.n1 is None:
             raise ValueError('Order of Bezier curve before anchor point was not set before generating the anchor'

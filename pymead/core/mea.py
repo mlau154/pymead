@@ -371,7 +371,10 @@ class MEA:
                     ap_dict = aps[ap_name]
                     ap_param_dict = {}
                     for pname, pdict in ap_dict.items():
-                        ap_param_dict[pname] = Param.from_param_dict(pdict)
+                        if pname == 'xy':
+                            ap_param_dict[pname] = PosParam.from_param_dict(pdict)
+                        else:
+                            ap_param_dict[pname] = Param.from_param_dict(pdict)
 
                     # Create an AnchorPoint from the saved parameter dictionary:
                     ap = AnchorPoint(airfoil_tag=a_name, tag=ap_name, previous_anchor_point=ap_order[idx - 1],
@@ -386,7 +389,7 @@ class MEA:
                     fp_dict = fps[fp_name]
                     fp_param_dict = {}
                     for pname, pdict in fp_dict.items():
-                        fp_param_dict[pname] = Param.from_param_dict(pdict)
+                        fp_param_dict[pname] = PosParam.from_param_dict(pdict)
 
                     previous_fp = fp_list[idx - 1] if idx > 0 else None
                     # Create a FreePoint from the saved parameter dictionary:
