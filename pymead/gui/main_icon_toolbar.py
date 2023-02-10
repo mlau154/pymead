@@ -205,12 +205,18 @@ class MainIconToolbar(QToolBar):
 
     def constrain_position(self):
 
-        def get_grandchild(param_tree, child_list: list, param_name: str):
+        def get_grandchild(param_tree, child_list: list, param_name: str = None):
+            print(f"{target_list = }")
             current_param = param_tree.child(target_list[0])
+            print(f"{current_param = }")
             for idx in range(1, len(child_list)):
                 current_param = current_param.child(child_list[idx])
-            full_param_name = f"{'.'.join(child_list)}.{param_name}"
-            return current_param.child(full_param_name)
+            print(f"Now, {current_param = }")
+            if param_name is not None:
+                full_param_name = f"{'.'.join(child_list)}.{param_name}"
+                return current_param.child(full_param_name)
+            else:
+                return current_param
 
         airfoil_param_tree = self.parent.param_tree_instance.p.child('Airfoil Parameters')
         out = self.pos_constraint_dialog.getInputs()
@@ -218,15 +224,20 @@ class MainIconToolbar(QToolBar):
         target_list = target.split('.')
         tool = out['tool'].replace('$', '')
         tool_list = tool.split('.')
-        param = get_grandchild(airfoil_param_tree, target_list, 'xy')
+        if 'Custom' in target_list:
+            param = get_grandchild(airfoil_param_tree, target_list)
+        else:
+            param = get_grandchild(airfoil_param_tree, target_list, 'xy')
+        if 'Custom' not in tool_list:
+            out['tool'] = out['tool'] + '.xy'
         self.parent.param_tree_instance.add_equation_box(param)
         eq = param.child('Equation Definition')
         if 'dx' in out.keys():
-            eq_string = "{%s.xy[0] + %s, %s.xy[1] + %s}" % (out['tool'], out['dx'], out['tool'], out['dy'])
+            eq_string = "{%s[0] + %s, %s[1] + %s}" % (out['tool'], out['dx'], out['tool'], out['dy'])
         else:
-            eq_string = "{%s.xy[0] + %s * cos(%s), %s.xy[1] + %s * sin(%s)}" % (out['tool'], out['dist'],
-                                                                                out['angle'], out['tool'],
-                                                                                out['dist'], out['angle'])
+            eq_string = "{%s[0] + %s * cos(%s), %s[1] + %s * sin(%s)}" % (out['tool'], out['dist'],
+                                                                          out['angle'], out['tool'],
+                                                                          out['dist'], out['angle'])
         self.parent.param_tree_instance.block_changes(eq)
         eq.setValue(eq_string)
         self.parent.param_tree_instance.flush_changes(eq)

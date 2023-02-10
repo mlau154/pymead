@@ -122,25 +122,25 @@ class AnchorPoint(ControlPoint):
         else:
             raise ValueError(f'The distance fraction, r, must be between 0 and 1. A value of {r.value} was entered.')
 
-        if -np.pi <= phi.value <= np.pi:
-            self.phi = phi
-        else:
-            raise ValueError(f'The anchor point neighboring control point angle, phi, must be between -180 degrees and'
-                             f' 180 degrees, inclusive. A value of {phi.value} was entered.')
-
-        if 0 <= psi1.value <= np.pi:
-            self.psi1 = psi1
-        else:
-            raise ValueError(f'The aft curvature control arm angle, psi1, must be between 0 degrees and 180 degrees, '
-                             f'inclusive. '
-                             f'A value of {psi1.value} was entered.')
-
-        if 0 <= psi2.value <= np.pi:
-            self.psi2 = psi2
-        else:
-            raise ValueError(f'The fore curvature control arm angle, psi2, must be between 0 degrees and 180 degrees,'
-                             f'inclusive. '
-                             f'A value of {psi2.value} was entered.')
+        # if -np.pi <= phi.value <= np.pi:
+        self.phi = phi
+        # else:
+        #     raise ValueError(f'The anchor point neighboring control point angle, phi, must be between -180 degrees and'
+        #                      f' 180 degrees, inclusive. A value of {phi.value} was entered.')
+        #
+        # if 0 <= psi1.value <= np.pi:
+        self.psi1 = psi1
+        # else:
+        #     raise ValueError(f'The aft curvature control arm angle, psi1, must be between 0 degrees and 180 degrees, '
+        #                      f'inclusive. '
+        #                      f'A value of {psi1.value} was entered.')
+        #
+        # if 0 <= psi2.value <= np.pi:
+        self.psi2 = psi2
+        # else:
+        #     raise ValueError(f'The fore curvature control arm angle, psi2, must be between 0 degrees and 180 degrees,'
+        #                      f'inclusive. '
+        #                      f'A value of {psi2.value} was entered.')
 
     def __repr__(self):
         return f"anchor_point_{self.tag}"

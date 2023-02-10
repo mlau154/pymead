@@ -146,17 +146,17 @@ class BaseAirfoilParams:
         if not self.dy:
             self.dy = Param(0.0)
 
-        if not -np.pi <= self.phi_le.value <= np.pi:
-            raise ValueError(f'The leading edge tilt angle, phi_le, must be between -180 degrees and 180 degrees,'
-                             f'inclusive. A value of {phi_le.value} was entered.')
-
-        if not -np.pi / 2 <= self.psi1_le.value <= np.pi / 2:
-            raise ValueError(f'The upper curvature control arm angle, psi1_le, must be between -90 degrees and '
-                             f'90 degrees, inclusive. A value of {psi1_le.value} was entered.')
-
-        if not -np.pi / 2 <= self.psi2_le.value <= np.pi / 2:
-            raise ValueError(f'The lower curvature control arm angle, psi2_le, must be between -90 degrees and '
-                             f'90 degrees, inclusive. A value of {psi2_le.value} was entered.')
+        # if not -np.pi <= self.phi_le.value <= np.pi:
+        #     raise ValueError(f'The leading edge tilt angle, phi_le, must be between -180 degrees and 180 degrees,'
+        #                      f'inclusive. A value of {phi_le.value} was entered.')
+        #
+        # if not -np.pi / 2 <= self.psi1_le.value <= np.pi / 2:
+        #     raise ValueError(f'The upper curvature control arm angle, psi1_le, must be between -90 degrees and '
+        #                      f'90 degrees, inclusive. A value of {psi1_le.value} was entered.')
+        #
+        # if not -np.pi / 2 <= self.psi2_le.value <= np.pi / 2:
+        #     raise ValueError(f'The lower curvature control arm angle, psi2_le, must be between -90 degrees and '
+        #                      f'90 degrees, inclusive. A value of {psi2_le.value} was entered.')
 
     def generate_main_anchor_points(self):
         le_anchor_point = AnchorPoint(PosParam((0.0, 0.0)), 'le', 'te_1', self.airfoil_tag, self.L_le, self.R_le,
