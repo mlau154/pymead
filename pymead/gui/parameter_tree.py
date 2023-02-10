@@ -39,12 +39,24 @@ class MEAParameters(pTypes.GroupParameter):
         self.airfoil_headers = []
         self.custom_header = self.addChild(CustomGroup(mea, name='Custom'))
         for k, v in self.mea.param_dict['Custom'].items():
-            pg_param = self.custom_header.addChild(dict(name=k, type='float', value=v.value, removable=True,
-                                                        renamable=True, context={'add_eq': 'Define by equation',
-                                                                                 'deactivate': 'Deactivate parameter',
-                                                                                 'activate': 'Activate parameter',
-                                                                                 'setbounds': 'Set parameter bounds'}))
+            if isinstance(v.value, list):
+                pg_param = Parameter.create(name=k, type='pos_parameter', value=v.value,
+                                            removable=True,
+                                            renamable=True, context={'add_eq': 'Define by equation',
+                                                                     'deactivate': 'Deactivate parameter',
+                                                                     'activate': 'Activate parameter',
+                                                                     'setbounds': 'Set parameter bounds'})
+            else:
+                pg_param = Parameter.create(name=k, type='float', value=v.value, removable=True,
+                                            renamable=True, context={'add_eq': 'Define by equation',
+                                                                     'deactivate': 'Deactivate parameter',
+                                                                     'activate': 'Activate parameter',
+                                                                     'setbounds': 'Set parameter bounds'})
+
+            self.custom_header.addChild(pg_param)
             pg_param.airfoil_param = v
+            pg_param.airfoil_param.name = pg_param.name()
+
         for idx, a in enumerate(self.mea.airfoils.values()):
             print('Adding airfoil!')
             self.add_airfoil(a, idx)
@@ -74,7 +86,7 @@ class MEAParameters(pTypes.GroupParameter):
                 HeaderParameter(name=ap_key, type='bool', value='true', context={'remove_ap': 'Remove AnchorPoint'}))
             for p_key, p_val in self.mea.param_dict[airfoil.tag]['AnchorPoints'][ap_key].items():
                 if p_key != 'xy':
-                    self.params[-1].child(airfoil.tag).child('AnchorPoints').child(ap_key).addChild(AirfoilParameter(
+                    self.child(airfoil.tag).child('AnchorPoints').child(ap_key).addChild(AirfoilParameter(
                         self.mea.param_dict[airfoil.tag]['AnchorPoints'][ap_key][p_key],
                         name=f"{airfoil.tag}.AnchorPoints.{ap_key}.{p_key}", type='float',
                         value=self.mea.param_dict[airfoil.tag]['AnchorPoints'][ap_key][
@@ -92,7 +104,7 @@ class MEAParameters(pTypes.GroupParameter):
                                                          'setbounds': 'Set parameter bounds'})
                     pg_param.airfoil_param = airfoil_param
                     airfoil_param.name = pg_param.name()
-                    self.params[-1].child(airfoil.tag).child('AnchorPoints').child(
+                    self.child(airfoil.tag).child('AnchorPoints').child(
                         ap_key).addChild(pg_param)
                     pg_param.setValue([pg_param.airfoil_param.value[0], pg_param.airfoil_param.value[1]])
         for ap_key, ap_val in self.mea.param_dict[airfoil.tag]['FreePoints'].items():
@@ -137,19 +149,30 @@ class CustomGroup(pTypes.GroupParameter):
     def __init__(self, mea: MEA, **opts):
         opts['type'] = 'group'
         opts['addText'] = 'Add'
-        opts['addList'] = ['New']
+        opts['addList'] = ['Param', 'PosParam']
         pTypes.GroupParameter.__init__(self, **opts)
         self.mea = mea
 
     def addNew(self, typ):
-        default_value = 0.0
+        default_value = {'Param': 0.0, 'PosParam': [0.0, 0.0]}[typ]
         default_name = f"CustomParam{(len(self.childs) + 1)}"
-        airfoil_param = Param(default_value)
-        pg_param = self.addChild(dict(name=default_name,
-                                      type='float', value=default_value, removable=True, renamable=True,
-                                      context={'add_eq': 'Define by equation', 'deactivate': 'Deactivate parameter',
-                                               'activate': 'Activate parameter', 'setbounds': 'Set parameter bounds'}
-                                      ))
+        if typ == 'Param':
+            airfoil_param = Param(default_value)
+            pg_param = Parameter.create(name=default_name, type='float', value=default_value, removable=True,
+                                        renamable=True, context={'add_eq': 'Define by equation',
+                                                                 'deactivate': 'Deactivate parameter',
+                                                                 'activate': 'Activate parameter',
+                                                                 'setbounds': 'Set parameter bounds'})
+        elif typ == 'PosParam':
+            airfoil_param = PosParam(default_value)
+            pg_param = Parameter.create(name=default_name, type='pos_parameter', value=default_value, removable=True,
+                                        renamable=True, context={'add_eq': 'Define by equation',
+                                                                 'deactivate': 'Deactivate parameter',
+                                                                 'activate': 'Activate parameter',
+                                                                 'setbounds': 'Set parameter bounds'})
+        else:
+            raise ValueError("Current supported types of Custom Parameters are \'Param\' and \'PosParam\'")
+        self.addChild(pg_param)
         pg_param.airfoil_param = airfoil_param
         self.mea.param_dict['Custom'][default_name] = airfoil_param
 
@@ -276,12 +299,12 @@ class MEAParamTree:
                                 list_of_vals.append(v)
 
                     # IMPORTANT
-                    # if mea.param_dict is not None:
-                    #     get_list_of_vals_from_dict(mea.param_dict)
-                    #     for val in list_of_vals:
-                    #         for v in val.depends_on.values():
-                    #             if param.airfoil_param is v:
-                    #                 val.update()
+                    if mea.param_dict is not None:
+                        get_list_of_vals_from_dict(mea.param_dict)
+                        for val in list_of_vals:
+                            for v in val.depends_on.values():
+                                if param.airfoil_param is v:
+                                    val.update()
 
                     self.plot_change_recursive(self.p.param('Airfoil Parameters').child('Custom').children())
 
@@ -518,6 +541,8 @@ class MEAParamTree:
         #     if isinstance(v, str) and v[:2] == '$$':
 
         # if 'name' not in airfoil_param.function_dict.keys():
+        if airfoil_param.name is None:
+            airfoil_param.name = pg_eq_parent.name()
         airfoil_param.function_dict['name'] = airfoil_param.name.split('.')[-1]
         airfoil_param.function_dict = {**airfoil_param.function_dict, **func_dict_kwargs}
         airfoil_param.set_func_str(equation_str)
@@ -702,7 +727,7 @@ class MEAParamTree:
         pg_param.remove()
 
         # Update the Graph:
-        self.dialog.update_fp_ap_tags()
+        # self.dialog.update_fp_ap_tags()
         pos, adj, symbols = self.mea.airfoils[airfoil_name].airfoil_graph.update_airfoil_data()
         self.mea.airfoils[airfoil_name].airfoil_graph.setData(pos=pos, adj=adj, size=8, pxMode=True,
                                                               symbol=symbols)
@@ -739,7 +764,7 @@ class MEAParamTree:
         pg_param.remove()
 
         # Update the Graph:
-        self.dialog.update_ap_tags()
+        # self.dialog.update_ap_tags()
         pos, adj, symbols = self.mea.airfoils[airfoil_name].airfoil_graph.update_airfoil_data()
         self.mea.airfoils[airfoil_name].airfoil_graph.setData(pos=pos, adj=adj, size=8, pxMode=True,
                                                               symbol=symbols)

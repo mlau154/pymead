@@ -95,6 +95,7 @@ class PosParam(Param):
         if self.func_str is None or 'f' not in self.function_dict.keys():
             pass
         else:
+            # print(f"{self.name = }, {self.function_dict = }")
             temp_value = self.function_dict['f']()
             if temp_value[0] is None and temp_value[1] is None:
                 raise ValueError('Must set at least one of the two cells in the PosParam equation.')

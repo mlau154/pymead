@@ -7,19 +7,15 @@ import numpy as np
 import pyqtgraph as pg
 from PyQt5.QtCore import Qt
 
-from PyQt5.QtCore import pyqtSignal, pyqtSlot
 from pymead.gui.polygon_item import PolygonItem
 from pymead.core.pos_param import PosParam
-from pymead.utils.transformations import transform_matrix
 
 from pymead.core.airfoil import Airfoil
-from pymead.core.transformation import AirfoilTransformation
 
 from time import time
 
 
 class AirfoilGraph(pg.GraphItem):
-    my_signal = pyqtSignal(str)
 
     def __init__(self, airfoil: Airfoil = None, pen=None,
                  size: tuple = (1000, 300), background_color: str = 'w', w=None, v=None):
@@ -44,6 +40,10 @@ class AirfoilGraph(pg.GraphItem):
             # self.v.getViewBox().setFont(QFont("Arial"))
         else:
             self.v = v
+
+        # self.point_label = pg.LabelItem(size="12pt")
+        # self.point_label.setParentItem(self.v)
+        # self.point_label.anchor(itemPos=(1, 0), parentPos=(1, 0), offset=(-10, 10))
 
         self.airfoil = airfoil
         self.last_time = None
@@ -77,11 +77,12 @@ class AirfoilGraph(pg.GraphItem):
         # texts = ["%d" % i for i in range(9)]
 
         # Update the graph
-        self.setData(pos=pos, adj=adj, size=8, pxMode=True, symbol=symbols)
+        self.setData(pos=pos, adj=adj, size=8, pxMode=True, symbol=symbols, hoverable=True,
+                     hoverBrush=pg.mkBrush(color='gold'), tip=self.hover_tip)
         # self.v.disableAutoRange()
-        self.scatter.sigClicked.connect(self.clicked)
+        # self.scatter.sigClicked.connect(self.clicked)
+        # self.scatter.sigHovered.connect(self.hovered)
         # self.scatter.sigPlotChanged.connect(self.clicked)
-        self.my_signal.connect(self.slot)
 
     def setData(self, **kwds):
         self.text = kwds.pop('text', [])
@@ -199,14 +200,10 @@ class AirfoilGraph(pg.GraphItem):
             anchor_point.recalculate_ap_branch_props_from_g1_pt('plus', new_abs_phi2, new_Lt)
 
         elif self.airfoil.control_points[ind].tag == 'le':
-            old_transformation = AirfoilTransformation(dx=self.airfoil.dx.value, dy=self.airfoil.dy.value,
-                                                       alf=self.airfoil.alf.value, c=self.airfoil.c.value)
             if self.airfoil.dx.active and not self.airfoil.dx.linked:
                 self.airfoil.dx.value = x[ind]
             if self.airfoil.dy.active and not self.airfoil.dy.linked:
                 self.airfoil.dy.value = y[ind]
-            new_transformation = AirfoilTransformation(dx=self.airfoil.dx.value, dy=self.airfoil.dy.value,
-                                                       alf=self.airfoil.alf.value, c=self.airfoil.c.value)
             self.update_ap_fp()
 
         elif self.airfoil.control_points[ind].tag in ['te_1', 'te_2']:
@@ -242,16 +239,12 @@ class AirfoilGraph(pg.GraphItem):
                     if self.airfoil.phi_te.active and not self.airfoil.phi_te.linked:
                         self.airfoil.phi_te.value = np.arctan2(y_te1_old - y_te2_new, x_te1_old - x_te2_new) - np.pi / 2 + self.airfoil.alf.value
             else:
-                old_transformation = AirfoilTransformation(dx=self.airfoil.dx.value, dy=self.airfoil.dy.value,
-                                                           alf=self.airfoil.alf.value, c=self.airfoil.c.value)
                 chord = np.sqrt((x[ind] - self.airfoil.dx.value)**2 + (y[ind] - self.airfoil.dy.value)**2)
                 angle_of_attack = -np.arctan2(y[ind] - self.airfoil.dy.value, x[ind] - self.airfoil.dx.value)
                 if self.airfoil.c.active and not self.airfoil.c.linked:
                     self.airfoil.c.value = chord
                 if self.airfoil.alf.active and not self.airfoil.alf.linked:
                     self.airfoil.alf.value = angle_of_attack
-                new_transformation = AirfoilTransformation(dx=self.airfoil.dx.value, dy=self.airfoil.dy.value,
-                                                           alf=self.airfoil.alf.value, c=self.airfoil.c.value)
                 self.update_ap_fp()
 
         elif self.airfoil.control_points[ind].cp_type == 'free_point':
@@ -266,12 +259,6 @@ class AirfoilGraph(pg.GraphItem):
 
         self.plot_change_recursive(self.airfoil_parameters.child('Custom').children())
 
-        # try:
-        # print(f"Before airfoil update, {self.param_tree.p.child('Airfoil Parameters').child('A0').child('FreePoints').child('te_1').child('FP0').child('A0.FreePoints.te_1.FP0.xy').value() = }")
-        # except:
-        #     print('ERror!!#J')
-        #     pass
-
         for a_tag, airfoil in self.airfoil.mea.airfoils.items():
             airfoil.update()
             airfoil.airfoil_graph.data['pos'] = airfoil.control_point_array
@@ -279,14 +266,9 @@ class AirfoilGraph(pg.GraphItem):
             airfoil.airfoil_graph.plot_change_recursive(
                 airfoil.airfoil_graph.airfoil_parameters.child(a_tag).children())
 
-
-        # print(
-        #     f"After airfoil update, {self.param_tree.p.child('Airfoil Parameters').child('A0').child('FreePoints').child('le').child('FP0').child('A0.FreePoints.le.FP0.xy').value() = }")
-        # print(f"{self.airfoil.free_points['le']['FP0'].xy.value = }")
         ev.accept()
         t2 = time()
         self.last_time = t2
-        # print(f"Time to update airfoil graph for {self.airfoil.tag}: {t2 - t1} seconds")
     #
     # @staticmethod
     # def update_affected_parameters(obj, param_name_list: list, affected_airfoil_list: list):
@@ -314,42 +296,24 @@ class AirfoilGraph(pg.GraphItem):
             if hasattr(child, "airfoil_param"):
                 if child.hasChildren():
                     if child.children()[0].name() == 'Equation Definition':
-                        print(f"Setting airfoil_param {child.airfoil_param.name = } to {child.airfoil_param.value = }")
                         block_changes(child)
                         if isinstance(child.airfoil_param, PosParam):
                             child.setValue([-999.0, -999.0])  # hack to force PosParam to update
                         child.setValue(child.airfoil_param.value)
-                        print(f"Now, {child.value() = }")
                         flush_changes(child)
                     else:
                         self.plot_change_recursive(child.children())
                 else:
-                #     if child.airfoil_param.name.split('.')[-1] == 'xy':
-                #         print(f"Setting airfoil_param {child.airfoil_param.name = } to {child.airfoil_param.value = }")
                     block_changes(child)
-                    # child.setValue(child.airfoil_param.value)
-                    # if isinstance(child.airfoil_param, PosParam):
-                    #     print("Setting value!")
-                    #     child.opts['value'][0] = child.airfoil_param.value[0]
-                    #     child.opts['value'][1] = child.airfoil_param.value[1]
-                    #     child.opts['default'][0] = child.airfoil_param.value[0]
-                    #     child.opts['default'][1] = child.airfoil_param.value[1]
                     child.setValue(child.airfoil_param.value)
-                    # if child.airfoil_param.name.split('.')[-1] == 'xy':
-                    #     print(f"Now, {child.value() = }")
-                    # if child.airfoil_param.name.split('.')[-1] == 'xy':
-                    #     print(f"{vars(child) = }")
                     flush_changes(child)
             else:
                 if child.hasChildren():
                     self.plot_change_recursive(child.children())
 
-    @pyqtSlot(str)
-    def slot(self, string):
-        print(f"Signal emitted! Emitted signal was {string}")
-
-    def clicked(self, pts):
-        print("clicked: %s" % pts)
+    def hover_tip(self, x, y, data):
+        idx = data[0]
+        return f"{self.airfoil.control_points[idx]}\nx: {x:.8f}\ny: {y:.8f}\nindex: {idx}"
 
 
 if __name__ == '__main__':
