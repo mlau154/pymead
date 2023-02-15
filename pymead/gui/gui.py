@@ -12,7 +12,7 @@ from pymead.core.airfoil import Airfoil
 from pymead.core.base_airfoil_params import BaseAirfoilParams
 from pymead import RESOURCE_DIR
 from pymead.gui.input_dialog import SingleAirfoilViscousDialog, LoadDialog, SaveAsDialog, OptimizationSetupDialog, \
-    MultiAirfoilDialog, ColorInputDialog, ExportCoordinatesDialog
+    MultiAirfoilDialog, ColorInputDialog, ExportCoordinatesDialog, ExportControlPointsDialog
 from pymead.gui.analysis_graph import AnalysisGraph
 from pymead.gui.parameter_tree import MEAParamTree
 from pymead.utils.airfoil_matching import match_airfoil
@@ -252,23 +252,19 @@ class GUI(QMainWindow):
                 self.save_attempts = 0
                 self.disp_message_box('No file name specified. File not saved.', message_mode='warn')
         else:
-            output_dict_ = {}
-            unravel_param_dict_deepcopy(self.mea.param_dict, output_dict=output_dict_)
-            for k, v in output_dict_.items():
-                if k != 'Custom':
-                    output_dict_[k]['anchor_point_order'] = deepcopy(self.mea.airfoils[k].anchor_point_order)
-                    output_dict_[k]['free_point_order'] = deepcopy(self.mea.airfoils[k].free_point_order)
-            output_dict_['file_name'] = self.mea.file_name
-            output_dict_['airfoil_graphs_active'] = self.mea.airfoil_graphs_active
-            save_data(deepcopy(output_dict_), self.mea.file_name)
+            save_data(self.copy_mea(), self.mea.file_name)
             self.save_attempts = 0
 
     def copy_mea(self):
-        mea_copy = dill.copy(self.mea)
-        for idx, airfoil in enumerate(self.mea.airfoils.values()):
-            self.mea.add_airfoil_graph_to_airfoil(airfoil, idx, self.param_tree_instance, w=self.w, v=self.v)
-        for a_name, a in self.mea.airfoils.items():
-            a.airfoil_graph.scatter.sigPlotChanged.connect(partial(self.param_tree_instance.plot_changed, a_name))
+        output_dict_ = {}
+        unravel_param_dict_deepcopy(self.mea.param_dict, output_dict=output_dict_)
+        for k, v in output_dict_.items():
+            if k != 'Custom':
+                output_dict_[k]['anchor_point_order'] = deepcopy(self.mea.airfoils[k].anchor_point_order)
+                output_dict_[k]['free_point_order'] = deepcopy(self.mea.airfoils[k].free_point_order)
+        output_dict_['file_name'] = self.mea.file_name
+        output_dict_['airfoil_graphs_active'] = self.mea.airfoil_graphs_active
+        mea_copy = deepcopy(output_dict_)
         return mea_copy
 
     def load_mea(self):
@@ -294,6 +290,7 @@ class GUI(QMainWindow):
             for airfoil in self.mea.airfoils.values():
                 airfoil.airfoil_graph.airfoil_parameters = self.param_tree_instance.p.param('Airfoil Parameters')
             self.mea.update_parameters(parameter_list)
+            pass
 
     def plot_geometry(self):
         file_filter = "DAT Files (*.dat)"
@@ -412,6 +409,27 @@ class GUI(QMainWindow):
                         if idx < len(airfoils) - 1:
                             f.write(f"{inputs['separator']}")
             self.disp_message_box(f"Airfoil coordinates saved to {f_}", message_mode='info')
+
+    def export_control_points(self):
+        dialog = ExportControlPointsDialog(self)
+        if dialog.exec_():
+            inputs = dialog.getInputs()
+            f_ = os.path.join(inputs['choose_dir'], inputs['file_name'])
+
+            airfoils = inputs['airfoil_order'].split(',')
+
+            control_point_dict = {}
+            for a in airfoils:
+                airfoil = self.mea.airfoils[a]
+                control_points = []
+                for c in airfoil.curve_list:
+                    control_points.append(c.P.tolist())
+                control_point_dict[a] = control_points
+            save_data(control_point_dict, f_)
+            self.disp_message_box(f"Airfoil control points saved to {f_}", message_mode='info')
+
+    def export_nx_macro(self):
+        self.mea.write_NX_macro('test_ctrlpts.py', {})
 
     def single_airfoil_viscous_analysis(self):
         self.dialog = SingleAirfoilViscousDialog(parent=self)
@@ -647,17 +665,20 @@ class GUI(QMainWindow):
 
                     param_dict = convert_opt_settings_to_param_dict(opt_settings)
 
-                    if opt_settings['Warm Start/Batch Mode']['use_current_mea']['state']:
-                        mea = self.copy_mea()
+                    if not opt_settings['Warm Start/Batch Mode']['use_current_mea']['state']:
+                        mea_dict = self.copy_mea()
                     else:
                         mea_file = opt_settings['Warm Start/Batch Mode']['mea_file']['text']
                         if not os.path.exists(mea_file):
-                            self.disp_message_box('MEAD parametrization file not found', message_mode='error')
+                            self.disp_message_box('JMEA parametrization file not found', message_mode='error')
                             exit_the_dialog = True
                             early_return = True
                             continue
                         else:
-                            mea = load_data(mea_file)
+                            mea_dict = load_data(mea_file)
+
+                    # Generate the multi-element airfoil from the dictionary
+                    mea = MEA.generate_from_param_dict(mea_dict)
 
                     norm_val_list, _ = mea.extract_parameters()
                     if isinstance(norm_val_list, str):
@@ -919,6 +940,7 @@ class GUI(QMainWindow):
 
                 # evaluate (objective function value arrays must be numpy column vectors)
                 X = pop.get("X")
+                print(f"{len(X) = }")
                 new_X = None
                 J = None
                 G = None
@@ -974,7 +996,18 @@ class GUI(QMainWindow):
                                     G = np.row_stack((G, np.array([
                                         constraint.value for constraint in self.constraints])))
                     algorithm.evaluator.n_eval += param_dict['num_processors']
-                    population_full = (J[:, 0] < 1000.0).sum() >= param_dict['population_size']
+                    # print(f"{J = }")
+                    # print(f"{J[:, 0] = }")
+                    # print(f"{(J[:, 0] < 1000.0).sum() = }")
+                    # print(f"{param_dict = }")
+                    # print(f"{param_dict['population_size'] = }")
+                    if J is None:
+                        population_full = False
+                    else:
+                        if J.ndim > 1:
+                            population_full = (J[:, 0] < 1000.0).sum() >= param_dict['population_size']
+                        else:
+                            population_full = (J[:] < 1000.0).sum() >= param_dict['population_size']
                     if population_full:
                         break
                 # Set the objective function values of the remaining individuals to 1000.0
@@ -1053,6 +1086,7 @@ class GUI(QMainWindow):
                             self.forces_dict[k].append(v)
 
             progress_callback.emit(PlotAirfoilCallback(parent=self, mea=mea, X=X.tolist(), background_color=bcolor))
+            # TODO: opt airfoils not plotting correctly
             progress_callback.emit(ParallelCoordsCallback(parent=self, mea=mea, X=X.tolist(), background_color=bcolor))
             if param_dict['tool'] == 'XFOIL':
                 progress_callback.emit(CpPlotCallbackXFOIL(parent=self, background_color=bcolor))

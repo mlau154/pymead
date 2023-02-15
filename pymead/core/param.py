@@ -209,10 +209,9 @@ class Param:
         if self.func_str is None:
             pass
         else:
-            # print(f"{self.name = }, {self.function_dict = }")
-            if 'f' in self.function_dict.keys():
-                self.value = self.function_dict['f']()  # no parameters passed as inputs (inputs all stored and updated
-            # inside self.function_dict )
+            if 'f' not in self.function_dict.keys():  # TODO: test this fix for affected Params not updating
+                self.update_function(show_q_error_messages=True, func_str_changed=True)
+            self.value = self.function_dict['f']()  # no parameters passed as inputs (inputs all stored and updated
 
     def update(self, show_q_error_messages: bool = True, func_str_changed: bool = False):
         self.update_function(show_q_error_messages, func_str_changed)

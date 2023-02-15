@@ -45,6 +45,12 @@ class PosParam(Param):
         if update_x or update_y:
             self.update_affected_params(old_value)
 
+        if self.free_point is not None:
+            self.free_point.ctrlpt.xp = self._value[0]
+            self.free_point.ctrlpt.yp = self._value[1]
+        elif self.anchor_point is not None:
+            self.anchor_point.ctrlpt.xp = self._value[0]
+            self.anchor_point.ctrlpt.yp = self._value[1]
         pass
 
     def set_func_str(self, func_str: str):
@@ -92,9 +98,11 @@ class PosParam(Param):
             self.linked[1] = False
 
     def update_value(self):
-        if self.func_str is None or 'f' not in self.function_dict.keys():
+        if self.func_str is None:
             pass
         else:
+            if 'f' not in self.function_dict.keys():
+                self.update_function(show_q_error_messages=True, func_str_changed=True)
             # print(f"{self.name = }, {self.function_dict = }")
             temp_value = self.function_dict['f']()
             if temp_value[0] is None and temp_value[1] is None:

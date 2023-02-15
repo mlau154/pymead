@@ -6,11 +6,12 @@ from pymead.core.pos_param import PosParam
 from pymead.core.base_airfoil_params import BaseAirfoilParams
 from pymead.utils.dict_recursion import set_all_dict_values, assign_airfoil_tags_to_param_dict, \
     assign_names_to_params_in_param_dict
+from pymead.utils.read_write_files import save_data
 import typing
 import benedict
 import numpy as np
 import os
-from pymead import DATA_DIR
+from pymead import DATA_DIR, PLUGINS_DIR
 from copy import deepcopy
 
 
@@ -125,13 +126,21 @@ class MEA:
                     if isinstance(v, dict):
                         bounds_error_, param_name_ = check_for_bounds_recursively(v, bounds_error_)
                     else:
-                        if isinstance(v, Param):
+                        if isinstance(v, Param) and not isinstance(v, PosParam):
                             if v.active and not v.linked:
                                 if v.bounds[0] == -np.inf or v.bounds[0] == np.inf or v.bounds[1] == -np.inf or v.bounds[1] == np.inf:
                                     bounds_error_ = True
                                     return bounds_error_, v.name
+                        elif isinstance(v, PosParam):
+                            if v.active[0] and not v.linked[0]:
+                                if v.bounds[0][0] == -np.inf or v.bounds[0][0] == np.inf or v.bounds[0][1] == -np.inf or v.bounds[0][1] == np.inf:
+                                    bounds_error_ = True
+                                    return bounds_error_, v.name
+                                if v.bounds[1][0] == -np.inf or v.bounds[1][0] == np.inf or v.bounds[1][1] == -np.inf or v.bounds[1][1] == np.inf:
+                                    bounds_error_ = True
+                                    return bounds_error_, v.name
                         else:
-                            raise ValueError('Found value in dictionary not of type \'Param\'')
+                            raise ValueError('Found value in dictionary not of type \'Param\' or \'PosParam\'')
                 else:
                     return bounds_error_, None
             return bounds_error_, None
@@ -141,19 +150,27 @@ class MEA:
                 if isinstance(v, dict):
                     extract_parameters_recursively(v)
                 else:
-                    if isinstance(v, Param):
+                    if isinstance(v, Param) and not isinstance(v, PosParam):
                         if v.active and not v.linked:
                             norm_value_list.append((v.value - v.bounds[0]) / (v.bounds[1] - v.bounds[0]))
                             parameter_list.append(v)
+                    elif isinstance(v, PosParam):
+                        if v.active[0] and not v.linked[0]:
+                            norm_value_list.append((v.value[0] - v.bounds[0][0]) / (v.bounds[0][1] - v.bounds[0][0]))
+                            parameter_list.append(v)
+                        if v.active[1] and not v.linked[1]:
+                            norm_value_list.append((v.value[1] - v.bounds[1][0]) / (v.bounds[1][1] - v.bounds[1][0]))
+                            if v not in parameter_list:  # only add the Parameter if it hasn't already been added
+                                parameter_list.append(v)
                     else:
-                        raise ValueError('Found value in dictionary not of type \'Param\'')
+                        raise ValueError('Found value in dictionary not of type \'Param\' or \'PosParam\'')
 
         bounds_error, param_name = check_for_bounds_recursively(self.param_dict)
         if bounds_error:
             error_message = f'Bounds must be set for each active and unlinked parameter for parameter extraction (at ' \
                             f'least one infinite bound found for {param_name})'
             print(error_message)
-            return error_message
+            return error_message, None
         else:
             extract_parameters_recursively(self.param_dict)
             if write_to_txt_file:
@@ -177,10 +194,19 @@ class MEA:
                     if isinstance(v, dict):
                         bounds_error_, param_name_ = check_for_bounds_recursively(v, bounds_error_)
                     else:
-                        if isinstance(v, Param):
+                        if isinstance(v, Param) and not isinstance(v, PosParam):
                             if v.active and not v.linked:
                                 if v.bounds[0] == -np.inf or v.bounds[0] == np.inf or v.bounds[1] == -np.inf or \
                                         v.bounds[1] == np.inf:
+                                    bounds_error_ = True
+                                    return bounds_error_, v.name
+                        elif isinstance(v, PosParam):
+                            if v.active[0] and not v.linked[0]:
+                                if v.bounds[0][0] == -np.inf or v.bounds[0][0] == np.inf or v.bounds[0][1] == -np.inf or v.bounds[0][1] == np.inf:
+                                    bounds_error_ = True
+                                    return bounds_error_, v.name
+                            if v.active[1] and not v.linked[1]:
+                                if v.bounds[1][0] == -np.inf or v.bounds[1][0] == np.inf or v.bounds[1][1] == -np.inf or v.bounds[1][1] == np.inf:
                                     bounds_error_ = True
                                     return bounds_error_, v.name
                         else:
@@ -194,11 +220,21 @@ class MEA:
                 if isinstance(v, dict):
                     list_counter = update_parameters_recursively(v, list_counter)
                 else:
-                    if isinstance(v, Param):
+                    if isinstance(v, Param) and not isinstance(v, PosParam):
                         if v.active and not v.linked:
                             v.value = norm_value_list[list_counter] * (v.bounds[1] - v.bounds[0]) + v.bounds[0]
                             # v.update()
                             list_counter += 1
+                    elif isinstance(v, PosParam):
+                        temp_xy_value = v.value  # set up a temp variable because we want to update x and y simultaneously
+                        if v.active[0] and not v.linked[0]:
+                            temp_xy_value[0] = norm_value_list[list_counter] * (v.bounds[0][1] - v.bounds[0][0]) + v.bounds[0][0]
+                            list_counter += 1
+                        if v.active[1] and not v.linked[1]:
+                            temp_xy_value[1] = norm_value_list[list_counter] * (v.bounds[1][1] - v.bounds[1][0]) + v.bounds[1][0]
+                            list_counter += 1
+                        v.value = temp_xy_value  # replace the PosParam value with the temp value (unchanged if
+                        # neither x nor y are active)
                     else:
                         raise ValueError('Found value in dictionary not of type \'Param\'')
             return list_counter
@@ -345,6 +381,67 @@ class MEA:
                 if y_ctrlpt_range[1] > y_range[1]:
                     y_range = (y_range[0], y_ctrlpt_range[1])
         return x_range, y_range
+
+    def get_ctrlpt_dict(self, zero_col: int = 1):
+        """Gets the set of ControlPoints for each airfoil curve and arranges them in a format appropriate for the
+        JSON file format. The keys at the top level of the dict represent the airfoil name, and each value contains a
+        3-D list. The slices of the list represent the Bézier curve, the rows represent the ControlPoints, and the
+        columns represent :math:`x`, :math:`y`, and :math:`z`.
+
+        Parameters
+        ==========
+        zero_col: int
+          The column into which the row of zeros should be placed to map the 2-D airfoil control points into 3-D space.
+          For example, inserting into the first column means the airfoil will be located in the X-Z plane. Valid values:
+          0, 1, or 2. Default: 1.
+
+        Returns
+        =======
+        dict
+          The dictionary containing the ControlPoints.
+        """
+        ctrlpt_dict = {}
+        for a_name, a in self.airfoils.items():
+            ctrlpts = []
+            for c in a.curve_list:
+                P = deepcopy(c.P)
+                P = np.insert(P, zero_col, 0.0, axis=1)
+                ctrlpts.append(P)
+            ctrlpt_dict[a_name] = ctrlpts
+        return ctrlpt_dict
+
+    def write_NX_macro(self, fname: str, opts: dict):
+        with open(fname, 'w') as f:
+            for import_ in ['math', 'NXOpen', 'NXOpen.Features', 'NXOpen.GeometricUtilities', 'time']:
+                f.write(f'import {import_}\n')
+
+            with open(os.path.join(PLUGINS_DIR, 'NX', 'journal_functions.py'), 'r') as g:
+                f.writelines(g.readlines())
+
+            ctrlpt_dict = self.get_ctrlpt_dict(zero_col=2)
+            for k, ctrlpts in ctrlpt_dict.items():
+                new_ctrlpts = np.array(ctrlpts)
+                new_ctrlpts *= 36.98030879 * 1000
+                ctrlpt_dict[k] = new_ctrlpts.tolist()
+
+            f.write('ctrlpts = {\n')
+            for a_name, ctrlpts in ctrlpt_dict.items():
+                f.write(f'    "{a_name}": [\n')
+                for ctrlpt_set in ctrlpts:
+                    f.write(f'        [\n')
+                    for ctrlpt in ctrlpt_set:
+                        f.write(f'            [{ctrlpt[0]}, {ctrlpt[1]}, {ctrlpt[2]}],\n')
+                    f.write(f'        ],\n')
+                f.write(f'    ]\n')
+            f.write('}\n\n')
+
+            f.write('create_bezier_curve_from_ctrlpts(ctrlpts)\n')
+
+            for k, v in ctrlpt_dict.items():
+                for idx, v2 in enumerate(v):
+                    v[idx] = v2.tolist()
+
+            save_data(ctrlpt_dict, 'center_profile_2_ctrlpts.json')
 
     @classmethod
     def generate_from_param_dict(cls, param_dict: dict):

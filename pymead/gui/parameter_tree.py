@@ -337,12 +337,18 @@ class MEAParamTree:
 
                 if change == 'contextMenu' and data == 'deactivate':
                     for p in self.t.multi_select:
-                        p.param.airfoil_param.active = False
+                        if isinstance(p.param.airfoil_param, PosParam):
+                            p.param.airfoil_param.active = [False, False]
+                        else:
+                            p.param.airfoil_param.active = False
                         p.param.setReadonly(True)
 
                 if change == 'contextMenu' and data == 'activate':
                     for p in self.t.multi_select:
-                        p.param.airfoil_param.active = True
+                        if isinstance(p.param.airfoil_param, PosParam):
+                            p.param.airfoil_param.active = [True, True]
+                        else:
+                            p.param.airfoil_param.active = True
                         p.param.setReadonly(False)
 
                 if change == 'contextMenu' and data == 'setbounds':
