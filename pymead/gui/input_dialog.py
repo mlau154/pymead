@@ -1139,10 +1139,10 @@ class OptimizationSetupDialog(QDialog):
         else:
             widget.setReadOnly(True)
 
-    def select_existing_mead_file(self, line_edit: QLineEdit):
+    def select_existing_jmea_file(self, line_edit: QLineEdit):
         file_dialog = QFileDialog(self)
         file_dialog.setFileMode(QFileDialog.ExistingFile)
-        file_dialog.setNameFilter(self.tr("MEAD Parametrization (*.mead)"))
+        file_dialog.setNameFilter(self.tr("JMEA Parametrization (*.jmea)"))
         if file_dialog.exec_():
             line_edit.setText(file_dialog.selectedFiles()[0])
 
@@ -1454,6 +1454,7 @@ class OptimizationSetupDialog(QDialog):
             grid_counter = 0
             self.add_tab(k)
             for k_, v_ in v.items():
+                # print(f"{k_ = }, {v_ = }")
                 if 'label' in v_.keys():
                     label = QLabel(v_['label'], self)
                 else:
@@ -1744,6 +1745,66 @@ class ExportCoordinatesDialog(QDialog):
         self.grid_widget["separator"]["line"].setText("999.0 999.0\\n")
         self.grid_widget["delimiter"]["line"].setText(" ")
         self.grid_widget["file_name"]["line"].setText("blade.airfoil_name")
+
+
+class ExportControlPointsDialog(QDialog):
+    def __init__(self, parent):
+        super().__init__(parent=parent)
+
+        self.setWindowTitle("Export Control Points")
+        self.setFont(self.parent().font())
+
+        self.grid_widget = {}
+
+        buttonBox = QDialogButtonBox(self)
+        buttonBox.addButton(QDialogButtonBox.Ok)
+        buttonBox.addButton(QDialogButtonBox.Cancel)
+        self.grid_layout = QGridLayout(self)
+
+        self.setInputs()
+
+        self.grid_widget['airfoil_order']['line'].setText(','.join([k for k in self.parent().mea.airfoils.keys()]))
+
+        self.grid_layout.addWidget(buttonBox, 7, 1, 1, 2)
+
+        buttonBox.accepted.connect(self.accept)
+        buttonBox.rejected.connect(self.reject)
+
+    def setInputs(self):
+        widget_dict = load_data(os.path.join('dialog_widgets', 'export_control_points_dialog.json'))
+        for row_name, row_dict in widget_dict.items():
+            self.grid_widget[row_name] = {}
+            for w_name, w_dict in row_dict.items():
+                widget = getattr(sys.modules[__name__], w_dict["w"])(self)
+                self.grid_widget[row_name][w_name] = widget
+                if "text" in w_dict.keys() and isinstance(widget, (QLabel, QLineEdit, QPushButton)):
+                    widget.setText(w_dict["text"])
+                if "func" in w_dict.keys() and isinstance(widget, QPushButton):
+                    if row_name == 'choose_dir':
+                        widget.clicked.connect(partial(getattr(self, w_dict["func"]),
+                                                       self.grid_widget[row_name]["line"]))
+                    else:
+                        widget.clicked.connect(getattr(self, w_dict["func"]))
+                if "tool_tip" in w_dict.keys():
+                    widget.setToolTip(w_dict["tool_tip"])
+                self.grid_layout.addWidget(widget, w_dict["grid"][0], w_dict["grid"][1], w_dict["grid"][2],
+                                           w_dict["grid"][3])
+
+    def getInputs(self):
+        inputs = {k: v["line"].text() if "line" in v.keys() else None for k, v in self.grid_widget.items()}
+
+        # Make sure any newline characters are not double-escaped:
+        for k, input_ in inputs.items():
+            if isinstance(input_, str):
+                inputs[k] = input_.replace('\\n', '\n')
+
+        return inputs
+
+    def select_directory(self, line_edit: QLineEdit):
+        selected_dir = QFileDialog.getExistingDirectory(self, "Select a directory", os.path.expanduser("~"),
+                                                        QFileDialog.ShowDirsOnly)
+        if selected_dir:
+            line_edit.setText(selected_dir)
 
 
 class PosConstraintDialog(QDialog):

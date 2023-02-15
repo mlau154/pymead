@@ -1,3 +1,40 @@
+def create_bezier_curve_from_ctrlpts(ctrlpt_dict: dict):
+    theSession = NXOpen.Session.GetSession()
+    workPart = theSession.Parts.Work
+
+    te_lines = []
+    te_points = []
+    splines = []
+
+    for ctrlpts in ctrlpt_dict.values():
+        for coord_set in ctrlpts:
+            studioSplineBuilderEx1 = workPart.Features.CreateStudioSplineBuilderEx(NXOpen.NXObject.Null)
+            studioSplineBuilderEx1.MatchKnotsType = NXOpen.Features.StudioSplineBuilderEx.MatchKnotsTypes.General
+            studioSplineBuilderEx1.Type = NXOpen.Features.StudioSplineBuilderEx.Types.ByPoles
+            studioSplineBuilderEx1.IsSingleSegment = True
+            for pt in coord_set:
+                scalar1 = workPart.Scalars.CreateScalar(pt[0], NXOpen.Scalar.DimensionalityType.NotSet,
+                                                        NXOpen.SmartObject.UpdateOption.WithinModeling)
+                scalar2 = workPart.Scalars.CreateScalar(pt[1], NXOpen.Scalar.DimensionalityType.NotSet,
+                                                        NXOpen.SmartObject.UpdateOption.WithinModeling)
+                scalar3 = workPart.Scalars.CreateScalar(pt[2], NXOpen.Scalar.DimensionalityType.NotSet,
+                                                        NXOpen.SmartObject.UpdateOption.WithinModeling)
+                point = workPart.Points.CreatePoint(scalar1, scalar2, scalar3,
+                                                    NXOpen.SmartObject.UpdateOption.WithinModeling)
+                point.RemoveViewDependency()
+                geometricConstraintData = studioSplineBuilderEx1.ConstraintManager.CreateGeometricConstraintData()
+                geometricConstraintData.Point = point
+                studioSplineBuilderEx1.ConstraintManager.Append(geometricConstraintData)
+
+            nXObject = studioSplineBuilderEx1.Commit()
+            splines.append(nXObject)
+            studioSplineBuilderEx1.Destroy()
+        te_1 = NXOpen.Point3d(ctrlpts[0][0][0], ctrlpts[0][0][1], ctrlpts[0][0][2])
+        te_2 = NXOpen.Point3d(ctrlpts[-1][-1][0], ctrlpts[-1][-1][1], ctrlpts[-1][-1][2])
+        te_points.append([te_1, te_2])
+        te_lines.append(workPart.Curves.CreateLine(te_1, te_2))
+
+
 def write_user_expression(expression: str, units: str or None):
     theSession = NXOpen.Session.GetSession()
     workPart = theSession.Parts.Work

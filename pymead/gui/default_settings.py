@@ -157,7 +157,7 @@ def opt_settings_default(mea_keys: typing.List[str]):
                                 'widgets_to_disable': [['Warm Start/Batch Mode', 'mea_file']]},
             'mea_file': {'label': 'MEA File', 'widget_type': 'QLineEdit',
                          'push_button': 'Choose file',
-                         'push_button_action': 'select_existing_mead_file', 'text': ''},
+                         'push_button_action': 'select_existing_jmea_file', 'text': ''},
             'batch_mode_active': {'label': 'Batch Mode Active?', 'state': 0, 'widget_type': 'QCheckBox',
                                   'widgets_to_enable': [['Warm Start/Batch Mode', 'batch_mode_files']],
                                   'tool_tip': 'If this box is checked, all settings in this dialog will be\n'

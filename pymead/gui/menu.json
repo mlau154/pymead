@@ -7,7 +7,9 @@
       "Parameter List": "import_parameter_list"
     },
     "Export": {
-      "Airfoil Coordinates": "export_coordinates"
+      "Airfoil Coordinates": "export_coordinates",
+      "Control Points": "export_control_points",
+      "NXOpen Macro": "export_nx_macro"
     }
   },
   "View": {

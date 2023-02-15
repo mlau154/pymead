@@ -1,0 +1,47 @@
+{
+  "airfoil_order": {
+    "label": {
+      "w": "QLabel",
+      "text": "Airfoil Order",
+      "grid": [0, 0, 1, 1],
+      "tool_tip": "Order of airfoils in which to write the coordinates, separated by commas"
+    },
+    "line": {
+      "w": "QLineEdit",
+      "text": "A0",
+      "grid": [0, 1, 1, 2]
+    }
+  },
+  "choose_dir": {
+    "label": {
+      "w": "QLabel",
+      "text": "Choose directory",
+      "grid": [4, 0, 1, 1],
+      "tool_tip": "Select the directory in which to store the airfoil coordinate file"
+    },
+    "line": {
+      "w": "QLineEdit",
+      "text": "",
+      "grid": [4, 1, 1, 1]
+    },
+    "button": {
+      "w": "QPushButton",
+      "text": "Select",
+      "grid": [4, 2, 1, 1],
+      "func": "select_directory"
+    }
+  },
+  "file_name": {
+    "label": {
+      "w": "QLabel",
+      "text": "File name",
+      "grid": [5, 0, 1, 1],
+      "tool_tip": "File name under which to store the coordinates.\nUse the JSON extension (.json) to save in the JSON file format."
+    },
+    "line": {
+      "w": "QLineEdit",
+      "text": "control_points.json",
+      "grid": [5, 1, 1, 2]
+    }
+  }
+}
