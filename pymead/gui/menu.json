@@ -26,6 +26,7 @@
     "Run": "setup_optimization"
   },
   "Tools": {
+    "Plot Airfoil from AirfoilTools": "plot_airfoil_from_airfoiltools",
     "Match Airfoil": "match_airfoil",
     "Airfoil Statistics": "display_airfoil_statistics"
   },

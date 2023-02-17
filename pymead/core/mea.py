@@ -5,7 +5,7 @@ from pymead.core.param import Param
 from pymead.core.pos_param import PosParam
 from pymead.core.base_airfoil_params import BaseAirfoilParams
 from pymead.utils.dict_recursion import set_all_dict_values, assign_airfoil_tags_to_param_dict, \
-    assign_names_to_params_in_param_dict
+    assign_names_to_params_in_param_dict, unravel_param_dict_deepcopy
 from pymead.utils.read_write_files import save_data
 import typing
 import benedict
@@ -180,6 +180,18 @@ class MEA:
             # fig_.savefig(os.path.join(DATA_DIR, 'test_airfoil.png'))
             return norm_value_list, parameter_list
 
+    def deepcopy(self):
+        output_dict_ = {}
+        unravel_param_dict_deepcopy(self.param_dict, output_dict=output_dict_)
+        for k, v in output_dict_.items():
+            if k != 'Custom':
+                output_dict_[k]['anchor_point_order'] = deepcopy(self.airfoils[k].anchor_point_order)
+                output_dict_[k]['free_point_order'] = deepcopy(self.airfoils[k].free_point_order)
+        output_dict_['file_name'] = self.file_name
+        output_dict_['airfoil_graphs_active'] = self.airfoil_graphs_active
+        mea_copy = deepcopy(output_dict_)
+        return MEA.generate_from_param_dict(mea_copy)
+
     def update_parameters(self, norm_value_list: list or np.ndarray):
 
         if isinstance(norm_value_list, list):
@@ -256,51 +268,58 @@ class MEA:
                     airfoil.airfoil_graph.plot_change_recursive(
                         airfoil.airfoil_graph.airfoil_parameters.child(a_tag).children())
 
-    def deactivate_airfoil_matching_params(self, target_airfoil: str):
-        def deactivate_recursively(d: dict):
-            for k, v in d.items():
-                if isinstance(v, dict):
-                    # If the dictionary key is equal to the target_airfoil_str, stop the recursion for this branch,
-                    # otherwise continue with the recursion:
-                    if k != target_airfoil:
-                        deactivate_recursively(v)
-                elif isinstance(v, Param):
-                    if v.active:
-                        v.active = False
-                        v.deactivated_for_airfoil_matching = True
-                else:
-                    raise ValueError('Found value in dictionary not of type \'Param\'')
-
-        deactivate_recursively(self.param_dict)
-        deactivate_target_params = ['dx', 'dy', 'alf', 'c', 't_te', 'r_te', 'phi_te']
-        for p_str in deactivate_target_params:
-            p = self.airfoils[target_airfoil].param_dicts['Base'][p_str]
-            if p.active:
-                p.active = False
-                p.deactivated_for_airfoil_matching = True
-
-    def activate_airfoil_matching_params(self, target_airfoil: str):
-        def activate_recursively(d: dict):
-            for k, v in d.items():
-                if isinstance(v, dict):
-                    # If the dictionary key is equal to the target_airfoil_str, stop the recursion for this branch,
-                    # otherwise continue with the recursion:
-                    if k != target_airfoil:
-                        activate_recursively(v)
-                elif isinstance(v, Param):
-                    if v.deactivated_for_airfoil_matching:
-                        v.active = True
-                        v.deactivated_for_airfoil_matching = False
-                else:
-                    raise ValueError('Found value in dictionary not of type \'Param\'')
-
-        activate_recursively(self.param_dict)
-        activate_target_params = ['dx', 'dy', 'alf', 'c']
-        for p_str in activate_target_params:
-            p = self.airfoils[target_airfoil].param_dicts['Base'][p_str]
-            if p.deactivated_for_airfoil_matching:
-                p.active = True
-                p.deactivated_for_airfoil_matching = False
+    # def deactivate_airfoil_matching_params(self, target_airfoil: str):
+    #     def deactivate_recursively(d: dict):
+    #         for k, v in d.items():
+    #             if isinstance(v, dict):
+    #                 # If the dictionary key is equal to the target_airfoil_str, stop the recursion for this branch,
+    #                 # otherwise continue with the recursion:
+    #                 if k != target_airfoil:
+    #                     deactivate_recursively(v)
+    #             elif isinstance(v, Param) and not isinstance(v, PosParam):
+    #                 if v.active:
+    #                     v.active = False
+    #                     v.deactivated_for_airfoil_matching = True
+    #             elif isinstance(v, PosParam):
+    #                 if v.active[0]:
+    #                     v.active[0] = False
+    #                     v.deactivated_for_airfoil_matching = True
+    #                 if v.active[1]:
+    #                     v.active[1] = False
+    #                     v.deactivated_for_airfoil_matching = True
+    #             else:
+    #                 raise ValueError('Found value in dictionary not of type \'Param\'')
+    #
+    #     deactivate_recursively(self.param_dict)
+    #     deactivate_target_params = ['dx', 'dy', 'alf', 'c', 't_te', 'r_te', 'phi_te']
+    #     for p_str in deactivate_target_params:
+    #         p = self.airfoils[target_airfoil].param_dicts['Base'][p_str]
+    #         if p.active:
+    #             p.active = False
+    #             p.deactivated_for_airfoil_matching = True
+    #
+    # def activate_airfoil_matching_params(self, target_airfoil: str):
+    #     def activate_recursively(d: dict):
+    #         for k, v in d.items():
+    #             if isinstance(v, dict):
+    #                 # If the dictionary key is equal to the target_airfoil_str, stop the recursion for this branch,
+    #                 # otherwise continue with the recursion:
+    #                 if k != target_airfoil:
+    #                     activate_recursively(v)
+    #             elif isinstance(v, Param):
+    #                 if v.deactivated_for_airfoil_matching:
+    #                     v.active = True
+    #                     v.deactivated_for_airfoil_matching = False
+    #             else:
+    #                 raise ValueError('Found value in dictionary not of type \'Param\'')
+    #
+    #     activate_recursively(self.param_dict)
+    #     activate_target_params = ['dx', 'dy', 'alf', 'c']
+    #     for p_str in activate_target_params:
+    #         p = self.airfoils[target_airfoil].param_dicts['Base'][p_str]
+    #         if p.deactivated_for_airfoil_matching:
+    #             p.active = True
+    #             p.deactivated_for_airfoil_matching = False
 
     def calculate_max_x_extent(self):
         x = None
@@ -402,6 +421,7 @@ class MEA:
         """
         ctrlpt_dict = {}
         for a_name, a in self.airfoils.items():
+            a.update()
             ctrlpts = []
             for c in a.curve_list:
                 P = deepcopy(c.P)
@@ -506,6 +526,11 @@ class MEA:
             mea.add_custom_parameters(custom_param_dict)
 
         return mea
+
+    def remove_airfoil_graphs(self):
+        self.airfoil_graphs_active = False
+        for a in self.airfoils.values():
+            a.airfoil_graph = None
 
 
 if __name__ == '__main__':

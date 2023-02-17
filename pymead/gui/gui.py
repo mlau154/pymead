@@ -12,7 +12,8 @@ from pymead.core.airfoil import Airfoil
 from pymead.core.base_airfoil_params import BaseAirfoilParams
 from pymead import RESOURCE_DIR
 from pymead.gui.input_dialog import SingleAirfoilViscousDialog, LoadDialog, SaveAsDialog, OptimizationSetupDialog, \
-    MultiAirfoilDialog, ColorInputDialog, ExportCoordinatesDialog, ExportControlPointsDialog
+    MultiAirfoilDialog, ColorInputDialog, ExportCoordinatesDialog, ExportControlPointsDialog, AirfoilPlotDialog, \
+    AirfoilMatchingDialog
 from pymead.gui.analysis_graph import AnalysisGraph
 from pymead.gui.parameter_tree import MEAParamTree
 from pymead.utils.airfoil_matching import match_airfoil
@@ -24,6 +25,7 @@ from pymead.analysis.calc_aero_data import calculate_aero_data
 from pymead.optimization.opt_setup import CustomDisplay, TPAIOPT, SelfIntersectionRepair
 from pymead.utils.read_write_files import load_data, save_data
 from pymead.utils.misc import make_ga_opt_dir
+from pymead.utils.get_airfoil import extract_data_from_airfoiltools
 from pymead.optimization.pop_chrom import Chromosome, Population, CustomGASettings
 from pymead.optimization.custom_ga_sampling import CustomGASampling
 from pymead.optimization.opt_setup import termination_condition, calculate_warm_start_index, \
@@ -600,8 +602,21 @@ class GUI(QMainWindow):
 
     def match_airfoil(self):
         target_airfoil = 'A0'
-        match_airfoil(self.mea, target_airfoil, 'sc20010-il')
-        # TODO: implement this feature in "tools"
+        dialog = AirfoilMatchingDialog(self)
+        if dialog.exec_():
+            airfoil_name = dialog.getInputs()
+            res = match_airfoil(self.mea, target_airfoil, airfoil_name)
+            if res.success:
+                self.mea.update_parameters(res.x)
+            msg_mode = 'info' if res.success else 'error'
+            self.disp_message_box(message=res.message, message_mode=msg_mode)
+
+    def plot_airfoil_from_airfoiltools(self):
+        dialog = AirfoilPlotDialog(self)
+        if dialog.exec_():
+            airfoil_name = dialog.getInputs()
+            airfoil = extract_data_from_airfoiltools(airfoil_name)
+            self.v.plot(airfoil[:, 0], airfoil[:, 1], pen=pg.mkPen(color='orange', width=1))
 
     def setup_optimization(self):
         exit_the_dialog = False

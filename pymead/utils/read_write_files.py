@@ -23,7 +23,7 @@ def load_data(file):
         with open(file, 'rb') as file:
             var = pickle.load(file)
         return var
-    elif os.path.splitext(file)[-1] == '.dill' or os.path.splitext(file)[-1] == '.mead':
+    elif os.path.splitext(file)[-1] in ['dill', 'mead']:
         with open(file, 'rb') as file:
             var = dill.load(file)
         return var

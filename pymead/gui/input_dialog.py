@@ -2,9 +2,9 @@ import numpy as np
 from typing import List, Any
 from PyQt5.QtWidgets import QDialog, QDialogButtonBox, QFormLayout, QDoubleSpinBox, QComboBox, QLineEdit, QSpinBox, \
     QTabWidget, QLabel, QMessageBox, QCheckBox, QFileDialog, QVBoxLayout, QWidget, QRadioButton, QHBoxLayout, \
-    QButtonGroup, QGridLayout, QPushButton, QPlainTextEdit, QGraphicsScene, QGraphicsView
+    QButtonGroup, QGridLayout, QPushButton, QPlainTextEdit, QGraphicsScene, QGraphicsView, QListView
 from PyQt5.QtCore import QEvent, Qt
-from PyQt5.QtGui import QPixmap, QPainter
+from PyQt5.QtGui import QPixmap, QPainter, QStandardItem, QStandardItemModel
 from PyQt5.QtSvg import QSvgWidget
 from functools import partial
 from PyQt5.QtCore import pyqtSlot
@@ -508,7 +508,7 @@ class MultiAirfoilDialog(QDialog):
         layout.addWidget(self.tab_widget)
 
         if parent.mset_settings is None:
-            self.inputs = {'MSET': mset_settings_default(self.parent().airfoil_name_list)}
+            self.inputs = {'MSET': mset_settings_default([a for a in self.parent().mea.airfoils.keys()])}
         else:
             self.inputs = {'MSET': parent.mset_settings}
 
@@ -784,6 +784,12 @@ class MultiAirfoilDialog(QDialog):
         self.widget_dict['MSES']['spec_P_T_rho']['widget'].setEnabled(not active)
         if not active:
             self.calculate_and_set_Reynolds_number()
+
+    def change_airfoil_order(self, w):
+        dialog = AirfoilListDialog(self, current_airfoil_list=[a for a in self.parent().mea.airfoils.keys()])
+        if dialog.exec_():
+            airfoil_order = dialog.getData()
+            self.widget_dict['MSET']['airfoil_order']['widget'].setText(','.join(airfoil_order))
 
     def setInputs(self):
         self.tab_widget.clear()
@@ -1879,3 +1885,113 @@ class PosConstraintDialog(QDialog):
                     'tool': self.inputs[3][1].text(),
                     'dist': self.inputs[6][1].text(),
                     'angle': self.inputs[8][1].text()}
+
+
+class AirfoilMatchingDialog(QDialog):
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.setWindowTitle("Choose Airfoil to Match")
+        self.setFont(self.parent().font())
+
+        buttonBox = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel, self)
+        self.layout = QFormLayout(self)
+
+        self.inputs = self.setInputs()
+        for i in self.inputs:
+            self.layout.addRow(i[0], i[1])
+
+        self.layout.addWidget(buttonBox)
+
+        buttonBox.accepted.connect(self.accept)
+        buttonBox.rejected.connect(self.reject)
+
+    def setInputs(self):
+        r0 = ["Airfoil to Match", QLineEdit(self)]
+        r0[1].setText('naca0012-il')
+        return [r0]
+
+    def getInputs(self):
+        return self.inputs[0][1].text()
+
+
+class AirfoilPlotDialog(QDialog):
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.setWindowTitle("Select Airfoil to Plot")
+        self.setFont(self.parent().font())
+
+        buttonBox = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel, self)
+        self.layout = QFormLayout(self)
+
+        self.inputs = self.setInputs()
+        for i in self.inputs:
+            self.layout.addRow(i[0], i[1])
+
+        self.layout.addWidget(buttonBox)
+
+        buttonBox.accepted.connect(self.accept)
+        buttonBox.rejected.connect(self.reject)
+
+    def setInputs(self):
+        r0 = ["Airfoil to Plot", QLineEdit(self)]
+        r0[1].setText('n0012-il')
+        return [r0]
+
+    def getInputs(self):
+        return self.inputs[0][1].text()
+
+
+class AirfoilListView(QListView):
+    """Class created from
+    https://stackoverflow.com/questions/52873025/pyqt5-qlistview-drag-and-drop-creates-new-hidden-items"""
+    def __init__(self, parent: QWidget, airfoil_list: list):
+        super().__init__(parent=parent)
+        self.airfoil_list = airfoil_list
+        self.setDragDropMode(QListView.InternalMove)
+        self.setDefaultDropAction(Qt.MoveAction)
+        self.setAcceptDrops(True)
+        self.setDropIndicatorShown(True)
+        self.setDragEnabled(True)
+        model = QStandardItemModel(self)
+        for airfoil_name in self.airfoil_list:
+            item = QStandardItem(airfoil_name)
+            item.setCheckable(True)
+            item.setDragEnabled(True)
+            item.setDropEnabled(False)
+            item.setCheckState(Qt.Checked)
+            data = [airfoil_name, item.checkState()]
+            item.setData(data)
+            model.appendRow(item)
+
+        self.setModel(model)
+
+
+class AirfoilListDialog(QDialog):
+    def __init__(self, parent, current_airfoil_list: list):
+        super().__init__(parent)
+        self.setWindowTitle("Select Airfoil Order")
+        self.setFont(self.parent().font())
+
+        buttonBox = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel, self)
+
+        self.q_airfoil_listview = AirfoilListView(self, current_airfoil_list)
+
+        self.central_widget = QWidget(self)
+        self.layout = QVBoxLayout(self.central_widget)
+        self.layout.addWidget(self.q_airfoil_listview)
+        self.layout.addWidget(buttonBox)
+        self.setLayout(self.layout)
+
+        buttonBox.accepted.connect(self.accept)
+        buttonBox.rejected.connect(self.reject)
+
+    def getData(self):
+        """Function based on
+        https://stackoverflow.com/questions/52873025/pyqt5-qlistview-drag-and-drop-creates-new-hidden-items"""
+        checked_airfoils = []
+        model = self.q_airfoil_listview.model()
+        for row in range(model.rowCount()):
+            item = model.item(row)
+            if item is not None and item.checkState() == Qt.Checked:
+                checked_airfoils.append(item.text())
+        return checked_airfoils

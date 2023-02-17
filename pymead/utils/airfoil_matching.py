@@ -10,6 +10,8 @@ from shapely.geometry import Polygon
 from pymead.utils.get_airfoil import extract_data_from_airfoiltools
 from pymead.core.mea import MEA
 
+from copy import deepcopy
+
 
 def airfoil_symmetric_area_difference(parameters: list, mea: MEA, target_airfoil: str, airfoil_to_match_xy: np.ndarray):
     r"""
@@ -92,15 +94,19 @@ def match_airfoil(mea: MEA, target_airfoil: str, airfoil_to_match: str or list o
     else:
         raise TypeError(f'airfoil_to_match be of type str, list, or np.ndarray, '
                         f'and type {type(airfoil_to_match)} was used')
-    mea.deactivate_airfoil_matching_params(target_airfoil)
-    _, parameter_list = mea.extract_parameters()
-    initial_guess = np.array([param.value for param in parameter_list])
-    bounds = [param.bounds for param in parameter_list]
-    try:
-        res = minimize(airfoil_symmetric_area_difference, initial_guess, method='SLSQP',
-                       bounds=bounds, args=(mea, target_airfoil, airfoil_to_match_xy), options={'disp': True})
-    finally:
-        mea.activate_airfoil_matching_params(target_airfoil)
+    # mea.deactivate_airfoil_matching_params(target_airfoil)
+    new_mea = mea.deepcopy()
+    new_mea.remove_airfoil_graphs()
+    # new_mea = MEA.generate_from_param_dict(mea_dict)
+    initial_guess = np.array(mea.extract_parameters()[0])
+    # initial_guess = np.array([param.value for param in parameter_list])
+    # bounds = [param.bounds for param in parameter_list]
+    bounds = np.repeat(np.array([[0.0, 1.0]]), len(initial_guess), axis=0)
+    # try:
+    res = minimize(airfoil_symmetric_area_difference, initial_guess, method='SLSQP',
+                   bounds=bounds, args=(new_mea, target_airfoil, airfoil_to_match_xy), options={'disp': True})
+    # finally:
+    #     mea.activate_airfoil_matching_params(target_airfoil)
     return res
 
 
