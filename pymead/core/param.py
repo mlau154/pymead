@@ -135,12 +135,22 @@ class Param:
                 for fp in param.mea.airfoils[param.airfoil_tag].free_points[ap_tag].values():
                     old_coords = np.array([fp.xy.value])
                     new_coords = new_transformation.transform_abs(old_transformation.transform_rel(old_coords))
+                    # print(f"{old_coords = }, {new_coords = }")
+                    if fp.xy.linked[0] or not fp.xy.active[0]:
+                        new_coords[0][0] = old_coords[0][0]
+                    if fp.xy.linked[1] or not fp.xy.active[1]:
+                        new_coords[0][1] = old_coords[0][1]
                     fp.xy.value = new_coords[0].tolist()
                     fp.set_ctrlpt_value()
             for ap in param.mea.airfoils[param.airfoil_tag].anchor_points:
                 if ap.tag not in ['te_1', 'le', 'te_2']:
                     old_coords = np.array([ap.xy.value])
                     new_coords = new_transformation.transform_abs(old_transformation.transform_rel(old_coords))
+                    # print(f"{old_coords = }, {new_coords = }")
+                    if ap.xy.linked[0] or not ap.xy.active[0]:
+                        new_coords[0][0] = old_coords[0][0]
+                    if ap.xy.linked[1] or not ap.xy.active[1]:
+                        new_coords[0][1] = old_coords[0][1]
                     ap.xy.value = new_coords[0].tolist()
                     ap.set_ctrlpt_value()
         else:
