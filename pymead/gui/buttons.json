@@ -2,8 +2,7 @@
   "grid": {
     "icon": "grid_icon.png",
     "status_tip": "Activate grid",
-    "checkable": true,
-    "checked-by-default": true,
+    "checkable": false,
     "function": "on_grid_button_pressed"
   },
   "change-background-color": {

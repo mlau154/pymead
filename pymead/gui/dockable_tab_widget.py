@@ -14,7 +14,9 @@ class DockableTabWidget(QMainWindow):
         self.w.setLayout(layout)
         self.setCentralWidget(self.w)
         self.setWindowTitle('Dock')
+        self.current_dock_widget = None
         self.cancel_if_tab_name_exists = cancel_if_tab_name_exists
+        self.tabifiedDockWidgetActivated.connect(self.activated)
 
     def add_new_tab_widget(self, widget, name):
         if not (self.cancel_if_tab_name_exists and name in self.names):
@@ -26,6 +28,9 @@ class DockableTabWidget(QMainWindow):
             self.addDockWidget(Qt.LeftDockWidgetArea, dw)
             if len(self.dock_widgets) > 1:
                 self.tabifyDockWidget(self.dock_widgets[-2], self.dock_widgets[-1])
+
+    def activated(self, dw: QDockWidget):
+        self.current_dock_widget = dw
 
 
 if __name__ == '__main__':
