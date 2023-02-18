@@ -2,6 +2,7 @@ from PyQt5.QtWidgets import QToolBar, QToolButton
 from PyQt5.QtGui import QIcon
 from PyQt5.QtCore import pyqtSlot
 import os
+import pyqtgraph as pg
 from pymead.core.airfoil import Airfoil
 from pymead.core.base_airfoil_params import BaseAirfoilParams
 from pymead.core.param import Param
@@ -52,12 +53,26 @@ class MainIconToolbar(QToolBar):
                     button.toggle()
             self.addWidget(button)
 
-    def on_grid_button_pressed(self, checked):
+    def on_grid_button_pressed(self):
         # import pyqtgraph as pg
-        if checked:
-            self.parent.v.showGrid(x=True, y=True)
+        dw = self.parent.dockable_tab_window.current_dock_widget
+        if dw is None:
+            v = self.parent.v
+            x_state = v.ctrl.xGridCheck.checkState()
+            y_state = v.ctrl.yGridCheck.checkState()
+            if x_state or y_state:
+                v.showGrid(x=False, y=False)
+            else:
+                v.showGrid(x=True, y=True)
         else:
-            self.parent.v.showGrid(x=False, y=False)
+            if isinstance(dw.widget(), pg.GraphicsLayoutWidget):
+                v = dw.widget().getItem(0, 0)
+                x_state = v.ctrl.xGridCheck.checkState()
+                y_state = v.ctrl.yGridCheck.checkState()
+                if x_state or y_state:
+                    v.showGrid(x=False, y=False)
+                else:
+                    v.showGrid(x=True, y=True)
 
     def change_background_color_button_toggled(self, checked):
         if checked:

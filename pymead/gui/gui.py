@@ -198,12 +198,14 @@ class GUI(QMainWindow):
     def set_dark_mode(self):
         self.setStyleSheet("background-color: #3e3f40; color: #dce1e6; font-family: DejaVu; font-size: 12px;")
         for dock_widget in self.dockable_tab_window.dock_widgets:
-            dock_widget.widget().setBackground('#2a2a2b')
+            if hasattr(dock_widget.widget(), 'setBackground'):
+                dock_widget.widget().setBackground('#2a2a2b')
 
     def set_light_mode(self):
         self.setStyleSheet("font-family: DejaVu; font-size: 12px;")
         for dock_widget in self.dockable_tab_window.dock_widgets:
-            dock_widget.widget().setBackground('w')
+            if hasattr(dock_widget.widget(), 'setBackground'):
+                dock_widget.widget().setBackground('w')
 
     def set_title_and_icon(self):
         self.setWindowTitle("pymead")
