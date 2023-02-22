@@ -1,0 +1,51 @@
+{
+    "f_tol": {
+        "label": "Function Tolerance",
+        "widget_type": "ScientificDoubleSpinBox",
+        "value": 0.0025,
+        "lower_bound": 0.0,
+        "upper_bound": 100000.0
+    },
+    "cv_tol": {
+        "label": "Constraint Violation Tol.",
+        "widget_type": "ScientificDoubleSpinBox",
+        "value": 1e-06,
+        "lower_bound": 0.0,
+        "upper_bound": 100000.0
+    },
+    "x_tol": {
+        "label": "Parameter Tolerance",
+        "widget_type": "ScientificDoubleSpinBox",
+        "value": 1e-08,
+        "lower_bound": 0.0,
+        "upper_bound": 100000.0
+    },
+    "nth_gen": {
+        "label": "Termination Calc. Frequency",
+        "widget_type": "QSpinBox",
+        "value": 10,
+        "lower_bound": 1,
+        "upper_bound": 1000000
+    },
+    "n_last": {
+        "label": "Num. Prev. Gens. to Check",
+        "widget_type": "QSpinBox",
+        "value": 30,
+        "lower_bound": 1,
+        "upper_bound": 1000000
+    },
+    "n_max_gen": {
+        "label": "Maximum Generations",
+        "widget_type": "QSpinBox",
+        "value": 500,
+        "lower_bound": 1,
+        "upper_bound": 1000000
+    },
+    "n_max_evals": {
+        "label": "Maximum Function Calls",
+        "widget_type": "QSpinBox",
+        "value": 100000,
+        "lower_bound": 1,
+        "upper_bound": 1000000
+    }
+}

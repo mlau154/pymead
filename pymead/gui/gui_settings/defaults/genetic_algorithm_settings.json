@@ -1,0 +1,103 @@
+{
+    "tool": {
+        "label": "CFD Tool:",
+        "widget_type": "QComboBox",
+        "items": [
+            "XFOIL",
+            "MSES"
+        ],
+        "current_text": "XFOIL"
+    },
+    "J": {
+        "label": "Objective Functions:",
+        "widget_type": "QLineEdit",
+        "text": "$Cd",
+        "tool_tip": "Enter the objective functions to be minimized, separated by commas.\nVariables can be started with the dollar sign ($).",
+        "text_changed_callback": "objectives_changed"
+    },
+    "G": {
+        "label": "Constraints:",
+        "widget_type": "QLineEdit",
+        "text": "",
+        "tool_tip": "Enter the constraint functions to be applied, separated by commas.\nVariables can be started with the dollar sign ($).",
+        "text_changed_callback": "constraints_changed"
+    },
+    "additional_data": {
+        "label": "Additional Data",
+        "widget_type": "QPlainTextEdit",
+        "texts": [
+            ""
+        ],
+        "tool_tip": "Additional variables to feed to the\nobjective or constraint functions"
+    },
+    "pop_size": {
+        "label": "Population Size:",
+        "widget_type": "QSpinBox",
+        "value": 50,
+        "lower_bound": 1,
+        "upper_bound": 2147483647
+    },
+    "n_offspring": {
+        "label": "Number of Offspring",
+        "widget_type": "QSpinBox",
+        "value": 150,
+        "lower_bound": 50,
+        "upper_bound": 2147483647,
+        "tool_tip": "Number of offspring to generate to fill out the population.\nOffspring with converged objective functions become members of the\ncurrent population until the population is full. Must be greater\nthan or equal to the population size"
+    },
+    "eta_crossover": {
+        "label": "\u03b7 (crossover)",
+        "widget_type": "QDoubleSpinBox",
+        "value": 20.0,
+        "decimals": 3,
+        "lower_bound": 0.0,
+        "upper_bound": 100000.0
+    },
+    "eta_mutation": {
+        "label": "\u03b7 (mutation)",
+        "widget_type": "QDoubleSpinBox",
+        "value": 15.0,
+        "decimals": 3,
+        "lower_bound": 0.0,
+        "upper_bound": 100000.0
+    },
+    "random_seed": {
+        "label": "Random Seed",
+        "widget_type": "QSpinBox",
+        "value": 1,
+        "lower_bound": 0,
+        "upper_bound": 2147483647
+    },
+    "num_processors": {
+        "label": "Number of Processors",
+        "widget_type": "QSpinBox",
+        "value": 27,
+        "lower_bound": 1,
+        "upper_bound": 28
+    },
+    "algorithm_save_frequency": {
+        "label": "State Save Frequency",
+        "widget_type": "QSpinBox",
+        "value": 1,
+        "lower_bound": 1,
+        "upper_bound": 1000,
+        "tool_tip": "How often to save the state of the genetic algorithm.\nA value of '1' enforces a state save every generation"
+    },
+    "root_dir": {
+        "label": "Opt. Root Directory:",
+        "widget_type": "QLineEdit",
+        "text": "",
+        "push_button": "Choose folder",
+        "push_button_action": "select_directory"
+    },
+    "opt_dir_name": {
+        "label": "Opt. Directory Name",
+        "widget_type": "QLineEdit",
+        "text": "ga_opt"
+    },
+    "temp_analysis_dir_name": {
+        "label": "Temp. Analysis Dir. Name",
+        "widget_type": "QLineEdit",
+        "text": "analysis_temp"
+    }
+}

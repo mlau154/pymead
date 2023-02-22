@@ -1,0 +1,256 @@
+{
+    "viscous_flag": {
+        "label": "Viscosity On?",
+        "widget_type": "QCheckBox",
+        "setCheckState": 2
+    },
+    "spec_Re": {
+        "label": "Specify Reynolds Number?",
+        "widget_type": "QCheckBox",
+        "setCheckState": 0,
+        "checkbox_callback": "change_Re_active_state"
+    },
+    "REYNIN": {
+        "label": "Reynolds Number",
+        "widget_type": "QDoubleSpinBox",
+        "setMinimum": 0.0,
+        "setMaximum": Infinity,
+        "setDecimals": 16,
+        "setValue": 1000000.0,
+        "setReadOnly": true
+    },
+    "MACHIN": {
+        "label": "Mach Number",
+        "widget_type": "QDoubleSpinBox",
+        "setMinimum": 0.0,
+        "setMaximum": Infinity,
+        "setValue": 0.7,
+        "setDecimals": 16
+    },
+    "spec_P_T_rho": {
+        "label": "Specify Flow Variables",
+        "widget_type": "QComboBox",
+        "addItems": [
+            "Specify Pressure, Temperature",
+            "Specify Pressure, Density",
+            "Specify Temperature, Density"
+        ],
+        "setCurrentText": "Specify Pressure, Temperature",
+        "combo_callback": "change_prescribed_flow_variables"
+    },
+    "P": {
+        "label": "Pressure (Pa)",
+        "widget_type": "QDoubleSpinBox",
+        "setMinimum": 0.0,
+        "setMaximum": Infinity,
+        "setDecimals": 16,
+        "setValue": 101325.0,
+        "setReadOnly": false
+    },
+    "T": {
+        "label": "Temperature (K)",
+        "widget_type": "QDoubleSpinBox",
+        "setMinimum": 0.0,
+        "setMaximum": Infinity,
+        "setDecimals": 16,
+        "setValue": 300,
+        "setReadOnly": false
+    },
+    "rho": {
+        "label": "Density (kg/m^3)",
+        "widget_type": "QDoubleSpinBox",
+        "setMinimum": 0.0,
+        "setMaximum": Infinity,
+        "setDecimals": 16,
+        "setValue": 1.1768292682926829,
+        "setReadOnly": true
+    },
+    "gam": {
+        "label": "Specific Heat Ratio",
+        "widget_type": "QDoubleSpinBox",
+        "setMinimum": 0.0,
+        "setMaximum": Infinity,
+        "setDecimals": 16,
+        "setValue": 1.4
+    },
+    "L": {
+        "label": "Length Scale (m)",
+        "widget_type": "QDoubleSpinBox",
+        "setMinimum": 0.0,
+        "setMaximum": Infinity,
+        "setValue": 1.0,
+        "setDecimals": 16
+    },
+    "R": {
+        "label": "Gas Constant (J/(kg*K))",
+        "widget_type": "QDoubleSpinBox",
+        "setMinimum": 0.0,
+        "setMaximum": Infinity,
+        "setDecimals": 16,
+        "setValue": 287.05
+    },
+    "spec_alfa_Cl": {
+        "label": "Specify Alpha/Cl",
+        "widget_type": "QComboBox",
+        "addItems": [
+            "Specify Angle of Attack",
+            "Specify Lift Coefficient"
+        ],
+        "setCurrentText": "Specify Angle of Attack",
+        "combo_callback": "change_prescribed_aero_parameter"
+    },
+    "ALFAIN": {
+        "label": "Angle of Attack (deg)",
+        "widget_type": "QDoubleSpinBox",
+        "setMinimum": -Infinity,
+        "setMaximum": Infinity,
+        "setDecimals": 16,
+        "setValue": 0.0,
+        "setReadOnly": false
+    },
+    "CLIFIN": {
+        "label": "Lift Coefficient",
+        "widget_type": "QDoubleSpinBox",
+        "setMinimum": -Infinity,
+        "setMaximum": Infinity,
+        "setDecimals": 16,
+        "setValue": 0.0,
+        "setReadOnly": true
+    },
+    "ISMOM": {
+        "label": "Isentropic/Momentum",
+        "widget_type": "QComboBox",
+        "addItems": [
+            "S-momentum equation",
+            "isentropic condition",
+            "S-momentum equation, isentropic @ LE",
+            "isentropic condition, S-mom. where diss. active"
+        ],
+        "setCurrentText": "S-momentum equation, isentropic @ LE"
+    },
+    "IFFBC": {
+        "label": "Far-Field Boundary",
+        "widget_type": "QComboBox",
+        "addItems": [
+            "solid wall airfoil far-field BCs",
+            "vortex+source+doublet airfoil far-field BCs",
+            "freestream pressure airfoil far-field BCs",
+            "supersonic wave freestream BCs",
+            "supersonic solid wall far-field BCs"
+        ],
+        "setCurrentText": "vortex+source+doublet airfoil far-field BCs"
+    },
+    "ACRIT": {
+        "label": "Crit. Amp. Factor",
+        "widget_type": "QDoubleSpinBox",
+        "setMinimum": 0.0,
+        "setMaximum": Infinity,
+        "setDecimals": 4,
+        "setValue": 9.0
+    },
+    "MCRIT": {
+        "label": "Critical Mach Number",
+        "widget_type": "QDoubleSpinBox",
+        "setMinimum": 0.0,
+        "setMaximum": 1.0,
+        "setDecimals": 4,
+        "setValue": 0.95
+    },
+    "MUCON": {
+        "label": "Artificial Dissipation",
+        "widget_type": "QDoubleSpinBox",
+        "setMinimum": 1.0,
+        "setMaximum": Infinity,
+        "setDecimals": 4,
+        "setValue": 1.05
+    },
+    "timeout": {
+        "label": "Timeout",
+        "widget_type": "QDoubleSpinBox",
+        "setMinimum": 0.0,
+        "setMaximum": Infinity,
+        "setValue": 15.0,
+        "restart_grid_counter": true,
+        "column": 5,
+        "columnSpan": 2,
+        "label.column": 4
+    },
+    "iter": {
+        "label": "Maximum Iterations",
+        "widget_type": "QSpinBox",
+        "setMinimum": 1,
+        "setMaximum": 1000000,
+        "setValue": 100,
+        "column": 5,
+        "columnSpan": 2,
+        "label.column": 4
+    },
+    "verbose": {
+        "label": "Verbose?",
+        "widget_type": "QCheckBox",
+        "state": 0,
+        "label.column": 4,
+        "column": 5
+    },
+    "xtrs_label": {
+        "widget_type": "QLabel",
+        "setText": "Transition Location",
+        "column": 4,
+        "columnSpan": 3,
+        "alignment": "c"
+    },
+    "xtrs": {
+        "widget_type": "XTRSWidget",
+        "setValues": {
+            "A0": {
+                "XTRSupper": 1.0,
+                "XTRSlower": 1.0
+            }
+        },
+        "column": 4,
+        "rowSpan": 3,
+        "columnSpan": 3
+    },
+    "AD_active": {
+        "label": "Actuator Disks Active?",
+        "widget_type": "QCheckBox",
+        "setCheckState": 0,
+        "column": 5,
+        "label.column": 4
+    },
+    "AD_number": {
+        "label": "Num. Actuator Disks",
+        "widget_type": "QSpinBox",
+        "setMinimum": 1,
+        "setMaximum": 5,
+        "setValue": 1,
+        "setReadOnly": true,
+        "setToolTip": "'Actuator disks active' must be checked\nto enable modification of the number of AD's",
+        "column": 5,
+        "columnSpan": 2,
+        "label.column": 4
+    },
+    "AD_label": {
+        "widget_type": "QLabel",
+        "setText": "Actuator Disks (AD)",
+        "column": 4,
+        "alignment": "c",
+        "columnSpan": 3
+    },
+    "AD": {
+        "widget_type": "ADWidget",
+        "setValues": {
+            "1": {
+                "ISDELH": 1,
+                "XCDELH": 0.1,
+                "PTRHIN": 1.1,
+                "ETAH": 0.95
+            }
+        },
+        "setReadOnly": true,
+        "setToolTip": "'Actuator disks active' must be checked\nto enable modification of the AD tabs",
+        "column": 4,
+        "rowSpan": 5,
+        "columnSpan": 3
+    }
+}

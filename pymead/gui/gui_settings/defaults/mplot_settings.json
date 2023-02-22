@@ -1,0 +1,25 @@
+{
+    "timeout": {
+        "label": "Timeout (sec)",
+        "widget_type": "QDoubleSpinBox",
+        "setMinimum": 0.0,
+        "setMaximum": Infinity,
+        "setDecimals": 4,
+        "setValue": 15.0
+    },
+    "Mach": {
+        "label": "Output Mach Contours",
+        "widget_type": "QCheckBox",
+        "setCheckState": 2
+    },
+    "Grid": {
+        "label": "Output Grid",
+        "widget_type": "QCheckBox",
+        "setCheckState": 2
+    },
+    "Grid_Zoom": {
+        "label": "Output Zoomed-In Grid",
+        "widget_type": "QCheckBox",
+        "setCheckState": 2
+    }
+}
