@@ -1,6 +1,8 @@
 from PyQt5.QtWidgets import QTabWidget, QWidget, QGridLayout, QDoubleSpinBox, QLabel, QSpinBox
 from PyQt5.QtCore import pyqtSignal
 import numpy as np
+from copy import deepcopy
+from functools import partial
 
 
 def default_input_dict():
@@ -75,12 +77,43 @@ class MSETMultiGridWidget(QTabWidget):
                 w.setMinimum(0.0)
                 w.setMaximum(np.inf)
                 w.setValue(v2)
-                w.valueChanged.connect(self.valueChanged)
+                w.valueChanged.connect(partial(self.valueChanged, k1, k2))
                 w_label = QLabel(self.labels[k2], self)
                 self.widget_dict[k1][k2] = {
                     'widget': w,
                     'label': w_label,
                 }
+
+    def regenerateWidgets(self):
+        self.generateWidgets()
+        self.setTabs()
+
+    def onAirfoilAdded(self, new_airfoil_name_list: list):
+        for airfoil_name in new_airfoil_name_list:
+            if airfoil_name not in self.input_dict.keys():
+                self.input_dict[airfoil_name] = deepcopy(default_input_dict()['A0'])
+        self.tab_names = new_airfoil_name_list
+        self.regenerateWidgets()
+
+    def onAirfoilRemoved(self, new_airfoil_name_list: list):
+        names_to_remove = []
+        for airfoil_name in self.input_dict.keys():
+            if airfoil_name not in new_airfoil_name_list:
+                names_to_remove.append(airfoil_name)
+        for airfoil_name in names_to_remove:
+            self.input_dict.pop(airfoil_name)
+        self.tab_names = new_airfoil_name_list
+        self.regenerateWidgets()
+
+    def onAirfoilListChanged(self, new_airfoil_name_list: list):
+        if len(new_airfoil_name_list) > len(self.tab_names):
+            self.onAirfoilAdded(new_airfoil_name_list)
+        elif len(new_airfoil_name_list) < len(self.tab_names):
+            self.onAirfoilRemoved(new_airfoil_name_list)
+        else:
+            self.tab_names = new_airfoil_name_list
+            self.regenerateWidgets()
+        self.multiGridChanged.emit()
 
     def setTabs(self):
         self.clear()
@@ -107,9 +140,10 @@ class MSETMultiGridWidget(QTabWidget):
                 self.widget_dict[k1][k2]['widget'].setValue(v2)
 
     def values(self):
-        return {k1: {k2: v2['widget'].value() for k2, v2 in v1.items()} for k1, v1 in self.widget_dict.items()}
+        return self.input_dict
 
-    def valueChanged(self, _):
+    def valueChanged(self, k1, k2, v2):
+        self.input_dict[k1][k2] = v2
         self.multiGridChanged.emit()
 
 
@@ -139,12 +173,43 @@ class XTRSWidget(QTabWidget):
                 w.setMinimum(0.0)
                 w.setMaximum(1.0)
                 w.setValue(v2)
-                w.valueChanged.connect(self.valueChanged)
+                w.valueChanged.connect(partial(self.valueChanged, k1, k2))
                 w_label = QLabel(self.labels[k2], self)
                 self.widget_dict[k1][k2] = {
                     'widget': w,
                     'label': w_label,
                 }
+
+    def regenerateWidgets(self):
+        self.generateWidgets()
+        self.setTabs()
+
+    def onAirfoilAdded(self, new_airfoil_name_list: list):
+        for airfoil_name in new_airfoil_name_list:
+            if airfoil_name not in self.input_dict.keys():
+                self.input_dict[airfoil_name] = deepcopy(default_inputs_XTRS()['A0'])
+        self.tab_names = new_airfoil_name_list
+        self.regenerateWidgets()
+
+    def onAirfoilRemoved(self, new_airfoil_name_list: list):
+        names_to_remove = []
+        for airfoil_name in self.input_dict.keys():
+            if airfoil_name not in new_airfoil_name_list:
+                names_to_remove.append(airfoil_name)
+        for airfoil_name in names_to_remove:
+            self.input_dict.pop(airfoil_name)
+        self.tab_names = new_airfoil_name_list
+        self.regenerateWidgets()
+
+    def onAirfoilListChanged(self, new_airfoil_name_list: list):
+        if len(new_airfoil_name_list) > len(self.tab_names):
+            self.onAirfoilAdded(new_airfoil_name_list)
+        elif len(new_airfoil_name_list) < len(self.tab_names):
+            self.onAirfoilRemoved(new_airfoil_name_list)
+        else:
+            self.tab_names = new_airfoil_name_list
+            self.regenerateWidgets()
+        self.XTRSChanged.emit()
 
     def setTabs(self):
         self.clear()
@@ -171,9 +236,10 @@ class XTRSWidget(QTabWidget):
                 self.widget_dict[k1][k2]['widget'].setValue(v2)
 
     def values(self):
-        return {k1: {k2: v2['widget'].value() for k2, v2 in v1.items()} for k1, v1 in self.widget_dict.items()}
+        return self.input_dict
 
-    def valueChanged(self, _):
+    def valueChanged(self, k1, k2, v2):
+        self.input_dict[k1][k2] = v2
         self.XTRSChanged.emit()
 
 
@@ -201,7 +267,6 @@ class ADWidget(QTabWidget):
         for k1, v1 in self.input_dict.items():
             self.widget_dict[k1] = {}
             for k2, v2 in v1.items():
-                print(f"k2 = {k2}")
                 if k2 != 'ISDELH':
                     w = QDoubleSpinBox(self)
                 else:
@@ -218,12 +283,43 @@ class ADWidget(QTabWidget):
 
                 w.setValue(v2)
 
-                w.valueChanged.connect(self.valueChanged)
+                w.valueChanged.connect(partial(self.valueChanged, k1, k2))
                 w_label = QLabel(self.labels[k2], self)
                 self.widget_dict[k1][k2] = {
                     'widget': w,
                     'label': w_label,
                 }
+
+    def regenerateWidgets(self):
+        self.generateWidgets()
+        self.setTabs()
+
+    def onADAdded(self, new_AD_list: list):
+        for ad in new_AD_list:
+            if ad not in self.input_dict.keys():
+                self.input_dict[ad] = deepcopy(default_inputs_AD()['1'])
+        self.tab_names = new_AD_list
+        self.regenerateWidgets()
+
+    def onADRemoved(self, new_AD_list: list):
+        ads_to_remove = []
+        for k in self.input_dict.keys():
+            if k not in new_AD_list:
+                ads_to_remove.append(k)
+        for ad_to_remove in ads_to_remove:
+            self.input_dict.pop(ad_to_remove)
+        self.tab_names = new_AD_list
+        self.regenerateWidgets()
+
+    def onADListChanged(self, new_AD_list: list):
+        if len(new_AD_list) > len(self.tab_names):
+            self.onADAdded(new_AD_list)
+        elif len(new_AD_list) < len(self.tab_names):
+            self.onADRemoved(new_AD_list)
+        else:
+            self.tab_names = new_AD_list
+            self.regenerateWidgets()
+        self.ADChanged.emit()
 
     def setTabs(self):
         self.clear()
@@ -248,9 +344,16 @@ class ADWidget(QTabWidget):
         for k1, v1 in values.items():
             for k2, v2 in v1.items():
                 self.widget_dict[k1][k2]['widget'].setValue(v2)
+                self.input_dict[k1][k2] = v2
 
     def values(self):
-        return {k1: {k2: v2['widget'].value() for k2, v2 in v1.items()} for k1, v1 in self.widget_dict.items()}
+        return self.input_dict
 
-    def valueChanged(self, _):
+    def valueChanged(self, k1, k2, v2):
+        self.input_dict[k1][k2] = v2
         self.ADChanged.emit()
+
+    def setReadOnly(self, read_only: bool):
+        for k1, v1 in self.widget_dict.items():
+            for k2, v2 in v1.items():
+                v2['widget'].setReadOnly(read_only)

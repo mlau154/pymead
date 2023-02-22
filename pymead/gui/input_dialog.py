@@ -7,10 +7,13 @@ from PyQt5.QtCore import QEvent, Qt
 from PyQt5.QtGui import QPixmap, QPainter, QStandardItem, QStandardItemModel
 from PyQt5.QtSvg import QSvgWidget
 from functools import partial
-from PyQt5.QtCore import pyqtSlot
+import tempfile
+from PyQt5.QtCore import pyqtSlot, pyqtSignal
 from pymead.gui.infty_doublespinbox import InftyDoubleSpinBox
 from pymead.gui.scientificspinbox_master.ScientificDoubleSpinBox import ScientificDoubleSpinBox
 from pymead.gui.pyqt_vertical_tab_widget.pyqt_vertical_tab_widget.verticalTabWidget import VerticalTabWidget
+from pymead.gui.pymead_dialog import PymeadDialog, PymeadDialogWidget, PymeadDialogTabWidget
+from pymead.gui.file_selection import *
 import sys
 import os
 from functools import partial
@@ -24,7 +27,7 @@ from pymead.gui.grid_bounds_widget import GridBounds
 from pymead.gui.mset_multigrid_widget import MSETMultiGridWidget, XTRSWidget, ADWidget
 from pymead.analysis.utils import viscosity_calculator
 from pymead.gui.custom_graphics_view import CustomGraphicsView
-from pymead import RESOURCE_DIR, DATA_DIR
+from pymead import GUI_DEFAULTS_DIR
 import pyqtgraph as pg
 
 
@@ -984,6 +987,133 @@ class MultiAirfoilDialog(QDialog):
 
     def getInputs(self):
         return self.inputs
+
+
+class MSETDialogWidget(PymeadDialogWidget):
+    airfoilOrderChanged = pyqtSignal(object)
+
+    def __init__(self):
+        super().__init__(settings_file=os.path.join(GUI_DEFAULTS_DIR, "mset_settings.json"))
+        self.widget_dict['airfoil_analysis_dir']['widget'].setText(tempfile.gettempdir())
+
+    def change_airfoil_order(self, _):
+        # if not all([a in self.widget_dict['airfoil_order']['widget'].text().split(',') for a in self.parent().mea.airfoils.keys()]):
+        #     current_airfoil_list = [a for a in self.parent().mea.airfoils.keys()]
+        # else:
+        #     current_airfoil_list = self.widget_dict['airfoil_order']['widget'].text().split(',')
+        dialog = AirfoilListDialog(self, current_airfoil_list=[a for a in ['A0', 'A1', 'A2']])
+        if dialog.exec_():
+            airfoil_order = dialog.getData()
+            self.widget_dict['airfoil_order']['widget'].setText(','.join(airfoil_order))
+            self.airfoilOrderChanged.emit(','.join(airfoil_order))
+
+    def select_directory(self, line_edit: QLineEdit):
+        select_directory(parent=self.parent(), line_edit=line_edit)
+
+    def updateDialog(self, new_inputs: dict, w_name: str):
+        if w_name == 'airfoil_order':
+            self.widget_dict['multi_airfoil_grid']['widget'].onAirfoilListChanged(
+                new_inputs['airfoil_order'].split(','))
+
+
+class MSESDialogWidget(PymeadDialogWidget):
+    def __init__(self, mset_dialog_widget: MSETDialogWidget):
+        super().__init__(settings_file=os.path.join(GUI_DEFAULTS_DIR, 'mses_settings.json'))
+        mset_dialog_widget.airfoilOrderChanged.connect(self.onAirfoilOrderChanged)
+
+    def onAirfoilOrderChanged(self, airfoil_list: list):
+        self.widget_dict['xtrs']['widget'].onAirfoilListChanged(airfoil_list.split(','))
+
+    def deactivate_AD(self, read_only: bool):
+        self.widget_dict['AD']['widget'].setReadOnly(read_only)
+        self.widget_dict['AD_number']['widget'].setReadOnly(read_only)
+        if not read_only:
+            self.widget_dict['AD']['widget'].setToolTip("")
+            self.widget_dict['AD_number']['widget'].setToolTip("")
+        else:
+            self.widget_dict['AD']['widget'].setToolTip(self.settings['AD']['setToolTip'])
+            self.widget_dict['AD_number']['widget'].setToolTip(self.settings['AD_number']['setToolTip'])
+
+    def calculate_and_set_Reynolds_number(self, new_inputs: dict):
+        Re_widget = self.widget_dict['REYNIN']['widget']
+        nu = viscosity_calculator(new_inputs['T'], rho=new_inputs['rho'])
+        a = np.sqrt(new_inputs['gam'] * new_inputs['R'] * new_inputs['T'])
+        V = new_inputs['MACHIN'] * a
+        Re_widget.setValue(V * new_inputs['L'] / nu)
+
+    def change_prescribed_aero_parameter(self, current_text: str):
+        w1 = self.widget_dict['ALFAIN']['widget']
+        w2 = self.widget_dict['CLIFIN']['widget']
+        if current_text == 'Specify Angle of Attack':
+            bools = (False, True)
+        elif current_text == 'Specify Lift Coefficient':
+            bools = (True, False)
+        else:
+            raise ValueError('Invalid value of currentText for QComboBox (alfa/Cl')
+        w1.setReadOnly(bools[0])
+        w2.setReadOnly(bools[1])
+
+    def change_prescribed_flow_variables(self, current_text: str):
+        w1 = self.widget_dict['P']['widget']
+        w2 = self.widget_dict['T']['widget']
+        w3 = self.widget_dict['rho']['widget']
+        if current_text == 'Specify Pressure, Temperature':
+            bools = (False, False, True)
+        elif current_text == 'Specify Pressure, Density':
+            bools = (False, True, False)
+        elif current_text == 'Specify Temperature, Density':
+            bools = (True, False, False)
+        else:
+            raise ValueError('Invalid value of currentText for QComboBox (P/T/rho)')
+        w1.setReadOnly(bools[0])
+        w2.setReadOnly(bools[1])
+        w3.setReadOnly(bools[2])
+
+    def change_Re_active_state(self, new_inputs: dict):
+        active = new_inputs['spec_Re']
+        widget_names = ['P', 'T', 'rho', 'L', 'R', 'gam']
+        skip_P, skip_T, skip_rho = False, False, False
+        if new_inputs['spec_P_T_rho'] == 'Specify Pressure, Temperature' and self.widget_dict['rho']['widget'].isReadOnly():
+            skip_rho = True
+        if new_inputs['spec_P_T_rho'] == 'Specify Pressure, Density' and self.widget_dict['T']['widget'].isReadOnly():
+            skip_T = True
+        if new_inputs['spec_P_T_rho'] == 'Specify Temperature, Density' and self.widget_dict['P']['widget'].isReadOnly():
+            skip_P = True
+        for widget_name in widget_names:
+            if not (skip_rho and widget_name == 'rho') and not (skip_P and widget_name == 'P') and not (
+                    skip_T and widget_name == 'T'):
+                self.widget_dict[widget_name]['widget'].setReadOnly(active)
+        self.widget_dict['REYNIN']['widget'].setReadOnly(not active)
+        self.widget_dict['spec_P_T_rho']['widget'].setEnabled(not active)
+        if not active:
+            self.calculate_and_set_Reynolds_number(new_inputs)
+
+    def updateDialog(self, new_inputs: dict, w_name: str):
+        if w_name == 'AD_number':
+            self.widget_dict['AD']['widget'].onADListChanged([str(j + 1) for j in range(new_inputs['AD_number'])])
+        if w_name == 'AD_active':
+            self.deactivate_AD(not new_inputs['AD_active'])
+        if w_name == 'spec_Re':
+            self.change_Re_active_state(new_inputs)
+        if w_name == 'spec_P_T_rho':
+            self.change_prescribed_flow_variables(new_inputs['spec_P_T_rho'])
+        if w_name == 'spec_alfa_Cl':
+            self.change_prescribed_aero_parameter(new_inputs['spec_alfa_Cl'])
+        if w_name in ['P', 'T', 'rho', 'R', 'gam', 'L', 'MACHIN'] and not self.widget_dict[w_name]['widget'].isReadOnly():
+            if self.widget_dict['P']['widget'].isReadOnly():
+                self.widget_dict['P']['widget'].setValue(new_inputs['rho'] * new_inputs['R'] * new_inputs['T'])
+            elif self.widget_dict['T']['widget'].isReadOnly():
+                self.widget_dict['T']['widget'].setValue(new_inputs['P'] / new_inputs['R'] / new_inputs['rho'])
+            elif self.widget_dict['rho']['widget'].isReadOnly():
+                self.widget_dict['rho']['widget'].setValue(new_inputs['P'] / new_inputs['R'] / new_inputs['T'])
+            new_inputs = self.getInputs()
+            self.calculate_and_set_Reynolds_number(new_inputs)
+
+
+class MultiAirfoilDialog2(PymeadDialog):
+    def __init__(self, parent: QWidget, window_title: str, widget: QWidget):
+
+        super().__init__(parent=parent, window_title=window_title, widget=widget)
 
 
 class SettingsDialog(QDialog):

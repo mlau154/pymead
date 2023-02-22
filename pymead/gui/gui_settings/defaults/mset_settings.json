@@ -1,0 +1,150 @@
+{
+    "airfoil_order": {
+        "label": "Airfoil Order",
+        "widget_type": "QLineEdit",
+        "setText": "A0",
+        "setReadOnly": true,
+        "push_button": "Modify",
+        "push_button_action": "change_airfoil_order"
+    },
+    "grid_bounds": {
+        "widget_type": "GridBounds",
+        "setValues": [
+            -5.0,
+            5.0,
+            -5.0,
+            5.0
+        ]
+    },
+    "airfoil_side_points": {
+        "label": "Airfoil Side Points",
+        "widget_type": "QSpinBox",
+        "setMinimum": 1,
+        "setMaximum": 2147483647,
+        "setValue": 150
+    },
+    "exp_side_points": {
+        "label": "Side Points Exponent",
+        "widget_type": "QDoubleSpinBox",
+        "setMinimum": 0.0,
+        "setMaximum": Infinity,
+        "setValue": 0.9
+    },
+    "inlet_pts_left_stream": {
+        "label": "Inlet Points Left",
+        "widget_type": "QSpinBox",
+        "setMinimum": 1,
+        "setMaximum": 2147483647,
+        "setValue": 41
+    },
+    "outlet_pts_right_stream": {
+        "label": "Outlet Points Right",
+        "widget_type": "QSpinBox",
+        "setMinimum": 1,
+        "setMaximum": 2147483647,
+        "setValue": 41
+    },
+    "num_streams_top": {
+        "label": "Number Top Streamlines",
+        "widget_type": "QSpinBox",
+        "setMinimum": 1,
+        "setMaximum": 2147483647,
+        "setValue": 17
+    },
+    "num_streams_bot": {
+        "label": "Number Bottom Streamlines",
+        "widget_type": "QSpinBox",
+        "setMinimum": 1,
+        "setMaximum": 2147483647,
+        "setValue": 23
+    },
+    "max_streams_between": {
+        "label": "Max Streamlines Between",
+        "widget_type": "QSpinBox",
+        "setMinimum": 1,
+        "setMaximum": 2147483647,
+        "setValue": 15
+    },
+    "elliptic_param": {
+        "label": "Elliptic Parameter",
+        "widget_type": "QDoubleSpinBox",
+        "setMinimum": 0.0,
+        "setMaximum": Infinity,
+        "setValue": 1.3
+    },
+    "stag_pt_aspect_ratio": {
+        "label": "Stag. Pt. Aspect Ratio",
+        "widget_type": "QDoubleSpinBox",
+        "setMinimum": 0.0,
+        "setMaximum": Infinity,
+        "setValue": 2.5
+    },
+    "x_spacing_param": {
+        "label": "X-Spacing Parameter",
+        "widget_type": "QDoubleSpinBox",
+        "setMinimum": 0.0,
+        "setMaximum": Infinity,
+        "setValue": 0.85
+    },
+    "alf0_stream_gen": {
+        "label": "Streamline Gen. Alpha",
+        "widget_type": "QDoubleSpinBox",
+        "setMinimum": -Infinity,
+        "setMaximum": Infinity,
+        "setValue": 0.0
+    },
+    "timeout": {
+        "label": "Timeout",
+        "widget_type": "QDoubleSpinBox",
+        "setMinimum": 0.0,
+        "setMaximum": Infinity,
+        "setValue": 10.0
+    },
+    "verbose": {
+        "label": "Verbose?",
+        "widget_type": "QCheckBox",
+        "state": 0
+    },
+    "multi_grid_label": {
+        "widget_type": "QLabel",
+        "setText": "MEA Grid Settings",
+        "restart_grid_counter": true,
+        "column": 4,
+        "align": "c"
+    },
+    "multi_airfoil_grid": {
+        "widget_type": "MSETMultiGridWidget",
+        "setValues": {
+            "A0": {
+                "dsLE_dsAvg": 0.35,
+                "dsTE_dsAvg": 0.8,
+                "curvature_exp": 1.3,
+                "U_s_smax_min": 1,
+                "U_s_smax_max": 1,
+                "L_s_smax_min": 1,
+                "L_s_smax_max": 1,
+                "U_local_avg_spac_ratio": 0,
+                "L_local_avg_spac_ratio": 0
+            }
+        },
+        "column": 4,
+        "rowSpan": 7,
+        "columnSpan": 4
+    },
+    "airfoil_analysis_dir": {
+        "label": "Analysis Directory",
+        "widget_type": "QLineEdit",
+        "push_button": "Choose folder",
+        "push_button_action": "select_directory",
+        "setText": "",
+        "column": 5,
+        "label.column": 4
+    },
+    "airfoil_coord_file_name": {
+        "label": "Airfoil Coord. Filename",
+        "widget_type": "QLineEdit",
+        "setText": "default_airfoil",
+        "column": 5,
+        "label.column": 4
+    }
+}

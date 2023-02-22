@@ -1,0 +1,76 @@
+{
+    "min_val_of_max_thickness": {
+        "label": "Minimum Thickness",
+        "widget_type": "QDoubleSpinBox",
+        "decimals": 16,
+        "lower_bound": 0.0,
+        "upper_bound": Infinity,
+        "value": 0.1,
+        "active_checkbox": 0
+    },
+    "check_thickness_at_points": {
+        "label": "Check Thickness Dist.?",
+        "widget_type": "QCheckBox",
+        "state": 0
+    },
+    "thickness_at_points": {
+        "label": "Thickness Dist. File",
+        "widget_type": "QLineEdit",
+        "text": "",
+        "push_button": "Choose file",
+        "push_button_action": "select_thickness_file"
+    },
+    "min_area": {
+        "label": "Mininmum Area",
+        "widget_type": "QDoubleSpinBox",
+        "decimals": 16,
+        "lower_bound": 0.0,
+        "upper_bound": Infinity,
+        "value": 0.04,
+        "active_checkbox": 0
+    },
+    "use_internal_geometry": {
+        "label": "Internal Geometry Check?",
+        "widget_type": "QCheckBox",
+        "state": 0
+    },
+    "internal_geometry_timing": {
+        "label": "Int. Geometry Timing",
+        "widget_type": "QComboBox",
+        "items": [
+            "Before Aerodynamic Evaluation",
+            "After Aerodynamic Evaluation"
+        ],
+        "current_text": "Before Aerodynamic Evaluation",
+        "tool_tip": "The timing of the internal geometry fit check can be important\ndepending on whether the internal geometry should be rotated\nwith the airfoil angle of attack. If the internal geometry\ncan move with the airfoil angle of attack, choose 'Before Aerodynamic Evaluation' (faster).\nOtherwise, choose 'After Aerodynamic Evaluation' (slower)."
+    },
+    "internal_geometry": {
+        "label": "Internal Geometry File",
+        "widget_type": "QLineEdit",
+        "text": "",
+        "push_button": "Choose file",
+        "push_button_action": "select_coord_file"
+    },
+    "use_external_geometry": {
+        "label": "External Geometry Check?",
+        "widget_type": "QCheckBox",
+        "state": 0
+    },
+    "external_geometry_timing": {
+        "label": "Ext. Geometry Timing",
+        "widget_type": "QComboBox",
+        "items": [
+            "Before Aerodynamic Evaluation",
+            "After Aerodynamic Evaluation"
+        ],
+        "current_text": "Before Aerodynamic Evaluation",
+        "tool_tip": "The timing of the external geometry fit check can be important\ndepending on whether the internal geometry should be rotated\nwith the airfoil angle of attack. If the external geometry\ncan move with the airfoil angle of attack, choose 'Before Aerodynamic Evaluation' (faster).\nOtherwise, choose 'After Aerodynamic Evaluation' (slower)."
+    },
+    "external_geometry": {
+        "label": "External Geometry File",
+        "widget_type": "QLineEdit",
+        "text": "",
+        "push_button": "Choose file",
+        "push_button_action": "select_coord_file"
+    }
+}

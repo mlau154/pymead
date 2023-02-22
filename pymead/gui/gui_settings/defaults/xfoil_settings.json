@@ -1,0 +1,94 @@
+{
+    "Re": {
+        "label": "Reynolds Number",
+        "widget_type": "QDoubleSpinBox",
+        "value": 100000.0,
+        "decimals": 16,
+        "lower_bound": 1e-05,
+        "upper_bound": Infinity
+    },
+    "Ma": {
+        "label": "Mach Number",
+        "widget_type": "QDoubleSpinBox",
+        "value": 0.0,
+        "decimals": 16,
+        "lower_bound": 0.0,
+        "upper_bound": 1.3
+    },
+    "prescribe": {
+        "label": "Prescribe \u0251/Cl/CLI",
+        "widget_type": "QComboBox",
+        "items": [
+            "Angle of Attack (deg)",
+            "Viscous Cl",
+            "Inviscid Cl"
+        ],
+        "combo_callback": "change_prescribed_aero_parameter_xfoil",
+        "current_text": "Angle of Attack (deg)"
+    },
+    "alfa": {
+        "label": "Angle of Attack (deg)",
+        "widget_type": "QDoubleSpinBox",
+        "value": 0.0,
+        "decimals": 16,
+        "lower_bound": -Infinity,
+        "upper_bound": Infinity,
+        "editable": true
+    },
+    "Cl": {
+        "label": "Viscous Cl",
+        "widget_type": "QDoubleSpinBox",
+        "value": 0.0,
+        "decimals": 16,
+        "lower_bound": -Infinity,
+        "upper_bound": Infinity,
+        "editable": false
+    },
+    "CLI": {
+        "label": "Inviscid Cl",
+        "widget_type": "QDoubleSpinBox",
+        "value": 0.0,
+        "decimals": 16,
+        "lower_bound": -Infinity,
+        "upper_bound": Infinity,
+        "editable": false
+    },
+    "xtr_upper": {
+        "label": "Transition x/c (upper)",
+        "widget_type": "QDoubleSpinBox",
+        "value": 1.0,
+        "decimals": 16,
+        "lower_bound": 0.0,
+        "upper_bound": 1.0
+    },
+    "xtr_lower": {
+        "label": "Transition x/c (lower)",
+        "widget_type": "QDoubleSpinBox",
+        "value": 1.0,
+        "decimals": 16,
+        "lower_bound": 0.0,
+        "upper_bound": 1.0
+    },
+    "N": {
+        "label": "Turbulence (NCrit)",
+        "widget_type": "QDoubleSpinBox",
+        "value": 9.0,
+        "decimals": 16,
+        "lower_bound": 0.0,
+        "upper_bound": 20.0
+    },
+    "iter": {
+        "label": "Maximum Iterations",
+        "widget_type": "QSpinBox",
+        "value": 150,
+        "lower_bound": 1,
+        "upper_bound": 10000
+    },
+    "timeout": {
+        "label": "Timeout (sec)",
+        "widget_type": "QDoubleSpinBox",
+        "value": 8.0,
+        "lower_bound": 0.0,
+        "upper_bound": 10000.0
+    }
+}
