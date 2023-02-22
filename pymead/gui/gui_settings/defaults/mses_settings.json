@@ -7,8 +7,7 @@
     "spec_Re": {
         "label": "Specify Reynolds Number?",
         "widget_type": "QCheckBox",
-        "setCheckState": 0,
-        "checkbox_callback": "change_Re_active_state"
+        "setCheckState": 0
     },
     "REYNIN": {
         "label": "Reynolds Number",
@@ -16,7 +15,7 @@
         "setMinimum": 0.0,
         "setMaximum": Infinity,
         "setDecimals": 16,
-        "setValue": 1000000.0,
+        "setValue": 15492705.8044970352202654,
         "setReadOnly": true
     },
     "MACHIN": {
@@ -35,8 +34,7 @@
             "Specify Pressure, Density",
             "Specify Temperature, Density"
         ],
-        "setCurrentText": "Specify Pressure, Temperature",
-        "combo_callback": "change_prescribed_flow_variables"
+        "setCurrentText": "Specify Pressure, Temperature"
     },
     "P": {
         "label": "Pressure (Pa)",
@@ -50,7 +48,7 @@
     "T": {
         "label": "Temperature (K)",
         "widget_type": "QDoubleSpinBox",
-        "setMinimum": 0.0,
+        "setMinimum": 0.001,
         "setMaximum": Infinity,
         "setDecimals": 16,
         "setValue": 300,
@@ -59,7 +57,7 @@
     "rho": {
         "label": "Density (kg/m^3)",
         "widget_type": "QDoubleSpinBox",
-        "setMinimum": 0.0,
+        "setMinimum": 0.001,
         "setMaximum": Infinity,
         "setDecimals": 16,
         "setValue": 1.1768292682926829,
@@ -68,7 +66,7 @@
     "gam": {
         "label": "Specific Heat Ratio",
         "widget_type": "QDoubleSpinBox",
-        "setMinimum": 0.0,
+        "setMinimum": 0.001,
         "setMaximum": Infinity,
         "setDecimals": 16,
         "setValue": 1.4
@@ -84,7 +82,7 @@
     "R": {
         "label": "Gas Constant (J/(kg*K))",
         "widget_type": "QDoubleSpinBox",
-        "setMinimum": 0.0,
+        "setMinimum": 0.001,
         "setMaximum": Infinity,
         "setDecimals": 16,
         "setValue": 287.05
@@ -96,8 +94,7 @@
             "Specify Angle of Attack",
             "Specify Lift Coefficient"
         ],
-        "setCurrentText": "Specify Angle of Attack",
-        "combo_callback": "change_prescribed_aero_parameter"
+        "setCurrentText": "Specify Angle of Attack"
     },
     "ALFAIN": {
         "label": "Angle of Attack (deg)",

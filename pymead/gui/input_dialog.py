@@ -1107,7 +1107,89 @@ class MSESDialogWidget(PymeadDialogWidget):
             elif self.widget_dict['rho']['widget'].isReadOnly():
                 self.widget_dict['rho']['widget'].setValue(new_inputs['P'] / new_inputs['R'] / new_inputs['T'])
             new_inputs = self.getInputs()
+            if not (w_name == 'MACHIN' and new_inputs['spec_Re']):
+                self.calculate_and_set_Reynolds_number(new_inputs)
+
+
+class XFOILDialogWidget(PymeadDialogWidget):
+    def __init__(self):
+        super().__init__(settings_file=os.path.join(GUI_DEFAULTS_DIR, 'xfoil_settings.json'))
+
+    def calculate_and_set_Reynolds_number(self, new_inputs: dict):
+        Re_widget = self.widget_dict['Re']['widget']
+        nu = viscosity_calculator(new_inputs['T'], rho=new_inputs['rho'])
+        a = np.sqrt(new_inputs['gam'] * new_inputs['R'] * new_inputs['T'])
+        V = new_inputs['Ma'] * a
+        Re_widget.setValue(V * new_inputs['L'] / nu)
+
+    def change_prescribed_aero_parameter(self, current_text: str):
+        w1 = self.widget_dict['alfa']['widget']
+        w2 = self.widget_dict['Cl']['widget']
+        w3 = self.widget_dict['CLI']['widget']
+        if current_text == 'Angle of Attack (deg)':
+            bools = (False, True, True)
+        elif current_text == 'Viscous Cl':
+            bools = (True, False, True)
+        elif current_text == 'Inviscid Cl':
+            bools = (True, True, False)
+        else:
+            raise ValueError('Invalid value of currentText for QComboBox (alfa/Cl/CLI')
+        w1.setReadOnly(bools[0])
+        w2.setReadOnly(bools[1])
+        w3.setReadOnly(bools[2])
+
+    def change_prescribed_flow_variables(self, current_text: str):
+        w1 = self.widget_dict['P']['widget']
+        w2 = self.widget_dict['T']['widget']
+        w3 = self.widget_dict['rho']['widget']
+        if current_text == 'Specify Pressure, Temperature':
+            bools = (False, False, True)
+        elif current_text == 'Specify Pressure, Density':
+            bools = (False, True, False)
+        elif current_text == 'Specify Temperature, Density':
+            bools = (True, False, False)
+        else:
+            raise ValueError('Invalid value of currentText for QComboBox (P/T/rho)')
+        w1.setReadOnly(bools[0])
+        w2.setReadOnly(bools[1])
+        w3.setReadOnly(bools[2])
+
+    def change_Re_active_state(self, new_inputs: dict):
+        active = new_inputs['spec_Re']
+        widget_names = ['P', 'T', 'rho', 'L', 'R', 'gam']
+        skip_P, skip_T, skip_rho = False, False, False
+        if new_inputs['spec_P_T_rho'] == 'Specify Pressure, Temperature' and self.widget_dict['rho']['widget'].isReadOnly():
+            skip_rho = True
+        if new_inputs['spec_P_T_rho'] == 'Specify Pressure, Density' and self.widget_dict['T']['widget'].isReadOnly():
+            skip_T = True
+        if new_inputs['spec_P_T_rho'] == 'Specify Temperature, Density' and self.widget_dict['P']['widget'].isReadOnly():
+            skip_P = True
+        for widget_name in widget_names:
+            if not (skip_rho and widget_name == 'rho') and not (skip_P and widget_name == 'P') and not (
+                    skip_T and widget_name == 'T'):
+                self.widget_dict[widget_name]['widget'].setReadOnly(active)
+        self.widget_dict['Re']['widget'].setReadOnly(not active)
+        self.widget_dict['spec_P_T_rho']['widget'].setEnabled(not active)
+        if not active:
             self.calculate_and_set_Reynolds_number(new_inputs)
+
+    def updateDialog(self, new_inputs: dict, w_name: str):
+        if w_name == 'spec_Re':
+            self.change_Re_active_state(new_inputs)
+        if w_name == 'spec_P_T_rho':
+            self.change_prescribed_flow_variables(new_inputs['spec_P_T_rho'])
+        if w_name == 'prescribe':
+            self.change_prescribed_aero_parameter(new_inputs['prescribe'])
+        if w_name in ['P', 'T', 'rho', 'R', 'gam', 'L', 'Ma'] and not self.widget_dict[w_name]['widget'].isReadOnly():
+            if self.widget_dict['P']['widget'].isReadOnly():
+                self.widget_dict['P']['widget'].setValue(new_inputs['rho'] * new_inputs['R'] * new_inputs['T'])
+            elif self.widget_dict['T']['widget'].isReadOnly():
+                self.widget_dict['T']['widget'].setValue(new_inputs['P'] / new_inputs['R'] / new_inputs['rho'])
+            elif self.widget_dict['rho']['widget'].isReadOnly():
+                self.widget_dict['rho']['widget'].setValue(new_inputs['P'] / new_inputs['R'] / new_inputs['T'])
+            new_inputs = self.getInputs()
+            if not (w_name == 'Ma' and new_inputs['spec_Re']):
+                self.calculate_and_set_Reynolds_number(new_inputs)
 
 
 class MultiAirfoilDialog2(PymeadDialog):
