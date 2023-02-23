@@ -1,6 +1,8 @@
-from PyQt5.QtWidgets import QDialog, QVBoxLayout, QDialogButtonBox, QWidget, QGridLayout, QLabel, QPushButton
+from PyQt5.QtWidgets import QDialog, QVBoxLayout, QDialogButtonBox, QWidget, QGridLayout, QLabel, QPushButton, \
+    QCheckBox, QMessageBox
 from pymead.gui.mset_multigrid_widget import MSETMultiGridWidget, XTRSWidget, ADWidget
 from pymead.gui.grid_bounds_widget import GridBounds
+from pymead.gui.scientificspinbox_master.ScientificDoubleSpinBox import ScientificDoubleSpinBox
 from abc import abstractmethod
 from functools import partial
 
@@ -24,10 +26,12 @@ get_set_value_names = {'QSpinBox': ('value', 'setValue', 'valueChanged'),
                        'ADWidget': ('values', 'setValues', 'ADChanged')}
 grid_names = {'label': ['label.row', 'label.column', 'label.rowSpan', 'label.columnSpan', 'label.alignment'],
               'widget': ['row', 'column', 'rowSpan', 'columnSpan', 'alignment'],
-              'push_button': ['push.row', 'push.column', 'push.rowSpan', 'push.columnSpan', 'push.alignment']}
+              'push_button': ['push.row', 'push.column', 'push.rowSpan', 'push.columnSpan', 'push.alignment'],
+              'checkbox': ['check.row', 'check.column', 'check.rowSpan', 'check.columnSpan', 'check.alignment']}
 # sum(<ragged list>, []) flattens a ragged (or uniform) 2-D list into a 1-D list
-reserved_names = ['label', 'widget_type', 'push_button', 'push_button_action',
+reserved_names = ['label', 'widget_type', 'push_button', 'push_button_action', 'clicked_connect', 'active_checkbox',
                   *sum([v for v in grid_names.values()], [])]
+msg_modes = {'info': QMessageBox.Information, 'warn': QMessageBox.Warning, 'question': QMessageBox.Question}
 
 
 class PymeadDialogWidget(QWidget):
@@ -43,7 +47,7 @@ class PymeadDialogWidget(QWidget):
         """This method is used to add Widgets to the Layout"""
         grid_counter = 0
         for w_name, w_dict in self.settings.items():
-            self.widget_dict[w_name] = {'label': None, 'widget': None, 'push_button': None}
+            self.widget_dict[w_name] = {'label': None, 'widget': None, 'push_button': None, 'checkbox': None}
 
             # Restart the grid_counter if necessary:
             if 'restart_grid_counter' in w_dict.keys() and w_dict['restart_grid_counter']:
@@ -52,7 +56,8 @@ class PymeadDialogWidget(QWidget):
             # Add the label if necessary:
             if 'label' in w_dict.keys():
                 label = QLabel(w_dict['label'], parent=self)
-                grid_params_label = {'row': grid_counter, 'column': 0, 'rowSpan': 1, 'columnSpan': 1}
+                grid_params_label = {'row': grid_counter, 'column': 0, 'rowSpan': 1, 'columnSpan': 1,
+                                     'alignment': Qt.Alignment()}
                 for k, v in w_dict.items():
                     if k in grid_names['label']:
                         grid_params_label[k.split('.')[-1]] = v
@@ -82,13 +87,27 @@ class PymeadDialogWidget(QWidget):
             if 'push_button' in w_dict.keys():
                 push_button = QPushButton(w_dict['push_button'], parent=self)
                 grid_params_push = {'row': grid_counter, 'column': grid_params_widget['column'] + 2, 'rowSpan': 1,
-                                    'columnSpan': 1}
+                                    'columnSpan': 1, 'alignment': Qt.Alignment()}
                 for k, v in w_dict.items():
                     if k in grid_names['push_button']:
                         grid_params_push[k.split('.')[-1]] = v
                 push_button.clicked.connect(partial(getattr(self, w_dict['push_button_action']), widget))
                 self.layout.addWidget(push_button, *[v for v in grid_params_push.values()])
                 self.widget_dict[w_name]['push_button'] = push_button
+
+            if 'active_checkbox' in w_dict.keys():
+                checkbox = QCheckBox('Active?', parent=self)
+                grid_params_check = {'row': grid_counter, 'column': grid_params_widget['column'] + 2, 'rowSpan': 1,
+                                     'columnSpan': 1, 'alignment': Qt.Alignment()}
+                for k, v in w_dict.items():
+                    if k in grid_names['checkbox']:
+                        grid_params_check[k.split('.')[-1]] = v
+                checkbox.stateChanged.connect(partial(self.activate_deactivate_from_checkbox, widget))
+                self.layout.addWidget(checkbox, *[v for v in grid_params_check.values()])
+                self.widget_dict[w_name]['checkbox'] = checkbox
+
+            if 'clicked_connect' in w_dict.keys() and isinstance(widget, QPushButton):
+                widget.clicked.connect(getattr(self, w_dict['clicked_connect']))
 
             # Loop through the individual settings of each widget and execute:
             for s_name, s_value in w_dict.items():
@@ -106,8 +125,6 @@ class PymeadDialogWidget(QWidget):
                 getattr(widget, get_set_value_names[w_dict['widget_type']][2]).connect(
                     partial(self.dialogChanged, w_name=w_name))
 
-        # TODO: fix the alignment
-
     def getInputs(self):
         """This method is used to extract the data from the Dialog"""
         output_dict = {w_name: None for w_name in self.widget_dict.keys()}
@@ -119,6 +136,10 @@ class PymeadDialogWidget(QWidget):
             else:
                 output_dict[w_name] = None
         return output_dict
+
+    @staticmethod
+    def activate_deactivate_from_checkbox(widget, state):
+        widget.setReadOnly(not state)
 
     def overrideInputs(self, new_values: dict):
         for k, v in new_values.items():
@@ -142,6 +163,10 @@ class PymeadDialogTabWidget(VerticalTabWidget):
         self.w_dict = widgets
         for k, v in self.w_dict.items():
             self.addTab(v, k)
+
+    def overrideInputs(self, new_values: dict):
+        for k, v in new_values.items():
+            self.w_dict[k].overrideInputs(new_values=v)
 
     def getInputs(self):
         return {k: v.getInputs() for k, v in self.w_dict.items()}
@@ -179,3 +204,12 @@ class PymeadDialog(QDialog):
         buttonBox.accepted.connect(self.accept)
         buttonBox.rejected.connect(self.reject)
         return buttonBox
+
+
+class PymeadMessageBox(QMessageBox):
+    def __init__(self, parent, msg: str, window_title: str, msg_mode: str):
+        super().__init__(parent=parent)
+        self.setText(msg)
+        self.setWindowTitle(window_title)
+        self.setIcon(msg_modes[msg_mode])
+        self.setFont(self.parent().font())

@@ -99,7 +99,7 @@ def read_forces_from_mses(search_file: str):
     'CD': <CD value>, 'CM': <CM value>})
     """
     CL_lines = []
-    alpha_line, vw_line, fp_line = None, None, None
+    alpha_line, vw_line, fp_line, ad_line = None, None, None, None
     with open(search_file, 'r') as f:
         file_out = f.readlines()
     for line in file_out:
@@ -111,6 +111,8 @@ def read_forces_from_mses(search_file: str):
             vw_line = line
         if 'friction' in line:
             fp_line = line
+        if 'CDh' in line:
+            ad_line = line
     try:
         required_line = CL_lines[1]  # line we need happens the second time the string "CL" is mentioned
         split_line = required_line.split()  # split the up the line to grab the actual numbers
@@ -125,7 +127,7 @@ def read_forces_from_mses(search_file: str):
         alpha_line = alpha_line[-1].split()
         forces['alf'] = float(alpha_line[-2])
 
-        # Find the viscous drag and wave drag coefficients in the drag breakdown (these two values should add to Cd)
+        # Find the viscous drag and wave drag coefficients in the drag breakdown (these two values + Cdh should add to Cd)
         vw_line = vw_line.split('=')
         forces['Cdv'] = float(vw_line[-2].split()[0])
         forces['Cdw'] = float(vw_line[-1].split()[0])
@@ -134,9 +136,18 @@ def read_forces_from_mses(search_file: str):
         fp_line = fp_line.split('=')
         forces['Cdf'] = float(fp_line[-2].split()[0])
         forces['Cdp'] = float(fp_line[-1].split()[0])
+
+        # Find the "drag" due to the actuator disk:
+        if ad_line is not None:
+            ad_line = ad_line.split('=')
+            forces['Cdh'] = float(ad_line[-1].split()[0])
+        else:
+            forces['Cdh'] = 0.0
     except:
         forces = {'Cl': 0.0, 'Cd': 1000.0, 'Cm': 1000.0, 'alf': 0.0, 'Cdv': 1000.0, 'Cdw': 1000.0,
-                  'Cdf': 1000.0, 'Cdp': 1000.0}
+                  'Cdf': 1000.0, 'Cdp': 1000.0, 'Cdh': 1000.0}
+
+    print(f"{forces = }")
     return forces
 
 

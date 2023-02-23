@@ -1,0 +1,131 @@
+{
+    "min_val_of_max_thickness": {
+        "label": "Minimum Thickness",
+        "widget_type": "QDoubleSpinBox",
+        "setDecimals": 16,
+        "setMinimum": 0.0,
+        "setMaximum": Infinity,
+        "setSingleStep": 0.01,
+        "setValue": 0.1,
+        "columnSpan": 2,
+        "setReadOnly": true,
+        "active_checkbox": 0
+    },
+    "check_thickness_at_points": {
+        "label": "Check Thickness Dist.?",
+        "widget_type": "QCheckBox",
+        "setCheckState": 0
+    },
+    "thickness_at_points": {
+        "label": "Thickness Dist. File",
+        "widget_type": "QLineEdit",
+        "setText": "",
+        "push_button": "Choose file",
+        "push_button_action": "select_data_file"
+    },
+    "min_area": {
+        "label": "Mininmum Area",
+        "widget_type": "QDoubleSpinBox",
+        "setDecimals": 16,
+        "setMinimum": 0.0,
+        "setMaximum": Infinity,
+        "setValue": 0.04,
+        "setSingleStep": 0.01,
+        "columnSpan": 2,
+        "setReadOnly": true,
+        "active_checkbox": 0
+    },
+    "use_internal_geometry": {
+        "label": "Internal Geometry Check?",
+        "widget_type": "QCheckBox",
+        "setCheckState": 0
+    },
+    "internal_geometry_timing": {
+        "label": "Int. Geometry Timing",
+        "widget_type": "QComboBox",
+        "addItems": [
+            "Before Aerodynamic Evaluation",
+            "After Aerodynamic Evaluation"
+        ],
+        "setCurrentText": "Before Aerodynamic Evaluation",
+        "setToolTip": "The timing of the internal geometry fit check can be important\ndepending on whether the internal geometry should be rotated\nwith the airfoil angle of attack. If the internal geometry\ncan move with the airfoil angle of attack, choose 'Before Aerodynamic Evaluation' (faster).\nOtherwise, choose 'After Aerodynamic Evaluation' (slower)."
+    },
+    "internal_geometry": {
+        "label": "Internal Geometry File",
+        "widget_type": "QLineEdit",
+        "setText": "",
+        "push_button": "Choose file",
+        "push_button_action": "select_data_file"
+    },
+    "use_external_geometry": {
+        "label": "External Geometry Check?",
+        "widget_type": "QCheckBox",
+        "setCheckState": 0
+    },
+    "external_geometry_timing": {
+        "label": "Ext. Geometry Timing",
+        "widget_type": "QComboBox",
+        "addItems": [
+            "Before Aerodynamic Evaluation",
+            "After Aerodynamic Evaluation"
+        ],
+        "setCurrentText": "Before Aerodynamic Evaluation",
+        "setToolTip": "The timing of the external geometry fit check can be important\ndepending on whether the internal geometry should be rotated\nwith the airfoil angle of attack. If the external geometry\ncan move with the airfoil angle of attack, choose 'Before Aerodynamic Evaluation' (faster).\nOtherwise, choose 'After Aerodynamic Evaluation' (slower)."
+    },
+    "external_geometry": {
+        "label": "External Geometry File",
+        "widget_type": "QLineEdit",
+        "setText": "",
+        "push_button": "Choose file",
+        "push_button_action": "select_data_file"
+    },
+    "f_tol": {
+          "label": "Function Tolerance",
+          "widget_type": "ScientificDoubleSpinBox",
+          "setMinimum": 0.0,
+          "setMaximum": 100000.0,
+          "setValue": 0.0025
+      },
+      "cv_tol": {
+          "label": "Constraint Violation Tol.",
+          "widget_type": "ScientificDoubleSpinBox",
+          "setMinimum": 0.0,
+          "setMaximum": 100000.0,
+          "setValue": 1e-06
+      },
+      "x_tol": {
+          "label": "Parameter Tolerance",
+          "widget_type": "ScientificDoubleSpinBox",
+          "setMinimum": 0.0,
+          "setMaximum": 100000.0,
+          "setValue": 1e-08
+      },
+      "nth_gen": {
+          "label": "Termination Calc. Frequency",
+          "widget_type": "QSpinBox",
+          "setMinimum": 1,
+          "setMaximum": 1000000,
+          "setValue": 10
+      },
+      "n_last": {
+          "label": "Num. Prev. Gens. to Check",
+          "widget_type": "QSpinBox",
+          "setMinimum": 1,
+          "setMaximum": 1000000,
+          "setValue": 30
+      },
+      "n_max_gen": {
+          "label": "Maximum Generations",
+          "widget_type": "QSpinBox",
+          "setMinimum": 1,
+          "setMaximum": 1000000,
+          "setValue": 500
+      },
+      "n_max_evals": {
+          "label": "Maximum Function Calls",
+          "widget_type": "QSpinBox",
+          "setMinimum": 1,
+          "setMaximum": 1000000,
+          "setValue": 100000
+      }
+}

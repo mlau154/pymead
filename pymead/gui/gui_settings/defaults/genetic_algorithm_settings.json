@@ -2,24 +2,24 @@
     "tool": {
         "label": "CFD Tool:",
         "widget_type": "QComboBox",
-        "items": [
+        "addItems": [
             "XFOIL",
             "MSES"
         ],
-        "current_text": "XFOIL"
+        "setCurrentText": "XFOIL"
     },
     "J": {
         "label": "Objective Functions:",
         "widget_type": "QLineEdit",
-        "text": "$Cd",
-        "tool_tip": "Enter the objective functions to be minimized, separated by commas.\nVariables can be started with the dollar sign ($).",
+        "setText": "$Cd",
+        "setToolTip": "Enter the objective functions to be minimized, separated by commas.\nVariables can be started with the dollar sign ($).",
         "text_changed_callback": "objectives_changed"
     },
     "G": {
         "label": "Constraints:",
         "widget_type": "QLineEdit",
-        "text": "",
-        "tool_tip": "Enter the constraint functions to be applied, separated by commas.\nVariables can be started with the dollar sign ($).",
+        "setText": "",
+        "setToolTip": "Enter the constraint functions to be applied, separated by commas.\nVariables can be started with the dollar sign ($).",
         "text_changed_callback": "constraints_changed"
     },
     "additional_data": {
@@ -28,76 +28,76 @@
         "texts": [
             ""
         ],
-        "tool_tip": "Additional variables to feed to the\nobjective or constraint functions"
+        "setToolTip": "Additional variables to feed to the\nobjective or constraint functions"
     },
     "pop_size": {
         "label": "Population Size:",
         "widget_type": "QSpinBox",
-        "value": 50,
-        "lower_bound": 1,
-        "upper_bound": 2147483647
+        "setMinimum": 1,
+        "setMaximum": 2147483647,
+        "setValue": 50
     },
     "n_offspring": {
         "label": "Number of Offspring",
         "widget_type": "QSpinBox",
-        "value": 150,
-        "lower_bound": 50,
-        "upper_bound": 2147483647,
-        "tool_tip": "Number of offspring to generate to fill out the population.\nOffspring with converged objective functions become members of the\ncurrent population until the population is full. Must be greater\nthan or equal to the population size"
+        "setMinimum": 50,
+        "setMaximum": 2147483647,
+        "setValue": 150,
+        "setToolTip": "Number of offspring to generate to fill out the population.\nOffspring with converged objective functions become members of the\ncurrent population until the population is full. Must be greater\nthan or equal to the population size"
     },
     "eta_crossover": {
         "label": "\u03b7 (crossover)",
         "widget_type": "QDoubleSpinBox",
-        "value": 20.0,
-        "decimals": 3,
-        "lower_bound": 0.0,
-        "upper_bound": 100000.0
+        "setDecimals": 3,
+        "setMinimum": 0.0,
+        "setMaximum": 100000.0,
+        "setValue": 20.0
     },
     "eta_mutation": {
         "label": "\u03b7 (mutation)",
         "widget_type": "QDoubleSpinBox",
-        "value": 15.0,
-        "decimals": 3,
-        "lower_bound": 0.0,
-        "upper_bound": 100000.0
+        "setDecimals": 3,
+        "setMinimum": 0.0,
+        "setMaximum": 100000.0,
+        "setValue": 15.0
     },
     "random_seed": {
         "label": "Random Seed",
         "widget_type": "QSpinBox",
-        "value": 1,
-        "lower_bound": 0,
-        "upper_bound": 2147483647
+        "setMinimum": 0,
+        "setMaximum": 2147483647,
+        "setValue": 1
     },
     "num_processors": {
         "label": "Number of Processors",
         "widget_type": "QSpinBox",
-        "value": 27,
-        "lower_bound": 1,
-        "upper_bound": 28
+        "setMinimum": 1,
+        "setMaximum": 28,
+        "setValue": 27
     },
     "algorithm_save_frequency": {
         "label": "State Save Frequency",
         "widget_type": "QSpinBox",
-        "value": 1,
-        "lower_bound": 1,
-        "upper_bound": 1000,
-        "tool_tip": "How often to save the state of the genetic algorithm.\nA value of '1' enforces a state save every generation"
+        "setMinimum": 1,
+        "setMaximum": 1000,
+        "setValue": 1,
+        "setToolTip": "How often to save the setCheckState of the genetic algorithm.\nA setValue of '1' enforces a setCheckState save every generation"
     },
     "root_dir": {
         "label": "Opt. Root Directory:",
         "widget_type": "QLineEdit",
-        "text": "",
+        "setText": "",
         "push_button": "Choose folder",
         "push_button_action": "select_directory"
     },
     "opt_dir_name": {
         "label": "Opt. Directory Name",
         "widget_type": "QLineEdit",
-        "text": "ga_opt"
+        "setText": "ga_opt"
     },
     "temp_analysis_dir_name": {
         "label": "Temp. Analysis Dir. Name",
         "widget_type": "QLineEdit",
-        "text": "analysis_temp"
+        "setText": "analysis_temp"
     }
 }

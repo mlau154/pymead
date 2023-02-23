@@ -77,6 +77,7 @@ class MSETMultiGridWidget(QTabWidget):
                 w.setMinimum(0.0)
                 w.setMaximum(np.inf)
                 w.setValue(v2)
+                w.setSingleStep(0.01)
                 w.valueChanged.connect(partial(self.valueChanged, k1, k2))
                 w_label = QLabel(self.labels[k2], self)
                 self.widget_dict[k1][k2] = {
@@ -173,6 +174,7 @@ class XTRSWidget(QTabWidget):
                 w.setMinimum(0.0)
                 w.setMaximum(1.0)
                 w.setValue(v2)
+                w.setSingleStep(0.05)
                 w.valueChanged.connect(partial(self.valueChanged, k1, k2))
                 w_label = QLabel(self.labels[k2], self)
                 self.widget_dict[k1][k2] = {
@@ -274,12 +276,14 @@ class ADWidget(QTabWidget):
                 if k2 in ['XCDELH', 'ETAH']:
                     w.setMinimum(0.0)
                     w.setMaximum(1.0)
+                    w.setSingleStep(0.01)
                 elif k2 == 'ISDELH':
                     w.setMinimum(1)
                     w.setMaximum(100)
                 elif k2 == 'PTRHIN':
                     w.setMinimum(1.0)
                     w.setMaximum(np.inf)
+                    w.setSingleStep(0.05)
 
                 w.setValue(v2)
 

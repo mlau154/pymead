@@ -12,8 +12,9 @@ from PyQt5.QtCore import pyqtSlot, pyqtSignal
 from pymead.gui.infty_doublespinbox import InftyDoubleSpinBox
 from pymead.gui.scientificspinbox_master.ScientificDoubleSpinBox import ScientificDoubleSpinBox
 from pymead.gui.pyqt_vertical_tab_widget.pyqt_vertical_tab_widget.verticalTabWidget import VerticalTabWidget
-from pymead.gui.pymead_dialog import PymeadDialog, PymeadDialogWidget, PymeadDialogTabWidget
+from pymead.gui.pymead_dialog import PymeadDialog, PymeadDialogWidget, PymeadDialogTabWidget, PymeadMessageBox
 from pymead.gui.file_selection import *
+from pymead.utils.widget_recursion import get_parent
 import sys
 import os
 from functools import partial
@@ -31,28 +32,35 @@ from pymead import GUI_DEFAULTS_DIR
 import pyqtgraph as pg
 
 
+mses_settings_json = load_data(os.path.join(GUI_DEFAULTS_DIR, 'mses_settings.json'))
+
+
+ISMOM_CONVERSION = {item: idx + 1 for idx, item in enumerate(mses_settings_json['ISMOM']['addItems'])}
+IFFBC_CONVERSION = {item: idx + 1 for idx, item in enumerate(mses_settings_json['IFFBC']['addItems'])}
+
+
 def convert_dialog_to_mset_settings(dialog_input: dict):
-    mset_settings = {
-        'airfoil_order': dialog_input['airfoil_order']['text'].split(','),
-        'grid_bounds': dialog_input['grid_bounds']['values'],
-        'verbose': dialog_input['verbose']['state'],
-        'airfoil_analysis_dir': dialog_input['airfoil_analysis_dir']['text'],
-        'airfoil_coord_file_name': dialog_input['airfoil_coord_file_name']['text'],
-    }
-    values_list = ['airfoil_side_points', 'exp_side_points', 'inlet_pts_left_stream', 'outlet_pts_right_stream',
-                   'num_streams_top', 'num_streams_bot', 'max_streams_between', 'elliptic_param',
-                   'stag_pt_aspect_ratio', 'x_spacing_param', 'alf0_stream_gen', 'timeout']
-    for value in values_list:
-        mset_settings[value] = dialog_input[value]['value']
-    for idx, airfoil in enumerate(dialog_input['multi_airfoil_grid']['values'].values()):
-        for k, v in airfoil.items():
-            if idx == 0:
-                mset_settings[k] = [v]
-            else:
-                mset_settings[k].append(v)
+    # mset_settings = {
+    #     'airfoil_order': dialog_input['airfoil_order']['text'].split(','),
+    #     'grid_bounds': dialog_input['grid_bounds']['values'],
+    #     'verbose': dialog_input['verbose']['state'],
+    #     'airfoil_analysis_dir': dialog_input['airfoil_analysis_dir']['text'],
+    #     'airfoil_coord_file_name': dialog_input['airfoil_coord_file_name']['text'],
+    # }
+    # values_list = ['airfoil_side_points', 'exp_side_points', 'inlet_pts_left_stream', 'outlet_pts_right_stream',
+    #                'num_streams_top', 'num_streams_bot', 'max_streams_between', 'elliptic_param',
+    #                'stag_pt_aspect_ratio', 'x_spacing_param', 'alf0_stream_gen', 'timeout']
+    # for value in values_list:
+    #     mset_settings[value] = dialog_input[value]['value']
+    # for idx, airfoil in enumerate(dialog_input['multi_airfoil_grid']['values'].values()):
+    #     for k, v in airfoil.items():
+    #         if idx == 0:
+    #             mset_settings[k] = [v]
+    #         else:
+    #             mset_settings[k].append(v)
+    mset_settings = dialog_input
+    mset_settings['airfoil_order'] = dialog_input['airfoil_order'].split(',')
     mset_settings['n_airfoils'] = len(mset_settings['airfoil_order'])
-    # for k, v in mset_settings.items():
-    #     print(f"{k}: {v}")
     return mset_settings
 
 
@@ -62,58 +70,56 @@ def convert_dialog_to_mses_settings(dialog_input: dict):
         'ISPRES': 0,
         'NMODN': 0,
         'NPOSN': 0,
-        'viscous_flag': dialog_input['viscous_flag']['state'],
+        'viscous_flag': dialog_input['viscous_flag'],
         'inverse_flag': 0,
         'inverse_side': 1,
-        'verbose': dialog_input['verbose']['state'],
+        'verbose': dialog_input['verbose'],
     }
 
-    for idx, item in enumerate(dialog_input['ISMOM']['items']):
-        if dialog_input['ISMOM']['current_text'] == item:
-            mses_settings['ISMOM'] = idx + 1
-            break
+    mses_settings['ISMOM'] = ISMOM_CONVERSION[dialog_input['ISMOM']]
+    mses_settings['IFFBC'] = IFFBC_CONVERSION[dialog_input['IFFBC']]
 
-    for idx, item in enumerate(dialog_input['IFFBC']['items']):
-        if dialog_input['IFFBC']['current_text'] == item:
-            mses_settings['IFFBC'] = idx + 1
-            break
-
-    if dialog_input['AD_active']['state']:
-        mses_settings['AD_flags'] = [1 for _ in range(dialog_input['AD_number']['value'])]
+    if dialog_input['AD_active']:
+        mses_settings['AD_flags'] = [1 for _ in range(dialog_input['AD_number'])]
     else:
-        mses_settings['AD_flags'] = [0 for _ in range(dialog_input['AD_number']['value'])]
+        mses_settings['AD_flags'] = [0 for _ in range(dialog_input['AD_number'])]
 
     values_list = ['REYNIN', 'MACHIN', 'ALFAIN', 'CLIFIN', 'ACRIT', 'MCRIT', 'MUCON',
                    'timeout', 'iter']
     for value in values_list:
-        mses_settings[value] = dialog_input[value]['value']
+        mses_settings[value] = dialog_input[value]
 
-    if dialog_input['spec_alfa_Cl']['current_text'] == 'Specify Angle of Attack':
+    if dialog_input['spec_alfa_Cl'] == 'Specify Angle of Attack':
         mses_settings['target'] = 'alfa'
-    elif dialog_input['spec_alfa_Cl']['current_text'] == 'Specify Lift Coefficient':
+    elif dialog_input['spec_alfa_Cl'] == 'Specify Lift Coefficient':
         mses_settings['target'] = 'Cl'
 
-    for idx, airfoil in enumerate(dialog_input['xtrs']['values'].values()):
+    for idx, airfoil in enumerate(dialog_input['xtrs'].values()):
         for k, v in airfoil.items():
             if idx == 0:
                 mses_settings[k] = [v]
             else:
                 mses_settings[k].append(v)
 
-    # for k, v in mses_settings.items():
-    #     print(f"{k}: {v}")
+    for idx, airfoil in enumerate(dialog_input['AD'].values()):
+        for k, v in airfoil.items():
+            if idx == 0:
+                mses_settings[k] = [v]
+            else:
+                mses_settings[k].append(v)
+
+    print(f"{mses_settings = }")
+
     return mses_settings
 
 
 def convert_dialog_to_mplot_settings(dialog_input: dict):
     mplot_settings = {
-        'timeout': dialog_input['timeout']['value'],
-        'Mach': dialog_input['Mach']['state'],
-        'Grid': dialog_input['Grid']['state'],
-        'Grid_Zoom': dialog_input['Grid_Zoom']['state'],
+        'timeout': dialog_input['timeout'],
+        'Mach': dialog_input['Mach'],
+        'Grid': dialog_input['Grid'],
+        'Grid_Zoom': dialog_input['Grid_Zoom'],
     }
-    # for k, v in mplot_settings.items():
-    #     print(f"{k}: {v}")
     return mplot_settings
 
 
@@ -493,7 +499,7 @@ class SingleAirfoilViscousDialog(QDialog):
         return self.inputs
 
 
-class MultiAirfoilDialog(QDialog):
+class MultiAirfoilDialog3(QDialog):
     def __init__(self, parent):
         super().__init__(parent=parent)
 
@@ -997,11 +1003,11 @@ class MSETDialogWidget(PymeadDialogWidget):
         self.widget_dict['airfoil_analysis_dir']['widget'].setText(tempfile.gettempdir())
 
     def change_airfoil_order(self, _):
-        # if not all([a in self.widget_dict['airfoil_order']['widget'].text().split(',') for a in self.parent().mea.airfoils.keys()]):
-        #     current_airfoil_list = [a for a in self.parent().mea.airfoils.keys()]
-        # else:
-        #     current_airfoil_list = self.widget_dict['airfoil_order']['widget'].text().split(',')
-        dialog = AirfoilListDialog(self, current_airfoil_list=[a for a in ['A0', 'A1', 'A2']])
+        if not all([a in self.widget_dict['airfoil_order']['widget'].text().split(',') for a in get_parent(self, 4).mea.airfoils.keys()]):
+            current_airfoil_list = [a for a in get_parent(self, 4).mea.airfoils.keys()]
+        else:
+            current_airfoil_list = self.widget_dict['airfoil_order']['widget'].text().split(',')
+        dialog = AirfoilListDialog(self, current_airfoil_list=current_airfoil_list)
         if dialog.exec_():
             airfoil_order = dialog.getData()
             self.widget_dict['airfoil_order']['widget'].setText(','.join(airfoil_order))
@@ -1073,11 +1079,13 @@ class MSESDialogWidget(PymeadDialogWidget):
         active = new_inputs['spec_Re']
         widget_names = ['P', 'T', 'rho', 'L', 'R', 'gam']
         skip_P, skip_T, skip_rho = False, False, False
-        if new_inputs['spec_P_T_rho'] == 'Specify Pressure, Temperature' and self.widget_dict['rho']['widget'].isReadOnly():
+        if new_inputs['spec_P_T_rho'] == 'Specify Pressure, Temperature' and self.widget_dict['rho'][
+            'widget'].isReadOnly():
             skip_rho = True
         if new_inputs['spec_P_T_rho'] == 'Specify Pressure, Density' and self.widget_dict['T']['widget'].isReadOnly():
             skip_T = True
-        if new_inputs['spec_P_T_rho'] == 'Specify Temperature, Density' and self.widget_dict['P']['widget'].isReadOnly():
+        if new_inputs['spec_P_T_rho'] == 'Specify Temperature, Density' and self.widget_dict['P'][
+            'widget'].isReadOnly():
             skip_P = True
         for widget_name in widget_names:
             if not (skip_rho and widget_name == 'rho') and not (skip_P and widget_name == 'P') and not (
@@ -1099,7 +1107,8 @@ class MSESDialogWidget(PymeadDialogWidget):
             self.change_prescribed_flow_variables(new_inputs['spec_P_T_rho'])
         if w_name == 'spec_alfa_Cl':
             self.change_prescribed_aero_parameter(new_inputs['spec_alfa_Cl'])
-        if w_name in ['P', 'T', 'rho', 'R', 'gam', 'L', 'MACHIN'] and not self.widget_dict[w_name]['widget'].isReadOnly():
+        if w_name in ['P', 'T', 'rho', 'R', 'gam', 'L', 'MACHIN'] and not self.widget_dict[w_name][
+            'widget'].isReadOnly():
             if self.widget_dict['P']['widget'].isReadOnly():
                 self.widget_dict['P']['widget'].setValue(new_inputs['rho'] * new_inputs['R'] * new_inputs['T'])
             elif self.widget_dict['T']['widget'].isReadOnly():
@@ -1158,11 +1167,13 @@ class XFOILDialogWidget(PymeadDialogWidget):
         active = new_inputs['spec_Re']
         widget_names = ['P', 'T', 'rho', 'L', 'R', 'gam']
         skip_P, skip_T, skip_rho = False, False, False
-        if new_inputs['spec_P_T_rho'] == 'Specify Pressure, Temperature' and self.widget_dict['rho']['widget'].isReadOnly():
+        if new_inputs['spec_P_T_rho'] == 'Specify Pressure, Temperature' and self.widget_dict['rho'][
+            'widget'].isReadOnly():
             skip_rho = True
         if new_inputs['spec_P_T_rho'] == 'Specify Pressure, Density' and self.widget_dict['T']['widget'].isReadOnly():
             skip_T = True
-        if new_inputs['spec_P_T_rho'] == 'Specify Temperature, Density' and self.widget_dict['P']['widget'].isReadOnly():
+        if new_inputs['spec_P_T_rho'] == 'Specify Temperature, Density' and self.widget_dict['P'][
+            'widget'].isReadOnly():
             skip_P = True
         for widget_name in widget_names:
             if not (skip_rho and widget_name == 'rho') and not (skip_P and widget_name == 'P') and not (
@@ -1192,10 +1203,142 @@ class XFOILDialogWidget(PymeadDialogWidget):
                 self.calculate_and_set_Reynolds_number(new_inputs)
 
 
-class MultiAirfoilDialog2(PymeadDialog):
-    def __init__(self, parent: QWidget, window_title: str, widget: QWidget):
+class GAGeneralSettingsDialogWidget(PymeadDialogWidget):
+    def __init__(self):
+        super().__init__(settings_file=os.path.join(GUI_DEFAULTS_DIR, 'ga_general_settings.json'))
+        self.current_save_file = None
 
-        super().__init__(parent=parent, window_title=window_title, widget=widget)
+    def select_directory(self, line_edit: QLineEdit):
+        select_directory(parent=self.parent(), line_edit=line_edit)
+
+    def select_existing_jmea_file(self, line_edit: QLineEdit):
+        select_existing_jmea_file(parent=self.parent(), line_edit=line_edit)
+
+    def select_multiple_json_files(self, text_edit: QPlainTextEdit):
+        select_multiple_json_files(parent=self.parent(), text_edit=text_edit)
+
+    def save_opt_settings(self):
+        opt_file = None
+        if self.current_save_file is not None:
+            opt_file = self.current_save_file
+        if get_parent(self, 4) and get_parent(self, 4).current_settings_save_file is not None:
+            opt_file = get_parent(self, 4).current_settings_save_file
+        if opt_file is not None:
+            new_inputs = get_parent(self, 2).getInputs()  # Gets the inputs from the PymeadDialogTabWidget
+            save_data(new_inputs, opt_file)
+            get_parent(self, 2).setStatusTip(f"Settings saved ({opt_file})")
+            # msg_box = PymeadMessageBox(parent=self, msg=f"Settings saved as {self.current_save_file}",
+            #                            window_title='Save Notification', msg_mode='info')
+            # msg_box.exec()
+        else:
+            self.saveas_opt_settings()
+
+    def load_opt_settings(self):
+        load_dialog = select_existing_json_file(parent=self)
+        if load_dialog.exec_():
+            load_file = load_dialog.selectedFiles()[0]
+            new_inputs = load_data(load_file)
+            great_great_grandparent = get_parent(self, depth=4)
+            if great_great_grandparent:
+                great_great_grandparent.current_settings_save_file = load_file
+            else:
+                self.current_save_file = load_file
+            get_parent(self, 3).setWindowTitle(f"Optimization Setup - {os.path.split(load_file)[-1]}")
+            get_parent(self, 2).overrideInputs(new_inputs)  # Overrides the inputs for the whole PymeadDialogTabWidget
+            get_parent(self, 2).setStatusTip(f"Loaded {load_file}")
+
+    def saveas_opt_settings(self):
+        inputs_to_save = get_parent(self, 2).getInputs()
+        json_dialog = select_json_file(parent=self)
+        if json_dialog.exec_():
+            input_filename = json_dialog.selectedFiles()[0]
+            if not os.path.splitext(input_filename)[-1] == '.json':
+                input_filename = input_filename + '.json'
+            save_data(inputs_to_save, input_filename)
+            if get_parent(self, 4):
+                get_parent(self, 4).current_settings_save_file = input_filename
+            else:
+                self.current_save_file = input_filename
+            get_parent(self, 3).setStatusTip(f"Saved optimization settings to {input_filename}")
+            print(f"{get_parent(self, 3) = }")
+
+    def updateDialog(self, new_inputs: dict, w_name: str):
+        pass
+
+
+class GeneticAlgorithmDialogWidget(PymeadDialogWidget):
+    def __init__(self):
+        super().__init__(settings_file=os.path.join(GUI_DEFAULTS_DIR, 'genetic_algorithm_settings.json'))
+
+    def select_directory(self, line_edit: QLineEdit):
+        select_directory(parent=self.parent(), line_edit=line_edit)
+
+    def updateDialog(self, new_inputs: dict, w_name: str):
+        pass
+
+
+class GAConstraintsTerminationDialogWidget(PymeadDialogWidget):
+    def __init__(self):
+        super().__init__(settings_file=os.path.join(GUI_DEFAULTS_DIR, 'ga_constraints_termination_settings.json'))
+
+    def select_data_file(self, line_edit: QLineEdit):
+        select_data_file(parent=self.parent(), line_edit=line_edit)
+
+    def updateDialog(self, new_inputs: dict, w_name: str):
+        pass
+
+
+class GASaveLoadDialogWidget(PymeadDialogWidget):
+    def __init__(self):
+        super().__init__(settings_file=os.path.join(GUI_DEFAULTS_DIR, 'ga_save_load_settings.json'))
+        self.current_save_file = None
+
+    def select_json_file(self, line_edit: QLineEdit):
+        select_json_file(parent=self.parent(), line_edit=line_edit)
+
+    def select_existing_json_file(self, line_edit: QLineEdit):
+        select_existing_json_file(parent=self.parent(), line_edit=line_edit)
+
+    def select_directory(self, line_edit: QLineEdit):
+        select_directory(parent=self.parent(), line_edit=line_edit)
+
+    def save_opt_settings(self):
+        if self.current_save_file is not None:
+            new_inputs = self.parent().getInputs()  # Gets the inputs from the PymeadDialogTabWidget
+            save_data(new_inputs, self.current_save_file)
+            msg_box = PymeadMessageBox(parent=self, msg=f"Settings saved as {self.current_save_file}",
+                                       window_title='Save Notification', msg_mode='info')
+            msg_box.exec()
+        else:
+            self.saveas_opt_settings()
+
+    def load_opt_settings(self):
+        new_inputs = load_data(self.widget_dict['settings_load_dir']['widget'].text())
+        self.current_save_file = new_inputs['Save/Load']['settings_save_dir']
+        self.parent().overrideInputs(new_inputs)  # Overrides the inputs for the whole PymeadDialogTabWidget
+
+    def saveas_opt_settings(self):
+        inputs_to_save = self.parent().getInputs()
+        input_filename = os.path.join(self.widget_dict['settings_saveas_dir']['widget'].text(),
+                                      self.widget_dict['settings_saveas_filename']['widget'].text())
+        save_data(inputs_to_save, input_filename)
+        self.current_save_file = input_filename
+        msg_box = PymeadMessageBox(parent=self, msg=f"Settings saved as {input_filename}",
+                                   window_title='Save Notification', msg_mode='info')
+        msg_box.exec()
+
+    def updateDialog(self, new_inputs: dict, w_name: str):
+        pass
+
+
+class MultiAirfoilDialog(PymeadDialog):
+    def __init__(self, parent: QWidget):
+        w3 = PymeadDialogWidget(os.path.join(GUI_DEFAULTS_DIR, 'mplot_settings.json'))
+        w2 = MSETDialogWidget()
+        # w2.airfoilOrderChanged.connect(self.airfoil_order_changed)
+        w4 = MSESDialogWidget(mset_dialog_widget=w2)
+        w = PymeadDialogTabWidget(parent=None, widgets={'MSET': w2, 'MSES': w4, 'MPLOT': w3})
+        super().__init__(parent=parent, window_title="Multi-Element-Airfoil Analysis", widget=w)
 
 
 class SettingsDialog(QDialog):
@@ -1487,7 +1630,7 @@ class OptimizationSetupDialog(QDialog):
     def enable_disable_from_checkbox(self, key1: str, key2: str):
         widget = self.widget_dict[key1][key2]['widget']
         if 'widgets_to_enable' in self.inputs[key1][key2].keys() and widget.checkState() or (
-            'widgets_to_disable' in self.inputs[key1][key2].keys() and not widget.checkState()
+                'widgets_to_disable' in self.inputs[key1][key2].keys() and not widget.checkState()
         ):
             enable_disable_key = 'widgets_to_enable' if 'widgets_to_enable' in self.inputs[
                 key1][key2].keys() else 'widgets_to_disable'
@@ -1502,7 +1645,7 @@ class OptimizationSetupDialog(QDialog):
                 else:
                     dict_to_enable['widget'].setEnabled(True)
         elif 'widgets_to_enable' in self.inputs[key1][key2].keys() and not widget.checkState() or (
-            'widgets_to_disable' in self.inputs[key1][key2].keys() and widget.checkState()
+                'widgets_to_disable' in self.inputs[key1][key2].keys() and widget.checkState()
         ):
             enable_disable_key = 'widgets_to_enable' if 'widgets_to_enable' in self.inputs[
                 key1][key2].keys() else 'widgets_to_disable'
@@ -1517,7 +1660,8 @@ class OptimizationSetupDialog(QDialog):
                 else:
                     dict_to_enable['widget'].setEnabled(False)
 
-    def dict_connection(self, widget: QLineEdit | QSpinBox | QDoubleSpinBox | ScientificDoubleSpinBox | QComboBox | QCheckBox,
+    def dict_connection(self,
+                        widget: QLineEdit | QSpinBox | QDoubleSpinBox | ScientificDoubleSpinBox | QComboBox | QCheckBox,
                         key1: str, key2: str):
         if isinstance(widget, QLineEdit):
             self.inputs[key1][key2]['text'] = widget.text()
@@ -2156,6 +2300,7 @@ class AirfoilPlotDialog(QDialog):
 class AirfoilListView(QListView):
     """Class created from
     https://stackoverflow.com/questions/52873025/pyqt5-qlistview-drag-and-drop-creates-new-hidden-items"""
+
     def __init__(self, parent: QWidget, airfoil_list: list):
         super().__init__(parent=parent)
         self.airfoil_list = airfoil_list
