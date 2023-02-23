@@ -1,0 +1,46 @@
+{
+    "settings_load_dir": {
+        "label": "Settings File (Load)",
+        "widget_type": "QLineEdit",
+        "push_button": "Choose file",
+        "push_button_action": "select_existing_json_file",
+        "setText": ""
+    },
+    "load_settings": {
+        "label": "Load Settings File",
+        "widget_type": "QPushButton",
+        "click_connect": "load_opt_settings",
+        "button_title": "Load"
+    },
+    "settings_save_dir": {
+        "label": "Settings File (Save)",
+        "widget_type": "QLineEdit",
+        "push_button": "Choose file",
+        "push_button_action": "select_json_file",
+        "setText": ""
+    },
+    "save_settings": {
+        "label": "Save Settings File",
+        "widget_type": "QPushButton",
+        "click_connect": "save_opt_settings",
+        "button_title": "Save"
+    },
+    "settings_saveas_dir": {
+        "label": "Settings Dir (Save As)",
+        "widget_type": "QLineEdit",
+        "push_button": "Choose folder",
+        "push_button_action": "select_directory",
+        "setText": ""
+    },
+    "settings_saveas_filename": {
+        "label": "Settings Filename (Save As)",
+        "widget_type": "QLineEdit",
+        "setText": "opt_settings.json"
+    },
+    "saveas_settings": {
+        "label": "Save Settings File As",
+        "widget_type": "QPushButton",
+        "click_connect": "saveas_opt_settings",
+        "button_title": "Save As"
+    }
+}

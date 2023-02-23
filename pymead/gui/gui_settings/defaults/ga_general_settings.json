@@ -1,4 +1,22 @@
 {
+    "save": {
+        "label": "Save",
+        "widget_type": "QPushButton",
+        "setText": "Save Settings",
+        "clicked_connect": "save_opt_settings"
+    },
+    "save_as": {
+        "label": "Save As",
+        "widget_type": "QPushButton",
+        "setText": "Save Settings As...",
+        "clicked_connect": "saveas_opt_settings"
+    },
+    "load": {
+        "label": "Load",
+        "widget_type": "QPushButton",
+        "setText": "Load Settings File",
+        "clicked_connect": "load_opt_settings"
+    },
     "warm_start_active": {
         "label": "Warm Start Active?",
         "setCheckState": 0,

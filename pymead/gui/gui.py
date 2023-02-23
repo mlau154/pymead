@@ -87,6 +87,7 @@ class GUI(QMainWindow):
         self.mset_settings = None
         self.mses_settings = None
         self.mplot_settings = None
+        self.current_settings_save_file = None
         self.objectives = []
         self.constraints = []
         self.airfoil_name_list = []
@@ -514,6 +515,7 @@ class GUI(QMainWindow):
             inputs = None
 
         if inputs is not None:
+            print(f"{inputs = }")
             mset_settings = convert_dialog_to_mset_settings(inputs['MSET'])
             mses_settings = convert_dialog_to_mses_settings(inputs['MSES'])
             mses_settings['n_airfoils'] = mset_settings['n_airfoils']

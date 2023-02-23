@@ -16,6 +16,7 @@
         "setMaximum": Infinity,
         "setDecimals": 16,
         "setValue": 15492705.8044970352202654,
+        "setSingleStep": 10000,
         "setReadOnly": true
     },
     "MACHIN": {
@@ -24,6 +25,7 @@
         "setMinimum": 0.0,
         "setMaximum": Infinity,
         "setValue": 0.7,
+        "setSingleStep": 0.01,
         "setDecimals": 16
     },
     "spec_P_T_rho": {
@@ -43,6 +45,7 @@
         "setMaximum": Infinity,
         "setDecimals": 16,
         "setValue": 101325.0,
+        "setSingleStep": 1.0,
         "setReadOnly": false
     },
     "T": {
@@ -52,6 +55,7 @@
         "setMaximum": Infinity,
         "setDecimals": 16,
         "setValue": 300,
+        "setSingleStep": 1.0,
         "setReadOnly": false
     },
     "rho": {
@@ -61,6 +65,7 @@
         "setMaximum": Infinity,
         "setDecimals": 16,
         "setValue": 1.1768292682926829,
+        "setSingleStep": 0.01,
         "setReadOnly": true
     },
     "gam": {
@@ -69,6 +74,7 @@
         "setMinimum": 0.001,
         "setMaximum": Infinity,
         "setDecimals": 16,
+        "setSingleStep": 0.01,
         "setValue": 1.4
     },
     "L": {
@@ -77,6 +83,7 @@
         "setMinimum": 0.0,
         "setMaximum": Infinity,
         "setValue": 1.0,
+        "setSingleStep": 0.1,
         "setDecimals": 16
     },
     "R": {
@@ -85,6 +92,7 @@
         "setMinimum": 0.001,
         "setMaximum": Infinity,
         "setDecimals": 16,
+        "setSingleStep": 1.0,
         "setValue": 287.05
     },
     "spec_alfa_Cl": {
@@ -103,6 +111,7 @@
         "setMaximum": Infinity,
         "setDecimals": 16,
         "setValue": 0.0,
+        "setSingleStep": 1.0,
         "setReadOnly": false
     },
     "CLIFIN": {
@@ -112,6 +121,7 @@
         "setMaximum": Infinity,
         "setDecimals": 16,
         "setValue": 0.0,
+        "setSingleStep": 0.1,
         "setReadOnly": true
     },
     "ISMOM": {
@@ -151,7 +161,8 @@
         "setMinimum": 0.0,
         "setMaximum": 1.0,
         "setDecimals": 4,
-        "setValue": 0.95
+        "setValue": 0.95,
+        "setSingleStep": 0.01
     },
     "MUCON": {
         "label": "Artificial Dissipation",
@@ -159,7 +170,8 @@
         "setMinimum": 1.0,
         "setMaximum": Infinity,
         "setDecimals": 4,
-        "setValue": 1.05
+        "setValue": 1.05,
+        "setSingleStep": 0.01
     },
     "timeout": {
         "label": "Timeout",

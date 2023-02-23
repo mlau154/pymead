@@ -184,6 +184,7 @@ def calculate_aero_data(airfoil_coord_dir: str, airfoil_name: str, mea: MEA, mea
 
 
 def run_mset(name: str, base_dir: str, mset_settings: dict, mea: MEA):
+    print(f"{mset_settings['airfoil_order'] = }")
     write_blade_file(name, base_dir, mset_settings['grid_bounds'], mea, mset_settings['airfoil_order'])
     write_gridpar_file(name, base_dir, mset_settings)
     mset_input_name = 'mset_input.txt'
@@ -315,7 +316,6 @@ def run_mplot(name: str, base_dir: str, mplot_settings: dict, mode: str = "force
 
 
 def write_blade_file(name: str, base_dir: str, grid_bounds, mea: MEA, airfoil_order: typing.List[str]):
-
     if not os.path.exists(os.path.join(base_dir, name)):  # if specified directory doesn't exist,
         os.mkdir(os.path.join(base_dir, name))  # create it
     blade_file = os.path.join(base_dir, name, 'blade.' + name)  # blade file stored as
@@ -360,14 +360,16 @@ def write_gridpar_file(name: str, base_folder: str, mset_settings: dict):
         f.write(f"{mset_settings['x_spacing_param']}\n")
         f.write(f"{mset_settings['alf0_stream_gen']}\n")
 
-        for idx in range(mset_settings['n_airfoils']):
-            f.write(f"{mset_settings['dsLE_dsAvg'][idx]} {mset_settings['dsTE_dsAvg'][idx]} "
-                    f"{mset_settings['curvature_exp'][idx]}\n")
+        multi_airfoil_grid = mset_settings['multi_airfoil_grid']
 
-        for idx in range(mset_settings['n_airfoils']):
-            f.write(f"{mset_settings['U_s_smax_min'][idx]} {mset_settings['U_s_smax_max'][idx]} "
-                    f"{mset_settings['L_s_smax_min'][idx]} {mset_settings['L_s_smax_max'][idx]} "
-                    f"{mset_settings['U_local_avg_spac_ratio'][idx]} {mset_settings['L_local_avg_spac_ratio'][idx]}\n")
+        for a in mset_settings['airfoil_order']:
+            f.write(f"{multi_airfoil_grid[a]['dsLE_dsAvg']} {multi_airfoil_grid[a]['dsTE_dsAvg']} "
+                    f"{multi_airfoil_grid[a]['curvature_exp']}\n")
+
+        for a in mset_settings['airfoil_order']:
+            f.write(f"{multi_airfoil_grid[a]['U_s_smax_min']} {multi_airfoil_grid[a]['U_s_smax_max']} "
+                    f"{multi_airfoil_grid[a]['L_s_smax_min']} {multi_airfoil_grid[a]['L_s_smax_max']} "
+                    f"{multi_airfoil_grid[a]['U_local_avg_spac_ratio']} {multi_airfoil_grid[a]['L_local_avg_spac_ratio']}\n")
 
     return gridpar_file
 
@@ -381,13 +383,6 @@ def write_mses_file(name: str, base_folder: str, mses_settings: dict):
     # ============= Reynolds number calculation =====================
     if not bool(F['viscous_flag']):
         F['REYNIN'] = 0.0
-    else:
-        if 'REYNIN' in F.keys() and F['REYNIN'] is not None:
-            pass
-        else:
-            F['V'] = F['MACHIN'] * sqrt(F['gam'] * F['R'] * F['T'])
-            F['nu'] = viscosity_calculator(F['T'], rho=F['rho'])  # calculate kinematic viscosity
-            F['REYNIN'] = F['V'] * F['L'] / F['nu']
 
     if F['inverse_side'] % 2 != 0:
         F['ISMOVE'] = 1
