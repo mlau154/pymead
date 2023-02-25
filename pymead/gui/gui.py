@@ -83,10 +83,8 @@ class GUI(QMainWindow):
         self.dialog = None
         self.save_attempts = 0
         self.opt_settings = None
+        self.multi_airfoil_analysis_settings = None
         self.xfoil_settings = None
-        self.mset_settings = None
-        self.mses_settings = None
-        self.mplot_settings = None
         self.current_settings_save_file = None
         self.objectives = []
         self.constraints = []
@@ -229,7 +227,11 @@ class GUI(QMainWindow):
                         action_parent.addAction(action)
                     else:
                         raise ValueError('Attempted to add QAction to an object not of type QMenu')
-                    action.triggered.connect(getattr(self, val))
+                    if isinstance(val, list):
+                        action.triggered.connect(getattr(self, val[0]))
+                        action.setShortcut(val[1])
+                    else:
+                        action.triggered.connect(getattr(self, val))
 
         recursively_add_menus(menu_data, self.menu_bar)
 
@@ -405,7 +407,10 @@ class GUI(QMainWindow):
                 save_data(coord_dict, f_)
             else:
                 with open(f_, 'w') as f:
-                    f.write(f"{inputs['header']}\n")
+                    new_line = ""
+                    if len(inputs['header']) > 0:
+                        new_line = '\n'
+                    f.write(f"{inputs['header']}{new_line}")
                     for idx, a in enumerate(airfoils):
                         airfoil = self.mea.airfoils[a]
                         coords = airfoil.get_coords(body_fixed_csys=False)
@@ -508,14 +513,15 @@ class GUI(QMainWindow):
             self.disp_message_box('MPLOT suite executable \'mplot\' not found on system path')
             return
 
-        self.dialog = MultiAirfoilDialog(parent=self)
+        self.dialog = MultiAirfoilDialog(parent=self, settings_override=self.multi_airfoil_analysis_settings)
         if self.dialog.exec():
             inputs = self.dialog.getInputs()
+            self.multi_airfoil_analysis_settings = inputs
         else:
             inputs = None
+            self.multi_airfoil_analysis_settings = self.dialog.getInputs()
 
         if inputs is not None:
-            print(f"{inputs = }")
             mset_settings = convert_dialog_to_mset_settings(inputs['MSET'])
             mses_settings = convert_dialog_to_mses_settings(inputs['MSES'])
             mses_settings['n_airfoils'] = mset_settings['n_airfoils']
@@ -959,7 +965,7 @@ class GUI(QMainWindow):
 
                 # evaluate (objective function value arrays must be numpy column vectors)
                 X = pop.get("X")
-                print(f"{len(X) = }")
+                # print(f"{len(X) = }")
                 new_X = None
                 J = None
                 G = None

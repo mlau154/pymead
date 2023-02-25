@@ -221,12 +221,12 @@ class MainIconToolbar(QToolBar):
     def constrain_position(self):
 
         def get_grandchild(param_tree, child_list: list, param_name: str = None):
-            print(f"{target_list = }")
+            # print(f"{target_list = }")
             current_param = param_tree.child(target_list[0])
-            print(f"{current_param = }")
+            # print(f"{current_param = }")
             for idx in range(1, len(child_list)):
                 current_param = current_param.child(child_list[idx])
-            print(f"Now, {current_param = }")
+            # print(f"Now, {current_param = }")
             if param_name is not None:
                 full_param_name = f"{'.'.join(child_list)}.{param_name}"
                 return current_param.child(full_param_name)

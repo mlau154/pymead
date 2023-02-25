@@ -193,8 +193,9 @@ class Airfoil:
         self.anchor_points[order_idx + 1].previous_anchor_point = ap.tag
         self.anchor_point_order.insert(order_idx + 1, ap.tag)
         self.anchor_points.insert(order_idx + 1, ap)
-        if self.anchor_point_order[order_idx + 1] == 'te_2':
+        if self.anchor_point_order[order_idx + 2] == 'te_2':
             self.N[ap.tag] = 4
+            self.N[self.anchor_point_order[order_idx]] = 5
         else:
             self.N[ap.tag] = 5
         if ap.previous_anchor_point == 'le':

@@ -125,7 +125,8 @@
                 "L_s_smax_max": 1,
                 "U_local_avg_spac_ratio": 0,
                 "L_local_avg_spac_ratio": 0
-            }
+            },
+            "airfoil_order": ["A0"]
         },
         "column": 4,
         "rowSpan": 7,
