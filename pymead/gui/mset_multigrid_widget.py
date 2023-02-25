@@ -17,7 +17,8 @@ def default_input_dict():
             'L_s_smax_max': 1,
             'U_local_avg_spac_ratio': 0,
             'L_local_avg_spac_ratio': 0,
-        }
+        },
+        'airfoil_order': ['A0'],
     }
     return input_dict
 
@@ -27,7 +28,8 @@ def default_inputs_XTRS():
         'A0': {
             'XTRSupper': 1.0,
             'XTRSlower': 1.0,
-        }
+        },
+        'airfoil_order': ['A0'],
     }
     return input_dict
 
@@ -61,8 +63,8 @@ class MSETMultiGridWidget(QTabWidget):
             'U_local_avg_spac_ratio': 'U Local Avg. Spac. Ratio',
             'L_local_avg_spac_ratio': 'L Local Avg. Spac. Ratio',
         }
-        self.tab_names = ['A0']
         self.input_dict = default_input_dict()
+        self.tab_names = self.input_dict['airfoil_order']
         self.widget_dict = {}
         self.grid_widget = None
         self.grid_layout = None
@@ -71,19 +73,20 @@ class MSETMultiGridWidget(QTabWidget):
 
     def generateWidgets(self):
         for k1, v1 in self.input_dict.items():
-            self.widget_dict[k1] = {}
-            for k2, v2 in v1.items():
-                w = QDoubleSpinBox(self)
-                w.setMinimum(0.0)
-                w.setMaximum(np.inf)
-                w.setValue(v2)
-                w.setSingleStep(0.01)
-                w.valueChanged.connect(partial(self.valueChanged, k1, k2))
-                w_label = QLabel(self.labels[k2], self)
-                self.widget_dict[k1][k2] = {
-                    'widget': w,
-                    'label': w_label,
-                }
+            if k1 != 'airfoil_order':
+                self.widget_dict[k1] = {}
+                for k2, v2 in v1.items():
+                    w = QDoubleSpinBox(self)
+                    w.setMinimum(0.0)
+                    w.setMaximum(np.inf)
+                    w.setValue(v2)
+                    w.setSingleStep(0.01)
+                    w.valueChanged.connect(partial(self.valueChanged, k1, k2))
+                    w_label = QLabel(self.labels[k2], self)
+                    self.widget_dict[k1][k2] = {
+                        'widget': w,
+                        'label': w_label,
+                    }
 
     def regenerateWidgets(self):
         self.generateWidgets()
@@ -107,6 +110,7 @@ class MSETMultiGridWidget(QTabWidget):
         self.regenerateWidgets()
 
     def onAirfoilListChanged(self, new_airfoil_name_list: list):
+        self.input_dict['airfoil_order'] = new_airfoil_name_list
         if len(new_airfoil_name_list) > len(self.tab_names):
             self.onAirfoilAdded(new_airfoil_name_list)
         elif len(new_airfoil_name_list) < len(self.tab_names):
@@ -136,9 +140,15 @@ class MSETMultiGridWidget(QTabWidget):
         self.addTab(self.grid_widget, name)
 
     def setValues(self, values: dict):
-        for k1, v1 in values.items():
-            for k2, v2 in v1.items():
-                self.widget_dict[k1][k2]['widget'].setValue(v2)
+        self.input_dict = deepcopy(values)
+        if self.input_dict['airfoil_order'] != self.tab_names:  # This only happens when re-loading the dialog
+            self.updateTabNames(self.input_dict['airfoil_order'])
+            self.regenerateWidgets()  # This function already sets the values, thus the else statement
+        else:
+            for k1, v1 in values.items():
+                if k1 != 'airfoil_order':
+                    for k2, v2 in v1.items():
+                        self.widget_dict[k1][k2]['widget'].setValue(v2)
 
     def values(self):
         return self.input_dict
@@ -158,8 +168,8 @@ class XTRSWidget(QTabWidget):
             'XTRSupper': 'XTRSupper',
             'XTRSlower': 'XTRSlower',
         }
-        self.tab_names = ['A0']
         self.input_dict = default_inputs_XTRS()
+        self.tab_names = self.input_dict['airfoil_order']
         self.widget_dict = {}
         self.grid_widget = None
         self.grid_layout = None
@@ -168,19 +178,20 @@ class XTRSWidget(QTabWidget):
 
     def generateWidgets(self):
         for k1, v1 in self.input_dict.items():
-            self.widget_dict[k1] = {}
-            for k2, v2 in v1.items():
-                w = QDoubleSpinBox(self)
-                w.setMinimum(0.0)
-                w.setMaximum(1.0)
-                w.setValue(v2)
-                w.setSingleStep(0.05)
-                w.valueChanged.connect(partial(self.valueChanged, k1, k2))
-                w_label = QLabel(self.labels[k2], self)
-                self.widget_dict[k1][k2] = {
-                    'widget': w,
-                    'label': w_label,
-                }
+            if k1 != 'airfoil_order':
+                self.widget_dict[k1] = {}
+                for k2, v2 in v1.items():
+                    w = QDoubleSpinBox(self)
+                    w.setMinimum(0.0)
+                    w.setMaximum(1.0)
+                    w.setValue(v2)
+                    w.setSingleStep(0.05)
+                    w.valueChanged.connect(partial(self.valueChanged, k1, k2))
+                    w_label = QLabel(self.labels[k2], self)
+                    self.widget_dict[k1][k2] = {
+                        'widget': w,
+                        'label': w_label,
+                    }
 
     def regenerateWidgets(self):
         self.generateWidgets()
@@ -204,6 +215,7 @@ class XTRSWidget(QTabWidget):
         self.regenerateWidgets()
 
     def onAirfoilListChanged(self, new_airfoil_name_list: list):
+        self.input_dict['airfoil_order'] = new_airfoil_name_list
         if len(new_airfoil_name_list) > len(self.tab_names):
             self.onAirfoilAdded(new_airfoil_name_list)
         elif len(new_airfoil_name_list) < len(self.tab_names):
@@ -233,9 +245,15 @@ class XTRSWidget(QTabWidget):
         self.addTab(self.grid_widget, name)
 
     def setValues(self, values: dict):
-        for k1, v1 in values.items():
-            for k2, v2 in v1.items():
-                self.widget_dict[k1][k2]['widget'].setValue(v2)
+        self.input_dict = deepcopy(values)
+        if self.input_dict['airfoil_order'] != self.tab_names:  # This only happens when re-loading the dialog
+            self.updateTabNames(self.input_dict['airfoil_order'])
+            self.regenerateWidgets()  # This function already sets the values, thus the else statement
+        else:
+            for k1, v1 in values.items():
+                if k1 != 'airfoil_order':
+                    for k2, v2 in v1.items():
+                        self.widget_dict[k1][k2]['widget'].setValue(v2)
 
     def values(self):
         return self.input_dict
@@ -345,6 +363,8 @@ class ADWidget(QTabWidget):
         self.addTab(self.grid_widget, name)
 
     def setValues(self, values: dict):
+        self.updateTabNames([k for k in values.keys()])
+        self.regenerateWidgets()
         for k1, v1 in values.items():
             for k2, v2 in v1.items():
                 self.widget_dict[k1][k2]['widget'].setValue(v2)

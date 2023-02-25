@@ -214,7 +214,8 @@
             "A0": {
                 "XTRSupper": 1.0,
                 "XTRSlower": 1.0
-            }
+            },
+            "airfoil_order": ["A0"]
         },
         "column": 4,
         "rowSpan": 3,

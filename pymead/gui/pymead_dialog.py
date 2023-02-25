@@ -158,11 +158,13 @@ class PymeadDialogWidget(QWidget):
 
 
 class PymeadDialogTabWidget(VerticalTabWidget):
-    def __init__(self, parent, widgets: dict):
+    def __init__(self, parent, widgets: dict, settings_override: dict = None):
         super().__init__(parent=parent)
         self.w_dict = widgets
         for k, v in self.w_dict.items():
             self.addTab(v, k)
+        if settings_override is not None:
+            self.overrideInputs(settings_override)
 
     def overrideInputs(self, new_values: dict):
         for k, v in new_values.items():

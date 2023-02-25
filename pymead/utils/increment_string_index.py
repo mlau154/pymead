@@ -31,7 +31,7 @@ def increment_string_index(s: str):
 
 def max_string_index_plus_one(str_list: typing.List[str]):
     if str_list and len(str_list) > 0:
-        print(f"{str_list = }")
+        # print(f"{str_list = }")
         idx_list = [int([ch for ch in s if ch.isnumeric()][0]) for s in str_list]
         return 'FP' + str(max(idx_list) + 1)
     else:

@@ -127,7 +127,7 @@ class MEAParameters(pTypes.GroupParameter):
                     self.child(airfoil.tag).child('FreePoints').child(ap_key).child(
                         fp_key).addChild(pg_param)
                     pg_param.setValue([pg_param.airfoil_param.value[0], pg_param.airfoil_param.value[1]])
-                print(f"{self.child(airfoil.tag).child('FreePoints').child(ap_key).child(fp_key).children() = }")
+                # print(f"{self.child(airfoil.tag).child('FreePoints').child(ap_key).child(fp_key).children() = }")
 
 
 class AirfoilParameter(pTypes.SimpleParameter):
@@ -217,7 +217,7 @@ class MEAParamTree:
             for child in child_list:
                 if hasattr(child, 'airfoil_param'):
                     if child.airfoil_param.func_str is not None:
-                        print(f'{child.airfoil_param.name = }')
+                        # print(f'{child.airfoil_param.name = }')
                         self.add_equation_box(child, child.airfoil_param.func_str)
                         self.update_equation(child.child('Equation Definition'), child.airfoil_param.func_str)
                 else:

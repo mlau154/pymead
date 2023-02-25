@@ -1,8 +1,8 @@
 {
   "File": {
-    "Open": "load_mea",
+    "Open": ["load_mea", "Ctrl+O"],
     "Save As": "save_as_mea",
-    "Save": "save_mea",
+    "Save": ["save_mea", "Ctrl+S"],
     "Import": {
       "Parameter List": "import_parameter_list"
     },
@@ -17,13 +17,13 @@
   },
   "Analysis": {
     "Single Airfoil": {
-      "Inviscid": "single_airfoil_inviscid_analysis",
-      "Viscous": "single_airfoil_viscous_analysis"
+      "Inviscid": ["single_airfoil_inviscid_analysis", "Ctrl+Alt+I"],
+      "Viscous": ["single_airfoil_viscous_analysis", "Ctrl+Alt+V"]
     },
-    "Multi-Element Airfoil": "multi_airfoil_analysis_setup"
+    "Multi-Element Airfoil": ["multi_airfoil_analysis_setup", "Ctrl+Alt+A"]
   },
   "Optimization": {
-    "Run": "setup_optimization"
+    "Run": ["setup_optimization", "Ctrl+Alt+O"]
   },
   "Tools": {
     "Plot Airfoil from AirfoilTools": "plot_airfoil_from_airfoiltools",
