@@ -91,7 +91,9 @@ class GUI(QMainWindow):
         self.multi_airfoil_analysis_settings = None
         self.xfoil_settings = None
         self.current_settings_save_file = None
+        self.current_theme = "dark"
         self.cbar = None
+        self.cbar_label_attrs = None
         self.default_field_dir = None
         self.objectives = []
         self.constraints = []
@@ -207,16 +209,24 @@ class GUI(QMainWindow):
         #     dw.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.MinimumExpanding)
 
     def set_dark_mode(self):
+        self.current_theme = "dark"
         self.setStyleSheet("background-color: #3e3f40; color: #dce1e6; font-family: DejaVu; font-size: 12px;")
         for dock_widget in self.dockable_tab_window.dock_widgets:
             if hasattr(dock_widget.widget(), 'setBackground'):
                 dock_widget.widget().setBackground('#2a2a2b')
+        if self.cbar is not None and self.cbar_label_attrs is not None:
+            self.cbar_label_attrs['color'] = '#dce1e6'
+            self.cbar.setLabel(**self.cbar_label_attrs)
 
     def set_light_mode(self):
+        self.current_theme = "light"
         self.setStyleSheet("font-family: DejaVu; font-size: 12px;")
         for dock_widget in self.dockable_tab_window.dock_widgets:
             if hasattr(dock_widget.widget(), 'setBackground'):
                 dock_widget.widget().setBackground('w')
+        if self.cbar is not None and self.cbar_label_attrs is not None:
+            self.cbar_label_attrs['color'] = '#000000'
+            self.cbar.setLabel(**self.cbar_label_attrs)
 
     def set_title_and_icon(self):
         self.setWindowTitle("pymead")
@@ -340,6 +350,7 @@ class GUI(QMainWindow):
         if self.cbar is not None:
             self.w.removeItem(self.cbar)
             self.cbar = None
+            self.cbar_label_attrs = None
 
     def plot_field(self):
 
@@ -421,7 +432,8 @@ class GUI(QMainWindow):
             gray_color_mesh_items.append(vBox.addItem(gray_color_item))
 
         for child in self.v.allChildItems():
-            if hasattr(child, 'setZValue') and not isinstance(child, pg.PColorMeshItem) and not isinstance(child, PymeadPColorMeshItem):
+            if hasattr(child, 'setZValue') and not isinstance(child, pg.PColorMeshItem) \
+                    and not isinstance(child, PymeadPColorMeshItem):
                 child.setZValue(5)
 
         bar = pg.ColorBarItem(
@@ -432,11 +444,18 @@ class GUI(QMainWindow):
             orientation='v',
             pen='#8888FF', hoverPen='#EEEEFF', hoverBrush='#EEEEFF80'
         )
-        bar.setLabel(axis='right', text=flow_var_label[inputs['flow_variable']], **{'font-size': '12pt',
-                                                                                    'color': '#ffffff'})
+        self.cbar_label_attrs = {
+            'axis': 'right',
+            'text': flow_var_label[inputs['flow_variable']],
+            'font-size': '12pt',
+        }
+        if self.current_theme == "dark":
+            self.cbar_label_attrs['color'] = '#dce1e6'
+        elif self.current_theme == "light":
+            self.cbar_label_attrs['color'] = '#000000'
+        bar.setLabel(**self.cbar_label_attrs)
         self.cbar = bar
         self.w.addItem(bar)
-        pcmi.disableAutoLevels()
 
         def on_levels_changed(cbar):
             pcmi.setLevels(cbar.levels())
