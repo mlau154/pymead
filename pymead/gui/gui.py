@@ -16,6 +16,7 @@ from pymead import RESOURCE_DIR
 from pymead.gui.input_dialog import SingleAirfoilViscousDialog, LoadDialog, SaveAsDialog, OptimizationSetupDialog, \
     MultiAirfoilDialog, ColorInputDialog, ExportCoordinatesDialog, ExportControlPointsDialog, AirfoilPlotDialog, \
     AirfoilMatchingDialog, MSESFieldPlotDialog
+from pymead.gui.pymeadPColorMeshItem import PymeadPColorMeshItem
 from pymead.gui.analysis_graph import AnalysisGraph
 from pymead.gui.parameter_tree import MEAParamTree
 from pymead.utils.airfoil_matching import match_airfoil
@@ -90,6 +91,8 @@ class GUI(QMainWindow):
         self.multi_airfoil_analysis_settings = None
         self.xfoil_settings = None
         self.current_settings_save_file = None
+        self.cbar = None
+        self.default_field_dir = None
         self.objectives = []
         self.constraints = []
         self.airfoil_name_list = []
@@ -332,12 +335,15 @@ class GUI(QMainWindow):
 
     def clear_field(self):
         for child in self.v.allChildItems():
-            if isinstance(child, pg.PColorMeshItem):
+            if isinstance(child, pg.PColorMeshItem) or isinstance(child, PymeadPColorMeshItem):
                 self.v.getViewBox().removeItem(child)
+        if self.cbar is not None:
+            self.w.removeItem(self.cbar)
+            self.cbar = None
 
     def plot_field(self):
 
-        dlg = MSESFieldPlotDialog(parent=self)
+        dlg = MSESFieldPlotDialog(parent=self, default_field_dir=self.default_field_dir)
         if dlg.exec_():
             inputs = dlg.getInputs()
         else:
@@ -360,9 +366,10 @@ class GUI(QMainWindow):
             self.disp_message_box(message=f"Grid statistics log {grid_file} not found", message_mode='error')
             return
 
+        self.default_field_dir = analysis_dir
+
         data = np.loadtxt(field_file, skiprows=2)
         grid = read_grid_stats_from_mses(grid_file)
-        # print(f"{grid = }")
 
         with open(field_file, 'r') as f:
             lines = f.readlines()
@@ -374,14 +381,18 @@ class GUI(QMainWindow):
 
         n_streamwise_lines = int(data.shape[0] / n_streamlines)
 
-        # xyM = []
-        # for idx in [0, 1, 4, 5, 7]:
-        #     xyM.append(field[:, idx])
-        # xyM = np.array(xyM).T
         x = data[:, 0].reshape(n_streamlines, n_streamwise_lines).T
         y = data[:, 1].reshape(n_streamlines, n_streamwise_lines).T
 
         flow_var_idx = {'M': 7, 'Cp': 8, 'p': 5, 'rho': 4, 'u': 2, 'v': 3, 'q': 6}
+
+        flow_var_label = {'M': 'Mach Number',
+                          'Cp': 'Pressure Coefficient',
+                          'p': 'Static Pressure (p / p<sub>\u221e</sub>)',
+                          'rho': 'Density (\u03c1/\u03c1<sub>\u221e</sub>)',
+                          'u': 'Velocity-x (u/V<sub>\u221e</sub>)',
+                          'v': 'Velocity-y (v/V<sub>\u221e</sub>)',
+                          'q': 'Speed of Sound (q/V<sub>\u221e</sub>)'}
 
         flow_var = data[:, flow_var_idx[inputs['flow_variable']]].reshape(n_streamlines, n_streamwise_lines).T[:-1, :-1]
 
@@ -389,7 +400,8 @@ class GUI(QMainWindow):
         antialiasing = False
         # edgecolors = {'color': 'b', 'width': 1}  # May be uncommented to see edgecolor effect
         # antialiasing = True # May be uncommented to see antialiasing effect
-        pcmi = pg.PColorMeshItem(edgecolors=edgecolors, antialiasing=antialiasing, colorMap=pg.colormap.get('CET-R1'))
+        pcmi = PymeadPColorMeshItem(edgecolors=edgecolors, antialiasing=antialiasing,
+                                    colorMap=pg.colormap.get('CET-R1'))
         vBox.addItem(pcmi)
         # vBox.addItem(pg.ArrowItem(pxMode=False, headLen=0.01, pos=(0.5, 0.1)))
         vBox.setAspectLocked(True, 1)
@@ -409,17 +421,27 @@ class GUI(QMainWindow):
             gray_color_mesh_items.append(vBox.addItem(gray_color_item))
 
         for child in self.v.allChildItems():
-            if hasattr(child, 'setZValue') and not isinstance(child, pg.PColorMeshItem):
+            if hasattr(child, 'setZValue') and not isinstance(child, pg.PColorMeshItem) and not isinstance(child, PymeadPColorMeshItem):
                 child.setZValue(5)
-        # vBox.addItem(grayOut1)
-        # vBox.addItem(grayOut2)
-        # vBox.addItem(grayOut3)
-        # grayOut1.setData(xM_gray1, yM_gray1, MM_gray1)
-        # grayOut2.setData(xM_gray2, yM_gray2, MM_gray2)
-        # grayOut3.setData(xM_gray3, yM_gray3, MM_gray3)
-        # for a in self.mea.airfoils.values():
-        #     for curve in a.curve_list:
-        #         curve.pg_curve_handle.setZValue(1)
+
+        bar = pg.ColorBarItem(
+            values=pcmi.getLevels(),
+            colorMap='CET-R1',
+            rounding=0.001,
+            limits=pcmi.getLevels(),
+            orientation='v',
+            pen='#8888FF', hoverPen='#EEEEFF', hoverBrush='#EEEEFF80'
+        )
+        bar.setLabel(axis='right', text=flow_var_label[inputs['flow_variable']], **{'font-size': '12pt',
+                                                                                    'color': '#ffffff'})
+        self.cbar = bar
+        self.w.addItem(bar)
+        pcmi.disableAutoLevels()
+
+        def on_levels_changed(cbar):
+            pcmi.setLevels(cbar.levels())
+
+        bar.sigLevelsChanged.connect(on_levels_changed)
 
     def load_mea_no_dialog(self, file_name):
         self.mea = MEA.generate_from_param_dict(load_data(file_name))

@@ -1336,8 +1336,10 @@ class AirfoilListDialog(QDialog):
 
 
 class MSESFieldPlotDialogWidget(PymeadDialogWidget):
-    def __init__(self):
+    def __init__(self, default_field_dir: str = None):
         super().__init__(settings_file=os.path.join(GUI_DEFAULTS_DIR, 'mses_field_plot_settings.json'))
+        if default_field_dir is not None:
+            self.widget_dict['analysis_dir']['widget'].setText(default_field_dir)
 
     def select_directory(self, line_edit: QLineEdit):
         select_directory(parent=self, line_edit=line_edit, starting_dir=tempfile.gettempdir())
@@ -1347,6 +1349,6 @@ class MSESFieldPlotDialogWidget(PymeadDialogWidget):
 
 
 class MSESFieldPlotDialog(PymeadDialog):
-    def __init__(self, parent: QWidget):
-        w = MSESFieldPlotDialogWidget()
+    def __init__(self, parent: QWidget, default_field_dir: str = None):
+        w = MSESFieldPlotDialogWidget(default_field_dir=default_field_dir)
         super().__init__(parent=parent, window_title="MSES Field Plot Settings", widget=w)
