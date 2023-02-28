@@ -187,7 +187,6 @@ def calculate_aero_data(airfoil_coord_dir: str, airfoil_name: str, mea: MEA, mea
 
 
 def run_mset(name: str, base_dir: str, mset_settings: dict, mea: MEA):
-    print(f"{mset_settings['airfoil_order'] = }")
     write_blade_file(name, base_dir, mset_settings['grid_bounds'], mea, mset_settings['airfoil_order'])
     write_gridpar_file(name, base_dir, mset_settings)
     mset_input_name = 'mset_input.txt'
