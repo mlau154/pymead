@@ -399,8 +399,9 @@ class GUI(QMainWindow):
 
         gray_color_mesh_items = []
         for el in range(grid['numel']):
-            x_gray = x[:, grid['Jside2'][el] - 2:grid['Jside1'][el] - 1]
-            y_gray = y[:, grid['Jside2'][el] - 2:grid['Jside1'][el] - 1]
+            offset = grid['numel'] - el
+            x_gray = x[:, grid['Jside2'][el] - 1 - offset:grid['Jside1'][el] - offset]
+            y_gray = y[:, grid['Jside2'][el] - 1 - offset:grid['Jside1'][el] - offset]
             v_gray = np.zeros(shape=x_gray.shape)[:-1, :-1]
             gray_color_item = pg.PColorMeshItem(colorMap=pg.colormap.get('CET-C5s'))
             gray_color_item.setData(x_gray, y_gray, v_gray)
