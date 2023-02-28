@@ -171,9 +171,12 @@ def calculate_aero_data(airfoil_coord_dir: str, airfoil_name: str, mea: MEA, mea
                     aero_data['BL'].append({})
                     for output_var in ['x', 'y', 'Cp']:
                         aero_data['BL'][-1][output_var] = bl[side][output_var]
-            for mplot_output_name in ['Mach', 'Grid', 'Grid_Zoom']:
+            for mplot_output_name in ['Mach', 'Grid', 'Grid_Zoom', 'flow_field']:
                 if mplot_settings[mplot_output_name]:
                     run_mplot(airfoil_name, airfoil_coord_dir, mplot_settings, mode=mplot_output_name)
+                    if mplot_output_name == 'flow_field':
+                        run_mplot(airfoil_name, airfoil_coord_dir, mplot_settings, mode='grid_stats')
+
         if converged:
             aero_data['converged'] = True
             aero_data['timed_out'] = False
@@ -262,7 +265,7 @@ def run_mplot(name: str, base_dir: str, mplot_settings: dict, mode: str = "force
         mplot_log = os.path.join(base_dir, name, 'mplot_cp.log')
     elif mode in ['flowfield', 'Flowfield', 'FlowField', 'flow_field']:
         mplot_input_name = "mplot_dump_flowfield.txt"
-        mplot_input_list = ['11', '', '0']
+        mplot_input_list = ['11', '', 'Y', '', '0']
         mplot_log = os.path.join(base_dir, name, 'mplot_flowfield.log')
     elif mode in ['grid_zoom', 'Grid_Zoom', 'GRID_ZOOM']:
         mplot_input_name = "mplot_input_grid_zoom.txt"
@@ -273,6 +276,10 @@ def run_mplot(name: str, base_dir: str, mplot_settings: dict, mode: str = "force
         mplot_input_name = "mplot_input_grid.txt"
         mplot_input_list = ['3', '1', '8', '', '0']
         mplot_log = os.path.join(base_dir, name, 'mplot_grid.log')
+    elif mode in ['grid_stats', 'GridStats', 'Grid_Stats']:
+        mplot_input_name = "mplot_input_grid_stats.txt"
+        mplot_input_list = ['3', '10', '', '0']
+        mplot_log = os.path.join(base_dir, name, 'mplot_grid_stats.log')
     elif mode in ["Mach", "mach", "M", "m", "Mach contours", "Mach Contours", "mach contours"]:
         mplot_input_name = "mplot_inputMachContours.txt"
         if n_intervals == 0:

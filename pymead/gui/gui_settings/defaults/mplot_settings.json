@@ -21,5 +21,10 @@
         "label": "Output Zoomed-In Grid",
         "widget_type": "QCheckBox",
         "setCheckState": 2
+    },
+    "Output_Field": {
+        "label": "Output Flow Variable Field",
+        "widget_type": "QCheckBox",
+        "setCheckState": 2
     }
 }

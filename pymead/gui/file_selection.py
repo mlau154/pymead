@@ -17,9 +17,11 @@ def multi_file_ouput_rule(dlg: QFileDialog, text_edit: QPlainTextEdit = None):
         return dlg
 
 
-def select_directory(parent, line_edit: QLineEdit = None):
+def select_directory(parent, line_edit: QLineEdit = None, starting_dir: str = None):
     file_dialog = QFileDialog(parent)
     file_dialog.setFileMode(QFileDialog.DirectoryOnly)
+    if starting_dir is not None:
+        file_dialog.setDirectory(starting_dir)
     return single_file_output_rule(file_dialog, line_edit)
 
 
