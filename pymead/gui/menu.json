@@ -13,14 +13,17 @@
     }
   },
   "View": {
-    "Fit": "auto_range_geometry"
+    "Fit": "auto_range_geometry",
+    "Toggle Full Screen": ["toggle_full_screen", "F11"]
   },
   "Analysis": {
     "Single Airfoil": {
       "Inviscid": ["single_airfoil_inviscid_analysis", "Ctrl+Alt+I"],
       "Viscous": ["single_airfoil_viscous_analysis", "Ctrl+Alt+V"]
     },
-    "Multi-Element Airfoil": ["multi_airfoil_analysis_setup", "Ctrl+Alt+A"]
+    "Multi-Element Airfoil": ["multi_airfoil_analysis_setup", "Ctrl+Alt+A"],
+    "Plot Field": "plot_field",
+    "Clear Field": "clear_field"
   },
   "Optimization": {
     "Run": ["setup_optimization", "Ctrl+Alt+O"]

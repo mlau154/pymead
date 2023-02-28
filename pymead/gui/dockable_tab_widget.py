@@ -13,8 +13,8 @@ class DockableTabWidget(QMainWindow):
         self.names = []
         self.w.setLayout(layout)
         self.setCentralWidget(self.w)
-        self.setWindowTitle('Dock')
-        self.current_dock_widget = None
+        self.first_dock_widget = None
+        self.setWindowTitle('Geometry & Analysis')
         self.cancel_if_tab_name_exists = cancel_if_tab_name_exists
         self.tabifiedDockWidgetActivated.connect(self.activated)
 
@@ -25,9 +25,17 @@ class DockableTabWidget(QMainWindow):
             dw.setFloating(False)
             self.dock_widgets.append(dw)
             self.names.append(name)
-            self.addDockWidget(Qt.LeftDockWidgetArea, dw)
-            if len(self.dock_widgets) > 1:
+            if len(self.dock_widgets) == 2:
+                self.addDockWidget(Qt.LeftDockWidgetArea, self.dock_widgets[-2])
+                self.addDockWidget(Qt.RightDockWidgetArea, dw)
+                self.setCentralWidget(QWidget())
                 self.tabifyDockWidget(self.dock_widgets[-2], self.dock_widgets[-1])
+                self.splitDockWidget(self.dock_widgets[-2], self.dock_widgets[-1], Qt.Horizontal)
+            elif len(self.dock_widgets) > 2:
+                self.addDockWidget(Qt.RightDockWidgetArea, dw)
+                self.tabifyDockWidget(self.dock_widgets[-2], self.dock_widgets[-1])
+            else:
+                self.setCentralWidget(dw)
 
     def activated(self, dw: QDockWidget):
         self.current_dock_widget = dw

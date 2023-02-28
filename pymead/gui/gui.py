@@ -1,8 +1,10 @@
+import tempfile
+
 from pymead.gui.rename_popup import RenamePopup
 from pymead.gui.main_icon_toolbar import MainIconToolbar
 
 from PyQt5.QtWidgets import QMainWindow, QApplication, QVBoxLayout, QHBoxLayout, \
-    QWidget, QMenu, QStatusBar, QAction, QGraphicsScene, QGridLayout
+    QWidget, QMenu, QStatusBar, QAction, QGraphicsScene, QGridLayout, QSizePolicy
 from PyQt5.QtGui import QIcon, QFont, QFontDatabase, QPainter
 from PyQt5.QtCore import QEvent, QObject, Qt, QThreadPool
 from PyQt5.QtSvg import QSvgWidget
@@ -13,7 +15,7 @@ from pymead.core.base_airfoil_params import BaseAirfoilParams
 from pymead import RESOURCE_DIR
 from pymead.gui.input_dialog import SingleAirfoilViscousDialog, LoadDialog, SaveAsDialog, OptimizationSetupDialog, \
     MultiAirfoilDialog, ColorInputDialog, ExportCoordinatesDialog, ExportControlPointsDialog, AirfoilPlotDialog, \
-    AirfoilMatchingDialog
+    AirfoilMatchingDialog, MSESFieldPlotDialog
 from pymead.gui.analysis_graph import AnalysisGraph
 from pymead.gui.parameter_tree import MEAParamTree
 from pymead.utils.airfoil_matching import match_airfoil
@@ -24,6 +26,7 @@ from pymead.core.mea import MEA
 from pymead.analysis.calc_aero_data import calculate_aero_data
 from pymead.optimization.opt_setup import CustomDisplay, TPAIOPT, SelfIntersectionRepair
 from pymead.utils.read_write_files import load_data, save_data
+from pymead.analysis.read_aero_data import read_grid_stats_from_mses
 from pymead.utils.misc import make_ga_opt_dir
 from pymead.utils.get_airfoil import extract_data_from_airfoiltools
 from pymead.optimization.pop_chrom import Chromosome, Population, CustomGASettings
@@ -38,6 +41,7 @@ from pymead.gui.input_dialog import convert_dialog_to_mset_settings, convert_dia
     convert_dialog_to_mplot_settings
 from pymead.gui.airfoil_statistics import AirfoilStatisticsDialog, AirfoilStatistics
 from pymead.gui.custom_graphics_view import CustomGraphicsView
+from pymead.gui.file_selection import select_directory
 from pymead.utils.dict_recursion import unravel_param_dict_deepcopy
 from pymead.core.param import Param
 
@@ -190,9 +194,14 @@ class GUI(QMainWindow):
         self.output_area_text(f"<font color='#1fbbcc' size='5'>pymead</font> <font size='5'>version</font> "
                               f"<font color='#44e37e' size='5'>{__version__}</font>",
                               mode='html')
+        self.output_area_text('\n')
+        # self.output_area_text("<font color='#ffffff' size='3'>\n\n</font>", mode='html')
         airfoil = Airfoil(base_airfoil_params=BaseAirfoilParams(dx=Param(0.0), dy=Param(0.0)))
         self.add_airfoil(airfoil)
         self.auto_range_geometry()
+        self.showMaximized()
+        # for dw in self.dockable_tab_window.dock_widgets:
+        #     dw.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.MinimumExpanding)
 
     def set_dark_mode(self):
         self.setStyleSheet("background-color: #3e3f40; color: #dce1e6; font-family: DejaVu; font-size: 12px;")
@@ -320,6 +329,96 @@ class GUI(QMainWindow):
                     self.geometry_plot_handles[geometry_name] = self.v.plot(pen=pg.mkPen(color=color), lw=1.4)
                     self.geometry_plot_handles[geometry_name].setData(coords[:, 0], coords[:, 1])
                     break
+
+    def clear_field(self):
+        for child in self.v.allChildItems():
+            if isinstance(child, pg.PColorMeshItem):
+                self.v.getViewBox().removeItem(child)
+
+    def plot_field(self):
+
+        dlg = MSESFieldPlotDialog(parent=self)
+        if dlg.exec_():
+            inputs = dlg.getInputs()
+        else:
+            return
+
+        self.clear_field()
+
+        for child in self.v.allChildItems():
+            if hasattr(child, 'setZValue'):
+                child.setZValue(1.0)
+
+        analysis_dir = inputs['analysis_dir']
+        vBox = self.v.getViewBox()
+        field_file = os.path.join(analysis_dir, f'field.{os.path.split(analysis_dir)[-1]}')
+        grid_file = os.path.join(analysis_dir, 'mplot_grid_stats.log')
+        if not os.path.exists(field_file):
+            self.disp_message_box(message=f"Field file {field_file} not found", message_mode='error')
+            return
+        if not os.path.exists(grid_file):
+            self.disp_message_box(message=f"Grid statistics log {grid_file} not found", message_mode='error')
+            return
+
+        data = np.loadtxt(field_file, skiprows=2)
+        grid = read_grid_stats_from_mses(grid_file)
+        # print(f"{grid = }")
+
+        with open(field_file, 'r') as f:
+            lines = f.readlines()
+
+        n_streamlines = 0
+        for line in lines:
+            if line == '\n':
+                n_streamlines += 1
+
+        n_streamwise_lines = int(data.shape[0] / n_streamlines)
+
+        # xyM = []
+        # for idx in [0, 1, 4, 5, 7]:
+        #     xyM.append(field[:, idx])
+        # xyM = np.array(xyM).T
+        x = data[:, 0].reshape(n_streamlines, n_streamwise_lines).T
+        y = data[:, 1].reshape(n_streamlines, n_streamwise_lines).T
+
+        flow_var_idx = {'M': 7, 'Cp': 8, 'p': 5, 'rho': 4, 'u': 2, 'v': 3, 'q': 6}
+
+        flow_var = data[:, flow_var_idx[inputs['flow_variable']]].reshape(n_streamlines, n_streamwise_lines).T[:-1, :-1]
+
+        edgecolors = None
+        antialiasing = False
+        # edgecolors = {'color': 'b', 'width': 1}  # May be uncommented to see edgecolor effect
+        # antialiasing = True # May be uncommented to see antialiasing effect
+        pcmi = pg.PColorMeshItem(edgecolors=edgecolors, antialiasing=antialiasing, colorMap=pg.colormap.get('CET-R1'))
+        vBox.addItem(pcmi)
+        # vBox.addItem(pg.ArrowItem(pxMode=False, headLen=0.01, pos=(0.5, 0.1)))
+        vBox.setAspectLocked(True, 1)
+        pcmi.setZValue(0)
+
+        pcmi.setData(x, y, flow_var)
+
+        gray_color_mesh_items = []
+        for el in range(grid['numel']):
+            x_gray = x[:, grid['Jside2'][el] - 2:grid['Jside1'][el] - 1]
+            y_gray = y[:, grid['Jside2'][el] - 2:grid['Jside1'][el] - 1]
+            v_gray = np.zeros(shape=x_gray.shape)[:-1, :-1]
+            gray_color_item = pg.PColorMeshItem(colorMap=pg.colormap.get('CET-C5s'))
+            gray_color_item.setData(x_gray, y_gray, v_gray)
+            gray_color_item.setZValue(1)
+            gray_color_mesh_items.append(vBox.addItem(gray_color_item))
+
+        for child in self.v.allChildItems():
+            if hasattr(child, 'setZValue') and not isinstance(child, pg.PColorMeshItem):
+                child.setZValue(5)
+        # vBox.addItem(grayOut1)
+        # vBox.addItem(grayOut2)
+        # vBox.addItem(grayOut3)
+        # grayOut1.setData(xM_gray1, yM_gray1, MM_gray1)
+        # grayOut2.setData(xM_gray2, yM_gray2, MM_gray2)
+        # grayOut3.setData(xM_gray3, yM_gray3, MM_gray3)
+        # for a in self.mea.airfoils.values():
+        #     for curve in a.curve_list:
+        #         curve.pg_curve_handle.setZValue(1)
 
     def load_mea_no_dialog(self, file_name):
         self.mea = MEA.generate_from_param_dict(load_data(file_name))
@@ -541,13 +640,14 @@ class GUI(QMainWindow):
                                            mplot_settings=mplot_settings)
         if not aero_data['converged'] or aero_data['errored_out'] or aero_data['timed_out']:
             self.disp_message_box("MSES Analysis Failed", message_mode='error')
-            self.text_area.insertPlainText(
-                f"[{self.n_analyses:2.0f}] Converged = {aero_data['converged']} | Errored out = "
-                f"{aero_data['errored_out']} | Timed out = {aero_data['timed_out']}\n")
+            self.output_area_text(
+                f"<font color='ffffff'>[{self.n_analyses:2.0f}] Converged = {aero_data['converged']} | Errored out = "
+                f"{aero_data['errored_out']} | Timed out = {aero_data['timed_out']}</font>", mode='html')
         else:
-            self.text_area.insertPlainText(
-                f"[{self.n_analyses:2.0f}] (Re = {mses_settings['REYNIN']:.3E}, Ma = {mses_settings['MACHIN']:.3f}): "
-                f"Cl = {aero_data['Cl']:7.4f} | Cd = {aero_data['Cd']:.5f} | Cm = {aero_data['Cm']:7.4f}\n")
+            # self.output_area_text('\n')
+            self.output_area_text(
+                f"<font size='4'>[{self.n_analyses:2.0f}] (Re = {mses_settings['REYNIN']:.3E}, Ma = {mses_settings['MACHIN']:.3f}): "
+                f"Cl = {aero_data['Cl']:7.4f} | Cd = {aero_data['Cd']:.5f} | Cm = {aero_data['Cm']:7.4f}</font>", mode='html')
         sb = self.text_area.verticalScrollBar()
         sb.setValue(sb.maximum())
 
@@ -1151,6 +1251,10 @@ class GUI(QMainWindow):
                 csv_exporter = CSVExporter(item=attr.v)
                 svg_exporter.export(os.path.join(opt_dir, f"{opt_plots[opt_plot]}.svg"))
                 csv_exporter.export(os.path.join(opt_dir, f"{opt_plots[opt_plot]}.csv"))
+
+    def toggle_full_screen(self):
+        if not self.isMaximized():
+            self.showMaximized()
 
     def eventFilter(self, source: QObject, event: QEvent) -> bool:
         if event.type() == QEvent.ContextMenu and source is self.design_tree:

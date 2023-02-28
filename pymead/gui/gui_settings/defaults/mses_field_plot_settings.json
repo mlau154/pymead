@@ -1,0 +1,15 @@
+{
+  "analysis_dir": {
+    "label": "Analysis Directory",
+    "widget_type": "QLineEdit",
+    "setText": "",
+    "push_button": "Choose folder",
+    "push_button_action": "select_directory"
+  },
+  "flow_variable": {
+    "label": "Flow Variable",
+    "widget_type": "QComboBox",
+    "addItems": ["M", "Cp", "p", "rho", "u", "v", "q"],
+    "setCurrentItem": "M"
+  }
+}

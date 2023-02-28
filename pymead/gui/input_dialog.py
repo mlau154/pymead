@@ -122,6 +122,7 @@ def convert_dialog_to_mplot_settings(dialog_input: dict):
         'Mach': dialog_input['Mach'],
         'Grid': dialog_input['Grid'],
         'Grid_Zoom': dialog_input['Grid_Zoom'],
+        'flow_field': dialog_input['Output_Field']
     }
     return mplot_settings
 
@@ -1860,3 +1861,20 @@ class AirfoilListDialog(QDialog):
             if item is not None and item.checkState() == Qt.Checked:
                 checked_airfoils.append(item.text())
         return checked_airfoils
+
+
+class MSESFieldPlotDialogWidget(PymeadDialogWidget):
+    def __init__(self):
+        super().__init__(settings_file=os.path.join(GUI_DEFAULTS_DIR, 'mses_field_plot_settings.json'))
+
+    def select_directory(self, line_edit: QLineEdit):
+        select_directory(parent=self, line_edit=line_edit, starting_dir=tempfile.gettempdir())
+
+    def updateDialog(self, new_inputs: dict, w_name: str):
+        pass
+
+
+class MSESFieldPlotDialog(PymeadDialog):
+    def __init__(self, parent: QWidget):
+        w = MSESFieldPlotDialogWidget()
+        super().__init__(parent=parent, window_title="MSES Field Plot Settings", widget=w)
