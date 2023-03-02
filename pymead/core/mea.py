@@ -11,14 +11,13 @@ import typing
 import benedict
 import numpy as np
 import os
-from pymead import DATA_DIR, PLUGINS_DIR
+from pymead import DATA_DIR, PLUGINS_DIR, INCLUDE_FILES
 from copy import deepcopy
+import importlib.util
 
 
 class MEA:
     """
-    ### Description:
-
     Class for multi-element airfoils. Serves as a container for `pymead.core.airfoil.Airfoil`s and adds a few methods
     important for the Graphical User Interface.
     """
@@ -26,6 +25,7 @@ class MEA:
                  airfoil_graphs_active: bool = False):
         self.airfoils = {}
         self.file_name = None
+        self.user_mods = None
         self.param_tree = param_tree
         self.param_dict = {'Custom': {}}
         self.airfoil_graphs_active = airfoil_graphs_active
@@ -180,7 +180,7 @@ class MEA:
             # fig_.savefig(os.path.join(DATA_DIR, 'test_airfoil.png'))
             return norm_value_list, parameter_list
 
-    def deepcopy(self):
+    def deepcopy(self, deactivate_airfoil_graphs: bool = False):
         output_dict_ = {}
         unravel_param_dict_deepcopy(self.param_dict, output_dict=output_dict_)
         for k, v in output_dict_.items():
@@ -188,7 +188,10 @@ class MEA:
                 output_dict_[k]['anchor_point_order'] = deepcopy(self.airfoils[k].anchor_point_order)
                 output_dict_[k]['free_point_order'] = deepcopy(self.airfoils[k].free_point_order)
         output_dict_['file_name'] = self.file_name
-        output_dict_['airfoil_graphs_active'] = self.airfoil_graphs_active
+        if deactivate_airfoil_graphs:
+            output_dict_['airfoil_graphs_active'] = False
+        else:
+            output_dict_['airfoil_graphs_active'] = self.airfoil_graphs_active
         mea_copy = deepcopy(output_dict_)
         return MEA.generate_from_param_dict(mea_copy)
 
@@ -247,6 +250,7 @@ class MEA:
                             list_counter += 1
                         v.value = temp_xy_value  # replace the PosParam value with the temp value (unchanged if
                         # neither x nor y are active)
+                        print(f"Updated PosParam value! {v.value = }")
                     else:
                         raise ValueError('Found value in dictionary not of type \'Param\'')
             return list_counter
@@ -524,6 +528,27 @@ class MEA:
                     temp_dict[attr_name] = attr_value
             custom_param_dict[custom_name] = deepcopy(temp_dict)  # Need deepcopy here?
             mea.add_custom_parameters(custom_param_dict)
+
+        mea.assign_names_to_params_in_param_dict()
+
+        mea.user_mods = {}
+        for f in INCLUDE_FILES:
+            name = os.path.split(f)[-1]  # get the name of the file without the directory
+            name_no_ext = os.path.splitext(name)[-2]  # get the name of the file without the .py extension
+            spec = importlib.util.spec_from_file_location(name_no_ext, f)
+            mea.user_mods[name_no_ext] = importlib.util.module_from_spec(spec)  # generate the module from the name
+            spec.loader.exec_module(mea.user_mods[name_no_ext])  # compile and execute the module
+
+        def f(*_, value):
+            if isinstance(value, Param) or isinstance(value, PosParam):
+                value.function_dict['name'] = value.name.split('.')[-1]
+                value.update()
+
+        dben = benedict.benedict(mea.param_dict)
+        dben.traverse(f)
+
+        for a in mea.airfoils.values():
+            a.update()
 
         return mea
 

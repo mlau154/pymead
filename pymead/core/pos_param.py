@@ -103,7 +103,6 @@ class PosParam(Param):
         else:
             if 'f' not in self.function_dict.keys():
                 self.update_function(show_q_error_messages=True, func_str_changed=True)
-            # print(f"{self.name = }, {self.function_dict = }")
             temp_value = self.function_dict['f']()
             if temp_value[0] is None and temp_value[1] is None:
                 raise ValueError('Must set at least one of the two cells in the PosParam equation.')
@@ -189,8 +188,6 @@ class PosParam(Param):
         self.tag_list = [concatenate_strings(tl) for tl in self.tag_matrix]
         for t in self.tag_list:
             self.depends_on[t] = None
-
-        print(f"{self.func = }")
 
         return math_functions_to_include, self.user_func_strs
 

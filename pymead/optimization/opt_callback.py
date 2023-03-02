@@ -20,7 +20,7 @@ class OptCallback(QObject):
 class PlotAirfoilCallback(OptCallback):
     def __init__(self, parent, mea: MEA, X, background_color: str = 'w'):
         super().__init__(parent=parent)
-        self.mea = mea
+        self.mea = mea.deepcopy(deactivate_airfoil_graphs=True)
         self.X = X
         self.parent = parent
         self.background_color = background_color
@@ -37,13 +37,18 @@ class PlotAirfoilCallback(OptCallback):
         else:
             pen = pg.mkPen(color='lightcoral', width=2)
         old_pen = pg.mkPen(color=pg.mkColor('l'), width=1)
-        pg_plot_handle = self.parent.opt_airfoil_graph.v.plot(pen=pen)
-        coords = self.mea.airfoils['A0'].get_coords(body_fixed_csys=False)
-        # print(f"thickness = {self.mea.airfoils['A0'].compute_thickness()[2]}")
-        pg_plot_handle.setData(coords[:, 0], coords[:, 1])
+        pg_plot_handles = []
+        temp_output_airfoil = None
+        for airfoil in self.mea.airfoils.values():
+            pg_plot_handle = self.parent.opt_airfoil_graph.v.plot(pen=pen)
+            coords = airfoil.get_coords(body_fixed_csys=False)
+            # print(f"thickness = {self.mea.airfoils['A0'].compute_thickness()[2]}")
+            pg_plot_handle.setData(coords[:, 0], coords[:, 1])
+            pg_plot_handles.append(pg_plot_handle)
         if len(self.parent.opt_airfoil_plot_handles) > 1:
-            self.parent.opt_airfoil_plot_handles[-1].setPen(old_pen)
-        self.parent.opt_airfoil_plot_handles.append(pg_plot_handle)
+            for plot_handle in self.parent.opt_airfoil_plot_handles[-1]:
+                plot_handle.setPen(old_pen)
+        self.parent.opt_airfoil_plot_handles.append(pg_plot_handles)
 
 
 class ParallelCoordsCallback(OptCallback):

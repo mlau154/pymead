@@ -43,53 +43,51 @@ def calculate_warm_start_index(warm_start_generation, warm_start_directory):
 
 
 def convert_opt_settings_to_param_dict(opt_settings: dict) -> dict:
-    param_dict = {'tool': opt_settings['Genetic Algorithm']['tool']['current_text'],
-                  'algorithm_save_frequency': opt_settings['Genetic Algorithm']['algorithm_save_frequency']['value'],
-                  'n_obj': len(opt_settings['Genetic Algorithm']['J']['text'].split(',')),
-                  'n_constr': len(opt_settings['Genetic Algorithm']['G']['text'].split(',')) if opt_settings['Genetic Algorithm']['G']['text'] != '' else 0,
-                  'population_size': opt_settings['Genetic Algorithm']['pop_size']['value'],
-                  'n_ref_dirs': opt_settings['Genetic Algorithm']['pop_size']['value'],
-                  'n_offsprings': opt_settings['Genetic Algorithm']['n_offspring']['value'],
+    param_dict = {'tool': opt_settings['Genetic Algorithm']['tool'],
+                  'algorithm_save_frequency': opt_settings['Genetic Algorithm']['algorithm_save_frequency'],
+                  'n_obj': len(opt_settings['Genetic Algorithm']['J'].split(',')),
+                  'n_constr': len(opt_settings['Genetic Algorithm']['G'].split(',')) if opt_settings['Genetic Algorithm']['G'] != '' else 0,
+                  'population_size': opt_settings['Genetic Algorithm']['pop_size'],
+                  'n_ref_dirs': opt_settings['Genetic Algorithm']['pop_size'],
+                  'n_offsprings': opt_settings['Genetic Algorithm']['n_offspring'],
                   'xl': 0.0,
                   'xu': 1.0,
-                  'seed': opt_settings['Genetic Algorithm']['random_seed']['value'],
+                  'seed': opt_settings['Genetic Algorithm']['random_seed'],
                   'multi_point': False,
-                  'num_processors': opt_settings['Genetic Algorithm']['num_processors']['value'],
-                  'x_tol': opt_settings['Termination']['x_tol']['value'],
-                  'cv_tol': opt_settings['Termination']['cv_tol']['value'],
-                  'f_tol': opt_settings['Termination']['f_tol']['value'],
-                  'nth_gen': opt_settings['Termination']['nth_gen']['value'],
-                  'n_last': opt_settings['Termination']['n_last']['value'],
-                  'n_max_gen': opt_settings['Termination']['n_max_gen']['value'],
-                  'n_max_evals': opt_settings['Termination']['n_max_evals']['value'],
+                  'num_processors': opt_settings['Genetic Algorithm']['num_processors'],
+                  'x_tol': opt_settings['Constraints/Termination']['x_tol'],
+                  'cv_tol': opt_settings['Constraints/Termination']['cv_tol'],
+                  'f_tol': opt_settings['Constraints/Termination']['f_tol'],
+                  'nth_gen': opt_settings['Constraints/Termination']['nth_gen'],
+                  'n_last': opt_settings['Constraints/Termination']['n_last'],
+                  'n_max_gen': opt_settings['Constraints/Termination']['n_max_gen'],
+                  'n_max_evals': opt_settings['Constraints/Termination']['n_max_evals'],
                   'xfoil_settings': {
-                      'Re': opt_settings['XFOIL']['Re']['value'],
-                      'Ma': opt_settings['XFOIL']['Ma']['value'],
-                      'xtr': [opt_settings['XFOIL']['xtr_upper']['value'], opt_settings['XFOIL']['xtr_lower']['value']],
-                      'N': opt_settings['XFOIL']['N']['value'],
-                      'iter': opt_settings['XFOIL']['iter']['value'],
-                      'timeout': opt_settings['XFOIL']['timeout']['value'],
+                      'Re': opt_settings['XFOIL']['Re'],
+                      'Ma': opt_settings['XFOIL']['Ma'],
+                      'xtr': [opt_settings['XFOIL']['xtr_upper'], opt_settings['XFOIL']['xtr_lower']],
+                      'N': opt_settings['XFOIL']['N'],
+                      'iter': opt_settings['XFOIL']['iter'],
+                      'timeout': opt_settings['XFOIL']['timeout'],
                   },
                   'mset_settings': convert_dialog_to_mset_settings(opt_settings['MSET']),
                   'mses_settings': convert_dialog_to_mses_settings(opt_settings['MSES']),
                   'mplot_settings': convert_dialog_to_mplot_settings(opt_settings['MPLOT']),
-                  'min_val_of_max_thickness': opt_settings['Constraints/Validation']['min_val_of_max_thickness'][
-                      'value'],
-                  'min_thickness_active': opt_settings['Constraints/Validation']['min_val_of_max_thickness'][
-                      'active_checkbox'],
-                  'min_area': opt_settings['Constraints/Validation']['min_area']['value'],
-                  'min_area_active': opt_settings['Constraints/Validation']['min_area']['active_checkbox'],
+                  'min_val_of_max_thickness': opt_settings['Constraints/Termination']['min_val_of_max_thickness'][0],
+                  'min_thickness_active': opt_settings['Constraints/Termination']['min_val_of_max_thickness'][1],
+                  'min_area': opt_settings['Constraints/Termination']['min_area'][0],
+                  'min_area_active': opt_settings['Constraints/Termination']['min_area'][1],
                   'verbose': False,
-                  'eta_crossover': opt_settings['Genetic Algorithm']['eta_crossover']['value'],
-                  'eta_mutation': opt_settings['Genetic Algorithm']['eta_mutation']['value'],
+                  'eta_crossover': opt_settings['Genetic Algorithm']['eta_crossover'],
+                  'eta_mutation': opt_settings['Genetic Algorithm']['eta_mutation'],
                   }
 
-    if opt_settings['XFOIL']['prescribe']['current_text'] == 'Angle of Attack (deg)':
-        param_dict['xfoil_settings']['alfa'] = opt_settings['XFOIL']['alfa']['value']
-    elif opt_settings['XFOIL']['prescribe']['current_text'] == 'Viscous Cl':
-        param_dict['xfoil_settings']['Cl'] = opt_settings['XFOIL']['Cl']['value']
-    elif opt_settings['XFOIL']['prescribe']['current_text'] == 'Viscous Cl':
-        param_dict['xfoil_settings']['CLI'] = opt_settings['XFOIL']['CLI']['value']
+    if opt_settings['XFOIL']['prescribe'] == 'Angle of Attack (deg)':
+        param_dict['xfoil_settings']['alfa'] = opt_settings['XFOIL']['alfa']
+    elif opt_settings['XFOIL']['prescribe'] == 'Viscous Cl':
+        param_dict['xfoil_settings']['Cl'] = opt_settings['XFOIL']['Cl']
+    elif opt_settings['XFOIL']['prescribe'] == 'Viscous Cl':
+        param_dict['xfoil_settings']['CLI'] = opt_settings['XFOIL']['CLI']
     param_dict['mses_settings']['n_airfoils'] = param_dict['mset_settings']['n_airfoils']
     return param_dict
 

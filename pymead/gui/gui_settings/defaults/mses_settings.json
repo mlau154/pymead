@@ -254,7 +254,8 @@
                 "ISDELH": 1,
                 "XCDELH": 0.1,
                 "PTRHIN": 1.1,
-                "ETAH": 0.95
+                "ETAH": 0.95,
+                "from_geometry": {}
             }
         },
         "setReadOnly": true,

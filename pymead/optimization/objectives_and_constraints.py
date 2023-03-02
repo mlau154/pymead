@@ -13,6 +13,7 @@ class ObjectiveConstraint:
 
     def add_or_set_dependencies(self, dependencies: dict):
         for k, v in dependencies.items():
+            # print(f"{k = }")
             self.depends_on[k] = v
 
     def set_func_str(self, func_str: str):

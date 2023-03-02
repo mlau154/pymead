@@ -2,9 +2,9 @@ import numpy as np
 from typing import List, Any
 from PyQt5.QtWidgets import QDialog, QDialogButtonBox, QFormLayout, QDoubleSpinBox, QComboBox, QLineEdit, QSpinBox, \
     QTabWidget, QLabel, QMessageBox, QCheckBox, QFileDialog, QVBoxLayout, QWidget, QRadioButton, QHBoxLayout, \
-    QButtonGroup, QGridLayout, QPushButton, QPlainTextEdit, QGraphicsScene, QGraphicsView, QListView
+    QButtonGroup, QGridLayout, QPushButton, QPlainTextEdit, QGraphicsScene, QGraphicsView, QListView, QMenu, QAction
 from PyQt5.QtCore import QEvent, Qt
-from PyQt5.QtGui import QPixmap, QPainter, QStandardItem, QStandardItemModel
+from PyQt5.QtGui import QPixmap, QPainter, QStandardItem, QStandardItemModel, QContextMenuEvent
 from PyQt5.QtSvg import QSvgWidget
 from functools import partial
 import tempfile
@@ -104,8 +104,8 @@ def convert_dialog_to_mses_settings(dialog_input: dict):
                 else:
                     mses_settings[k].append(v)
 
-    for idx, airfoil in enumerate(dialog_input['AD'].values()):
-        for k, v in airfoil.items():
+    for idx, AD_idx in enumerate(dialog_input['AD'].values()):
+        for k, v in AD_idx.items():
             if idx == 0:
                 mses_settings[k] = [v]
             else:
@@ -531,8 +531,9 @@ class MSETDialogWidget(PymeadDialogWidget):
 
 
 class MSESDialogWidget(PymeadDialogWidget):
-    def __init__(self, mset_dialog_widget: MSETDialogWidget):
-        super().__init__(settings_file=os.path.join(GUI_DEFAULTS_DIR, 'mses_settings.json'))
+    def __init__(self, mset_dialog_widget: MSETDialogWidget, design_tree_widget):
+        super().__init__(settings_file=os.path.join(GUI_DEFAULTS_DIR, 'mses_settings.json'),
+                         design_tree_widget=design_tree_widget)
         mset_dialog_widget.airfoilOrderChanged.connect(self.onAirfoilOrderChanged)
 
     def onAirfoilOrderChanged(self, airfoil_list: list):
@@ -777,12 +778,78 @@ class GAGeneralSettingsDialogWidget(PymeadDialogWidget):
 class GeneticAlgorithmDialogWidget(PymeadDialogWidget):
     def __init__(self):
         super().__init__(settings_file=os.path.join(GUI_DEFAULTS_DIR, 'genetic_algorithm_settings.json'))
+        self.widget_dict['J']['widget'].textChanged.connect(partial(self.objectives_changed,
+                                                                    self.widget_dict['J']['widget']))
+        self.widget_dict['G']['widget'].textChanged.connect(partial(self.constraints_changed,
+                                                                    self.widget_dict['G']['widget']))
+
+    def overrideInputs(self, new_values: dict):
+        super().overrideInputs(new_values)
+        self.update_objectives_and_constraints()
+
+    def update_objectives_and_constraints(self):
+        inputs = self.getInputs()
+        self.objectives_changed(self.widget_dict['J']['widget'], inputs['J'])
+        self.constraints_changed(self.widget_dict['G']['widget'], inputs['G'])
 
     def select_directory(self, line_edit: QLineEdit):
         select_directory(parent=self.parent(), line_edit=line_edit)
 
     def updateDialog(self, new_inputs: dict, w_name: str):
         pass
+
+    def objectives_changed(self, widget, text: str):
+        objective_container = get_parent(self, depth=4)
+        if objective_container is None:
+            objective_container = get_parent(self, depth=1)
+        inputs = self.getInputs()
+        objective_container.objectives = []
+        for obj_func_str in text.split(','):
+            objective = Objective(obj_func_str)
+            objective_container.objectives.append(objective)
+            if text == '':
+                widget.setStyleSheet("QLineEdit {background-color: rgba(176,25,25,50)}")
+                return
+            try:
+                function_input_data1 = getattr(cfd_output_templates, inputs['tool'])
+                function_input_data2 = self.convert_text_array_to_dict(inputs['additional_data'])
+                objective.update({**function_input_data1, **function_input_data2})
+                widget.setStyleSheet("QLineEdit {background-color: rgba(16,201,87,50)}")
+            except FunctionCompileError:
+                widget.setStyleSheet("QLineEdit {background-color: rgba(176,25,25,50)}")
+                print("Function compile error!")
+                return
+
+    def constraints_changed(self, widget, text: str):
+        constraint_container = get_parent(self, depth=4)
+        if constraint_container is None:
+            constraint_container = get_parent(self, depth=1)
+        inputs = self.getInputs()
+        constraint_container.constraints = []
+        for constraint_func_str in text.split(','):
+            if len(constraint_func_str) > 0:
+                constraint = Constraint(constraint_func_str)
+                constraint_container.constraints.append(constraint)
+                try:
+                    function_input_data1 = getattr(cfd_output_templates, inputs['tool'])
+                    function_input_data2 = self.convert_text_array_to_dict(inputs['additional_data'])
+                    constraint.update({**function_input_data1, **function_input_data2})
+                    widget.setStyleSheet("QLineEdit {background-color: rgba(16,201,87,50)}")
+                except FunctionCompileError:
+                    widget.setStyleSheet("QLineEdit {background-color: rgba(176,25,25,50)}")
+                    return
+
+    @staticmethod
+    def convert_text_array_to_dict(multi_line_text: str):
+        text_array = multi_line_text.split('\n')
+        data_dict = {}
+        for text in text_array:
+            text_split = text.split(': ')
+            if len(text_split) > 1:
+                k = text_split[0]
+                v = float(text_split[1])
+                data_dict[k] = v
+        return data_dict
 
 
 class GAConstraintsTerminationDialogWidget(PymeadDialogWidget):
@@ -839,12 +906,21 @@ class GASaveLoadDialogWidget(PymeadDialogWidget):
         pass
 
 
+class MultiPointOptDialogWidget(PymeadDialogWidget):
+    def __init__(self):
+        super().__init__(settings_file=os.path.join(GUI_DEFAULTS_DIR, 'multi_point_opt_settings.json'))
+        self.current_save_file = None
+
+    def updateDialog(self, new_inputs: dict, w_name: str):
+        pass
+
+
 class MultiAirfoilDialog(PymeadDialog):
-    def __init__(self, parent: QWidget, settings_override: dict = None):
+    def __init__(self, parent: QWidget, design_tree_widget, settings_override: dict = None):
         w3 = PymeadDialogWidget(os.path.join(GUI_DEFAULTS_DIR, 'mplot_settings.json'))
         w2 = MSETDialogWidget()
         # w2.airfoilOrderChanged.connect(self.airfoil_order_changed)
-        w4 = MSESDialogWidget(mset_dialog_widget=w2)
+        w4 = MSESDialogWidget(mset_dialog_widget=w2, design_tree_widget=design_tree_widget)
         w = PymeadDialogTabWidget(parent=None, widgets={'MSET': w2, 'MSES': w4, 'MPLOT': w3},
                                   settings_override=settings_override)
         super().__init__(parent=parent, window_title="Multi-Element-Airfoil Analysis", widget=w)
@@ -959,20 +1035,32 @@ class SaveAsDialog(QFileDialog):
         self.setViewMode(QFileDialog.Detail)
 
 
+class OptimizationDialogTabWidget(PymeadDialogTabWidget):
+    def __init__(self, parent, widgets: dict, settings_override: dict):
+        super().__init__(parent=parent, widgets=widgets, settings_override=settings_override)
+        self.objectives = None
+        self.constraints = None
+
+
 class OptimizationSetupDialog(PymeadDialog):
-    def __init__(self, parent):
+    def __init__(self, parent, design_tree_widget, settings_override: dict = None):
         w0 = GAGeneralSettingsDialogWidget()
         w1 = GeneticAlgorithmDialogWidget()
         w2 = GAConstraintsTerminationDialogWidget()
         w3 = XFOILDialogWidget()
         w4 = MSETDialogWidget()
-        w5 = MSESDialogWidget(mset_dialog_widget=w4)
+        w5 = MSESDialogWidget(mset_dialog_widget=w4, design_tree_widget=design_tree_widget)
         w6 = PymeadDialogWidget(os.path.join(GUI_DEFAULTS_DIR, 'mplot_settings.json'))
-        w = PymeadDialogTabWidget(parent=None, widgets={'General Settings': w0,
+        w = OptimizationDialogTabWidget(parent=self, widgets={'General Settings': w0,
                                                         'Genetic Algorithm': w1,
                                                         'Constraints/Termination': w2,
-                                                        'XFOIL': w3, 'MSET': w4, 'MSES': w5, 'MPLOT': w6})
+                                                        'XFOIL': w3, 'MSET': w4, 'MSES': w5, 'MPLOT': w6},
+                                  settings_override=settings_override)
         super().__init__(parent=parent, window_title='Optimization Setup', widget=w)
+        w.objectives = self.parent().objectives
+        w.constraints = self.parent().constraints
+
+        w1.update_objectives_and_constraints()  # IMPORTANT: makes sure that the objectives/constraints get stored
 
 
 class SymmetryDialog(QDialog):
