@@ -178,7 +178,6 @@ class Param:
         self.depends_on = {}
 
     def update_function(self, show_q_error_messages: bool, func_str_changed: bool = False):
-        # print(f"{self.func_str = }")
         if self.func_str is None:
             pass
         else:
@@ -197,20 +196,15 @@ class Param:
                         s_list = s.split('.')
                         mod_name = s_list[0]
                         func_name = s_list[1]
-                        self.function_dict[func_name] = getattr(self.mea.param_tree.user_mods[mod_name], func_name)
+                        if self.mea.param_tree is not None:
+                            self.function_dict[func_name] = getattr(self.mea.param_tree.user_mods[mod_name], func_name)
+                        else:
+                            self.function_dict[func_name] = getattr(self.mea.user_mods[mod_name], func_name)
 
                 # Add the variables the function depends on to the function_dict:
                 self.add_dependencies(show_q_error_messages)
 
             self.update_dependencies()
-
-            # Update the function (not the result) in the function_dict
-            # if execute:
-            # self.func = self.func.replace('symmetrysymmetry', 'symmetry.symmetry')
-            # print(f"{self.func = }")
-            # print(f"{self.function_dict = }")
-            # print(f"{type(self.func) = }")
-            # print(f"{type(self.function_dict) = }")
 
             if self.func is not None:
                 exec(self.func, self.function_dict)

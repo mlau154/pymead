@@ -12,22 +12,18 @@
         "label": "Objective Functions:",
         "widget_type": "QLineEdit",
         "setText": "$Cd",
-        "setToolTip": "Enter the objective functions to be minimized, separated by commas.\nVariables can be started with the dollar sign ($).",
-        "text_changed_callback": "objectives_changed"
+        "setToolTip": "Enter the objective functions to be minimized, separated by commas.\nVariables can be started with the dollar sign ($)."
     },
     "G": {
         "label": "Constraints:",
         "widget_type": "QLineEdit",
         "setText": "",
-        "setToolTip": "Enter the constraint functions to be applied, separated by commas.\nVariables can be started with the dollar sign ($).",
-        "text_changed_callback": "constraints_changed"
+        "setToolTip": "Enter the constraint functions to be applied, separated by commas.\nVariables can be started with the dollar sign ($)."
     },
     "additional_data": {
         "label": "Additional Data",
         "widget_type": "QPlainTextEdit",
-        "texts": [
-            ""
-        ],
+        "setPlainText": "",
         "setToolTip": "Additional variables to feed to the\nobjective or constraint functions"
     },
     "pop_size": {
@@ -40,7 +36,7 @@
     "n_offspring": {
         "label": "Number of Offspring",
         "widget_type": "QSpinBox",
-        "setMinimum": 50,
+        "setMinimum": 1,
         "setMaximum": 2147483647,
         "setValue": 150,
         "setToolTip": "Number of offspring to generate to fill out the population.\nOffspring with converged objective functions become members of the\ncurrent population until the population is full. Must be greater\nthan or equal to the population size"

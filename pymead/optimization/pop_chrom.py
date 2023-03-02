@@ -6,6 +6,7 @@ from multiprocessing import Pool
 from copy import deepcopy
 from pymead.core.mea import MEA
 from pymead.analysis.calc_aero_data import calculate_aero_data
+from benedict import benedict
 
 
 class CustomGASettings:
@@ -65,7 +66,7 @@ class Chromosome:
         self.category = category
         self.generation = generation
         self.population_idx = population_idx
-        self.mea = deepcopy(mea)
+        self.mea = mea.deepcopy(deactivate_airfoil_graphs=True)
         self.param_set = deepcopy(param_dict)
         self.ga_settings = ga_settings
         self.verbose = verbose
@@ -116,11 +117,21 @@ class Chromosome:
         if self.genes is not None:
             # print(f"genes = {self.genes}")
             self.mea.update_parameters(self.genes)
+            self.update_param_dict()  # updates the MSES settings from the geometry (just for XCDELH right now)
+            # coords = self.mea.airfoils['A0'].get_coords(body_fixed_csys=False)
+            # np.savetxt(fr'C:\Users\mlauer2\AppData\Local\Temp\temp_opt\ga_opt_40\X_{self.population_idx}.dat', coords)
+            # TODO: add a way to update XCDELH from MEA somehow
             # print(f"alf = {self.mea.airfoils['A0'].alf.value}")
             self.airfoil_sys_generated = True
         else:
             raise Exception('Genes of Chromosome object have not been set. Aborting airfoil system generation.')
         return self.param_set
+
+    def update_param_dict(self):
+        dben = benedict(self.mea.param_dict)
+        for idx, from_geometry in enumerate(self.param_set['mses_settings']['from_geometry']):
+            for k, v in from_geometry.items():
+                self.param_set['mses_settings'][k][idx] = dben[v.replace('$', '')].value
 
     def chk_self_intersection(self) -> bool:
         """
@@ -267,7 +278,7 @@ class Population:
                  parents: typing.List[Chromosome] or None, mea: MEA, verbose: bool = True,
                  skip_parent_assignment: bool = False):
         self.param_set = deepcopy(param_dict)
-        self.mea = deepcopy(mea)
+        self.mea = mea.deepcopy(deactivate_airfoil_graphs=True)
         self.ga_settings = ga_settings
         self.generation = generation
         self.verbose = verbose

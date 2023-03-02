@@ -15,11 +15,13 @@ import sys
 
 get_set_value_names = {'QSpinBox': ('value', 'setValue', 'valueChanged'),
                        'QDoubleSpinBox': ('value', 'setValue', 'valueChanged'),
+                       'ScientificDoubleSpinBox': ('value', 'setValue', 'valueChanged'),
                        'QTextArea': ('text', 'setText', 'textChanged'),
                        'QPlainTextArea': ('text', 'setText', 'textChanged'),
                        'QLineEdit': ('text', 'setText', 'textChanged'),
                        'QComboBox': ('currentText', 'setCurrentText', 'currentTextChanged'),
                        'QCheckBox': ('checkState', 'setCheckState', 'stateChanged'),
+                       'QPlainTextEdit': ('toPlainText', 'setPlainText', 'textChanged'),
                        'GridBounds': ('values', 'setValues', 'boundsChanged'),
                        'MSETMultiGridWidget': ('values', 'setValues', 'multiGridChanged'),
                        'XTRSWidget': ('values', 'setValues', 'XTRSChanged'),
@@ -35,12 +37,13 @@ msg_modes = {'info': QMessageBox.Information, 'warn': QMessageBox.Warning, 'ques
 
 
 class PymeadDialogWidget(QWidget):
-    def __init__(self, settings_file):
+    def __init__(self, settings_file, **kwargs):
         super().__init__()
         self.settings = load_data(settings_file)
         self.widget_dict = {}
         self.layout = QGridLayout()
         self.setLayout(self.layout)
+        self.kwargs = {**kwargs}
         self.setInputs()
 
     def setInputs(self):
@@ -70,7 +73,11 @@ class PymeadDialogWidget(QWidget):
                 widget = getattr(PyQt5.QtWidgets, w_dict['widget_type'])(parent=self)
             elif hasattr(sys.modules[__name__], w_dict['widget_type']):
                 # If not in PyQt5.QtWidgets, check the modules loaded into this file:
-                widget = getattr(sys.modules[__name__], w_dict['widget_type'])(parent=self)
+                kwargs = {}
+                if w_dict['widget_type'] == 'ADWidget':
+                    kwargs = self.kwargs
+                widget = getattr(sys.modules[__name__], w_dict['widget_type'])(parent=self, **kwargs)
+                print(f"{widget = }")
             else:
                 raise ValueError(f"Widget type {w_dict['widget_type']} not found in PyQt5.QtWidgets or system modules")
             grid_params_widget = {'row': grid_counter, 'column': 1, 'rowSpan': 1,
@@ -106,6 +113,7 @@ class PymeadDialogWidget(QWidget):
                 self.layout.addWidget(checkbox, *[v for v in grid_params_check.values()])
                 self.widget_dict[w_name]['checkbox'] = checkbox
 
+            # Connect the button if there is one
             if 'clicked_connect' in w_dict.keys() and isinstance(widget, QPushButton):
                 widget.clicked.connect(getattr(self, w_dict['clicked_connect']))
 
@@ -133,6 +141,9 @@ class PymeadDialogWidget(QWidget):
                 output_dict[w_name] = getattr(w['widget'],
                                               get_set_value_names[self.settings[w_name]['widget_type']][0]
                                               )()
+                if w['checkbox'] is not None:
+                    state = w['checkbox'].checkState()
+                    output_dict[w_name] = (output_dict[w_name], state)
             else:
                 output_dict[w_name] = None
         return output_dict
@@ -144,7 +155,11 @@ class PymeadDialogWidget(QWidget):
     def overrideInputs(self, new_values: dict):
         for k, v in new_values.items():
             if v is not None:
-                getattr(self.widget_dict[k]['widget'], get_set_value_names[self.settings[k]['widget_type']][1])(v)
+                if self.widget_dict[k]['checkbox'] is not None:
+                    self.widget_dict[k]['checkbox'].setCheckState(v[1])
+                    getattr(self.widget_dict[k]['widget'], get_set_value_names[self.settings[k]['widget_type']][1])(v[0])
+                else:
+                    getattr(self.widget_dict[k]['widget'], get_set_value_names[self.settings[k]['widget_type']][1])(v)
 
     def dialogChanged(self, *_, w_name: str):
         new_inputs = self.getInputs()
@@ -159,7 +174,7 @@ class PymeadDialogWidget(QWidget):
 
 class PymeadDialogTabWidget(VerticalTabWidget):
     def __init__(self, parent, widgets: dict, settings_override: dict = None):
-        super().__init__(parent=parent)
+        super().__init__()
         self.w_dict = widgets
         for k, v in self.w_dict.items():
             self.addTab(v, k)
@@ -189,8 +204,11 @@ class PymeadDialog(QDialog):
         self.layout.addWidget(widget)
         self.layout.addWidget(self.create_button_box())
 
-    def setInputs(self):
-        self.w.setInputs()
+    # def setInputs(self):
+    #     self.w.setInputs()
+
+    def overrideInputs(self, new_inputs):
+        self.w.overrideInputs(new_values=new_inputs)
 
     def getInputs(self):
         return self.w.getInputs()

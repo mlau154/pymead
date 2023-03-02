@@ -1,8 +1,11 @@
-from PyQt5.QtWidgets import QTabWidget, QWidget, QGridLayout, QDoubleSpinBox, QLabel, QSpinBox
+from PyQt5.QtWidgets import QTabWidget, QWidget, QGridLayout, QDoubleSpinBox, QLabel, QSpinBox, QLineEdit
 from PyQt5.QtCore import pyqtSignal
+from PyQt5.QtGui import QContextMenuEvent
+from PyQt5.QtWidgets import QMenu, QAction
 import numpy as np
 from copy import deepcopy
 from functools import partial
+from pymead.utils.widget_recursion import get_parent
 
 
 def default_input_dict():
@@ -41,7 +44,8 @@ def default_inputs_AD():
             'XCDELH': 0.1,
             'PTRHIN': 1.1,
             'ETAH': 0.95,
-        }
+            'from_geometry': {}
+        },
     }
     return input_dict
 
@@ -263,11 +267,39 @@ class XTRSWidget(QTabWidget):
         self.XTRSChanged.emit()
 
 
+class ADDoubleSpinBox(QDoubleSpinBox):
+    def __init__(self, parent, AD_tab: str, design_tree_widget):
+        super().__init__(parent=parent)
+        self.equation_edit = None
+        self.AD_tab = AD_tab
+        design_tree_widget.sigSelChanged.connect(self.set_value_from_param_tree)
+
+    def contextMenuEvent(self, event: QContextMenuEvent) -> None:
+        menu = QMenu(self)
+        action = QAction('Define by equation', parent=self)
+        action.triggered.connect(self.on_define_by_equation)
+        menu.addAction(action)
+        if menu.exec_(event.globalPos()):
+            pass
+
+    def on_define_by_equation(self):
+        self.equation_edit = QLineEdit(self)
+        self.equation_edit.setMinimumWidth(100)
+        get_parent(self, depth=3).grid_layout[self.AD_tab].addWidget(self.equation_edit, 1, 3, 1, 1)
+
+    def set_value_from_param_tree(self, data: tuple):
+        if str(get_parent(self, depth=3).currentIndex() + 1) == self.AD_tab and self.equation_edit is not None:
+            # (Make sure we are writing to the widget corresponding to the current tab)
+            self.equation_edit.setText(data[0])
+            self.setValue(data[1])
+            get_parent(self, depth=3).input_dict[self.AD_tab]['from_geometry']['XCDELH'] = data[0]
+
+
 class ADWidget(QTabWidget):
 
     ADChanged = pyqtSignal()
 
-    def __init__(self, parent):
+    def __init__(self, parent, design_tree_widget=None):
         super().__init__(parent=parent)
         self.labels = {
             'ISDELH': 'AD Side',
@@ -278,8 +310,9 @@ class ADWidget(QTabWidget):
         self.tab_names = ['1']
         self.input_dict = default_inputs_AD()
         self.widget_dict = {}
-        self.grid_widget = None
-        self.grid_layout = None
+        self.grid_widget = {'1': None}
+        self.grid_layout = {'1': None}
+        self.design_tree_widget = design_tree_widget
         self.generateWidgets()
         self.setTabs()
 
@@ -287,30 +320,42 @@ class ADWidget(QTabWidget):
         for k1, v1 in self.input_dict.items():
             self.widget_dict[k1] = {}
             for k2, v2 in v1.items():
-                if k2 != 'ISDELH':
-                    w = QDoubleSpinBox(self)
-                else:
-                    w = QSpinBox(self)
-                if k2 in ['XCDELH', 'ETAH']:
-                    w.setMinimum(0.0)
-                    w.setMaximum(1.0)
-                    w.setSingleStep(0.01)
-                elif k2 == 'ISDELH':
-                    w.setMinimum(1)
-                    w.setMaximum(100)
-                elif k2 == 'PTRHIN':
-                    w.setMinimum(1.0)
-                    w.setMaximum(np.inf)
-                    w.setSingleStep(0.05)
+                if k2 != 'from_geometry':
+                    if k2 in ['PTRHIN', 'ETAH']:
+                        w = QDoubleSpinBox(self)
+                    elif k2 == 'XCDELH':
+                        w = ADDoubleSpinBox(self, k1, design_tree_widget=self.design_tree_widget)
+                    else:
+                        w = QSpinBox(self)
+                    if k2 in ['XCDELH', 'ETAH']:
+                        w.setMinimum(0.0)
+                        w.setMaximum(1.0)
+                        w.setSingleStep(0.01)
+                        w.setDecimals(12)
+                    elif k2 == 'ISDELH':
+                        w.setMinimum(1)
+                        w.setMaximum(100)
+                    elif k2 == 'PTRHIN':
+                        w.setMinimum(1.0)
+                        w.setMaximum(np.inf)
+                        w.setSingleStep(0.05)
+                        w.setDecimals(12)
 
-                w.setValue(v2)
+                    w.setValue(v2)
 
-                w.valueChanged.connect(partial(self.valueChanged, k1, k2))
-                w_label = QLabel(self.labels[k2], self)
-                self.widget_dict[k1][k2] = {
-                    'widget': w,
-                    'label': w_label,
-                }
+                    w.valueChanged.connect(partial(self.valueChanged, k1, k2))
+                    w_label = QLabel(self.labels[k2], self)
+                    self.widget_dict[k1][k2] = {
+                        'widget': w,
+                        'label': w_label,
+                    }
+            for k2, v2 in v1['from_geometry'].items():
+                w = QLineEdit(self.widget_dict[k1][k2]['widget'])
+                w.setText(v2)
+                w.setMinimumWidth(100)
+                self.widget_dict[k1][k2]['widget'].equation_edit = w
+                # w.textChanged.connect(partial(self.valueChanged, k1, k2))
+                self.widget_dict[k1][k2]['from_geometry'] = w
 
     def regenerateWidgets(self):
         self.generateWidgets()
@@ -349,31 +394,40 @@ class ADWidget(QTabWidget):
             self.add_tab(tab_name)
             grid_row_counter = 0
             for k, v in self.widget_dict[tab_name].items():
-                self.grid_layout.addWidget(v['label'], grid_row_counter, 0)
-                self.grid_layout.addWidget(v['widget'], grid_row_counter, 1)
+                self.grid_layout[tab_name].addWidget(v['label'], grid_row_counter, 0)
+                self.grid_layout[tab_name].addWidget(v['widget'], grid_row_counter, 1)
+                if 'from_geometry' in v.keys():
+                    self.grid_layout[tab_name].addWidget(v['from_geometry'], grid_row_counter, 2)
                 grid_row_counter += 1
 
     def updateTabNames(self, tab_name_list: list):
         self.tab_names = tab_name_list
 
     def add_tab(self, name: str):
-        self.grid_widget = QWidget()
-        self.grid_layout = QGridLayout(self)
-        self.grid_widget.setLayout(self.grid_layout)
-        self.addTab(self.grid_widget, name)
+        self.grid_widget[name] = QWidget()
+        self.grid_layout[name] = QGridLayout(self)
+        self.grid_widget[name].setLayout(self.grid_layout[name])
+        self.addTab(self.grid_widget[name], name)
 
     def setValues(self, values: dict):
+        for k1, v1 in values.items():
+            for k2, v2 in v1['from_geometry'].items():
+                self.input_dict[k1]['from_geometry'][k2] = v2
         self.updateTabNames([k for k in values.keys()])
         self.regenerateWidgets()
         for k1, v1 in values.items():
             for k2, v2 in v1.items():
-                self.widget_dict[k1][k2]['widget'].setValue(v2)
-                self.input_dict[k1][k2] = v2
+                if k2 != 'from_geometry':
+                    self.widget_dict[k1][k2]['widget'].setValue(v2)
+                    self.input_dict[k1][k2] = v2
+            for k2, v2 in v1['from_geometry'].items():
+                self.widget_dict[k1][k2]['from_geometry'].setText(v2)
 
     def values(self):
         return self.input_dict
 
     def valueChanged(self, k1, k2, v2):
+        print(f"Value changed! {k1 = }, {k2 = }, {v2 = }")
         self.input_dict[k1][k2] = v2
         self.ADChanged.emit()
 

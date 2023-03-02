@@ -342,7 +342,13 @@ class Airfoil:
           2D array of control points (each row is a different control point, and the two columns are :math:`x` and
           :math:`y`)
         """
-        self.control_point_array = np.array([[cp.xp, cp.yp] for cp in self.control_points])
+        new_control_points = []
+        for cp in self.control_points:
+            if (cp.cp_type == 'anchor_point' and cp.tag not in ['te_1', 'le', 'te_2']) or cp.cp_type == 'free_point':
+                new_control_points.append([cp.x_val, cp.y_val])
+            else:
+                new_control_points.append([cp.xp, cp.yp])
+        self.control_point_array = np.array(new_control_points)
         return self.control_point_array
 
     def translate(self, dx: float, dy: float):

@@ -319,7 +319,6 @@ class GUI(QMainWindow):
             for airfoil in self.mea.airfoils.values():
                 airfoil.airfoil_graph.airfoil_parameters = self.param_tree_instance.p.param('Airfoil Parameters')
             self.mea.update_parameters(parameter_list)
-            pass
 
     def plot_geometry(self):
         file_filter = "DAT Files (*.dat)"
@@ -654,13 +653,17 @@ class GUI(QMainWindow):
             self.disp_message_box('MPLOT suite executable \'mplot\' not found on system path')
             return
 
-        self.dialog = MultiAirfoilDialog(parent=self, settings_override=self.multi_airfoil_analysis_settings)
-        if self.dialog.exec():
-            inputs = self.dialog.getInputs()
-            self.multi_airfoil_analysis_settings = inputs
-        else:
-            inputs = None
-            self.multi_airfoil_analysis_settings = self.dialog.getInputs()
+        self.dialog = MultiAirfoilDialog(parent=self, settings_override=self.multi_airfoil_analysis_settings,
+                                         design_tree_widget=self.design_tree_widget)
+        self.dialog.show()
+        self.dialog.accepted.connect(self.multi_airfoil_analysis_accepted)
+        self.dialog.rejected.connect(self.multi_airfoil_analysis_rejected)
+        # TODO: add these to the opt setup as well
+
+    def multi_airfoil_analysis_accepted(self):
+
+        inputs = self.dialog.getInputs()
+        self.multi_airfoil_analysis_settings = inputs
 
         if inputs is not None:
             mset_settings = convert_dialog_to_mset_settings(inputs['MSET'])
@@ -668,6 +671,9 @@ class GUI(QMainWindow):
             mses_settings['n_airfoils'] = mset_settings['n_airfoils']
             mplot_settings = convert_dialog_to_mplot_settings(inputs['MPLOT'])
             self.multi_airfoil_analysis(mset_settings, mses_settings, mplot_settings)
+
+    def multi_airfoil_analysis_rejected(self):
+        self.multi_airfoil_analysis_settings = self.dialog.getInputs()
 
     def multi_airfoil_analysis(self, mset_settings: dict, mses_settings: dict,
                                mplot_settings: dict):
@@ -683,13 +689,15 @@ class GUI(QMainWindow):
         if not aero_data['converged'] or aero_data['errored_out'] or aero_data['timed_out']:
             self.disp_message_box("MSES Analysis Failed", message_mode='error')
             self.output_area_text(
-                f"<font color='ffffff'>[{self.n_analyses:2.0f}] Converged = {aero_data['converged']} | Errored out = "
+                f"<font size='4'>[{self.n_analyses:2.0f}] Converged = {aero_data['converged']} | Errored out = "
                 f"{aero_data['errored_out']} | Timed out = {aero_data['timed_out']}</font>", mode='html')
+            self.output_area_text('\n')
         else:
             # self.output_area_text('\n')
             self.output_area_text(
                 f"<font size='4'>[{self.n_analyses:2.0f}] (Re = {mses_settings['REYNIN']:.3E}, Ma = {mses_settings['MACHIN']:.3f}): "
                 f"Cl = {aero_data['Cl']:7.4f} | Cd = {aero_data['Cd']:.5f} | Cm = {aero_data['Cm']:7.4f}</font>", mode='html')
+            self.output_area_text('\n')
         sb = self.text_area.verticalScrollBar()
         sb.setValue(sb.maximum())
 
@@ -771,177 +779,176 @@ class GUI(QMainWindow):
             self.v.plot(airfoil[:, 0], airfoil[:, 1], pen=pg.mkPen(color='orange', width=1))
 
     def setup_optimization(self):
+        self.dialog = OptimizationSetupDialog(self, settings_override=self.opt_settings,
+                                              design_tree_widget=self.design_tree_widget)
+        self.dialog.show()
+        self.dialog.accepted.connect(self.optimization_accepted)
+        self.dialog.rejected.connect(self.optimization_rejected)
+
+    def optimization_accepted(self):
         exit_the_dialog = False
         early_return = False
-        param_dict = None
-        opt_settings = None
         opt_settings_list = None
         param_dict_list = None
         mea_list = None
         files = None
-        mea = None
-        dialog = OptimizationSetupDialog(self)
-        if dialog.exec_():
-            while not exit_the_dialog and not early_return:
-                self.opt_settings = dialog.getInputs()
+        while not exit_the_dialog and not early_return:
+            self.opt_settings = self.dialog.getInputs()
 
-                loop_through_settings = False
+            loop_through_settings = False
 
-                if self.opt_settings['Warm Start/Batch Mode']['batch_mode_active']['state'] in [1, 2]:
+            if self.opt_settings['General Settings']['batch_mode_active']:
 
-                    loop_through_settings = True
+                loop_through_settings = True
 
-                    files = self.opt_settings['Warm Start/Batch Mode']['batch_mode_files']['texts']
+                files = self.opt_settings['General Settings']['batch_mode_files']
 
-                    if files == ['']:
-                        self.disp_message_box('The \'Batch Settings Files\' field must be filled because batch mode '
-                                              'is selected as active', message_mode='error')
+                if files == ['']:
+                    self.disp_message_box('The \'Batch Settings Files\' field must be filled because batch mode '
+                                          'is selected as active', message_mode='error')
+                    exit_the_dialog = True
+                    early_return = True
+                    continue
+
+                all_batch_files_valid = True
+                opt_settings_list = []
+                for file in files:
+                    if not os.path.exists(file):
+                        self.disp_message_box(f'The batch file {file} could not be located', message_mode='error')
                         exit_the_dialog = True
                         early_return = True
-                        continue
+                        all_batch_files_valid = False
+                        break
+                    opt_settings_list.append(load_data(file))
+                if not all_batch_files_valid:
+                    continue
 
-                    all_batch_files_valid = True
-                    opt_settings_list = []
-                    for file in files:
-                        if not os.path.exists(file):
-                            self.disp_message_box(f'The batch file {file} could not be located', message_mode='error')
-                            exit_the_dialog = True
-                            early_return = True
-                            all_batch_files_valid = False
-                            break
-                        opt_settings_list.append(load_data(file))
-                    if not all_batch_files_valid:
-                        continue
+            if loop_through_settings:
+                n_settings = len(files)
+            else:
+                n_settings = 1
+
+            if not loop_through_settings:
+                opt_settings_list = []
+            param_dict_list = []
+            mea_list = []
+
+            for settings_idx in range(n_settings):
 
                 if loop_through_settings:
-                    n_settings = len(files)
+                    opt_settings = opt_settings_list[settings_idx]
                 else:
-                    n_settings = 1
+                    opt_settings = self.opt_settings
 
-                if not loop_through_settings:
-                    opt_settings_list = []
-                param_dict_list = []
-                mea_list = []
+                param_dict = convert_opt_settings_to_param_dict(opt_settings)
 
-                for settings_idx in range(n_settings):
-
-                    if loop_through_settings:
-                        opt_settings = opt_settings_list[settings_idx]
-                    else:
-                        opt_settings = self.opt_settings
-
-                    param_dict = convert_opt_settings_to_param_dict(opt_settings)
-
-                    if not opt_settings['Warm Start/Batch Mode']['use_current_mea']['state']:
-                        mea_dict = self.copy_mea()
-                    else:
-                        mea_file = opt_settings['Warm Start/Batch Mode']['mea_file']['text']
-                        if not os.path.exists(mea_file):
-                            self.disp_message_box('JMEA parametrization file not found', message_mode='error')
-                            exit_the_dialog = True
-                            early_return = True
-                            continue
-                        else:
-                            mea_dict = load_data(mea_file)
-
-                    # Generate the multi-element airfoil from the dictionary
-                    mea = MEA.generate_from_param_dict(mea_dict)
-
-                    norm_val_list, _ = mea.extract_parameters()
-                    if isinstance(norm_val_list, str):
-                        error_message = norm_val_list
-                        self.disp_message_box(error_message, message_mode='error')
+                print(f"{opt_settings['General Settings']['use_current_mea'] = }")
+                if opt_settings['General Settings']['use_current_mea']:
+                    mea_dict = self.copy_mea()
+                else:
+                    mea_file = opt_settings['General Settings']['mea_file']
+                    if not os.path.exists(mea_file):
+                        self.disp_message_box('JMEA parametrization file not found', message_mode='error')
                         exit_the_dialog = True
                         early_return = True
                         continue
-
-                    param_dict['n_var'] = len(norm_val_list)
-
-                    # Thickness distribution check parameters
-                    if opt_settings['Constraints/Validation']['check_thickness_at_points']['state']:
-                        param_dict['thickness_dist_file'] = \
-                            opt_settings['Constraints/Validation']['thickness_at_points']['text']
-                        try:
-                            data = np.loadtxt(param_dict['thickness_dist_file'])
-                            param_dict['thickness_dist'] = data.tolist()
-                        except FileNotFoundError:
-                            message = f'Thickness file {param_dict["thickness_dist"]} not found'
-                            self.disp_message_box(message=message, message_mode='error')
-                            raise FileNotFoundError(message)
                     else:
-                        param_dict['thickness_dist'] = None
+                        mea_dict = load_data(mea_file)
 
-                    # Internal geometry check parameters
-                    if opt_settings['Constraints/Validation']['use_internal_geometry']['state']:
-                        param_dict['internal_geometry_file'] = \
-                            opt_settings['Constraints/Validation']['internal_geometry']['text']
-                        try:
-                            data = np.loadtxt(param_dict['internal_geometry_file'])
-                            param_dict['internal_point_matrix'] = data.tolist()
-                        except FileNotFoundError:
-                            message = f'Internal geometry file {param_dict["internal_geometry_file"]} not found'
-                            self.disp_message_box(message=message, message_mode='error')
-                            raise FileNotFoundError(message)
-                    else:
-                        param_dict['internal_point_matrix'] = None
-                    param_dict['int_geometry_timing'] = opt_settings['Constraints/Validation']['internal_geometry_timing'][
-                        'current_text']
+                # Generate the multi-element airfoil from the dictionary
+                mea = MEA.generate_from_param_dict(mea_dict)
 
-                    # External geometry check parameters
-                    if opt_settings['Constraints/Validation']['use_external_geometry']['state']:
-                        param_dict['external_geometry_file'] = \
-                            opt_settings['Constraints/Validation']['external_geometry']['text']
-                        try:
-                            data = np.loadtxt(param_dict['external_geometry_file'])
-                            param_dict['external_point_matrix'] = data.tolist()
-                        except FileNotFoundError:
-                            message = f'External geometry file {param_dict["external-geometry_file"]} not found'
-                            self.disp_message_box(message=message, message_mode='error')
-                            raise FileNotFoundError(message)
-                    else:
-                        param_dict['external_point_matrix'] = None
-                    param_dict['ext_geometry_timing'] = opt_settings['Constraints/Validation']['external_geometry_timing'][
-                        'current_text']
-
-                    # Warm start parameters
-                    if opt_settings['Warm Start/Batch Mode']['warm_start_active']['state']:
-                        opt_dir = opt_settings['Warm Start/Batch Mode']['warm_start_dir']['text']
-                    else:
-                        opt_dir = make_ga_opt_dir(opt_settings['Genetic Algorithm']['root_dir']['text'],
-                                                  opt_settings['Genetic Algorithm']['opt_dir_name']['text'])
-
-                    param_dict['opt_dir'] = opt_dir
-
-                    name_base = 'ga_airfoil'
-                    name = [f"{name_base}_{i}" for i in range(opt_settings['Genetic Algorithm']['n_offspring']['value'])]
-                    param_dict['name'] = name
-
-                    for airfoil in mea.airfoils.values():
-                        airfoil.airfoil_graphs_active = False
-                    mea.airfoil_graphs_active = False
-                    base_folder = os.path.join(opt_settings['Genetic Algorithm']['root_dir']['text'],
-                                               opt_settings['Genetic Algorithm']['temp_analysis_dir_name']['text'])
-                    param_dict['base_folder'] = base_folder
-                    if not os.path.exists(base_folder):
-                        os.mkdir(base_folder)
-
-                    if opt_settings['Warm Start/Batch Mode']['warm_start_active']['state']:
-                        param_dict['warm_start_generation'] = calculate_warm_start_index(
-                            opt_settings['Warm Start/Batch Mode']['warm_start_generation']['value'], opt_dir)
-                    param_dict_save = deepcopy(param_dict)
-                    if not opt_settings['Warm Start/Batch Mode']['warm_start_active']['state']:
-                        save_data(param_dict_save, os.path.join(opt_dir, 'param_dict.json'))
-                    else:
-                        save_data(param_dict_save, os.path.join(
-                            opt_dir, f'param_dict_{param_dict["warm_start_generation"]}.json'))
-
-                    if not loop_through_settings:
-                        opt_settings_list = [opt_settings]
-                    param_dict_list.append(param_dict)
-                    mea_list.append(mea)
+                norm_val_list, _ = mea.extract_parameters()
+                if isinstance(norm_val_list, str):
+                    error_message = norm_val_list
+                    self.disp_message_box(error_message, message_mode='error')
                     exit_the_dialog = True
-        else:
-            return
+                    early_return = True
+                    continue
+
+                param_dict['n_var'] = len(norm_val_list)
+
+                # Thickness distribution check parameters
+                if opt_settings['Constraints/Termination']['check_thickness_at_points']:
+                    param_dict['thickness_dist_file'] = \
+                        opt_settings['Constraints/Termination']['thickness_at_points']
+                    try:
+                        data = np.loadtxt(param_dict['thickness_dist_file'])
+                        param_dict['thickness_dist'] = data.tolist()
+                    except FileNotFoundError:
+                        message = f'Thickness file {param_dict["thickness_dist"]} not found'
+                        self.disp_message_box(message=message, message_mode='error')
+                        raise FileNotFoundError(message)
+                else:
+                    param_dict['thickness_dist'] = None
+
+                # Internal geometry check parameters
+                if opt_settings['Constraints/Termination']['use_internal_geometry']:
+                    param_dict['internal_geometry_file'] = \
+                        opt_settings['Constraints/Termination']['internal_geometry']
+                    try:
+                        data = np.loadtxt(param_dict['internal_geometry_file'])
+                        param_dict['internal_point_matrix'] = data.tolist()
+                    except FileNotFoundError:
+                        message = f'Internal geometry file {param_dict["internal_geometry_file"]} not found'
+                        self.disp_message_box(message=message, message_mode='error')
+                        raise FileNotFoundError(message)
+                else:
+                    param_dict['internal_point_matrix'] = None
+                param_dict['int_geometry_timing'] = opt_settings['Constraints/Termination']['internal_geometry_timing']
+
+                # External geometry check parameters
+                if opt_settings['Constraints/Termination']['use_external_geometry']:
+                    param_dict['external_geometry_file'] = \
+                        opt_settings['Constraints/Termination']['external_geometry']
+                    try:
+                        data = np.loadtxt(param_dict['external_geometry_file'])
+                        param_dict['external_point_matrix'] = data.tolist()
+                    except FileNotFoundError:
+                        message = f'External geometry file {param_dict["external-geometry_file"]} not found'
+                        self.disp_message_box(message=message, message_mode='error')
+                        raise FileNotFoundError(message)
+                else:
+                    param_dict['external_point_matrix'] = None
+                param_dict['ext_geometry_timing'] = opt_settings['Constraints/Termination']['external_geometry_timing']
+
+                # Warm start parameters
+                if opt_settings['General Settings']['warm_start_active']:
+                    opt_dir = opt_settings['General Settings']['warm_start_dir']
+                else:
+                    opt_dir = make_ga_opt_dir(opt_settings['Genetic Algorithm']['root_dir'],
+                                              opt_settings['Genetic Algorithm']['opt_dir_name'])
+
+                param_dict['opt_dir'] = opt_dir
+
+                name_base = 'ga_airfoil'
+                name = [f"{name_base}_{i}" for i in range(opt_settings['Genetic Algorithm']['n_offspring'])]
+                param_dict['name'] = name
+
+                for airfoil in mea.airfoils.values():
+                    airfoil.airfoil_graphs_active = False
+                mea.airfoil_graphs_active = False
+                base_folder = os.path.join(opt_settings['Genetic Algorithm']['root_dir'],
+                                           opt_settings['Genetic Algorithm']['temp_analysis_dir_name'])
+                param_dict['base_folder'] = base_folder
+                if not os.path.exists(base_folder):
+                    os.mkdir(base_folder)
+
+                if opt_settings['General Settings']['warm_start_active']:
+                    param_dict['warm_start_generation'] = calculate_warm_start_index(
+                        opt_settings['General Settings']['warm_start_generation'], opt_dir)
+                param_dict_save = deepcopy(param_dict)
+                if not opt_settings['General Settings']['warm_start_active']:
+                    save_data(param_dict_save, os.path.join(opt_dir, 'param_dict.json'))
+                else:
+                    save_data(param_dict_save, os.path.join(
+                        opt_dir, f'param_dict_{param_dict["warm_start_generation"]}.json'))
+
+                if not loop_through_settings:
+                    opt_settings_list = [opt_settings]
+                param_dict_list.append(param_dict)
+                mea_list.append(mea)
+                exit_the_dialog = True
 
         if early_return:
             self.setup_optimization()
@@ -949,9 +956,12 @@ class GUI(QMainWindow):
         if not early_return:
             for (opt_settings, param_dict, mea) in zip(opt_settings_list, param_dict_list, mea_list):
                 # The next two lines are just to make sure any calls to the GUI are performed before the optimization
-                dialog.inputs = opt_settings
-                dialog.setInputs()
+                self.dialog.overrideInputs(new_inputs=opt_settings)
                 self.run_shape_optimization(param_dict, opt_settings, mea)
+
+    def optimization_rejected(self):
+        self.opt_settings = self.dialog.getInputs()
+        return
 
     def run_shape_optimization(self, param_dict: dict, opt_settings: dict, mea: MEA):
         self.worker = Worker(self.shape_optimization, param_dict, opt_settings, mea)
@@ -980,17 +990,18 @@ class GUI(QMainWindow):
         forces = []
         ref_dirs = get_reference_directions("energy", param_dict['n_obj'], param_dict['n_ref_dirs'],
                                             seed=param_dict['seed'])
+        max_genes_to_mutate = 2 if len(self.mea.extract_parameters()[0]) > 1 else 1
         ga_settings = CustomGASettings(population_size=param_dict['n_offsprings'],
                                        mutation_bounds=([-0.002, 0.002]),
                                        mutation_methods=('random-reset', 'random-perturb'),
-                                       max_genes_to_mutate=2,
+                                       max_genes_to_mutate=max_genes_to_mutate,
                                        mutation_probability=0.06,
                                        max_mutation_attempts_per_chromosome=500)
 
         problem = TPAIOPT(n_var=param_dict['n_var'], n_obj=param_dict['n_obj'], n_constr=param_dict['n_constr'],
                           xl=param_dict['xl'], xu=param_dict['xu'], param_dict=param_dict, ga_settings=ga_settings)
 
-        if not opt_settings['Warm Start/Batch Mode']['warm_start_active']['state']:
+        if not opt_settings['General Settings']['warm_start_active']:
             if param_dict['seed'] is not None:
                 np.random.seed(param_dict['seed'])
                 random.seed(param_dict['seed'])
@@ -1029,6 +1040,8 @@ class GUI(QMainWindow):
             J = None
             G = None
 
+            print(f"{fully_converged_chromosomes = }")
+
             for chromosome in fully_converged_chromosomes:
                 if chromosome.fitness is not None:  # This statement should always pass, but shown here for clarity
                     forces.append(chromosome.forces)
@@ -1039,12 +1052,14 @@ class GUI(QMainWindow):
                             new_X = np.array(chromosome.genes)
                     else:
                         new_X = np.row_stack((new_X, np.array(chromosome.genes)))
+                    # print(f"{self.objectives = }")
                     for objective in self.objectives:
                         objective.update(chromosome.forces)
                     for constraint in self.constraints:
                         constraint.update(chromosome.forces)
                     if J is None:
                         J = np.array([obj.value for obj in self.objectives])
+                        # print(f"{J = } on this pass")
                     else:
                         J = np.row_stack((J, np.array([obj.value for obj in self.objectives])))
                     if len(self.constraints) > 0:
@@ -1056,6 +1071,7 @@ class GUI(QMainWindow):
             pop_initial = pymoo.core.population.Population.new("X", new_X)
             # objectives
             pop_initial.set("F", J)
+            # print(f"Initially, {J = }")
             if len(self.constraints) > 0:
                 if G is not None:
                     pop_initial.set("G", G)
@@ -1117,12 +1133,16 @@ class GUI(QMainWindow):
                     gene_matrix = []
                     feasible_indices = []
                     while True:
+                        # print(f"{search_for_feasible_idx = }")
+                        # print(f"{X = }")
                         if X[search_for_feasible_idx, 0] != 9999:
                             gene_matrix.append(X[search_for_feasible_idx, :].tolist())
                             feasible_indices.append(search_for_feasible_idx)
                         else:
                             n_infeasible_solutions += 1
                         search_for_feasible_idx += 1
+                        # print(f"{gene_matrix = }")
+                        # print(f"{param_dict['num_processors']}")
                         if len(gene_matrix) == param_dict['num_processors']:
                             break
                     population = [Chromosome(problem.param_dict, ga_settings=ga_settings, category=None,
@@ -1162,6 +1182,7 @@ class GUI(QMainWindow):
                                 else:
                                     G = np.row_stack((G, np.array([
                                         constraint.value for constraint in self.constraints])))
+                    # print(f"{J = }")
                     algorithm.evaluator.n_eval += param_dict['num_processors']
                     # print(f"{J = }")
                     # print(f"{J[:, 0] = }")
@@ -1216,6 +1237,7 @@ class GUI(QMainWindow):
                 set_cv(pop)
 
             # returned the evaluated individuals which have been evaluated or even modified
+            # print(f"{pop.get('X') = }, {pop.get('F') = }")
             algorithm.tell(infills=pop)
 
             progress_callback.emit(algorithm.display.progress_dict)
@@ -1255,13 +1277,14 @@ class GUI(QMainWindow):
             progress_callback.emit(PlotAirfoilCallback(parent=self, mea=mea, X=X.tolist(), background_color=bcolor))
             # TODO: opt airfoils not plotting correctly
             progress_callback.emit(ParallelCoordsCallback(parent=self, mea=mea, X=X.tolist(), background_color=bcolor))
-            if param_dict['tool'] == 'XFOIL':
-                progress_callback.emit(CpPlotCallbackXFOIL(parent=self, background_color=bcolor))
-                progress_callback.emit(DragPlotCallbackXFOIL(parent=self, background_color=bcolor))
-            elif param_dict['tool'] == 'MSES':
-                progress_callback.emit(CpPlotCallbackMSES(parent=self, background_color=bcolor))
-                progress_callback.emit(DragPlotCallbackMSES(parent=self, background_color=bcolor))
-                pass
+            # if param_dict['tool'] == 'XFOIL':
+            #     progress_callback.emit(CpPlotCallbackXFOIL(parent=self, background_color=bcolor))
+            #     progress_callback.emit(DragPlotCallbackXFOIL(parent=self, background_color=bcolor))
+            # elif param_dict['tool'] == 'MSES':
+            #     progress_callback.emit(CpPlotCallbackMSES(parent=self, background_color=bcolor))
+            #     progress_callback.emit(DragPlotCallbackMSES(parent=self, background_color=bcolor))
+            #     pass
+            # TODO: on graph close/exit, set the Plot object in GUI() to None so that it can be opened again
 
             # do same more things, printing, logging, storing or even modifying the algorithm object
             if n_generation % param_dict['algorithm_save_frequency'] == 0:

@@ -28,8 +28,8 @@
         "d_ne": {
             "_value": 0.202,
             "bounds": [
-                -Infinity,
-                Infinity
+                0.16,
+                0.24
             ],
             "active": true,
             "linked": false,
@@ -88,8 +88,8 @@
         "d_inl": {
             "_value": 0.145,
             "bounds": [
-                -Infinity,
-                Infinity
+                0.1,
+                0.2
             ],
             "active": true,
             "linked": false,
@@ -98,8 +98,8 @@
         "d_hne": {
             "_value": 0.11,
             "bounds": [
-                -Infinity,
-                Infinity
+                0.06,
+                0.16
             ],
             "active": true,
             "linked": false,
@@ -121,7 +121,7 @@
                 -Infinity,
                 Infinity
             ],
-            "active": true,
+            "active": false,
             "linked": false,
             "func_str": null
         },
@@ -218,8 +218,8 @@
         "L_fne": {
             "_value": 0.15,
             "bounds": [
-                -Infinity,
-                Infinity
+                0.1,
+                0.2
             ],
             "active": true,
             "linked": false,
@@ -253,8 +253,8 @@
         "L_nose": {
             "_value": 0.048,
             "bounds": [
-                -Infinity,
-                Infinity
+                0.015,
+                0.1
             ],
             "active": true,
             "linked": false,
@@ -283,8 +283,8 @@
         "L_n2inl": {
             "_value": 0.03,
             "bounds": [
-                -Infinity,
-                Infinity
+                0.005,
+                0.08
             ],
             "active": true,
             "linked": false,
@@ -456,15 +456,15 @@
                 -Infinity,
                 Infinity
             ],
-            "active": true,
+            "active": false,
             "linked": false,
             "func_str": null
         },
         "L_pr": {
             "_value": 0.38,
             "bounds": [
-                -Infinity,
-                Infinity
+                0.28,
+                0.5
             ],
             "active": true,
             "linked": false,
@@ -473,12 +473,22 @@
         "alf_hub_nac_diff": {
             "_value": -0.09,
             "bounds": [
-                -Infinity,
-                Infinity
+                -0.15,
+                -0.04
             ],
             "active": true,
             "linked": false,
             "func_str": null
+        },
+        "xcdelh": {
+            "_value": 0.08304498269896193,
+            "bounds": [
+                -Infinity,
+                Infinity
+            ],
+            "active": true,
+            "linked": true,
+            "func_str": "$Custom.L_nose * ($A0.Base.c / $A1.Base.c)"
         }
     },
     "A0": {
@@ -496,8 +506,8 @@
             "alf": {
                 "_value": 0.0680496950101793,
                 "bounds": [
-                    -Infinity,
-                    Infinity
+                    0.0,
+                    0.1
                 ],
                 "active": true,
                 "linked": false,
@@ -506,8 +516,8 @@
             "R_le": {
                 "_value": 0.03,
                 "bounds": [
-                    -Infinity,
-                    Infinity
+                    0.005,
+                    0.25
                 ],
                 "active": true,
                 "linked": false,
@@ -516,8 +526,8 @@
             "L_le": {
                 "_value": 0.081,
                 "bounds": [
-                    -Infinity,
-                    Infinity
+                    0.005,
+                    0.25
                 ],
                 "active": true,
                 "linked": false,
@@ -526,8 +536,8 @@
             "r_le": {
                 "_value": 0.5,
                 "bounds": [
-                    -Infinity,
-                    Infinity
+                    0.05,
+                    0.95
                 ],
                 "active": true,
                 "linked": false,
@@ -536,8 +546,8 @@
             "phi_le": {
                 "_value": 0.0,
                 "bounds": [
-                    -Infinity,
-                    Infinity
+                    -0.15,
+                    0.15
                 ],
                 "active": true,
                 "linked": false,
@@ -546,8 +556,8 @@
             "psi1_le": {
                 "_value": 0.3254989133038702,
                 "bounds": [
-                    -Infinity,
-                    Infinity
+                    -1.0,
+                    1.0
                 ],
                 "active": true,
                 "linked": false,
@@ -556,8 +566,8 @@
             "psi2_le": {
                 "_value": 0.1,
                 "bounds": [
-                    -Infinity,
-                    Infinity
+                    -1.0,
+                    1.0
                 ],
                 "active": true,
                 "linked": false,
@@ -566,8 +576,8 @@
             "L1_te": {
                 "_value": 0.05190584071266649,
                 "bounds": [
-                    -Infinity,
-                    Infinity
+                    0.005,
+                    0.1
                 ],
                 "active": true,
                 "linked": false,
@@ -576,8 +586,8 @@
             "L2_te": {
                 "_value": 0.15437317736063746,
                 "bounds": [
-                    -Infinity,
-                    Infinity
+                    0.005,
+                    0.5
                 ],
                 "active": true,
                 "linked": false,
@@ -586,18 +596,18 @@
             "theta1_te": {
                 "_value": 0.008388190730980405,
                 "bounds": [
-                    -Infinity,
-                    Infinity
+                    -0.1,
+                    0.3
                 ],
                 "active": true,
                 "linked": false,
                 "func_str": null
             },
             "theta2_te": {
-                "_value": -6.039868013609867,
+                "_value": 0.24,
                 "bounds": [
-                    -Infinity,
-                    Infinity
+                    0.0,
+                    0.5
                 ],
                 "active": true,
                 "linked": false,
@@ -609,7 +619,7 @@
                     -Infinity,
                     Infinity
                 ],
-                "active": true,
+                "active": false,
                 "linked": false,
                 "func_str": null
             },
@@ -619,7 +629,7 @@
                     -Infinity,
                     Infinity
                 ],
-                "active": true,
+                "active": false,
                 "linked": false,
                 "func_str": null
             },
@@ -629,7 +639,7 @@
                     -Infinity,
                     Infinity
                 ],
-                "active": true,
+                "active": false,
                 "linked": false,
                 "func_str": null
             },
@@ -639,7 +649,7 @@
                     -Infinity,
                     Infinity
                 ],
-                "active": true,
+                "active": false,
                 "linked": false,
                 "func_str": null
             },
@@ -649,7 +659,7 @@
                     -Infinity,
                     Infinity
                 ],
-                "active": true,
+                "active": false,
                 "linked": false,
                 "func_str": null
             }
@@ -684,8 +694,8 @@
                 "L": {
                     "_value": 0.05,
                     "bounds": [
-                        -Infinity,
-                        Infinity
+                        0.005,
+                        0.1
                     ],
                     "active": true,
                     "linked": false,
@@ -694,8 +704,8 @@
                 "R": {
                     "_value": -0.26904070321866896,
                     "bounds": [
-                        -Infinity,
-                        Infinity
+                        -1.0,
+                        0.0
                     ],
                     "active": true,
                     "linked": false,
@@ -704,8 +714,8 @@
                 "r": {
                     "_value": 0.5,
                     "bounds": [
-                        -Infinity,
-                        Infinity
+                        0.05,
+                        0.95
                     ],
                     "active": true,
                     "linked": false,
@@ -714,8 +724,8 @@
                 "phi": {
                     "_value": 0.0,
                     "bounds": [
-                        -Infinity,
-                        Infinity
+                        -0.5,
+                        0.5
                     ],
                     "active": true,
                     "linked": false,
@@ -724,8 +734,8 @@
                 "psi1": {
                     "_value": 2.999204704068803,
                     "bounds": [
-                        -Infinity,
-                        Infinity
+                        0.1,
+                        3.1
                     ],
                     "active": true,
                     "linked": false,
@@ -734,8 +744,8 @@
                 "psi2": {
                     "_value": 2.8619891554410186,
                     "bounds": [
-                        -Infinity,
-                        Infinity
+                        0.1,
+                        3.1
                     ],
                     "active": true,
                     "linked": false,
@@ -771,8 +781,8 @@
                 "L": {
                     "_value": 0.048634722796560115,
                     "bounds": [
-                        -Infinity,
-                        Infinity
+                        0.005,
+                        0.1
                     ],
                     "active": true,
                     "linked": false,
@@ -781,8 +791,8 @@
                 "R": {
                     "_value": 0.10595581290154331,
                     "bounds": [
-                        -Infinity,
-                        Infinity
+                        0.0,
+                        1.0
                     ],
                     "active": true,
                     "linked": false,
@@ -791,8 +801,8 @@
                 "r": {
                     "_value": 0.4609142613517734,
                     "bounds": [
-                        -Infinity,
-                        Infinity
+                        0.05,
+                        0.95
                     ],
                     "active": true,
                     "linked": false,
@@ -801,18 +811,18 @@
                 "phi": {
                     "_value": -0.23162198125884628,
                     "bounds": [
-                        -Infinity,
-                        Infinity
+                        -0.5,
+                        0.5
                     ],
                     "active": true,
                     "linked": false,
                     "func_str": null
                 },
                 "psi1": {
-                    "_value": -3.8756638469329907,
+                    "_value": 2.4,
                     "bounds": [
-                        -Infinity,
-                        Infinity
+                        0.1,
+                        3.1
                     ],
                     "active": true,
                     "linked": false,
@@ -821,8 +831,8 @@
                 "psi2": {
                     "_value": 2.736886857293879,
                     "bounds": [
-                        -Infinity,
-                        Infinity
+                        0.1,
+                        3.1
                     ],
                     "active": true,
                     "linked": false,
@@ -841,12 +851,12 @@
                         ],
                         "bounds": [
                             [
-                                -Infinity,
-                                Infinity
+                                0.0,
+                                1.0
                             ],
                             [
-                                -Infinity,
-                                Infinity
+                                -0.4,
+                                0.0
                             ]
                         ],
                         "active": [
@@ -871,12 +881,12 @@
                         ],
                         "bounds": [
                             [
-                                -Infinity,
-                                Infinity
+                                0.0,
+                                1.0
                             ],
                             [
-                                -Infinity,
-                                Infinity
+                                0.0,
+                                0.4
                             ]
                         ],
                         "active": [
@@ -925,8 +935,8 @@
             "alf": {
                 "_value": 0.06,
                 "bounds": [
-                    -Infinity,
-                    Infinity
+                    0.0,
+                    0.12
                 ],
                 "active": true,
                 "linked": false,
@@ -935,8 +945,8 @@
             "R_le": {
                 "_value": 0.099,
                 "bounds": [
-                    -Infinity,
-                    Infinity
+                    0.005,
+                    0.25
                 ],
                 "active": true,
                 "linked": false,
@@ -945,8 +955,8 @@
             "L_le": {
                 "_value": 0.038,
                 "bounds": [
-                    -Infinity,
-                    Infinity
+                    0.005,
+                    0.25
                 ],
                 "active": true,
                 "linked": false,
@@ -975,8 +985,8 @@
             "psi1_le": {
                 "_value": 1.0152944997401394,
                 "bounds": [
-                    -Infinity,
-                    Infinity
+                    0.1,
+                    3.1
                 ],
                 "active": true,
                 "linked": false,
@@ -995,8 +1005,8 @@
             "L1_te": {
                 "_value": 0.2203843484039354,
                 "bounds": [
-                    -Infinity,
-                    Infinity
+                    0.005,
+                    0.5
                 ],
                 "active": true,
                 "linked": false,
@@ -1015,8 +1025,8 @@
             "theta1_te": {
                 "_value": 0.2876922395145751,
                 "bounds": [
-                    -Infinity,
-                    Infinity
+                    0.0,
+                    0.5
                 ],
                 "active": true,
                 "linked": false,
@@ -1113,8 +1123,8 @@
                 "L": {
                     "_value": 0.1,
                     "bounds": [
-                        -Infinity,
-                        Infinity
+                        0.005,
+                        0.25
                     ],
                     "active": true,
                     "linked": false,
@@ -1123,8 +1133,8 @@
                 "R": {
                     "_value": 0.8585841827429019,
                     "bounds": [
-                        -Infinity,
-                        Infinity
+                        0.1,
+                        5.0
                     ],
                     "active": true,
                     "linked": false,
@@ -1133,8 +1143,8 @@
                 "r": {
                     "_value": 0.5,
                     "bounds": [
-                        -Infinity,
-                        Infinity
+                        0.05,
+                        0.95
                     ],
                     "active": true,
                     "linked": false,
@@ -1143,18 +1153,18 @@
                 "phi": {
                     "_value": 0.0,
                     "bounds": [
-                        -Infinity,
-                        Infinity
+                        -0.5,
+                        0.5
                     ],
                     "active": true,
                     "linked": false,
                     "func_str": null
                 },
                 "psi1": {
-                    "_value": -3.3039823502307626,
+                    "_value": 2.98,
                     "bounds": [
-                        -Infinity,
-                        Infinity
+                        0.1,
+                        3.1
                     ],
                     "active": true,
                     "linked": false,
@@ -1163,8 +1173,8 @@
                 "psi2": {
                     "_value": 2.628978040686616,
                     "bounds": [
-                        -Infinity,
-                        Infinity
+                        0.1,
+                        3.1
                     ],
                     "active": true,
                     "linked": false,
@@ -1200,8 +1210,8 @@
                 "L": {
                     "_value": 0.09917242841326272,
                     "bounds": [
-                        -Infinity,
-                        Infinity
+                        0.005,
+                        0.25
                     ],
                     "active": true,
                     "linked": false,
@@ -1210,8 +1220,8 @@
                 "R": {
                     "_value": 2.0,
                     "bounds": [
-                        -Infinity,
-                        Infinity
+                        0.1,
+                        5.0
                     ],
                     "active": true,
                     "linked": false,
@@ -1220,8 +1230,8 @@
                 "r": {
                     "_value": 0.5041723874265169,
                     "bounds": [
-                        -Infinity,
-                        Infinity
+                        0.05,
+                        0.95
                     ],
                     "active": true,
                     "linked": false,
@@ -1230,8 +1240,8 @@
                 "phi": {
                     "_value": 0.25083762028737355,
                     "bounds": [
-                        -Infinity,
-                        Infinity
+                        -0.5,
+                        0.5
                     ],
                     "active": true,
                     "linked": false,
@@ -1240,8 +1250,8 @@
                 "psi1": {
                     "_value": 1.5,
                     "bounds": [
-                        -Infinity,
-                        Infinity
+                        0.1,
+                        3.1
                     ],
                     "active": true,
                     "linked": false,
@@ -1250,8 +1260,8 @@
                 "psi2": {
                     "_value": 1.5,
                     "bounds": [
-                        -Infinity,
-                        Infinity
+                        0.1,
+                        3.1
                     ],
                     "active": true,
                     "linked": false,
@@ -1412,7 +1422,7 @@
                     "func_str": "^symmetry.symmetry(name, x1=$A1.Base.dx, y1=$A1.Base.dy, theta_rad=$Custom.alf_hub_abs, alf_tool=$A1.Base.alf, alf_target=$A1.Base.alf, phi=$A1.AnchorPoints.ap_noz_h_upp.phi, upper_target=False, upper_tool=True)"
                 },
                 "psi1": {
-                    "_value": -3.3039823502307626,
+                    "_value": 2.98,
                     "bounds": [
                         -Infinity,
                         Infinity
@@ -1464,8 +1474,8 @@
             "c": {
                 "_value": 0.2866,
                 "bounds": [
-                    -Infinity,
-                    Infinity
+                    0.25,
+                    0.35
                 ],
                 "active": true,
                 "linked": false,
@@ -1484,8 +1494,8 @@
             "R_le": {
                 "_value": 0.033017210989456154,
                 "bounds": [
-                    -Infinity,
-                    Infinity
+                    0.005,
+                    0.1
                 ],
                 "active": true,
                 "linked": false,
@@ -1494,8 +1504,8 @@
             "L_le": {
                 "_value": 0.05830301281953921,
                 "bounds": [
-                    -Infinity,
-                    Infinity
+                    0.005,
+                    0.1
                 ],
                 "active": true,
                 "linked": false,
@@ -1504,8 +1514,8 @@
             "r_le": {
                 "_value": 0.4628148342173967,
                 "bounds": [
-                    -Infinity,
-                    Infinity
+                    0.05,
+                    0.95
                 ],
                 "active": true,
                 "linked": false,
@@ -1514,8 +1524,8 @@
             "phi_le": {
                 "_value": 0.06515862408933115,
                 "bounds": [
-                    -Infinity,
-                    Infinity
+                    -0.2,
+                    0.2
                 ],
                 "active": true,
                 "linked": false,
@@ -1524,18 +1534,18 @@
             "psi1_le": {
                 "_value": 0.35673609090780456,
                 "bounds": [
-                    -Infinity,
-                    Infinity
+                    0.1,
+                    3.1
                 ],
                 "active": true,
                 "linked": false,
                 "func_str": null
             },
             "psi2_le": {
-                "_value": -6.222714438913127,
+                "_value": 0.06,
                 "bounds": [
-                    -Infinity,
-                    Infinity
+                    0.1,
+                    3.1
                 ],
                 "active": true,
                 "linked": false,
@@ -1544,8 +1554,8 @@
             "L1_te": {
                 "_value": 0.3548974109134329,
                 "bounds": [
-                    -Infinity,
-                    Infinity
+                    0.05,
+                    0.5
                 ],
                 "active": true,
                 "linked": false,
@@ -1564,8 +1574,8 @@
             "theta1_te": {
                 "_value": 0.1739457115644667,
                 "bounds": [
-                    -Infinity,
-                    Infinity
+                    -0.1,
+                    0.3
                 ],
                 "active": true,
                 "linked": false,
@@ -1594,8 +1604,8 @@
             "r_te": {
                 "_value": 0.5,
                 "bounds": [
-                    -Infinity,
-                    Infinity
+                    0.05,
+                    0.95
                 ],
                 "active": true,
                 "linked": false,
@@ -1604,8 +1614,8 @@
             "phi_te": {
                 "_value": 0.0,
                 "bounds": [
-                    -Infinity,
-                    Infinity
+                    -0.3,
+                    0.3
                 ],
                 "active": true,
                 "linked": false,
@@ -1700,7 +1710,7 @@
                     "func_str": "^symmetry.symmetry(name, x1=$A1.Base.dx, y1=$A1.Base.dy, theta_rad=$Custom.alf_hub_abs, alf_tool=$A0.Base.alf, alf_target=$A2.Base.alf, phi=$A0.AnchorPoints.ap_inl_m.phi, upper_target=False, upper_tool=True)"
                 },
                 "psi1": {
-                    "_value": -3.8756638469329907,
+                    "_value": 2.4,
                     "bounds": [
                         -Infinity,
                         Infinity
@@ -1818,12 +1828,12 @@
                         ],
                         "bounds": [
                             [
-                                -Infinity,
-                                Infinity
+                                0.7,
+                                1.0
                             ],
                             [
-                                -Infinity,
-                                Infinity
+                                0.1,
+                                0.25
                             ]
                         ],
                         "active": [

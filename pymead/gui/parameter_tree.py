@@ -824,6 +824,7 @@ class CustomParameterTree(ParameterTree):
     """A custom version of pyqtgraph's ParameterTree (allows for multiple selection and custom signal emitting)"""
     sigSymmetry = pyqtSignal(str)
     sigPosConstraint = pyqtSignal(str)
+    sigSelChanged = pyqtSignal(tuple)
 
     def __init__(self, parent=None):
         super().__init__(parent=parent)
@@ -839,9 +840,11 @@ class CustomParameterTree(ParameterTree):
             if (parent and isinstance(parent, CustomGroup)) or isinstance(param, HeaderParameter):
                 self.sigSymmetry.emit(self.get_full_param_name_path(param))
                 self.sigPosConstraint.emit(self.get_full_param_name_path(param))
+                self.sigSelChanged.emit((self.get_full_param_name_path(param), param.value()))
             elif isinstance(param, AirfoilParameter):
                 self.sigSymmetry.emit(f"${param.name()}")
                 self.sigPosConstraint.emit(f"${param.name()}")
+                self.sigSelChanged.emit((f"${param.name()}", param.value()))
         self.multi_select = sel
         if len(sel) != 1:
             sel = None
