@@ -3,7 +3,7 @@ from setuptools import setup
 from distutils.util import convert_path
 
 main_ns = {}
-ver_path = convert_path('mymodule/version.py')
+ver_path = convert_path('pymead/version.py')
 with open(ver_path) as ver_file:
     exec(ver_file.read(), main_ns)
 
@@ -30,7 +30,7 @@ setup(
         "License :: OSI Approved :: MIT License",
         "Programming Language :: Python :: 3",
     ],
-    packages=["pymead", "pymead/core", "pymead/symmetric", "pymead/examples", "pymead/utils", "pymead/gui",
+    packages=["pymead", "pymead/core", "pymead/examples", "pymead/utils", "pymead/gui",
               "pymead/tests", "pymead/resources", "pymead/analysis", "pymead/data", "pymead/icons",
               "pymead/optimization", "pymead/plugins", "pymead/gui/scientificspinbox_master",
               "pymead/gui/pyqt_vertical_tab_widget/pyqt_vertical_tab_widget"],
