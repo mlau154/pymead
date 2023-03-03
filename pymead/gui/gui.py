@@ -266,6 +266,7 @@ class GUI(QMainWindow):
             if self.mea.file_name[-5:] != '.jmea':
                 self.mea.file_name += '.jmea'
             self.save_mea()
+            self.setWindowTitle(f"pymead - {os.path.split(self.mea.file_name)[-1]}")
             self.disp_message_box(f"Multi-element airfoil saved as {self.mea.file_name}", message_mode='info')
         else:
             if self.save_attempts > 0:
@@ -281,20 +282,11 @@ class GUI(QMainWindow):
                 self.save_attempts = 0
                 self.disp_message_box('No file name specified. File not saved.', message_mode='warn')
         else:
-            save_data(self.copy_mea(), self.mea.file_name)
+            save_data(self.mea.copy_as_param_dict(), self.mea.file_name)
             self.save_attempts = 0
 
     def copy_mea(self):
-        output_dict_ = {}
-        unravel_param_dict_deepcopy(self.mea.param_dict, output_dict=output_dict_)
-        for k, v in output_dict_.items():
-            if k != 'Custom':
-                output_dict_[k]['anchor_point_order'] = deepcopy(self.mea.airfoils[k].anchor_point_order)
-                output_dict_[k]['free_point_order'] = deepcopy(self.mea.airfoils[k].free_point_order)
-        output_dict_['file_name'] = self.mea.file_name
-        output_dict_['airfoil_graphs_active'] = self.mea.airfoil_graphs_active
-        mea_copy = deepcopy(output_dict_)
-        return mea_copy
+        return self.mea.deepcopy()
 
     def load_mea(self):
         dialog = LoadDialog(self)
@@ -304,6 +296,7 @@ class GUI(QMainWindow):
             file_name = None
         if file_name is not None:
             self.load_mea_no_dialog(file_name)
+            self.setWindowTitle(f"pymead - {os.path.split(self.mea.file_name)[-1]}")
 
     def auto_range_geometry(self):
         x_data_range, y_data_range = self.mea.get_curve_bounds()
@@ -677,10 +670,11 @@ class GUI(QMainWindow):
 
     def multi_airfoil_analysis(self, mset_settings: dict, mses_settings: dict,
                                mplot_settings: dict):
+        coords = tuple([self.mea.airfoils[k].get_coords(
+            body_fixed_csys=False, as_tuple=True) for k in mset_settings['airfoil_order']])
         aero_data, _ = calculate_aero_data(mset_settings['airfoil_analysis_dir'],
                                            mset_settings['airfoil_coord_file_name'],
-                                           self.mea,
-                                           '',
+                                           coords=coords,
                                            tool='MSES',
                                            export_Cp=True,
                                            mset_settings=mset_settings,
@@ -842,7 +836,7 @@ class GUI(QMainWindow):
 
                 param_dict = convert_opt_settings_to_param_dict(opt_settings)
 
-                print(f"{opt_settings['General Settings']['use_current_mea'] = }")
+                # print(f"{opt_settings['General Settings']['use_current_mea'] = }")
                 if opt_settings['General Settings']['use_current_mea']:
                     mea_dict = self.copy_mea()
                 else:
@@ -957,13 +951,14 @@ class GUI(QMainWindow):
             for (opt_settings, param_dict, mea) in zip(opt_settings_list, param_dict_list, mea_list):
                 # The next two lines are just to make sure any calls to the GUI are performed before the optimization
                 self.dialog.overrideInputs(new_inputs=opt_settings)
-                self.run_shape_optimization(param_dict, opt_settings, mea)
+                self.run_shape_optimization(param_dict, opt_settings,
+                                            mea.copy_as_param_dict(deactivate_airfoil_graphs=True))
 
     def optimization_rejected(self):
         self.opt_settings = self.dialog.getInputs()
         return
 
-    def run_shape_optimization(self, param_dict: dict, opt_settings: dict, mea: MEA):
+    def run_shape_optimization(self, param_dict: dict, opt_settings: dict, mea: dict):
         self.worker = Worker(self.shape_optimization, param_dict, opt_settings, mea)
         self.worker.signals.progress.connect(self.shape_opt_progress_callback_fn)
         self.worker.signals.result.connect(self.shape_opt_result_callback_fn)
@@ -985,12 +980,16 @@ class GUI(QMainWindow):
     def shape_opt_error_callback_fn(self, error_tuple: tuple):
         self.output_area_text(f"Error. Error = {error_tuple}\n")
 
-    def shape_optimization(self, param_dict: dict, opt_settings: dict, mea: MEA, progress_callback):
+    def shape_optimization(self, param_dict: dict, opt_settings: dict, mea: dict, progress_callback):
+        # print(f"{opt_settings = }")
         Config.show_compile_hint = False
         forces = []
         ref_dirs = get_reference_directions("energy", param_dict['n_obj'], param_dict['n_ref_dirs'],
                                             seed=param_dict['seed'])
-        max_genes_to_mutate = 2 if len(self.mea.extract_parameters()[0]) > 1 else 1
+        mea_object = MEA.generate_from_param_dict(mea)
+        parameter_list, _ = mea_object.extract_parameters()
+        num_parameters = len(parameter_list)
+        max_genes_to_mutate = 2 if num_parameters > 1 else 1
         ga_settings = CustomGASettings(population_size=param_dict['n_offsprings'],
                                        mutation_bounds=([-0.002, 0.002]),
                                        mutation_methods=('random-reset', 'random-perturb'),
@@ -1005,7 +1004,8 @@ class GUI(QMainWindow):
             if param_dict['seed'] is not None:
                 np.random.seed(param_dict['seed'])
                 random.seed(param_dict['seed'])
-            tpaiga2_alg_instance = CustomGASampling(param_dict=problem.param_dict, ga_settings=ga_settings, mea=mea)
+            tpaiga2_alg_instance = CustomGASampling(param_dict=problem.param_dict, ga_settings=ga_settings, mea=mea,
+                                                    genes=parameter_list)
             population = Population(problem.param_dict, ga_settings, generation=0,
                                     parents=[tpaiga2_alg_instance.generate_first_parent()],
                                     verbose=param_dict['verbose'], mea=mea)
@@ -1018,7 +1018,6 @@ class GUI(QMainWindow):
                 subpopulation.population = subpopulation.population[param_dict['num_processors'] * n_subpopulations:
                                                                     param_dict['num_processors'] * (
                                                                             n_subpopulations + 1)]
-
                 subpopulation.eval_pop_fitness()
 
                 for chromosome in subpopulation.population:
@@ -1039,8 +1038,6 @@ class GUI(QMainWindow):
             new_X = None
             J = None
             G = None
-
-            print(f"{fully_converged_chromosomes = }")
 
             for chromosome in fully_converged_chromosomes:
                 if chromosome.fitness is not None:  # This statement should always pass, but shown here for clarity
@@ -1114,6 +1111,8 @@ class GUI(QMainWindow):
         while algorithm.has_next():
 
             pop = algorithm.ask()
+
+            # print(f"{pop.get('X')[0:4, 0]}")
 
             n_generation += 1
 
@@ -1229,6 +1228,8 @@ class GUI(QMainWindow):
                 # objectives
                 pop.set("F", J)
 
+                # print(f"{pop.get('F') = }")
+
                 # for constraints
                 if len(self.constraints) > 0:
                     pop.set("G", G)
@@ -1239,6 +1240,8 @@ class GUI(QMainWindow):
             # returned the evaluated individuals which have been evaluated or even modified
             # print(f"{pop.get('X') = }, {pop.get('F') = }")
             algorithm.tell(infills=pop)
+
+            # print(f"{algorithm.opt.get('F') = }")
 
             progress_callback.emit(algorithm.display.progress_dict)
 
@@ -1275,8 +1278,7 @@ class GUI(QMainWindow):
                             self.forces_dict[k].append(v)
 
             progress_callback.emit(PlotAirfoilCallback(parent=self, mea=mea, X=X.tolist(), background_color=bcolor))
-            # TODO: opt airfoils not plotting correctly
-            progress_callback.emit(ParallelCoordsCallback(parent=self, mea=mea, X=X.tolist(), background_color=bcolor))
+            # progress_callback.emit(ParallelCoordsCallback(parent=self, mea=mea, X=X.tolist(), background_color=bcolor))
             # if param_dict['tool'] == 'XFOIL':
             #     progress_callback.emit(CpPlotCallbackXFOIL(parent=self, background_color=bcolor))
             #     progress_callback.emit(DragPlotCallbackXFOIL(parent=self, background_color=bcolor))
@@ -1285,8 +1287,8 @@ class GUI(QMainWindow):
             #     progress_callback.emit(DragPlotCallbackMSES(parent=self, background_color=bcolor))
             #     pass
             # TODO: on graph close/exit, set the Plot object in GUI() to None so that it can be opened again
+            # TODO: fix progress callbacks
 
-            # do same more things, printing, logging, storing or even modifying the algorithm object
             if n_generation % param_dict['algorithm_save_frequency'] == 0:
                 save_data(algorithm, os.path.join(param_dict['opt_dir'], f'algorithm_gen_{n_generation}.pkl'))
 

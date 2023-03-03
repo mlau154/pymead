@@ -207,6 +207,7 @@ class Param:
             self.update_dependencies()
 
             if self.func is not None:
+                self.function_dict['__builtins__'] = {}
                 exec(self.func, self.function_dict)
 
     def update_value(self):

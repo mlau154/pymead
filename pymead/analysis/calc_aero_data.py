@@ -2,14 +2,9 @@ import subprocess
 import os
 from pymead.analysis.read_aero_data import read_Cl_from_file_panel_fort, read_Cp_from_file_panel_fort, \
     read_aero_data_from_xfoil, read_Cp_from_file_xfoil, read_bl_data_from_mses, read_forces_from_mses
-from pymead.core.airfoil import Airfoil
-from pymead.core.mea import MEA
-from pymead.core.base_airfoil_params import BaseAirfoilParams
-from pymead.core.param import Param
-from pymead import DATA_DIR
-from pymead.analysis.utils import viscosity_calculator
 from pymead.utils.file_conversion import convert_ps_to_svg
-from math import sqrt
+from pymead.utils.geometry import check_airfoil_self_intersection
+from pymead.utils.read_write_files import write_tuple_tuple_to_file
 import typing
 
 
@@ -21,20 +16,18 @@ SVG_SETTINGS_TR = {
 }
 
 
-def calculate_aero_data(airfoil_coord_dir: str, airfoil_name: str, mea: MEA, mea_airfoil_name: str,
+def calculate_aero_data(airfoil_coord_dir: str, airfoil_name: str, coords: typing.Tuple[tuple],
                         tool: str = 'panel_fort', xfoil_settings: dict = None, mset_settings: dict = None,
                         mses_settings: dict = None, mplot_settings: dict = None, export_Cp: bool = True,
-                        body_fixed_csys: bool = True, downsample: bool = False, ratio_thresh=None, abs_thresh=None):
+                        alpha_panel_fort=None):
     # ratio_thresh of 1.000005 and abs_thresh = 0.1 works well
     tool_list = ['panel_fort', 'XFOIL', 'MSES']
     if tool not in tool_list:
         raise ValueError(f"\'tool\' must be one of {tool_list}")
     if tool in ['panel_fort', 'XFOIL']:
-        airfoil = mea.airfoils[mea_airfoil_name]
 
         # Check for self-intersection and early return if self-intersecting:
-        airfoil.get_coords(body_fixed_csys=True)
-        if airfoil.check_self_intersection():
+        if check_airfoil_self_intersection(coords):
             return False
 
     aero_data = {}
@@ -43,8 +36,10 @@ def calculate_aero_data(airfoil_coord_dir: str, airfoil_name: str, mea: MEA, mea
         os.mkdir(base_dir)
     if tool == 'panel_fort':
         f = os.path.join(base_dir, airfoil_name + '.dat')
-        n_data_pts = airfoil.write_coords_to_file(f, 'w', body_fixed_csys=body_fixed_csys)
-        subprocess.run((["panel_fort", airfoil_coord_dir, airfoil_name + '.dat', str(n_data_pts - 1), str(alpha)]),
+        n_data_pts = len(coords)
+        write_tuple_tuple_to_file(f, coords)
+        subprocess.run((["panel_fort", airfoil_coord_dir, airfoil_name + '.dat', str(n_data_pts - 1),
+                         str(alpha_panel_fort)]),
                        stdout=subprocess.DEVNULL)  # stdout=subprocess.DEVNULL suppresses output to console
         aero_data['Cl'] = read_Cl_from_file_panel_fort(os.path.join(airfoil_coord_dir, 'LIFT.dat'))
         if export_Cp:
@@ -58,8 +53,7 @@ def calculate_aero_data(airfoil_coord_dir: str, airfoil_name: str, mea: MEA, mea
         if 'N' not in xfoil_settings.keys():
             xfoil_settings['N'] = 9.0
         f = os.path.join(base_dir, airfoil_name + ".dat")
-        airfoil.write_coords_to_file(f, 'w', body_fixed_csys=body_fixed_csys, downsample=downsample,
-                                     ratio_thresh=ratio_thresh, abs_thresh=abs_thresh)
+        write_tuple_tuple_to_file(f, coords)
         xfoil_input_file = os.path.join(base_dir, 'xfoil_input.txt')
         xfoil_input_list = ['', 'oper', f'iter {xfoil_settings["iter"]}', 'visc', str(xfoil_settings['Re']),
                             f'M {xfoil_settings["Ma"]}',
@@ -156,7 +150,7 @@ def calculate_aero_data(airfoil_coord_dir: str, airfoil_name: str, mea: MEA, mea
 
         converged = False
         mses_log, mplot_log = None, None
-        mset_success, mset_log = run_mset(airfoil_name, airfoil_coord_dir, mset_settings, mea)
+        mset_success, mset_log = run_mset(airfoil_name, airfoil_coord_dir, mset_settings, coords)
         if mset_success:
             converged, mses_log = run_mses(airfoil_name, airfoil_coord_dir, mses_settings)
         if mset_success and converged:
@@ -186,8 +180,8 @@ def calculate_aero_data(airfoil_coord_dir: str, airfoil_name: str, mea: MEA, mea
         return aero_data, logs
 
 
-def run_mset(name: str, base_dir: str, mset_settings: dict, mea: MEA):
-    write_blade_file(name, base_dir, mset_settings['grid_bounds'], mea, mset_settings['airfoil_order'])
+def run_mset(name: str, base_dir: str, mset_settings: dict, coords: typing.Tuple[tuple]):
+    write_blade_file(name, base_dir, mset_settings['grid_bounds'], coords)
     write_gridpar_file(name, base_dir, mset_settings)
     mset_input_name = 'mset_input.txt'
     mset_input_file = os.path.join(base_dir, name, mset_input_name)
@@ -321,7 +315,7 @@ def run_mplot(name: str, base_dir: str, mplot_settings: dict, mode: str = "force
     return mplot_log
 
 
-def write_blade_file(name: str, base_dir: str, grid_bounds, mea: MEA, airfoil_order: typing.List[str]):
+def write_blade_file(name: str, base_dir: str, grid_bounds, coords: typing.Tuple[tuple]):
     if not os.path.exists(os.path.join(base_dir, name)):  # if specified directory doesn't exist,
         os.mkdir(os.path.join(base_dir, name))  # create it
     blade_file = os.path.join(base_dir, name, 'blade.' + name)  # blade file stored as
@@ -331,12 +325,10 @@ def write_blade_file(name: str, base_dir: str, grid_bounds, mea: MEA, airfoil_or
         for gb in grid_bounds[0:-1]:  # For each of the entries in grid_bounds except the last (type: list),
             f.write(str(gb) + " ")  # write the grid_bound at the specified index with a space after it in blade_file
         f.write(str(grid_bounds[-1]) + "\n")
-        for idx, airfoil_str in enumerate(airfoil_order):
-            airfoil = mea.airfoils[airfoil_str]
-            airfoil.get_coords(body_fixed_csys=False)
-            for xy in airfoil.coords:
+        for idx, airfoil_coords in enumerate(coords):
+            for xy in airfoil_coords:
                 f.write(f"{str(xy[0])} {str(xy[1])}\n")
-            if idx != len(airfoil_order) - 1:
+            if idx != len(coords) - 1:
                 f.write('999.0 999.0\n')  # Write 999.0 999.0 with a carriage return to indicate to MSES that another
                 # airfoil follows
     return blade_file
@@ -472,89 +464,4 @@ def convert_xfoil_string_to_aero_data(line1: str, line2: str, aero_data: dict):
 
 
 class GeometryError(Exception):
-    pass
-
-
-if __name__ == '__main__':
-    d = DATA_DIR
-    airfoil_ = Airfoil(base_airfoil_params=BaseAirfoilParams(R_le=Param(0.14), L_le=Param(0.14)))
-    mea_ = MEA(airfoils=[airfoil_])
-    a_name = "test_airfoil"
-    # xfoil_settings = {'Re': 1e5, 'timeout': 15, 'iter': 150}
-    # # line1, line2 = read_aero_data_from_xfoil(os.path.join(d, a_name, 'xfoil.log'), {})
-    # aero_data_, xfoil_log = calculate_aero_data(d, a_name, mea_, 'A0', Cl=[0.35], tool='xfoil',
-    #                                            xfoil_settings=xfoil_settings)
-    mset_settings_ = {
-        'grid_bounds': [-5, 5, -5, 5],
-        'airfoil_order': ['A0'],
-        'n_airfoils': 1,
-        'airfoil_side_points': 250,
-        'exp_side_points': 0.9,
-        'inlet_pts_left_stream': 41,
-        'outlet_pts_right_stream': 41,
-        'num_streams_top': 17,
-        'num_streams_bot': 23,
-        'max_streams_between': 15,
-        'elliptic_param': 1.3,
-        'stag_pt_aspect_ratio': 2.5,
-        'x_spacing_param': 0.85,
-        'alf0_stream_gen': 0,
-        'dsLE_dsAvg': [0.35],
-        'dsTE_dsAvg': [0.8],
-        'curvature_exp': [1.3],
-        'U_s_smax_min': [1],
-        'U_s_smax_max': [1],
-        'L_s_smax_min': [1],
-        'L_s_smax_max': [1],
-        'U_local_avg_spac_ratio': [0],
-        'L_local_avg_spac_ratio': [0],
-        'verbose': True,
-        'timeout': 10.0,
-    }
-
-    mses_settings_ = {
-        'viscous_flag': 1,
-        'inverse_flag': 0,
-        'inverse_side': 1,
-        'n_airfoils': 1,
-        'AD_flags': [0],
-        'REYNIN': 20e6,
-        'ISDELH': [1],
-        'XCDELH': [0.1],
-        'PTRHIN': [1.1],
-        'ETAH': [0.95],
-        'T': 200,
-        'R': 287,
-        'gam': 1.4,
-        'MACHIN': 0.6,
-        'ALFAIN': 0,
-        'CLIFIN': 0.3,
-        'target': 'Cl',
-        'ISMOM': 3,
-        'IFFBC': 2,
-        'ACRIT': 9,
-        'XTRSupper': [0.01],
-        'XTRSlower': [0.01],
-        'MCRIT': 0.95,
-        'MUCON': 1.05,
-        'ISMOVE': 0,
-        'ISPRES': 0,
-        'NMODN': 0,
-        'NPOSN': 0,
-        'timeout': 15.0,
-        'verbose': True,
-        'iter': 100,
-    }
-
-    mplot_settings_ = {
-        'timeout': 10.0,
-    }
-
-    aero_data_, logs_ = calculate_aero_data(d, a_name, mea_, 'A0', tool='mses', mset_settings=mset_settings_,
-                                            mses_settings=mses_settings_, mplot_settings=mplot_settings_,
-                                            export_Cp=False)
-    mplot_log = run_mplot(a_name, d, mplot_settings=mplot_settings_, mode='Mach', min_contour=0.0,
-                          max_contour=1.5, n_intervals=60)
-    print(aero_data_)
-    # print(xfoil_log)
     pass

@@ -180,7 +180,7 @@ class MEA:
             # fig_.savefig(os.path.join(DATA_DIR, 'test_airfoil.png'))
             return norm_value_list, parameter_list
 
-    def deepcopy(self, deactivate_airfoil_graphs: bool = False):
+    def copy_as_param_dict(self, deactivate_airfoil_graphs: bool = False):
         output_dict_ = {}
         unravel_param_dict_deepcopy(self.param_dict, output_dict=output_dict_)
         for k, v in output_dict_.items():
@@ -192,8 +192,10 @@ class MEA:
             output_dict_['airfoil_graphs_active'] = False
         else:
             output_dict_['airfoil_graphs_active'] = self.airfoil_graphs_active
-        mea_copy = deepcopy(output_dict_)
-        return MEA.generate_from_param_dict(mea_copy)
+        return deepcopy(output_dict_)
+
+    def deepcopy(self, deactivate_airfoil_graphs: bool = False):
+        return MEA.generate_from_param_dict(self.copy_as_param_dict(deactivate_airfoil_graphs))
 
     def update_parameters(self, norm_value_list: list or np.ndarray):
 
@@ -250,7 +252,7 @@ class MEA:
                             list_counter += 1
                         v.value = temp_xy_value  # replace the PosParam value with the temp value (unchanged if
                         # neither x nor y are active)
-                        print(f"Updated PosParam value! {v.value = }")
+                        # print(f"Updated PosParam value! {v.value = }")
                     else:
                         raise ValueError('Found value in dictionary not of type \'Param\'')
             return list_counter
@@ -539,7 +541,7 @@ class MEA:
             mea.user_mods[name_no_ext] = importlib.util.module_from_spec(spec)  # generate the module from the name
             spec.loader.exec_module(mea.user_mods[name_no_ext])  # compile and execute the module
 
-        def f(*_, value):
+        def f(d, key, value):
             if isinstance(value, Param) or isinstance(value, PosParam):
                 value.function_dict['name'] = value.name.split('.')[-1]
                 value.update()

@@ -15,7 +15,6 @@ from pymead import DATA_DIR
 import os
 import subprocess
 import pandas as pd
-from time import time
 
 
 class Airfoil:
@@ -663,7 +662,7 @@ class Airfoil:
         for curve in self.curve_list:
             curve.update_curve_pg()
 
-    def get_coords(self, body_fixed_csys: bool = False):
+    def get_coords(self, body_fixed_csys: bool = False, as_tuple: bool = False):
         """Gets the set of discrete airfoil coordinates for the airfoil
 
         Parameters
@@ -672,10 +671,13 @@ class Airfoil:
           Whether to internally transform the airfoil such that :math:`(0,0)` is located at the leading edge and
           :math:`(1,0)` is located at the trailing edge prior to the coordinate output
 
+        as_tuple: bool
+          Whether to return the airfoil coordinates as a tuple (array returned if False)
+
         Returns
         =======
-        np.ndarray
-          A 2-D array of the airfoil coordinates
+        np.ndarray or tuple
+          A 2-D array or tuple of the airfoil coordinates
         """
         x = np.array([])
         y = np.array([])
@@ -692,7 +694,10 @@ class Airfoil:
             self.coords = translate_matrix(self.coords, -self.dx.value, -self.dy.value)
             self.coords = rotate_matrix(self.coords, self.alf.value)
             self.coords = scale_matrix(self.coords, 1 / self.c.value)
-        return self.coords
+        if as_tuple:
+            return tuple(map(tuple, self.coords))
+        else:
+            return self.coords
 
     def write_coords_to_file(self, f: str, read_write_mode: str, body_fixed_csys: bool = False,
                              scale_factor: float = None, downsample: bool = False, ratio_thresh=None,

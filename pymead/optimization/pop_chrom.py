@@ -58,16 +58,18 @@ class CustomGASettings:
 
 class Chromosome:
     def __init__(self, param_dict: dict, ga_settings: CustomGASettings or None, category: str or None, generation: int,
-                 population_idx: int, mea, genes: list = None, verbose: bool = True):
+                 population_idx: int, mea: dict, genes: list = None, verbose: bool = True):
         """
         Chromosome class constructor. Each Chromosome is the member of a particular Population.
         """
-        self.genes = genes
+        self.genes = deepcopy(genes)
         self.category = category
         self.generation = generation
         self.population_idx = population_idx
-        self.mea = mea.deepcopy(deactivate_airfoil_graphs=True)
+        self.mea = deepcopy(mea)
+        self.mea_object = None
         self.param_set = deepcopy(param_dict)
+        self.coords = None
         self.ga_settings = ga_settings
         self.verbose = verbose
         self.airfoil_sys_generated = False
@@ -86,6 +88,7 @@ class Chromosome:
         Chromosome generation flow
         :return:
         """
+        self.mea_object = MEA.generate_from_param_dict(self.mea)
         if self.verbose:
             print(f'Generating chromosome idx = {self.population_idx}, gen = {self.generation}, cat = {self.category}, '
                   f'mutation_bounds = {self.mutation_bounds}')
@@ -108,6 +111,10 @@ class Chromosome:
             if self.param_set['external_point_matrix'] is not None:
                 if self.param_set['ext_geometry_timing'] == 'Before Aerodynamic Evaluation':
                     self.check_if_inside_points()
+        self.coords = tuple([self.mea_object.airfoils[k].get_coords(
+            body_fixed_csys=False, as_tuple=True) for k in self.param_set['mset_settings']['airfoil_order']])
+        # print(f"{self.coords[0][145][1] = }, {self.coords[2][100][1] = }")
+        self.mea_object = None
 
     def generate_airfoil_sys_from_genes(self) -> dict:
         """
@@ -116,7 +123,7 @@ class Chromosome:
         """
         if self.genes is not None:
             # print(f"genes = {self.genes}")
-            self.mea.update_parameters(self.genes)
+            self.mea_object.update_parameters(self.genes)
             self.update_param_dict()  # updates the MSES settings from the geometry (just for XCDELH right now)
             # coords = self.mea.airfoils['A0'].get_coords(body_fixed_csys=False)
             # np.savetxt(fr'C:\Users\mlauer2\AppData\Local\Temp\temp_opt\ga_opt_40\X_{self.population_idx}.dat', coords)
@@ -128,7 +135,7 @@ class Chromosome:
         return self.param_set
 
     def update_param_dict(self):
-        dben = benedict(self.mea.param_dict)
+        dben = benedict(self.mea_object.param_dict)
         for idx, from_geometry in enumerate(self.param_set['mses_settings']['from_geometry']):
             for k, v in from_geometry.items():
                 self.param_set['mses_settings'][k][idx] = dben[v.replace('$', '')].value
@@ -140,7 +147,7 @@ class Chromosome:
         """
         try:
             if self.airfoil_sys_generated:
-                for airfoil in self.mea.airfoils.values():  # For each airfoil,
+                for airfoil in self.mea_object.airfoils.values():  # For each airfoil,
                     self_intersecting = airfoil.check_self_intersection()
                     if self_intersecting:  # If the intersection array is not empty (& thus there is a
                         # self-intersection somewhere),
@@ -161,7 +168,7 @@ class Chromosome:
 
     def chk_max_thickness(self) -> bool:
         if self.airfoil_sys_generated:
-            _, _, max_thickness = self.mea.airfoils['A0'].compute_thickness()
+            _, _, max_thickness = self.mea_object.airfoils['A0'].compute_thickness()
             if max_thickness < self.param_set['min_val_of_max_thickness']:
                 max_thickness_too_small = True
             else:
@@ -187,7 +194,7 @@ class Chromosome:
             thickness_array = np.array(self.param_set['thickness_dist'])
             x_over_c_array = thickness_array[:, 0]
             t_over_c_array = thickness_array[:, 1]
-            thickness = self.mea.airfoils['A0'].compute_thickness_at_points(x_over_c_array)
+            thickness = self.mea_object.airfoils['A0'].compute_thickness_at_points(x_over_c_array)
             if np.any(thickness < t_over_c_array):
                 if self.verbose:
                     print(f"Minimum required thickness condition not met at some point. Trying again")
@@ -201,7 +208,7 @@ class Chromosome:
 
     def check_min_area(self):
         if self.airfoil_sys_generated:
-            area = self.mea.airfoils['A0'].compute_area()
+            area = self.mea_object.airfoils['A0'].compute_area()
             if area < self.param_set['min_area']:
                 if self.verbose:
                     print(f'Area is {area} < required min. area ({self.param_set["min_area"]}). Trying again...')
@@ -216,7 +223,7 @@ class Chromosome:
 
     def check_contains_points(self) -> bool:
         if self.airfoil_sys_generated:
-            if not self.mea.airfoils['A0'].contains_line_string(self.param_set['internal_point_matrix']):
+            if not self.mea_object.airfoils['A0'].contains_line_string(self.param_set['internal_point_matrix']):
                 self.valid_geometry = False
                 return self.valid_geometry
         self.valid_geometry = True
@@ -224,7 +231,7 @@ class Chromosome:
 
     def check_if_inside_points(self) -> bool:
         if self.airfoil_sys_generated:
-            if not self.mea.airfoils['A0'].within_line_string_until_point(self.param_set['external_point_matrix'],
+            if not self.mea_object.airfoils['A0'].within_line_string_until_point(self.param_set['external_point_matrix'],
                                                                           self.param_set['cutoff_point'],
                                                                           self.param_set['ext_transform_kwargs']):
                 self.valid_geometry = False
@@ -271,14 +278,29 @@ class Chromosome:
                     self.genes = deepcopy(temp_saved_genes)
             else:
                 raise Exception(f'Exceeded maximum number of mutation attempts ({max_mutation_attempts}). Aborting GA.')
+    #
+    # def __deepcopy__(self, memo):
+    #     """Override deepcopy for Chromosome. Only called when running first generation with custom GA settings, and MEA
+    #     (possibly containing a Python module) is not needed to continue running, so it is removed from the __dict__."""
+    #     cls = self.__class__
+    #     obj = cls.__new__(cls)
+    #     memo[id(self)] = obj
+    #     for k, v in self.__dict__.items():
+    #         if k == 'mea':  # Custom copying of MEA object since it may contain a Python module ('PyCapsule' object)
+    #             if isinstance(v, MEA):
+    #                 v = v.copy_as_param_dict(deactivate_airfoil_graphs=True)  # copy only the param_dict (requires
+    #             # handling in Population)
+    #         setattr(obj, k, deepcopy(v, memo))
+    #         pass
+    #     return obj
 
 
 class Population:
     def __init__(self, param_dict: dict, ga_settings: CustomGASettings or None, generation: int,
-                 parents: typing.List[Chromosome] or None, mea: MEA, verbose: bool = True,
+                 parents: typing.List[Chromosome] or None, mea: dict, verbose: bool = True,
                  skip_parent_assignment: bool = False):
         self.param_set = deepcopy(param_dict)
-        self.mea = mea.deepcopy(deactivate_airfoil_graphs=True)
+        self.mea = deepcopy(mea)
         self.ga_settings = ga_settings
         self.generation = generation
         self.verbose = verbose
@@ -355,6 +377,7 @@ class Population:
         """
         Evaluates the fitness of a particular chromosome
         """
+        # print(f"{chromosome.genes[0] = }")
         if chromosome.fitness is None:
             if self.verbose:
                 print(f'Chromosome {chromosome.population_idx + 1} of {self.ga_settings.population_size} '
@@ -375,14 +398,12 @@ class Population:
 
             chromosome.forces, _ = calculate_aero_data(chromosome.param_set['base_folder'],
                                                        chromosome.param_set['name'][chromosome.population_idx],
-                                                       mea=chromosome.mea,
-                                                       mea_airfoil_name='A0', tool=tool,
+                                                       coords=chromosome.coords, tool=tool,
                                                        xfoil_settings=xfoil_settings,
                                                        mset_settings=mset_settings,
                                                        mses_settings=mses_settings,
                                                        mplot_settings=mplot_settings,
-                                                       export_Cp=True, body_fixed_csys=False)
-            # print(f"forces now = {chromosome.forces}")
+                                                       export_Cp=True)
             if chromosome.forces['converged'] and not chromosome.forces['errored_out'] and not chromosome.forces['timed_out']:
                 chromosome.fitness = 1  # Set to any value that is not False and not None
             if self.verbose:
@@ -430,3 +451,17 @@ class Population:
                   f"{self.ga_settings.population_size} with "
                   f"generation: {chromosome.generation} | category: {chromosome.category} | "
                   f"mutated: {chromosome.mutated}")
+
+    # def __deepcopy__(self, memo):
+    #     """Override deepcopy for Population. Only called when running first generation with custom GA settings, and MEA
+    #     (possibly containing a Python module) is not needed to continue running, so it is removed from the __dict__."""
+    #     cls = self.__class__
+    #     obj = cls.__new__(cls)
+    #     memo[id(self)] = obj
+    #     for k, v in self.__dict__.items():
+    #         if k == 'mea':  # Custom copying of MEA object since it may contain a Python module ('PyCapsule' object)
+    #             v = v.copy_as_param_dict(deactivate_airfoil_graphs=True)  # copy only the param_dict (requires
+    #             # handling in Population)
+    #         setattr(obj, k, deepcopy(v, memo))
+    #         pass
+    #     return obj
