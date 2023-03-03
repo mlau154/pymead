@@ -1,4 +1,4 @@
-from abc import ABCMeta, abstractmethod
+from abc import abstractmethod
 from PyQt5.QtCore import QObject
 from pymead.core.mea import MEA
 from pymead.gui.opt_airfoil_graph import OptAirfoilGraph
@@ -6,6 +6,7 @@ from pymead.gui.parallel_coords_graph import ParallelCoordsGraph
 from pymead.gui.aero_forces_graphs import DragGraph, CpGraph
 import pyqtgraph as pg
 import numpy as np
+from copy import deepcopy
 
 
 class OptCallback(QObject):
@@ -18,15 +19,16 @@ class OptCallback(QObject):
 
 
 class PlotAirfoilCallback(OptCallback):
-    def __init__(self, parent, mea: MEA, X, background_color: str = 'w'):
+    def __init__(self, parent, mea: dict, X, background_color: str = 'w'):
         super().__init__(parent=parent)
-        self.mea = mea.deepcopy(deactivate_airfoil_graphs=True)
+        self.mea = deepcopy(mea)
+        self.mea_object = MEA.generate_from_param_dict(self.mea)
         self.X = X
         self.parent = parent
         self.background_color = background_color
 
     def exec_callback(self):
-        self.mea.update_parameters(self.X)
+        self.mea_object.update_parameters(self.X)
         if self.parent.opt_airfoil_graph is None:
             self.parent.opt_airfoil_graph = OptAirfoilGraph(background_color=self.background_color)
         tab_name = "Opt. Airfoil"
@@ -39,7 +41,7 @@ class PlotAirfoilCallback(OptCallback):
         old_pen = pg.mkPen(color=pg.mkColor('l'), width=1)
         pg_plot_handles = []
         temp_output_airfoil = None
-        for airfoil in self.mea.airfoils.values():
+        for airfoil in self.mea_object.airfoils.values():
             pg_plot_handle = self.parent.opt_airfoil_graph.v.plot(pen=pen)
             coords = airfoil.get_coords(body_fixed_csys=False)
             # print(f"thickness = {self.mea.airfoils['A0'].compute_thickness()[2]}")

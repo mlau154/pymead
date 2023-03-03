@@ -147,7 +147,7 @@ def read_forces_from_mses(search_file: str):
         forces = {'Cl': 0.0, 'Cd': 1000.0, 'Cm': 1000.0, 'alf': 0.0, 'Cdv': 1000.0, 'Cdw': 1000.0,
                   'Cdf': 1000.0, 'Cdp': 1000.0, 'Cdh': 1000.0}
 
-    print(f"{forces = }")
+    # print(f"{forces = }")
     return forces
 
 

@@ -2,6 +2,7 @@ import json
 import os
 import pickle
 import dill
+import typing
 
 
 def save_data(var, file):
@@ -33,3 +34,12 @@ def load_data(file):
         return var
     else:
         raise Exception('Invalid file extension for data load! Current available choices: .pkl, .dill, .json, .jmea')
+
+
+def write_tuple_tuple_to_file(fname: str, data: typing.Tuple[tuple]):
+    """Data must be 2-D"""
+    with open(fname, 'w') as f:
+        for row in data:
+            for col in row:
+                f.write(f"{col} ")
+            f.write("\b\n")
