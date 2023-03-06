@@ -50,7 +50,8 @@ get_set_value_names = {'QSpinBox': ('value', 'setValue', 'valueChanged'),
                        'GridBounds': ('values', 'setValues', 'boundsChanged'),
                        'MSETMultiGridWidget': ('values', 'setValues', 'multiGridChanged'),
                        'XTRSWidget': ('values', 'setValues', 'XTRSChanged'),
-                       'ADWidget': ('values', 'setValues', 'ADChanged')}
+                       'ADWidget': ('values', 'setValues', 'ADChanged'),
+                       'OptConstraintsHTabWidget': ('values', 'setValues', 'OptConstraintsChanged')}
 grid_names = {'label': ['label.row', 'label.column', 'label.rowSpan', 'label.columnSpan', 'label.alignment'],
               'widget': ['row', 'column', 'rowSpan', 'columnSpan', 'alignment'],
               'push_button': ['push.row', 'push.column', 'push.rowSpan', 'push.columnSpan', 'push.alignment'],
@@ -615,10 +616,9 @@ class PymeadDialogWidget(QWidget):
             elif hasattr(sys.modules[__name__], w_dict['widget_type']):
                 # If not in PyQt5.QtWidgets, check the modules loaded into this file:
                 kwargs = {}
-                if w_dict['widget_type'] == 'ADWidget':
+                if w_dict['widget_type'] in ['ADWidget', 'OptConstraintsHTabWidget']:
                     kwargs = self.kwargs
                 widget = getattr(sys.modules[__name__], w_dict['widget_type'])(parent=self, **kwargs)
-                print(f"{widget = }")
             else:
                 raise ValueError(f"Widget type {w_dict['widget_type']} not found in PyQt5.QtWidgets or system modules")
             grid_params_widget = {'row': grid_counter, 'column': 1, 'rowSpan': 1,
@@ -713,25 +713,25 @@ class PymeadDialogWidget(QWidget):
         pass
 
 
-class OptConstraintsDialogWidget(PymeadDialogWidget):
-    def __init__(self):
-        super().__init__(settings_file=os.path.join(GUI_DEFAULTS_DIR, 'opt_constraints_settings.json'))
-
-    def select_data_file(self, line_edit: QLineEdit):
-        select_data_file(parent=self.parent(), line_edit=line_edit)
-
-    def updateDialog(self, new_inputs: dict, w_name: str):
-        pass
-
-
 class PymeadDialogHTabWidget(QTabWidget):
+
+    sigTabsChanged = pyqtSignal(object)
+
     def __init__(self, parent, widgets: dict, settings_override: dict = None):
         super().__init__()
         self.w_dict = widgets
-        for k, v in self.w_dict.items():
-            self.addTab(v, k)
+        self.generateWidgets()
         if settings_override is not None:
             self.overrideInputs(settings_override)
+
+    def generateWidgets(self):
+        for k, v in self.w_dict.items():
+            self.addTab(v, k)
+
+    def regenerateWidgets(self):
+        self.clear()
+        self.generateWidgets()
+        self.sigTabsChanged.emit([k for k in self.w_dict.keys()])
 
     def overrideInputs(self, new_values: dict):
         for k, v in new_values.items():
@@ -739,11 +739,6 @@ class PymeadDialogHTabWidget(QTabWidget):
 
     def getInputs(self):
         return {k: v.getInputs() for k, v in self.w_dict.items()}
-
-
-class OptConstraintsHTabWidget(PymeadDialogHTabWidget):
-    def __init__(self, parent):
-        super().__init__(parent=parent, widgets={'A0': OptConstraintsDialogWidget()})
 
 
 class FreePointInputDialog(QDialog):
@@ -1155,7 +1150,7 @@ class MSESDialogWidget(PymeadDialogWidget):
                          design_tree_widget=design_tree_widget)
         mset_dialog_widget.airfoilOrderChanged.connect(self.onAirfoilOrderChanged)
 
-    def onAirfoilOrderChanged(self, airfoil_list: list):
+    def onAirfoilOrderChanged(self, airfoil_list: str):
         self.widget_dict['xtrs']['widget'].onAirfoilListChanged(airfoil_list.split(','))
 
     def deactivate_AD(self, read_only: bool):
@@ -1246,6 +1241,72 @@ class MSESDialogWidget(PymeadDialogWidget):
             new_inputs = self.getInputs()
             if not (w_name == 'MACHIN' and new_inputs['spec_Re']):
                 self.calculate_and_set_Reynolds_number(new_inputs)
+
+
+class OptConstraintsDialogWidget(PymeadDialogWidget):
+    def __init__(self):
+        super().__init__(settings_file=os.path.join(GUI_DEFAULTS_DIR, 'opt_constraints_settings.json'))
+
+    def select_data_file(self, line_edit: QLineEdit):
+        select_data_file(parent=self.parent(), line_edit=line_edit)
+
+    def updateDialog(self, new_inputs: dict, w_name: str):
+        pass
+
+
+class OptConstraintsHTabWidget(PymeadDialogHTabWidget):
+
+    OptConstraintsChanged = pyqtSignal()
+
+    def __init__(self, parent, mset_dialog_widget: MSETDialogWidget = None):
+        super().__init__(parent=parent,
+                         widgets={'A0': OptConstraintsDialogWidget()})
+        mset_dialog_widget.airfoilOrderChanged.connect(self.onAirfoilListChanged)
+
+    def reorderRegenerateWidgets(self, new_airfoil_name_list: list):
+        temp_dict = {}
+        for airfoil_name in new_airfoil_name_list:
+            temp_dict[airfoil_name] = self.w_dict[airfoil_name]
+        self.w_dict = temp_dict
+        self.regenerateWidgets()
+
+    def onAirfoilAdded(self, new_airfoil_name_list: list):
+        for airfoil_name in new_airfoil_name_list:
+            if airfoil_name not in self.w_dict.keys():
+                self.w_dict[airfoil_name] = OptConstraintsDialogWidget()
+        self.reorderRegenerateWidgets(new_airfoil_name_list=new_airfoil_name_list)
+
+    def onAirfoilRemoved(self, new_airfoil_name_list: list):
+        names_to_remove = []
+        for airfoil_name in self.w_dict.keys():
+            if airfoil_name not in new_airfoil_name_list:
+                names_to_remove.append(airfoil_name)
+        for airfoil_name in names_to_remove:
+            self.w_dict.pop(airfoil_name)
+        self.reorderRegenerateWidgets(new_airfoil_name_list=new_airfoil_name_list)
+
+    def onAirfoilListChanged(self, new_airfoil_name_list_str: str):
+        new_airfoil_name_list = new_airfoil_name_list_str.split(',')
+        if len(new_airfoil_name_list) > len([k for k in self.w_dict.keys()]):
+            self.onAirfoilAdded(new_airfoil_name_list)
+        elif len(new_airfoil_name_list) < len([k for k in self.w_dict.keys()]):
+            self.onAirfoilRemoved(new_airfoil_name_list)
+        else:
+            self.reorderRegenerateWidgets(new_airfoil_name_list=new_airfoil_name_list)
+
+    def setValues(self, values: dict):
+        print(f"Attempting to setValues for OptHTab to {values}")
+        # for airfoil_name, widget_dict in self.w_dict.items():
+        #     widget_dict.settings = values
+        pass
+
+    def values(self):
+        return self.getInputs()
+
+    def valueChanged(self, k1, k2, v2):
+        # self.input_dict[k1][k2] = v2
+        print(f"value Changed for OptHTab!")
+        self.OptConstraintsChanged.emit()
 
 
 class XFOILDialogWidget(PymeadDialogWidget):
@@ -1472,8 +1533,10 @@ class GeneticAlgorithmDialogWidget(PymeadDialogWidget):
 
 
 class GAConstraintsTerminationDialogWidget(PymeadDialogWidget):
-    def __init__(self):
-        super().__init__(settings_file=os.path.join(GUI_DEFAULTS_DIR, 'ga_constraints_termination_settings.json'))
+    def __init__(self, mset_dialog_widget: MSETDialogWidget = None):
+        self.mset_dialog_widget = mset_dialog_widget
+        super().__init__(settings_file=os.path.join(GUI_DEFAULTS_DIR, 'ga_constraints_termination_settings.json'),
+                         mset_dialog_widget=mset_dialog_widget)
 
     def select_data_file(self, line_edit: QLineEdit):
         select_data_file(parent=self.parent(), line_edit=line_edit)
@@ -1719,9 +1782,9 @@ class OptimizationSetupDialog(PymeadDialog):
     def __init__(self, parent, design_tree_widget, settings_override: dict = None):
         w0 = GAGeneralSettingsDialogWidget()
         w1 = GeneticAlgorithmDialogWidget()
-        w2 = GAConstraintsTerminationDialogWidget()
         w3 = XFOILDialogWidget()
         w4 = MSETDialogWidget()
+        w2 = GAConstraintsTerminationDialogWidget(mset_dialog_widget=w4)
         w5 = MSESDialogWidget(mset_dialog_widget=w4, design_tree_widget=design_tree_widget)
         w6 = PymeadDialogWidget(os.path.join(GUI_DEFAULTS_DIR, 'mplot_settings.json'))
         w = OptimizationDialogVTabWidget(parent=self, widgets={'General Settings': w0,

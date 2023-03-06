@@ -94,26 +94,30 @@ class Chromosome:
                   f'mutation_bounds = {self.mutation_bounds}')
         self.generate_airfoil_sys_from_genes()
         self.chk_self_intersection()
-        if self.valid_geometry:
-            if self.param_set['min_thickness_active']:
-                self.chk_max_thickness()
-        if self.valid_geometry:
-            if self.param_set['thickness_dist'] is not None:
-                self.check_thickness_at_points()
-        if self.valid_geometry:
-            if self.param_set['min_area_active']:
-                self.check_min_area()
-        if self.valid_geometry:
-            if self.param_set['internal_point_matrix'] is not None:
-                if self.param_set['int_geometry_timing'] == 'Before Aerodynamic Evaluation':
-                    self.check_contains_points()
-        if self.valid_geometry:
-            if self.param_set['external_point_matrix'] is not None:
-                if self.param_set['ext_geometry_timing'] == 'Before Aerodynamic Evaluation':
-                    self.check_if_inside_points()
+        for airfoil_name in self.mea_object.airfoils.keys():
+            if self.valid_geometry:
+                if self.param_set['constraints'][airfoil_name]['min_val_of_max_thickness'][1]:
+                    self.chk_max_thickness(airfoil_name=airfoil_name)
+            if self.valid_geometry:
+                if self.param_set['constraints'][airfoil_name]['thickness_at_points'] is not None:
+                    self.check_thickness_at_points(airfoil_name=airfoil_name)
+            if self.valid_geometry:
+                if self.param_set['constraints'][airfoil_name]['min_area'][1]:
+                    self.check_min_area(airfoil_name=airfoil_name)
+            if self.valid_geometry:
+                if self.param_set['constraints'][airfoil_name]['internal_geometry'] is not None:
+                    if self.param_set['constraints'][airfoil_name]['internal_geometry_timing'] == 'Before Aerodynamic Evaluation':
+                        self.check_contains_points(airfoil_name=airfoil_name)
+                    else:
+                        raise ValueError('Internal geometry timing after aerodynamic evaluation not yet implemented')
+            if self.valid_geometry:
+                if self.param_set['constraints'][airfoil_name]['external_geometry'] is not None:
+                    if self.param_set['constraints'][airfoil_name]['external_geometry_timing'] == 'Before Aerodynamic Evaluation':
+                        self.check_if_inside_points(airfoil_name=airfoil_name)
+                    else:
+                        raise ValueError('External geometry timing after aerodynamic evaluation not yet implemented')
         self.coords = tuple([self.mea_object.airfoils[k].get_coords(
             body_fixed_csys=False, as_tuple=True) for k in self.param_set['mset_settings']['airfoil_order']])
-        # print(f"{self.coords[0][145][1] = }, {self.coords[2][100][1] = }")
         self.mea_object = None
 
     def generate_airfoil_sys_from_genes(self) -> dict:
@@ -166,10 +170,10 @@ class Chromosome:
         finally:
             self.intersection_checked = True
 
-    def chk_max_thickness(self) -> bool:
+    def chk_max_thickness(self, airfoil_name: str) -> bool:
         if self.airfoil_sys_generated:
-            _, _, max_thickness = self.mea_object.airfoils['A0'].compute_thickness()
-            if max_thickness < self.param_set['min_val_of_max_thickness']:
+            _, _, max_thickness = self.mea_object.airfoils[airfoil_name].compute_thickness()
+            if max_thickness < self.param_set['constraints'][airfoil_name]['min_val_of_max_thickness'][0]:
                 max_thickness_too_small = True
             else:
                 max_thickness_too_small = False
@@ -189,12 +193,12 @@ class Chromosome:
         else:
             raise Exception('Airfoil system has not yet been generated. Aborting self-intersection check.')
 
-    def check_thickness_at_points(self):
+    def check_thickness_at_points(self, airfoil_name: str):
         if self.airfoil_sys_generated:
-            thickness_array = np.array(self.param_set['thickness_dist'])
+            thickness_array = np.array(self.param_set['constraints'][airfoil_name]['thickness_at_points'])
             x_over_c_array = thickness_array[:, 0]
             t_over_c_array = thickness_array[:, 1]
-            thickness = self.mea_object.airfoils['A0'].compute_thickness_at_points(x_over_c_array)
+            thickness = self.mea_object.airfoils[airfoil_name].compute_thickness_at_points(x_over_c_array)
             if np.any(thickness < t_over_c_array):
                 if self.verbose:
                     print(f"Minimum required thickness condition not met at some point. Trying again")
@@ -206,10 +210,10 @@ class Chromosome:
         else:
             raise Exception('Airfoil system has not yet been generated. Aborting self-intersection check.')
 
-    def check_min_area(self):
+    def check_min_area(self, airfoil_name: str):
         if self.airfoil_sys_generated:
-            area = self.mea_object.airfoils['A0'].compute_area()
-            if area < self.param_set['min_area']:
+            area = self.mea_object.airfoils[airfoil_name].compute_area()
+            if area < self.param_set['constraints'][airfoil_name]['min_area'][0]:
                 if self.verbose:
                     print(f'Area is {area} < required min. area ({self.param_set["min_area"]}). Trying again...')
                 self.valid_geometry = False
@@ -221,17 +225,17 @@ class Chromosome:
         else:
             raise Exception('Airfoil system has not yet been generated. Aborting self-intersection check.')
 
-    def check_contains_points(self) -> bool:
+    def check_contains_points(self, airfoil_name: str) -> bool:
         if self.airfoil_sys_generated:
-            if not self.mea_object.airfoils['A0'].contains_line_string(self.param_set['internal_point_matrix']):
+            if not self.mea_object.airfoils[airfoil_name].contains_line_string(self.param_set['constraints'][airfoil_name]['internal_geometry']):
                 self.valid_geometry = False
                 return self.valid_geometry
         self.valid_geometry = True
         return self.valid_geometry
 
-    def check_if_inside_points(self) -> bool:
+    def check_if_inside_points(self, airfoil_name: str) -> bool:
         if self.airfoil_sys_generated:
-            if not self.mea_object.airfoils['A0'].within_line_string_until_point(self.param_set['external_point_matrix'],
+            if not self.mea_object.airfoils[airfoil_name].within_line_string_until_point(self.param_set['constraints'][airfoil_name]['external_geometry'],
                                                                           self.param_set['cutoff_point'],
                                                                           self.param_set['ext_transform_kwargs']):
                 self.valid_geometry = False
