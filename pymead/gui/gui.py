@@ -864,7 +864,6 @@ class GUI(QMainWindow):
 
                 # CONSTRAINTS
                 for airfoil_name, constraint_set in param_dict['constraints'].items():
-                    print(f"{constraint_set = }")
 
                     # Thickness distribution check parameters
                     if constraint_set['check_thickness_at_points']:
