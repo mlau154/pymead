@@ -14,6 +14,7 @@ import os
 from pymead import DATA_DIR, PLUGINS_DIR, INCLUDE_FILES
 from copy import deepcopy
 import importlib.util
+import time
 
 
 class MEA:
@@ -472,6 +473,7 @@ class MEA:
     @classmethod
     def generate_from_param_dict(cls, param_dict: dict):
         """Reconstruct an MEA from the MEA's JSON-saved param_dict"""
+        t1 = time.time()
         base_params_dict = {k: v['Base'] for k, v in param_dict.items() if isinstance(v, dict) and 'Base' in v.keys()}
         base_params = {}
         for airfoil_name, airfoil_base_dict in base_params_dict.items():
@@ -551,6 +553,9 @@ class MEA:
 
         for a in mea.airfoils.values():
             a.update()
+
+        t2 = time.time()
+        # print(f"Time required to generate MEA from param_dict is {t2 - t1} seconds")
 
         return mea
 

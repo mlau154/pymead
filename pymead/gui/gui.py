@@ -834,11 +834,11 @@ class GUI(QMainWindow):
                 else:
                     opt_settings = self.opt_settings
 
-                param_dict = convert_opt_settings_to_param_dict(opt_settings)
+                param_dict = deepcopy(convert_opt_settings_to_param_dict(opt_settings))
 
                 # print(f"{opt_settings['General Settings']['use_current_mea'] = }")
                 if opt_settings['General Settings']['use_current_mea']:
-                    mea_dict = self.copy_mea()
+                    mea_dict = self.mea.copy_as_param_dict(deactivate_airfoil_graphs=True)
                 else:
                     mea_file = opt_settings['General Settings']['mea_file']
                     if not os.path.exists(mea_file):
@@ -862,49 +862,48 @@ class GUI(QMainWindow):
 
                 param_dict['n_var'] = len(norm_val_list)
 
-                # Thickness distribution check parameters
-                if opt_settings['Constraints/Termination']['check_thickness_at_points']:
-                    param_dict['thickness_dist_file'] = \
-                        opt_settings['Constraints/Termination']['thickness_at_points']
-                    try:
-                        data = np.loadtxt(param_dict['thickness_dist_file'])
-                        param_dict['thickness_dist'] = data.tolist()
-                    except FileNotFoundError:
-                        message = f'Thickness file {param_dict["thickness_dist"]} not found'
-                        self.disp_message_box(message=message, message_mode='error')
-                        raise FileNotFoundError(message)
-                else:
-                    param_dict['thickness_dist'] = None
+                # CONSTRAINTS
+                for airfoil_name, constraint_set in param_dict['constraints'].items():
+                    print(f"{constraint_set = }")
 
-                # Internal geometry check parameters
-                if opt_settings['Constraints/Termination']['use_internal_geometry']:
-                    param_dict['internal_geometry_file'] = \
-                        opt_settings['Constraints/Termination']['internal_geometry']
-                    try:
-                        data = np.loadtxt(param_dict['internal_geometry_file'])
-                        param_dict['internal_point_matrix'] = data.tolist()
-                    except FileNotFoundError:
-                        message = f'Internal geometry file {param_dict["internal_geometry_file"]} not found'
-                        self.disp_message_box(message=message, message_mode='error')
-                        raise FileNotFoundError(message)
-                else:
-                    param_dict['internal_point_matrix'] = None
-                param_dict['int_geometry_timing'] = opt_settings['Constraints/Termination']['internal_geometry_timing']
+                    # Thickness distribution check parameters
+                    if constraint_set['check_thickness_at_points']:
+                        thickness_file = constraint_set['thickness_at_points']
+                        try:
+                            data = np.loadtxt(thickness_file)
+                            param_dict['thickness_at_points'] = data.tolist()
+                        except FileNotFoundError:
+                            message = f'Thickness file {thickness_file} not found'
+                            self.disp_message_box(message=message, message_mode='error')
+                            raise FileNotFoundError(message)
+                    else:
+                        constraint_set['thickness_at_points'] = None
 
-                # External geometry check parameters
-                if opt_settings['Constraints/Termination']['use_external_geometry']:
-                    param_dict['external_geometry_file'] = \
-                        opt_settings['Constraints/Termination']['external_geometry']
-                    try:
-                        data = np.loadtxt(param_dict['external_geometry_file'])
-                        param_dict['external_point_matrix'] = data.tolist()
-                    except FileNotFoundError:
-                        message = f'External geometry file {param_dict["external-geometry_file"]} not found'
-                        self.disp_message_box(message=message, message_mode='error')
-                        raise FileNotFoundError(message)
-                else:
-                    param_dict['external_point_matrix'] = None
-                param_dict['ext_geometry_timing'] = opt_settings['Constraints/Termination']['external_geometry_timing']
+                    # Internal geometry check parameters
+                    if constraint_set['use_internal_geometry']:
+                        internal_geometry_file = constraint_set['internal_geometry']
+                        try:
+                            data = np.loadtxt(internal_geometry_file)
+                            constraint_set['internal_geometry'] = data.tolist()
+                        except FileNotFoundError:
+                            message = f'Internal geometry file {internal_geometry_file} not found'
+                            self.disp_message_box(message=message, message_mode='error')
+                            raise FileNotFoundError(message)
+                    else:
+                        constraint_set['internal_geometry'] = None
+
+                    # External geometry check parameters
+                    if constraint_set['use_external_geometry']:
+                        external_geometry_file = constraint_set['external_geometry']
+                        try:
+                            data = np.loadtxt(external_geometry_file)
+                            constraint_set['external_geometry'] = data.tolist()
+                        except FileNotFoundError:
+                            message = f'External geometry file {external_geometry_file} not found'
+                            self.disp_message_box(message=message, message_mode='error')
+                            raise FileNotFoundError(message)
+                    else:
+                        constraint_set['external_geometry'] = None
 
                 # Warm start parameters
                 if opt_settings['General Settings']['warm_start_active']:
