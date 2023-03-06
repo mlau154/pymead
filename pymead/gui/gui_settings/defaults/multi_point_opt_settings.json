@@ -1,3 +1,10 @@
 {
-  ""
+  "multi_point_active": {
+    "label": "Multi-Point Active?",
+    "widget_type": "QCheckBox",
+    "setCheckState": 0
+  },
+  "multi_point_table": {
+
+  }
 }

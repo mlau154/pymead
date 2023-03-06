@@ -1295,17 +1295,13 @@ class OptConstraintsHTabWidget(PymeadDialogHTabWidget):
             self.reorderRegenerateWidgets(new_airfoil_name_list=new_airfoil_name_list)
 
     def setValues(self, values: dict):
-        print(f"Attempting to setValues for OptHTab to {values}")
-        # for airfoil_name, widget_dict in self.w_dict.items():
-        #     widget_dict.settings = values
-        pass
+        self.reorderRegenerateWidgets(new_airfoil_name_list=[k for k in values.keys()])
+        self.overrideInputs(new_values=values)
 
     def values(self):
         return self.getInputs()
 
     def valueChanged(self, k1, k2, v2):
-        # self.input_dict[k1][k2] = v2
-        print(f"value Changed for OptHTab!")
         self.OptConstraintsChanged.emit()
 
 
