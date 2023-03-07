@@ -11,6 +11,21 @@ from pymead.gui.input_dialog import convert_dialog_to_mset_settings, convert_dia
 import os
 import numpy as np
 import re
+import pandas as pd
+
+
+multi_point_keys = {
+    0: 'MACHIN',
+    1: 'PTRHIN',
+    2: 'Cl',
+}
+
+
+def read_stencil_from_df(data_frame: pd.DataFrame):
+    """Read the Multi-Point stencil from the Pandas DataFrame read from file and convert to a list of dictionaries"""
+    return [{'variable': multi_point_keys[int(col)], 'modifiers': data_frame.values[0, idx],
+             'points': data_frame.values[1:, idx].astype(np.float64).tolist()}
+            for idx, col in enumerate(data_frame.columns.values)]
 
 
 def termination_condition(param_dict):
@@ -74,6 +89,8 @@ def convert_opt_settings_to_param_dict(opt_settings: dict) -> dict:
                   'mses_settings': convert_dialog_to_mses_settings(opt_settings['MSES']),
                   'mplot_settings': convert_dialog_to_mplot_settings(opt_settings['MPLOT']),
                   'constraints': opt_settings['Constraints/Termination']['constraints'],
+                  'multi_point_active': opt_settings['Multi-Point Optimization']['multi_point_active'],
+                  'multi_point_stencil': opt_settings['Multi-Point Optimization']['multi_point_stencil'],
                   'verbose': False,
                   'eta_crossover': opt_settings['Genetic Algorithm']['eta_crossover'],
                   'eta_mutation': opt_settings['Genetic Algorithm']['eta_mutation'],

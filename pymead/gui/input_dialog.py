@@ -1589,6 +1589,9 @@ class MultiPointOptDialogWidget(PymeadDialogWidget):
         super().__init__(settings_file=os.path.join(GUI_DEFAULTS_DIR, 'multi_point_opt_settings.json'))
         self.current_save_file = None
 
+    def select_data_file(self, line_edit: QLineEdit):
+        select_data_file(parent=self.parent(), line_edit=line_edit)
+
     def updateDialog(self, new_inputs: dict, w_name: str):
         pass
 
@@ -1781,11 +1784,13 @@ class OptimizationSetupDialog(PymeadDialog):
         w3 = XFOILDialogWidget()
         w4 = MSETDialogWidget()
         w2 = GAConstraintsTerminationDialogWidget(mset_dialog_widget=w4)
+        w7 = MultiPointOptDialogWidget()
         w5 = MSESDialogWidget(mset_dialog_widget=w4, design_tree_widget=design_tree_widget)
         w6 = PymeadDialogWidget(os.path.join(GUI_DEFAULTS_DIR, 'mplot_settings.json'))
         w = OptimizationDialogVTabWidget(parent=self, widgets={'General Settings': w0,
                                                         'Genetic Algorithm': w1,
                                                         'Constraints/Termination': w2,
+                                                               'Multi-Point Optimization': w7,
                                                         'XFOIL': w3, 'MSET': w4, 'MSES': w5, 'MPLOT': w6},
                                          settings_override=settings_override)
         super().__init__(parent=parent, window_title='Optimization Setup', widget=w)

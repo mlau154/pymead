@@ -4,7 +4,17 @@
     "widget_type": "QCheckBox",
     "setCheckState": 0
   },
-  "multi_point_table": {
-
+  "multi_point_stencil": {
+    "label": "Multi-Point Stencil",
+    "widget_type": "QLineEdit",
+    "setText": "",
+    "push_button": "Choose file",
+    "push_button_action": "select_data_file"
+  },
+  "information": {
+    "label": "",
+    "widget_type": "QTextEdit",
+    "insertPlainText": "0 - Mach\n1 - FPR\n2 - CL",
+    "setReadOnly": true
   }
 }
