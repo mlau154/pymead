@@ -408,8 +408,15 @@ class Population:
                                                        mses_settings=mses_settings,
                                                        mplot_settings=mplot_settings,
                                                        export_Cp=True)
-            if chromosome.forces['converged'] and not chromosome.forces['errored_out'] and not chromosome.forces['timed_out']:
-                chromosome.fitness = 1  # Set to any value that is not False and not None
+            if mses_settings['multi_point_stencil'] is None:
+                if chromosome.forces['converged'] and not chromosome.forces['errored_out'] and not chromosome.forces['timed_out']:
+                    chromosome.fitness = 1  # Set to any value that is not False and not None
+            else:
+                if all(chromosome.forces['converged']) and not any(chromosome.forces['errored_out']) and not any(chromosome.forces['timed_out']):
+                    chromosome.fitness = 1  # Set to any value that is not False and not None
+            print(f"{chromosome.fitness = }")
+            if chromosome.forces is not None and 'Cd' in chromosome.forces.keys():
+                print(f"{chromosome.forces['Cd'] = }")
             if self.verbose:
                 print(f"Fitness evaluated successfully for chromosome {chromosome.population_idx + 1} of "
                       f"{self.ga_settings.population_size} with "
@@ -419,20 +426,12 @@ class Population:
                       f"{round(chromosome.forces['Cl'], 8)} | C_m = {round(chromosome.forces['Cm'], 8)}")
         return chromosome
 
-    @staticmethod
-    def eval_chromosome_fitness_stencil(chromosome: Chromosome):
-        """Multipoint optimization not yet implemented"""
-        return chromosome
-
     def eval_pop_fitness(self):
         """
         Evaluates the fitness of the population using parallel processing
         """
         with Pool(processes=self.param_set['num_processors']) as pool:
-            if self.param_set['multi_point_active']:
-                result = pool.map(self.eval_chromosome_fitness_stencil, self.population)
-            else:
-                result = pool.map(self.eval_chromosome_fitness, self.population)
+            result = pool.map(self.eval_chromosome_fitness, self.population)
             if self.verbose:
                 print(f'result = {result}')
         for chromosome in result:

@@ -5,8 +5,8 @@ from pymead.analysis.read_aero_data import read_Cl_from_file_panel_fort, read_Cp
 from pymead.utils.file_conversion import convert_ps_to_svg
 from pymead.utils.geometry import check_airfoil_self_intersection
 from pymead.utils.read_write_files import write_tuple_tuple_to_file
-from pymead.optimization.opt_setup import update_mses_settings_from_stencil
 import typing
+from copy import deepcopy
 
 
 SVG_PLOTS = ['Mach_contours', 'grid', 'grid_zoom']
@@ -15,6 +15,15 @@ SVG_SETTINGS_TR = {
     SVG_PLOTS[1]: 'Grid',
     SVG_PLOTS[2]: 'Grid_Zoom',
 }
+
+
+def update_mses_settings_from_stencil(mses_settings: dict, stencil: list, idx: int):
+    for stencil_var in stencil:
+        if isinstance(mses_settings[stencil_var['variable']], list):
+            mses_settings[stencil_var['variable']][stencil_var['index']] = stencil_var['points'][idx]
+        else:
+            mses_settings[stencil_var['variable']] = stencil_var['points'][idx]
+    return mses_settings
 
 
 def calculate_aero_data(airfoil_coord_dir: str, airfoil_name: str, coords: typing.Tuple[tuple],
@@ -157,18 +166,17 @@ def calculate_aero_data(airfoil_coord_dir: str, airfoil_name: str, coords: typin
         mset_mplot_loop_iterations = 1
         stencil = None
         aero_data_list = None
-        if 'multi_point_active' in mses_settings.keys() and mses_settings['multi_point_active']:
+        if 'multi_point_stencil' in mses_settings.keys() and mses_settings['multi_point_stencil'] is not None:
             stencil = mses_settings['multi_point_stencil']
-            mset_mplot_loop_iterations = len(next(iter(stencil))['points'])
+            mset_mplot_loop_iterations = len(stencil[0]['points'])
             aero_data_list = []
 
         # Multipoint Loop
         for i in range(mset_mplot_loop_iterations):
+            print(f"{i = }")
 
             if stencil is not None:
                 mses_settings = update_mses_settings_from_stencil(mses_settings=mses_settings, stencil=stencil, idx=i)
-
-            print(f"Now, {mses_settings = }")
 
             if mset_success:
                 converged, mses_log = run_mses(airfoil_name, airfoil_coord_dir, mses_settings)
@@ -191,19 +199,28 @@ def calculate_aero_data(airfoil_coord_dir: str, airfoil_name: str, coords: typin
                         if mplot_output_name == 'flow_field':
                             run_mplot(airfoil_name, airfoil_coord_dir, mplot_settings, mode='grid_stats')
 
-                if converged:
-                    aero_data['converged'] = True
-                    aero_data['timed_out'] = False
-                    aero_data['errored_out'] = False
-
+            if converged:
+                aero_data['converged'] = True
+                aero_data['timed_out'] = False
+                aero_data['errored_out'] = False
                 if aero_data_list is not None:
                     aero_data_list.append(aero_data)
+                    print(f"Converged!")
+            else:
+                if aero_data_list is not None:
+                    aero_data_list.append(aero_data)
+                    print(f"Unconverged.")
+                break
 
         logs = {'mset': mset_log, 'mses': mses_log, 'mplot': mplot_log}
-        if aero_data_list is None:
-            return aero_data, logs
-        else:
-            return aero_data_list, logs
+
+        if aero_data_list is not None:
+            aero_data = {k: [] for k in aero_data_list[0].keys()}
+            for aero_data_set in aero_data_list:
+                for k, v in aero_data_set.items():
+                    aero_data[k].append(v)
+
+        return aero_data, logs
 
 
 def run_mset(name: str, base_dir: str, mset_settings: dict, coords: typing.Tuple[tuple]):
@@ -399,7 +416,7 @@ def write_gridpar_file(name: str, base_folder: str, mset_settings: dict):
 
 
 def write_mses_file(name: str, base_folder: str, mses_settings: dict):
-    F = mses_settings
+    F = deepcopy(mses_settings)
     if not os.path.exists(os.path.join(base_folder, name)):  # if specified directory doesn't exist,
         os.mkdir(os.path.join(base_folder, name))  # create it
     mses_file = os.path.join(base_folder, name, 'mses.' + name)
