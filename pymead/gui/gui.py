@@ -906,12 +906,24 @@ class GUI(QMainWindow):
                     else:
                         constraint_set['external_geometry'] = None
 
+                # MULTI-POINT OPTIMIZATION
+                multi_point_stencil = None
                 if opt_settings['Multi-Point Optimization']['multi_point_active']:
-                    multi_point_data = pd.read_csv(param_dict['multi_point_stencil'], delimiter=',', dtype=str)
-                    multi_point_stencil = read_stencil_from_df(multi_point_data)
-                    param_dict['multi_point_stencil'] = multi_point_stencil
+                    try:
+                        multi_point_data = pd.read_csv(param_dict['multi_point_stencil'], delimiter=',', dtype=str)
+                        multi_point_stencil = read_stencil_from_df(multi_point_data)
+                    except FileNotFoundError:
+                        message = f'Multi-point stencil file {param_dict["multi_point_stencil"]} not found'
+                        self.disp_message_box(message=message, message_mode='error')
+                        raise FileNotFoundError(message)
+                if param_dict['tool'] == 'MSES':
+                    param_dict['mses_settings']['multi_point_stencil'] = multi_point_stencil
+                elif param_dict['tool'] == 'XFOIL':
+                    param_dict['xfoil_settings']['multi_point_stencil'] = multi_point_stencil
                 else:
-                    param_dict['multi_point_stencil'] = None
+                    raise ValueError(f"Currently only MSES and XFOIL are supported as analysis tools for "
+                                     f"aerodynamic shape optimization. Tool selected was {param_dict['tool']}")
+                print(f"{multi_point_stencil = }")
 
                 # Warm start parameters
                 if opt_settings['General Settings']['warm_start_active']:
