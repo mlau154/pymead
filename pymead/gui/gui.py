@@ -20,6 +20,7 @@ from pymead.gui.pymeadPColorMeshItem import PymeadPColorMeshItem
 from pymead.gui.analysis_graph import AnalysisGraph
 from pymead.gui.parameter_tree import MEAParamTree
 from pymead.utils.airfoil_matching import match_airfoil
+from pymead.optimization.opt_setup import read_stencil_from_df
 from pymead.analysis.single_element_inviscid import single_element_inviscid
 from pymead.gui.text_area import ConsoleTextArea
 from pymead.gui.dockable_tab_widget import DockableTabWidget
@@ -60,6 +61,7 @@ from pyqtgraph.exporters import CSVExporter, SVGExporter
 import pyqtgraph as pg
 import numpy as np
 import dill
+import pandas as pd
 from copy import deepcopy
 from functools import partial
 from pymead.version import __version__
@@ -904,6 +906,13 @@ class GUI(QMainWindow):
                     else:
                         constraint_set['external_geometry'] = None
 
+                if opt_settings['Multi-Point Optimization']['multi_point_active']:
+                    multi_point_data = pd.read_csv(param_dict['multi_point_stencil'], delimiter=',', dtype=str)
+                    multi_point_stencil = read_stencil_from_df(multi_point_data)
+                    param_dict['multi_point_stencil'] = multi_point_stencil
+                else:
+                    param_dict['multi_point_stencil'] = None
+
                 # Warm start parameters
                 if opt_settings['General Settings']['warm_start_active']:
                     opt_dir = opt_settings['General Settings']['warm_start_dir']
@@ -964,7 +973,8 @@ class GUI(QMainWindow):
         self.worker.signals.error.connect(self.shape_opt_error_callback_fn)
         self.threadpool.start(self.worker)
 
-    def shape_opt_progress_callback_fn(self, progress_object: object):
+    @staticmethod
+    def shape_opt_progress_callback_fn(progress_object: object):
         if isinstance(progress_object, OptCallback):
             progress_object.exec_callback()
 
