@@ -5,6 +5,7 @@ from pymead.analysis.read_aero_data import read_Cl_from_file_panel_fort, read_Cp
 from pymead.utils.file_conversion import convert_ps_to_svg
 from pymead.utils.geometry import check_airfoil_self_intersection
 from pymead.utils.read_write_files import write_tuple_tuple_to_file
+from pymead.optimization.opt_setup import update_mses_settings_from_stencil
 import typing
 
 
@@ -152,33 +153,57 @@ def calculate_aero_data(airfoil_coord_dir: str, airfoil_name: str, coords: typin
         mses_log, mplot_log = None, None
         mset_success, mset_log = run_mset(airfoil_name, airfoil_coord_dir, mset_settings, coords)
 
-        if mset_success:
-            converged, mses_log = run_mses(airfoil_name, airfoil_coord_dir, mses_settings)
-        if mset_success and converged:
-            mplot_log = run_mplot(airfoil_name, airfoil_coord_dir, mplot_settings, mode='forces')
-            aero_data = read_forces_from_mses(mplot_log)
-            if export_Cp:
-                run_mplot(airfoil_name, airfoil_coord_dir, mplot_settings, mode='Cp')
-                aero_data['BL'] = []
-                bl = read_bl_data_from_mses(os.path.join(airfoil_coord_dir, airfoil_name,
-                                                         f"bl.{airfoil_name}"))
-                for side in range(len(bl)):
-                    aero_data['BL'].append({})
-                    for output_var in ['x', 'y', 'Cp']:
-                        aero_data['BL'][-1][output_var] = bl[side][output_var]
-            for mplot_output_name in ['Mach', 'Grid', 'Grid_Zoom', 'flow_field']:
-                if mplot_settings[mplot_output_name]:
-                    run_mplot(airfoil_name, airfoil_coord_dir, mplot_settings, mode=mplot_output_name)
-                    if mplot_output_name == 'flow_field':
-                        run_mplot(airfoil_name, airfoil_coord_dir, mplot_settings, mode='grid_stats')
+        # Set up single-point or multipoint settings
+        mset_mplot_loop_iterations = 1
+        stencil = None
+        aero_data_list = None
+        if 'multi_point_active' in mses_settings.keys() and mses_settings['multi_point_active']:
+            stencil = mses_settings['multi_point_stencil']
+            mset_mplot_loop_iterations = len(next(iter(stencil))['points'])
+            aero_data_list = []
 
-        if converged:
-            aero_data['converged'] = True
-            aero_data['timed_out'] = False
-            aero_data['errored_out'] = False
+        # Multipoint Loop
+        for i in range(mset_mplot_loop_iterations):
+
+            if stencil is not None:
+                mses_settings = update_mses_settings_from_stencil(mses_settings=mses_settings, stencil=stencil, idx=i)
+
+            print(f"Now, {mses_settings = }")
+
+            if mset_success:
+                converged, mses_log = run_mses(airfoil_name, airfoil_coord_dir, mses_settings)
+            if mset_success and converged:
+                mplot_log = run_mplot(airfoil_name, airfoil_coord_dir, mplot_settings, mode='forces')
+                aero_data = read_forces_from_mses(mplot_log)
+                if export_Cp:
+                    run_mplot(airfoil_name, airfoil_coord_dir, mplot_settings, mode='Cp')
+                    aero_data['BL'] = []
+                    bl = read_bl_data_from_mses(os.path.join(airfoil_coord_dir, airfoil_name,
+                                                             f"bl.{airfoil_name}"))
+                    for side in range(len(bl)):
+                        aero_data['BL'].append({})
+                        for output_var in ['x', 'y', 'Cp']:
+                            aero_data['BL'][-1][output_var] = bl[side][output_var]
+
+                for mplot_output_name in ['Mach', 'Grid', 'Grid_Zoom', 'flow_field']:
+                    if mplot_settings[mplot_output_name]:
+                        run_mplot(airfoil_name, airfoil_coord_dir, mplot_settings, mode=mplot_output_name)
+                        if mplot_output_name == 'flow_field':
+                            run_mplot(airfoil_name, airfoil_coord_dir, mplot_settings, mode='grid_stats')
+
+                if converged:
+                    aero_data['converged'] = True
+                    aero_data['timed_out'] = False
+                    aero_data['errored_out'] = False
+
+                if aero_data_list is not None:
+                    aero_data_list.append(aero_data)
 
         logs = {'mset': mset_log, 'mses': mses_log, 'mplot': mplot_log}
-        return aero_data, logs
+        if aero_data_list is None:
+            return aero_data, logs
+        else:
+            return aero_data_list, logs
 
 
 def run_mset(name: str, base_dir: str, mset_settings: dict, coords: typing.Tuple[tuple]):

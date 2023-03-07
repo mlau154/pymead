@@ -11,21 +11,47 @@ from pymead.gui.input_dialog import convert_dialog_to_mset_settings, convert_dia
 import os
 import numpy as np
 import re
-import pandas as pd
 
 
 multi_point_keys = {
     0: 'MACHIN',
-    1: 'PTRHIN',
-    2: 'Cl',
+    1: 'REYNIN',
+    2: 'ALFAIN',
+    3: 'CLIFIN',
+    4: 'P',
+    5: 'T',
+    6: 'L',
+    7: 'R',
+    8: 'rho',
+    9: 'gam',
+    10: 'ACRIT',
+    11: 'MCRIT',
+    12: 'MUCON',
+    13: 'XTRSupper',
+    14: 'XTRSlower',
+    15: 'ISDELH',
+    16: 'XCDELH',
+    17: 'PTRHIN',
+    18: 'ETAH',
+    19: 'ISMOM',
+    20: 'IFFBC',
 }
 
 
-def read_stencil_from_df(data_frame: pd.DataFrame):
+def read_stencil_from_array(data: np.ndarray):
     """Read the Multi-Point stencil from the Pandas DataFrame read from file and convert to a list of dictionaries"""
-    return [{'variable': multi_point_keys[int(col)], 'modifiers': data_frame.values[0, idx],
-             'points': data_frame.values[1:, idx].astype(np.float64).tolist()}
-            for idx, col in enumerate(data_frame.columns.values)]
+    return [{'variable': multi_point_keys[int(col[0])], 'index': int(col[1]),
+             'points': col[2:].tolist()}
+            for col in data.T]
+
+
+def update_mses_settings_from_stencil(mses_settings: dict, stencil: list, idx: int):
+    for stencil_var in stencil:
+        if isinstance(mses_settings[stencil_var['variable']], list):
+            mses_settings[stencil_var['variable']][stencil_var['index']] = stencil_var['point'][idx]
+        else:
+            mses_settings[stencil_var['variable']] = stencil_var['point'][idx]
+    return mses_settings
 
 
 def termination_condition(param_dict):

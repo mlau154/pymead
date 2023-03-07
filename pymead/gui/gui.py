@@ -20,7 +20,7 @@ from pymead.gui.pymeadPColorMeshItem import PymeadPColorMeshItem
 from pymead.gui.analysis_graph import AnalysisGraph
 from pymead.gui.parameter_tree import MEAParamTree
 from pymead.utils.airfoil_matching import match_airfoil
-from pymead.optimization.opt_setup import read_stencil_from_df
+from pymead.optimization.opt_setup import read_stencil_from_array
 from pymead.analysis.single_element_inviscid import single_element_inviscid
 from pymead.gui.text_area import ConsoleTextArea
 from pymead.gui.dockable_tab_widget import DockableTabWidget
@@ -910,8 +910,8 @@ class GUI(QMainWindow):
                 multi_point_stencil = None
                 if opt_settings['Multi-Point Optimization']['multi_point_active']:
                     try:
-                        multi_point_data = pd.read_csv(param_dict['multi_point_stencil'], delimiter=',', dtype=str)
-                        multi_point_stencil = read_stencil_from_df(multi_point_data)
+                        multi_point_data = np.loadtxt(param_dict['multi_point_stencil'], delimiter=',')
+                        multi_point_stencil = read_stencil_from_array(multi_point_data)
                     except FileNotFoundError:
                         message = f'Multi-point stencil file {param_dict["multi_point_stencil"]} not found'
                         self.disp_message_box(message=message, message_mode='error')
