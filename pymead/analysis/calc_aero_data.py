@@ -151,6 +151,7 @@ def calculate_aero_data(airfoil_coord_dir: str, airfoil_name: str, coords: typin
         converged = False
         mses_log, mplot_log = None, None
         mset_success, mset_log = run_mset(airfoil_name, airfoil_coord_dir, mset_settings, coords)
+
         if mset_success:
             converged, mses_log = run_mses(airfoil_name, airfoil_coord_dir, mses_settings)
         if mset_success and converged:

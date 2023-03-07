@@ -429,7 +429,7 @@ class Population:
         Evaluates the fitness of the population using parallel processing
         """
         with Pool(processes=self.param_set['num_processors']) as pool:
-            if self.param_set['multi_point']:
+            if self.param_set['multi_point_active']:
                 result = pool.map(self.eval_chromosome_fitness_stencil, self.population)
             else:
                 result = pool.map(self.eval_chromosome_fitness, self.population)
