@@ -45,15 +45,6 @@ def read_stencil_from_array(data: np.ndarray):
             for col in data.T]
 
 
-def update_mses_settings_from_stencil(mses_settings: dict, stencil: list, idx: int):
-    for stencil_var in stencil:
-        if isinstance(mses_settings[stencil_var['variable']], list):
-            mses_settings[stencil_var['variable']][stencil_var['index']] = stencil_var['point'][idx]
-        else:
-            mses_settings[stencil_var['variable']] = stencil_var['point'][idx]
-    return mses_settings
-
-
 def termination_condition(param_dict):
     termination = MultiObjectiveDefaultTermination(
         x_tol=param_dict['x_tol'],
