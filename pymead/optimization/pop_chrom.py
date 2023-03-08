@@ -126,13 +126,8 @@ class Chromosome:
         :return:
         """
         if self.genes is not None:
-            # print(f"genes = {self.genes}")
             self.mea_object.update_parameters(self.genes)
             self.update_param_dict()  # updates the MSES settings from the geometry (just for XCDELH right now)
-            # coords = self.mea.airfoils['A0'].get_coords(body_fixed_csys=False)
-            # np.savetxt(fr'C:\Users\mlauer2\AppData\Local\Temp\temp_opt\ga_opt_40\X_{self.population_idx}.dat', coords)
-            # TODO: add a way to update XCDELH from MEA somehow
-            # print(f"alf = {self.mea.airfoils['A0'].alf.value}")
             self.airfoil_sys_generated = True
         else:
             raise Exception('Genes of Chromosome object have not been set. Aborting airfoil system generation.')
@@ -282,21 +277,6 @@ class Chromosome:
                     self.genes = deepcopy(temp_saved_genes)
             else:
                 raise Exception(f'Exceeded maximum number of mutation attempts ({max_mutation_attempts}). Aborting GA.')
-    #
-    # def __deepcopy__(self, memo):
-    #     """Override deepcopy for Chromosome. Only called when running first generation with custom GA settings, and MEA
-    #     (possibly containing a Python module) is not needed to continue running, so it is removed from the __dict__."""
-    #     cls = self.__class__
-    #     obj = cls.__new__(cls)
-    #     memo[id(self)] = obj
-    #     for k, v in self.__dict__.items():
-    #         if k == 'mea':  # Custom copying of MEA object since it may contain a Python module ('PyCapsule' object)
-    #             if isinstance(v, MEA):
-    #                 v = v.copy_as_param_dict(deactivate_airfoil_graphs=True)  # copy only the param_dict (requires
-    #             # handling in Population)
-    #         setattr(obj, k, deepcopy(v, memo))
-    #         pass
-    #     return obj
 
 
 class Population:
@@ -426,6 +406,19 @@ class Population:
                       f"{round(chromosome.forces['Cl'], 8)} | C_m = {round(chromosome.forces['Cm'], 8)}")
         return chromosome
 
+    @staticmethod
+    def generate_chromosome(chromosome: Chromosome):
+        chromosome.generate()
+        return chromosome
+
+    def generate_chromosomes_parallel(self):
+        print("Generating chromosomes in parallel...")
+        with Pool(processes=self.param_set['num_processors']) as pool:
+            result = pool.map(self.generate_chromosome, self.population)
+        for chromosome in result:
+            self.population = [chromosome if c.population_idx == chromosome.population_idx
+                               else c for c in self.population]
+
     def eval_pop_fitness(self):
         """
         Evaluates the fitness of the population using parallel processing
@@ -454,17 +447,3 @@ class Population:
                   f"{self.ga_settings.population_size} with "
                   f"generation: {chromosome.generation} | category: {chromosome.category} | "
                   f"mutated: {chromosome.mutated}")
-
-    # def __deepcopy__(self, memo):
-    #     """Override deepcopy for Population. Only called when running first generation with custom GA settings, and MEA
-    #     (possibly containing a Python module) is not needed to continue running, so it is removed from the __dict__."""
-    #     cls = self.__class__
-    #     obj = cls.__new__(cls)
-    #     memo[id(self)] = obj
-    #     for k, v in self.__dict__.items():
-    #         if k == 'mea':  # Custom copying of MEA object since it may contain a Python module ('PyCapsule' object)
-    #             v = v.copy_as_param_dict(deactivate_airfoil_graphs=True)  # copy only the param_dict (requires
-    #             # handling in Population)
-    #         setattr(obj, k, deepcopy(v, memo))
-    #         pass
-    #     return obj
