@@ -173,9 +173,11 @@ def calculate_aero_data(airfoil_coord_dir: str, airfoil_name: str, coords: typin
 
         # Multipoint Loop
         for i in range(mset_mplot_loop_iterations):
+            # print(f"{i = }, {mset_success = }")
 
             if stencil is not None:
                 mses_settings = update_mses_settings_from_stencil(mses_settings=mses_settings, stencil=stencil, idx=i)
+                # print(f"{mses_settings['XCDELH'] = }, {mses_settings['CLIFIN'] = }, {mses_settings['PTRHIN'] = }")
 
             if mset_success:
                 converged, mses_log = run_mses(airfoil_name, airfoil_coord_dir, mses_settings)
@@ -205,6 +207,7 @@ def calculate_aero_data(airfoil_coord_dir: str, airfoil_name: str, coords: typin
                 if aero_data_list is not None:
                     aero_data_list.append(aero_data)
             else:
+                aero_data['converged'] = False
                 if aero_data_list is not None:
                     aero_data_list.append(aero_data)
                 break
