@@ -380,6 +380,8 @@ class Population:
             else:
                 raise ValueError('Only XFOIL and MSES are supported as tools in the optimization framework')
 
+            # print(f"{mses_settings['XCDELH'] = }, {mses_settings['CLIFIN'] = }, {mses_settings['PTRHIN'] = }")
+
             chromosome.forces, _ = calculate_aero_data(chromosome.param_set['base_folder'],
                                                        chromosome.param_set['name'][chromosome.population_idx],
                                                        coords=chromosome.coords, tool=tool,
@@ -389,14 +391,15 @@ class Population:
                                                        mplot_settings=mplot_settings,
                                                        export_Cp=True)
             if mses_settings['multi_point_stencil'] is None:
-                if chromosome.forces['converged'] and not chromosome.forces['errored_out'] and not chromosome.forces['timed_out']:
+                if chromosome.forces['converged'] and not chromosome.forces['errored_out'] \
+                        and not chromosome.forces['timed_out']:
                     chromosome.fitness = 1  # Set to any value that is not False and not None
             else:
                 if all(chromosome.forces['converged']) and not any(chromosome.forces['errored_out']) and not any(chromosome.forces['timed_out']):
                     chromosome.fitness = 1  # Set to any value that is not False and not None
-            print(f"{chromosome.fitness = }")
-            if chromosome.forces is not None and 'Cd' in chromosome.forces.keys():
-                print(f"{chromosome.forces['Cd'] = }")
+            # print(f"{chromosome.fitness = }")
+            # if chromosome.forces is not None and 'Cd' in chromosome.forces.keys():
+            #     print(f"{chromosome.forces['Cd'] = }, {chromosome.forces['converged'] = }")
             if self.verbose:
                 print(f"Fitness evaluated successfully for chromosome {chromosome.population_idx + 1} of "
                       f"{self.ga_settings.population_size} with "

@@ -409,6 +409,9 @@ class XTRSWidget(QTabWidget):
 
 
 class ADDoubleSpinBox(QDoubleSpinBox):
+
+    sigEquationChanged = pyqtSignal(str)
+
     def __init__(self, parent, AD_tab: str, design_tree_widget):
         super().__init__(parent=parent)
         self.equation_edit = None
@@ -427,6 +430,10 @@ class ADDoubleSpinBox(QDoubleSpinBox):
         self.equation_edit = QLineEdit(self)
         self.equation_edit.setMinimumWidth(100)
         get_parent(self, depth=3).grid_layout[self.AD_tab].addWidget(self.equation_edit, 1, 3, 1, 1)
+        self.equation_edit.textChanged.connect(self.on_equation_changed)
+
+    def on_equation_changed(self):
+        self.sigEquationChanged.emit(self.equation_edit.text())
 
     def set_value_from_param_tree(self, data: tuple):
         if str(get_parent(self, depth=3).currentIndex() + 1) == self.AD_tab and self.equation_edit is not None:
@@ -485,6 +492,8 @@ class ADWidget(QTabWidget):
                     w.setValue(v2)
 
                     w.valueChanged.connect(partial(self.valueChanged, k1, k2))
+                    if isinstance(w, ADDoubleSpinBox):
+                        w.sigEquationChanged.connect(partial(self.equationChanged, k1, k2))
                     w_label = QLabel(self.labels[k2], self)
                     self.widget_dict[k1][k2] = {
                         'widget': w,
@@ -495,7 +504,7 @@ class ADWidget(QTabWidget):
                 w.setText(v2)
                 w.setMinimumWidth(100)
                 self.widget_dict[k1][k2]['widget'].equation_edit = w
-                # w.textChanged.connect(partial(self.valueChanged, k1, k2))
+                w.textChanged.connect(partial(self.equationChanged, k1, k2))
                 self.widget_dict[k1][k2]['from_geometry'] = w
 
     def regenerateWidgets(self):
@@ -567,9 +576,18 @@ class ADWidget(QTabWidget):
     def values(self):
         return self.input_dict
 
+    def equationChanged(self, k1, k2, v2):
+        print(f"Equation changed! {v2 = }")
+        self.input_dict[k1]["from_geometry"][k2] = v2
+        self.ADChanged.emit()
+
     def valueChanged(self, k1, k2, v2):
         print(f"Value changed! {k1 = }, {k2 = }, {v2 = }")
-        self.input_dict[k1][k2] = v2
+        if k2 == 'from_geometry':
+            print("Setting from_geometry!")
+            self.input_dict[k1]["from_geometry"][k1] = v2
+        else:
+            self.input_dict[k1][k2] = v2
         self.ADChanged.emit()
 
     def setReadOnly(self, read_only: bool):
@@ -1295,7 +1313,7 @@ class OptConstraintsHTabWidget(PymeadDialogHTabWidget):
             self.reorderRegenerateWidgets(new_airfoil_name_list=new_airfoil_name_list)
 
     def setValues(self, values: dict):
-        self.reorderRegenerateWidgets(new_airfoil_name_list=[k for k in values.keys()])
+        self.onAirfoilListChanged(new_airfoil_name_list_str=','.join([k for k in values.keys()]))
         self.overrideInputs(new_values=values)
 
     def values(self):
