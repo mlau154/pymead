@@ -1030,7 +1030,7 @@ class GUI(QMainWindow):
                                     parents=[tpaiga2_alg_instance.generate_first_parent()],
                                     verbose=param_dict['verbose'], mea=mea)
             population.generate()
-
+            n_initial_evaluations = 0
             n_subpopulations = 0
             fully_converged_chromosomes = []
             while True:  # "Do while" loop (terminate when enough of chromosomes have fully converged solutions)
@@ -1051,6 +1051,7 @@ class GUI(QMainWindow):
                     break
 
                 n_subpopulations += 1
+                n_initial_evaluations += param_dict['num_processors']
 
                 if n_subpopulations * (param_dict['num_processors'] + 1) > param_dict['n_offsprings']:
                     raise Exception('Ran out of chromosomes to evaluate in initial population generation')
@@ -1108,8 +1109,9 @@ class GUI(QMainWindow):
 
             # prepare the algorithm to solve the specific problem (same arguments as for the minimize function)
             algorithm.setup(problem, termination, display=display, seed=param_dict['seed'], verbose=True,
-                            save_history=False)  # Changed save_history to False in order to help prevent paging errors
-            # (running out of RAM because each generation of the algorithm stores the entire algorithm history)
+                            save_history=False)
+
+            algorithm.evaluator.n_eval += param_dict['num_processors']
 
             save_data(algorithm, os.path.join(param_dict['opt_dir'], 'algorithm_gen_0.pkl'))
 
@@ -1174,8 +1176,7 @@ class GUI(QMainWindow):
                     pop_obj = Population(problem.param_dict, ga_settings=ga_settings, generation=n_generation,
                                          parents=population, verbose=param_dict['verbose'], mea=mea)
                     pop_obj.population = population
-                    for chromosome in pop_obj.population:
-                        chromosome.generate()
+                    pop_obj.generate_chromosomes_parallel()
                     pop_obj.eval_pop_fitness()
                     for idx, chromosome in enumerate(pop_obj.population):
                         if chromosome.fitness is not None:

@@ -173,7 +173,6 @@ def calculate_aero_data(airfoil_coord_dir: str, airfoil_name: str, coords: typin
 
         # Multipoint Loop
         for i in range(mset_mplot_loop_iterations):
-            print(f"{i = }")
 
             if stencil is not None:
                 mses_settings = update_mses_settings_from_stencil(mses_settings=mses_settings, stencil=stencil, idx=i)
@@ -205,11 +204,9 @@ def calculate_aero_data(airfoil_coord_dir: str, airfoil_name: str, coords: typin
                 aero_data['errored_out'] = False
                 if aero_data_list is not None:
                     aero_data_list.append(aero_data)
-                    print(f"Converged!")
             else:
                 if aero_data_list is not None:
                     aero_data_list.append(aero_data)
-                    print(f"Unconverged.")
                 break
 
         logs = {'mset': mset_log, 'mses': mses_log, 'mplot': mplot_log}
