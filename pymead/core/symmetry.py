@@ -33,7 +33,7 @@ def symmetry(name: str, xy=None, alf_target=None, alf_tool=None, c_target=None, 
             delta_angle = abs_phi_tool - inf_line.theta_rad
             abs_phi_target = inf_line.theta_rad - delta_angle
             if upper_target:
-                rel_phi_target = abs_phi_target + (-alf_target)
+                rel_phi_target = abs_phi_target + alf_target
             else:
                 rel_phi_target = -abs_phi_target + (-alf_target)
     if L is not None:
@@ -50,44 +50,3 @@ def symmetry(name: str, xy=None, alf_target=None, alf_tool=None, c_target=None, 
         'R': R,
     }
     return output_dict[name]
-
-
-def _test():
-    from pymead.core.param import Param
-    from pymead.core.airfoil import Airfoil
-    from pymead.core.mea import MEA
-    from pymead.core.base_airfoil_params import BaseAirfoilParams
-    from pymead.core.free_point import FreePoint
-    import matplotlib.pyplot as plt
-    mea = MEA()
-    mea.add_airfoil(Airfoil(base_airfoil_params=BaseAirfoilParams(dx=Param(0.3), dy=Param(0.5))), 1, None)
-    fp1 = FreePoint(x=Param(0.3), y=Param(0.1), previous_anchor_point='te_1', airfoil_tag='A0')
-    fp2 = FreePoint(x=Param(0.5), y=Param(-0.1), previous_anchor_point='le', airfoil_tag='A1')
-    mea.add_custom_parameters({'x1': {'value': 0.1}, 'y1': {'value': 0.1}, 'alf': {'value': -0.08}})
-    mea.airfoils['A0'].insert_free_point(fp1)
-    mea.airfoils['A1'].insert_free_point(fp2)
-    fig, axs = plt.subplots()
-    axs.plot(fp1.xp.value, fp1.yp.value, color='indianred', label='fp1', marker='o', ls='none')
-    axs.plot(fp2.xp.value, fp2.yp.value, color='blue', label='fp2_original', marker='x', ls='none')
-    fp2.xp.mea = mea
-    fp2.xp.function_dict['symmetry'] = symmetry
-    fp2.xp.function_dict['param_name'] = 'xp'
-    fp2.xp.set_func_str('symmetry($A0.FreePoints.te_1.FP0.xp, $A0.FreePoints.te_1.FP0.yp, param_name, '
-                        'x1=$Custom.x1, y1=$Custom.y1, theta_rad=$Custom.alf)')
-    fp2.xp.update(show_q_error_messages=False)
-    fp2.yp.mea = mea
-    fp2.yp.function_dict['symmetry'] = symmetry
-    fp2.yp.function_dict['param_name'] = 'yp'
-    fp2.yp.set_func_str('symmetry($A0.FreePoints.te_1.FP0.xp, $A0.FreePoints.te_1.FP0.yp, param_name, '
-                        'x1=$Custom.x1, y1=$Custom.y1, theta_rad=$Custom.alf)')
-    fp2.yp.update(show_q_error_messages=False)
-    axs.plot(fp2.xp.value, fp2.yp.value, color='green', label='fp2_final', marker='d', ls='none')
-    axs.plot([0.1, 0.1 + np.cos(-0.08)], [0.1, 0.1 + np.sin(-0.08)], color='gold', label='symmetry line')
-    axs.set_aspect('equal')
-    axs.legend()
-    plt.show()
-    pass
-
-
-if __name__ == '__main__':
-    _test()

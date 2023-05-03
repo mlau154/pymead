@@ -12,6 +12,11 @@ from pymead.core.mea import MEA
 
 from copy import deepcopy
 
+from pymoo.algorithms.soo.nonconvex.de import DE
+from pymoo.core.problem import ElementwiseProblem
+from pymoo.operators.sampling.lhs import LHS
+from pymoo.optimize import minimize
+
 
 def airfoil_symmetric_area_difference(parameters: list, mea: MEA, target_airfoil: str, airfoil_to_match_xy: np.ndarray):
     r"""
@@ -42,7 +47,7 @@ def airfoil_symmetric_area_difference(parameters: list, mea: MEA, target_airfoil
     # Override airfoil parameters with supplied sequence of parameters
     mea.update_parameters(parameters)
     airfoil = mea.airfoils[target_airfoil]
-    coords = airfoil.get_coords(body_fixed_csys=True)
+    coords = airfoil.get_coords(body_fixed_csys=False)
 
     # Calculate the boolean symmetric area difference. If there is a topological error, such as a self-intersection,
     # which prevents Polygon.area() from running, then make the symmetric area difference a large value to discourage
@@ -110,22 +115,56 @@ def match_airfoil(mea: MEA, target_airfoil: str, airfoil_to_match: str or list o
     return res
 
 
-if __name__ == '__main__':
-    from pymead.core.airfoil import Airfoil
-    from pymead.core.base_airfoil_params import BaseAirfoilParams
-    from pymead.core.param import Param
-    base = BaseAirfoilParams(t_te=Param(0.005),
-                             R_le=Param(0.1, bounds=np.array([0.02, 0.2])),
-                             L_le=Param(0.1, bounds=np.array([0.01, 0.25])),
-                             psi1_le=Param(0.0, bounds=np.array([-0.3, 0.4])),
-                             psi2_le=Param(0.0, bounds=np.array([-0.3, 0.4])),
-                             L1_te=Param(0.15, bounds=np.array([0.01, 0.5])),
-                             L2_te=Param(0.15, bounds=np.array([0.01, 0.5])),
-                             theta1_te=Param(0.05, bounds=np.array([0.0, 0.3])),
-                             theta2_te=Param(0.05, bounds=np.array([0.0, 0.3]))
-                             )
-    base.phi_le.active = False
-    base.r_le.active = False
-    airfoil = Airfoil(base_airfoil_params=base)
-    mea = MEA(None, airfoils=[airfoil], airfoil_graphs_active=False)
-    match_airfoil(mea, 'A0', 'sc20010-il')
+class MatchAirfoilProblem(ElementwiseProblem):
+
+    def __init__(self, n_var: int, mea: MEA, target_airfoil: str, airfoil_to_match_xy: np.ndarray):
+        self.mea = mea
+        self.airfoil_to_match_xy = airfoil_to_match_xy
+        self.target_airfoil = target_airfoil
+        super().__init__(n_var=n_var, n_obj=1, xl=0.0, xu=1.0)
+
+    def _evaluate(self, x, out, *args, **kwargs):
+        out["F"] = airfoil_symmetric_area_difference(parameters=x.tolist(),
+                                                     mea=self.mea,
+                                                     target_airfoil='A0',
+                                                     airfoil_to_match_xy=self.airfoil_to_match_xy)
+
+
+def match_airfoil_ga(mea: MEA, target_airfoil: str, airfoil_to_match: str or list or np.ndarray,
+                     repair: typing.Callable or None = None):
+
+    if isinstance(airfoil_to_match, str):
+        airfoil_to_match_xy = extract_data_from_airfoiltools(airfoil_to_match, repair=repair)
+    elif isinstance(airfoil_to_match, list):
+        airfoil_to_match_xy = np.array(airfoil_to_match)
+    elif isinstance(airfoil_to_match, np.ndarray):
+        airfoil_to_match_xy = airfoil_to_match
+    else:
+        raise TypeError(f'airfoil_to_match be of type str, list, or np.ndarray, '
+                        f'and type {type(airfoil_to_match)} was used')
+    # mea.deactivate_airfoil_matching_params(target_airfoil)
+    new_mea = mea.deepcopy()
+    new_mea.remove_airfoil_graphs()
+    # new_mea = MEA.generate_from_param_dict(mea_dict)
+    initial_guess = np.array(mea.extract_parameters()[0])
+
+    problem = MatchAirfoilProblem(n_var=len(initial_guess), mea=new_mea, target_airfoil=target_airfoil,
+                                  airfoil_to_match_xy=airfoil_to_match_xy)
+
+    algorithm = DE(
+        pop_size=100,
+        sampling=LHS(),
+        variant="DE/rand/1/bin",
+        CR=0.3,
+        dither="vector",
+        jitter=False
+    )
+
+    res = minimize(problem,
+                   algorithm,
+                   seed=1,
+                   verbose=True)
+
+    print("Best solution found: \nX = %s\nF = %s" % (res.X, res.F))
+
+    return res

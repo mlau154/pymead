@@ -2,8 +2,8 @@
     "Custom": {
         "main_te_1_xy": {
             "_value": [
-                0.9977875086446952,
-                -0.06650065858780912
+                1.0,
+                0.0015
             ],
             "bounds": [
                 [
@@ -28,15 +28,15 @@
         "d_ne": {
             "_value": 0.24,
             "bounds": [
-                0.16,
-                0.24
+                0.2,
+                0.28
             ],
             "active": true,
             "linked": false,
             "func_str": null
         },
         "alf_hub_abs": {
-            "_value": -0.06,
+            "_value": -0.04491203445290751,
             "bounds": [
                 -Infinity,
                 Infinity
@@ -46,7 +46,7 @@
             "func_str": "-$A1.Base.alf"
         },
         "hub_perp_upp": {
-            "_value": 1.5107963267948965,
+            "_value": 1.525884292341989,
             "bounds": [
                 -Infinity,
                 Infinity
@@ -76,7 +76,7 @@
             "func_str": "$Custom.d_ne / 2"
         },
         "hub_perp_low": {
-            "_value": -1.6307963267948966,
+            "_value": -1.615708361247804,
             "bounds": [
                 -Infinity,
                 Infinity
@@ -88,8 +88,8 @@
         "d_inl": {
             "_value": 0.185,
             "bounds": [
-                0.1,
-                0.2
+                0.14,
+                0.22
             ],
             "active": true,
             "linked": false,
@@ -98,8 +98,8 @@
         "d_hne": {
             "_value": 0.13,
             "bounds": [
-                0.06,
-                0.16
+                0.08,
+                0.2
             ],
             "active": true,
             "linked": false,
@@ -137,8 +137,8 @@
         },
         "fan_center_xy": {
             "_value": [
-                0.8552531084319479,
-                0.0622780071763321
+                0.8447636239015087,
+                -0.1116444542865789
             ],
             "bounds": [
                 [
@@ -172,8 +172,8 @@
         },
         "noz_center_xy": {
             "_value": [
-                1.0049831894222285,
-                0.05328340620441538
+                0.9946123675159931,
+                -0.11837899489158754
             ],
             "bounds": [
                 [
@@ -193,7 +193,7 @@
                 true,
                 true
             ],
-            "func_str": "{$Custom.main_te_1_xy[0] + $Custom.r_ne * cos($Custom.hub_perp_upp), $Custom.main_te_1_xy[1] + $Custom.r_ne * sin($Custom.hub_perp_upp)}"
+            "func_str": "{$Custom.main_te_1_xy[0] + $Custom.r_ne * cos($Custom.hub_perp_low), $Custom.main_te_1_xy[1] + $Custom.r_ne * sin($Custom.hub_perp_low)}"
         },
         "r_ne": {
             "_value": 0.12,
@@ -206,7 +206,7 @@
             "func_str": "$Custom.d_ne / 2"
         },
         "alf_hub_abs_180": {
-            "_value": 3.081592653589793,
+            "_value": 3.0966806191368854,
             "bounds": [
                 -Infinity,
                 Infinity
@@ -227,8 +227,8 @@
         },
         "hub_le_xy": {
             "_value": [
-                0.8073394825150582,
-                0.06515627948734545
+                0.7968120259448737,
+                -0.10948940129297614
             ],
             "bounds": [
                 [
@@ -292,8 +292,8 @@
         },
         "inl_center_xy": {
             "_value": [
-                0.777393466317002,
-                0.06695519968172879
+                0.7668422772219767,
+                -0.10814249317197441
             ],
             "bounds": [
                 [
@@ -327,8 +327,8 @@
         },
         "nac_te_2_xy": {
             "_value": [
-                1.012178870199762,
-                0.17306747099663988
+                0.9892247350319863,
+                -0.23825798978317508
             ],
             "bounds": [
                 [
@@ -348,10 +348,10 @@
                 true,
                 true
             ],
-            "func_str": "{$Custom.main_te_1_xy[0] + $Custom.d_ne * cos($Custom.hub_perp_upp), $Custom.main_te_1_xy[1] + $Custom.d_ne * sin($Custom.hub_perp_upp)}"
+            "func_str": "{$Custom.main_te_1_xy[0] + $Custom.d_ne * cos($Custom.hub_perp_low), $Custom.main_te_1_xy[1] + $Custom.d_ne * sin($Custom.hub_perp_low)}"
         },
         "nac_phi_te_abs": {
-            "_value": 1.6007963267948966,
+            "_value": 1.555884292341989,
             "bounds": [
                 -Infinity,
                 Infinity
@@ -372,8 +372,8 @@
         },
         "nac_te_xy": {
             "_value": [
-                1.0121338769494583,
-                0.17456679604726336
+                0.9892471022546822,
+                -0.23675815655666327
             ],
             "bounds": [
                 [
@@ -396,7 +396,7 @@
             "func_str": "{$Custom.nac_te_2_xy[0] + $Custom.nac_t_te_lower * cos($Custom.nac_phi_te_abs), $Custom.nac_te_2_xy[1] + $Custom.nac_t_te_lower * sin($Custom.nac_phi_te_abs)}"
         },
         "alf_nac_abs_180": {
-            "_value": 3.171592653589793,
+            "_value": 3.1266806191368857,
             "bounds": [
                 -Infinity,
                 Infinity
@@ -407,8 +407,8 @@
         },
         "nac_le_xy": {
             "_value": [
-                0.7256628372769984,
-                0.1659700856892282
+                0.702678967109156,
+                -0.2324845258735699
             ],
             "bounds": [
                 [
@@ -431,7 +431,7 @@
             "func_str": "{$Custom.nac_te_xy[0] + $A2.Base.c * cos($Custom.alf_nac_abs_180), $Custom.nac_te_xy[1] + $A2.Base.c * sin($Custom.alf_nac_abs_180)}"
         },
         "main_theta1_abs": {
-            "_value": -0.0764378857411597,
+            "_value": -0.17450092281406748,
             "bounds": [
                 -Infinity,
                 Infinity
@@ -441,7 +441,7 @@
             "func_str": "-$A0.Base.theta1_te - $A0.Base.alf"
         },
         "nac_theta2_abs": {
-            "_value": -0.043562114258840295,
+            "_value": 0.08467685390825247,
             "bounds": [
                 -Infinity,
                 Infinity
@@ -471,10 +471,10 @@
             "func_str": null
         },
         "alf_hub_nac_diff": {
-            "_value": -0.09,
+            "_value": -0.03,
             "bounds": [
                 -0.15,
-                -0.04
+                0.03
             ],
             "active": true,
             "linked": false,
@@ -504,7 +504,7 @@
                 "func_str": null
             },
             "alf": {
-                "_value": 0.0680496950101793,
+                "_value": 0.0,
                 "bounds": [
                     0.0,
                     0.1
@@ -574,7 +574,7 @@
                 "func_str": null
             },
             "L1_te": {
-                "_value": 0.05190584071266649,
+                "_value": 0.06552266667102236,
                 "bounds": [
                     0.005,
                     0.1
@@ -584,7 +584,7 @@
                 "func_str": null
             },
             "L2_te": {
-                "_value": 0.15437317736063746,
+                "_value": 0.07225847357785686,
                 "bounds": [
                     0.005,
                     0.5
@@ -594,7 +594,7 @@
                 "func_str": null
             },
             "theta1_te": {
-                "_value": 0.008388190730980405,
+                "_value": 0.17450092281406748,
                 "bounds": [
                     -0.1,
                     0.3
@@ -604,7 +604,7 @@
                 "func_str": null
             },
             "theta2_te": {
-                "_value": 0.24,
+                "_value": 0.0,
                 "bounds": [
                     0.0,
                     0.5
@@ -665,98 +665,11 @@
             }
         },
         "AnchorPoints": {
-            "ap_fan_m": {
-                "xy": {
-                    "_value": [
-                        0.8479779753458293,
-                        -0.05882867333130655
-                    ],
-                    "bounds": [
-                        [
-                            -Infinity,
-                            Infinity
-                        ],
-                        [
-                            -Infinity,
-                            Infinity
-                        ]
-                    ],
-                    "active": [
-                        true,
-                        true
-                    ],
-                    "linked": [
-                        true,
-                        true
-                    ],
-                    "func_str": "{$Custom.fan_center_xy[0] + $Custom.r_f * cos($Custom.hub_perp_low), $Custom.fan_center_xy[1] + $Custom.r_f * sin($Custom.hub_perp_low)}"
-                },
-                "L": {
-                    "_value": 0.05,
-                    "bounds": [
-                        0.005,
-                        0.1
-                    ],
-                    "active": true,
-                    "linked": false,
-                    "func_str": null
-                },
-                "R": {
-                    "_value": -0.26904070321866896,
-                    "bounds": [
-                        -1.0,
-                        0.0
-                    ],
-                    "active": true,
-                    "linked": false,
-                    "func_str": null
-                },
-                "r": {
-                    "_value": 0.5,
-                    "bounds": [
-                        0.05,
-                        0.95
-                    ],
-                    "active": true,
-                    "linked": false,
-                    "func_str": null
-                },
-                "phi": {
-                    "_value": 0.0,
-                    "bounds": [
-                        -0.5,
-                        0.5
-                    ],
-                    "active": true,
-                    "linked": false,
-                    "func_str": null
-                },
-                "psi1": {
-                    "_value": 2.999204704068803,
-                    "bounds": [
-                        0.1,
-                        3.1
-                    ],
-                    "active": true,
-                    "linked": false,
-                    "func_str": null
-                },
-                "psi2": {
-                    "_value": 2.8619891554410186,
-                    "bounds": [
-                        0.1,
-                        3.1
-                    ],
-                    "active": true,
-                    "linked": false,
-                    "func_str": null
-                }
-            },
             "ap_inl_m": {
                 "xy": {
                     "_value": [
-                        0.7718467957176534,
-                        -0.025378350262277596
+                        0.7709952439283987,
+                        -0.015735767943042336
                     ],
                     "bounds": [
                         [
@@ -776,7 +689,7 @@
                         true,
                         true
                     ],
-                    "func_str": "{$Custom.inl_center_xy[0] + $Custom.r_inl * cos($Custom.hub_perp_low), $Custom.inl_center_xy[1] + $Custom.r_inl * sin($Custom.hub_perp_low)}"
+                    "func_str": "{$Custom.inl_center_xy[0] + $Custom.r_inl * cos($Custom.hub_perp_upp), $Custom.inl_center_xy[1] + $Custom.r_inl * sin($Custom.hub_perp_upp)}"
                 },
                 "L": {
                     "_value": 0.048634722796560115,
@@ -838,16 +751,131 @@
                     "linked": false,
                     "func_str": null
                 }
+            },
+            "ap_fan_m": {
+                "xy": {
+                    "_value": [
+                        0.8502107448275265,
+                        0.009558204506936605
+                    ],
+                    "bounds": [
+                        [
+                            -Infinity,
+                            Infinity
+                        ],
+                        [
+                            -Infinity,
+                            Infinity
+                        ]
+                    ],
+                    "active": [
+                        true,
+                        true
+                    ],
+                    "linked": [
+                        true,
+                        true
+                    ],
+                    "func_str": "{$Custom.fan_center_xy[0] + $Custom.r_f * cos($Custom.hub_perp_upp), $Custom.fan_center_xy[1] + $Custom.r_f * sin($Custom.hub_perp_upp)}"
+                },
+                "L": {
+                    "_value": 0.05,
+                    "bounds": [
+                        0.005,
+                        0.1
+                    ],
+                    "active": true,
+                    "linked": false,
+                    "func_str": null
+                },
+                "R": {
+                    "_value": -0.26904070321866896,
+                    "bounds": [
+                        -1.0,
+                        0.0
+                    ],
+                    "active": true,
+                    "linked": false,
+                    "func_str": null
+                },
+                "r": {
+                    "_value": 0.5,
+                    "bounds": [
+                        0.05,
+                        0.95
+                    ],
+                    "active": true,
+                    "linked": false,
+                    "func_str": null
+                },
+                "phi": {
+                    "_value": 0.0,
+                    "bounds": [
+                        -0.5,
+                        0.5
+                    ],
+                    "active": true,
+                    "linked": false,
+                    "func_str": null
+                },
+                "psi1": {
+                    "_value": 2.999204704068803,
+                    "bounds": [
+                        0.1,
+                        3.1
+                    ],
+                    "active": true,
+                    "linked": false,
+                    "func_str": null
+                },
+                "psi2": {
+                    "_value": 2.8619891554410186,
+                    "bounds": [
+                        0.1,
+                        3.1
+                    ],
+                    "active": true,
+                    "linked": false,
+                    "func_str": null
+                }
             }
         },
         "FreePoints": {
-            "te_1": {},
+            "te_1": {
+                "FP0": {
+                    "xy": {
+                        "_value": [
+                            0.363201579194,
+                            0.135672523274
+                        ],
+                        "bounds": [
+                            [
+                                0.0,
+                                1.0
+                            ],
+                            [
+                                0.0,
+                                0.4
+                            ]
+                        ],
+                        "active": [
+                            true,
+                            true
+                        ],
+                        "linked": [
+                            false,
+                            false
+                        ],
+                        "func_str": null
+                    }
+                }
+            },
             "le": {
                 "FP0": {
                     "xy": {
                         "_value": [
-                            0.316189083816,
-                            -0.09471207012
+                            0.321897422579,
+                            -0.072992892038
                         ],
                         "bounds": [
                             [
@@ -871,53 +899,25 @@
                     }
                 }
             },
-            "ap_fan_m": {},
-            "ap_inl_m": {
-                "FP0": {
-                    "xy": {
-                        "_value": [
-                            0.371586303728,
-                            0.110661825317
-                        ],
-                        "bounds": [
-                            [
-                                0.0,
-                                1.0
-                            ],
-                            [
-                                0.0,
-                                0.4
-                            ]
-                        ],
-                        "active": [
-                            true,
-                            true
-                        ],
-                        "linked": [
-                            false,
-                            false
-                        ],
-                        "func_str": null
-                    }
-                }
-            }
+            "ap_inl_m": {},
+            "ap_fan_m": {}
         },
         "anchor_point_order": [
             "te_1",
-            "ap_fan_m",
-            "ap_inl_m",
             "le",
+            "ap_inl_m",
+            "ap_fan_m",
             "te_2"
         ],
         "free_point_order": {
-            "te_1": [],
+            "te_1": [
+                "FP0"
+            ],
             "le": [
                 "FP0"
             ],
-            "ap_fan_m": [],
-            "ap_inl_m": [
-                "FP0"
-            ]
+            "ap_inl_m": [],
+            "ap_fan_m": []
         }
     },
     "A1": {
@@ -933,7 +933,7 @@
                 "func_str": "$Custom.L_nose + $Custom.L_fne + $Custom.L_pr"
             },
             "alf": {
-                "_value": 0.06,
+                "_value": 0.04491203445290751,
                 "bounds": [
                     0.0,
                     0.12
@@ -985,8 +985,8 @@
             "psi1_le": {
                 "_value": 1.3062669622951764,
                 "bounds": [
-                    0.1,
-                    3.1
+                    -1.5,
+                    1.5
                 ],
                 "active": true,
                 "linked": false,
@@ -1073,7 +1073,7 @@
                 "func_str": null
             },
             "dx": {
-                "_value": 0.8073394825150582,
+                "_value": 0.7968120259448737,
                 "bounds": [
                     -Infinity,
                     Infinity
@@ -1083,7 +1083,7 @@
                 "func_str": "$Custom.hub_le_xy[0]"
             },
             "dy": {
-                "_value": 0.06515627948734545,
+                "_value": -0.10948940129297614,
                 "bounds": [
                     -Infinity,
                     Infinity
@@ -1097,8 +1097,8 @@
             "ap_noz_h_upp": {
                 "xy": {
                     "_value": [
-                        1.0088808498433925,
-                        0.11816644130020365
+                        0.9975306684448302,
+                        -0.053444539325310944
                     ],
                     "bounds": [
                         [
@@ -1184,8 +1184,8 @@
             "ap_fan_h_upp": {
                 "xy": {
                     "_value": [
-                        0.858017659004673,
-                        0.10829854576923478
+                        0.8468335298533954,
+                        -0.06558744394504301
                     ],
                     "bounds": [
                         [
@@ -1271,8 +1271,8 @@
             "ap_fan_h_low": {
                 "xy": {
                     "_value": [
-                        0.8524885578592228,
-                        0.016257468583429413
+                        0.842693717949622,
+                        -0.1577014646281148
                     ],
                     "bounds": [
                         [
@@ -1358,8 +1358,8 @@
             "ap_noz_h_low": {
                 "xy": {
                     "_value": [
-                        1.0010855290010647,
-                        -0.011599628891372893
+                        0.9916940665871561,
+                        -0.18331345045786412
                     ],
                     "bounds": [
                         [
@@ -1482,7 +1482,7 @@
                 "func_str": null
             },
             "alf": {
-                "_value": -0.03,
+                "_value": 0.014912034452907508,
                 "bounds": [
                     -Infinity,
                     Infinity
@@ -1534,8 +1534,8 @@
             "psi1_le": {
                 "_value": 0.35673609090780456,
                 "bounds": [
-                    0.1,
-                    3.1
+                    -1.5,
+                    1.5
                 ],
                 "active": true,
                 "linked": false,
@@ -1544,15 +1544,15 @@
             "psi2_le": {
                 "_value": 0.06,
                 "bounds": [
-                    0.1,
-                    3.1
+                    -1.5,
+                    1.5
                 ],
                 "active": true,
                 "linked": false,
                 "func_str": null
             },
             "L1_te": {
-                "_value": 0.3548974109134329,
+                "_value": 0.2525213607729902,
                 "bounds": [
                     0.05,
                     0.5
@@ -1562,7 +1562,7 @@
                 "func_str": null
             },
             "L2_te": {
-                "_value": 0.1811090045801343,
+                "_value": 0.22862060945925455,
                 "bounds": [
                     -Infinity,
                     Infinity
@@ -1572,7 +1572,7 @@
                 "func_str": "$A0.Base.L1_te * $A0.Base.c / $A2.Base.c"
             },
             "theta1_te": {
-                "_value": 0.1739457115644667,
+                "_value": 0.2161008493101675,
                 "bounds": [
                     -0.1,
                     0.3
@@ -1582,7 +1582,7 @@
                 "func_str": null
             },
             "theta2_te": {
-                "_value": -0.0735621142588403,
+                "_value": 0.09958888836115998,
                 "bounds": [
                     -Infinity,
                     Infinity
@@ -1607,7 +1607,7 @@
                     0.05,
                     0.95
                 ],
-                "active": true,
+                "active": false,
                 "linked": false,
                 "func_str": null
             },
@@ -1617,12 +1617,12 @@
                     -0.3,
                     0.3
                 ],
-                "active": true,
+                "active": false,
                 "linked": false,
                 "func_str": null
             },
             "dx": {
-                "_value": 0.7256628372769984,
+                "_value": 0.702678967109156,
                 "bounds": [
                     -Infinity,
                     Infinity
@@ -1632,7 +1632,7 @@
                 "func_str": "$Custom.nac_le_xy[0]"
             },
             "dy": {
-                "_value": 0.1659700856892282,
+                "_value": -0.2324845258735699,
                 "bounds": [
                     -Infinity,
                     Infinity
@@ -1643,98 +1643,11 @@
             }
         },
         "AnchorPoints": {
-            "ap_inl_n": {
-                "xy": {
-                    "_value": [
-                        0.7829401369163507,
-                        0.1592887496257352
-                    ],
-                    "bounds": [
-                        [
-                            -Infinity,
-                            Infinity
-                        ],
-                        [
-                            -Infinity,
-                            Infinity
-                        ]
-                    ],
-                    "active": [
-                        true,
-                        true
-                    ],
-                    "linked": [
-                        true,
-                        true
-                    ],
-                    "func_str": "{$Custom.inl_center_xy[0] + $Custom.r_inl * cos($Custom.hub_perp_upp), $Custom.inl_center_xy[1] + $Custom.r_inl * sin($Custom.hub_perp_upp)}"
-                },
-                "L": {
-                    "_value": 0.16969547381912112,
-                    "bounds": [
-                        -Infinity,
-                        Infinity
-                    ],
-                    "active": true,
-                    "linked": true,
-                    "func_str": "^symmetry.symmetry(name, L=$A0.AnchorPoints.ap_inl_m.L, c_target=$A2.Base.c, c_tool=$A0.Base.c)"
-                },
-                "R": {
-                    "_value": 0.3696992773954756,
-                    "bounds": [
-                        -Infinity,
-                        Infinity
-                    ],
-                    "active": true,
-                    "linked": true,
-                    "func_str": "^symmetry.symmetry(name, R=$A0.AnchorPoints.ap_inl_m.R, c_target=$A2.Base.c, c_tool=$A0.Base.c)"
-                },
-                "r": {
-                    "_value": 0.4609142613517734,
-                    "bounds": [
-                        -Infinity,
-                        Infinity
-                    ],
-                    "active": true,
-                    "linked": true,
-                    "func_str": "^symmetry.symmetry(name, r=$A0.AnchorPoints.ap_inl_m.r)"
-                },
-                "phi": {
-                    "_value": -0.14967167626902558,
-                    "bounds": [
-                        -Infinity,
-                        Infinity
-                    ],
-                    "active": true,
-                    "linked": true,
-                    "func_str": "^symmetry.symmetry(name, x1=$A1.Base.dx, y1=$A1.Base.dy, theta_rad=$Custom.alf_hub_abs, alf_tool=$A0.Base.alf, alf_target=$A2.Base.alf, phi=$A0.AnchorPoints.ap_inl_m.phi, upper_target=False, upper_tool=True)"
-                },
-                "psi1": {
-                    "_value": 2.4,
-                    "bounds": [
-                        -Infinity,
-                        Infinity
-                    ],
-                    "active": true,
-                    "linked": true,
-                    "func_str": "^symmetry.symmetry(name, psi1=$A0.AnchorPoints.ap_inl_m.psi1)"
-                },
-                "psi2": {
-                    "_value": 2.736886857293879,
-                    "bounds": [
-                        -Infinity,
-                        Infinity
-                    ],
-                    "active": true,
-                    "linked": true,
-                    "func_str": "^symmetry.symmetry(name, psi2=$A0.AnchorPoints.ap_inl_m.psi2)"
-                }
-            },
             "ap_fan_n": {
                 "xy": {
                     "_value": [
-                        0.8625282415180665,
-                        0.18338468768397076
+                        0.839316502975491,
+                        -0.23284711308009443
                     ],
                     "bounds": [
                         [
@@ -1754,7 +1667,7 @@
                         true,
                         true
                     ],
-                    "func_str": "{$Custom.fan_center_xy[0] + $Custom.r_f * cos($Custom.hub_perp_upp), $Custom.fan_center_xy[1] + $Custom.r_f * sin($Custom.hub_perp_upp)}"
+                    "func_str": "{$Custom.fan_center_xy[0] + $Custom.r_f * cos($Custom.hub_perp_low), $Custom.fan_center_xy[1] + $Custom.r_f * sin($Custom.hub_perp_low)}"
                 },
                 "L": {
                     "_value": 0.17445917655268667,
@@ -1787,7 +1700,7 @@
                     "func_str": "^symmetry.symmetry(name, r=$A0.AnchorPoints.ap_fan_m.r)"
                 },
                 "phi": {
-                    "_value": 0.0819503049898207,
+                    "_value": 0.0749120344529075,
                     "bounds": [
                         -Infinity,
                         Infinity
@@ -1816,15 +1729,103 @@
                     "linked": true,
                     "func_str": "^symmetry.symmetry(name, psi2=$A0.AnchorPoints.ap_fan_m.psi2)"
                 }
+            },
+            "ap_inl_n": {
+                "xy": {
+                    "_value": [
+                        0.7626893105155548,
+                        -0.2005492184009065
+                    ],
+                    "bounds": [
+                        [
+                            -Infinity,
+                            Infinity
+                        ],
+                        [
+                            -Infinity,
+                            Infinity
+                        ]
+                    ],
+                    "active": [
+                        true,
+                        true
+                    ],
+                    "linked": [
+                        true,
+                        true
+                    ],
+                    "func_str": "{$Custom.inl_center_xy[0] + $Custom.r_inl * cos($Custom.hub_perp_low), $Custom.inl_center_xy[1] + $Custom.r_inl * sin($Custom.hub_perp_low)}"
+                },
+                "L": {
+                    "_value": 0.16969547381912112,
+                    "bounds": [
+                        -Infinity,
+                        Infinity
+                    ],
+                    "active": true,
+                    "linked": true,
+                    "func_str": "^symmetry.symmetry(name, L=$A0.AnchorPoints.ap_inl_m.L, c_target=$A2.Base.c, c_tool=$A0.Base.c)"
+                },
+                "R": {
+                    "_value": 0.3696992773954756,
+                    "bounds": [
+                        -Infinity,
+                        Infinity
+                    ],
+                    "active": true,
+                    "linked": true,
+                    "func_str": "^symmetry.symmetry(name, R=$A0.AnchorPoints.ap_inl_m.R, c_target=$A2.Base.c, c_tool=$A0.Base.c)"
+                },
+                "r": {
+                    "_value": 0.4609142613517734,
+                    "bounds": [
+                        -Infinity,
+                        Infinity
+                    ],
+                    "active": true,
+                    "linked": true,
+                    "func_str": "^symmetry.symmetry(name, r=$A0.AnchorPoints.ap_inl_m.r)"
+                },
+                "phi": {
+                    "_value": -0.15670994680593878,
+                    "bounds": [
+                        -Infinity,
+                        Infinity
+                    ],
+                    "active": true,
+                    "linked": true,
+                    "func_str": "^symmetry.symmetry(name, x1=$A1.Base.dx, y1=$A1.Base.dy, theta_rad=$Custom.alf_hub_abs, alf_tool=$A0.Base.alf, alf_target=$A2.Base.alf, phi=$A0.AnchorPoints.ap_inl_m.phi, upper_target=False, upper_tool=True)"
+                },
+                "psi1": {
+                    "_value": 2.4,
+                    "bounds": [
+                        -Infinity,
+                        Infinity
+                    ],
+                    "active": true,
+                    "linked": true,
+                    "func_str": "^symmetry.symmetry(name, psi1=$A0.AnchorPoints.ap_inl_m.psi1)"
+                },
+                "psi2": {
+                    "_value": 2.736886857293879,
+                    "bounds": [
+                        -Infinity,
+                        Infinity
+                    ],
+                    "active": true,
+                    "linked": true,
+                    "func_str": "^symmetry.symmetry(name, psi2=$A0.AnchorPoints.ap_inl_m.psi2)"
+                }
             }
         },
         "FreePoints": {
-            "te_1": {
+            "te_1": {},
+            "le": {
                 "FP0": {
                     "xy": {
                         "_value": [
-                            0.809943190474,
-                            0.197298742965
+                            0.864403679136586,
+                            -0.25
                         ],
                         "bounds": [
                             [
@@ -1832,8 +1833,8 @@
                                 1.0
                             ],
                             [
-                                0.1,
-                                0.25
+                                -0.25,
+                                0.1
                             ]
                         ],
                         "active": [
@@ -1848,24 +1849,23 @@
                     }
                 }
             },
-            "le": {},
-            "ap_inl_n": {},
-            "ap_fan_n": {}
+            "ap_fan_n": {},
+            "ap_inl_n": {}
         },
         "anchor_point_order": [
             "te_1",
-            "le",
-            "ap_inl_n",
             "ap_fan_n",
+            "ap_inl_n",
+            "le",
             "te_2"
         ],
         "free_point_order": {
-            "te_1": [
+            "te_1": [],
+            "le": [
                 "FP0"
             ],
-            "le": [],
-            "ap_inl_n": [],
-            "ap_fan_n": []
+            "ap_fan_n": [],
+            "ap_inl_n": []
         }
     },
     "file_name": "C:/Users/mlauer2/Documents/pymead/pymead/pymead/examples/pai.jmea",
