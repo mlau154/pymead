@@ -58,20 +58,20 @@ class InfiniteLine:
     def update(self):
         # Slope input handling
         if self.m is None:
-            if not self.theta_rad and not self.theta_deg:
+            if self.theta_rad is None and self.theta_deg is None:
                 self.m = (self.y2 - self.y1) / (self.x2 - self.x1)
-            elif self.theta_rad and not self.theta_deg:
+            elif self.theta_rad is not None and self.theta_deg is None:
                 self.m = np.tan(self.theta_rad)
-            elif not self.theta_rad and self.theta_deg:
+            elif self.theta_rad is None and self.theta_deg is not None:
                 self.m = np.tan(np.deg2rad(self.theta_deg))
 
         # Angle input handling
-        if not self.theta_rad and not self.theta_deg:
+        if self.theta_rad is None and self.theta_deg is None:
             self.theta_rad = np.arctan2(self.m, 1)
             self.theta_deg = np.rad2deg(self.theta_rad)
-        elif self.theta_rad and not self.theta_deg:
+        elif self.theta_rad is not None and self.theta_deg is None:
             self.theta_deg = np.rad2deg(self.theta_rad)
-        elif not self.theta_rad and self.theta_deg:
+        elif self.theta_rad is None and self.theta_deg is not None:
             self.theta_rad = np.deg2rad(self.theta_deg)
         else:
             pass
@@ -82,6 +82,9 @@ class InfiniteLine:
 
     def get_standard_form_coeffs(self):
         return {'A': -self.m, 'B': 1, 'C': self.m * self.x2 - self.y2}
+
+    def evaluate_y(self, x):
+        return self.m * (x - self.x1) + self.y1
 
 
 def _test():

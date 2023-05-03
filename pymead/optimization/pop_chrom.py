@@ -70,6 +70,8 @@ class Chromosome:
         self.mea_object = None
         self.param_set = deepcopy(param_dict)
         self.coords = None
+        self.control_points = None
+        self.airfoil_state = None
         self.ga_settings = ga_settings
         self.verbose = verbose
         self.airfoil_sys_generated = False
@@ -118,6 +120,9 @@ class Chromosome:
                         raise ValueError('External geometry timing after aerodynamic evaluation not yet implemented')
         self.coords = tuple([self.mea_object.airfoils[k].get_coords(
             body_fixed_csys=False, as_tuple=True) for k in self.param_set['mset_settings']['airfoil_order']])
+        self.control_points = [[c.P.tolist() for c in self.mea_object.airfoils[k].curve_list]
+                               for k in self.mea_object.airfoils.keys()]
+        self.airfoil_state = {k: {p: getattr(a, p).value for p in ['c', 'alf', 'dx', 'dy']} for k, a in self.mea_object.airfoils.items()}
         self.mea_object = None
 
     def generate_airfoil_sys_from_genes(self) -> dict:
@@ -128,9 +133,10 @@ class Chromosome:
         if self.genes is not None:
             self.mea_object.update_parameters(self.genes)
             self.update_param_dict()  # updates the MSES settings from the geometry (just for XCDELH right now)
-            self.airfoil_sys_generated = True
         else:
-            raise Exception('Genes of Chromosome object have not been set. Aborting airfoil system generation.')
+            self.coords = tuple([self.mea_object.airfoils[k].get_coords(
+                body_fixed_csys=False, as_tuple=True) for k in self.param_set['mset_settings']['airfoil_order']])
+        self.airfoil_sys_generated = True
         return self.param_set
 
     def update_param_dict(self):
@@ -364,7 +370,7 @@ class Population:
         # print(f"{chromosome.genes[0] = }")
         if chromosome.fitness is None:
             if self.verbose:
-                print(f'Chromosome {chromosome.population_idx + 1} of {self.ga_settings.population_size} '
+                print(f'Chromosome {chromosome.population_idx + 1} '
                       f'(generation: {chromosome.generation}, category: {chromosome.category}, '
                       f'mutated: {chromosome.mutated}): Evaluating fitness...')
             xfoil_settings, mset_settings, mses_settings, mplot_settings = None, None, None, None
@@ -400,13 +406,12 @@ class Population:
             # print(f"{chromosome.fitness = }")
             # if chromosome.forces is not None and 'Cd' in chromosome.forces.keys():
             #     print(f"{chromosome.forces['Cd'] = }, {chromosome.forces['converged'] = }")
-            if self.verbose:
-                print(f"Fitness evaluated successfully for chromosome {chromosome.population_idx + 1} of "
-                      f"{self.ga_settings.population_size} with "
+            if self.verbose and chromosome.fitness is not None:
+                print(f"Fitness evaluated successfully for chromosome {chromosome.population_idx + 1} with "
                       f"generation: {chromosome.generation} | category: {chromosome.category} "
                       f"| mutated: {chromosome.mutated} | "
-                      f"fitness = {round(chromosome.fitness, 8)} | C_d = {round(chromosome.forces['Cd'], 8)} | C_l = "
-                      f"{round(chromosome.forces['Cl'], 8)} | C_m = {round(chromosome.forces['Cm'], 8)}")
+                      f"fitness = {chromosome.fitness} | C_d = {chromosome.forces['Cd']} | C_l = "
+                      f"{chromosome.forces['Cl']} | C_m = {chromosome.forces['Cm']}")
         return chromosome
 
     @staticmethod

@@ -19,8 +19,8 @@ from pymead.gui.input_dialog import SingleAirfoilViscousDialog, LoadDialog, Save
 from pymead.gui.pymeadPColorMeshItem import PymeadPColorMeshItem
 from pymead.gui.analysis_graph import AnalysisGraph
 from pymead.gui.parameter_tree import MEAParamTree
-from pymead.utils.airfoil_matching import match_airfoil
-from pymead.optimization.opt_setup import read_stencil_from_array
+from pymead.utils.airfoil_matching import match_airfoil, match_airfoil_ga
+from pymead.optimization.opt_setup import read_stencil_from_array, convert_opt_settings_to_param_dict
 from pymead.analysis.single_element_inviscid import single_element_inviscid
 from pymead.gui.text_area import ConsoleTextArea
 from pymead.gui.dockable_tab_widget import DockableTabWidget
@@ -33,8 +33,8 @@ from pymead.utils.misc import make_ga_opt_dir
 from pymead.utils.get_airfoil import extract_data_from_airfoiltools
 from pymead.optimization.pop_chrom import Chromosome, Population, CustomGASettings
 from pymead.optimization.custom_ga_sampling import CustomGASampling
-from pymead.optimization.opt_setup import termination_condition, calculate_warm_start_index, \
-    convert_opt_settings_to_param_dict
+from pymead.optimization.sampling import ConstrictedRandomSampling
+from pymead.optimization.opt_setup import termination_condition, calculate_warm_start_index
 from pymead.gui.message_box import disp_message_box
 from pymead.gui.worker import Worker
 from pymead.optimization.opt_callback import PlotAirfoilCallback, ParallelCoordsCallback, OptCallback, \
@@ -314,6 +314,15 @@ class GUI(QMainWindow):
             for airfoil in self.mea.airfoils.values():
                 airfoil.airfoil_graph.airfoil_parameters = self.param_tree_instance.p.param('Airfoil Parameters')
             self.mea.update_parameters(parameter_list)
+
+    def export_parameter_list(self):
+        """This function imports a list of parameters normalized by their bounds"""
+        file_filter = "DAT Files (*.dat)"
+        dialog = SaveAsDialog(self, file_filter=file_filter)
+        if dialog.exec_():
+            file_name = dialog.selectedFiles()[0]
+            parameter_list, _ = self.mea.extract_parameters(write_to_txt_file=True)
+            np.savetxt(file_name, np.array(parameter_list))
 
     def plot_geometry(self):
         file_filter = "DAT Files (*.dat)"
@@ -761,10 +770,18 @@ class GUI(QMainWindow):
         dialog = AirfoilMatchingDialog(self)
         if dialog.exec_():
             airfoil_name = dialog.getInputs()
-            res = match_airfoil(self.mea, target_airfoil, airfoil_name)
-            if res.success:
-                self.mea.update_parameters(res.x)
-            msg_mode = 'info' if res.success else 'error'
+            res = match_airfoil_ga(self.mea, target_airfoil, airfoil_name)
+            msg_mode = 'error'
+            if hasattr(res, 'success') and res.success or hasattr(res, 'F') and res.F is not None:
+                if hasattr(res, 'x'):
+                    update_params = res.x
+                elif hasattr(res, 'X'):
+                    update_params = res.X
+                else:
+                    raise AttributeError("Did not have x or X to update airfoil parameter dictionary")
+                print(f"{update_params = }")
+                self.mea.update_parameters(update_params)
+                msg_mode = 'info'
             self.disp_message_box(message=res.message, message_mode=msg_mode)
 
     def plot_airfoil_from_airfoiltools(self):
@@ -872,7 +889,7 @@ class GUI(QMainWindow):
                         thickness_file = constraint_set['thickness_at_points']
                         try:
                             data = np.loadtxt(thickness_file)
-                            param_dict['thickness_at_points'] = data.tolist()
+                            param_dict['constraints'][airfoil_name]['thickness_at_points'] = data.tolist()
                         except FileNotFoundError:
                             message = f'Thickness file {thickness_file} not found'
                             self.disp_message_box(message=message, message_mode='error')
@@ -923,7 +940,6 @@ class GUI(QMainWindow):
                 else:
                     raise ValueError(f"Currently only MSES and XFOIL are supported as analysis tools for "
                                      f"aerodynamic shape optimization. Tool selected was {param_dict['tool']}")
-                print(f"{multi_point_stencil = }")
 
                 # Warm start parameters
                 if opt_settings['General Settings']['warm_start_active']:
@@ -1024,12 +1040,21 @@ class GUI(QMainWindow):
             if param_dict['seed'] is not None:
                 np.random.seed(param_dict['seed'])
                 random.seed(param_dict['seed'])
-            tpaiga2_alg_instance = CustomGASampling(param_dict=problem.param_dict, ga_settings=ga_settings, mea=mea,
-                                                    genes=parameter_list)
-            population = Population(problem.param_dict, ga_settings, generation=0,
-                                    parents=[tpaiga2_alg_instance.generate_first_parent()],
-                                    verbose=param_dict['verbose'], mea=mea)
-            population.generate()
+            # tpaiga2_alg_instance = CustomGASampling(param_dict=problem.param_dict, ga_settings=ga_settings, mea=mea,
+            #                                         genes=parameter_list)
+            # population = Population(problem.param_dict, ga_settings, generation=0,
+            #                         parents=[tpaiga2_alg_instance.generate_first_parent()],
+            #                         verbose=param_dict['verbose'], mea=mea)
+            # population.generate()
+            sampling = ConstrictedRandomSampling(n_samples=param_dict['n_offsprings'], norm_param_list=parameter_list,
+                                                 max_sampling_width=param_dict['max_sampling_width'])
+            X_list = sampling.sample()
+            parents = [Chromosome(param_dict=param_dict, ga_settings=ga_settings, category='parent',
+                                  generation=0, population_idx=idx, mea=mea, genes=individual)
+                       for idx, individual in enumerate(X_list)]
+            population = Population(param_dict=param_dict, ga_settings=ga_settings, generation=0, parents=parents,
+                                    mea=mea, verbose=param_dict['verbose'])
+            population.generate_chromosomes_parallel()
             n_initial_evaluations = 0
             n_subpopulations = 0
             fully_converged_chromosomes = []
@@ -1121,7 +1146,7 @@ class GUI(QMainWindow):
         else:
             warm_start_index = param_dict['warm_start_generation']
             n_generation = warm_start_index
-            algorithm = load_data(os.path.join(opt_settings['Warm Start/Batch Mode']['warm_start_dir']['text'],
+            algorithm = load_data(os.path.join(opt_settings['General Settings']['warm_start_dir'],
                                                f'algorithm_gen_{warm_start_index}.pkl'))
             term = deepcopy(algorithm.termination.terminations)
             term = list(term)

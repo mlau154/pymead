@@ -7,6 +7,7 @@ from pymead.utils.geometry import check_airfoil_self_intersection
 from pymead.utils.read_write_files import write_tuple_tuple_to_file
 import typing
 from copy import deepcopy
+import time
 
 
 SVG_PLOTS = ['Mach_contours', 'grid', 'grid_zoom']
@@ -173,7 +174,7 @@ def calculate_aero_data(airfoil_coord_dir: str, airfoil_name: str, coords: typin
 
         # Multipoint Loop
         for i in range(mset_mplot_loop_iterations):
-            # print(f"{i = }, {mset_success = }")
+            t1 = time.time()
 
             if stencil is not None:
                 mses_settings = update_mses_settings_from_stencil(mses_settings=mses_settings, stencil=stencil, idx=i)
@@ -199,6 +200,9 @@ def calculate_aero_data(airfoil_coord_dir: str, airfoil_name: str, coords: typin
                         run_mplot(airfoil_name, airfoil_coord_dir, mplot_settings, mode=mplot_output_name)
                         if mplot_output_name == 'flow_field':
                             run_mplot(airfoil_name, airfoil_coord_dir, mplot_settings, mode='grid_stats')
+
+            t2 = time.time()
+            print(f"Time for stencil point {i}: {t2 - t1} seconds")
 
             if converged:
                 aero_data['converged'] = True

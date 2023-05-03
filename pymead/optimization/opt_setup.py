@@ -82,6 +82,7 @@ def convert_opt_settings_to_param_dict(opt_settings: dict) -> dict:
                   'population_size': opt_settings['Genetic Algorithm']['pop_size'],
                   'n_ref_dirs': opt_settings['Genetic Algorithm']['pop_size'],
                   'n_offsprings': opt_settings['Genetic Algorithm']['n_offspring'],
+                  'max_sampling_width': opt_settings['Genetic Algorithm']['max_sampling_width'],
                   'xl': 0.0,
                   'xu': 1.0,
                   'seed': opt_settings['Genetic Algorithm']['random_seed'],
@@ -108,7 +109,7 @@ def convert_opt_settings_to_param_dict(opt_settings: dict) -> dict:
                   'constraints': opt_settings['Constraints/Termination']['constraints'],
                   'multi_point_active': opt_settings['Multi-Point Optimization']['multi_point_active'],
                   'multi_point_stencil': opt_settings['Multi-Point Optimization']['multi_point_stencil'],
-                  'verbose': False,
+                  'verbose': True,
                   'eta_crossover': opt_settings['Genetic Algorithm']['eta_crossover'],
                   'eta_mutation': opt_settings['Genetic Algorithm']['eta_mutation'],
                   }

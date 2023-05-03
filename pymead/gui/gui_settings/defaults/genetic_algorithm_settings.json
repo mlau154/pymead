@@ -41,6 +41,14 @@
         "setValue": 150,
         "setToolTip": "Number of offspring to generate to fill out the population.\nOffspring with converged objective functions become members of the\ncurrent population until the population is full. Must be greater\nthan or equal to the population size"
     },
+    "max_sampling_width": {
+        "label": "Max. Sampling Width",
+        "widget_type": "QDoubleSpinBox",
+        "setMinimum": 0.0,
+        "setMaximum": 1.0,
+        "setValue": 0.08,
+        "setToolTip": "Maximum random distance from original (seed) parameter\n value for each active and unlinked parameter"
+    },
     "eta_crossover": {
         "label": "\u03b7 (crossover)",
         "widget_type": "QDoubleSpinBox",

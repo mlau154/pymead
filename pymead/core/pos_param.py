@@ -97,6 +97,9 @@ class PosParam(Param):
         else:
             self.linked[1] = False
 
+        if "symmetry" in self.func_str:
+            self.linked = [True, True]
+
     def update_value(self):
         if self.func_str is None:
             pass
