@@ -18,7 +18,29 @@ SVG_SETTINGS_TR = {
 }
 
 
-def update_mses_settings_from_stencil(mses_settings: dict, stencil: list, idx: int):
+def update_mses_settings_from_stencil(mses_settings: dict, stencil: typing.List[dict], idx: int):
+    """
+    Updates the MSES settings dictionary from a given multipoint stencil and multipoint index
+
+    Parameters
+    ==========
+    mses_settings: dict
+      MSES settings dictionary
+
+    stencil: typing.List[dict]
+      A list of dictionaries describing the multipoint stencil, where each entry in the list is a dictionary
+      representing a different stencil variable (Mach number, lift coefficient, etc.) and contains values for the
+      variable name, index (used only in the case of transition location and actuator disk variables), and stencil
+      point values (e.g., ``stencil_var["points"]`` may look something like ``[0.65, 0.70, 0.75]`` for Mach number)
+
+    idx: int
+      Index within the multipoint stencil used to update the MSES settings dictionary
+
+    Returns
+    =======
+    dict
+      The modified MSES settings dictionary
+    """
     for stencil_var in stencil:
         if isinstance(mses_settings[stencil_var['variable']], list):
             mses_settings[stencil_var['variable']][stencil_var['index']] = stencil_var['points'][idx]
@@ -28,35 +50,65 @@ def update_mses_settings_from_stencil(mses_settings: dict, stencil: list, idx: i
 
 
 def calculate_aero_data(airfoil_coord_dir: str, airfoil_name: str, coords: typing.Tuple[tuple],
-                        tool: str = 'panel_fort', xfoil_settings: dict = None, mset_settings: dict = None,
-                        mses_settings: dict = None, mplot_settings: dict = None, export_Cp: bool = True,
-                        alpha_panel_fort=None):
-    # ratio_thresh of 1.000005 and abs_thresh = 0.1 works well
-    tool_list = ['panel_fort', 'XFOIL', 'MSES']
+                        tool: str = 'XFOIL', xfoil_settings: dict = None, mset_settings: dict = None,
+                        mses_settings: dict = None, mplot_settings: dict = None, export_Cp: bool = True):
+    """
+    Convenience function calling either XFOIL or MSES depending on the ``tool`` specified
+
+    Parameters
+    ==========
+    airfoil_coord_dir: str
+      The directory containing the airfoil coordinate file
+
+    airfoil_name: str
+      A string describing the airfoil
+
+    coords: typing.Tuple[tuple]
+      If using XFOIL: specify a 2-D nested tuple array of size :math:`N \times 2`, where :math:`N` is the number of
+      airfoil coordinates and the columns represent :math:`x` and :math:`y`. If using MSES, specify a 3-D nested
+      tuple array of size :math:`M \times N \times 2`, where :math:`M` is the number of airfoils.
+
+    tool: str
+      The airfoil flow analysis tool to be used. Must be either ``"XFOIL"`` or ``"MSES"``. Default: ``"XFOIL"``
+
+    xfoil_settings: dict
+      A dictionary containing the settings for XFOIL. Must be specified if the ``"XFOIL"`` tool is selected.
+      Default: ``None``
+
+    mset_settings: dict
+      A dictionary containing the settings for MSET. Must be specified if the ``"MSES"`` tool is selected. Default:
+      ``None``
+
+    mses_settings: dict
+      A dictionary containing the settings for MSES. Must be specified if the ``"MSES"`` tool is selected. Default:
+      ``None``
+
+    mplot_settings: dict
+      A dictionary containing the settings for MPLOT. Must be specified if the ``"MSES"`` tool is selected. Default:
+      ``None``
+
+    export_Cp: bool
+      Whether to calculate and export the surface pressure coefficient distribution in the case of XFOIL, or the
+      entire set of boundary layer data in the case of MSES. Default: ``True``
+    """
+
+    tool_list = ['XFOIL', 'MSES']
     if tool not in tool_list:
         raise ValueError(f"\'tool\' must be one of {tool_list}")
-    if tool in ['panel_fort', 'XFOIL']:
+    if tool == 'XFOIL':
 
         # Check for self-intersection and early return if self-intersecting:
         if check_airfoil_self_intersection(coords):
             return False
 
     aero_data = {}
+
+    # Make the analysis directory if not already created
     base_dir = os.path.join(airfoil_coord_dir, airfoil_name)
     if not os.path.exists(base_dir):
         os.mkdir(base_dir)
-    if tool == 'panel_fort':
-        f = os.path.join(base_dir, airfoil_name + '.dat')
-        n_data_pts = len(coords)
-        write_tuple_tuple_to_file(f, coords)
-        subprocess.run((["panel_fort", airfoil_coord_dir, airfoil_name + '.dat', str(n_data_pts - 1),
-                         str(alpha_panel_fort)]),
-                       stdout=subprocess.DEVNULL)  # stdout=subprocess.DEVNULL suppresses output to console
-        aero_data['Cl'] = read_Cl_from_file_panel_fort(os.path.join(airfoil_coord_dir, 'LIFT.dat'))
-        if export_Cp:
-            aero_data['Cp'] = read_Cp_from_file_panel_fort(os.path.join(airfoil_coord_dir, 'CPLV.DAT'))
-        return aero_data
-    elif tool == 'XFOIL':
+
+    if tool == 'XFOIL':
         if xfoil_settings is None:
             raise ValueError(f"\'xfoil_settings\' must be set if \'xfoil\' tool is selected")
         if 'xtr' not in xfoil_settings.keys():
@@ -228,6 +280,31 @@ def calculate_aero_data(airfoil_coord_dir: str, airfoil_name: str, coords: typin
 
 
 def run_mset(name: str, base_dir: str, mset_settings: dict, coords: typing.Tuple[tuple]):
+    """
+    A Python API for MSET
+
+    Parameters
+    ==========
+    name: str
+      Name of the airfoil [system]
+
+    base_dir: str
+      MSET files will be stored in base_dir/name
+
+    mset_settings: dict
+      Parameter set (dictionary)
+
+    coords: typing.Tuple[tuple]
+      A 3-D set of coordinates to write as the airfoil geometry. The array of coordinates has size
+      :math:`M \times N \times 2` where :math:`M` is the number of airfoils and :math:`N` is the number of airfoil
+      coordinates. The coordinates can be input as a ragged array, where :math:`N` changes with each 3-D slice (i.e.,
+      the number of airfoil coordinates can be different for each airfoil).
+
+    Returns
+    =======
+    bool, str
+      A boolean describing whether the MSET call succeeded and a string containing the path to the MSET log file
+    """
     write_blade_file(name, base_dir, mset_settings['grid_bounds'], coords)
     write_gridpar_file(name, base_dir, mset_settings)
     mset_input_name = 'mset_input.txt'
@@ -383,9 +460,9 @@ def write_blade_file(name: str, base_dir: str, grid_bounds: typing.Iterable, coo
 
     coords: typing.Tuple[tuple]
       A 3-D set of coordinates to write as the airfoil geometry. The array of coordinates has size
-      :math:`MxNx2` where :math:`M` is the number of airfoils and :math:`N` is the number of airfoil coordinates.
-      The coordinates can be input as a ragged array, where :math:`N` changes with each 3-D slice (i.e., the number of
-      airfoil coordinates can be different for each airfoil).
+      :math:`M \times N \times 2` where :math:`M` is the number of airfoils and :math:`N` is the number of airfoil
+      coordinates. The coordinates can be input as a ragged array, where :math:`N` changes with each 3-D slice (i.e.,
+      the number of airfoil coordinates can be different for each airfoil).
     """
     if not os.path.exists(os.path.join(base_dir, name)):  # if specified directory doesn't exist,
         os.mkdir(os.path.join(base_dir, name))  # create it
