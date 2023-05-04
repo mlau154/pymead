@@ -339,6 +339,29 @@ def run_mset(name: str, base_dir: str, mset_settings: dict, coords: typing.Tuple
 def run_mses(name: str, base_folder: str, mses_settings: dict, stencil: bool = False):
     write_mses_file(name, base_folder, mses_settings)
     mses_log = os.path.join(base_folder, name, 'mses.log')
+    r"""
+    A Python API for MSES
+    
+    Parameters
+    ==========
+    name: str
+      Name of the airfoil [system]
+
+    base_folder: str
+      MSES files will be stored in base_folder/name
+
+    mses_settings: dict
+      Flow parameter set (dictionary)
+
+    stencil: bool
+      Whether a multipoint stencil is to be used. This variable is only used here to determine whether to overwrite or
+      append to the log file. Default: ``False``
+
+    Returns
+    =======
+    bool, str
+      A boolean describing whether the MSES solution is converged and a string containing the path to the MSES log file
+    """
     if stencil:
         read_write = 'ab'
     else:
