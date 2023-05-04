@@ -1,13 +1,14 @@
 import subprocess
 import os
-from pymead.analysis.read_aero_data import read_Cl_from_file_panel_fort, read_Cp_from_file_panel_fort, \
-    read_aero_data_from_xfoil, read_Cp_from_file_xfoil, read_bl_data_from_mses, read_forces_from_mses
-from pymead.utils.file_conversion import convert_ps_to_svg
-from pymead.utils.geometry import check_airfoil_self_intersection
-from pymead.utils.read_write_files import write_tuple_tuple_to_file
 import typing
 from copy import deepcopy
 import time
+
+from pymead.analysis.read_aero_data import read_aero_data_from_xfoil, read_Cp_from_file_xfoil, read_bl_data_from_mses, \
+    read_forces_from_mses
+from pymead.utils.file_conversion import convert_ps_to_svg
+from pymead.utils.geometry import check_airfoil_self_intersection
+from pymead.utils.read_write_files import write_tuple_tuple_to_file
 
 
 SVG_PLOTS = ['Mach_contours', 'grid', 'grid_zoom']
@@ -52,7 +53,7 @@ def update_mses_settings_from_stencil(mses_settings: dict, stencil: typing.List[
 def calculate_aero_data(airfoil_coord_dir: str, airfoil_name: str, coords: typing.Tuple[tuple],
                         tool: str = 'XFOIL', xfoil_settings: dict = None, mset_settings: dict = None,
                         mses_settings: dict = None, mplot_settings: dict = None, export_Cp: bool = True):
-    """
+    r"""
     Convenience function calling either XFOIL or MSES depending on the ``tool`` specified
 
     Parameters
