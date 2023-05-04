@@ -1,5 +1,11 @@
-"""
+import logging
 
+
+# Set the default logging level to DEBUG (lowest level)
+logging.basicConfig(format='%(levelname)s: %(message)s', level=logging.DEBUG)
+
+
+"""
 ## Welcome
 To the documentation page for `pymead`, an object-oriented Python 3 package for single- and multi-element
 Bézier-parametrized airfoil design. This Bézier parametrization framework is being presented at the 2022 AIAA Aviation

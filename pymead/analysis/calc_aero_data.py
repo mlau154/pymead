@@ -384,10 +384,22 @@ def write_blade_file(name: str, base_dir: str, grid_bounds, coords: typing.Tuple
 def write_gridpar_file(name: str, base_folder: str, mset_settings: dict):
     """
     Writes grid parameters to a file readable by MSES
-    :param name: Name of the airfoil [system]
-    :param base_folder: Location where the grid parameter file should be stored
-    :param mset_settings: Parameter set (dictionary)
-    :return: Path of the created grid parameter file (str)
+
+    Parameters
+    ==========
+    name: str
+      Name of the airfoil [system]
+
+    base_folder: str
+      Grid parameter file will be stored as base_folder/name/gridpar.name
+
+    mset_settings: dict
+      Parameter set (dictionary)
+
+    Returns
+    =======
+    str
+      Path of the created grid parameter file
     """
     if not os.path.exists(os.path.join(base_folder, name)):  # if specified directory doesn't exist,
         os.mkdir(os.path.join(base_folder, name))  # create it
@@ -420,6 +432,25 @@ def write_gridpar_file(name: str, base_folder: str, mset_settings: dict):
 
 
 def write_mses_file(name: str, base_folder: str, mses_settings: dict):
+    """
+    Writes MSES flow parameters to a file
+
+    Parameters
+    ==========
+    name: str
+      Name of the airfoil [system]
+
+    base_folder: str
+      MSES flow parameter file will be stored as base_folder/name/mses.name
+
+    mses_settings: dict
+      Parameter set (dictionary)
+
+    Returns
+    =======
+    str
+      Path of the created MSES flow parameter file
+    """
     F = deepcopy(mses_settings)
     if not os.path.exists(os.path.join(base_folder, name)):  # if specified directory doesn't exist,
         os.mkdir(os.path.join(base_folder, name))  # create it
@@ -478,7 +509,19 @@ def write_mses_file(name: str, base_folder: str, mses_settings: dict):
     return mses_file, mses_settings
 
 
-def write_input_file(input_file: str, input_list: list):
+def write_input_file(input_file: str, input_list: typing.List[str]):
+    """
+    Writes inputs from a list to a file for use as STDIN commands to the shell/terminal.
+
+    Parameters
+    ==========
+    input_file: str
+      File where inputs are written
+
+    input_list: typing.List[str]
+      List of inputs to write. For example, passing ['1', '', '12', '13'] is equivalent to typing the command sequence
+      1, RETURN, RETURN, 12, RETURN, 13, RETURN into the shell or terminal.
+    """
     with open(input_file, 'w') as f:
         for input_ in input_list:
             f.write(input_)
@@ -486,6 +529,21 @@ def write_input_file(input_file: str, input_list: list):
 
 
 def convert_xfoil_string_to_aero_data(line1: str, line2: str, aero_data: dict):
+    """
+    Extracts aerodynamic data from strings pulled from XFOIL log files. The two string inputs are the string outputs
+    from ``pymead.analysis.read_aero_data.read_aero_data_from_xfoil``
+
+    Parameters
+    ==========
+    line1: str
+      First line containing the aerodynamic data in the XFOIL log file.
+
+    line2: str
+      Second line containing the aerodynamic data in the XFOIL log file.
+
+    aero_data: dict
+      Dictionary to which to write the aerodynamic data
+    """
     new_str = line1.replace(' ', '') + line2.replace(' ', '')
     new_str = new_str.replace('=>', '')
     appending = False
