@@ -18,6 +18,7 @@ extensions = [
     'sphinx.ext.napoleon',
     'sphinx.ext.viewcode',
     'sphinx.ext.mathjax',
+    'matplotlib.sphinxext.plot_directive',
 ]
 
 autodoc_mock_imports = ['PyQt5']
@@ -25,8 +26,9 @@ autodoc_mock_imports = ['PyQt5']
 intersphinx_mapping = {
     'python': ('https://docs.python.org/3/', None),
     'sphinx': ('https://www.sphinx-doc.org/en/master/', None),
+    'matplotlib': ('https://matplotlib.org/stable', None),
 }
 
 templates_path = ['_templates']
 
-html_theme = 'press'
+html_theme = 'pydata_sphinx_theme'
