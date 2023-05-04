@@ -280,7 +280,7 @@ def calculate_aero_data(airfoil_coord_dir: str, airfoil_name: str, coords: typin
 
 
 def run_mset(name: str, base_dir: str, mset_settings: dict, coords: typing.Tuple[tuple]):
-    """
+    r"""
     A Python API for MSET
 
     Parameters
@@ -440,7 +440,7 @@ def run_mplot(name: str, base_dir: str, mplot_settings: dict, mode: str = "force
 
 
 def write_blade_file(name: str, base_dir: str, grid_bounds: typing.Iterable, coords: typing.Tuple[tuple]):
-    """
+    r"""
     Writes airfoil geometry to an MSES blade file
 
     Parameters
