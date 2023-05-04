@@ -362,7 +362,31 @@ def run_mplot(name: str, base_dir: str, mplot_settings: dict, mode: str = "force
     return mplot_log
 
 
-def write_blade_file(name: str, base_dir: str, grid_bounds, coords: typing.Tuple[tuple]):
+def write_blade_file(name: str, base_dir: str, grid_bounds: typing.Iterable, coords: typing.Tuple[tuple]):
+    """
+    Writes airfoil geometry to an MSES blade file
+
+    Parameters
+    ==========
+    name: str
+      Name of the airfoil [system]
+
+    base_dir: str
+      Blade file will be stored as base_dir/name/blade.name
+
+    grid_bounds: typing.Iterable
+      Iterable object containing the far-field boundary locations for MSES, of the form
+      ``[x_lower, x_upper, y_lower, y_upper]``. For example, ``[-6, 6, -5, 5]`` will produce a pseudo-rectangular
+      far-field boundary with :math:`x` going from -6 to 6 and :math:`y` going from -5 to 5. The boundary is not
+      perfectly rectangular because MSES produces far-field boundaries that follow the streamlines close to the
+      specified :math:`x` and :math:`y`-locations for the grid.
+
+    coords: typing.Tuple[tuple]
+      A 3-D set of coordinates to write as the airfoil geometry. The array of coordinates has size
+      :math:`MxNx2` where :math:`M` is the number of airfoils and :math:`N` is the number of airfoil coordinates.
+      The coordinates can be input as a ragged array, where :math:`N` changes with each 3-D slice (i.e., the number of
+      airfoil coordinates can be different for each airfoil).
+    """
     if not os.path.exists(os.path.join(base_dir, name)):  # if specified directory doesn't exist,
         os.mkdir(os.path.join(base_dir, name))  # create it
     blade_file = os.path.join(base_dir, name, 'blade.' + name)  # blade file stored as
