@@ -335,7 +335,6 @@ def run_mset(name: str, base_dir: str, mset_settings: dict, coords: typing.Tuple
     return mset_success, mset_log
 
 
-# noinspection PyTypeChecker
 def run_mses(name: str, base_folder: str, mses_settings: dict, stencil: bool = False):
     write_mses_file(name, base_folder, mses_settings)
     mses_log = os.path.join(base_folder, name, 'mses.log')
