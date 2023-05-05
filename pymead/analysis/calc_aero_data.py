@@ -335,12 +335,11 @@ def run_mset(name: str, base_dir: str, mset_settings: dict, coords: typing.Tuple
     return mset_success, mset_log
 
 
+# noinspection PyTypeChecker
 def run_mses(name: str, base_folder: str, mses_settings: dict, stencil: bool = False):
-    write_mses_file(name, base_folder, mses_settings)
-    mses_log = os.path.join(base_folder, name, 'mses.log')
     r"""
     A Python API for MSES
-    
+
     Parameters
     ==========
     name: str
@@ -361,6 +360,8 @@ def run_mses(name: str, base_folder: str, mses_settings: dict, stencil: bool = F
     bool, str
       A boolean describing whether the MSES solution is converged and a string containing the path to the MSES log file
     """
+    write_mses_file(name, base_folder, mses_settings)
+    mses_log = os.path.join(base_folder, name, 'mses.log')
     if stencil:
         read_write = 'ab'
     else:
@@ -395,6 +396,39 @@ def run_mses(name: str, base_folder: str, mses_settings: dict, stencil: bool = F
 
 def run_mplot(name: str, base_dir: str, mplot_settings: dict, mode: str = "forces", min_contour: float = 0.0,
               max_contour: float = 1.5, n_intervals: int = 0):
+    r"""
+    A Python API for MPLOT
+
+    Parameters
+    ==========
+    name: str
+      Name of the airfoil [system]
+
+    base_dir: str
+      MSES files will be stored in base_folder/name
+
+    mplot_settings: dict
+      Flow parameter set (dictionary)
+
+    mode: str
+      What type of data to output from MPLOT. Current choices are ``"forces"``, ``"Cp"``, ``"flowfield"``,
+      ``"grid_zoom"``, ``"grid"``, ``"grid_stats"``, and ``"Mach contours"``. Default: ``"forces"``
+
+    min_contour: float
+      Minimum contour level (only affects the result if ``mode=="Mach contours"``). Default: ``0.0``
+
+    max_contour: float
+      Maximum contour level (only affects the result if ``mode=="Mach contours"``). Default: ``1.5``
+
+    n_intervals: int
+      Number of contour levels (only affects the result if ``mode=="Mach contours"``). A value of ``0`` results in
+      MPLOT automatically setting a "nice" value for the number of contour levels. Default: ``0``
+
+    Returns
+    =======
+    str
+      A string containing the path to the MPLOT log file
+    """
     if mode in ["forces", "Forces"]:
         mplot_input_name = "mplot_forces_dump.txt"
         mplot_input_list = ['1', '12', '', '0']
