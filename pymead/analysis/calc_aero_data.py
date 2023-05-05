@@ -290,7 +290,7 @@ def run_mset(name: str, base_dir: str, mset_settings: dict, coords: typing.Tuple
       Name of the airfoil [system]
 
     base_dir: str
-      MSET files will be stored in base_dir/name
+      MSET files will be stored in ``base_dir/name``
 
     mset_settings: dict
       Parameter set (dictionary)
@@ -346,7 +346,7 @@ def run_mses(name: str, base_folder: str, mses_settings: dict, stencil: bool = F
       Name of the airfoil [system]
 
     base_folder: str
-      MSES files will be stored in base_folder/name
+      MSES files will be stored in ``base_folder/name``
 
     mses_settings: dict
       Flow parameter set (dictionary)
@@ -405,7 +405,7 @@ def run_mplot(name: str, base_dir: str, mplot_settings: dict, mode: str = "force
       Name of the airfoil [system]
 
     base_dir: str
-      MSES files will be stored in base_folder/name
+      MSES files will be stored in ``base_folder/name``
 
     mplot_settings: dict
       Flow parameter set (dictionary)
@@ -506,7 +506,7 @@ def write_blade_file(name: str, base_dir: str, grid_bounds: typing.Iterable, coo
       Name of the airfoil [system]
 
     base_dir: str
-      Blade file will be stored as base_dir/name/blade.name
+      Blade file will be stored as ``base_dir/name/blade.name``
 
     grid_bounds: typing.Iterable
       Iterable object containing the far-field boundary locations for MSES, of the form
@@ -549,7 +549,7 @@ def write_gridpar_file(name: str, base_folder: str, mset_settings: dict):
       Name of the airfoil [system]
 
     base_folder: str
-      Grid parameter file will be stored as base_folder/name/gridpar.name
+      Grid parameter file will be stored as ``base_folder/name/gridpar.name``
 
     mset_settings: dict
       Parameter set (dictionary)
@@ -599,7 +599,7 @@ def write_mses_file(name: str, base_folder: str, mses_settings: dict):
       Name of the airfoil [system]
 
     base_folder: str
-      MSES flow parameter file will be stored as base_folder/name/mses.name
+      MSES flow parameter file will be stored as ``base_folder/name/mses.name``
 
     mses_settings: dict
       Parameter set (dictionary)
@@ -677,8 +677,8 @@ def write_input_file(input_file: str, input_list: typing.List[str]):
       File where inputs are written
 
     input_list: typing.List[str]
-      List of inputs to write. For example, passing ['1', '', '12', '13'] is equivalent to typing the command sequence
-      1, RETURN, RETURN, 12, RETURN, 13, RETURN into the shell or terminal.
+      List of inputs to write. For example, passing ``["1", "", "12", "13"]`` is equivalent to typing the command
+      sequence ``1, RETURN, RETURN, 12, RETURN, 13, RETURN`` into the shell or terminal.
     """
     with open(input_file, 'w') as f:
         for input_ in input_list:
