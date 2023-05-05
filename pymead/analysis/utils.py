@@ -7,7 +7,7 @@ def viscosity_calculator(T, rho=None, input_units: str = 'K'):
     Parameters
     ==========
     T
-      The input temperature (can be in units of :math:`K`, :math:`C^{\circ}`, or :math:`F^{\circ}`
+      The input temperature (can be in units of :math:`K`, :math:`^{\circ}C`, or :math:`^{\circ}F`
 
     rho
       The density, specified if an output of kinematic viscosity is desired instead of dynamic viscosity.
