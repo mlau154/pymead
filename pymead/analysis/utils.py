@@ -14,7 +14,7 @@ def viscosity_calculator(T, rho=None, input_units: str = 'K'):
       Default: ``None``
 
     input_units: str
-      Input units. Must be one of ``K``, ``C``, or ``F``. Default: ``K``
+      Input units. Must be one of ``"K"``, ``"C"``, or ``"F"``. Default: ``"K"``
 
     Returns
     =======
