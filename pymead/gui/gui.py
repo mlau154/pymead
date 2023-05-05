@@ -1,4 +1,15 @@
-import tempfile
+import logging
+import pyqtgraph as pg
+import numpy as np
+import dill
+import pandas as pd
+from copy import deepcopy
+from functools import partial
+import benedict
+import shutil
+import sys
+import os
+import random
 
 from pymead.gui.rename_popup import RenamePopup
 from pymead.gui.main_icon_toolbar import MainIconToolbar
@@ -10,6 +21,7 @@ from PyQt5.QtCore import QEvent, QObject, Qt, QThreadPool
 from PyQt5.QtSvg import QSvgWidget
 
 
+from pymead.version import __version__
 from pymead.core.airfoil import Airfoil
 from pymead.core.base_airfoil_params import BaseAirfoilParams
 from pymead import RESOURCE_DIR
@@ -57,19 +69,6 @@ from pymoo.factory import get_reference_directions
 from pymoo.core.evaluator import set_cv
 from pymead.analysis.calc_aero_data import SVG_PLOTS, SVG_SETTINGS_TR
 from pyqtgraph.exporters import CSVExporter, SVGExporter
-
-import pyqtgraph as pg
-import numpy as np
-import dill
-import pandas as pd
-from copy import deepcopy
-from functools import partial
-from pymead.version import __version__
-import benedict
-import shutil
-import sys
-import os
-import random
 
 
 class GUI(QMainWindow):
@@ -1144,10 +1143,21 @@ class GUI(QMainWindow):
             # until the algorithm has no terminated
             n_generation = 0
         else:
+            logging.debug('Starting from where we left off...')
             warm_start_index = param_dict['warm_start_generation']
             n_generation = warm_start_index
-            algorithm = load_data(os.path.join(opt_settings['General Settings']['warm_start_dir'],
-                                               f'algorithm_gen_{warm_start_index}.pkl'))
+            warm_start_alg_file = os.path.join(opt_settings['General Settings']['warm_start_dir'],
+                                               f'algorithm_gen_{warm_start_index}.pkl')
+            algorithm = load_data(warm_start_alg_file)
+            logging.debug(f'Loaded {warm_start_alg_file}.')
+            if not opt_settings['General Settings']['use_initial_settings']:
+                # Currently only set up to change n_offsprings
+                previous_offsprings = deepcopy(algorithm.n_offsprings)
+                algorithm.n_offsprings = opt_settings['Genetic Algorithm']['n_offspring']
+                algorithm.problem.param_dict['n_offsprings'] = algorithm.n_offsprings
+                if previous_offsprings != algorithm.n_offsprings:
+                    logging.debug(f'Number of offspring changed from {previous_offsprings} '
+                                  f'to {algorithm.n_offsprings}.')
             term = deepcopy(algorithm.termination.terminations)
             term = list(term)
             term[0].n_max_gen = param_dict['n_max_gen']
@@ -1157,19 +1167,23 @@ class GUI(QMainWindow):
 
         while algorithm.has_next():
 
+            logging.debug(f'Asking the algorithm to get the next population...')
+
             pop = algorithm.ask()
 
-            # print(f"{pop.get('X')[0:4, 0]}")
+            logging.debug(f'Acquired new population. pop = {pop}')
 
             n_generation += 1
 
             if n_generation > 1:
 
+                logging.debug(f'Starting generation {n_generation}...')
+
                 forces = []
 
                 # evaluate (objective function value arrays must be numpy column vectors)
                 X = pop.get("X")
-                # print(f"{len(X) = }")
+                logging.debug(f'Input matrix has shape {X.shape} ({X.shape[0]} chromosomes with {X.shape[1]} genes).')
                 new_X = None
                 J = None
                 G = None
@@ -1179,16 +1193,12 @@ class GUI(QMainWindow):
                     gene_matrix = []
                     feasible_indices = []
                     while True:
-                        # print(f"{search_for_feasible_idx = }")
-                        # print(f"{X = }")
                         if X[search_for_feasible_idx, 0] != 9999:
                             gene_matrix.append(X[search_for_feasible_idx, :].tolist())
                             feasible_indices.append(search_for_feasible_idx)
                         else:
                             n_infeasible_solutions += 1
                         search_for_feasible_idx += 1
-                        # print(f"{gene_matrix = }")
-                        # print(f"{param_dict['num_processors']}")
                         if len(gene_matrix) == param_dict['num_processors']:
                             break
                     population = [Chromosome(problem.param_dict, ga_settings=ga_settings, category=None,
