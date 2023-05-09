@@ -1,9 +1,11 @@
+import numpy as np
+import typing
+
 from pymead.core.param import Param
 from pymead.core.pos_param import PosParam
 from pymead.core.control_point import ControlPoint
 from pymead.utils.transformations import transform_matrix
 from pymead.core.transformation import AirfoilTransformation
-import numpy as np
 
 
 class AnchorPoint(ControlPoint):
@@ -158,9 +160,8 @@ class AnchorPoint(ControlPoint):
         else:
             new_y = self.xy.value[1]
         self.xy.value = [new_x, new_y]
-        # print(f"New FreePoint xy value is {self.xy.value}")
 
-        # If x or y was changed, set the location of the control point to reflect this
+        # If x or y was changed, set the location of the control point to reflect this:
         if x_changed or y_changed:
             self.set_ctrlpt_value()
 
@@ -175,7 +176,15 @@ class AnchorPoint(ControlPoint):
         self.ctrlpt.xp = self.xy.value[0]
         self.ctrlpt.yp = self.xy.value[1]
 
-    def get_anchor_type(self, anchor_point_order):
+    def get_anchor_type(self, anchor_point_order: list):
+        """
+        Sets the type of :class:`AnchorPoint` based on the position within the airfoil's anchor point order.
+
+        Parameters
+        ==========
+        anchor_point_order: list
+          Counter-clockwise order of the anchor points in the airfoil
+        """
         if self.tag == 'le':
             self.anchor_type = self.tag
         elif anchor_point_order.index(self.tag) < anchor_point_order.index('le'):
@@ -183,11 +192,31 @@ class AnchorPoint(ControlPoint):
         elif anchor_point_order.index(self.tag) > anchor_point_order.index('le'):
             self.anchor_type = 'lower_surf'
 
-    def set_minus_plus_bezier_curve_orders(self, n1, n2):
+    def set_minus_plus_bezier_curve_orders(self, n1: int, n2: int):
+        """
+        Sets the order of the Bézier curves in contact with the :class:`AnchorPoint`.
+
+        Parameters
+        ==========
+
+        n1: int
+          Order of the Bézier curve preceding the :class:`AnchorPoint` in counter-clockwise ordering
+
+        n2: int
+          Order of the Bézier curve proceeding the :class:`AnchorPoint` in counter-clockwise ordering
+        """
         self.n1 = n1
         self.n2 = n2
 
-    def generate_anchor_point_branch(self, anchor_point_order):
+    def generate_anchor_point_branch(self, anchor_point_order: typing.List[str]):
+        """
+        Generates the set of 5 :class:`ControlPoint`\ s associated with the :class:`AnchorPoint`.
+
+        Parameters
+        ==========
+        anchor_point_order: typing.List[str]
+          The counter-clockwise order of the :class:`AnchorPoint`\ s by name
+        """
         r = self.r.value
         L = self.L.value
         phi = self.phi.value
@@ -219,6 +248,8 @@ class AnchorPoint(ControlPoint):
         self.get_anchor_type(anchor_point_order)
 
         def generate_tangent_seg_ctrlpts(minus_plus: str):
+            # Generates the control points for the two control point segments adjacent to the AnchorPoint
+
             if R == 0:  # degenerate case 1: infinite curvature (sharp corner)
                 return ControlPoint(xy0[0], xy0[1], f'anchor_point_{tag}_g1_{minus_plus}', tag)
 
@@ -366,6 +397,22 @@ class AnchorPoint(ControlPoint):
         self.ctrlpt_branch_generated = True
 
     def recalculate_ap_branch_props_from_g2_pt(self, minus_plus: str, measured_psi, measured_Lc):
+        """
+        Recalculates ``R`` and ``psi1`` or ``psi2`` based on the measured length and absolute angle of the curvature
+        control arm segment. Used only in the GUI.
+
+        Parameters
+        ==========
+        minus_plus: str
+          Whether the :math:`G^2` point comes before or after the :class:`AnchorPoint` in counter-clockwise ordering.
+          If before, input ``"minus"``. If after, input ``"plus"``.
+
+        measured_psi
+          The measured absolute angle of the curvature control arm
+
+        measured_Lc
+          The measured length of the curvature control arm
+        """
         apsi = None
         if measured_psi is not None:
             if (minus_plus == 'minus' and self.anchor_type in ['upper_surf', 'le']) or (
@@ -483,6 +530,22 @@ class AnchorPoint(ControlPoint):
                 self.R.value *= -1
 
     def recalculate_ap_branch_props_from_g1_pt(self, minus_plus: str, measured_phi, measured_Lt):
+        """
+        Recalculates ``phi``, ``r``, and ``L`` based on the measured length and absolute angle of the tangent
+        control arm segment. Used only in the GUI.
+
+        Parameters
+        ==========
+        minus_plus: str
+          Whether the :math:`G^1` point comes before or after the :class:`AnchorPoint` in counter-clockwise ordering.
+          If before, input ``"minus"``. If after, input ``"plus"``.
+
+        measured_phi
+          The measured absolute angle of the tangent control arm
+
+        measured_Lt
+          The measured length of the tangent control arm
+        """
 
         if minus_plus == 'minus':
             if measured_Lt is not None:
