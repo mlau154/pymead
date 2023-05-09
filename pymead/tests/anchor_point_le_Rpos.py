@@ -7,7 +7,7 @@ import numpy as np
 def main():
     anchor_point = AnchorPoint(Param(0.0), Param(0.0), 'le', 'te_1', Param(0.1), Param(0.08), Param(0.6),
                                Param(np.deg2rad(15)), Param(np.deg2rad(20)), Param(np.deg2rad(30)))
-    anchor_point.set_minus_plus_bezier_curve_orders(2, 2)
+    anchor_point.set_degree_adjacent_bezier_curves(2, 2)
     anchor_point.generate_anchor_point_branch(['te_1', 'le', 'te_2'])
     import matplotlib.pyplot as plt
     from pymead.core.bezier import Bezier

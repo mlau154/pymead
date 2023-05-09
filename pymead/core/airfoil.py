@@ -255,7 +255,7 @@ class Airfoil:
             # Generate anchor point branches
             for ap in self.anchor_points:
                 if isinstance(ap, AnchorPoint):
-                    ap.set_minus_plus_bezier_curve_orders(self.N[ap.previous_anchor_point], self.N[ap.tag])
+                    ap.set_degree_adjacent_bezier_curves(self.N[ap.previous_anchor_point], self.N[ap.tag])
                     ap.generate_anchor_point_branch(self.anchor_point_order)
                 elif isinstance(ap, TrailingEdgePoint):
                     ap.generate_anchor_point_branch()  # trailing edge anchor points do not need to know the ap order
