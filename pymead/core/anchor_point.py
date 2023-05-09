@@ -19,65 +19,65 @@ class AnchorPoint(ControlPoint):
                  phi: Param,
                  psi1: Param,
                  psi2: Param):
-        """
-        ### Description:
+        r"""
+        The :class:`AnchorPoint` in :class:`pymead` is the way to split a Bézier curve within an
+        :class:`pymead.core.airfoil.Airfoil` into two Bézier curves and satisfy :math:`G^0`, :math:`G^1`, and
+        :math:`G^2` continuity at the joint between the curves. Examples of implemented :class:`AnchorPoint`\ s in an
+        unnecessarily strange airfoil shape are shown in the image below (click on the image to zoom).
 
-        The `AnchorPoint` in `pymead` is the way to split a Bézier curve within an `pymead.core.airfoil.Airfoil`
-        into two Bézier curves and satisfy \\(G^0\\), \\(G^1\\), and \\(G^2\\) continuity at the joint between the
-        curves. Examples of implemented `AnchorPoint`s in an unnecessarily strange airfoil shape are shown in the
-        image below. It may be helpful to enlarge the image by opening it in a new tab.
-
-        .. image:: complex_airfoil_anchor_points.png
+        .. image:: ../images/complex_1.png
+            :width: 400
+            :align: center
 
         Parameters
         ==========
 
-        `x`: ( \\(x\\) ) `pymead.core.param.Param` describing the x-location of the `AnchorPoint`
+        xy: PosParam
+          :math:`x`- and :math:`y`-location of the :class:`AnchorPoint`
 
-        `y`: ( \\(y\\) ) `pymead.core.param.Param` describing the y-location of the `AnchorPoint`
+        previous_anchor_point: str
+          Name of the previous :class:`AnchorPoint` (counter-clockwise ordering)
 
-        `previous_anchor_point`: a `str` representing the previous `AnchorPoint` (counter-clockwise ordering)
+        L: Param
+          Distance between the control points before and after the :class:`AnchorPoint`
 
-        `L`: ( \\(L\\) ) `pymead.core.param.Param` describing the distance between the control points on either
-        side of the `pymead.core.anchor_point.AnchorPoint`
+        R: Param
+          The radius of curvature at the location of the :class:`AnchorPoint`. A positive value makes the airfoil
+          convex at the :class:`AnchorPoint` location, and a negative value makes the airfoil concave at the
+          :class:`AnchorPoint` location. A value of ``0`` creates a flat-plate-type leading edge. The valid range is
+          :math:`R \in [-\infty, \infty]`. Inclusive brackets are used here because setting :math:`R=\pm \infty`
+          is valid and creates an anchor point with no curvature (infinite radius of curvature).
 
-        `R`: ( \\(R\\) ) `pymead.core.param.Param` representing the radius of curvature at the \\(x\\) - \\(y\\)
-        location of the `AnchorPoint`. A positive value makes the airfoil convex at the `AnchorPoint` location,
-        and a negative value makes the airfoil concave at the `AnchorPoint` location. A value of 0 creates a
-        flat-plate-type leading edge. The valid range is \\( R \\in [-\\infty, \\infty] \\). Inclusive brackets are
-        used here because setting \\(R=\\pm \\infty\\) creates an anchor point with no curvature (infinite radius of
-        curvature).
+        r: Param
+          The ratio of the distance from the :class:`AnchorPoint` location to the neighboring control point closest to
+          the trailing edge to the distance between the :class:`AnchorPoint`'s neighboring control points
+          ( :math:`L_{fore} / L` ). The valid range is :math:`r \in (0,1)`.
 
-        `r`: ( \\(r\\) ) `pymead.core.param.Param` representing the ratio of the distance from the `AnchorPoint`
-        location to the neighboring control point closest to the trailing edge to the distance between the
-        `AnchorPoint`'s neighboring control points ( \\(L_{fore} / L\\) ). The valid range is \\(r \\in (0,1)\\).
+        phi: Param
+          The angle of the line passing through the :class:`AnchorPoint`'s neighboring control points, referenced
+          counter-clockwise from the chordline if the :class:`AnchorPoint` is on the airfoil's upper surface and
+          clockwise from the chordline if the :class:`AnchorPoint` is on the airfoil's lower surface. The valid
+          range is :math:`\psi_1 \in [-180^{\circ},180^{\circ}]`. A value of :math:`0^{\circ}` creates an anchor point
+          with local slope equal to the slope of the chordline.
 
-        `phi`: ( \\(\\phi\\) ) `pymead.core.param.Param` representing the angle of the line passing through the
-        `AnchorPoint`'s neighboring control points, referenced counter-clockwise from the chordline if the
-        `AnchorPoint` is on the upper airfoil surface and clockwise from the chordline if the `AnchorPoint` is on the
-        lower airfoil surface. The valid range is \\(\\psi_1 \\in [-180^{\\circ},180^{\\circ}]\\). A value of \\(0^{
-        \\circ}\\) creates an anchor point with local slope equal to the slope of the chordline.
+        psi1: Param
+          The angle of the aft curvature control "arm." Regardless of the sign of :math:`R` or which surface the
+          :class:`AnchorPoint` lies on, an angle of :math:`90^{\circ}` always means that the curvature control arm
+          points perpendicular to the line passing through the neighboring control points of the :class:`AnchorPoint`.
+          Angles below :math:`90^{\circ}` "tuck" the arms in, and angles above :math:`90^{\circ}` "spread" the arms
+          out. The valid range is :math:`\psi_1 \in [0^{\circ},180^{\circ}]`.
 
-        `psi1`: ( \\(\\psi_1\\) ) `pymead.core.param.Param` representing the angle of the aft curvature control "arm."
-        Regardless of the sign of \\(R\\) or which surface the `AnchorPoint` lies on, an angle of \\(90^{\\circ}\\)
-        always means that the curvature control arm points perpendicular to the line passing through the
-        neighboring control points of the `AnchorPoint`. Angles below \\(90^{\\circ}\\) "tuck" the arms in, and angles
-        above \\(90^{\\circ}\\) "spread" the arms out. The valid range is \\(\\psi_1 \\in [0^{\\circ},180^{\\circ}]\\).
-
-        `psi2`: ( \\(\\psi_2\\) ) `pymead.core.param.Param` representing the angle of the fore curvature control
-        "arm." Regardless of the sign of \\(R\\) or which surface the `AnchorPoint` lies on, an angle of \\(90^{
-        \\circ}\\) always means that the curvature control arm points perpendicular to the line passing through the
-        neighboring control points of the `AnchorPoint`. Angles below \\(90^{\\circ}\\) "tuck" the arms in,
-        and angles above \\(90^{\\circ}\\) "spread" the arms out. The valid range is \\(\\psi_2 \\in [0^{\\circ},
-        180^{\\circ}]\\).
-
-        `length_scale_dimension`: a `float` giving the length scale by which to non-dimensionalize the `x` and `y`
-        values (optional)
+        psi2: Param
+          The angle of the fore curvature control "arm." Regardless of the sign of :math:`R` or which surface
+          the :class:`AnchorPoint` lies on, an angle of :math:`90^{\circ}` always means that the curvature control
+          arm points perpendicular to the line passing through the neighboring control points of
+          the :class:`AnchorPoint`. Angles below :math:`90^{\circ}` "tuck" the arms in, and angles above
+          :math:`90^{\circ}` "spread" the arms out. The valid range is :math:`\psi_2 \in [0^{\circ},180^{\circ}]`.
 
         Returns
         =======
 
-        An instance of the `AnchorPoint` class
+        An :class:`AnchorPoint` instance
         """
 
         super().__init__(xy.value[0], xy.value[1], tag, previous_anchor_point)
