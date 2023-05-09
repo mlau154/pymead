@@ -32,3 +32,5 @@ intersphinx_mapping = {
 templates_path = ['_templates']
 
 html_theme = 'pydata_sphinx_theme'
+
+add_module_names = False
