@@ -192,18 +192,18 @@ class AnchorPoint(ControlPoint):
         elif anchor_point_order.index(self.tag) > anchor_point_order.index('le'):
             self.anchor_type = 'lower_surf'
 
-    def set_minus_plus_bezier_curve_orders(self, n1: int, n2: int):
+    def set_degree_adjacent_bezier_curves(self, n1: int, n2: int):
         """
-        Sets the order of the Bézier curves in contact with the :class:`AnchorPoint`.
+        Sets the degree of the Bézier curves in contact with the :class:`AnchorPoint`.
 
         Parameters
         ==========
 
         n1: int
-          Order of the Bézier curve preceding the :class:`AnchorPoint` in counter-clockwise ordering
+          Degree of the Bézier curve preceding the :class:`AnchorPoint` in counter-clockwise ordering
 
         n2: int
-          Order of the Bézier curve proceeding the :class:`AnchorPoint` in counter-clockwise ordering
+          Degree of the Bézier curve proceeding the :class:`AnchorPoint` in counter-clockwise ordering
         """
         self.n1 = n1
         self.n2 = n2
@@ -234,13 +234,13 @@ class AnchorPoint(ControlPoint):
             xy0 = self.xy.value
 
         if self.n1 is None:
-            raise ValueError('Order of Bezier curve before anchor point was not set before generating the anchor'
+            raise ValueError('Degree of Bezier curve before anchor point was not set before generating the anchor'
                              'point branch')
         else:
             n1 = self.n1
 
         if self.n2 is None:
-            raise ValueError('Order of Bezier curve after anchor point was not set before generating the anchor'
+            raise ValueError('Degree of Bezier curve after anchor point was not set before generating the anchor'
                              'point branch')
         else:
             n2 = self.n2
