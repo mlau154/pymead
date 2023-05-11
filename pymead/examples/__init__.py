@@ -1,3 +1,3 @@
 """
-Contains example implementations of `pymead.core.airfoil.Airfoil`
+Contains example implementations of ``Airfoil`` and ``MEA``
 """

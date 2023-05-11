@@ -1,3 +1,3 @@
 """
-`pymead.core` contains the main modules that run `pymead`.
+``pymead.core`` contains the main modules that run `pymead`.
 """

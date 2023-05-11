@@ -27,6 +27,7 @@ intersphinx_mapping = {
     'python': ('https://docs.python.org/3/', None),
     'sphinx': ('https://www.sphinx-doc.org/en/master/', None),
     'matplotlib': ('https://matplotlib.org/stable', None),
+    'numpy': ('https://numpy.org/doc/stable/', None),
 }
 
 templates_path = ['_templates']
@@ -34,3 +35,5 @@ templates_path = ['_templates']
 html_theme = 'pydata_sphinx_theme'
 
 add_module_names = False
+
+numfig = True

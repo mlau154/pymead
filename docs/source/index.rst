@@ -1,5 +1,5 @@
 ============================================
-Python Multi-Element Airfoil Design (PyMEAD)
+Python Multi-Element Airfoil Design (pymead)
 ============================================
 
 Contents
