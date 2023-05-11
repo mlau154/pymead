@@ -98,6 +98,9 @@ class Chromosome:
         self.chk_self_intersection()
         for airfoil_name in self.mea_object.airfoils.keys():
             if self.valid_geometry:
+                if self.param_set['constraints'][airfoil_name]['min_radius_curvature'][1]:
+                    self.chk_min_radius(airfoil_name=airfoil_name)
+            if self.valid_geometry:
                 if self.param_set['constraints'][airfoil_name]['min_val_of_max_thickness'][1]:
                     self.chk_max_thickness(airfoil_name=airfoil_name)
             if self.valid_geometry:
@@ -170,6 +173,15 @@ class Chromosome:
                 raise Exception('Airfoil system has not yet been generated. Aborting self-intersection check.')
         finally:
             self.intersection_checked = True
+
+    def chk_min_radius(self, airfoil_name: str) -> bool:
+        if self.airfoil_sys_generated:
+            min_radius = self.mea_object.airfoils[airfoil_name].compute_min_radius()
+            min_radius_too_small = min_radius < self.param_set['constraints'][airfoil_name]['min_radius_curvature'][0]
+            self.valid_geometry = not min_radius_too_small
+            if self.verbose:
+                print(f'Min radius of curvature too small? {min_radius_too_small}. Min radius is {min_radius}')
+            return min_radius_too_small
 
     def chk_max_thickness(self, airfoil_name: str) -> bool:
         if self.airfoil_sys_generated:

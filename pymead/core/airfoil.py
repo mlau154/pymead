@@ -85,6 +85,7 @@ class Airfoil:
         self.non_transformed_coords = None
         self.curvature = None
         self.area = None
+        self.min_radius = None
         self.x_thickness = None
         self.thickness = None
         self.max_thickness = None
@@ -416,6 +417,20 @@ class Airfoil:
         area = polygon.area
         self.area = area
         return area
+
+    def compute_min_radius(self):
+        """
+        Computes the minimum radius of curvature for the airfoil.
+
+        Returns
+        =======
+        float
+          The minimum radius of curvature for the airfoil
+        """
+        if self.needs_update:
+            self.update()
+        self.min_radius = np.array([c.R_abs_min for c in self.curve_list]).min()
+        return self.min_radius
 
     def check_self_intersection(self):
         """Determines whether the airfoil intersects itself using the `is_simple()` function of the
