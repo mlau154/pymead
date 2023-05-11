@@ -11,6 +11,18 @@
       "setReadOnly": true,
       "active_checkbox": 0
     },
+    "min_radius_curvature": {
+      "label": "Minimum Radius of Curvature",
+      "widget_type": "QDoubleSpinBox",
+      "setDecimals": 16,
+      "setMinimum": 0.0,
+      "setMaximum": Infinity,
+      "setSingleStep": 0.001,
+      "setValue": 0.004,
+      "columnSpan": 2,
+      "setReadOnly": true,
+      "active_checkbox": 0
+    },
     "check_thickness_at_points": {
       "label": "Check Thickness Dist.?",
       "widget_type": "QCheckBox",

@@ -121,6 +121,7 @@ class Bezier(ParametricCurve):
 
         with np.errstate(divide='ignore', invalid='ignore'):
             self.R = np.true_divide(1, self.k)
+            self.R_abs_min = np.abs(self.R).min()
 
         super().__init__(self.t, self.x, self.y, self.px, self.py, self.ppx, self.ppy, self.k, self.R)
 
@@ -237,6 +238,7 @@ class Bezier(ParametricCurve):
 
         with np.errstate(divide='ignore', invalid='ignore'):
             self.R = np.true_divide(1, self.k)
+            self.R_abs_min = np.abs(self.R).min()
 
     def get_curvature_comb(self, max_k_normalized_scale_factor, interval: int = 1):
         comb_heads_x = self.x - self.py / np.sqrt(self.px**2 + self.py**2) * self.k * max_k_normalized_scale_factor
