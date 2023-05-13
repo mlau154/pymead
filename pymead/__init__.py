@@ -2,7 +2,7 @@ import logging
 
 
 # Set the default logging level to DEBUG (lowest level)
-logging.basicConfig(format='%(levelname)s: %(message)s', level=logging.DEBUG)
+logging.basicConfig(format='%(levelname)s: %(message)s', level=logging.INFO)
 
 
 """

@@ -1,7 +1,6 @@
 import logging
 import pyqtgraph as pg
 import numpy as np
-import dill
 import pandas as pd
 from copy import deepcopy
 from functools import partial
