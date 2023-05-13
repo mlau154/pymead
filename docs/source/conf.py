@@ -4,7 +4,7 @@ sys.path.insert(0, os.path.abspath('../..'))
 # Project Information
 
 project = 'pymead'
-copyright = '2022, Matthew G. Lauer'
+copyright = '2022-2023, Matthew G. Lauer'
 author = 'Matthew G. Lauer'
 
 release = '2.0'
@@ -37,3 +37,5 @@ html_theme = 'pydata_sphinx_theme'
 add_module_names = False
 
 numfig = True
+
+navigation_depth = 2  # For the table of contents

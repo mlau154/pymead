@@ -9,4 +9,3 @@ PyQt5
 pyqtgraph
 python-benedict
 pandas
-dill

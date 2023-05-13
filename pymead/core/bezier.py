@@ -132,7 +132,7 @@ class Bezier(ParametricCurve):
         Arguments
         =========
         n: int
-            Bézier curve order (one less than the number of control points in the Bézier curve)
+            Bézier curve degree (one less than the number of control points in the Bézier curve)
         i: int
             Bézier curve index
         t: int, float, or np.ndarray

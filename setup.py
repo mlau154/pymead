@@ -36,5 +36,5 @@ setup(
               "pymead/gui/pyqt_vertical_tab_widget/pyqt_vertical_tab_widget"],
     include_package_data=True,
     install_requires=["scipy", "numpy", "shapely", "matplotlib", "requests", "PyQt5", "pyqtgraph", "python-benedict",
-                      "pandas", "dill", "pymoo==0.5.0", "numba"],
+                      "pandas", "pymoo==0.5.0", "numba"],
 )
