@@ -11,4 +11,5 @@ Contents
 .. toctree::
 
    usage
+   quick_start
    api
