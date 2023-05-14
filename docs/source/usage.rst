@@ -31,7 +31,7 @@ The pymead package can also be installed in a local location. To accomplish this
 
   git clone https://github.com/mlau154/pymead.git
 
-Navigate to the top-level directory of the install location in the shell/terminal (where the
+Navigate to the top-level directory of the install location in the terminal (where the
 ``setup.py`` file is located), then type:
 
 .. code-block::

@@ -195,6 +195,22 @@ class MEA:
             output_dict_['airfoil_graphs_active'] = self.airfoil_graphs_active
         return deepcopy(output_dict_)
 
+    def save_airfoil_system(self, file_name: str):
+        """
+        Saves the encapsulated airfoil system as a ``.jmea`` file.
+
+        Parameters
+        ==========
+        file_name: str
+          The file location where the MEA is to be stored (relative or absolute path). If the file name does not
+          end with ".jmea", the ``.jmea`` file extension will be added automatically.
+        """
+        if os.path.splitext(file_name)[-1] != '.jmea':
+            file_name += '.jmea'
+        self.file_name = file_name
+        mea_dict = self.copy_as_param_dict(deactivate_airfoil_graphs=True)
+        save_data(mea_dict, file_name)
+
     def deepcopy(self, deactivate_airfoil_graphs: bool = False):
         return MEA.generate_from_param_dict(self.copy_as_param_dict(deactivate_airfoil_graphs))
 
@@ -353,7 +369,7 @@ class MEA:
 
     def get_keys(self):
         """
-        Used in `pymead.core.parameter_tree.MEAParamTree` to update the equation variable AutoCompleter
+        Used in ``pymead.core.parameter_tree.MEAParamTree`` to update the equation variable AutoCompleter
         """
         d_ben = benedict.benedict(self.param_dict)
         keypaths = d_ben.keypaths()
@@ -410,7 +426,8 @@ class MEA:
         return x_range, y_range
 
     def get_ctrlpt_dict(self, zero_col: int = 1):
-        """Gets the set of ControlPoints for each airfoil curve and arranges them in a format appropriate for the
+        """
+        Gets the set of ControlPoints for each airfoil curve and arranges them in a format appropriate for the
         JSON file format. The keys at the top level of the dict represent the airfoil name, and each value contains a
         3-D list. The slices of the list represent the Bézier curve, the rows represent the ControlPoints, and the
         columns represent :math:`x`, :math:`y`, and :math:`z`.
@@ -473,8 +490,19 @@ class MEA:
 
     @classmethod
     def generate_from_param_dict(cls, param_dict: dict):
-        """Reconstruct an MEA from the MEA's JSON-saved param_dict"""
-        t1 = time.time()
+        """
+        Reconstruct an MEA from the MEA's JSON-saved param_dict
+
+        Parameters
+        ==========
+        param_dict: dict
+          A Python dictionary constructed by using ``json.load`` on a ``.jmea`` file.
+
+        Returns
+        =======
+        MEA
+          An instance of the ``pymead.core.mea.MEA`` class.
+        """
         base_params_dict = {k: v['Base'] for k, v in param_dict.items() if isinstance(v, dict) and 'Base' in v.keys()}
         base_params = {}
         for airfoil_name, airfoil_base_dict in base_params_dict.items():
@@ -485,7 +513,7 @@ class MEA:
         for airfoil_name, airfoil_base_dict in base_params.items():
             base = BaseAirfoilParams(airfoil_tag=airfoil_name, **airfoil_base_dict)
             airfoil_list.append(Airfoil(base_airfoil_params=base, tag=airfoil_name))
-        mea = cls(airfoils=airfoil_list)
+        mea = cls(airfoils=airfoil_list)  # Constructor overload
         mea.airfoil_graphs_active = param_dict['airfoil_graphs_active']  # set this after MEA instantiation to avoid
         # initializing the graphs
         mea.file_name = param_dict['file_name']
@@ -555,27 +583,9 @@ class MEA:
         for a in mea.airfoils.values():
             a.update()
 
-        t2 = time.time()
-        # print(f"Time required to generate MEA from param_dict is {t2 - t1} seconds")
-
         return mea
 
     def remove_airfoil_graphs(self):
         self.airfoil_graphs_active = False
         for a in self.airfoils.values():
             a.airfoil_graph = None
-
-
-if __name__ == '__main__':
-    from pymead.core.base_airfoil_params import BaseAirfoilParams
-    from matplotlib.pyplot import subplots, show
-    airfoil1 = Airfoil()
-    airfoil2 = Airfoil(base_airfoil_params=BaseAirfoilParams(dy=Param(0.2)))
-    mea_ = MEA(airfoils=[airfoil1, airfoil2])
-    fig, axs = subplots()
-    colors = ['cornflowerblue', 'indianred']
-    for _idx, _airfoil in enumerate(mea_.airfoils):
-        _airfoil.plot_airfoil(axs, color=colors[_idx], label=_airfoil.tag)
-    axs.set_aspect('equal')
-    axs.legend()
-    show()
