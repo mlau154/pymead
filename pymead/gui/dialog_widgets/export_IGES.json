@@ -1,0 +1,34 @@
+{
+  "choose_dir": {
+    "label": {
+      "w": "QLabel",
+      "text": "Choose directory",
+      "grid": [0, 0, 1, 1],
+      "tool_tip": "Select the directory in which to store the airfoil coordinate file"
+    },
+    "line": {
+      "w": "QLineEdit",
+      "text": "",
+      "grid": [0, 1, 1, 1]
+    },
+    "button": {
+      "w": "QPushButton",
+      "text": "Select",
+      "grid": [0, 2, 1, 1],
+      "func": "select_directory"
+    }
+  },
+  "file_name": {
+    "label": {
+      "w": "QLabel",
+      "text": "File name",
+      "grid": [1, 0, 1, 1],
+      "tool_tip": "File name under which to store the coordinates.\nUse the JSON extension (.json) to save in the JSON file format."
+    },
+    "line": {
+      "w": "QLineEdit",
+      "text": "airfoils.igs",
+      "grid": [1, 1, 1, 2]
+    }
+  }
+}

@@ -2012,6 +2012,64 @@ class ExportControlPointsDialog(QDialog):
             line_edit.setText(selected_dir)
 
 
+class ExportIGESDialog(QDialog):
+    def __init__(self, parent):
+        super().__init__(parent=parent)
+
+        self.setWindowTitle("Export IGES")
+        self.setFont(self.parent().font())
+
+        self.grid_widget = {}
+
+        buttonBox = QDialogButtonBox(self)
+        buttonBox.addButton(QDialogButtonBox.Ok)
+        buttonBox.addButton(QDialogButtonBox.Cancel)
+        self.grid_layout = QGridLayout(self)
+
+        self.setInputs()
+
+        self.grid_layout.addWidget(buttonBox, 2, 1, 1, 2)
+
+        buttonBox.accepted.connect(self.accept)
+        buttonBox.rejected.connect(self.reject)
+
+    def setInputs(self):
+        widget_dict = load_data(os.path.join('dialog_widgets', 'export_IGES.json'))
+        for row_name, row_dict in widget_dict.items():
+            self.grid_widget[row_name] = {}
+            for w_name, w_dict in row_dict.items():
+                widget = getattr(sys.modules[__name__], w_dict["w"])(self)
+                self.grid_widget[row_name][w_name] = widget
+                if "text" in w_dict.keys() and isinstance(widget, (QLabel, QLineEdit, QPushButton)):
+                    widget.setText(w_dict["text"])
+                if "func" in w_dict.keys() and isinstance(widget, QPushButton):
+                    if row_name == 'choose_dir':
+                        widget.clicked.connect(partial(getattr(self, w_dict["func"]),
+                                                       self.grid_widget[row_name]["line"]))
+                    else:
+                        widget.clicked.connect(getattr(self, w_dict["func"]))
+                if "tool_tip" in w_dict.keys():
+                    widget.setToolTip(w_dict["tool_tip"])
+                self.grid_layout.addWidget(widget, w_dict["grid"][0], w_dict["grid"][1], w_dict["grid"][2],
+                                           w_dict["grid"][3])
+
+    def getInputs(self):
+        inputs = {k: v["line"].text() if "line" in v.keys() else None for k, v in self.grid_widget.items()}
+
+        # Make sure any newline characters are not double-escaped:
+        for k, input_ in inputs.items():
+            if isinstance(input_, str):
+                inputs[k] = input_.replace('\\n', '\n')
+
+        return inputs
+
+    def select_directory(self, line_edit: QLineEdit):
+        selected_dir = QFileDialog.getExistingDirectory(self, "Select a directory", os.path.expanduser("~"),
+                                                        QFileDialog.ShowDirsOnly)
+        if selected_dir:
+            line_edit.setText(selected_dir)
+
+
 class PosConstraintDialog(QDialog):
     def __init__(self, parent):
         super().__init__(parent)

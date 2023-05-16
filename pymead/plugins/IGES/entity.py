@@ -119,7 +119,7 @@ class MultiEntityContainer:
             entity_entry_line = 1 + 2 * entity_idx
             data_string = entity.write_data_string(entity_entry_line, data_starting_line=data_starting_lines[-1])
             if entity_idx < len(self.entities) - 1:
-                data_starting_lines.append(data_starting_lines[-1] + len(data_string))
+                data_starting_lines.append(data_starting_lines[-1] + data_string.count('\n'))
             data_string_lengths.append(data_string.count('\n'))
 
             full_data_string += data_string

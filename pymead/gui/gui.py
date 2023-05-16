@@ -26,7 +26,7 @@ from pymead.core.base_airfoil_params import BaseAirfoilParams
 from pymead import RESOURCE_DIR
 from pymead.gui.input_dialog import SingleAirfoilViscousDialog, LoadDialog, SaveAsDialog, OptimizationSetupDialog, \
     MultiAirfoilDialog, ColorInputDialog, ExportCoordinatesDialog, ExportControlPointsDialog, AirfoilPlotDialog, \
-    AirfoilMatchingDialog, MSESFieldPlotDialog
+    AirfoilMatchingDialog, MSESFieldPlotDialog, ExportIGESDialog
 from pymead.gui.pymeadPColorMeshItem import PymeadPColorMeshItem
 from pymead.gui.analysis_graph import AnalysisGraph
 from pymead.gui.parameter_tree import MEAParamTree
@@ -582,6 +582,14 @@ class GUI(QMainWindow):
 
     def export_nx_macro(self):
         self.mea.write_NX_macro('test_ctrlpts.py', {})
+
+    def export_IGES(self):
+        self.dialog = ExportIGESDialog(parent=self)
+        if self.dialog.exec_():
+            inputs = self.dialog.getInputs()
+            f_ = os.path.join(inputs['choose_dir'], inputs['file_name'])
+            self.mea.write_to_IGES(f_)
+            self.disp_message_box(f"Airfoil geometry saved to {f_}", message_mode="info")
 
     def single_airfoil_viscous_analysis(self):
         self.dialog = SingleAirfoilViscousDialog(parent=self)
