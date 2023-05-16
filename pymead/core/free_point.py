@@ -1,7 +1,7 @@
 import numpy as np
 from pymead.core.pos_param import PosParam
 from pymead.core.control_point import ControlPoint
-from pymead.utils.transformations import translate, rotate, scale, transform, transform_matrix
+from pymead.utils.transformations import transform_matrix
 
 
 class FreePoint(ControlPoint):

@@ -4,6 +4,7 @@ import numpy as np
 import pandas as pd
 from copy import deepcopy
 from functools import partial
+import itertools
 import benedict
 import shutil
 import sys
@@ -23,6 +24,7 @@ from PyQt5.QtSvg import QSvgWidget
 from pymead.version import __version__
 from pymead.core.airfoil import Airfoil
 from pymead.core.base_airfoil_params import BaseAirfoilParams
+from pymead.core.transformation import Transformation3D
 from pymead import RESOURCE_DIR
 from pymead.gui.input_dialog import SingleAirfoilViscousDialog, LoadDialog, SaveAsDialog, OptimizationSetupDialog, \
     MultiAirfoilDialog, ColorInputDialog, ExportCoordinatesDialog, ExportControlPointsDialog, AirfoilPlotDialog, \
@@ -30,6 +32,8 @@ from pymead.gui.input_dialog import SingleAirfoilViscousDialog, LoadDialog, Save
 from pymead.gui.pymeadPColorMeshItem import PymeadPColorMeshItem
 from pymead.gui.analysis_graph import AnalysisGraph
 from pymead.gui.parameter_tree import MEAParamTree
+from pymead.plugins.IGES.curves import BezierIGES
+from pymead.plugins.IGES.iges_generator import IGESGenerator
 from pymead.utils.airfoil_matching import match_airfoil, match_airfoil_ga
 from pymead.optimization.opt_setup import read_stencil_from_array, convert_opt_settings_to_param_dict
 from pymead.analysis.single_element_inviscid import single_element_inviscid
@@ -587,8 +591,28 @@ class GUI(QMainWindow):
         self.dialog = ExportIGESDialog(parent=self)
         if self.dialog.exec_():
             inputs = self.dialog.getInputs()
-            f_ = os.path.join(inputs['choose_dir'], inputs['file_name'])
-            self.mea.write_to_IGES(f_)
+            f_ = os.path.join(inputs['dir'], inputs['file_name'])
+            control_point_list = [[c.P for c in a.curve_list] for a in self.mea.airfoils.values()]
+            cp_list_flattened = list(itertools.chain.from_iterable(control_point_list))
+            transform_3d = Transformation3D(tx=[inputs["translation"][0]],
+                                            ty=[inputs["translation"][1]],
+                                            tz=[inputs["translation"][2]],
+                                            sx=[inputs["scaling"][0]],
+                                            sy=[inputs["scaling"][1]],
+                                            sz=[inputs["scaling"][2]],
+                                            rx=[inputs["rotation"][0]],
+                                            ry=[inputs["rotation"][1]],
+                                            rz=[inputs["rotation"][2]],
+                                            rotation_units="deg",
+                                            order=inputs["transformation_order"])
+            cp_list_3d = []
+            for cp in cp_list_flattened:
+                cp = np.insert(cp, 1, 0, axis=1)
+                cp_list_3d.append(cp)
+            transformed_cp_list = [transform_3d.transform(P) for P in cp_list_3d]
+            bez_IGES_list = [BezierIGES(P) for P in transformed_cp_list]
+            iges_generator = IGESGenerator(bez_IGES_list)
+            iges_generator.generate(f_)
             self.disp_message_box(f"Airfoil geometry saved to {f_}", message_mode="info")
 
     def single_airfoil_viscous_analysis(self):
