@@ -9,12 +9,12 @@
     "line": {
       "w": "QLineEdit",
       "text": "",
-      "grid": [0, 1, 1, 1]
+      "grid": [0, 1, 1, 2]
     },
     "button": {
       "w": "QPushButton",
       "text": "Select",
-      "grid": [0, 2, 1, 1],
+      "grid": [0, 3, 1, 1],
       "func": "select_directory"
     }
   },
@@ -28,7 +28,98 @@
     "line": {
       "w": "QLineEdit",
       "text": "airfoils.igs",
-      "grid": [1, 1, 1, 2]
+      "grid": [1, 1, 1, 3]
+    }
+  },
+  "rotation": {
+    "label": {
+      "w": "QLabel",
+      "text": "Rotate (deg) x,y,z",
+      "grid": [2, 0, 1, 1],
+      "tool_tip": "Rotate the airfoil system about the x-axis, y-axis, and/or z-axis by the values specified in DEGREES.\nNo rotation is performed if the values are left unchanged."
+    },
+    "x": {
+      "w": "QDoubleSpinBox",
+      "grid": [2, 1, 1, 1],
+      "setValue": 0.0,
+      "setDecimals": 10
+    },
+    "y": {
+      "w": "QDoubleSpinBox",
+      "grid": [2, 2, 1, 1],
+      "setValue": 0.0,
+      "setDecimals": 10
+    },
+    "z": {
+      "w": "QDoubleSpinBox",
+      "grid": [2, 3, 1, 1],
+      "setValue": 0.0,
+      "setDecimals": 10
+    }
+  },
+  "scaling": {
+    "label": {
+      "w": "QLabel",
+      "text": "Scale x,y,z",
+      "grid": [3, 0, 1, 1],
+      "tool_tip": "Scale the airfoil system in the x-direction, y-direction, and/or z-direction.\nNo scaling is performed if the values are left unchanged."
+    },
+    "x": {
+      "w": "QDoubleSpinBox",
+      "grid": [3, 1, 1, 1],
+      "setValue": 1.0,
+      "setDecimals": 10
+    },
+    "y": {
+      "w": "QDoubleSpinBox",
+      "grid": [3, 2, 1, 1],
+      "setValue": 1.0,
+      "setDecimals": 10
+    },
+    "z": {
+      "w": "QDoubleSpinBox",
+      "grid": [3, 3, 1, 1],
+      "setValue": 1.0,
+      "setDecimals": 10
+    }
+  },
+  "translation": {
+    "label": {
+      "w": "QLabel",
+      "text": "Translate x,y,z",
+      "grid": [4, 0, 1, 1],
+      "tool_tip": "Translate the airfoil system in the x-direction, y-direction, and/or z-direction.\nNo translation is performed if the values are left unchanged."
+    },
+    "x": {
+      "w": "QDoubleSpinBox",
+      "grid": [4, 1, 1, 1],
+      "setValue": 0.0,
+      "setDecimals": 10
+    },
+    "y": {
+      "w": "QDoubleSpinBox",
+      "grid": [4, 2, 1, 1],
+      "setValue": 0.0,
+      "setDecimals": 10
+    },
+    "z": {
+      "w": "QDoubleSpinBox",
+      "grid": [4, 3, 1, 1],
+      "setValue": 0.0,
+      "setDecimals": 10
+    }
+  },
+  "transform_order": {
+    "label": {
+      "w": "QLabel",
+      "text": "Transform order",
+      "grid": [5, 0, 1, 1],
+      "tool_tip": "Order in which to perform the transformations.\nDefault is rx,ry,rz,s,t."
+    },
+    "line": {
+      "w": "QLineEdit",
+      "text": "rx,ry,rz,s,t",
+      "grid": [5, 1, 1, 3]
     }
   }
 }

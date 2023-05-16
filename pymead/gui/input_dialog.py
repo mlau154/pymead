@@ -2028,7 +2028,7 @@ class ExportIGESDialog(QDialog):
 
         self.setInputs()
 
-        self.grid_layout.addWidget(buttonBox, 2, 1, 1, 2)
+        self.grid_layout.addWidget(buttonBox, 6, 1, 1, 2)
 
         buttonBox.accepted.connect(self.accept)
         buttonBox.rejected.connect(self.reject)
@@ -2050,11 +2050,24 @@ class ExportIGESDialog(QDialog):
                         widget.clicked.connect(getattr(self, w_dict["func"]))
                 if "tool_tip" in w_dict.keys():
                     widget.setToolTip(w_dict["tool_tip"])
+                for attr_name, attr_value in w_dict.items():
+                    if attr_name not in ["text", "func", "tool_tip", "grid", "w"]:
+                        getattr(widget, attr_name)(attr_value)
+                if isinstance(widget, QDoubleSpinBox):
+                    widget.setMinimum(-np.inf)
+                    widget.setMaximum(np.inf)
                 self.grid_layout.addWidget(widget, w_dict["grid"][0], w_dict["grid"][1], w_dict["grid"][2],
                                            w_dict["grid"][3])
 
     def getInputs(self):
-        inputs = {k: v["line"].text() if "line" in v.keys() else None for k, v in self.grid_widget.items()}
+        inputs = {
+            "dir": self.grid_widget["choose_dir"]["line"].text(),
+            "file_name": self.grid_widget["file_name"]["line"].text(),
+            "rotation": [self.grid_widget["rotation"][xyz].value() for xyz in ["x", "y", "z"]],
+            "scaling": [self.grid_widget["scaling"][xyz].value() for xyz in ["x", "y", "z"]],
+            "translation": [self.grid_widget["translation"][xyz].value() for xyz in ["x", "y", "z"]],
+            "transformation_order": self.grid_widget["transform_order"]["line"].text()
+        }
 
         # Make sure any newline characters are not double-escaped:
         for k, input_ in inputs.items():
