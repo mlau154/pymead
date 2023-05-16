@@ -1,3 +1,12 @@
+from copy import deepcopy
+import importlib.util
+import itertools
+import numpy as np
+import os
+import typing
+
+import benedict
+
 from pymead.core.airfoil import Airfoil
 from pymead.core.anchor_point import AnchorPoint
 from pymead.core.free_point import FreePoint
@@ -7,14 +16,10 @@ from pymead.core.base_airfoil_params import BaseAirfoilParams
 from pymead.utils.dict_recursion import set_all_dict_values, assign_airfoil_tags_to_param_dict, \
     assign_names_to_params_in_param_dict, unravel_param_dict_deepcopy
 from pymead.utils.read_write_files import save_data
-import typing
-import benedict
-import numpy as np
-import os
+from pymead.plugins.IGES.iges_generator import IGESGenerator
+from pymead.plugins.IGES.curves import BezierIGES
 from pymead import DATA_DIR, PLUGINS_DIR, INCLUDE_FILES
-from copy import deepcopy
-import importlib.util
-import time
+
 
 
 class MEA:
@@ -213,6 +218,14 @@ class MEA:
 
     def deepcopy(self, deactivate_airfoil_graphs: bool = False):
         return MEA.generate_from_param_dict(self.copy_as_param_dict(deactivate_airfoil_graphs))
+
+    def write_to_IGES(self, file_name: str):
+        bez_IGES_entities = [
+            [BezierIGES(np.column_stack((c.P[:, 0], np.zeros(len(c.P)), c.P[:, 1]))) for c in a.curve_list]
+            for a in self.airfoils.values()]
+        entities_flattened = list(itertools.chain.from_iterable(bez_IGES_entities))
+        iges_generator = IGESGenerator(entities_flattened)
+        iges_generator.generate(file_name)
 
     def update_parameters(self, norm_value_list: list or np.ndarray):
 
