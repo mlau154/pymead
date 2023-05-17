@@ -180,9 +180,9 @@ def main():
     coords = pd.read_csv(os.path.join(DATA_DIR, 'naca0012.dat'), skiprows=1, names=['x', 'y'], delim_whitespace=True)
     # print(coord)
     coords = coords.to_numpy()
-    single_element_inviscid(coords, 3.0)
+    single_element_inviscid(coords, 4.0)
     t1 = time.time()
-    CO, CP, CL = single_element_inviscid(coords, 3.0)
+    CO, CP, CL = single_element_inviscid(coords, 4.0)
     t2 = time.time()
     print(f"calculation time = {t2 - t1:.4e} seconds")
 

@@ -7,6 +7,10 @@ import numpy as np
 
 
 def main():
+    """
+    Examples of plotting curvature combs for Bézier curves and airfoils
+    """
+    # Plot the curvature comb for a single Bezier curve:
     C = Bezier(np.array([[0, 0], [1, 1], [2, 1], [3, 0]]), nt=500)
     scale_factor = 0.1 / np.max(abs(C.k))
     fig, axs = subplots(2, 1)
@@ -14,6 +18,7 @@ def main():
     C.plot_curvature_comb_normals(axs[0], scale_factor, color='mediumaquamarine', lw=0.8, interval=3)
     C.plot_curvature_comb_curve(axs[0], scale_factor, color='indianred', lw=0.8, interval=3)
 
+    # Create an airfoil and plot the curvature comb for all the airfoil curves:
     A = Airfoil(base_airfoil_params=BaseAirfoilParams(L_le=Param(0.2), psi1_le=Param(np.deg2rad(10)),
                                                       psi2_le=Param(np.deg2rad(20)), theta1_te=Param(np.deg2rad(1.0))))
     scale_factor_airfoil = 0.07 / np.max([np.max(abs(curve.k)) for curve in A.curve_list])
