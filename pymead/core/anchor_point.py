@@ -9,6 +9,9 @@ from pymead.core.transformation import AirfoilTransformation
 
 
 class AnchorPoint(ControlPoint):
+    """
+
+    """
 
     def __init__(self,
                  xy: PosParam,
@@ -148,6 +151,16 @@ class AnchorPoint(ControlPoint):
         return f"anchor_point_{self.tag}"
 
     def set_xp_yp_value(self, xp, yp):
+        """
+        Setter for the AnchorPoint's ``xy`` attribute where the changes are only applied individually for :math:`x` and
+        :math:`y` if ``linked==False`` and ``active==True``.
+
+        xp
+          Value to assign to ``self.xy.value[0]``
+
+        yp
+          Value to assign to ``self.xy.value[1]``
+        """
         x_changed, y_changed = False, False
         if self.xy.active[0] and not self.xy.linked[0]:
             new_x = xp
@@ -165,12 +178,36 @@ class AnchorPoint(ControlPoint):
         if x_changed or y_changed:
             self.set_ctrlpt_value()
 
-    def transform_xy(self, dx, dy, angle, sf, transformation_order):
+    def transform_xy(self, dx, dy, angle, sf, transformation_order: typing.List[str]):
+        """
+        Transforms the ``xy``-location of the AnchorPoint.
+
+        Parameters
+        ==========
+        dx
+          Units to translate the ``AnchorPoint`` in the :math:`x`-direction.
+
+        dy
+          Units to translate the ``AnchorPoint`` in the :math:`y`-direction.
+
+        angle
+          Angle, in radians, by which to rotate the AnchorPoint's location about the origin.
+
+        sf
+          Scale factor to apply to the AnchorPoint's ``xy``-location
+
+        transformation_order: typing.List[str]
+          Order in which to apply the transformations. Use ``"s"`` for scale, ``"t"`` for translate, and ``"r"`` for
+          rotate
+        """
         mat = np.array([self.xy.value])
         new_mat = transform_matrix(mat, dx, dy, angle, sf, transformation_order)
         self.xy.value = new_mat[0].tolist()
 
     def set_ctrlpt_value(self):
+        """
+        Sets the :math:`x`- and :math:`y`-values of the AnchorPoints's ``pymead.core.control_point.ControlPoint``.
+        """
         self.ctrlpt.x_val = self.xy.value[0]
         self.ctrlpt.y_val = self.xy.value[1]
         self.ctrlpt.xp = self.xy.value[0]
