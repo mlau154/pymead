@@ -12,4 +12,5 @@ Contents
 
    usage
    quick_start
+   tutorials
    api
