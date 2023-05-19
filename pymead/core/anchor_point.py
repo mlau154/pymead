@@ -155,6 +155,8 @@ class AnchorPoint(ControlPoint):
         Setter for the AnchorPoint's ``xy`` attribute where the changes are only applied individually for :math:`x` and
         :math:`y` if ``linked==False`` and ``active==True``.
 
+        Parameters
+        ==========
         xp
           Value to assign to ``self.xy.value[0]``
 

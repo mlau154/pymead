@@ -66,10 +66,11 @@ Version Notes
 -----
 - Made corrections on BaseAirfoilParams and AnchorPoint Args domains
 - Added support for zero-curvature anchor points
-using 180-degree curvature control arm angles (or 90-degree curvature control arm angles for the leading edge)
+  using 180-degree curvature control arm angles (or 90-degree curvature control arm angles for the leading edge)
 - Added support for sharp-juncture anchor points with :math:`R=0` or :math:`R_{LE}=0`. Adding multiple consecutive sharp
-juncture anchor points creates line segments. Adding sharp-juncture anchor points violates the principle of slope and
-curvature continuity, but may be useful in some cases.
+  juncture anchor points creates line segments. Adding sharp-juncture anchor points violates the principle of slope and
+  curvature continuity, but may be useful in some cases.
+
 """
 import os
 from matplotlib import colormaps

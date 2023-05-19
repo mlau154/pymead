@@ -13,25 +13,35 @@ class FreePoint(ControlPoint):
                  previous_free_point: str or None = None,
                  tag: str or None = None,
                  ):
-        """
-        ### Description:
-
-        The `FreePoint` in `pymead` is the way to add a control point to a Bézier curve within an `Airfoil`
+        r"""
+        The FreePoint in pymead is the way to add a control point to a Bézier curve within an Airfoil
         without requiring the Bézier curve to pass through that particular point. In other words, a FreePoint allows
-        an \\(x\\) - \\(y\\) coordinate pair to be added to the `P` matrix (see `pymead.core.airfoil.bezier` for
-        usage). An example showing some possible locations of `FreePoint`s is shown below.
+        an :math:`x`-:math:`y` coordinate pair to be added to the ``P`` matrix (see ``pymead.core.airfoil.bezier`` for
+        usage). An example showing some possible locations of FreePoints is shown below.
 
-        ### Args:
+        Parameters
+        ==========
+        xy: PosParam
+          The location of the FreePoint in :math:`x`-:math:`y` space
 
-        `x`: `Param` describing the x-location of the `FreePoint`
+        previous_anchor_point: str
+          The previous ``AnchorPoint`` (counter-clockwise ordering)
 
-        `y`: `Param` describing the y-location of the `FreePoint`
+        airfoil_tag: str
+          The Airfoil to which this FreePoint belongs
 
-        `previous_anchor_point`: a `str` representing the previous `AnchorPoint` (counter-clockwise ordering)
+        previous_free_point: str or None
+          The previous FreePoint associated with the current FreePoint's AnchorPoint (counter-clockwise ordering). If
+          ``None``, the current FreePoint immediately follows the last ControlPoint associated with its AnchorPoint.
+          Default: ``None``.
 
-        ### Returns:
+        tag: str or None
+          A description of this FreePoint. Default: ``None``.
 
-        An instance of the `FreePoint` class
+        Returns
+        =======
+        FreePoint
+          An instance of the ``FreePoint`` class
         """
 
         super().__init__(xy.value[0], xy.value[1], tag, previous_anchor_point, cp_type='free_point')
@@ -46,16 +56,30 @@ class FreePoint(ControlPoint):
         self.previous_free_point = previous_free_point
 
     def set_tag(self, tag: str):
+        """
+        Sets the tag for this FreePoint and its associated ControlPoint.
+
+        Parameters
+        ==========
+        tag: str
+          A description of the FreePoint
+        """
         self.tag = tag
         self.ctrlpt.tag = tag
 
     def set_xp_yp_value(self, xp, yp):
-        # mat = np.array([[xp, yp]])
-        # new_mat = transform_matrix(mat, -self.airfoil_transformation['dx'].value,
-        #                            -self.airfoil_transformation['dy'].value,
-        #                            self.airfoil_transformation['alf'].value,
-        #                            1 / self.airfoil_transformation['c'].value,
-        #                            ['translate', 'rotate', 'scale'])
+        """
+        Setter for the FreePoint's ``xy`` attribute where the changes are only applied individually for :math:`x` and
+        :math:`y` if ``linked==False`` and ``active==True``.
+
+        Parameters
+        ==========
+        xp
+          Value to assign to ``self.xy.value[0]``
+
+        yp
+          Value to assign to ``self.xy.value[1]``
+        """
         x_changed, y_changed = False, False
         if self.xy.active[0] and not self.xy.linked[0]:
             new_x = xp
@@ -72,27 +96,45 @@ class FreePoint(ControlPoint):
         else:
             new_y = self.xy.value[1]
         self.xy.value = [new_x, new_y]
-        # print(f"New FreePoint xy value is {self.xy.value}")
 
         # If x or y was changed, set the location of the control point to reflect this
         if x_changed or y_changed:
             self.set_ctrlpt_value()
 
     def transform_xy(self, dx, dy, angle, sf, transformation_order):
+        """
+        Transforms the ``xy``-location of the FreePoint.
+
+        Parameters
+        ==========
+        dx
+          Units to translate the ``FreePoint`` in the :math:`x`-direction.
+
+        dy
+          Units to translate the ``FreePoint`` in the :math:`y`-direction.
+
+        angle
+          Angle, in radians, by which to rotate the FreePoint's location about the origin.
+
+        sf
+          Scale factor to apply to the FreePoint's ``xy``-location
+
+        transformation_order: typing.List[str]
+          Order in which to apply the transformations. Use ``"s"`` for scale, ``"t"`` for translate, and ``"r"`` for
+          rotate
+        """
         mat = np.array([self.xy.value])
         new_mat = transform_matrix(mat, dx, dy, angle, sf, transformation_order)
         self.xy.value = new_mat[0].tolist()
 
     def set_ctrlpt_value(self):
+        """
+        Sets the :math:`x`- and :math:`y`-values of the FreePoints's ``pymead.core.control_point.ControlPoint``.
+        """
         self.ctrlpt.x_val = self.xy.value[0]
         self.ctrlpt.y_val = self.xy.value[1]
         self.ctrlpt.xp = self.xy.value[0]
         self.ctrlpt.yp = self.xy.value[1]
-        # self.ctrlpt.transform(self.airfoil_transformation['dx'].value,
-        #                       self.airfoil_transformation['dy'].value,
-        #                       -self.airfoil_transformation['alf'].value,
-        #                       self.airfoil_transformation['c'].value,
-        #                       transformation_order=['scale', 'rotate', 'translate'])
 
     def __repr__(self):
         return f"free_point_{self.tag}"
