@@ -90,6 +90,7 @@ class Chromosome:
         Chromosome generation flow
         :return:
         """
+        print(f"Generating {self.population_idx} from param_dict...")
         self.mea_object = MEA.generate_from_param_dict(self.mea)
         if self.verbose:
             print(f'Generating chromosome idx = {self.population_idx}, gen = {self.generation}, cat = {self.category}, '
@@ -308,6 +309,7 @@ class Population:
         self.verbose = verbose
         self.population = []
         self.parent_indices = []
+        self.converged_chromosomes = []
         self.parents = deepcopy(parents)
         if not skip_parent_assignment:
             for population_idx, chromosome in enumerate(self.parents):
@@ -379,6 +381,14 @@ class Population:
         """
         Evaluates the fitness of a particular chromosome
         """
+        print(f"Generating {chromosome.population_idx}...")
+        chromosome.generate()
+        if not chromosome.valid_geometry:
+            print(f"Geometry invalid for chromosome {chromosome.population_idx} "
+                  f"(either self-intersecting or fails to meet a constraint)")
+            return chromosome
+        else:
+            print(f"Geometry {chromosome.population_idx} passed all the tests. Continuing on to evaluation...")
         # print(f"{chromosome.genes[0] = }")
         if chromosome.fitness is None:
             if self.verbose:
@@ -443,14 +453,29 @@ class Population:
         """
         Evaluates the fitness of the population using parallel processing
         """
+        print("Evaluating chromosomes in parallel using multiprocessing.Pool.map_async()...")
         with Pool(processes=self.param_set['num_processors']) as pool:
-            result = pool.map(self.eval_chromosome_fitness, self.population)
+            result = pool.imap(self.eval_chromosome_fitness, self.population)
             if self.verbose:
                 print(f'result = {result}')
-        for chromosome in result:
-            if chromosome.fitness is not None:
-                self.population = [chromosome if c.population_idx == chromosome.population_idx
-                                   else c for c in self.population]
+            print(f"{pool = }")
+            for chromosome in result:
+                if chromosome.fitness is not None:
+                    self.converged_chromosomes.append(chromosome)
+                n_converged_chromosomes = len(self.converged_chromosomes)
+                print(f"{n_converged_chromosomes = }")
+                if n_converged_chromosomes >= self.param_set["population_size"]:
+                # if n_converged_chromosomes >= 2:
+                    print(f"Converged enough chromosomes (at least population_size = {self.param_set['population_size']}."
+                          f"Closing pool. {len(self.converged_chromosomes) = }")
+                    break
+                else:
+                    print(f"Haven't yet converged enough chromosomes. {len(self.converged_chromosomes) = }.")
+        for chromosome in self.converged_chromosomes:
+            print(f"Chromosome index {chromosome.population_idx} is converged. Setting it to the population")
+            self.population = [chromosome if c.population_idx == chromosome.population_idx
+                               else c for c in self.population]
+        print("Done writing converged chromosomes to the population.")
 
     def all_chromosomes_fitness_converged(self):
         for chromosome in self.population:

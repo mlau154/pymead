@@ -3,6 +3,7 @@ import typing
 
 import matplotlib.pyplot as plt
 import matplotlib.colors as mpl_colors
+import numpy
 from matplotlib import animation
 from matplotlib.lines import Line2D
 from mpl_toolkits.axes_grid1 import make_axes_locatable
@@ -42,7 +43,10 @@ bl_matplotlib_labels = {
 
 class PostProcess:
     def __init__(self, analysis_dir: str, image_dir: str, post_process_force_file: str, jmea_file: str,
-                 modify_param_dict_func: typing.Callable = None, underwing: bool = False):
+                 modify_param_dict_func: typing.Callable = None, underwing: bool = False,
+                 modify_param_dict_kwargs: dict = None):
+        if modify_param_dict_kwargs is None:
+            modify_param_dict_kwargs = {}
         self.cbar = None
         self.coord_plot_handles = []
         self.text_handles = []
@@ -59,14 +63,14 @@ class PostProcess:
         self.param_dict = load_data(os.path.join(self.analysis_dir, 'param_dict.json'))
         self.modify_param_dict_func = modify_param_dict_func
         if self.modify_param_dict_func is not None:
-            self.modify_param_dict()
+            self.modify_param_dict(**modify_param_dict_kwargs)
         self.chromosomes = []
 
-    def modify_param_dict(self):
-        self.modify_param_dict_func(self.param_dict)
+    def modify_param_dict(self, *args, **kwargs):
+        self.modify_param_dict_func(self.param_dict, *args, **kwargs)
 
     def get_max_gen(self):
-        max_gen = 0
+        max_gen = 1
         while True:
             if os.path.exists(os.path.join(self.analysis_dir, f"algorithm_gen_{max_gen}.pkl")):
                 max_gen += 1
@@ -85,7 +89,7 @@ class PostProcess:
         if isinstance(index, int):
             index = [index]
         elif index is None:
-            index = np.arange(0, self.get_max_gen() + 1)
+            index = np.arange(1, self.get_max_gen() + 1)
         return index
 
     def run_analysis(self, index: int or typing.Iterable = None, evaluate: bool = True, save_coords: bool = False,
@@ -98,7 +102,7 @@ class PostProcess:
         if not os.path.exists(os.path.join(self.analysis_dir, 'analysis')):
             os.mkdir(os.path.join(self.analysis_dir, 'analysis'))
 
-        for i in index:
+        for idx, i in enumerate(index):
             param_set = deepcopy(self.param_dict)
             param_set['mset_settings']['airfoil_analysis_dir'] = os.path.join(
                 self.analysis_dir, 'analysis', f'analysis_{i}')
@@ -107,7 +111,7 @@ class PostProcess:
             param_set['name'] = [f"analysis_{j}" for j in index]
 
             # parent_chromosomes.append(Chromosome(param_set=param_set, population_idx=s, mea=mea, X=X))
-            self.chromosomes.append(Chromosome(param_dict=param_set, population_idx=i, mea=self.mea, genes=X_list[i],
+            self.chromosomes.append(Chromosome(param_dict=param_set, population_idx=i, mea=self.mea, genes=X_list[idx],
                                                ga_settings=None, category=None, generation=0))
 
         population = Population(param_dict=self.param_dict, ga_settings=None, generation=0, parents=self.chromosomes,
@@ -117,19 +121,19 @@ class PostProcess:
             if not os.path.exists(os.path.join(self.analysis_dir, 'coords')):
                 os.mkdir(os.path.join(self.analysis_dir, 'coords'))
             for idx, c in enumerate(population.population):
-                save_data(c.coords, os.path.join(self.analysis_dir, 'coords', f'coords_{idx}.json'))
+                save_data(c.coords, os.path.join(self.analysis_dir, 'coords', f'coords_{index[idx]}.json'))
         if save_control_points:
             if not os.path.exists(os.path.join(self.analysis_dir, 'control_points')):
                 os.mkdir(os.path.join(self.analysis_dir, 'control_points'))
             for idx, c in enumerate(population.population):
                 save_data(c.control_points, os.path.join(self.analysis_dir,
-                                                         'control_points', f'control_points_{idx}.json'))
+                                                         'control_points', f'control_points_{index[idx]}.json'))
         if save_airfoil_state:
             if not os.path.exists(os.path.join(self.analysis_dir, 'airfoil_state')):
                 os.mkdir(os.path.join(self.analysis_dir, 'airfoil_state'))
             for idx, c in enumerate(population.population):
                 save_data(c.airfoil_state, os.path.join(self.analysis_dir,
-                                                        'airfoil_state', f'airfoil_state_{idx}.json'))
+                                                        'airfoil_state', f'airfoil_state_{index[idx]}.json'))
         if save_internal_radius:
             if not os.path.exists(os.path.join(self.analysis_dir, 'radius')):
                 os.mkdir(os.path.join(self.analysis_dir, 'radius'))
@@ -160,9 +164,9 @@ class PostProcess:
                         r -= abs(np.interp(x=np.array([coord[0]]), xp=c_hub_t[:, 0], fp=c_hub_t[:, 1])[0])
                     radius = np.append(radius, r)
                 data = np.column_stack((c_nac_t[:, 0], radius))
-                np.savetxt(os.path.join(self.analysis_dir, 'radius', f'radius_{idx}.dat'), data)
-                np.savetxt(os.path.join(self.analysis_dir, 'radius', f'nac_{idx}.dat'), c_nac_t)
-                np.savetxt(os.path.join(self.analysis_dir, 'radius', f'hub_{idx}.dat'), c_hub_t)
+                np.savetxt(os.path.join(self.analysis_dir, 'radius', f'radius_{index[idx]}.dat'), data)
+                np.savetxt(os.path.join(self.analysis_dir, 'radius', f'nac_{index[idx]}.dat'), c_nac_t)
+                np.savetxt(os.path.join(self.analysis_dir, 'radius', f'hub_{index[idx]}.dat'), c_hub_t)
 
         if evaluate:
             population.eval_pop_fitness()
@@ -336,7 +340,7 @@ class PostProcess:
                                          var=var, cmap_field=cmap_field, cmap_airfoil=cmap_airfoil, shading=shading,
                                          vmin=vmin, vmax=vmax)
 
-    def generate_single_field(self, var: str, index: int, cmap_field: mpl_colors.Colormap or str,
+    def generate_single_field(self, var: str, index: int, index_list, cmap_field: mpl_colors.Colormap or str,
                               cmap_airfoil: mpl_colors.Colormap or str, shading: str = 'gouraud', vmin: float = None,
                               vmax: float = None, image_extensions: tuple = ('.png', '.pdf')):
         airfoil_color = 'black'
@@ -361,10 +365,19 @@ class PostProcess:
             axs.plot(airfoil[:, 0], airfoil[:, 1], color=airfoil_color)
             polygon = Polygon(airfoil, closed=False, color="#000000AA")
             axs.add_patch(polygon)
-        if not isinstance(post_process_forces['Cd'][index], typing.Iterable):
-            cd_value = post_process_forces['Cd'][index]
+
+        # Get location of index in gen_list
+        if isinstance(index_list, list):
+            gen_index = index_list.index(index)
+        elif isinstance(index_list, numpy.ndarray):
+            gen_index = index_list.tolist().index(index)
         else:
-            cd_value = post_process_forces['Cd'][index][1]
+            raise TypeError("index_list must be a list or a numpy ndarray")
+
+        if not isinstance(post_process_forces['Cd'][gen_index], typing.Iterable):
+            cd_value = post_process_forces['Cd'][gen_index]
+        else:
+            cd_value = post_process_forces['Cd'][gen_index][1]
         cd_title = r'C_{F_{\parallel V_\infty}}'
         axs.text(x=-0.15, y=0.32, s=fr"Gen. {index}: ${cd_title} = {cd_value * 10000:.1f}$ counts",
                  fontdict=dict(size=18, family='serif'))
