@@ -1084,63 +1084,65 @@ class GUI(QMainWindow):
                        for idx, individual in enumerate(X_list)]
             population = Population(param_dict=param_dict, ga_settings=ga_settings, generation=0, parents=parents,
                                     mea=mea, verbose=param_dict['verbose'])
-            population.generate_chromosomes_parallel()
-            n_initial_evaluations = 0
-            n_subpopulations = 0
-            fully_converged_chromosomes = []
-            while True:  # "Do while" loop (terminate when enough of chromosomes have fully converged solutions)
-                subpopulation = deepcopy(population)
-                subpopulation.population = subpopulation.population[param_dict['num_processors'] * n_subpopulations:
-                                                                    param_dict['num_processors'] * (
-                                                                            n_subpopulations + 1)]
-                subpopulation.eval_pop_fitness()
+            # population.generate_chromosomes_parallel()
+            # n_initial_evaluations = 0
+            # n_subpopulations = 0
+            # fully_converged_chromosomes = []
+            # while True:  # "Do while" loop (terminate when enough of chromosomes have fully converged solutions)
+            #     subpopulation = deepcopy(population)
+            #     subpopulation.population = subpopulation.population[param_dict['num_processors'] * n_subpopulations:
+            #                                                         param_dict['num_processors'] * (
+            #                                                                 n_subpopulations + 1)]
+            #     subpopulation.eval_pop_fitness()
+            #
+            #     for chromosome in subpopulation.population:
+            #         if chromosome.fitness is not None:
+            #             fully_converged_chromosomes.append(chromosome)
+            #
+            #     if len(fully_converged_chromosomes) >= param_dict['population_size']:
+            #         # Truncate the list of fully converged chromosomes to just the first <population_size> number of
+            #         # chromosomes:
+            #         fully_converged_chromosomes = fully_converged_chromosomes[:param_dict['population_size']]
+            #         break
+            #
+            #     n_subpopulations += 1
+            #     n_initial_evaluations += param_dict['num_processors']
+            #
+            #     if n_subpopulations * (param_dict['num_processors'] + 1) > param_dict['n_offsprings']:
+            #         raise Exception('Ran out of chromosomes to evaluate in initial population generation')
 
-                for chromosome in subpopulation.population:
-                    if chromosome.fitness is not None:
-                        fully_converged_chromosomes.append(chromosome)
-
-                if len(fully_converged_chromosomes) >= param_dict['population_size']:
-                    # Truncate the list of fully converged chromosomes to just the first <population_size> number of
-                    # chromosomes:
-                    fully_converged_chromosomes = fully_converged_chromosomes[:param_dict['population_size']]
-                    break
-
-                n_subpopulations += 1
-                n_initial_evaluations += param_dict['num_processors']
-
-                if n_subpopulations * (param_dict['num_processors'] + 1) > param_dict['n_offsprings']:
-                    raise Exception('Ran out of chromosomes to evaluate in initial population generation')
+            population.eval_pop_fitness()
+            print(f"Finished evaluating population fitness. Continuing...")
 
             new_X = None
             J = None
             G = None
 
-            for chromosome in fully_converged_chromosomes:
-                if chromosome.fitness is not None:  # This statement should always pass, but shown here for clarity
-                    forces.append(chromosome.forces)
-                    if new_X is None:
-                        if param_dict['n_offsprings'] > 1:
-                            new_X = np.array([chromosome.genes])
-                        else:
-                            new_X = np.array(chromosome.genes)
+            for chromosome in population.converged_chromosomes:
+                forces.append(chromosome.forces)
+                if new_X is None:
+                    if param_dict['n_offsprings'] > 1:
+                        new_X = np.array([chromosome.genes])
                     else:
-                        new_X = np.row_stack((new_X, np.array(chromosome.genes)))
-                    # print(f"{self.objectives = }")
-                    for objective in self.objectives:
-                        objective.update(chromosome.forces)
-                    for constraint in self.constraints:
-                        constraint.update(chromosome.forces)
-                    if J is None:
-                        J = np.array([obj.value for obj in self.objectives])
-                        # print(f"{J = } on this pass")
+                        new_X = np.array(chromosome.genes)
+                else:
+                    new_X = np.row_stack((new_X, np.array(chromosome.genes)))
+                # print(f"{self.objectives = }")
+                for objective in self.objectives:
+                    objective.update(chromosome.forces)
+                for constraint in self.constraints:
+                    constraint.update(chromosome.forces)
+                if J is None:
+                    J = np.array([obj.value for obj in self.objectives])
+                    # print(f"{J = } on this pass")
+                else:
+                    J = np.row_stack((J, np.array([obj.value for obj in self.objectives])))
+                if len(self.constraints) > 0:
+                    if G is None:
+                        G = np.array([constraint.value for constraint in self.constraints])
                     else:
-                        J = np.row_stack((J, np.array([obj.value for obj in self.objectives])))
-                    if len(self.constraints) > 0:
-                        if G is None:
-                            G = np.array([constraint.value for constraint in self.constraints])
-                        else:
-                            G = np.row_stack((G, np.array([
-                                constraint.value for constraint in self.constraints])))
+                        G = np.row_stack((G, np.array([
+                            constraint.value for constraint in self.constraints])))
             pop_initial = pymoo.core.population.Population.new("X", new_X)
             # objectives
             pop_initial.set("F", J)
@@ -1153,7 +1155,7 @@ class GUI(QMainWindow):
                 individual.evaluated = {"F", "G", "CV", "feasible"}
             Evaluator(skip_already_evaluated=True).eval(problem, pop_initial)
 
-            algorithm = UNSGA3(ref_dirs=ref_dirs, sampling=pop_initial, repair=SelfIntersectionRepair(mea=mea),
+            algorithm = UNSGA3(ref_dirs=ref_dirs, sampling=pop_initial,
                                n_offsprings=param_dict['n_offsprings'],
                                crossover=SimulatedBinaryCrossover(eta=param_dict['eta_crossover']),
                                mutation=PolynomialMutation(eta=param_dict['eta_mutation']))
@@ -1168,7 +1170,7 @@ class GUI(QMainWindow):
 
             algorithm.evaluator.n_eval += param_dict['num_processors']
 
-            save_data(algorithm, os.path.join(param_dict['opt_dir'], 'algorithm_gen_0.pkl'))
+            # save_data(algorithm, os.path.join(param_dict['opt_dir'], 'algorithm_gen_0.pkl'))
 
             # np.save('checkpoint', algorithm)
             # until the algorithm has no terminated
@@ -1218,89 +1220,39 @@ class GUI(QMainWindow):
                 new_X = None
                 J = None
                 G = None
-                n_infeasible_solutions = 0
-                search_for_feasible_idx = 0
-                while True:
-                    gene_matrix = []
-                    feasible_indices = []
-                    while True:
-                        if X[search_for_feasible_idx, 0] != 9999:
-                            gene_matrix.append(X[search_for_feasible_idx, :].tolist())
-                            feasible_indices.append(search_for_feasible_idx)
+
+                parents = [Chromosome(param_dict=param_dict, ga_settings=ga_settings, category='parent',
+                                      generation=n_generation, population_idx=idx, mea=mea, genes=individual)
+                           for idx, individual in enumerate(X)]
+                population = Population(problem.param_dict, ga_settings=ga_settings, generation=n_generation,
+                                        parents=parents, verbose=param_dict['verbose'], mea=mea)
+                population.eval_pop_fitness()
+
+                for chromosome in population.converged_chromosomes:
+                    forces.append(chromosome.forces)
+                    if new_X is None:
+                        if param_dict['n_offsprings'] > 1:
+                            new_X = np.array([chromosome.genes])
                         else:
-                            n_infeasible_solutions += 1
-                        search_for_feasible_idx += 1
-                        if len(gene_matrix) == param_dict['num_processors']:
-                            break
-                    population = [Chromosome(problem.param_dict, ga_settings=ga_settings, category=None,
-                                             generation=n_generation,
-                                             population_idx=feasible_indices[idx + len(feasible_indices)
-                                                                             - param_dict['num_processors']],
-                                             genes=gene_list, verbose=param_dict['verbose'],
-                                             mea=mea)
-                                  for idx, gene_list in enumerate(gene_matrix)]
-                    pop_obj = Population(problem.param_dict, ga_settings=ga_settings, generation=n_generation,
-                                         parents=population, verbose=param_dict['verbose'], mea=mea)
-                    pop_obj.population = population
-                    pop_obj.generate_chromosomes_parallel()
-                    pop_obj.eval_pop_fitness()
-                    for idx, chromosome in enumerate(pop_obj.population):
-                        if chromosome.fitness is not None:
-                            forces.append(chromosome.forces)
-                            if new_X is None:
-                                if param_dict['n_offsprings'] > 1:
-                                    new_X = np.array(chromosome.genes)
-                                else:
-                                    new_X = np.array([chromosome.genes])
-                            else:
-                                new_X = np.row_stack((new_X, np.array(chromosome.genes)))
-                            for objective in self.objectives:
-                                objective.update(chromosome.forces)
-                            for constraint in self.constraints:
-                                constraint.update(chromosome.forces)
-                            if J is None:
-                                J = np.array([obj.value for obj in self.objectives])
-                            else:
-                                J = np.row_stack((J, np.array([obj.value for obj in self.objectives])))
-                            if len(self.constraints) > 0:
-                                if G is None:
-                                    G = np.array([constraint.value for constraint in self.constraints])
-                                else:
-                                    G = np.row_stack((G, np.array([
-                                        constraint.value for constraint in self.constraints])))
-                    # print(f"{J = }")
-                    algorithm.evaluator.n_eval += param_dict['num_processors']
-                    # print(f"{J = }")
-                    # print(f"{J[:, 0] = }")
-                    # print(f"{(J[:, 0] < 1000.0).sum() = }")
-                    # print(f"{param_dict = }")
-                    # print(f"{param_dict['population_size'] = }")
-                    if J is None:
-                        population_full = False
+                            new_X = np.array(chromosome.genes)
                     else:
-                        if J.ndim > 1:
-                            population_full = (J[:, 0] < 1000.0).sum() >= param_dict['population_size']
-                        else:
-                            population_full = (J[:] < 1000.0).sum() >= param_dict['population_size']
-                    if population_full:
-                        break
-                # Set the objective function values of the remaining individuals to 1000.0
-                for idx in range(search_for_feasible_idx, len(X)):
-                    new_X = np.row_stack([new_X, X[idx, :]])
-                    # f1 = np.append(f1, np.array([1000.0]))
-                    # f2 = np.append(f2, np.array([1000.0]))
-                    J = np.row_stack((J, 1000.0 * np.ones(param_dict['n_obj'])))
+                        new_X = np.row_stack((new_X, np.array(chromosome.genes)))
+                    for objective in self.objectives:
+                        objective.update(chromosome.forces)
+                    for constraint in self.constraints:
+                        constraint.update(chromosome.forces)
+                    if J is None:
+                        J = np.array([obj.value for obj in self.objectives])
+                    else:
+                        J = np.row_stack((J, np.array([obj.value for obj in self.objectives])))
                     if len(self.constraints) > 0:
-                        G = np.row_stack((G, 1000.0 * np.ones(param_dict['n_constr'])))
-                # new_X = np.append(new_X, 9999 * np.ones(shape=(n_infeasible_solutions, param_dict['n_var'])),
-                #                   axis=0)
-                # print(f"now 2 len J = {len(J)}, len G = {len(G)}, len X = {len(new_X)}")
-                # for idx in range(n_infeasible_solutions):
-                #     # f1 = np.append(f1, np.array([1000.0]))
-                #     # f2 = np.append(f2, np.array([1000.0]))
-                #     J = np.row_stack((J, 1000.0 * np.ones(param_dict['n_obj'])))
-                #     if len(self.constraints) > 0:
-                #         G = np.row_stack((G, 1000.0 * np.ones(param_dict['n_constr'])))
+                        if G is None:
+                            G = np.array([constraint.value for constraint in self.constraints])
+                        else:
+                            G = np.row_stack((G, np.array([
+                                constraint.value for constraint in self.constraints])))
+
+                algorithm.evaluator.n_eval += param_dict['num_processors']
 
                 for idx in range(param_dict['n_offsprings'] - len(new_X)):
                     # f1 = np.append(f1, np.array([1000.0]))
@@ -1309,6 +1261,8 @@ class GUI(QMainWindow):
                     J = np.row_stack((J, 1000.0 * np.ones(param_dict['n_obj'])))
                     if len(self.constraints) > 0:
                         G = np.row_stack((G, 1000.0 * np.ones(param_dict['n_constr'])))
+
+                print(f"{new_X.shape = }")
 
                 pop.set("X", new_X)
 

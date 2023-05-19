@@ -28,8 +28,8 @@ class ConstrictedRandomSampling(Sampling):
         super().__init__(n_samples, norm_param_list)
 
     def sample(self):
-        X_list = []
-        for i in range(self.n_samples):
+        X_list = [self.norm_param_list]
+        for i in range(self.n_samples - 1):
             individual = []
             norm_list_copy = deepcopy(self.norm_param_list)
             for p in norm_list_copy:
