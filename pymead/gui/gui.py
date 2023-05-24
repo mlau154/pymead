@@ -15,10 +15,11 @@ from pymead.gui.rename_popup import RenamePopup
 from pymead.gui.main_icon_toolbar import MainIconToolbar
 
 from PyQt5.QtWidgets import QMainWindow, QApplication, QVBoxLayout, QHBoxLayout, \
-    QWidget, QMenu, QStatusBar, QAction, QGraphicsScene, QGridLayout, QSizePolicy
+    QWidget, QMenu, QStatusBar, QAction, QGraphicsScene, QGridLayout, QProgressBar
 from PyQt5.QtGui import QIcon, QFont, QFontDatabase, QPainter
 from PyQt5.QtCore import QEvent, QObject, Qt, QThreadPool
 from PyQt5.QtSvg import QSvgWidget
+from PyQt5.QtCore import pyqtSlot
 
 
 from pymead.version import __version__
@@ -121,7 +122,7 @@ class GUI(QMainWindow):
         self.n_analyses = 0
         self.n_converged_analyses = 0
         self.threadpool = QThreadPool().globalInstance()
-        self.threadpool.setMaxThreadCount(1)
+        self.threadpool.setMaxThreadCount(2)
         self.pens = [('#d4251c', Qt.SolidLine), ('darkorange', Qt.SolidLine), ('gold', Qt.SolidLine),
                      ('limegreen', Qt.SolidLine), ('cyan', Qt.SolidLine), ('mediumpurple', Qt.SolidLine),
                      ('deeppink', Qt.SolidLine), ('#d4251c', Qt.DashLine), ('darkorange', Qt.DashLine),
@@ -153,7 +154,8 @@ class GUI(QMainWindow):
         #                                      pen=pg.mkPen(color='orange', width=1))
         # self.airfoil_graphs.append(AirfoilGraph(self.mea.airfoils['A1'], w=self.w, v=self.v))
         self.main_layout = QHBoxLayout()
-        self.setStatusBar(QStatusBar(self))
+        self.status_bar = QStatusBar()
+        self.setStatusBar(self.status_bar)
         self.param_tree_instance = MEAParamTree(self.mea, self.statusBar(), parent=self)
         # self.mea.airfoils['A0'].airfoil_graph.param_tree = self.param_tree_instance
         # self.mea.airfoils['A0'].airfoil_graph.airfoil_parameters = self.param_tree_instance.p.param(
@@ -208,9 +210,19 @@ class GUI(QMainWindow):
         airfoil = Airfoil(base_airfoil_params=BaseAirfoilParams(dx=Param(0.0), dy=Param(0.0)))
         self.add_airfoil(airfoil)
         self.auto_range_geometry()
-        self.showMaximized()
+        self.statusBar().clearMessage()
+        self.progress_bar = QProgressBar(self)
+        self.statusBar().addPermanentWidget(self.progress_bar)
+        self.progress_bar.setValue(0)
+        self.progress_bar.hide()
+        # self.showMaximized()
         # for dw in self.dockable_tab_window.dock_widgets:
         #     dw.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.MinimumExpanding)
+
+    @pyqtSlot(str)
+    def setStatusBarText(self, message: str):
+        print(f"{message = }")
+        self.statusBar().showMessage(message)
 
     def set_dark_mode(self):
         self.current_theme = "dark"
@@ -468,18 +480,31 @@ class GUI(QMainWindow):
         bar.sigLevelsChanged.connect(on_levels_changed)
 
     def load_mea_no_dialog(self, file_name):
+        self.progress_bar.show()
+        self.statusBar().showMessage("Loading MEA...")
+        progress = 0
         self.mea = MEA.generate_from_param_dict(load_data(file_name))
+        progress += 10
+        self.progress_bar.setValue(progress)
+        self.mea.airfoil_graphs_active = True
+        self.statusBar().showMessage("Adding airfoils...", 1000)
         for a in self.mea.airfoils.values():
             a.update()
+            progress += int(50 / len(self.mea.airfoils.values()))
+            self.progress_bar.setValue(progress)
         self.v.clear()
         self.param_tree_instance.t.clear()
+        self.progress_bar.setValue(65)
         for idx, airfoil in enumerate(self.mea.airfoils.values()):
             self.mea.add_airfoil_graph_to_airfoil(airfoil, idx, None, w=self.w, v=self.v)
+        self.progress_bar.setValue(70)
         self.param_tree_instance = MEAParamTree(self.mea, self.statusBar(), parent=self)
+        self.progress_bar.setValue(75)
         for a in self.mea.airfoils.values():
             a.airfoil_graph.param_tree = self.param_tree_instance
             a.airfoil_graph.airfoil_parameters = a.airfoil_graph.param_tree.p.param('Airfoil Parameters')
         dben = benedict.benedict(self.mea.param_dict)
+        self.progress_bar.setValue(90)
         for k in dben.keypaths():
             param = dben[k]
             if isinstance(param, Param):
@@ -493,6 +518,7 @@ class GUI(QMainWindow):
         self.main_layout.replaceWidget(widget0, self.design_tree_widget)
         widget0.deleteLater()
         self.auto_range_geometry()
+        self.progress_bar.setValue(100)
 
     def add_airfoil(self, airfoil: Airfoil):
         self.mea.te_thickness_edit_mode = self.te_thickness_edit_mode
@@ -1261,8 +1287,6 @@ class GUI(QMainWindow):
                     J = np.row_stack((J, 1000.0 * np.ones(param_dict['n_obj'])))
                     if len(self.constraints) > 0:
                         G = np.row_stack((G, 1000.0 * np.ones(param_dict['n_constr'])))
-
-                print(f"{new_X.shape = }")
 
                 pop.set("X", new_X)
 
