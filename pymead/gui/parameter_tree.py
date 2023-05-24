@@ -1,4 +1,5 @@
 import os.path
+import typing
 
 import pyqtgraph.parametertree.parameterTypes as pTypes
 from pyqtgraph.parametertree import Parameter, ParameterTree, registerParameterItemType, ParameterItem
@@ -24,6 +25,9 @@ from pymead import INCLUDE_FILES
 import importlib.util
 import numpy as np
 from time import time
+
+
+progress_idx = 0
 
 
 class MEAParameters(pTypes.GroupParameter):
@@ -58,7 +62,6 @@ class MEAParameters(pTypes.GroupParameter):
             pg_param.airfoil_param.name = pg_param.name()
 
         for idx, a in enumerate(self.mea.airfoils.values()):
-            print('Adding airfoil!')
             self.add_airfoil(a, idx)
 
     def add_airfoil(self, airfoil: Airfoil, idx: int):
@@ -179,7 +182,9 @@ class CustomGroup(pTypes.GroupParameter):
 
 class MEAParamTree:
     """Class for containment of all Multi-Element Airfoil Parameters in the GUI"""
-    def __init__(self, mea: MEA, status_bar, parent):
+    def __init__(self, mea: MEA, status_bar, parent, progress_info: typing.NamedTuple = None):
+        global progress_idx
+        progress_idx = 0
         self.user_mods = {}
         for f in INCLUDE_FILES:
             name = os.path.split(f)[-1]  # get the name of the file without the directory
@@ -212,17 +217,26 @@ class MEAParamTree:
 
         self.equation_strings = {}
 
+        progress_values = None
+        if progress_info is not None:
+            progress_values = np.round(np.linspace(progress_info.start, progress_info.end, progress_info.n)).astype(int)
+
         def add_equation_boxes_recursively(child_list):
             """Adds equation boxes for each loaded Airfoil Param which already contains an equation."""
+            global progress_idx
             for child in child_list:
                 if hasattr(child, 'airfoil_param'):
-                    if child.airfoil_param.func_str is not None:
-                        # print(f'{child.airfoil_param.name = }')
-                        print(f"Adding equation box {child.airfoil_param.func_str}...")
+                    func_str = child.airfoil_param.func_str
+                    if func_str is not None:
                         # Here we set update_auto_completer to False because it is really slow. We update the auto
                         # completer once afterward.
-                        self.add_equation_box(child, child.airfoil_param.func_str, update_auto_completer=False)
-                        self.update_equation(child.child('Equation Definition'), child.airfoil_param.func_str)
+                        self.add_equation_box(child, func_str, update_auto_completer=False)
+                        self.update_equation(child.child('Equation Definition'), func_str)
+                        if progress_values is not None:
+                            truncated_func_str = func_str if len(func_str) <= 50 else func_str[:50] + "..."
+                            self.parent.statusBar().showMessage(f"Adding equation {truncated_func_str}")
+                            self.parent.progress_bar.setValue(progress_values[progress_idx])
+                            progress_idx += 1
                 else:
                     if child.hasChildren():
                         add_equation_boxes_recursively(child.children())

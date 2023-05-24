@@ -10,6 +10,7 @@ import shutil
 import sys
 import os
 import random
+from collections import namedtuple
 
 from pymead.gui.rename_popup import RenamePopup
 from pymead.gui.main_icon_toolbar import MainIconToolbar
@@ -44,6 +45,7 @@ from pymead.core.mea import MEA
 from pymead.analysis.calc_aero_data import calculate_aero_data
 from pymead.optimization.opt_setup import CustomDisplay, TPAIOPT, SelfIntersectionRepair
 from pymead.utils.read_write_files import load_data, save_data
+from pymead.utils.misc import count_func_strs
 from pymead.analysis.read_aero_data import read_grid_stats_from_mses
 from pymead.utils.misc import make_ga_opt_dir
 from pymead.utils.get_airfoil import extract_data_from_airfoiltools
@@ -211,7 +213,10 @@ class GUI(QMainWindow):
         self.add_airfoil(airfoil)
         self.auto_range_geometry()
         self.statusBar().clearMessage()
-        self.progress_bar = QProgressBar(self)
+        self.progress_bar = QProgressBar(self, textVisible=False)
+        self.progress_bar.setStyleSheet('''QProgressBar {border: 2px solid; border-color: #8E9091;} 
+        QProgressBar::chunk {background-color: #6495ED; width: 10px; margin: 0.5px;}
+        ''')
         self.statusBar().addPermanentWidget(self.progress_bar)
         self.progress_bar.setValue(0)
         self.progress_bar.hide()
@@ -221,7 +226,6 @@ class GUI(QMainWindow):
 
     @pyqtSlot(str)
     def setStatusBarText(self, message: str):
-        print(f"{message = }")
         self.statusBar().showMessage(message)
 
     def set_dark_mode(self):
@@ -246,7 +250,7 @@ class GUI(QMainWindow):
 
     def set_title_and_icon(self):
         self.setWindowTitle("pymead")
-        image_path = os.path.join(os.path.dirname(os.getcwd()), 'icons', 'pymead.png')
+        image_path = os.path.join(os.path.dirname(os.getcwd()), 'icons', 'pymead-logo.png')
         self.setWindowIcon(QIcon(image_path))
 
     def create_menu_bar(self):
@@ -480,26 +484,27 @@ class GUI(QMainWindow):
         bar.sigLevelsChanged.connect(on_levels_changed)
 
     def load_mea_no_dialog(self, file_name):
+        self.progress_bar.setValue(0)
         self.progress_bar.show()
         self.statusBar().showMessage("Loading MEA...")
-        progress = 0
-        self.mea = MEA.generate_from_param_dict(load_data(file_name))
-        progress += 10
-        self.progress_bar.setValue(progress)
+        n_func_strs = count_func_strs(file_name)
+        jmea = load_data(file_name)
+        self.mea = MEA.generate_from_param_dict(jmea)
+        self.progress_bar.setValue(10)
         self.mea.airfoil_graphs_active = True
-        self.statusBar().showMessage("Adding airfoils...", 1000)
+        self.statusBar().showMessage("Adding airfoils...")
         for a in self.mea.airfoils.values():
             a.update()
-            progress += int(50 / len(self.mea.airfoils.values()))
-            self.progress_bar.setValue(progress)
         self.v.clear()
         self.param_tree_instance.t.clear()
-        self.progress_bar.setValue(65)
+        self.progress_bar.setValue(20)
         for idx, airfoil in enumerate(self.mea.airfoils.values()):
             self.mea.add_airfoil_graph_to_airfoil(airfoil, idx, None, w=self.w, v=self.v)
-        self.progress_bar.setValue(70)
-        self.param_tree_instance = MEAParamTree(self.mea, self.statusBar(), parent=self)
-        self.progress_bar.setValue(75)
+        self.progress_bar.setValue(25)
+        ProgressInfo = namedtuple("ProgressInfo", ("start", "end", "n"))
+        progress_info = ProgressInfo(25, 85, n_func_strs)
+        self.param_tree_instance = MEAParamTree(self.mea, self.statusBar(), parent=self, progress_info=progress_info)
+        self.progress_bar.setValue(85)
         for a in self.mea.airfoils.values():
             a.airfoil_graph.param_tree = self.param_tree_instance
             a.airfoil_graph.airfoil_parameters = a.airfoil_graph.param_tree.p.param('Airfoil Parameters')
@@ -519,6 +524,8 @@ class GUI(QMainWindow):
         widget0.deleteLater()
         self.auto_range_geometry()
         self.progress_bar.setValue(100)
+        self.statusBar().showMessage("Airfoil system load complete.", 2000)
+        self.progress_bar.hide()
 
     def add_airfoil(self, airfoil: Airfoil):
         self.mea.te_thickness_edit_mode = self.te_thickness_edit_mode

@@ -577,7 +577,6 @@ class ADWidget(QTabWidget):
         return self.input_dict
 
     def equationChanged(self, k1, k2, v2):
-        print(f"Equation changed! {v2 = }")
         self.input_dict[k1]["from_geometry"][k2] = v2
         self.ADChanged.emit()
 
