@@ -83,15 +83,11 @@ class FreePoint(ControlPoint):
         x_changed, y_changed = False, False
         if self.xy.active[0] and not self.xy.linked[0]:
             new_x = xp
-            if self.anchor_point_tag == 'le':
-                print(f"{new_x = }")
             x_changed = True
         else:
             new_x = self.xy.value[0]
         if self.xy.active[1] and not self.xy.linked[1]:
             new_y = yp
-            if self.anchor_point_tag == 'le':
-                print(f"{new_y = }")
             y_changed = True
         else:
             new_y = self.xy.value[1]

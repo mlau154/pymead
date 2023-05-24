@@ -239,4 +239,3 @@ if __name__ == '__main__':
     transform3d = Transformation3D(tx=[1], ty=[2], tz=[3], sx=[2], sy=[2], sz=[2], rx=[30], ry=[40], rz=[-180],
                                    rotation_units='deg', order='rx,rz,ry,s,t')
     new_coords_3d = transform3d.transform(coords_3d)
-    print(f"{new_coords_3d = }")

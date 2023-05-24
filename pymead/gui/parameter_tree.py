@@ -218,7 +218,10 @@ class MEAParamTree:
                 if hasattr(child, 'airfoil_param'):
                     if child.airfoil_param.func_str is not None:
                         # print(f'{child.airfoil_param.name = }')
-                        self.add_equation_box(child, child.airfoil_param.func_str)
+                        print(f"Adding equation box {child.airfoil_param.func_str}...")
+                        # Here we set update_auto_completer to False because it is really slow. We update the auto
+                        # completer once afterward.
+                        self.add_equation_box(child, child.airfoil_param.func_str, update_auto_completer=False)
                         self.update_equation(child.child('Equation Definition'), child.airfoil_param.func_str)
                 else:
                     if child.hasChildren():
@@ -427,6 +430,7 @@ class MEAParamTree:
             self.set_light_mode()
 
         add_equation_boxes_recursively(self.p.param('Airfoil Parameters').children())
+        self.update_auto_complete()
         set_readonly_recursively(self.p.param('Airfoil Parameters').children())
 
         self.win = QWidget()
@@ -466,7 +470,7 @@ class MEAParamTree:
                     QTreeView::branch:has-children:!has-siblings:closed,
                     QTreeView::branch:closed:has-children:has-siblings {border-image: none; image: url(../icons/opened-arrow.png);}''')
 
-    def add_equation_box(self, pg_param, equation: str = None):
+    def add_equation_box(self, pg_param, equation: str = None, update_auto_completer: bool = True):
         """Adds a QLineEdit to the ParameterTreeItem for equation editing"""
         if equation is None:
             value = ''
@@ -475,7 +479,8 @@ class MEAParamTree:
         if not pg_param.hasChildren():
             pg_param.addChild(dict(name='Equation Definition', type='auto_str', value=value, removable=True))
             self.equation_strings[pg_param.name()] = self.equation_widget(pg_param.child('Equation Definition'))
-            self.update_auto_complete()
+            if update_auto_completer:
+                self.update_auto_complete()
 
     @staticmethod
     def plot_changed(airfoil_name: str):
