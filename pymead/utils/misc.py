@@ -10,6 +10,16 @@ def count_dollar_signs(input_string: str, search_for_character: str):
     return counter
 
 
+def count_func_strs(file_name: str):
+    """
+    Counts the number of 'func_str' in a JMEA file that are not null
+    """
+    with open(file_name, "r") as f:
+        lines = f.readlines()
+    non_null_func_str = [True for line in lines if "func_str" in line and "null" not in line]
+    return len(non_null_func_str)
+
+
 def make_ga_opt_dir(rootdir: str, ga_opt_dir_name: str):
     subdir = [folder for folder in os.listdir(rootdir) if os.path.isdir(os.path.join(rootdir, folder))]
     append_num_list = []

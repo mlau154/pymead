@@ -6,8 +6,8 @@
     "function": "on_grid_button_pressed"
   },
   "change-background-color": {
-    "icon": "color_palette.png",
-    "status_tip": "Change background color",
+    "icon": "Moon-Icon.png",
+    "status_tip": "Activate dark mode",
     "checkable": true,
     "checked-by-default": true,
     "function": "change_background_color_button_toggled"
