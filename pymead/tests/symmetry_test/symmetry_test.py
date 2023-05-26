@@ -1,8 +1,6 @@
 from pymead.utils.read_write_files import load_data
 from pymead.core.line import InfiniteLine
 from pymead.core.bezier import Bezier
-from pymead.core.airfoil import Airfoil
-import matplotlib.pyplot as plt
 import numpy as np
 import unittest
 from copy import deepcopy
@@ -116,13 +114,6 @@ class SymmetryTest(unittest.TestCase):
         diff16 = np.abs(hub_curve_1_dist) - np.abs(hub_curve_6_dist)
         diff25 = np.abs(hub_curve_2_dist) - np.abs(hub_curve_5_dist)
         diff34 = np.abs(hub_curve_3_dist) - np.abs(hub_curve_4_dist)
-        # fig, axs = plt.subplots()
-        # axs.plot(nacelle_coords[:, 0], nacelle_coords[:, 1], color='indianred', label='nacelle')
-        # axs.plot(main_coords[:, 0], main_coords[:, 1], color='cornflowerblue', label='main')
-        # axs.legend()
-        # axs.set_aspect('equal')
-        # fig.set_tight_layout('tight')
-        # plt.show()
         diff = np.abs(nacelle_distance) - np.abs(main_distance)
         test_zero_tol = 1e-12
 
@@ -242,13 +233,6 @@ class SymmetryTest(unittest.TestCase):
         diff16 = np.abs(hub_curve_1_dist) - np.abs(hub_curve_6_dist)
         diff25 = np.abs(hub_curve_2_dist) - np.abs(hub_curve_5_dist)
         diff34 = np.abs(hub_curve_3_dist) - np.abs(hub_curve_4_dist)
-        # fig, axs = plt.subplots()
-        # axs.plot(nacelle_coords[:, 0], nacelle_coords[:, 1], color='indianred', label='nacelle')
-        # axs.plot(main_coords[:, 0], main_coords[:, 1], color='cornflowerblue', label='main')
-        # axs.legend()
-        # axs.set_aspect('equal')
-        # fig.set_tight_layout('tight')
-        # plt.show()
         diff = np.abs(nacelle_distance) - np.abs(main_distance)
         test_zero_tol = 1e-12
 
