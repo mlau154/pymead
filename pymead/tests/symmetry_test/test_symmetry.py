@@ -3,12 +3,16 @@ from pymead.core.line import InfiniteLine
 from pymead.core.bezier import Bezier
 import numpy as np
 import unittest
+import os
 from copy import deepcopy
+
+
+parent_dir = os.path.dirname(os.path.abspath(__file__))
 
 
 class SymmetryTest(unittest.TestCase):
     def test_symmetry_overwing(self):
-        control_points = load_data('control_points2.json')
+        control_points = load_data(os.path.join(parent_dir, 'control_points2.json'))
         hub_control_point_array = []
         main_control_point_array = []
         nacelle_control_point_array = []
@@ -34,7 +38,7 @@ class SymmetryTest(unittest.TestCase):
         nac_len = np.hypot(nac_prob_pt_2[0] - nac_prob_pt_1[0], nac_prob_pt_2[1] - nac_prob_pt_1[1])
         main_theta_te_1_abs = np.arctan2(main_ctrlpt_0[1] - main_ctrlpt_1[1], main_ctrlpt_0[0] - main_ctrlpt_1[0])
         nac_theta_te_2_abs = np.arctan2(nac_ctrlpt_m1[1] - nac_ctrlpt_m2[1], nac_ctrlpt_m1[0] - nac_ctrlpt_m2[0])
-        coords = load_data('coords2.json')
+        coords = load_data(os.path.join(parent_dir, 'coords2.json'))
         te_xy = (hub_control_point_array[0][0, :] + hub_control_point_array[-1][-1, :]) / 2
         le_xy = hub_control_point_array[2][-1, :]
         hub_alf_abs = np.arctan2(te_xy[1] - le_xy[1],
@@ -126,7 +130,7 @@ class SymmetryTest(unittest.TestCase):
         pass
 
     def test_symmetry_overwing_updated(self):
-        numbered_control_points = deepcopy(load_data('control_points_230_overwing.json'))
+        numbered_control_points = deepcopy(load_data(os.path.join(parent_dir, 'control_points_230_overwing.json')))
         control_points = {f'A{idx}': v for idx, v in enumerate(numbered_control_points)}
         hub_control_point_array = []
         main_control_point_array = []
@@ -153,7 +157,7 @@ class SymmetryTest(unittest.TestCase):
         nac_len = np.hypot(nac_prob_pt_2[0] - nac_prob_pt_1[0], nac_prob_pt_2[1] - nac_prob_pt_1[1])
         main_theta_te_1_abs = np.arctan2(main_ctrlpt_0[1] - main_ctrlpt_1[1], main_ctrlpt_0[0] - main_ctrlpt_1[0])
         nac_theta_te_2_abs = np.arctan2(nac_ctrlpt_m1[1] - nac_ctrlpt_m2[1], nac_ctrlpt_m1[0] - nac_ctrlpt_m2[0])
-        coords = load_data('coords2.json')
+        coords = load_data(os.path.join(parent_dir, 'coords2.json'))
         te_xy = (hub_control_point_array[0][0, :] + hub_control_point_array[-1][-1, :]) / 2
         le_xy = hub_control_point_array[2][-1, :]
         hub_alf_abs = np.arctan2(te_xy[1] - le_xy[1],
@@ -242,7 +246,7 @@ class SymmetryTest(unittest.TestCase):
         pass
 
     def test_symmetry_underwing(self):
-        control_points = load_data('control_points_upper1.json')
+        control_points = load_data(os.path.join(parent_dir, 'control_points_upper1.json'))
         hub_control_point_array = []
         main_control_point_array = []
         nacelle_control_point_array = []
@@ -252,7 +256,7 @@ class SymmetryTest(unittest.TestCase):
             main_control_point_array.append(np.array(curve))
         for curve in control_points['A2']:
             nacelle_control_point_array.append(np.array(curve))
-        coords = load_data('coords2.json')
+        coords = load_data(os.path.join(parent_dir, 'coords2.json'))
         te_xy = (hub_control_point_array[0][0, :] + hub_control_point_array[-1][-1, :]) / 2
         le_xy = hub_control_point_array[2][-1, :]
         hub_alf_abs = np.arctan2(te_xy[1] - le_xy[1],
@@ -341,7 +345,7 @@ class SymmetryTest(unittest.TestCase):
         pass
 
     def test_symmetry_underwing_updated(self):
-        numbered_control_points = deepcopy(load_data('control_points_180_underwing.json'))
+        numbered_control_points = deepcopy(load_data(os.path.join(parent_dir, 'control_points_180_underwing.json')))
         control_points = {f'A{idx}': v for idx, v in enumerate(numbered_control_points)}
         hub_control_point_array = []
         main_control_point_array = []
@@ -352,7 +356,7 @@ class SymmetryTest(unittest.TestCase):
             main_control_point_array.append(np.array(curve))
         for curve in control_points['A2']:
             nacelle_control_point_array.append(np.array(curve))
-        coords = load_data('coords2.json')
+        coords = load_data(os.path.join(parent_dir, 'coords2.json'))
         te_xy = (hub_control_point_array[0][0, :] + hub_control_point_array[-1][-1, :]) / 2
         le_xy = hub_control_point_array[2][-1, :]
         hub_alf_abs = np.arctan2(te_xy[1] - le_xy[1],
