@@ -26,7 +26,11 @@ def convert_ps_to_pdf(conversion_dir: str, input_file_name: str, output_file_nam
                 f.write('\nErrors:\n'.encode('utf-8'))
                 f.write(errs)
     else:
-        raise OSError('Ghostscript ps2pdf tool (executable or batch file) not found on system path')
+        raise OSError("Ghostscript ps2pdf tool (executable or batch file) not found on system path. See "
+                      "https://pymead.readthedocs.io/en/latest/usage.html#optional for a link to the Ghostscript page. "
+                      "If you already completed the installation and added the path to the executable or directory"
+                      "containing the executable to the system path, you may need to restart your terminal or IDE"
+                      "for the changes to apply.")
     return ps2pdf_complete, log_file
 
 
@@ -53,7 +57,11 @@ def convert_pdf_to_svg(conversion_dir: str, input_file_name: str, output_file_na
                 f.write('\nErrors:\n'.encode('utf-8'))
                 f.write(errs)
     else:
-        raise OSError('MuPDF mutool executable not found on system path')
+        raise OSError("MuPDF mutool executable not found on system path. See "
+                      "https://pymead.readthedocs.io/en/latest/usage.html#optional for a link to the MuPDF page. "
+                      "If you already completed the installation and added the path to the executable or directory"
+                      "containing the executable to the system path, you may need to restart your terminal or IDE"
+                      "for the changes to apply.")
     return mutool_complete, log_file
 
 
