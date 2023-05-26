@@ -3,6 +3,10 @@ import re
 
 
 def count_dollar_signs(input_string: str, search_for_character: str):
+    """
+    Counts the number of dollar signs in ``input_string``. Useful for counting the number of dynamically-linked
+    variables in a user-defined equation, since these are defined by pre-pending the dollar symbol.
+    """
     counter = 0
     for ch in input_string:
         if ch == search_for_character:
@@ -21,6 +25,12 @@ def count_func_strs(file_name: str):
 
 
 def make_ga_opt_dir(rootdir: str, ga_opt_dir_name: str):
+    """
+    Creates a clean directory for optimization by finding the integer tags of all the directories in the root
+    optimization directory with the same name as ``ga_opt_dir_name`` and incrementing the maximum integer by one.
+    For example, if the root optimization directory contains subdirectories named ``ga_opt_5``, ``ga_opt_7``,
+    and ``ga_opt_8``, the newly created directory will be named ``ga_opt_9``.
+    """
     subdir = [folder for folder in os.listdir(rootdir) if os.path.isdir(os.path.join(rootdir, folder))]
     append_num_list = []
     for folder in subdir:
@@ -38,7 +48,3 @@ def make_ga_opt_dir(rootdir: str, ga_opt_dir_name: str):
     if not os.path.exists(opt_dir):
         os.mkdir(opt_dir)
     return opt_dir
-
-
-if __name__ == '__main__':
-    print(count_dollar_signs("$b = $3 + $A0.Anchor", "$"))
