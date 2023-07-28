@@ -6,7 +6,10 @@ import matplotlib.colors as mpl_colors
 import numpy
 from matplotlib import animation
 from matplotlib.lines import Line2D
+import scienceplots
 from mpl_toolkits.axes_grid1 import make_axes_locatable
+from matplotlib.ticker import MultipleLocator
+from cycler import cycler
 from matplotlib.patches import Polygon, Patch
 import numpy as np
 from copy import deepcopy
@@ -18,8 +21,12 @@ from pymead.post.mses_field import generate_field_matplotlib, flow_var_label
 from pymead.analysis.read_aero_data import read_bl_data_from_mses
 from functools import partial
 from pymead.core.bezier import Bezier
+from pymead.core.mea import MEA
 from pymead.core.transformation import Transformation2D
+from pymead.utils.transformations import rotate_matrix
 from pymead.post.fonts_and_colors import ILLINI_ORANGE, ILLINI_BLUE, font
+from pymead.post.plot_formatters import format_axis_scientific, show_save_fig, legend_entry_flip
+from pymead import DATA_DIR
 
 
 ylabel = {
@@ -31,14 +38,31 @@ ylabel = {
             "Cdv": r"Design $C_{d_v}$ (counts)",
             "Cdp": r"Design $C_{d_p}$ (counts)",
             "Cdf": r"Design $C_{d_f}$ (counts)",
-            "Cm": r"Design $C_m$"
+            "Cm": r"Design $C_m$",
+            "CPK": r"Design $C_{P_K}$"
         }
 
 bl_matplotlib_labels = {
     "Cp": r"$C_p$",
     "delta*": r"$\delta^*$",
     "theta": r"$\theta$",
+    "theta*": r"$\theta^*$"
 }
+
+
+def field_display_text(index: int, display_var: str, display_val: float):
+    title = {
+        "Cd": r"C_{F_{\parallel V_\infty}}",
+        "CPK": r"C_{P_K}"
+    }
+    disp_text = {
+        "Cd": fr"Gen. {index}: ${title['Cd']} = {display_val * 10000:.1f}$ counts",
+        "CPK": fr"Gen. {index}: ${title['CPK']} = {display_val:.3f}$"
+    }
+    if display_var in disp_text.keys():
+        return disp_text[display_var]
+    else:
+        raise ValueError(f"Failed to find display_var {display_var} in display text keys ({disp_text.keys()})")
 
 
 class PostProcess:
@@ -85,11 +109,24 @@ class PostProcess:
         else:
             return alg.opt.get("X").flatten()
 
+    def get_mea(self, index: int):
+        if index != 0:
+            X = self.get_X(os.path.join(self.analysis_dir, f"algorithm_gen_{index}.pkl"))
+        else:
+            X = None
+
+        mea_object = MEA.generate_from_param_dict(self.mea)
+
+        if X is not None:
+            mea_object.update_parameters(X)
+
+        return mea_object
+
     def set_index(self, index: int or typing.Iterable = None):
         if isinstance(index, int):
             index = [index]
         elif index is None:
-            index = np.arange(1, self.get_max_gen() + 1)
+            index = np.arange(0, self.get_max_gen() + 1)
         return index
 
     def run_analysis(self, index: int or typing.Iterable = None, evaluate: bool = True, save_coords: bool = False,
@@ -97,7 +134,8 @@ class PostProcess:
                      save_airfoil_state: bool = False):
         index = self.set_index(index)
 
-        X_list = [self.get_X(os.path.join(self.analysis_dir, f"algorithm_gen_{i}.pkl")) for i in index]
+        X_list = [self.get_X(os.path.join(self.analysis_dir, f"algorithm_gen_{i}.pkl"))
+                  if i != 0 else None for i in index]
 
         if not os.path.exists(os.path.join(self.analysis_dir, 'analysis')):
             os.mkdir(os.path.join(self.analysis_dir, 'analysis'))
@@ -111,7 +149,8 @@ class PostProcess:
             param_set['name'] = [f"analysis_{j}" for j in index]
 
             # parent_chromosomes.append(Chromosome(param_set=param_set, population_idx=s, mea=mea, X=X))
-            self.chromosomes.append(Chromosome(param_dict=param_set, population_idx=i, mea=self.mea, genes=X_list[idx],
+            X = X_list[idx]
+            self.chromosomes.append(Chromosome(param_dict=param_set, population_idx=i, mea=self.mea, genes=X,
                                                ga_settings=None, category=None, generation=0))
 
         population = Population(param_dict=self.param_dict, ga_settings=None, generation=0, parents=self.chromosomes,
@@ -190,6 +229,7 @@ class PostProcess:
             "Cdp": 10000,
             "Cdf": 10000,
             "Cm": 1,
+            "CPK": 1,
         }
         for v in var:
             fig, axs = plt.subplots()
@@ -201,21 +241,25 @@ class PostProcess:
             axs.set_xlabel("Generation", fontdict=font)
             axs.set_ylabel(ylabel[v], fontdict=font)
             axs.grid("on", ls=":")
-            # save_name = os.path.join(self.image_dir, f'design_{v}.svg')
-            # fig.savefig(save_name)
-            save_name = os.path.join(self.image_dir, f'design_{v}.pdf')
-            fig.savefig(save_name)
+            format_axis_scientific(axs)
+            show_save_fig(fig, save_base_dir=self.image_dir, file_name_stub=f'design_{v}')
 
-    def compare_geometries(self, index: list, plot_actuator_disk: bool = True):
+    def compare_geometries(self, index: list, plot_actuator_disk: bool = True,
+                           rotate_x_axis_wind_direction: bool = False):
         if len(index) != 2:
             raise ValueError(f"Comparison of only 2 geometries is supported. Current index list: {index}")
         fig, axs = plt.subplots(figsize=(12, 5))
         colors = [ILLINI_BLUE, ILLINI_ORANGE]
         save_filetypes = ['.svg', '.pdf']
+        post_process_forces = None
+        if rotate_x_axis_wind_direction:
+            post_process_forces = load_data(self.post_process_force_file)
         for analysis_idx, i in enumerate(index):
             coords = load_data(os.path.join(self.analysis_dir, 'coords', f'coords_{i}.json'))
             for airfoil in coords:
                 airfoil = np.array(airfoil)
+                if rotate_x_axis_wind_direction:
+                    airfoil = rotate_matrix(airfoil, -np.deg2rad(post_process_forces["alf"][i][1]))
                 axs.plot(airfoil[:, 0], airfoil[:, 1], color=colors[analysis_idx], ls='dashed')
             if plot_actuator_disk:
                 control_points = load_data(os.path.join(self.analysis_dir,
@@ -231,8 +275,14 @@ class PostProcess:
                     ad1_y = [control_points[1][2][0][1], control_points[2][3][0][1]]
                     ad2_x = [control_points[0][1][0][0], control_points[1][4][0][0]]
                     ad2_y = [control_points[0][1][0][1], control_points[1][4][0][1]]
-                axs.plot(ad1_x, ad1_y, color=colors[analysis_idx], ls='dotted')
-                axs.plot(ad2_x, ad2_y, color=colors[analysis_idx], ls='dotted')
+
+                ad1 = np.column_stack((np.array(ad1_x), np.array(ad1_y)))
+                ad2 = np.column_stack((np.array(ad2_x), np.array(ad2_y)))
+                if rotate_x_axis_wind_direction:
+                    ad1 = rotate_matrix(ad1, -np.deg2rad(post_process_forces["alf"][i][1]))
+                    ad2 = rotate_matrix(ad2, -np.deg2rad(post_process_forces["alf"][i][1]))
+                axs.plot(ad1[:, 0], ad1[:, 1], color=colors[analysis_idx], ls='dotted')
+                axs.plot(ad2[:, 0], ad2[:, 1], color=colors[analysis_idx], ls='dotted')
 
         legend_proxies = [Line2D([], [], color=c, ls='dashed') for c in colors]
         legend_names = ['initial', 'optimal']
@@ -247,14 +297,112 @@ class PostProcess:
         else:
             legend_loc = "upper left"
         axs.legend(legend_proxies, legend_names, prop={'size': 14, 'family': font['family']},
-                   fancybox=True, shadow=True, loc=legend_loc, ncol=ncols)
+                   fancybox=False, shadow=False, loc=legend_loc, ncol=ncols, frameon=False)
         axs.set_aspect('equal')
         axs.set_xlabel(r'$x/c_{main}$', fontdict=font)
         axs.set_ylabel(r'$y/c_{main}$', fontdict=font)
         axs.grid('on', ls=':')
+        modifiers = ""
+        if rotate_x_axis_wind_direction:
+            modifiers += "_rotateWind"
         for ext in save_filetypes:
-            fig.savefig(os.path.join(self.image_dir, f"geometry_{index[0]}_{index[1]}{ext}"),
+            fig.savefig(os.path.join(self.image_dir, f"geometry_{index[0]}_{index[1]}{modifiers}{ext}"),
                         bbox_inches="tight")
+
+    def compare_camber_thickness(self, index: list, ls: tuple = (":", "--")):
+        if len(index) != 2:
+            raise ValueError(f"Comparison of only 2 geometries is supported. Current index list: {index}")
+
+        fig1, ax1 = plt.subplots(figsize=(6, 6))
+        fig2, ax2 = plt.subplots(figsize=(6, 6))
+        figs = [fig1, fig2]
+        axs = [ax1, ax2]
+        f_name = ["camber", "thickness"]
+        xc_array = np.linspace(0, 1, 250)
+
+        legend_titles = {
+            "A0": ("Main (Base)", "Main (Opt)"),
+            "A1": ("Hub (Base)", "Hub (Opt)"),
+            "A2": ("Nac (Base)", "Nac (Opt)"),
+        }
+
+        prop_cycler = (cycler(color=['#004488', '#DDAA33', '#BB5566']))
+
+        for ax in axs:
+            ax.set_prop_cycle(prop_cycler)
+
+        for i, geometry_idx in enumerate(index):
+            mea_object = self.get_mea(geometry_idx)
+            for a_name, a in mea_object.airfoils.items():
+                label = legend_titles[a_name][i]
+                plot_kwargs = dict(label=label, ls=ls[i])
+                tc = a.compute_thickness_at_points(xc_array)
+                hc = a.compute_camber_at_points(xc_array)
+                axs[0].plot(xc_array, hc, **plot_kwargs)
+                axs[1].plot(xc_array, tc, **plot_kwargs)
+
+        ncols = 3
+        for ax in axs:
+            handles, labels = ax.get_legend_handles_labels()
+            ax.legend(legend_entry_flip(handles, ncols), legend_entry_flip(labels, ncols),
+                      loc='upper center', bbox_to_anchor=(0.5, 1.2), ncol=ncols, fancybox=False, shadow=False, frameon=False,
+                      prop=dict(family="serif", size=15))
+            format_axis_scientific(ax)
+
+        axis_label_font = dict(family="serif", size=18)
+        axs[0].set_xlabel("Chord Fraction", fontdict=axis_label_font)
+        axs[1].set_xlabel("Chord Fraction", fontdict=axis_label_font)
+        axs[0].set_ylabel("Camber-to-Chord Ratio", fontdict=axis_label_font)
+        axs[1].set_ylabel("Thickness-to-Chord Ratio", fontdict=axis_label_font)
+
+        for i, fig in enumerate(figs):
+            show_save_fig(fig, save_base_dir=self.image_dir, file_name_stub=f_name[i])
+
+    def compare_airfoil_and_camber_to_known_airfoil(self, airfoil: str, index: int):
+        fig1, ax1 = plt.subplots(figsize=(6, 3))
+        fig2, ax2 = plt.subplots(figsize=(6, 3))
+        figs = [fig1, fig2]
+        axs = [ax1, ax2]
+        f_name = [f"main_opt_{airfoil}_compare_coords", f"main_opt_{airfoil}_compare_camber"]
+        xc_array = np.linspace(0, 1, 250)
+        airfoil_coords = np.loadtxt(os.path.join(DATA_DIR, airfoil, f"{airfoil}.dat"))
+        airfoil_camber = np.loadtxt(os.path.join(DATA_DIR, airfoil, f"{airfoil}_camber.dat"))
+        legend_titles = ("Main (Opt)", airfoil)
+
+        prop_cycler = (cycler(color=['#004488', '#DDAA33', '#BB5566']))
+
+        for ax in axs:
+            ax.set_prop_cycle(prop_cycler)
+
+        mea_object = self.get_mea(index)
+        a = mea_object.airfoils["A0"]
+        hc = a.compute_camber_at_points(xc_array)
+        opt_coords = mea_object.airfoils["A0"].get_coords(body_fixed_csys=True)
+        axs[0].plot(opt_coords[:, 0], opt_coords[:, 1], label=legend_titles[0], ls="-.")
+        axs[0].plot(airfoil_coords[:, 0], airfoil_coords[:, 1], label=legend_titles[1], ls="-.")
+        axs[0].set_aspect("equal")
+        axs[1].plot(xc_array, hc, label=legend_titles[0], ls="-.")
+        axs[1].plot(airfoil_camber[:, 0], airfoil_camber[:, 1], label=legend_titles[1], ls="-.")
+        axis_label_font = dict(family="serif", size=18)
+        axs[0].set_xlabel(r"$x/c$", fontdict=axis_label_font)
+        axs[1].set_xlabel(r"$x/c$", fontdict=axis_label_font)
+        axs[0].set_ylabel(r"$y/c$", fontdict=axis_label_font)
+        axs[1].set_ylabel(r"$h/c$", fontdict=axis_label_font)
+
+        ncols = 2
+        bbox = ((0.5, 1.8), (0.5, 1.22))
+        for i, ax in enumerate(axs):
+            handles, labels = ax.get_legend_handles_labels()
+            ax.legend(legend_entry_flip(handles, ncols), legend_entry_flip(labels, ncols),
+                      loc='upper center', bbox_to_anchor=bbox[i], ncol=ncols, fancybox=False, shadow=False, frameon=False,
+                      prop=dict(family="serif", size=15))
+            format_axis_scientific(ax)
+
+        for ax in axs:
+            format_axis_scientific(ax)
+
+        for i, fig in enumerate(figs):
+            show_save_fig(fig, save_base_dir=self.image_dir, file_name_stub=f_name[i])
 
     def generate_BL_plot(self, var: str or typing.Iterable = None, index: int or typing.Iterable = None,
                          mode: str = 'standalone', legend_strs: tuple = ('upper', 'lower')):
@@ -319,7 +467,7 @@ class PostProcess:
                     legend_proxies = [Line2D([], [], ls=ls, color=c)
                                       for ls, c in tuple(zip(line_styles * 2,
                                                              [colors[0], colors[0], colors[1], colors[1]]))]
-                    fig.legend(legend_proxies, legend_strs, fancybox=True, shadow=True, bbox_to_anchor=(0.5, 0.97),
+                    fig.legend(legend_proxies, legend_strs, fancybox=False, shadow=False, frameon=False, bbox_to_anchor=(0.5, 0.97),
                                ncol=len(legend_proxies), loc='upper center', prop={'size': 14,
                                                                                    'family': font['family']})
 
@@ -342,7 +490,8 @@ class PostProcess:
 
     def generate_single_field(self, var: str, index: int, index_list, cmap_field: mpl_colors.Colormap or str,
                               cmap_airfoil: mpl_colors.Colormap or str, shading: str = 'gouraud', vmin: float = None,
-                              vmax: float = None, image_extensions: tuple = ('.png', '.pdf')):
+                              vmax: float = None, image_extensions: tuple = ('.png', '.pdf'),
+                              field_display_var: str = "Cd"):
         airfoil_color = 'black'
         flow_var_label_matplotlib = {'M': r'Mach Number',
                                      'Cp': r'Pressure Coefficient',
@@ -359,6 +508,8 @@ class PostProcess:
                                                                'analysis', f'analysis_{index}'),
                                   var=var, cmap_field=cmap_field, cmap_airfoil=cmap_airfoil, shading=shading,
                                   vmin=vmin, vmax=vmax)
+
+        # Plot the airfoils
         coords = load_data(os.path.join(self.analysis_dir, 'coords', f'coords_{index}.json'))
         for airfoil in coords:
             airfoil = np.array(airfoil)
@@ -374,23 +525,32 @@ class PostProcess:
         else:
             raise TypeError("index_list must be a list or a numpy ndarray")
 
-        if not isinstance(post_process_forces['Cd'][gen_index], typing.Iterable):
-            cd_value = post_process_forces['Cd'][gen_index]
+        # Generate performance characteristic text
+        if not isinstance(post_process_forces[field_display_var][gen_index], typing.Iterable):
+            display_val = post_process_forces[field_display_var][gen_index]
         else:
-            cd_value = post_process_forces['Cd'][gen_index][1]
-        cd_title = r'C_{F_{\parallel V_\infty}}'
-        axs.text(x=-0.15, y=0.32, s=fr"Gen. {index}: ${cd_title} = {cd_value * 10000:.1f}$ counts",
+            display_val = post_process_forces[field_display_var][gen_index][1]
+
+        axs.text(x=-0.15, y=0.32, s=field_display_text(index, field_display_var, display_val),
                  fontdict=dict(size=18, family='serif'))
-        cbar = fig.colorbar(quad[1]['field'], ax=axs, shrink=0.7)
+
+        # Make the color bar
+        field_key = "field_0" if "field_0" in quad[1].keys() else "field"
+        cbar = fig.colorbar(quad[1][field_key], ax=axs, shrink=0.7)
         cbar.ax.set_ylabel(flow_var_label_matplotlib[var], fontdict=dict(size=18, family='serif'))
         cbar.ax.tick_params(axis='y', which='major', labelsize=14)
+
+        # Set various plot parameters
         axs.set_xlim([-0.2, 1.6])
         axs.set_ylim([-0.4, 0.4])
-        axs.tick_params(axis='both', which='major', labelsize=14)
-        axs.tick_params(axis='both', which='minor', labelsize=14)
+        format_axis_scientific(axs)
         axs.set_aspect('equal')
+
+        # Label the axes
         axs.set_xlabel(r"$x/c_{main}$", fontdict=dict(size=18, family='serif'))
         axs.set_ylabel(r"$y/c_{main}$", fontdict=dict(size=18, family='serif'))
+
+        # Generate the legend
         proxy_line = Line2D([], [], color=airfoil_color)
         proxy_patch_airfoil = Patch(color="#000000DD")
         proxy_patch_bl = Patch(color="#606060")
@@ -399,7 +559,9 @@ class PostProcess:
         else:
             legend_loc = "lower right"
         axs.legend((proxy_line, proxy_patch_airfoil, proxy_patch_bl), ('Surface', 'Solid', 'BL/Stag.'),
-                   prop={'size': 17, 'family': font['family']}, loc=legend_loc)
+                   prop={'size': 17, 'family': font['family']}, loc=legend_loc, frameon=False)
+
+        # Plot outputs
         fig.set_tight_layout('tight')
         fig_fname_no_ext = os.path.join(self.image_dir, f'field_{index}_{var}')
         for ext in image_extensions:

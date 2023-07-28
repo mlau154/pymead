@@ -137,6 +137,8 @@ def mplot_settings_default():
         'Mach': {'label': 'Output Mach Contours', 'widget_type': 'QCheckBox', 'state': 1},
         'Grid': {'label': 'Output Grid', 'widget_type': 'QCheckBox', 'state': 1},
         'Grid_Zoom': {'label': 'Output Zoomed-In Grid', 'widget_type': 'QCheckBox', 'state': 1},
+        'Streamline_Grid': {'label': 'Output Streamline Grid', 'widget_type': 'QCheckBox', 'state': 1},
+        'CPK': {'label': "Output CPK", "widget_type": "QCheckBox", "state": 0}
     }
     return settings
 

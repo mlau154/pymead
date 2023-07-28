@@ -4,12 +4,17 @@ import typing
 from copy import deepcopy
 import time
 
-from pymead.analysis.read_aero_data import read_aero_data_from_xfoil, read_Cp_from_file_xfoil, read_bl_data_from_mses, \
-    read_forces_from_mses
-from pymead.utils.file_conversion import convert_ps_to_svg
-from pymead.utils.geometry import check_airfoil_self_intersection
-from pymead.utils.read_write_files import write_tuple_tuple_to_file
+import numpy as np
+import numpy.matlib
+from scipy.interpolate import CloughTocher2DInterpolator, RBFInterpolator, NearestNDInterpolator, LinearNDInterpolator
+from shapely.geometry import LineString, Point, MultiPoint
 
+from pymead.analysis.read_aero_data import read_aero_data_from_xfoil, read_Cp_from_file_xfoil, read_bl_data_from_mses, \
+    read_forces_from_mses, read_grid_stats_from_mses, read_field_from_mses, read_streamline_grid_from_mses, \
+    flow_var_idx, convert_blade_file_to_3d_array
+from pymead.utils.file_conversion import convert_ps_to_svg
+from pymead.utils.geometry import check_airfoil_self_intersection, convert_numpy_array_to_shapely_LineString
+from pymead.utils.read_write_files import write_tuple_tuple_to_file
 
 SVG_PLOTS = ['Mach_contours', 'grid', 'grid_zoom']
 SVG_SETTINGS_TR = {
@@ -91,6 +96,9 @@ def calculate_aero_data(airfoil_coord_dir: str, airfoil_name: str, coords: typin
     export_Cp: bool
       Whether to calculate and export the surface pressure coefficient distribution in the case of XFOIL, or the
       entire set of boundary layer data in the case of MSES. Default: ``True``
+
+    export_CPK: bool
+      Whether to calculate the mechanical flow power coefficient for the aero-propulsive case. Default: ``False``
     """
 
     tool_list = ['XFOIL', 'MSES']
@@ -248,11 +256,29 @@ def calculate_aero_data(airfoil_coord_dir: str, airfoil_name: str, coords: typin
                         for output_var in ['x', 'y', 'Cp']:
                             aero_data['BL'][-1][output_var] = bl[side][output_var]
 
-                for mplot_output_name in ['Mach', 'Grid', 'Grid_Zoom', 'flow_field']:
+                if mplot_settings["CPK"]:
+                    mplot_settings["flow_field"] = 2
+                    mplot_settings["Streamline_Grid"] = 2
+
+                for mplot_output_name in ['Mach', 'Streamline_Grid', 'Grid', 'Grid_Zoom', 'flow_field']:
                     if mplot_settings[mplot_output_name]:
                         run_mplot(airfoil_name, airfoil_coord_dir, mplot_settings, mode=mplot_output_name)
                         if mplot_output_name == 'flow_field':
                             run_mplot(airfoil_name, airfoil_coord_dir, mplot_settings, mode='grid_stats')
+
+                if mplot_settings["CPK"]:
+                    try:
+
+                        CPK = calculate_CPK_mses(
+                        os.path.join(airfoil_coord_dir, airfoil_name),
+                        p_inf=mses_settings["P"], rho_inf=mses_settings["rho"],
+                        V_inf=mses_settings["MACHIN"] * np.sqrt(
+                            mses_settings["gam"] * mses_settings["R"] * mses_settings["T"]
+                        )
+                        )
+                    except:
+                        CPK = 1E9
+                    aero_data["CPK"] = CPK
 
             t2 = time.time()
             print(f"Time for stencil point {i}: {t2 - t1} seconds")
@@ -454,6 +480,10 @@ def run_mplot(name: str, base_dir: str, mplot_settings: dict, mode: str = "force
         mplot_input_name = "mplot_input_grid_stats.txt"
         mplot_input_list = ['3', '10', '', '0']
         mplot_log = os.path.join(base_dir, name, 'mplot_grid_stats.log')
+    elif mode in ["Streamline_Grid"]:
+        mplot_input_name = "mplot_streamline_grid.txt"
+        mplot_input_list = ['10', '', '', '0']
+        mplot_log = os.path.join(base_dir, name, 'mplot_streamline_grid.log')
     elif mode in ["Mach", "mach", "M", "m", "Mach contours", "Mach Contours", "mach contours"]:
         mplot_input_name = "mplot_inputMachContours.txt"
         if n_intervals == 0:
@@ -724,6 +754,357 @@ def convert_xfoil_string_to_aero_data(line1: str, line2: str, aero_data: dict):
     aero_data['Cl'] = float(data_list[5])
     aero_data['L/D'] = aero_data['Cl'] / aero_data['Cd']
     return aero_data
+
+
+def convert_cell_centered_to_edge_centered(grid_shape: np.ndarray, flow_var_cell_centered: np.ndarray):
+    flow_var_edge_centered = np.zeros(grid_shape)
+    i_max = flow_var_edge_centered.shape[0]
+    j_max = flow_var_edge_centered.shape[1]
+
+    import time
+
+    t1 = time.time()
+
+    for i in range(i_max):
+        for j in range(j_max):
+            # Corner cases
+            if i == 0 and j == 0:
+                flow_var_edge_centered[i, j] = flow_var_cell_centered[i, j]
+            elif i == 0 and j == j_max - 1:
+                flow_var_edge_centered[i, j] = flow_var_cell_centered[i, j - 1]
+            elif i == i_max - 1 and j == 0:
+                flow_var_edge_centered[i, j] = flow_var_cell_centered[i - 1, j]
+            elif i == i_max - 1 and j == j_max - 1:
+                flow_var_edge_centered[i, j] = flow_var_cell_centered[i - 1, j - 1]
+
+            # Edge cases
+            elif i == 0:
+                flow_var_edge_centered[i, j] = np.mean([flow_var_cell_centered[i, j],
+                                                        flow_var_cell_centered[i, j - 1]])
+            elif i == i_max - 1:
+                flow_var_edge_centered[i, j] = np.mean([flow_var_cell_centered[i - 1, j],
+                                                        flow_var_cell_centered[i - 1, j - 1]])
+            elif j == 0:
+                flow_var_edge_centered[i, j] = np.mean([flow_var_cell_centered[i, j],
+                                                        flow_var_cell_centered[i - 1, j]])
+            elif j == j_max - 1:
+                flow_var_edge_centered[i, j] = np.mean([flow_var_cell_centered[i, j - 1],
+                                                        flow_var_cell_centered[i - 1, j - 1]])
+
+            # Normal case
+            else:
+                flow_var_edge_centered[i, j] = np.mean([flow_var_cell_centered[i, j],
+                                                        flow_var_cell_centered[i - 1, j],
+                                                        flow_var_cell_centered[i, j - 1],
+                                                        flow_var_cell_centered[i - 1, j - 1]
+                                                        ])
+
+    t2 = time.time()
+    # print(f"Elapsed time = {t2 - t1} seconds")
+
+    return flow_var_edge_centered
+
+
+def extrapolate_data_line_mses_field(flow_vars_edge_centered: typing.List[np.ndarray],
+                                     x_grid_section: np.ndarray, y_grid_section: np.ndarray, point: np.ndarray,
+                                     angle: float, bl_data_lower: dict, bl_data_upper: dict,
+                                     line_extend: float = 10.0, n_points: int = 30):
+    lower_streamline = np.column_stack((x_grid_section[:, 0], y_grid_section[:, 0]))
+    upper_streamline = np.column_stack((x_grid_section[:, -1], y_grid_section[:, -1]))
+    lower_bl = np.column_stack((np.array(bl_data_lower["x"]), np.array(bl_data_lower["y"])))
+    upper_bl = np.column_stack((np.array(bl_data_upper["x"]), np.array(bl_data_upper["y"])))
+    lower_streamline_shapely = convert_numpy_array_to_shapely_LineString(lower_streamline)
+    upper_streamline_shapely = convert_numpy_array_to_shapely_LineString(upper_streamline)
+    lower_bl_shapely = convert_numpy_array_to_shapely_LineString(lower_bl)
+    upper_bl_shapely = convert_numpy_array_to_shapely_LineString(upper_bl)
+    upper_point = point + line_extend * np.array([np.cos(angle), np.sin(angle)])
+    lower_point = point - line_extend * np.array([np.cos(angle), np.sin(angle)])
+    long_line = np.row_stack((upper_point, lower_point))
+    long_line_shapely = convert_numpy_array_to_shapely_LineString(long_line)
+    upper_inters = long_line_shapely.intersection(upper_streamline_shapely)
+    lower_inters = long_line_shapely.intersection(lower_streamline_shapely)
+    upper_bl_inters = long_line_shapely.intersection(upper_bl_shapely)
+    lower_bl_inters = long_line_shapely.intersection(lower_bl_shapely)
+    if isinstance(upper_inters, MultiPoint):
+        upper_inters = upper_inters.geoms[0]
+    if isinstance(lower_inters, MultiPoint):
+        lower_inters = lower_inters.geoms[0]
+    if isinstance(upper_bl_inters, MultiPoint):
+        upper_bl_inters = upper_bl_inters.geoms[0]
+    if isinstance(lower_bl_inters, MultiPoint):
+        lower_bl_inters = lower_bl_inters.geoms[0]
+
+    # import matplotlib.pyplot as plt
+    # plt.plot(lower_bl[:, 0], lower_bl[:, 1], color="red")
+    # plt.plot(upper_bl[:, 0], upper_bl[:, 1], color="green")
+    # plt.plot(long_line[:, 0], long_line[:, 1], color="blue")
+    # plt.show()
+
+    def evaluate_bl_at_point(bl_data_dict: dict, x_point: float):
+        x_array = np.array(bl_data_dict["x"])
+        Cp_array = np.array(bl_data_dict["Cp"])
+        ue_uinf_array = np.array(bl_data_dict["Ue/Uinf"])
+        rhoe_rhoinf_array = np.array(bl_data_dict["rhoe/rhoinf"])
+        deltastar_array = np.array(bl_data_dict["delta*"])
+        thetastar_array = np.array(bl_data_dict["theta*"])
+        bl_at_point = {
+            "x": x_point,
+            "Cp": np.interp(x_point, x_array, Cp_array),
+            "ue_uinf": np.interp(x_point, x_array, ue_uinf_array),
+            "rhoe_rhoinf": np.interp(x_point, x_array, rhoe_rhoinf_array),
+            "deltastar": np.interp(x_point, x_array, deltastar_array),
+            "thetastar": np.interp(x_point, x_array, thetastar_array),
+        }
+        return bl_at_point
+
+    # Approximate the boundary layer thickness by taking the distance from the intersection point on the airfoil surface
+    # to the intersection point on the boundary layer edge along the extraction line (the true value would be taking it
+    # as the perpendicular distance from the surface. For small surface angles, this is a good approximation.)
+    if hasattr(lower_bl_inters, "x") and hasattr(lower_bl_inters, "y"):
+        bl_at_point_lower = evaluate_bl_at_point(bl_data_lower, lower_bl_inters.x)
+        bl_at_point_lower["delta"] = np.hypot(lower_inters.x - lower_bl_inters.x, lower_inters.y - lower_bl_inters.y)
+    else:
+        bl_at_point_lower = None
+
+    if hasattr(upper_bl_inters, "x") and hasattr(upper_bl_inters, "y"):
+        bl_at_point_upper = evaluate_bl_at_point(bl_data_upper, upper_bl_inters.x)
+        bl_at_point_upper["delta"] = np.hypot(upper_inters.x - upper_bl_inters.x, upper_inters.y - upper_bl_inters.y)
+    else:
+        bl_at_point_upper = None
+
+    line_to_extract = np.linspace(np.array([lower_inters.x, lower_inters.y]),
+                                  np.array([upper_inters.x, upper_inters.y]), n_points)
+
+    x_interp = x_grid_section.flatten()
+    y_interp = y_grid_section.flatten()
+    xy_interp = np.column_stack((x_interp, y_interp))
+    output_value_list = []
+    for flow_var in flow_vars_edge_centered:
+        values = flow_var.flatten()
+        interp = CloughTocher2DInterpolator(xy_interp, values)
+        output_values = interp(line_to_extract)
+        output_value_list.append(output_values)
+    return np.column_stack((line_to_extract, *output_value_list)), bl_at_point_upper, bl_at_point_lower
+
+
+def line_integral_PK_inviscid(p_inf: float, rho_inf: float, V_inf: float, p: np.ndarray, rho: np.ndarray, u: np.ndarray,
+                              v: np.ndarray, x: np.ndarray, y: np.ndarray, n_hat_right: bool):
+    """
+    Computes the mechanical flow power line integral in the inviscid streamtube only according to
+    Drela's "Power Balance in Aerodynamic Flows", a 2009 AIAA Journal article
+
+    Parameters
+    ==========
+    p_inf: float
+        Freestream pressure
+
+    rho_inf: float
+        Freestream density
+
+    V_inf: float
+        Freestream velocity magnitude
+
+    p: np.ndarray
+        Node-centered pressure field
+
+    rho: np.ndarray
+        Node-centered density field
+
+    u: np.ndarray
+        Node-centered x-velocity field
+
+    v: np.ndarray
+        Node-centered y-velocity field
+
+    x: np.ndarray
+        1-d array of x-coordinates of the line along which to compute the line integral
+
+    y: np.ndarray
+        1-d array of y-coordinates of the line along which to compute the line integral
+
+    n_hat_right: bool
+        Whether the perpendicular n_hat vector points to the right of the line (If ``True``, computed as the sum of
+        the arctan of the value of dx/dy of the line less 90 degrees. If ``False``, 90 degrees is added instead).
+    """
+    # Calculate the direction of n_hat
+    dx_dy = np.gradient(y, x)
+    angle = np.arctan2(dx_dy, 1)
+    perp_angle = -np.pi / 2 if n_hat_right else np.pi / 2
+    n_hat = np.column_stack((np.cos(angle + perp_angle), np.sin(angle + perp_angle)))
+    V_vec = V_inf * np.column_stack((u, v))
+
+    # Compute the dot product V_vec * n_hat
+    dot_product = np.array([np.dot(V_vec_i, n_hat_i) for V_vec_i, n_hat_i in zip(V_vec, n_hat)])
+    integrand = -(p_inf * (p - 1) + 0.5 * rho_inf * rho * V_inf ** 2 * (
+            np.hypot(u, v) ** 2 - 1)) * dot_product.flatten()
+
+    # Build the length increment vector (dl)
+    dl = np.array([0.0])
+    dl = np.append(dl, np.hypot(x[1:] - x[:-1], y[1:] - y[:-1]))  # compute incremental length along x and y
+    dl = np.cumsum(dl)
+
+    # Integrate
+    integral = np.trapz(integrand, dl)
+    return integral
+
+
+def line_integral_PK_bl(rho_inf, V_inf, Cp, delta, ue_uinf, rhoe_rhoinf, deltastar, thetastar, outlet: bool):
+    rhoe = rho_inf * rhoe_rhoinf
+    ue = V_inf * ue_uinf
+    A = -0.5 * rho_inf * V_inf ** 2 * Cp * 7 / 8 * delta * ue
+    B = 0.5 * V_inf ** 2 * rhoe * ue * (delta - deltastar)
+    C = 0.5 * rhoe * ue ** 3 * (delta - deltastar)
+    D = -rhoe * ue ** 3 * thetastar
+    integral = A + B + C + D
+    return -integral if outlet else integral  # n_hat is approximately [1, 0] for the outlet and [-1, 0] for the inlet
+
+
+def calculate_CPK_mses(analysis_subdir: str, p_inf: float, rho_inf: float, V_inf: float,
+                       configuration: str = "underwing_te"):
+    """
+    A specialized function that calculates the mechanical flow power coefficient for an underwing trailing edge
+    aero-propulsive configuration.
+    """
+    if configuration != "underwing_te":
+        raise NotImplementedError("Only the underwing trailing edge configuration is currently implemented")
+
+    airfoil_system_name = os.path.split(analysis_subdir)[-1]
+    field_file = os.path.join(analysis_subdir, f'field.{airfoil_system_name}')
+    grid_stats_file = os.path.join(analysis_subdir, 'mplot_grid_stats.log')
+    grid_file = os.path.join(analysis_subdir, f'grid.{airfoil_system_name}')
+    blade_file = os.path.join(analysis_subdir, f"blade.{airfoil_system_name}")
+    bl_file = os.path.join(analysis_subdir, f"bl.{airfoil_system_name}")
+    coords = convert_blade_file_to_3d_array(blade_file)
+
+    field = read_field_from_mses(field_file)
+    bl_data = read_bl_data_from_mses(bl_file)
+    grid_stats = read_grid_stats_from_mses(grid_stats_file)
+    x_grid, y_grid = read_streamline_grid_from_mses(grid_file, grid_stats)
+
+    nacelle_le = coords[2][150 + 2 * 149, :]
+
+    main_te_lower = coords[0][-1, :]
+    nacelle_te_upper = coords[2][0, :]
+
+    angle = np.arctan2(main_te_lower[1] - nacelle_te_upper[1], main_te_lower[0] - nacelle_te_upper[0])
+
+    P_K = 0.0
+
+    flow_sections = [1, 2]
+
+    # inlet, outlet = {"p": [], "rho": [], "u": [], "v": []}, {"p": [], "rho": [], "u": [], "v": []}
+
+    underwing_flow_section_bl_map = {
+        1: (4, 3),
+        2: (2, 1)
+    }
+
+    start_idx, end_idx = 0, x_grid[0].shape[1] - 1
+    for flow_section_idx in range(grid_stats["numel"] + 1):
+        if flow_section_idx in flow_sections:
+            p = convert_cell_centered_to_edge_centered(x_grid[flow_section_idx].shape,
+                                                       field[flow_var_idx["p"]][:, start_idx:end_idx])
+            rho = convert_cell_centered_to_edge_centered(x_grid[flow_section_idx].shape,
+                                                         field[flow_var_idx["rho"]][:, start_idx:end_idx])
+            u = convert_cell_centered_to_edge_centered(x_grid[flow_section_idx].shape,
+                                                       field[flow_var_idx["u"]][:, start_idx:end_idx])
+            v = convert_cell_centered_to_edge_centered(x_grid[flow_section_idx].shape,
+                                                       field[flow_var_idx["v"]][:, start_idx:end_idx])
+
+            bl_data_lower = bl_data[underwing_flow_section_bl_map[flow_section_idx][0]]
+            bl_data_upper = bl_data[underwing_flow_section_bl_map[flow_section_idx][1]]
+
+            xyprhouv_out, bl_at_point_upper_out, bl_at_point_lower_out = extrapolate_data_line_mses_field(
+                [p, rho, u, v], x_grid[flow_section_idx], y_grid[flow_section_idx],
+                bl_data_lower=bl_data_lower, bl_data_upper=bl_data_upper, point=nacelle_te_upper, angle=angle
+            )
+
+            xyprhouv_in, bl_at_point_upper_in, bl_at_point_lower_in = extrapolate_data_line_mses_field(
+                [p, rho, u, v], x_grid[flow_section_idx], y_grid[flow_section_idx],
+                bl_data_lower=bl_data_lower, bl_data_upper=bl_data_upper, point=nacelle_le, angle=angle
+            )
+
+            # outlet["rho"].append(extrapolate_data_line_mses_field(rho, x_grid[flow_section_idx], y_grid[flow_section_idx],
+            #                                                       bl_data_lower=bl_data_lower,
+            #                                                       bl_data_upper=bl_data_upper,
+            #                                                     point=nacelle_te_upper, angle=angle))
+            #
+            # inlet["rho"].append(extrapolate_data_line_mses_field(rho, x_grid[flow_section_idx], y_grid[flow_section_idx],
+            #                                                      bl_data_lower=bl_data_lower,
+            #                                                      bl_data_upper=bl_data_upper,
+            #                                                     point=nacelle_le, angle=angle))
+            #
+            # outlet["u"].append(extrapolate_data_line_mses_field(u, x_grid[flow_section_idx], y_grid[flow_section_idx],
+            #                                                     bl_data_lower=bl_data_lower,
+            #                                                     bl_data_upper=bl_data_upper,
+            #                                                     point=nacelle_te_upper, angle=angle))
+            #
+            # inlet["u"].append(extrapolate_data_line_mses_field(u, x_grid[flow_section_idx], y_grid[flow_section_idx],
+            #                                                    bl_data_lower=bl_data_lower, bl_data_upper=bl_data_upper,
+            #                                                     point=nacelle_le, angle=angle))
+            #
+            # outlet["v"].append(extrapolate_data_line_mses_field(v, x_grid[flow_section_idx], y_grid[flow_section_idx],
+            #                                                     bl_data_lower=bl_data_lower,
+            #                                                     bl_data_upper=bl_data_upper,
+            #                                                     point=nacelle_te_upper, angle=angle))
+            #
+            # inlet["v"].append(extrapolate_data_line_mses_field(v, x_grid[flow_section_idx], y_grid[flow_section_idx],
+            #                                                    bl_data_lower=bl_data_lower, bl_data_upper=bl_data_upper,
+            #                                                     point=nacelle_le, angle=angle))
+
+            # Integrate over the propulsor outlet for the given flow section
+            p_out, rho_out, u_out, v_out = \
+                xyprhouv_out[:, 2], xyprhouv_out[:, 3], xyprhouv_out[:, 4], xyprhouv_out[:, 5]
+            x_out = xyprhouv_out[:, 0]
+            y_out = xyprhouv_out[:, 1]
+            outlet_integral = line_integral_PK_inviscid(p_inf, rho_inf, V_inf, p_out, rho_out, u_out, v_out, x_out,
+                                                        y_out,
+                                                        n_hat_right=False)  # n_hat points into the propulsor
+            P_K += outlet_integral
+
+            if bl_at_point_upper_out is not None:
+                P_K += line_integral_PK_bl(rho_inf, V_inf, bl_at_point_upper_out["Cp"], bl_at_point_upper_out["delta"],
+                                           bl_at_point_upper_out["ue_uinf"], bl_at_point_upper_out["rhoe_rhoinf"],
+                                           bl_at_point_upper_out["deltastar"], bl_at_point_upper_out["thetastar"],
+                                           outlet=True)
+
+            if bl_at_point_lower_out is not None:
+                P_K += line_integral_PK_bl(rho_inf, V_inf, bl_at_point_lower_out["Cp"], bl_at_point_lower_out["delta"],
+                                           bl_at_point_lower_out["ue_uinf"], bl_at_point_lower_out["rhoe_rhoinf"],
+                                           bl_at_point_lower_out["deltastar"], bl_at_point_lower_out["thetastar"],
+                                           outlet=True)
+
+            # Integrate over the propulsor inlet for the given flow section
+            p_in, rho_in, u_in, v_in = \
+                xyprhouv_in[:, 2], xyprhouv_in[:, 3], xyprhouv_in[:, 4], xyprhouv_in[:, 5]
+            x_in = xyprhouv_in[:, 0]
+            y_in = xyprhouv_in[:, 1]
+            inlet_integral = line_integral_PK_inviscid(p_inf, rho_inf, V_inf, p_in, rho_in, u_in, v_in, x_in, y_in,
+                                                       n_hat_right=True)  # n_hat points into the propulsor
+            P_K += inlet_integral
+
+            if bl_at_point_upper_in is not None:
+                P_K += line_integral_PK_bl(rho_inf, V_inf, bl_at_point_upper_in["Cp"], bl_at_point_upper_in["delta"],
+                                           bl_at_point_upper_in["ue_uinf"], bl_at_point_upper_in["rhoe_rhoinf"],
+                                           bl_at_point_upper_in["deltastar"], bl_at_point_upper_in["thetastar"],
+                                           outlet=False)
+
+            if bl_at_point_lower_in is not None:
+                P_K += line_integral_PK_bl(rho_inf, V_inf, bl_at_point_lower_in["Cp"], bl_at_point_lower_in["delta"],
+                                           bl_at_point_lower_in["ue_uinf"], bl_at_point_lower_in["rhoe_rhoinf"],
+                                           bl_at_point_lower_in["deltastar"], bl_at_point_lower_in["thetastar"],
+                                           outlet=False)
+
+        if flow_section_idx < grid_stats["numel"]:
+            start_idx = end_idx
+            end_idx += x_grid[flow_section_idx + 1].shape[1] - 1
+
+    CPK = P_K / (0.5 * rho_inf * V_inf ** 3)
+
+    if np.isnan(CPK):
+        CPK = 1e9
+
+    return CPK
 
 
 class GeometryError(Exception):

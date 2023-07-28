@@ -1,7 +1,12 @@
-import pandas as pd
 import os
 import re
 import typing
+
+import pandas as pd
+import numpy as np
+
+
+flow_var_idx = {'M': 7, 'Cp': 8, 'p': 3, 'rho': 2, 'u': 4, 'v': 5, 'q': 6, 'V': 9}
 
 
 def read_Cp_from_file_xfoil(fname: str):
@@ -156,7 +161,7 @@ def read_forces_from_mses(search_file: str):
             forces['Cdh'] = 0.0
     except:
         forces = {'Cl': 0.0, 'Cd': 1000.0, 'Cm': 1000.0, 'alf': 0.0, 'Cdv': 1000.0, 'Cdw': 1000.0,
-                  'Cdf': 1000.0, 'Cdp': 1000.0, 'Cdh': 1000.0}
+                  'Cdf': 1000.0, 'Cdp': 1000.0, 'Cdh': 1000.0, 'CPK': 1000.0}
 
     # print(f"{forces = }")
     return forces
@@ -242,6 +247,64 @@ def read_bl_data_from_mses(src_file: str):
                 for var_name in df.columns:
                     bl[side_idx][var_name].append(getattr(df, var_name)[idx])
     return bl
+
+
+def read_field_from_mses(src_file: str):
+    data = np.loadtxt(src_file, skiprows=2)
+    n_flow_vars = data.shape[1]
+
+    with open(src_file, "r") as f:
+        lines = f.readlines()
+
+    n_streamlines = 0
+    for line in lines:
+        if line == "\n":
+            n_streamlines += 1
+
+    n_streamwise_lines = int(data.shape[0] / n_streamlines)
+
+    field_array = np.array([data[:, i].reshape(n_streamlines, n_streamwise_lines).T for i in range(n_flow_vars)])
+
+    V_data = np.hypot(field_array[flow_var_idx["u"]], field_array[flow_var_idx["v"]])
+    V = V_data.reshape((1, V_data.shape[0], V_data.shape[1]))
+
+    field_array = np.append(field_array, V, axis=0)
+
+    return field_array
+
+
+def read_streamline_grid_from_mses(src_file: str, grid_stats: dict):
+    data = np.loadtxt(src_file, skiprows=2)
+
+    with open(src_file, "r") as f:
+        lines = f.readlines()
+
+    n_streamlines = 0
+    for idx, line in enumerate(lines):
+        if line == "\n":
+            n_streamlines += 1
+
+    n_streamwise_lines = int(data.shape[0] / n_streamlines)
+
+    x_grid = data[:, 0].reshape(n_streamlines, n_streamwise_lines).T
+    y_grid = data[:, 1].reshape(n_streamlines, n_streamwise_lines).T
+
+    streamline_borders = np.sort(grid_stats["Jside2"])
+    split_x_grid = np.split(x_grid, streamline_borders, axis=1)
+    split_y_grid = np.split(y_grid, streamline_borders, axis=1)
+
+    return split_x_grid, split_y_grid
+
+
+def convert_blade_file_to_3d_array(src_file: str):
+    blade = np.loadtxt(src_file, skiprows=2)
+    airfoil_delimiter_rows = np.argwhere(blade == 999.0)
+    array_3d = np.split(blade, np.unique(airfoil_delimiter_rows[:, 0]))
+    new_airfoils = [array_3d[0]]
+    for airfoil in array_3d[1:]:
+        new_airfoil = np.delete(airfoil, 0, axis=0)
+        new_airfoils.append(new_airfoil)
+    return new_airfoils
 
 
 if __name__ == '__main__':

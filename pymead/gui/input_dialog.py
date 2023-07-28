@@ -109,7 +109,7 @@ def convert_dialog_to_mses_settings(dialog_input: dict):
         mses_settings['AD_flags'] = [0 for _ in range(dialog_input['AD_number'])]
 
     values_list = ['REYNIN', 'MACHIN', 'ALFAIN', 'CLIFIN', 'ACRIT', 'MCRIT', 'MUCON',
-                   'timeout', 'iter']
+                   'timeout', 'iter', 'P', 'T', 'rho', 'gam', 'R']
     for value in values_list:
         mses_settings[value] = dialog_input[value]
 
@@ -144,7 +144,9 @@ def convert_dialog_to_mplot_settings(dialog_input: dict):
         'Mach': dialog_input['Mach'],
         'Grid': dialog_input['Grid'],
         'Grid_Zoom': dialog_input['Grid_Zoom'],
-        'flow_field': dialog_input['Output_Field']
+        'flow_field': dialog_input['Output_Field'],
+        'Streamline_Grid': dialog_input["Streamline_Grid"],
+        'CPK': dialog_input['CPK']
     }
     return mplot_settings
 
@@ -1159,6 +1161,39 @@ class MSETDialogWidget(PymeadDialogWidget):
         if w_name == 'airfoil_order':
             self.widget_dict['multi_airfoil_grid']['widget'].onAirfoilListChanged(
                 new_inputs['airfoil_order'].split(','))
+
+    def saveas_mset_mses_mplot_settings(self):
+        all_inputs = get_parent(self, 2).getInputs()
+        mses_inputs = {k: v for k, v in all_inputs.items() if k in ["MSET", "MSES", "MPLOT"]}
+        json_dialog = select_json_file(parent=self)
+        if json_dialog.exec_():
+            input_filename = json_dialog.selectedFiles()[0]
+            if not os.path.splitext(input_filename)[-1] == '.json':
+                input_filename = input_filename + '.json'
+            save_data(mses_inputs, input_filename)
+            # if get_parent(self, 4):
+            #     get_parent(self, 4).current_settings_save_file = input_filename
+            # else:
+            #     self.current_save_file = input_filename
+            get_parent(self, 3).setStatusTip(f"Saved MSES settings to {input_filename}")
+            # print(f"{get_parent(self, 3) = }")
+
+    def load_mset_mses_mplot_settings(self):
+        override_inputs = get_parent(self, 2).getInputs()
+        load_dialog = select_existing_json_file(parent=self)
+        if load_dialog.exec_():
+            load_file = load_dialog.selectedFiles()[0]
+            new_inputs = load_data(load_file)
+            for k, v in new_inputs.items():
+                override_inputs[k] = v
+            # great_great_grandparent = get_parent(self, depth=4)
+            # if great_great_grandparent:
+            #     great_great_grandparent.current_settings_save_file = load_file
+            # else:
+            #     self.current_save_file = load_file
+            get_parent(self, 3).setWindowTitle(f"Optimization Setup - {os.path.split(load_file)[-1]}")
+            get_parent(self, 2).overrideInputs(override_inputs)  # Overrides the inputs for the whole PymeadDialogVTabWidget
+            get_parent(self, 2).setStatusTip(f"Loaded {load_file}")
 
 
 class MSESDialogWidget(PymeadDialogWidget):

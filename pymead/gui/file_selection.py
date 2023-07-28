@@ -9,7 +9,7 @@ def single_file_output_rule(dlg: QFileDialog, line_edit: QLineEdit = None):
         return dlg
 
 
-def multi_file_ouput_rule(dlg: QFileDialog, text_edit: QPlainTextEdit = None):
+def multi_file_output_rule(dlg: QFileDialog, text_edit: QPlainTextEdit = None):
     if text_edit is not None:
         if dlg.exec_():
             text_edit.insertPlainText('\n\n'.join(dlg.selectedFiles()))
@@ -43,7 +43,7 @@ def select_multiple_json_files(parent, text_edit: QPlainTextEdit = None):
     file_dialog = QFileDialog(parent)
     file_dialog.setFileMode(QFileDialog.ExistingFiles)
     file_dialog.setNameFilter(parent.tr("JSON Settings Files (*.json)"))
-    return multi_file_ouput_rule(file_dialog, text_edit)
+    return multi_file_output_rule(file_dialog, text_edit)
 
 
 def select_existing_jmea_file(parent, line_edit: QLineEdit = None):
@@ -64,4 +64,4 @@ def select_multiple_data_files(parent, text_edit: QPlainTextEdit = None):
     file_dialog = QFileDialog(parent)
     file_dialog.setFileMode(QFileDialog.ExistingFiles)
     file_dialog.setNameFilter(parent.tr("Data Files (*.txt *.dat *.csv)"))
-    return multi_file_ouput_rule(file_dialog, text_edit)
+    return multi_file_output_rule(file_dialog, text_edit)

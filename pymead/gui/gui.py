@@ -46,7 +46,10 @@ from pymead.analysis.calc_aero_data import calculate_aero_data
 from pymead.optimization.opt_setup import CustomDisplay, TPAIOPT, SelfIntersectionRepair
 from pymead.utils.read_write_files import load_data, save_data
 from pymead.utils.misc import count_func_strs
-from pymead.analysis.read_aero_data import read_grid_stats_from_mses
+from pymead.analysis.read_aero_data import read_grid_stats_from_mses, read_field_from_mses, \
+    read_streamline_grid_from_mses
+from pymead.analysis.read_aero_data import flow_var_idx
+from pymead.post.mses_field import flow_var_label
 from pymead.utils.misc import make_ga_opt_dir
 from pymead.utils.get_airfoil import extract_data_from_airfoiltools
 from pymead.optimization.pop_chrom import Chromosome, Population, CustomGASettings
@@ -390,7 +393,8 @@ class GUI(QMainWindow):
         analysis_dir = inputs['analysis_dir']
         vBox = self.v.getViewBox()
         field_file = os.path.join(analysis_dir, f'field.{os.path.split(analysis_dir)[-1]}')
-        grid_file = os.path.join(analysis_dir, 'mplot_grid_stats.log')
+        grid_stats_file = os.path.join(analysis_dir, 'mplot_grid_stats.log')
+        grid_file = os.path.join(analysis_dir, f'grid.{os.path.split(analysis_dir)[-1]}')
         if not os.path.exists(field_file):
             self.disp_message_box(message=f"Field file {field_file} not found", message_mode='error')
             return
@@ -400,71 +404,78 @@ class GUI(QMainWindow):
 
         self.default_field_dir = analysis_dir
 
-        data = np.loadtxt(field_file, skiprows=2)
-        grid = read_grid_stats_from_mses(grid_file)
+        # data = np.loadtxt(field_file, skiprows=2)
+        field = read_field_from_mses(field_file)
+        grid_stats = read_grid_stats_from_mses(grid_stats_file)
+        x_grid, y_grid = read_streamline_grid_from_mses(grid_file, grid_stats)
 
-        with open(field_file, 'r') as f:
-            lines = f.readlines()
+        # with open(field_file, 'r') as f:
+        #     lines = f.readlines()
+        #
+        # n_streamlines = 0
+        # for line in lines:
+        #     if line == '\n':
+        #         n_streamlines += 1
+        #
+        # n_streamwise_lines = int(data.shape[0] / n_streamlines)
+        #
+        # x = data[:, 0].reshape(n_streamlines, n_streamwise_lines).T
+        # y = data[:, 1].reshape(n_streamlines, n_streamwise_lines).T
 
-        n_streamlines = 0
-        for line in lines:
-            if line == '\n':
-                n_streamlines += 1
+        # flow_var_idx = {'M': 7, 'Cp': 8, 'p': 5, 'rho': 4, 'u': 2, 'v': 3, 'q': 6}
+        #
+        # flow_var_label = {'M': 'Mach Number',
+        #                   'Cp': 'Pressure Coefficient',
+        #                   'p': 'Static Pressure (p / p<sub>\u221e</sub>)',
+        #                   'rho': 'Density (\u03c1/\u03c1<sub>\u221e</sub>)',
+        #                   'u': 'Velocity-x (u/V<sub>\u221e</sub>)',
+        #                   'v': 'Velocity-y (v/V<sub>\u221e</sub>)',
+        #                   'q': 'Speed of Sound (q/V<sub>\u221e</sub>)'}
 
-        n_streamwise_lines = int(data.shape[0] / n_streamlines)
-
-        x = data[:, 0].reshape(n_streamlines, n_streamwise_lines).T
-        y = data[:, 1].reshape(n_streamlines, n_streamwise_lines).T
-
-        flow_var_idx = {'M': 7, 'Cp': 8, 'p': 5, 'rho': 4, 'u': 2, 'v': 3, 'q': 6}
-
-        flow_var_label = {'M': 'Mach Number',
-                          'Cp': 'Pressure Coefficient',
-                          'p': 'Static Pressure (p / p<sub>\u221e</sub>)',
-                          'rho': 'Density (\u03c1/\u03c1<sub>\u221e</sub>)',
-                          'u': 'Velocity-x (u/V<sub>\u221e</sub>)',
-                          'v': 'Velocity-y (v/V<sub>\u221e</sub>)',
-                          'q': 'Speed of Sound (q/V<sub>\u221e</sub>)'}
-
-        flow_var = data[:, flow_var_idx[inputs['flow_variable']]].reshape(n_streamlines, n_streamwise_lines).T[:-1, :-1]
+        # flow_var = data[:, flow_var_idx[inputs['flow_variable']]].reshape(n_streamlines, n_streamwise_lines).T[:-1, :-1]
+        flow_var = field[flow_var_idx[inputs['flow_variable']]]
 
         edgecolors = None
         antialiasing = False
         # edgecolors = {'color': 'b', 'width': 1}  # May be uncommented to see edgecolor effect
         # antialiasing = True # May be uncommented to see antialiasing effect
-        pcmi = PymeadPColorMeshItem(edgecolors=edgecolors, antialiasing=antialiasing,
-                                    colorMap=pg.colormap.get('CET-R1'))
-        vBox.addItem(pcmi)
-        # vBox.addItem(pg.ArrowItem(pxMode=False, headLen=0.01, pos=(0.5, 0.1)))
-        vBox.setAspectLocked(True, 1)
-        pcmi.setZValue(0)
 
-        pcmi.setData(x, y, flow_var)
+        pcmi_list = []
 
-        gray_color_mesh_items = []
-        for el in range(grid['numel']):
-            offset = grid['numel'] - el
-            x_gray = x[:, grid['Jside2'][el] - 1 - offset:grid['Jside1'][el] - offset]
-            y_gray = y[:, grid['Jside2'][el] - 1 - offset:grid['Jside1'][el] - offset]
-            v_gray = np.zeros(shape=x_gray.shape)[:-1, :-1]
-            gray_color_item = pg.PColorMeshItem(colorMap=pg.colormap.get('CET-C5s'))
-            gray_color_item.setData(x_gray, y_gray, v_gray)
-            gray_color_item.setZValue(1)
-            gray_color_mesh_items.append(vBox.addItem(gray_color_item))
+        start_idx, end_idx = 0, x_grid[0].shape[1] - 1
+        for flow_section_idx in range(grid_stats["numel"] + 1):
+            flow_var_section = flow_var[:, start_idx:end_idx]
+
+            pcmi = PymeadPColorMeshItem(edgecolors=edgecolors, antialiasing=antialiasing,
+                                        colorMap=pg.colormap.get('CET-R1'))
+            pcmi_list.append(pcmi)
+            vBox.addItem(pcmi)
+            # vBox.addItem(pg.ArrowItem(pxMode=False, headLen=0.01, pos=(0.5, 0.1)))
+            vBox.setAspectLocked(True, 1)
+            pcmi.setZValue(0)
+
+            pcmi.setData(x_grid[flow_section_idx], y_grid[flow_section_idx], flow_var_section)
+
+            if flow_section_idx < grid_stats["numel"]:
+                start_idx = end_idx
+                end_idx += x_grid[flow_section_idx + 1].shape[1] - 1
 
         for child in self.v.allChildItems():
             if hasattr(child, 'setZValue') and not isinstance(child, pg.PColorMeshItem) \
                     and not isinstance(child, PymeadPColorMeshItem):
                 child.setZValue(5)
 
+        all_levels = np.array([list(pcmi.getLevels()) for pcmi in pcmi_list])
+        levels = (np.min(all_levels[:, 0]), np.max(all_levels[:, 1]))
         bar = pg.ColorBarItem(
-            values=pcmi.getLevels(),
+            values=levels,
             colorMap='CET-R1',
             rounding=0.001,
-            limits=pcmi.getLevels(),
+            limits=levels,
             orientation='v',
             pen='#8888FF', hoverPen='#EEEEFF', hoverBrush='#EEEEFF80'
         )
+        bar.setImageItem(pcmi_list)
         self.cbar_label_attrs = {
             'axis': 'right',
             'text': flow_var_label[inputs['flow_variable']],
@@ -479,7 +490,8 @@ class GUI(QMainWindow):
         self.w.addItem(bar)
 
         def on_levels_changed(cbar):
-            pcmi.setLevels(cbar.levels())
+            for pcm in pcmi_list:
+                pcm.setLevels(cbar.levels())
 
         bar.sigLevelsChanged.connect(on_levels_changed)
 
@@ -744,6 +756,7 @@ class GUI(QMainWindow):
 
     def multi_airfoil_analysis(self, mset_settings: dict, mses_settings: dict,
                                mplot_settings: dict):
+        print(f"{mplot_settings = }")
         coords = tuple([self.mea.airfoils[k].get_coords(
             body_fixed_csys=False, as_tuple=True) for k in mset_settings['airfoil_order']])
         aero_data, _ = calculate_aero_data(mset_settings['airfoil_analysis_dir'],
@@ -1161,6 +1174,7 @@ class GUI(QMainWindow):
                 else:
                     new_X = np.row_stack((new_X, np.array(chromosome.genes)))
                 # print(f"{self.objectives = }")
+                # print(f"Before objective and constraint update, {chromosome.forces = }")
                 for objective in self.objectives:
                     objective.update(chromosome.forces)
                 for constraint in self.constraints:

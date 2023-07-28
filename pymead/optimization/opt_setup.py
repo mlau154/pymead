@@ -181,7 +181,7 @@ class CustomDisplay(Display):
     def _do(self, problem, evaluator, algorithm):
         super()._do(problem, evaluator, algorithm)
         F = algorithm.pop.get("F")
-        # G = algorithm.pop.get("G")
+        G = algorithm.pop.get("G")
         # CV = algorithm.pop.get("CV")
         weights = np.array([0.5, 0.5])
         decomp = get_decomposition("asf")
@@ -190,9 +190,9 @@ class CustomDisplay(Display):
         f1_best = F[I][0]
         f1_min = F[:, 0].min()
         f1_mean = np.mean(F[:, 0])
-        # g1_min = G[:, 0].min()
+        g1_min = G[:, 0].min()
         # cv_min = CV[:, 0].min()
-        # g1_mean = np.mean(G[:, 0])
+        g1_mean = np.mean(G[:, 0])
         # cv_mean = np.mean(CV[:, 0])
         self.set_progress_dict({'f1_best': f1_best})
         self.output.append("n_nds", n_nds, width=7)
@@ -223,8 +223,8 @@ class CustomDisplay(Display):
         # self.output.append("f2_min", f2_min)
         self.output.append("f1_mean", f1_mean)
         # self.output.append("f2_mean", f2_mean)
-        # self.output.append("g1_min", g1_min)
+        self.output.append("g1_min", g1_min)
         # self.output.append("cv_min", cv_min)
-        # self.output.append("g1_mean", g1_mean)
+        self.output.append("g1_mean", g1_mean)
         # self.output.append("cv_mean", cv_mean)
         pass

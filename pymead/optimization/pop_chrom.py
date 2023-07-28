@@ -430,9 +430,7 @@ class Population:
             #     print(f"{chromosome.forces['Cd'] = }, {chromosome.forces['converged'] = }")
             if self.verbose and chromosome.fitness is not None:
                 print(f"Fitness evaluated successfully for chromosome {chromosome.population_idx + 1} with "
-                      f"generation: {chromosome.generation} | category: {chromosome.category} "
-                      f"| mutated: {chromosome.mutated} | "
-                      f"fitness = {chromosome.fitness} | C_d = {chromosome.forces['Cd']} | C_l = "
+                      f"generation: {chromosome.generation} | CPK = {chromosome.forces['CPK']} | C_d = {chromosome.forces['Cd']} | C_l = "
                       f"{chromosome.forces['Cl']} | C_m = {chromosome.forces['Cm']}")
         return chromosome
 
