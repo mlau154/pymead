@@ -12,6 +12,11 @@
         "widget_type": "QCheckBox",
         "setCheckState": 2
     },
+    "Streamline_Grid": {
+        "label": "Output Streamline Grid",
+        "widget_type": "QCheckBox",
+        "setCheckState": 2
+    },
     "Grid": {
         "label": "Output Grid",
         "widget_type": "QCheckBox",
@@ -26,5 +31,10 @@
         "label": "Output Flow Variable Field",
         "widget_type": "QCheckBox",
         "setCheckState": 2
+    },
+    "CPK": {
+        "label": "Output CPK",
+        "widget_type": "QCheckBox",
+        "setCheckState": 0
     }
 }

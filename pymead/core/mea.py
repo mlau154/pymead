@@ -294,15 +294,16 @@ class MEA:
             print(error_message)
             return error_message
         else:
-            update_parameters_recursively(self.param_dict, 0)
+            for _ in range(2):  # Do this code twice to ensure everything is updated properly:
+                update_parameters_recursively(self.param_dict, 0)
 
-            for a_tag, airfoil in self.airfoils.items():
-                airfoil.update()
-                if self.airfoil_graphs_active:
-                    airfoil.airfoil_graph.data['pos'] = airfoil.control_point_array
-                    airfoil.airfoil_graph.updateGraph()
-                    airfoil.airfoil_graph.plot_change_recursive(
-                        airfoil.airfoil_graph.airfoil_parameters.child(a_tag).children())
+                for a_tag, airfoil in self.airfoils.items():
+                    airfoil.update()
+                    if self.airfoil_graphs_active:
+                        airfoil.airfoil_graph.data['pos'] = airfoil.control_point_array
+                        airfoil.airfoil_graph.updateGraph()
+                        airfoil.airfoil_graph.plot_change_recursive(
+                            airfoil.airfoil_graph.airfoil_parameters.child(a_tag).children())
 
     # def deactivate_airfoil_matching_params(self, target_airfoil: str):
     #     def deactivate_recursively(d: dict):

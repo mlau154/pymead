@@ -11,7 +11,6 @@ from pyqtgraph.Qt import QtCore, QtGui
 from pyqtgraph.graphicsItems.GradientEditorItem import Gradients  # List of colormaps
 from pyqtgraph.graphicsItems.GraphicsObject import GraphicsObject
 
-
 __all__ = ['PymeadPColorMeshItem']
 
 
@@ -157,7 +156,6 @@ class PymeadPColorMeshItem(GraphicsObject):
         # If some data have been sent we directly display it
         if len(args) > 0:
             self.setData(*args)
-
 
     def _prepareData(self, args):
         """
@@ -314,7 +312,6 @@ class PymeadPColorMeshItem(GraphicsObject):
         if shapeChanged:
             self.informViewBoundsChanged()
 
-
     def _updateDisplayWithCurrentState(self, *args, **kargs):
         ## Used for re-rendering mesh from self.z.
         ## For example when a new colormap is applied, or the levels are adjusted
@@ -324,7 +321,6 @@ class PymeadPColorMeshItem(GraphicsObject):
         }
         defaults.update(kargs)
         return self.setData(*args, **defaults)
-
 
     def setLevels(self, levels, update=True):
         """
@@ -343,7 +339,6 @@ class PymeadPColorMeshItem(GraphicsObject):
         if update:
             self._updateDisplayWithCurrentState()
 
-
     def getLevels(self):
         """
         Returns a tuple containing the current level settings. See :func:`~setLevels`.
@@ -351,25 +346,20 @@ class PymeadPColorMeshItem(GraphicsObject):
         """
         return self.levels
 
-
     def setLookupTable(self, lut, update=True):
         if lut is not self.lut_qbrush:
-            self.lut_qbrush = [QtGui.QBrush(x) for x in lut]
+            self.lut_qbrush = [QtGui.QBrush(QtGui.QColor(*x)) for x in lut]
             if update:
                 self._updateDisplayWithCurrentState()
-
 
     def getColorMap(self):
         return self.cmap
 
-
     def enableAutoLevels(self):
         self.enableautolevels = True
 
-
     def disableAutoLevels(self):
         self.enableautolevels = False
-
 
     def paint(self, p, *args):
         if self.z is None:
@@ -377,11 +367,9 @@ class PymeadPColorMeshItem(GraphicsObject):
 
         p.drawPicture(0, 0, self.qpicture)
 
-
     def setBorder(self, b):
         self.border = fn.mkPen(b)
         self.update()
-
 
     def width(self):
         if self._dataBounds is None:
@@ -389,26 +377,22 @@ class PymeadPColorMeshItem(GraphicsObject):
         bounds = self._dataBounds[0]
         return bounds[1] - bounds[0]
 
-
     def height(self):
         if self._dataBounds is None:
             return 0
         bounds = self._dataBounds[1]
         return bounds[1] - bounds[0]
 
-
-    def dataBounds(self, ax, frac=1.0, orthoRange=None):
+    def dataBounds(self, ax, frac=1.0, orthoRange=None) -> tuple:
         if self._dataBounds is None:
             return (None, None)
         return self._dataBounds[ax]
-
 
     def pixelPadding(self):
         # pen is known to be cosmetic
         pen = self.edgecolors
         no_pen = (pen is None) or (pen.style() == QtCore.Qt.PenStyle.NoPen)
         return 0 if no_pen else (pen.widthF() or 1) * 0.5
-
 
     def boundingRect(self):
         xmn, xmx = self.dataBounds(ax=0)

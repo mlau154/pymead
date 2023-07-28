@@ -147,5 +147,21 @@
         "setText": "default_airfoil",
         "column": 5,
         "label.column": 4
+    },
+    "save_as_mses_settings": {
+        "label": "Save As",
+        "widget_type": "QPushButton",
+        "setText": "Save MSES Settings As...",
+        "clicked_connect": "saveas_mset_mses_mplot_settings",
+        "column": 5,
+        "label.column": 4
+    },
+    "load_mses_settings": {
+        "label": "Load",
+        "widget_type": "QPushButton",
+        "setText": "Load MSES Settings File",
+        "clicked_connect": "load_mset_mses_mplot_settings",
+        "column": 5,
+        "label.column": 4
     }
 }
