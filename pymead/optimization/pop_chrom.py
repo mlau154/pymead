@@ -418,7 +418,7 @@ class Population:
                                                        mses_settings=mses_settings,
                                                        mplot_settings=mplot_settings,
                                                        export_Cp=True)
-            if mses_settings['multi_point_stencil'] is None:
+            if xfoil_settings is not None or mses_settings['multi_point_stencil'] is None:
                 if chromosome.forces['converged'] and not chromosome.forces['errored_out'] \
                         and not chromosome.forces['timed_out']:
                     chromosome.fitness = 1  # Set to any value that is not False and not None
@@ -429,9 +429,14 @@ class Population:
             # if chromosome.forces is not None and 'Cd' in chromosome.forces.keys():
             #     print(f"{chromosome.forces['Cd'] = }, {chromosome.forces['converged'] = }")
             if self.verbose and chromosome.fitness is not None:
-                print(f"Fitness evaluated successfully for chromosome {chromosome.population_idx + 1} with "
-                      f"generation: {chromosome.generation} | CPK = {chromosome.forces['CPK']} | C_d = {chromosome.forces['Cd']} | C_l = "
-                      f"{chromosome.forces['Cl']} | C_m = {chromosome.forces['Cm']}")
+                if "CPK" in chromosome.forces.keys():
+                    print(f"Fitness evaluated successfully for chromosome {chromosome.population_idx + 1} with "
+                          f"generation: {chromosome.generation} | CPK = {chromosome.forces['CPK']} | C_d = {chromosome.forces['Cd']} | C_l = "
+                          f"{chromosome.forces['Cl']} | C_m = {chromosome.forces['Cm']}")
+                else:
+                    print(f"Fitness evaluated successfully for chromosome {chromosome.population_idx + 1} with "
+                          f"generation: {chromosome.generation} | C_d = {chromosome.forces['Cd']} | C_l = "
+                          f"{chromosome.forces['Cl']} | C_m = {chromosome.forces['Cm']}")
         return chromosome
 
     @staticmethod

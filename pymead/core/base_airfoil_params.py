@@ -134,7 +134,7 @@ class BaseAirfoilParams:
         if not self.c:
             self.c = Param(1.0)
         if not self.alf:
-            self.alf = Param(0.0)
+            self.alf = Param(0.0, periodic=True)
         if not self.R_le:
             self.R_le = Param(0.04)
         if not self.L_le:
@@ -142,25 +142,25 @@ class BaseAirfoilParams:
         if not self.r_le:
             self.r_le = Param(0.5)
         if not self.phi_le:
-            self.phi_le = Param(0.0)
+            self.phi_le = Param(0.0, periodic=True)
         if not self.psi1_le:
-            self.psi1_le = Param(0.3)
+            self.psi1_le = Param(0.3, periodic=True)
         if not self.psi2_le:
-            self.psi2_le = Param(0.1)
+            self.psi2_le = Param(0.1, periodic=True)
         if not self.L1_te:
             self.L1_te = Param(0.4)
         if not self.L2_te:
             self.L2_te = Param(0.3)
         if not self.theta1_te:
-            self.theta1_te = Param(0.1)
+            self.theta1_te = Param(0.1, periodic=True)
         if not self.theta2_te:
-            self.theta2_te = Param(0.1)
+            self.theta2_te = Param(0.1, periodic=True)
         if not self.t_te:
             self.t_te = Param(0.0)
         if not self.r_te:
             self.r_te = Param(0.5)
         if not self.phi_te:
-            self.phi_te = Param(0.0)
+            self.phi_te = Param(0.0, periodic=True)
         if not self.dx:
             self.dx = Param(0.0)
         if not self.dy:

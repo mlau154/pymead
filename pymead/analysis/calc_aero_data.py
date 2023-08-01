@@ -104,11 +104,11 @@ def calculate_aero_data(airfoil_coord_dir: str, airfoil_name: str, coords: typin
     tool_list = ['XFOIL', 'MSES']
     if tool not in tool_list:
         raise ValueError(f"\'tool\' must be one of {tool_list}")
-    if tool == 'XFOIL':
-
-        # Check for self-intersection and early return if self-intersecting:
-        if check_airfoil_self_intersection(coords):
-            return False
+    # if tool == 'XFOIL':
+    #
+    #     # Check for self-intersection and early return if self-intersecting:
+    #     if check_airfoil_self_intersection(coords):
+    #         return False
 
     aero_data = {}
 
@@ -125,7 +125,12 @@ def calculate_aero_data(airfoil_coord_dir: str, airfoil_name: str, coords: typin
         if 'N' not in xfoil_settings.keys():
             xfoil_settings['N'] = 9.0
         f = os.path.join(base_dir, airfoil_name + ".dat")
-        write_tuple_tuple_to_file(f, coords)
+        if np.ndim(coords) == 2:
+            write_tuple_tuple_to_file(f, coords)
+        elif np.ndim(coords) == 3:
+            write_tuple_tuple_to_file(f, coords[0])
+        else:
+            raise ValueError("Found coordinate set with dimension other than 2 or 3")
         xfoil_input_file = os.path.join(base_dir, 'xfoil_input.txt')
         xfoil_input_list = ['', 'oper', f'iter {xfoil_settings["iter"]}', 'visc', str(xfoil_settings['Re']),
                             f'M {xfoil_settings["Ma"]}',
@@ -206,6 +211,8 @@ def calculate_aero_data(airfoil_coord_dir: str, airfoil_name: str, coords: typin
                         convert_xfoil_string_to_aero_data(line1, line2, aero_data)
                         if export_Cp:
                             aero_data['Cp'] = read_Cp_from_file_xfoil(os.path.join(base_dir, f"{airfoil_name}_Cp.dat"))
+
+        print(f"{aero_data = }")
 
         return aero_data, xfoil_log
 
