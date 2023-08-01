@@ -30,7 +30,7 @@ from pymead.core.transformation import Transformation3D
 from pymead import RESOURCE_DIR
 from pymead.gui.input_dialog import SingleAirfoilViscousDialog, LoadDialog, SaveAsDialog, OptimizationSetupDialog, \
     MultiAirfoilDialog, ColorInputDialog, ExportCoordinatesDialog, ExportControlPointsDialog, AirfoilPlotDialog, \
-    AirfoilMatchingDialog, MSESFieldPlotDialog, ExportIGESDialog
+    AirfoilMatchingDialog, MSESFieldPlotDialog, ExportIGESDialog, XFOILDialog
 from pymead.gui.pymeadPColorMeshItem import PymeadPColorMeshItem
 from pymead.gui.analysis_graph import AnalysisGraph
 from pymead.gui.parameter_tree import MEAParamTree
@@ -335,6 +335,8 @@ class GUI(QMainWindow):
             for airfoil in self.mea.airfoils.values():
                 airfoil.airfoil_graph.airfoil_parameters = self.param_tree_instance.p.param('Airfoil Parameters')
             self.mea.update_parameters(parameter_list)
+            self.param_tree_instance.plot_change_recursive(
+                self.param_tree_instance.p.param('Airfoil Parameters').child('Custom').children())
 
     def export_parameter_list(self):
         """This function imports a list of parameters normalized by their bounds"""
@@ -661,33 +663,40 @@ class GUI(QMainWindow):
             self.disp_message_box(f"Airfoil geometry saved to {f_}", message_mode="info")
 
     def single_airfoil_viscous_analysis(self):
-        self.dialog = SingleAirfoilViscousDialog(parent=self)
+        self.dialog = XFOILDialog(parent=self)
         if self.dialog.exec():
             inputs = self.dialog.getInputs()
         else:
             inputs = None
 
         if inputs is not None:
-            xfoil_settings = {'Re': inputs['Re']['value'],
-                              'Ma': inputs['Ma']['value'],
-                              'prescribe': inputs['prescribe']['current_text'],
-                              'timeout': inputs['timeout']['value'],
-                              'iter': inputs['iter']['value'],
-                              'xtr': [inputs['xtr_lower']['value'], inputs['xtr_upper']['value']],
-                              'N': inputs['N']['value'],
-                              'airfoil_analysis_dir': inputs['airfoil_analysis_dir']['text'],
-                              'airfoil_coord_file_name': inputs['airfoil_coord_file_name']['text'],
-                              'airfoil': inputs['airfoil']['current_text']}
+            xfoil_settings = {'Re': inputs['Re'],
+                              'Ma': inputs['Ma'],
+                              'prescribe': inputs['prescribe'],
+                              'timeout': inputs['timeout'],
+                              'iter': inputs['iter'],
+                              'xtr': [inputs['xtr_lower'], inputs['xtr_upper']],
+                              'N': inputs['N'],
+                              'airfoil_analysis_dir': inputs['airfoil_analysis_dir'],
+                              'airfoil_coord_file_name': inputs['airfoil_coord_file_name'],
+                              'airfoil': inputs['airfoil']}
             if xfoil_settings['prescribe'] == 'Angle of Attack (deg)':
-                xfoil_settings['alfa'] = inputs['alfa']['value']
+                xfoil_settings['alfa'] = inputs['alfa']
             elif xfoil_settings['prescribe'] == 'Viscous Cl':
-                xfoil_settings['Cl'] = inputs['Cl']['value']
+                xfoil_settings['Cl'] = inputs['Cl']
             elif xfoil_settings['prescribe'] == 'Inviscid Cl':
-                xfoil_settings['CLI'] = inputs['CLI']['value']
+                xfoil_settings['CLI'] = inputs['CLI']
+
+            coords = tuple(self.mea.airfoils[xfoil_settings['airfoil']].get_coords(
+                body_fixed_csys=False, as_tuple=True))
+
             aero_data, _ = calculate_aero_data(xfoil_settings['airfoil_analysis_dir'],
-                                               xfoil_settings['airfoil_coord_file_name'], self.mea,
-                                               xfoil_settings['airfoil'], 'xfoil',
-                                               xfoil_settings, body_fixed_csys=inputs['body_fixed_csys']['state'])
+                                               xfoil_settings['airfoil_coord_file_name'],
+                                               coords=coords,
+                                               tool="XFOIL",
+                                               xfoil_settings=xfoil_settings,
+                                               export_Cp=True
+                                               )
             if not aero_data['converged'] or aero_data['errored_out'] or aero_data['timed_out']:
                 self.text_area.insertPlainText(
                     f"[{self.n_analyses:2.0f}] Converged = {aero_data['converged']} | Errored out = "
@@ -1381,7 +1390,13 @@ class GUI(QMainWindow):
         # obtain the result objective from the algorithm
         res = algorithm.result()
         save_data(res, os.path.join(param_dict['opt_dir'], 'res.pkl'))
-        save_data(self.forces_dict, os.path.join(param_dict['opt_dir'], 'force_history.json'))
+        forces_temp = deepcopy(self.forces_dict)
+        if "Cp" in forces_temp.keys():
+            for el in forces_temp["Cp"]:
+                for k, v in el.items():
+                    if isinstance(v, np.ndarray):
+                        el[k] = v.tolist()
+        save_data(forces_temp, os.path.join(param_dict['opt_dir'], 'force_history.json'))
         np.savetxt(os.path.join(param_dict['opt_dir'], 'opt_X.dat'), res.X)
         # self.save_opt_plots(param_dict['opt_dir'])  # not working at the moment
 

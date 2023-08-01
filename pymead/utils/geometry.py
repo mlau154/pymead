@@ -23,3 +23,10 @@ def convert_numpy_array_to_shapely_points(arr: np.ndarray):
 
 def convert_numpy_array_to_shapely_LineString(arr: np.ndarray):
     return LineString(list(map(tuple, arr)))
+
+
+def map_angle_m180_p180(v: float):
+    v = v % (2 * np.pi)
+    if v > np.pi:
+        v -= 2 * np.pi
+    return v

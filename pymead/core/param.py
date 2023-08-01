@@ -3,13 +3,14 @@ import numpy as np
 import math
 import typing
 from pymead.core.transformation import AirfoilTransformation
+from pymead.utils.geometry import map_angle_m180_p180
 
 
 class Param:
 
     def __init__(self, value: float or typing.Tuple[float], bounds: tuple = (-np.inf, np.inf),
                  active: bool or typing.Tuple[bool] = True, linked: bool or typing.Tuple[bool] = False,
-                 func_str: str = None, name: str = None):
+                 func_str: str = None, name: str = None, periodic: bool = False):
         """
         ### Description:
 
@@ -46,6 +47,7 @@ class Param:
 
         self.active = list(active) if isinstance(active, tuple) or isinstance(active, list) else active
         self.linked = list(linked) if isinstance(linked, tuple) or isinstance(active, list) else linked
+        self.periodic = periodic
         self.func_str = func_str
         self.func = None
         if self.func_str is not None:
@@ -93,15 +95,77 @@ class Param:
                 old_transformation = AirfoilTransformation(dx=airfoil.dx.value, dy=airfoil.dy.value,
                                                            alf=airfoil.alf.value, c=airfoil.c.value)
             old_value = self._value
-            if v < self.bounds[0]:
-                self._value = self.bounds[0]
-                self.at_boundary = True
-            elif v > self.bounds[1]:
-                self._value = self.bounds[1]
-                self.at_boundary = True
+            if self.periodic:
+                # Treatment of the periodic case (only applies to angles)
+                two_pi = 2 * np.pi
+                v = map_angle_m180_p180(v)
+
+                if not (np.isinf(self.bounds[0]) or np.isinf(self.bounds[1])):
+
+                    if self.bounds[0] % two_pi < self.bounds[1] % two_pi:
+
+                        # Calculate the angle half-way between the bounds in the out-of-bounds region
+                        dist_b1_2pi = two_pi - self.bounds[1]
+                        dist_0_b0 = self.bounds[0]
+                        dist_total = dist_b1_2pi + dist_0_b0
+                        mid_ob_angle = self.bounds[1] + dist_total / 2
+
+                        if self.bounds[0] <= v <= self.bounds[1]:
+                            self._value = v
+                            self.at_boundary = False
+                        elif v % two_pi < self.bounds[0] % two_pi or v % two_pi > mid_ob_angle % two_pi:
+                            self._value = self.bounds[0]
+                            self.at_boundary = True
+                        elif self.bounds[1] % two_pi < v % two_pi <= mid_ob_angle % two_pi:
+                            self._value = self.bounds[1]
+                            self.at_boundary = True
+                        else:
+                            raise ValueError("Somehow found an angle value whose 2*pi modulo was "
+                                             "outside the range [0, 2*pi]")
+                    else:  # This is usually the case when the lower bound is a negative angle and the upper bound is a
+                        # positive angle
+
+                        # Calculate the angle half-way between the bounds in the out-of-bounds region
+                        mid_ob_angle = np.mean([self.bounds[0] % two_pi, self.bounds[1] % two_pi])
+
+                        if v % two_pi >= self.bounds[0] % two_pi or v % two_pi <= self.bounds[1] % two_pi:
+                            self._value = v
+                            self.at_boundary = False
+                        elif mid_ob_angle % two_pi < v % two_pi < self.bounds[0] % two_pi:
+                            self._value = self.bounds[0]
+                            self.at_boundary = True
+                        elif self.bounds[1] % two_pi < v % two_pi <= mid_ob_angle % two_pi:
+                            self._value = self.bounds[1]
+                            self.at_boundary = True
+                else:
+                    if np.isinf(self.bounds[0]) and np.isfinite(self.bounds[1]):
+                        if v > self.bounds[1]:
+                            self._value = self.bounds[1]
+                            self.at_boundary = True
+                        else:
+                            self._value = v
+                            self.at_boundary = False
+                    elif np.isfinite(self.bounds[0]) and np.isinf(self.bounds[1]):
+                        if v < self.bounds[0]:
+                            self._value = self.bounds[0]
+                            self.at_boundary = True
+                        else:
+                            self._value = v
+                            self.at_boundary = False
+                    elif np.isinf(self.bounds[0]) and np.isinf(self.bounds[1]):
+                        self._value = v
+                        self.at_boundary = False
             else:
-                self._value = v
-                self.at_boundary = False
+                # Non-periodic treatment
+                if v < self.bounds[0]:
+                    self._value = self.bounds[0]
+                    self.at_boundary = True
+                elif v > self.bounds[1]:
+                    self._value = self.bounds[1]
+                    self.at_boundary = True
+                else:
+                    self._value = v
+                    self.at_boundary = False
 
             self.update_affected_params(old_value)
             if self.sets_airfoil_csys and self.mea is not None and self.airfoil_tag is not None:

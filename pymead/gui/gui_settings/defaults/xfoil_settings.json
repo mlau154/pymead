@@ -130,7 +130,10 @@
         "setDecimals": 16,
         "setMinimum": 0.0,
         "setMaximum": 1.0,
-        "setValue": 1.0
+        "setValue": 1.0,
+        "restart_grid_counter": true,
+        "column": 5,
+        "label.column": 4
     },
     "xtr_lower": {
         "label": "Transition x/c (lower)",
@@ -138,7 +141,9 @@
         "setDecimals": 16,
         "setMinimum": 0.0,
         "setMaximum": 1.0,
-        "setValue": 1.0
+        "setValue": 1.0,
+        "column": 5,
+        "label.column": 4
     },
     "N": {
         "label": "Turbulence (NCrit)",
@@ -146,20 +151,52 @@
         "setDecimals": 16,
         "setMinimum": 0.0,
         "setMaximum": 20.0,
-        "setValue": 9.0
+        "setValue": 9.0,
+        "column": 5,
+        "label.column": 4
     },
     "iter": {
         "label": "Maximum Iterations",
         "widget_type": "QSpinBox",
         "setMinimum": 1,
         "setMaximum": 10000,
-        "setValue": 150
+        "setValue": 150,
+        "column": 5,
+        "label.column": 4
     },
     "timeout": {
         "label": "Timeout (sec)",
         "widget_type": "QDoubleSpinBox",
         "setMinimum": 0.0,
         "setMaximum": 10000.0,
-        "setValue": 8.0
+        "setValue": 8.0,
+        "column": 5,
+        "label.column": 4
+    },
+    "airfoil": {
+        "label": "Airfoil to Analyze",
+        "widget_type": "QComboBox",
+        "addItems": [
+            "A0"
+        ],
+        "setCurrentText": "A0",
+        "column": 5,
+        "label.column": 4
+    },
+    "airfoil_analysis_dir": {
+        "label": "Analysis Directory",
+        "widget_type": "QLineEdit",
+        "push_button": "Choose folder",
+        "push_button_action": "select_directory",
+        "setText": "",
+        "column": 5,
+        "label.column": 4
+    },
+    "airfoil_coord_file_name": {
+        "label": "Airfoil Coord. Filename",
+        "widget_type": "QLineEdit",
+        "setText": "x_airfoil",
+        "column": 5,
+        "label.column": 4
     }
 }

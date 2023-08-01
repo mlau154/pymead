@@ -1360,6 +1360,7 @@ class OptConstraintsHTabWidget(PymeadDialogHTabWidget):
 class XFOILDialogWidget(PymeadDialogWidget):
     def __init__(self):
         super().__init__(settings_file=os.path.join(GUI_DEFAULTS_DIR, 'xfoil_settings.json'))
+        self.widget_dict['airfoil_analysis_dir']['widget'].setText(tempfile.gettempdir())
 
     def calculate_and_set_Reynolds_number(self, new_inputs: dict):
         Re_widget = self.widget_dict['Re']['widget']
@@ -1438,6 +1439,9 @@ class XFOILDialogWidget(PymeadDialogWidget):
             new_inputs = self.getInputs()
             if not (w_name == 'Ma' and new_inputs['spec_Re']):
                 self.calculate_and_set_Reynolds_number(new_inputs)
+
+    def select_directory(self, line_edit: QLineEdit):
+        select_directory(parent=self.parent(), line_edit=line_edit, starting_dir=tempfile.gettempdir())
 
 
 class GAGeneralSettingsDialogWidget(PymeadDialogWidget):
@@ -1719,6 +1723,12 @@ class PymeadDialog(QDialog):
         buttonBox.accepted.connect(self.accept)
         buttonBox.rejected.connect(self.reject)
         return buttonBox
+
+
+class XFOILDialog(PymeadDialog):
+    def __init__(self, parent: QWidget, settings_override: dict = None):
+        w = XFOILDialogWidget()
+        super().__init__(parent=parent, window_title="Single Airfoil Viscous Analysis", widget=w)
 
 
 class MultiAirfoilDialog(PymeadDialog):

@@ -34,4 +34,4 @@ def write_tuple_tuple_to_file(fname: str, data: typing.Tuple[tuple]):
         for row in data:
             for col in row:
                 f.write(f"{col} ")
-            f.write("\b\n")
+            f.write("\n")
