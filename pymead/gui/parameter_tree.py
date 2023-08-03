@@ -19,15 +19,18 @@ from PyQt5.QtWidgets import QWidget, QGridLayout, QLabel, QHeaderView
 from PyQt5.QtWidgets import QAbstractItemView
 from PyQt5.QtCore import pyqtSignal
 from pymead.utils.downsampling_schemes import fractal_downsampler2
+# import pymead.core.symmetry
 from pymead.gui.autocomplete import Completer
 from functools import partial
 from pymead import INCLUDE_FILES
 import importlib.util
+# import importlib.machinery
 import numpy as np
 from time import time
 
 
 progress_idx = 0
+# pymead.core.symmetry.symmetry("r")
 
 
 class MEAParameters(pTypes.GroupParameter):
@@ -191,6 +194,7 @@ class MEAParamTree:
             name_no_ext = os.path.splitext(name)[-2]  # get the name of the file without the .py extension
             spec = importlib.util.spec_from_file_location(name_no_ext, f)
             self.user_mods[name_no_ext] = importlib.util.module_from_spec(spec)  # generate the module from the name
+            # print(f"{self.user_mods[name_no_ext] = }")
             spec.loader.exec_module(self.user_mods[name_no_ext])  # compile and execute the module
             # TODO: implement "add user module" functionality into GUI
         self.dialog = None

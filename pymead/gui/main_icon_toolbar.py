@@ -9,9 +9,9 @@ from pymead.core.param import Param
 from pymead.core.pos_param import PosParam
 from pymead.utils.read_write_files import load_data
 from pymead.gui.input_dialog import SymmetryDialog, PosConstraintDialog
-from pymead.core.symmetry import symmetry
+# from pymead.core.symmetry import symmetry
 from pymead import ICON_DIR
-from functools import partial
+# from functools import partial
 
 
 class MainIconToolbar(QToolBar):
