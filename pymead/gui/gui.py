@@ -765,7 +765,7 @@ class GUI(QMainWindow):
 
     def multi_airfoil_analysis(self, mset_settings: dict, mses_settings: dict,
                                mplot_settings: dict):
-        print(f"{mplot_settings = }")
+        # print(f"{mplot_settings = }")
         coords = tuple([self.mea.airfoils[k].get_coords(
             body_fixed_csys=False, as_tuple=True) for k in mset_settings['airfoil_order']])
         aero_data, _ = calculate_aero_data(mset_settings['airfoil_analysis_dir'],
@@ -864,7 +864,7 @@ class GUI(QMainWindow):
                     update_params = res.X
                 else:
                     raise AttributeError("Did not have x or X to update airfoil parameter dictionary")
-                print(f"{update_params = }")
+                # print(f"{update_params = }")
                 self.mea.update_parameters(update_params)
                 msg_mode = 'info'
             self.disp_message_box(message=res.message, message_mode=msg_mode)

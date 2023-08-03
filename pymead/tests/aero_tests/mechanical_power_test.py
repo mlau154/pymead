@@ -38,6 +38,7 @@ class PKTest(unittest.TestCase):
         # ax.scatter(field[0], field[1], marker="s", color="red")
 
         CPK = calculate_CPK_mses(analysis_subdir=analysis_dir)
+        print(f"{CPK = }")
 
         # quad = generate_field_matplotlib(var="p", axs=ax, analysis_subdir=analysis_dir,
         #                                  cmap_field="Spectral_r",
