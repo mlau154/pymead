@@ -30,12 +30,16 @@ setup(
         "License :: OSI Approved :: MIT License",
         "Programming Language :: Python :: 3",
     ],
-    data_files=[('pymead/gui/gui_settings/defaults', ['pymead/gui/gui_settings/defaults/*.json'])],
+    package_data={"pymead": ["gui/gui_settings/defaults/*.json", "icons/*.png", "icons/*.jpg", "gui/*.json"]},
     packages=["pymead", "pymead/core", "pymead/examples", "pymead/utils", "pymead/gui",
               "pymead/tests", "pymead/resources", "pymead/analysis", "pymead/data", "pymead/icons",
-              "pymead/optimization", "pymead/plugins", "pymead/gui/scientificspinbox_master",
+              "pymead/optimization", "pymead/plugins", "pymead/plugins/IGES", "pymead/plugins/NX",
+              "pymead/post", "pymead/gui/scientificspinbox_master",
               "pymead/gui/pyqt_vertical_tab_widget/pyqt_vertical_tab_widget"],
     include_package_data=True,
     install_requires=["scipy", "numpy", "shapely", "matplotlib", "requests", "PyQt5==5.15.7",
                       "pyqtgraph", "python-benedict", "pandas", "pymoo==0.5.0", "numba"],
 )
+
+# TODO: fix relative file-pathing (like "menu.json") when calling the GUI main directly from a Python interpreter after
+# importing

@@ -9,7 +9,7 @@ There are several easy ways to install pymead:
 
 Method 1: ``pip``
 -----------------
-Use ``pip`` to install pymead into the environment from the Python Package Index (PyPi):
+Use ``pip`` to install the latest stable version of pymead into the environment from the Python Package Index (PyPi):
 
 .. code-block::
 
@@ -31,14 +31,48 @@ The pymead package can also be installed in a local location. To accomplish this
 
   git clone https://github.com/mlau154/pymead.git
 
-Navigate to the top-level directory of the install location in the terminal (where the
-``setup.py`` file is located), then type:
+If installing the most recent version of pymead, the branch corresponding to that version must be checked out.
+For instance, to checkout version 2.0.0, use
 
 .. code-block::
 
-  python setup.py install
+  git checkout v2.0.0
 
-Replace ``python`` with ``python3`` if running on a Unix-based operating system.
+To see all available branches, use
+
+.. code-block::
+
+  git branch -a
+
+To pull the latest changes from the repository at some point after installation, use
+
+.. code-block::
+
+  git pull
+
+Cloning and checking out a branch of the pymead repository only copies the source code into a directory. Installation
+after this step is still recommended because installation automatically installs all Python dependencies and makes the
+pymead package importable from outside the repository. To install, navigate to the top-level directory of the install
+location in the terminal (where the ``setup.py`` file is located), then type:
+
+.. code-block::
+
+  pip install .
+
+This will install pymead and all of its dependencies into the ``Lib/site-packages`` folder of the current version of
+Python. To check that the installation succeeded, run the following lines of code in your Python interpreter:
+
+.. code-block:: python
+
+  from pymead.core.airfoil import Airfoil
+  import matplotlib.pyplot as plt
+  fig, ax = plt.subplots()
+  a = Airfoil()
+  a.plot_airfoil(ax)
+  ax.set_aspect("equal")
+  plt.show()
+
+If the installation was successful, an airfoil will appear on the screen.
 
 Dependencies
 ============
