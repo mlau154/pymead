@@ -18,7 +18,7 @@ containing the ``gui.py`` file (the ``gui`` module) and then run the script usin
 .. code-block::
 
   cd pymead/gui
-  python gui.py
+  python -m gui
 
 Alternatively, users working in an IDE can navigate to the ``gui`` module by clicking through the directory tree.
 
