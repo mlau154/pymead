@@ -1350,6 +1350,11 @@ class GUI(QMainWindow):
                     X = algorithm.opt.get("X")[0]
                 else:
                     X = algorithm.pop.get("X")[0, :]
+            else:
+                if n_generation > 1:
+                    X = algorithm.opt.get("X")[0, :]
+                else:
+                    X = algorithm.pop.get("X")[0, :]
 
             best_in_previous_generation = False
             forces_index = 0

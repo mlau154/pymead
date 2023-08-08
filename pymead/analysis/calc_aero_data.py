@@ -845,18 +845,10 @@ def extrapolate_data_line_mses_field(flow_vars_edge_centered: typing.List[np.nda
 
     def evaluate_bl_at_point(bl_data_dict: dict, x_point: float):
         x_array = np.array(bl_data_dict["x"])
-        Cp_array = np.array(bl_data_dict["Cp"])
-        ue_array = np.array(bl_data_dict["Ue/Uinf"])
-        rhoe_array = np.array(bl_data_dict["rhoe/rhoinf"])
-        deltastar_array = np.array(bl_data_dict["delta*"])
-        thetastar_array = np.array(bl_data_dict["theta*"])
+        K_array = np.array(bl_data_dict["K"])
         bl_at_point = {
             "x": x_point,
-            "Cp": np.interp(x_point, x_array, Cp_array),
-            "ue": np.interp(x_point, x_array, ue_array),
-            "rhoe": np.interp(x_point, x_array, rhoe_array),
-            "deltastar": np.interp(x_point, x_array, deltastar_array),
-            "thetastar": np.interp(x_point, x_array, thetastar_array),
+            "K": np.interp(x_point, x_array, K_array),
         }
         return bl_at_point
 
@@ -865,13 +857,11 @@ def extrapolate_data_line_mses_field(flow_vars_edge_centered: typing.List[np.nda
     # as the perpendicular distance from the surface. For small surface angles, this is a good approximation.)
     if hasattr(lower_bl_inters, "x") and hasattr(lower_bl_inters, "y"):
         bl_at_point_lower = evaluate_bl_at_point(bl_data_lower, lower_bl_inters.x)
-        bl_at_point_lower["delta"] = np.hypot(lower_inters.x - lower_bl_inters.x, lower_inters.y - lower_bl_inters.y)
     else:
         bl_at_point_lower = None
 
     if hasattr(upper_bl_inters, "x") and hasattr(upper_bl_inters, "y"):
         bl_at_point_upper = evaluate_bl_at_point(bl_data_upper, upper_bl_inters.x)
-        bl_at_point_upper["delta"] = np.hypot(upper_inters.x - upper_bl_inters.x, upper_inters.y - upper_bl_inters.y)
     else:
         bl_at_point_upper = None
 
@@ -948,29 +938,14 @@ def line_integral_CPK_inviscid(Cp: np.ndarray, rho: np.ndarray, u: np.ndarray,
     return integral
 
 
-def line_integral_CPK_bl(Cp, delta, ue, rhoe, deltastar, thetastar, outlet: bool):
-    """
+def line_integral_CPK_bl(K, outlet: bool):
+    r"""
     Computes CPK at a given boundary layer location
 
     Parameters
     ==========
-    Cp: float
-        Pressure coefficient
-
-    delta: float
-        Boundary layer thickness (:math:`\delta / c_\text{main}`)
-
-    ue: float
-        Boundary layer edge velocity (:math:`u_e / V_\infty`)
-
-    rhoe: float
-        Boundary layer edge density (:math:`\rho_e / \rho_\infty`)
-
-    deltastar: float
-        Boundary layer displacement thickness (:math:`\delta^* / c_\text{main}`)
-
-    thetastar: float
-        Boundary layer kinetic energy thickness (:math:`\theta^* / c_\text{main}`)
+    K: float
+        Non-dimensional kinetic energy thickness (:math:`0.5 \frac{\rho_e}{\rho_\infty} \left( \frac{u_e}{V_\infty} \right)^3 \theta^*`
 
     outlet: bool
         Whether this boundary layer is part of an outlet
@@ -980,7 +955,7 @@ def line_integral_CPK_bl(Cp, delta, ue, rhoe, deltastar, thetastar, outlet: bool
     #         delta - deltastar) + rhoe * ue**3 * (delta - deltastar - thetastar)
     # print(f"{delta = }, {ue = }, {Cp = }, {rhoe = }, {deltastar = }, {thetastar = }, {integral = }")
     # return integral if outlet else -integral  # -V_vec dot n_hat is approximately V for the outlet and -V for the inlet
-    return 0.0
+    return -K if outlet else K
 
 
 def calculate_CPK_mses(analysis_subdir: str, configuration: str = "underwing_te"):
@@ -1076,17 +1051,13 @@ def calculate_CPK_mses(analysis_subdir: str, configuration: str = "underwing_te"
             CPK += outlet_integral
             # print(f"{outlet_integral = }")
 
-            # if bl_at_point_upper_out is not None:
-            #     CPK += line_integral_CPK_bl(bl_at_point_upper_out["Cp"], bl_at_point_upper_out["delta"],
-            #                                 bl_at_point_upper_out["ue"], bl_at_point_upper_out["rhoe"],
-            #                                 bl_at_point_upper_out["deltastar"], bl_at_point_upper_out["thetastar"],
-            #                                 outlet=True)
-            #
-            # if bl_at_point_lower_out is not None:
-            #     CPK += line_integral_CPK_bl(bl_at_point_lower_out["Cp"], bl_at_point_lower_out["delta"],
-            #                                 bl_at_point_lower_out["ue"], bl_at_point_lower_out["rhoe"],
-            #                                 bl_at_point_lower_out["deltastar"], bl_at_point_lower_out["thetastar"],
-            #                                 outlet=True)
+            if bl_at_point_upper_out is not None:
+                # print(f"{bl_at_point_upper_out['K'] = }")
+                CPK += line_integral_CPK_bl(bl_at_point_upper_out["K"], outlet=True)
+
+            if bl_at_point_lower_out is not None:
+                # print(f"{bl_at_point_lower_out['K'] = }")
+                CPK += line_integral_CPK_bl(bl_at_point_lower_out["K"], outlet=True)
 
             # print(f"After adding the BL CPK, {CPK - outlet_integral = }")
 
@@ -1101,17 +1072,13 @@ def calculate_CPK_mses(analysis_subdir: str, configuration: str = "underwing_te"
             # CPK_temp = CPK
             # print(f"{inlet_integral = }, {CPK = }")
 
-            # if bl_at_point_upper_in is not None:
-            #     CPK += line_integral_CPK_bl(bl_at_point_upper_in["Cp"], bl_at_point_upper_in["delta"],
-            #                                 bl_at_point_upper_in["ue"], bl_at_point_upper_in["rhoe"],
-            #                                 bl_at_point_upper_in["deltastar"], bl_at_point_upper_in["thetastar"],
-            #                                 outlet=False)
-            #
-            # if bl_at_point_lower_in is not None:
-            #     CPK += line_integral_CPK_bl(bl_at_point_lower_in["Cp"], bl_at_point_lower_in["delta"],
-            #                                 bl_at_point_lower_in["ue"], bl_at_point_lower_in["rhoe"],
-            #                                 bl_at_point_lower_in["deltastar"], bl_at_point_lower_in["thetastar"],
-            #                                 outlet=False)
+            if bl_at_point_upper_in is not None:
+                # print(f"{bl_at_point_upper_in['K'] = }")
+                CPK += line_integral_CPK_bl(bl_at_point_upper_in["K"], outlet=False)
+
+            if bl_at_point_lower_in is not None:
+                # print(f"{bl_at_point_lower_in['K'] = }")
+                CPK += line_integral_CPK_bl(bl_at_point_lower_in["K"], outlet=False)
 
             # print(f"After adding the inlet BL contributions, {CPK - CPK_temp = }")
 

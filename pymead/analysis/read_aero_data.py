@@ -190,7 +190,7 @@ def read_grid_stats_from_mses(src_file: str):
     for line in lines:
         if 'Grid size' in line:
             line_split = line.split('=')[-1]
-            print(f"{[idx for idx in line_split.split()] = }")
+            # print(f"{[idx for idx in line_split.split()] = }")
             grid_stats['grid_size'] = [int(idx) for idx in line_split.split()]
         elif 'Number' in line:
             line_split = line.split(':')[-1]
@@ -250,6 +250,32 @@ def read_bl_data_from_mses(src_file: str):
 
 
 def read_field_from_mses(src_file: str):
+    r"""
+    Reads a field dump file from MSES (by default, of the form ``field.*``) and outputs the information to an array.
+    The array has shape :math:`9 \times m \times n`, where :math:`m` is the number of streamlines and :math:`n`
+    is the number of streamwise cells in a given streamline.
+
+    The 9 entries in the zeroth axis correspond to the flow variables as follows:
+    - 0: :math:`x`
+    - 1: :math:`y`
+    - 2: :math:`\rho/\rho_\infty` (density)
+    - 3: :math:`p/p_\infty` (pressure)
+    - 4: :math:`u/V_inf` (:math:`x`-velocity)
+    - 5: :math:`v/V_inf` (:math:`y`-velocity)
+    - 6: :math:`q/Vinf` (velocity magnitude)
+    - 7: :math:`M` (Mach number)
+    - 8: :math:`C_p` (pressure coefficient)
+
+    Parameters
+    ==========
+    src_file: str
+        Source file containing the MSES field output
+
+    Returns
+    =======
+    np.ndarray
+        Array of MSES field data, reshaped to :math:`9 \times m \times n`
+    """
     data = np.loadtxt(src_file, skiprows=2)
     n_flow_vars = data.shape[1]
 
@@ -265,15 +291,26 @@ def read_field_from_mses(src_file: str):
 
     field_array = np.array([data[:, i].reshape(n_streamlines, n_streamwise_lines).T for i in range(n_flow_vars)])
 
-    V_data = np.hypot(field_array[flow_var_idx["u"]], field_array[flow_var_idx["v"]])
-    V = V_data.reshape((1, V_data.shape[0], V_data.shape[1]))
-
-    field_array = np.append(field_array, V, axis=0)
-
     return field_array
 
 
 def read_streamline_grid_from_mses(src_file: str, grid_stats: dict):
+    r"""
+    Reads the grid of streamlines from an MSES ``grid.*`` file
+
+    Parameters
+    ==========
+    src_file: str
+        File containing the grid output from MPLOT (usually of the form ``grid.*``)
+
+    grid_stats: dict
+        Output from the ``read_grid_stats_from_mses()`` function
+
+    Returns
+    =======
+    typing.Tuple(np.ndarray, np.ndarray)
+        Grid x-coordinates and grid y-coordinates split by the stagnation streamlines
+    """
     data = np.loadtxt(src_file, skiprows=2)
 
     with open(src_file, "r") as f:
@@ -297,6 +334,21 @@ def read_streamline_grid_from_mses(src_file: str, grid_stats: dict):
 
 
 def convert_blade_file_to_3d_array(src_file: str):
+    r"""
+    Converts an MSES blade file (by default of the form ``blade.*``) to an array.
+    The array has shape :math:`N \times M \times 2`, where :math:`N` is the number of airfoils
+    and :math:`M` is the number of discrete airfoil coordinates in a given airfoil.
+
+    Parameters
+    ==========
+    src_file: str
+        Source file containing the MSES blade information (usually ``blade.*``)
+
+    Returns
+    =======
+    np.ndarray
+        Array of the shape :math:`N \times M \times 2`
+    """
     blade = np.loadtxt(src_file, skiprows=2)
     airfoil_delimiter_rows = np.argwhere(blade == 999.0)
     array_3d = np.split(blade, np.unique(airfoil_delimiter_rows[:, 0]))
