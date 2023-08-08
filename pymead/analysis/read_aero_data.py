@@ -6,7 +6,7 @@ import pandas as pd
 import numpy as np
 
 
-flow_var_idx = {'M': 7, 'Cp': 8, 'p': 3, 'rho': 2, 'u': 4, 'v': 5, 'q': 6, 'V': 9}
+flow_var_idx = {'M': 7, 'Cp': 8, 'p': 3, 'rho': 2, 'u': 4, 'v': 5, 'q': 6}
 
 
 def read_Cp_from_file_xfoil(fname: str):
