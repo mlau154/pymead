@@ -10,12 +10,13 @@ import scienceplots
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from matplotlib.ticker import MultipleLocator
 from cycler import cycler
-from matplotlib.patches import Polygon, Patch
+from matplotlib.patches import Polygon, Patch, Arrow
 import numpy as np
 from copy import deepcopy
 import PIL
 from pymoo.decomposition.asf import ASF
 
+from pymead.optimization.objectives_and_constraints import Objective
 from pymead.utils.read_write_files import load_data, save_data
 from pymead.optimization.pop_chrom import Chromosome, Population
 from pymead.post.mses_field import generate_field_matplotlib, flow_var_label
@@ -40,7 +41,9 @@ ylabel = {
             "Cdp": r"Design $C_{d_p}$ (counts)",
             "Cdf": r"Design $C_{d_f}$ (counts)",
             "Cm": r"Design $C_m$",
-            "CPK": r"Design $C_{P_K}$"
+            "CPK": r"Design $C_{P_K}$",
+            "sf": r"Design $C_{F_{\parallel V_\infty}}$ (counts)",
+            "sfmh": r"Design $C_{F_{\parallel V_\infty}} - C_{d_h}$ (counts)"
         }
 
 bl_matplotlib_labels = {
@@ -51,25 +54,37 @@ bl_matplotlib_labels = {
 }
 
 
-def field_display_text(index: int, display_var: str, display_val: float):
+def field_display_text(index: int, display_var: str or typing.List[str], display_val: float or typing.List[float]):
     title = {
         "Cd": r"C_{F_{\parallel V_\infty}}",
         "CPK": r"C_{P_K}"
     }
-    disp_text = {
-        "Cd": fr"Gen. {index}: ${title['Cd']} = {display_val * 10000:.1f}$ counts",
-        "CPK": fr"Gen. {index}: ${title['CPK']} = {display_val:.3f}$"
-    }
-    if display_var in disp_text.keys():
-        return disp_text[display_var]
+
+    def output_display_text(disp_var: str, disp_val: float):
+        disp_text = {
+            "Cd": fr"${title['Cd']} = {disp_val:.3f}$",
+            "CPK": fr"${title['CPK']} = {disp_val:.3f}$"
+        }
+        if disp_var not in disp_text.keys():
+            raise ValueError(f"Failed to find display_var {disp_var} in display text keys ({disp_text.keys()})")
+        return disp_text[disp_var]
+
+    if isinstance(display_var, str) and isinstance(display_val, float):
+        return f"Gen. {index}: " + output_display_text(display_var, display_val)
+    elif isinstance(display_var, list) and isinstance(display_val, list):
+        texts_to_join = []
+        for dvar, dval in zip(display_var, display_val):
+            texts_to_join.append(output_display_text(dvar, dval))
+        return f"Gen. {index}: " + ", ".join(texts_to_join)
     else:
-        raise ValueError(f"Failed to find display_var {display_var} in display text keys ({disp_text.keys()})")
+        raise TypeError("display_var and display_val must be str and float or List[str] and List[float]")
 
 
 class PostProcess:
     def __init__(self, analysis_dir: str, image_dir: str, post_process_force_file: str, jmea_file: str,
                  modify_param_dict_func: typing.Callable = None, underwing: bool = False,
-                 modify_param_dict_kwargs: dict = None, weights: np.ndarray = None):
+                 modify_param_dict_kwargs: dict = None, weights: np.ndarray = None,
+                 settings_json_file: str = None):
         if modify_param_dict_kwargs is None:
             modify_param_dict_kwargs = {}
         self.cbar = None
@@ -86,12 +101,17 @@ class PostProcess:
         self.mea['airfoil_graphs_active'] = False
         self.underwing = underwing
         self.param_dict = load_data(os.path.join(self.analysis_dir, 'param_dict.json'))
+        self.param_dict_original = deepcopy(self.param_dict)
         self.modify_param_dict_func = modify_param_dict_func
         if self.modify_param_dict_func is not None:
             self.modify_param_dict(**modify_param_dict_kwargs)
         self.chromosomes = []
         self.multi_objective = self.determine_multi_objective()
         self.weights = weights if weights is not None else np.array([[0.5, 0.5]])
+        self.settings_json_file = settings_json_file
+        self.settings = None
+        if self.settings_json_file is not None:
+            self.settings = load_data(self.settings_json_file)
 
     def determine_multi_objective(self):
         alg1 = load_data(os.path.join(self.analysis_dir, f"algorithm_gen_1.pkl"))
@@ -130,6 +150,62 @@ class PostProcess:
             else:
                 return alg.opt.get("X").flatten()
 
+    def get_F(self, alg_file: str or None, weight_idx: int = 0):
+        alg = None
+        if alg_file is not None:
+            alg = load_data(alg_file)
+        if alg is None:
+            baseline_file = os.path.join(self.analysis_dir, "J_baseline.dat")
+            if os.path.exists(baseline_file):
+                F = np.loadtxt(baseline_file)
+                print(f"1, {F = }")
+            else:
+                F = self.get_baseline_obj_fun_values()
+                print(f"2, {F = }")
+            return F
+        else:
+            if self.multi_objective:
+                decomp = ASF()
+                F = alg.opt.get("F")
+
+                # Normalize the objective function values before calculating the decomposition
+                max_f1 = np.max(F[:, 0])
+                max_f2 = np.max(F[:, 1])
+                F[:, 0] *= 1.0 / max_f1
+                F[:, 1] *= 1.0 / max_f2
+                I_ = decomp.do(F, self.weights[weight_idx]).argmin()
+                return alg.opt.get("F")[I_]
+            else:
+                return alg.opt.get("F").flatten()
+
+    def get_full_gen_opt_F(self, alg_file: str or None):
+        alg = None
+        if alg_file is not None:
+            alg = load_data(alg_file)
+        if alg is None:
+            baseline_file = os.path.join(self.analysis_dir, "J_baseline.dat")
+            if os.path.exists(baseline_file):
+                F = np.loadtxt(baseline_file)
+            else:
+                F = self.get_baseline_obj_fun_values()
+            return F
+        else:
+            return alg.opt.get("F")
+
+    def get_full_gen_pop_F(self, alg_file: str or None):
+        alg = None
+        if alg_file is not None:
+            alg = load_data(alg_file)
+        if alg is None:
+            baseline_file = os.path.join(self.analysis_dir, "J_baseline.dat")
+            if os.path.exists(baseline_file):
+                F = np.loadtxt(baseline_file)
+            else:
+                F = self.get_baseline_obj_fun_values()
+            return F
+        else:
+            return alg.pop.get("F")
+
     def get_mea(self, index: int, weight_idx: int = 0):
         if index != 0:
             X = self.get_X(os.path.join(self.analysis_dir, f"algorithm_gen_{index}.pkl"), weight_idx=weight_idx)
@@ -158,21 +234,51 @@ class PostProcess:
             weight_str = ""
         return weight_str
 
+    def get_baseline_obj_fun_values(self):
+        if not os.path.exists(os.path.join(self.analysis_dir, 'analysis')):
+            os.mkdir(os.path.join(self.analysis_dir, 'analysis'))
+
+        param_set = deepcopy(self.param_dict_original)
+        param_set['num_processors'] = 1
+        param_set['population_size'] = 1
+        param_set['mplot_settings']['flow_field'] = 2
+        param_set['mses_settings']['timeout'] += 10.0
+        param_set['mset_settings']['airfoil_analysis_dir'] = os.path.join(
+            self.analysis_dir, 'analysis', f'analysis_0')
+        param_set['mset_settings']['airfoil_coord_file_name'] = f'analysis_0'
+        param_set['base_folder'] = os.path.join(self.analysis_dir, 'analysis')
+        param_set['name'] = [f"analysis_0"]
+
+        chromosome = Chromosome(param_dict=param_set, population_idx=0, mea=self.mea, genes=None,
+                                ga_settings=None, category=None, generation=0)
+
+        population = Population(param_dict=param_set, ga_settings=None, generation=0, parents=[chromosome],
+                                mea=self.mea, verbose=True, skip_parent_assignment=False)
+
+        population.eval_pop_fitness()
+        population_forces = population.population[0].forces
+        obj_fun_strings = self.settings["Genetic Algorithm"]["J"].split(",")
+        J_baseline = []
+        for J in obj_fun_strings:
+            objective = Objective("")
+            objective.set_func_str(J)
+            objective.update(population_forces)
+            J_baseline.append(objective.value)
+        J_baseline = np.array(J_baseline)
+        np.savetxt(os.path.join(self.analysis_dir, "J_baseline.dat"), J_baseline)
+        return J_baseline
+
     def run_analysis(self, index: int or typing.Iterable = None, evaluate: bool = True, save_coords: bool = False,
                      save_control_points: bool = False, save_airfoil_state: bool = False):
         for weight_idx, weights in enumerate(self.weights):
-            if weight_idx == 0 or weight_idx == 2:
-                continue
             weight_str = self.get_weight_str(weight_idx)
-            print(f"{weight_str = }")
+
+            self.chromosomes = []
 
             index = self.set_index(index)
-            print(f"{index = }")
 
             X_list = [self.get_X(os.path.join(self.analysis_dir, f"algorithm_gen_{i}.pkl"), weight_idx=weight_idx)
                       if i != 0 else None for i in index]
-
-            print(f"{len(X_list) = }")
 
             if not os.path.exists(os.path.join(self.analysis_dir, 'analysis')):
                 os.mkdir(os.path.join(self.analysis_dir, 'analysis'))
@@ -210,39 +316,6 @@ class PostProcess:
                 for idx, c in enumerate(population.population):
                     save_data(c.airfoil_state, os.path.join(self.analysis_dir,
                                                             f'airfoil_state{weight_str}', f'airfoil_state_{index[idx]}.json'))
-            # if save_internal_radius:
-            #     if not os.path.exists(os.path.join(self.analysis_dir, 'radius')):
-            #         os.mkdir(os.path.join(self.analysis_dir, 'radius'))
-            #     for idx, c in enumerate(population.population):
-            #         transformation = Transformation2D(tx=[-c.airfoil_state['A1']['dx']], ty=[-c.airfoil_state['A1']['dy']],
-            #                                           r=[-c.airfoil_state['A1']['alf']], order='t,r')
-            #         nt = 300
-            #         if self.underwing:
-            #             b_nac_fore = Bezier(P=np.array(c.control_points[0][2]), nt=nt)
-            #             b_nac_aft = Bezier(P=np.array(c.control_points[0][3]), nt=nt)
-            #         else:
-            #             b_nac_fore = Bezier(P=np.array(c.control_points[2][2]), nt=nt)
-            #             b_nac_aft = Bezier(P=np.array(c.control_points[2][3]), nt=nt)
-            #         b_hub_fore = Bezier(P=np.flipud(np.array(c.control_points[1][2])), nt=nt)
-            #         b_hub_aft = Bezier(P=np.flipud(np.array(c.control_points[1][1])), nt=nt)
-            #         c_nac_fore = np.column_stack((b_nac_fore.x, b_nac_fore.y))
-            #         c_nac_aft = np.column_stack((b_nac_aft.x, b_nac_aft.y))[1:, :]
-            #         c_nac = np.row_stack((c_nac_fore, c_nac_aft))
-            #         c_hub_fore = np.column_stack((b_hub_fore.x, b_hub_fore.y))
-            #         c_hub_aft = np.column_stack((b_hub_aft.x, b_hub_aft.y))[1:, :]
-            #         c_hub = np.row_stack((c_hub_fore, c_hub_aft))
-            #         c_nac_t = transformation.transform(c_nac)
-            #         c_hub_t = transformation.transform(c_hub)
-            #         radius = np.array([])
-            #         for coord in c_nac_t:
-            #             r = abs(coord[1])
-            #             if coord[0] >= c_hub_t[0, 0]:
-            #                 r -= abs(np.interp(x=np.array([coord[0]]), xp=c_hub_t[:, 0], fp=c_hub_t[:, 1])[0])
-            #             radius = np.append(radius, r)
-            #         data = np.column_stack((c_nac_t[:, 0], radius))
-            #         np.savetxt(os.path.join(self.analysis_dir, 'radius', f'radius_{index[idx]}.dat'), data)
-            #         np.savetxt(os.path.join(self.analysis_dir, 'radius', f'nac_{index[idx]}.dat'), c_nac_t)
-            #         np.savetxt(os.path.join(self.analysis_dir, 'radius', f'hub_{index[idx]}.dat'), c_hub_t)
 
             if evaluate:
                 population.eval_pop_fitness()
@@ -250,6 +323,50 @@ class PostProcess:
                                      for k in population.population[0].forces.keys()}
                 post_process_file_split = os.path.splitext(self.post_process_force_file)
                 save_data(population_forces, post_process_file_split[0] + weight_str + post_process_file_split[1])
+
+    def generate_objective_function_plot(self, index: int or typing.Iterable = None):
+        obj_fun_label_dict = {
+            0: r"$J_P$",
+            1: r"$J_F$"
+        }
+        save_name_dict = {
+            0: "JP",
+            1: "JF",
+        }
+
+        F_list = []
+        for weight_idx, weights in enumerate(self.weights):
+            index = self.set_index(index)
+            F = np.array([self.get_F(os.path.join(self.analysis_dir, f"algorithm_gen_{i}.pkl"), weight_idx=weight_idx)
+                          if i != 0 else self.get_F(alg_file=None, weight_idx=weight_idx) for i in index])
+            F_list.append(F)
+            print(f"{F = }")
+
+        for obj_fun_idx in range(F_list[0].shape[1]):
+            fig, axs = plt.subplots()
+
+            prop_cycler = (cycler(color=['#004488', '#DDAA33', '#BB5566']))
+            axs.set_prop_cycle(prop_cycler)
+
+            for i, F in enumerate(F_list):
+                weight_str = self.get_weight_str(i)
+                label = None if self.weights.shape[0] < 2 else weight_str[1:]
+
+                # Determine what ydata to plot
+                ydata = F[:, obj_fun_idx]
+
+                # Plot the ydata
+                axs.plot(ydata, label=label)
+
+            fig.set_tight_layout('tight')
+            axs.set_xlabel("Generation", fontdict=font)
+            axs.set_ylabel(obj_fun_label_dict[obj_fun_idx], fontdict=font)
+            axs.grid("on", ls=":")
+            if self.weights.shape[0] > 1:
+                legend_font_dict = {k: v for k, v in font.items() if k != "color"}
+                axs.legend(prop=legend_font_dict)
+            format_axis_scientific(axs)
+            show_save_fig(fig, save_base_dir=self.image_dir, file_name_stub=f'{save_name_dict[obj_fun_idx]}')
 
     def generate_aero_force_plot(self, var: str or list = None):
         if self.multi_objective:
@@ -269,6 +386,7 @@ class PostProcess:
             var = [var]
         if var is None:
             var = [k for k in post_process_forces.keys() if k not in ['converged', 'BL', 'errored_out', 'timed_out']]
+            var.extend(["sf", "sfmh"])
         multiplier = {
             "Cd": 10000,
             "Cl": 1,
@@ -280,6 +398,8 @@ class PostProcess:
             "Cdf": 10000,
             "Cm": 1,
             "CPK": 1,
+            "sf": 10000,
+            "sfmh": 10000,
         }
         for v in var:
             fig, axs = plt.subplots()
@@ -290,10 +410,29 @@ class PostProcess:
             for i, ppf in enumerate(post_process_forces_list):
                 weight_str = self.get_weight_str(i)
                 label = None if self.weights.shape[0] < 2 else weight_str[1:]
-                if isinstance(post_process_forces['Cd'][0], typing.Iterable):
-                    axs.plot([el[1] * multiplier[v] for el in ppf[v]], label=label)
+
+                # Determine what ydata to plot
+                if v in ppf.keys():
+                    if isinstance(post_process_forces['Cd'][0], typing.Iterable):
+                        ydata = [el[1] * multiplier[v] for el in ppf[v]]
+                    else:
+                        ydata = [el * multiplier[v] for el in ppf[v]]
+                elif v == "sf":
+                    if isinstance(post_process_forces['Cd'][0], typing.Iterable):
+                        ydata = [el[1] * multiplier[v] for el in ppf["Cd"]]
+                    else:
+                        ydata = [el * multiplier[v] for el in ppf["Cd"]]
+                elif v == "sfmh":
+                    if isinstance(post_process_forces['Cd'][0], typing.Iterable):
+                        ydata = [(el_Cd[1] - el_Cdh[1]) * multiplier[v] for el_Cd, el_Cdh in zip(ppf["Cd"], ppf["Cdh"])]
+                    else:
+                        ydata = [(el_Cd - el_Cdh) * multiplier[v] for el_Cd, el_Cdh in zip(ppf["Cd"], ppf["Cdh"])]
                 else:
-                    axs.plot([el * multiplier[v] for el in ppf[v]], label=label)
+                    raise ValueError(f"Found invalid key {v}")
+
+                # Plot the ydata
+                axs.plot(ydata, label=label)
+
             fig.set_tight_layout('tight')
             axs.set_xlabel("Generation", fontdict=font)
             axs.set_ylabel(ylabel[v], fontdict=font)
@@ -304,8 +443,63 @@ class PostProcess:
             format_axis_scientific(axs)
             show_save_fig(fig, save_base_dir=self.image_dir, file_name_stub=f'design_{v}')
 
+    def pareto_front(self, opt_start: int = 5, opt_end: int = None, opt_num: int = 10):
+        index = self.set_index(None)
+        if opt_end is None:
+            opt_end = index[-1]
+        all_opt_F = [self.get_full_gen_opt_F(os.path.join(self.analysis_dir, f"algorithm_gen_{i}.pkl"))
+                 if i != 0 else self.get_full_gen_opt_F(alg_file=None) for i in index]
+        all_pop_F = [self.get_full_gen_pop_F(os.path.join(self.analysis_dir, f"algorithm_gen_{i}.pkl"))
+                     if i != 0 else self.get_full_gen_pop_F(alg_file=None) for i in index]
+        opt_range = np.linspace(opt_start, opt_end, opt_num, endpoint=True).astype(int)
+        cmap = plt.get_cmap("plasma", len(opt_range))
+        cmap_dict = {v: i for i, v in enumerate(opt_range)}
+        fig, axs = plt.subplots(figsize=(8, 6))
+        pop_labeled = False
+        opt_labeled = False
+        for i, F in enumerate(all_pop_F):
+            if i != 0:
+                extra_kwargs = {}
+                if not pop_labeled:
+                    extra_kwargs["label"] = "Individual"
+                    pop_labeled = True
+                valid_rows = np.argwhere(F[:, 0] < 1.0).flatten()
+                axs.plot(F[valid_rows, 0], F[valid_rows, 1], ls="none", marker="s", mfc="lightgray", mec="lightgray",
+                         markersize=2, **extra_kwargs)
+        for i, F in enumerate(all_opt_F):
+            if F.ndim > 1:
+                sorted_order = np.argsort(F[:, 0], axis=None)
+                F[:, 0] = F[sorted_order, 0]
+                F[:, 1] = F[sorted_order, 1]
+            star_kwargs = dict(ls="--", marker="*")
+            gray_circle_kwargs = dict(ls="none", marker="o", mfc="none", mec="gray", markersize=3)
+            base_kwargs = dict(ls="none", marker="x", mfc="red", mec="red")
+            if i == 0:
+                axs.plot(F[0], F[1], **base_kwargs, label="Baseline")
+            else:
+                if i in opt_range:
+                    axs.plot(F[:, 0], F[:, 1], **star_kwargs, zorder=100, label=f"Opt, Gen {i}",
+                             color=cmap(cmap_dict[i]),
+                             mfc=cmap(cmap_dict[i]),
+                             mec=cmap(cmap_dict[i])
+                             )
+                else:
+                    extra_kwargs = {}
+                    if not opt_labeled:
+                        extra_kwargs["label"] = "Optimal"
+                        opt_labeled = True
+                    axs.plot(F[:, 0], F[:, 1], **gray_circle_kwargs, **extra_kwargs)
+        axs.set_xlim([0.058, 0.158])
+        axs.set_xlabel(r"$J_P$", fontdict=font)
+        axs.set_ylabel(r"$J_F$", fontdict=font)
+        legend_font_dict = {k: v for k, v in font.items() if k != "color"}
+        legend_font_dict["size"] = 12
+        axs.legend(prop=legend_font_dict)
+        format_axis_scientific(axs)
+        show_save_fig(fig, save_base_dir=self.image_dir, file_name_stub="pareto_front")
+
     def compare_geometries(self, index: list, plot_actuator_disk: bool = True,
-                           rotate_x_axis_wind_direction: bool = False):
+                           rotate_x_axis_wind_direction: bool = False, rotate_zero_alf: bool = False):
         for weight_idx, weights in enumerate(self.weights):
             weight_str = self.get_weight_str(weight_idx)
             if len(index) != 2:
@@ -320,10 +514,17 @@ class PostProcess:
                 post_process_forces = load_data(post_process_force_file)
             for analysis_idx, i in enumerate(index):
                 coords = load_data(os.path.join(self.analysis_dir, f'coords{weight_str}', f'coords_{i}.json'))
+                alf = None
+                if rotate_zero_alf:
+                    dx = (coords[0][0][0] + coords[0][-1][0]) / 2
+                    dy = (coords[0][0][1] + coords[0][-1][1]) / 2
+                    alf = -np.arctan2(dy, dx)
                 for airfoil in coords:
                     airfoil = np.array(airfoil)
                     if rotate_x_axis_wind_direction:
                         airfoil = rotate_matrix(airfoil, -np.deg2rad(post_process_forces["alf"][i][1]))
+                    if rotate_zero_alf:
+                        airfoil = rotate_matrix(airfoil, alf)
                     axs.plot(airfoil[:, 0], airfoil[:, 1], color=colors[analysis_idx], ls='dashed')
                 if plot_actuator_disk:
                     control_points = load_data(os.path.join(self.analysis_dir,
@@ -345,6 +546,9 @@ class PostProcess:
                     if rotate_x_axis_wind_direction:
                         ad1 = rotate_matrix(ad1, -np.deg2rad(post_process_forces["alf"][i][1]))
                         ad2 = rotate_matrix(ad2, -np.deg2rad(post_process_forces["alf"][i][1]))
+                    if rotate_zero_alf:
+                        ad1 = rotate_matrix(ad1, alf)
+                        ad2 = rotate_matrix(ad2, alf)
                     axs.plot(ad1[:, 0], ad1[:, 1], color=colors[analysis_idx], ls='dotted')
                     axs.plot(ad2[:, 0], ad2[:, 1], color=colors[analysis_idx], ls='dotted')
 
@@ -369,6 +573,8 @@ class PostProcess:
             modifiers = ""
             if rotate_x_axis_wind_direction:
                 modifiers += "_rotateWind"
+            if rotate_zero_alf:
+                modifiers += "_rotateZeroAlf"
             for ext in save_filetypes:
                 fig.savefig(os.path.join(self.image_dir, f"geometry_{index[0]}_{index[1]}{modifiers}{weight_str}{ext}"),
 
@@ -533,6 +739,9 @@ class PostProcess:
                         for j in range(int(n_sides / 2)):
                             axs[j].invert_yaxis()
 
+                    for ax in axs:
+                        format_axis_scientific(ax)
+
                     # Set the legend
                     if mode == 'compare':
                         legend_proxies = [Line2D([], [], ls=ls, color=c)
@@ -564,7 +773,7 @@ class PostProcess:
     def generate_single_field(self, var: str, index: int, index_list, cmap_field: mpl_colors.Colormap or str,
                               cmap_airfoil: mpl_colors.Colormap or str, shading: str = 'gouraud', vmin: float = None,
                               vmax: float = None, image_extensions: tuple = ('.png', '.pdf'),
-                              field_display_var: str = "Cd", weight_idx_list: list = None):
+                              field_display_var: str or typing.List[str] = "Cd", weight_idx_list: list = None):
         for weight_idx, weights in enumerate(self.weights):
 
             if weight_idx_list is not None and weight_idx not in weight_idx_list:
@@ -607,10 +816,20 @@ class PostProcess:
                 raise TypeError("index_list must be a list or a numpy ndarray")
 
             # Generate performance characteristic text
-            if not isinstance(post_process_forces[field_display_var][gen_index], typing.Iterable):
-                display_val = post_process_forces[field_display_var][gen_index]
+            if isinstance(field_display_var, str):
+                if not isinstance(post_process_forces[field_display_var][gen_index], typing.Iterable):
+                    display_val = post_process_forces[field_display_var][gen_index]
+                else:
+                    display_val = post_process_forces[field_display_var][gen_index][1]
+            elif isinstance(field_display_var, list):
+                display_val = []
+                for fdv in field_display_var:
+                    if not isinstance(post_process_forces[fdv][gen_index], typing.Iterable):
+                        display_val.append(post_process_forces[fdv][gen_index])
+                    else:
+                        display_val.append(post_process_forces[fdv][gen_index][1])
             else:
-                display_val = post_process_forces[field_display_var][gen_index][1]
+                raise TypeError("field_display_var must be either str or list")
 
             axs.text(x=-0.15, y=0.32, s=field_display_text(index, field_display_var, display_val),
                      fontdict=dict(size=18, family='serif'))
@@ -633,13 +852,15 @@ class PostProcess:
 
             # Generate the legend
             proxy_line = Line2D([], [], color=airfoil_color)
-            proxy_patch_airfoil = Patch(color="#000000DD")
-            proxy_patch_bl = Patch(color="#606060")
+            proxy_patch_airfoil = Patch(color="#606060")
+            proxy_patch_bl = Patch(color="white")
+            proxy_arrow = Line2D([], [], color="blue")
             if self.underwing:
                 legend_loc = "upper right"
             else:
                 legend_loc = "lower right"
-            axs.legend((proxy_line, proxy_patch_airfoil, proxy_patch_bl), ('Surface', 'Solid', 'BL/Stag.'),
+            axs.legend((proxy_line, proxy_patch_airfoil, proxy_patch_bl, proxy_arrow),
+                       ('Surface', 'Solid', 'B.L.', 'Stag. S.L.'),
                        prop={'size': 17, 'family': font['family']}, loc=legend_loc, frameon=False)
 
             # Plot outputs

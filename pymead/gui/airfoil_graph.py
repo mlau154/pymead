@@ -1,6 +1,7 @@
 """
 Interactive airfoil graph object
 """
+from time import time
 
 import numpy as np
 
@@ -11,6 +12,7 @@ from pymead.gui.polygon_item import PolygonItem
 from pymead.core.pos_param import PosParam
 
 from pymead.core.airfoil import Airfoil
+from pymead.analysis.single_element_inviscid import single_element_inviscid
 
 from time import time
 
