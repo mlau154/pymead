@@ -19,7 +19,7 @@ from PyQt5.QtWidgets import QWidget, QGridLayout, QLabel, QHeaderView
 from PyQt5.QtWidgets import QAbstractItemView
 from PyQt5.QtCore import pyqtSignal
 from pymead.utils.downsampling_schemes import fractal_downsampler2
-# import pymead.core.symmetry
+import pymead.core.symmetry  # DO NOT REMOVE
 from pymead.gui.autocomplete import Completer
 from functools import partial
 from pymead import INCLUDE_FILES
