@@ -1,3 +1,3 @@
 Downloads
 ---------
-:download:`Pymead v2.0.0 Windows Installer <../downloads/pymeadsetup.exe>`
+:download:`pymead v2.0.0 Windows Installer <../source/downloads/pymeadsetup.exe>`
