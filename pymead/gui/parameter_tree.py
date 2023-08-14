@@ -343,8 +343,9 @@ class MEAParamTree:
                         # Run inviscid CL calculation after any geometry change
                         # if a.tag == self.cl_airfoil_tag:
                         #     a.get_coords(body_fixed_csys=True)
-                        #     ds = fractal_downsampler2(a.coords, ratio_thresh=1.000005, abs_thresh=0.1)
-                        #     _, _, CL = single_element_inviscid(ds, a.alf.value * 180 / np.pi)
+                        #     # ds = fractal_downsampler2(a.coords, ratio_thresh=1.000005, abs_thresh=0.1)
+                        #     _, _, CL = single_element_inviscid(a, a.alf.value * 180 / np.pi)
+                        #     print(f"{CL = }")
                         #     self.cl_label.setText(f"{self.cl_airfoil_tag} Inviscid CL = {CL:.3f}")
 
                         self.plot_change_recursive(self.p.param('Airfoil Parameters').child(a.tag).children())

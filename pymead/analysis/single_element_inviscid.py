@@ -51,7 +51,6 @@ def single_element_inviscid(coord: np.ndarray, alpha: float or np.float64):
     DL = zeros((M,))      # Panel length
     RHS = zeros((N, 1))     # Freestream component normal to panel
     V = zeros((M,))       # Panel tangential velocity
-    CP = zeros((M,))      # Panel CP
 
     ALPHA = alpha  # AOA in deg
     AL = ALPHA * pi / 180
@@ -170,7 +169,8 @@ def single_element_inviscid(coord: np.ndarray, alpha: float or np.float64):
             VEL = VEL + (B[i, j] * G[j])[0]
         V[i] = VEL + cos(AL)*cos(TH[i]) + sin(AL)*sin(TH[i])
         CL = CL + ((G[i] + G[i + 1]) * DL[i])[0]
-        CP[i] = 1 - V[i]**2
+
+    CP = 1 - V**2
 
     return CO, CP, CL
 

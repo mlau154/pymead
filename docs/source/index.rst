@@ -11,6 +11,7 @@ Contents
 .. toctree::
 
    usage
+   download
    quick_start
    tutorials
    api

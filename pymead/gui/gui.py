@@ -546,7 +546,7 @@ class GUI(QMainWindow):
         self.mea.add_airfoil(airfoil, len(self.mea.airfoils), self.param_tree_instance,
                                     w=self.w, v=self.v)
         self.airfoil_name_list = [k for k in self.mea.airfoils.keys()]
-        # self.param_tree_instance.p.child("Analysis").child("Inviscid Cl Calc").setLimits([a.tag for a in self.mea.airfoils.values()])
+        self.param_tree_instance.p.child("Analysis").child("Inviscid Cl Calc").setLimits([a.tag for a in self.mea.airfoils.values()])
         self.param_tree_instance.params[-1].add_airfoil(airfoil, len(self.mea.airfoils) - 1)
         for a in self.mea.airfoils.values():
             if a.airfoil_graph.airfoil_parameters is None:
@@ -574,7 +574,11 @@ class GUI(QMainWindow):
 
     def single_airfoil_inviscid_analysis(self):
         """Inviscid analysis not yet implemented here"""
-        pass
+        selected_airfoil = self.param_tree_instance.p.child('Analysis').child('Inviscid Cl Calc').value()
+        body_fixed_coords = self.mea.airfoils[selected_airfoil].get_coords(body_fixed_csys=True, as_tuple=False)
+        _, _, CL = single_element_inviscid(body_fixed_coords,
+                                           alpha=self.mea.airfoils[selected_airfoil].alf.value * 180 / np.pi)
+        print(f"{CL = }")
 
     def export_coordinates(self):
         """Airfoil coordinate exporter"""
@@ -1402,7 +1406,8 @@ class GUI(QMainWindow):
                     if isinstance(v, np.ndarray):
                         el[k] = v.tolist()
         save_data(forces_temp, os.path.join(param_dict['opt_dir'], 'force_history.json'))
-        np.savetxt(os.path.join(param_dict['opt_dir'], 'opt_X.dat'), res.X)
+        if len(self.objectives) == 1:
+            np.savetxt(os.path.join(param_dict['opt_dir'], 'opt_X.dat'), res.X)
         # self.save_opt_plots(param_dict['opt_dir'])  # not working at the moment
 
     def save_opt_plots(self, opt_dir: str):
@@ -1442,6 +1447,14 @@ class GUI(QMainWindow):
             return True
 
         return super().eventFilter(source, event)
+
+
+# Adjustments for variable monitor resolution (from https://stackoverflow.com/a/47723454)
+if hasattr(Qt, 'AA_EnableHighDpiScaling'):
+    QApplication.setAttribute(Qt.AA_EnableHighDpiScaling, True)
+
+if hasattr(Qt, 'AA_UseHighDpiPixmaps'):
+    QApplication.setAttribute(Qt.AA_UseHighDpiPixmaps, True)
 
 
 def main():
