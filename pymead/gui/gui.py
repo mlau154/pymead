@@ -67,6 +67,7 @@ from pymead.gui.custom_graphics_view import CustomGraphicsView
 from pymead.gui.file_selection import select_directory
 from pymead.utils.dict_recursion import unravel_param_dict_deepcopy
 from pymead.core.param import Param
+from pymead import ICON_DIR
 
 import pymoo.core.population
 from pymoo.algorithms.moo.unsga3 import UNSGA3
@@ -253,7 +254,7 @@ class GUI(QMainWindow):
 
     def set_title_and_icon(self):
         self.setWindowTitle("pymead")
-        image_path = os.path.join(os.path.dirname(os.getcwd()), 'icons', 'pymead-logo.png')
+        image_path = os.path.join(ICON_DIR, 'pymead-logo.png')
         self.setWindowIcon(QIcon(image_path))
 
     def create_menu_bar(self):
