@@ -55,7 +55,10 @@ class MainIconToolbar(QToolBar):
 
     def on_grid_button_pressed(self):
         # import pyqtgraph as pg
-        dw = self.parent.dockable_tab_window.current_dock_widget
+        if hasattr(self.parent.dockable_tab_window, "current_dock_widget"):
+            dw = self.parent.dockable_tab_window.current_dock_widget
+        else:
+            dw = self.parent.dockable_tab_window.first_dock_widget
         if dw is None:
             v = self.parent.v
             x_state = v.ctrl.xGridCheck.checkState()

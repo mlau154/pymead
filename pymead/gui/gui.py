@@ -87,7 +87,6 @@ class GUI(QMainWindow):
         # super().__init__(flags=Qt.FramelessWindowHint)
         super().__init__(parent=parent)
         # self.setWindowFlags(Qt.CustomizeWindowHint)
-        print(f"{path = }")
         self.menu_bar = None
         self.path = path
         # single_element_inviscid(np.array([[1, 0], [0, 0], [1, 0]]), 0.0)
@@ -264,7 +263,6 @@ class GUI(QMainWindow):
 
     def create_menu_bar(self):
         self.menu_bar = self.menuBar()
-        print(f"In menu bar creation, {os.getcwd() = }")
         menu_data = load_data(os.path.join(GUI_SETTINGS_DIR, "menu.json"))
 
         def recursively_add_menus(menu: dict, menu_bar: QObject):
