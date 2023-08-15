@@ -10,7 +10,7 @@ from pymead.core.pos_param import PosParam
 from pymead.utils.read_write_files import load_data
 from pymead.gui.input_dialog import SymmetryDialog, PosConstraintDialog
 # from pymead.core.symmetry import symmetry
-from pymead import ICON_DIR
+from pymead import ICON_DIR, GUI_SETTINGS_DIR
 # from functools import partial
 
 
@@ -26,7 +26,7 @@ class MainIconToolbar(QToolBar):
         self.pos_constraint_dialog = None
         self.icon_dir = ICON_DIR
         self.parent.addToolBar(self)
-        self.button_settings = load_data("buttons.json")
+        self.button_settings = load_data(os.path.join(GUI_SETTINGS_DIR, "buttons.json"))
         self.button_settings.pop("template")
         self.buttons = None
         self.add_all_buttons()

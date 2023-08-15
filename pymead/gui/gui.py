@@ -11,6 +11,7 @@ import sys
 import os
 import random
 from collections import namedtuple
+import multiprocessing
 
 from pymead.gui.rename_popup import RenamePopup
 from pymead.gui.main_icon_toolbar import MainIconToolbar
@@ -67,7 +68,7 @@ from pymead.gui.custom_graphics_view import CustomGraphicsView
 from pymead.gui.file_selection import select_directory
 from pymead.utils.dict_recursion import unravel_param_dict_deepcopy
 from pymead.core.param import Param
-from pymead import ICON_DIR
+from pymead import ICON_DIR, GUI_SETTINGS_DIR
 
 import pymoo.core.population
 from pymoo.algorithms.moo.unsga3 import UNSGA3
@@ -86,6 +87,7 @@ class GUI(QMainWindow):
         # super().__init__(flags=Qt.FramelessWindowHint)
         super().__init__(parent=parent)
         # self.setWindowFlags(Qt.CustomizeWindowHint)
+        print(f"{path = }")
         self.menu_bar = None
         self.path = path
         # single_element_inviscid(np.array([[1, 0], [0, 0], [1, 0]]), 0.0)
@@ -206,8 +208,6 @@ class GUI(QMainWindow):
         self.main_icon_toolbar = MainIconToolbar(self)
         if self.main_icon_toolbar.buttons["change-background-color"]["button"].isChecked():
             self.set_dark_mode()
-        if self.path is not None:
-            self.load_mea_no_dialog(self.path)
         self.output_area_text(f"<font color='#1fbbcc' size='5'>pymead</font> <font size='5'>version</font> "
                               f"<font color='#44e37e' size='5'>{__version__}</font>",
                               mode='html')
@@ -217,7 +217,8 @@ class GUI(QMainWindow):
         self.add_airfoil(airfoil)
         self.auto_range_geometry()
         self.statusBar().clearMessage()
-        self.progress_bar = QProgressBar(self, textVisible=False)
+        self.progress_bar = QProgressBar(parent=self)
+        self.progress_bar.setTextVisible(False)
         self.progress_bar.setStyleSheet('''QProgressBar {border: 2px solid; border-color: #8E9091;} 
         QProgressBar::chunk {background-color: #6495ED; width: 10px; margin: 0.5px;}
         ''')
@@ -227,6 +228,10 @@ class GUI(QMainWindow):
         # self.showMaximized()
         # for dw in self.dockable_tab_window.dock_widgets:
         #     dw.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.MinimumExpanding)
+
+        # Load the airfoil system from the system argument variable if necessary
+        if self.path is not None:
+            self.load_mea_no_dialog(self.path)
 
     @pyqtSlot(str)
     def setStatusBarText(self, message: str):
@@ -259,7 +264,8 @@ class GUI(QMainWindow):
 
     def create_menu_bar(self):
         self.menu_bar = self.menuBar()
-        menu_data = load_data('menu.json')
+        print(f"In menu bar creation, {os.getcwd() = }")
+        menu_data = load_data(os.path.join(GUI_SETTINGS_DIR, "menu.json"))
 
         def recursively_add_menus(menu: dict, menu_bar: QObject):
             for key, val in menu.items():
@@ -1463,7 +1469,7 @@ def main():
     app.processEvents()
     app.setStyle('Fusion')
     if len(sys.argv) > 1:
-        gui = GUI(sys.argv[1])
+        gui = GUI(path=sys.argv[1])
     else:
         gui = GUI()
     gui.show()
@@ -1471,4 +1477,10 @@ def main():
 
 
 if __name__ == "__main__":
+    # First, we must add freeze support for multiprocessing.Pool to work properly in Windows in the version of the GUI
+    # assembled by PyInstaller. This next statement affects only Windows; it has no impact on *nix OS since Pool
+    # already works fine there.
+    multiprocessing.freeze_support()
+
+    # Generate the graphical user interface
     main()

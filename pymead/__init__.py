@@ -86,3 +86,4 @@ ICON_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "icons")
 PLUGINS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "plugins")
 INCLUDE_FILES = [os.path.join(os.path.dirname(os.path.abspath(__file__)), "core", "symmetry.py")]
 GUI_DEFAULTS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "gui", "gui_settings", "defaults")
+GUI_SETTINGS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "gui", "gui_settings")
