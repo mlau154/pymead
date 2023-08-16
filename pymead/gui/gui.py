@@ -742,14 +742,21 @@ class GUI(QMainWindow):
                                                export_Cp=True
                                                )
             if not aero_data['converged'] or aero_data['errored_out'] or aero_data['timed_out']:
-                self.text_area.insertPlainText(
-                    f"[{self.n_analyses:2.0f}] Converged = {aero_data['converged']} | Errored out = "
-                    f"{aero_data['errored_out']} | Timed out = {aero_data['timed_out']}\n")
+                self.disp_message_box("XFOIL Analysis Failed", message_mode='error')
+                self.output_area_text(
+                    f"<font size='4'>[{self.n_analyses:2.0f}] Converged = {aero_data['converged']} | Errored out = "
+                    f"{aero_data['errored_out']} | Timed out = {aero_data['timed_out']}</font>", mode='html')
+                self.output_area_text('\n')
             else:
-                self.text_area.insertPlainText(
-                    f"[{self.n_analyses:2.0f}] ({xfoil_settings['airfoil']}, \u03b1 = {aero_data['alf']:.3f}, Re = {xfoil_settings['Re']:.3E}, Ma = {xfoil_settings['Ma']:.3f}): "
-                    f"Cl = {aero_data['Cl']:7.4f} | Cd = {aero_data['Cd']:.5f} (Cdp = {aero_data['Cdp']:.5f}, Cdf = {aero_data['Cdf']:.5f}) | Cm = {aero_data['Cm']:7.4f} "
-                    f"| L/D = {aero_data['L/D']:8.4f}\n")
+                self.output_area_text(
+                    f"<font size='4'>[{str(self.n_analyses).zfill(2)}] ({xfoil_settings['airfoil']}, "
+                    f"\u03b1 = {aero_data['alf']:.3f}, Re = {xfoil_settings['Re']:.3E}, "
+                    f"Ma = {xfoil_settings['Ma']:.3f}): "
+                    f"Cl = {aero_data['Cl']:+7.4f} | Cd = {aero_data['Cd']:.5f} (Cdp = {aero_data['Cdp']:.5f}, "
+                    f"Cdf = {aero_data['Cdf']:.5f}) | Cm = {aero_data['Cm']:+7.4f} "
+                    f"| L/D = {aero_data['L/D']:+8.4f}</font>".replace("-", "\u2212"),
+                    mode='html')
+                self.output_area_text('\n')
             sb = self.text_area.verticalScrollBar()
             sb.setValue(sb.maximum())
 
@@ -825,8 +832,10 @@ class GUI(QMainWindow):
         else:
             # self.output_area_text('\n')
             self.output_area_text(
-                f"<font size='4'>[{self.n_analyses:2.0f}] (Re = {mses_settings['REYNIN']:.3E}, Ma = {mses_settings['MACHIN']:.3f}): "
-                f"Cl = {aero_data['Cl']:7.4f} | Cd = {aero_data['Cd']:.5f} | Cm = {aero_data['Cm']:7.4f}</font>", mode='html')
+                f"<font size='4'>[{self.n_analyses:2.0f}] (Re = {mses_settings['REYNIN']:.3E}, "
+                f"Ma = {mses_settings['MACHIN']:.3f}): "
+                f"Cl = {aero_data['Cl']:+7.4f} | Cd = {aero_data['Cd']:+.5f} | "
+                f"Cm = {aero_data['Cm']:+7.4f}</font>".replace("-", "\u2212"), mode='html')
             self.output_area_text('\n')
         sb = self.text_area.verticalScrollBar()
         sb.setValue(sb.maximum())
