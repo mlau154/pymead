@@ -80,21 +80,21 @@ class MainIconToolbar(QToolBar):
     def change_background_color_button_toggled(self, checked):
         if checked:
             self.parent.dark_mode = True
-            self.parent.set_dark_mode()
+            self.parent.set_theme("dark")
         else:
             self.parent.dark_mode = False
-            self.parent.set_light_mode()
+            self.parent.set_theme("light")
 
-        if self.parent.analysis_graph is not None:
-            if checked:
-                self.parent.analysis_graph.set_background('#2a2a2b')
-            else:
-                self.parent.analysis_graph.set_background('w')
+        # if self.parent.analysis_graph is not None:
+        #     if checked:
+        #         self.parent.analysis_graph.set_background('#2a2a2b')
+        #     else:
+        #         self.parent.analysis_graph.set_background('w')
 
-        if checked:
-            self.parent.param_tree_instance.set_dark_mode()
-        else:
-            self.parent.param_tree_instance.set_light_mode()
+        # if checked:
+        #     self.parent.param_tree_instance.set_dark_mode()
+        # else:
+        #     self.parent.param_tree_instance.set_light_mode()
         # QTreeView::branch:closed {color: white;} QTreeView::branch:open {color: white;}''')
         # QTreeView::item {border: 1px solid black;}''')  # need to use image, not
         # color for open closed arrows

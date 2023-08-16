@@ -443,10 +443,11 @@ class MEAParamTree:
         self.t.header().setSectionResizeMode(1, QHeaderView.Interactive)
         self.t.setAlternatingRowColors(False)
 
-        if self.t.parent().dark_mode:
-            self.set_dark_mode()
-        else:
-            self.set_light_mode()
+        # if self.t.parent().dark_mode:
+        #     self.set_dark_mode()
+        # else:
+        #     self.set_light_mode()
+        self.set_theme(self.t.parent().themes[self.t.parent().current_theme])
 
         add_equation_boxes_recursively(self.p.param('Airfoil Parameters').children())
         self.update_auto_complete()
@@ -459,35 +460,65 @@ class MEAParamTree:
                                      "They should always display the same values."), 0, 0, 1, 2)
         self.layout.addWidget(self.t, 1, 0, 1, 1)
 
-    def set_dark_mode(self):
+    def set_theme(self, theme: dict):
         """Sets the theme of the ParameterTree to dark by modifying the CSS"""
-        self.t.setStyleSheet('''QTreeWidget {color: #3e3f40; alternate-background-color: #3e3f40;
-                            selection-background-color: #3e3f40;}
-                            QTreeView::item:hover {background: #36bacfaa;} QTreeWidget::item {border: 0px solid gray; color: #dce1e6}
-                            QTreeWidget::item:selected {background-color: #36bacfaa; alternate-background-color: #36bacfaa} 
-                            QTreeView::branch:has-siblings:adjoins-item {border-image: url(../icons/branch-more.png) 0;}
-                            QTreeView::branch:!has-children:!has-siblings:adjoins-item {border-image: url(../icons/branch-end.png) 0;}
-                            QTreeView::branch:open:has-children:!has-siblings, QTreeView::branch:open:has-children:has-siblings  {
+        self.t.setStyleSheet(f'''QTreeWidget {{color: {theme["tree-background-color"]}; 
+                            alternate-background-color: {theme["tree-alternate-color"]};
+                            selection-background-color: {theme["tree-selection-color"]};}}
+                            QTreeView::item:hover {{background: {theme["tree-hover-color"]};}} 
+                            QTreeWidget::item {{border: 0px solid gray; color: {theme["tree-item-color"]}}}
+                            QTreeWidget::item:selected {{background-color: {theme["tree-item-selected-color"]}; 
+                            alternate-background-color: {theme["tree-item-alternate-color"]}}}
+                            QTreeView::branch:has-siblings:adjoins-item 
+                            {{border-image: url(../icons/branch-more.png) 0;}}
+                            QTreeView::branch:!has-children:!has-siblings:adjoins-item 
+                            {{border-image: url(../icons/branch-end.png) 0;}}
+                            QTreeView::branch:open:has-children:!has-siblings, 
+                            QTreeView::branch:open:has-children:has-siblings  {{
                             border-image: none;
-                            image: url(../icons/closed-arrow.png);} 
-                            QTreeView::branch:has-siblings:!adjoins-item {border-image: url(../icons/vline.png) 0;} 
+                            image: url(../icons/closed-arrow.png);}}
+                            QTreeView::branch:has-siblings:!adjoins-item {{border-image: url(../icons/vline.png) 0;}} 
                             QTreeView::branch:has-children:!has-siblings:closed,
-                            QTreeView::branch:closed:has-children:has-siblings {border-image: none; image: url(../icons/opened-arrow.png);}''')
+                            QTreeView::branch:closed:has-children:has-siblings 
+                            {{border-image: none; image: url(../icons/opened-arrow.png);}}'''
+                             )
 
-    def set_light_mode(self):
-        """Sets the theme of the ParameterTree to light by modifying the CSS"""
-        self.t.setStyleSheet('''QTreeWidget {color: white; alternate-background-color: white; 
-                    selection-background-color: white;}
-                    QTreeView::item::hover {background: #36bacfaa;} QTreeView::item {border: 0px solid gray; color: black}
-                    QTreeWidget::item:selected {background-color: #36bacfaa; alternate-background-color: #36bacfaa}
-                    QTreeView::branch:has-siblings:adjoins-item {border-image: url(../icons/branch-more.png) 0;}
-                    QTreeView::branch:!has-children:!has-siblings:adjoins-item {border-image: url(../icons/branch-end.png) 0;}
-                    QTreeView::branch:open:has-children:!has-siblings, QTreeView::branch:open:has-children:has-siblings  {
-                    border-image: none;
-                    image: url(../icons/closed-arrow.png);} 
-                    QTreeView::branch:has-siblings:!adjoins-item {border-image: url(../icons/vline.png) 0;} 
-                    QTreeView::branch:has-children:!has-siblings:closed,
-                    QTreeView::branch:closed:has-children:has-siblings {border-image: none; image: url(../icons/opened-arrow.png);}''')
+    # def set_dark_mode(self, theme: dict):
+    #     """Sets the theme of the ParameterTree to dark by modifying the CSS"""
+    #     self.t.setStyleSheet(f'''QTreeWidget {{color: %s; alternate-background-color: #3e3f40;
+    #                         selection-background-color: #3e3f40;}}
+    #                         QTreeView::item:hover {{background: #36bacfaa;}}
+    #                         QTreeWidget::item {{border: 0px solid gray; color: #dce1e6}}
+    #                         QTreeWidget::item:selected {{background-color: #36bacfaa;
+    #                         alternate-background-color: #36bacfaa}}
+    #                         QTreeView::branch:has-siblings:adjoins-item
+    #                         {{border-image: url(../icons/branch-more.png) 0;}}
+    #                         QTreeView::branch:!has-children:!has-siblings:adjoins-item
+    #                         {{border-image: url(../icons/branch-end.png) 0;}}
+    #                         QTreeView::branch:open:has-children:!has-siblings,
+    #                         QTreeView::branch:open:has-children:has-siblings  {{
+    #                         border-image: none;
+    #                         image: url(../icons/closed-arrow.png);}}
+    #                         QTreeView::branch:has-siblings:!adjoins-item {{border-image: url(../icons/vline.png) 0;}}
+    #                         QTreeView::branch:has-children:!has-siblings:closed,
+    #                         QTreeView::branch:closed:has-children:has-siblings
+    #                         {{border-image: none; image: url(../icons/opened-arrow.png);}}'''
+    #                          )
+    #
+    # def set_light_mode(self):
+    #     """Sets the theme of the ParameterTree to light by modifying the CSS"""
+    #     self.t.setStyleSheet('''QTreeWidget {color: white; alternate-background-color: white;
+    #                 selection-background-color: white;}
+    #                 QTreeView::item::hover {background: #36bacfaa;} QTreeView::item {border: 0px solid gray; color: black}
+    #                 QTreeWidget::item:selected {background-color: #36bacfaa; alternate-background-color: #36bacfaa}
+    #                 QTreeView::branch:has-siblings:adjoins-item {border-image: url(../icons/branch-more.png) 0;}
+    #                 QTreeView::branch:!has-children:!has-siblings:adjoins-item {border-image: url(../icons/branch-end.png) 0;}
+    #                 QTreeView::branch:open:has-children:!has-siblings, QTreeView::branch:open:has-children:has-siblings  {
+    #                 border-image: none;
+    #                 image: url(../icons/closed-arrow.png);}
+    #                 QTreeView::branch:has-siblings:!adjoins-item {border-image: url(../icons/vline.png) 0;}
+    #                 QTreeView::branch:has-children:!has-siblings:closed,
+    #                 QTreeView::branch:closed:has-children:has-siblings {border-image: none; image: url(../icons/opened-arrow.png);}''')
 
     def add_equation_box(self, pg_param, equation: str = None, update_auto_completer: bool = True):
         """Adds a QLineEdit to the ParameterTreeItem for equation editing"""

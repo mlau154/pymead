@@ -68,7 +68,7 @@ from pymead.gui.custom_graphics_view import CustomGraphicsView
 from pymead.gui.file_selection import select_directory
 from pymead.utils.dict_recursion import unravel_param_dict_deepcopy
 from pymead.core.param import Param
-from pymead import ICON_DIR, GUI_SETTINGS_DIR
+from pymead import ICON_DIR, GUI_SETTINGS_DIR, GUI_THEMES_DIR
 
 import pymoo.core.population
 from pymoo.algorithms.moo.unsga3 import UNSGA3
@@ -95,6 +95,10 @@ class GUI(QMainWindow):
                                                           f"{font_name}.ttf"))
         # QFontDatabase.addApplicationFont(os.path.join(RESOURCE_DIR, "cascadia-code", "Cascadia.ttf"))
         # print(QFontDatabase().families())
+        self.themes = {
+            "dark": load_data(os.path.join(GUI_THEMES_DIR, "dark_theme.json")),
+            "light": load_data(os.path.join(GUI_THEMES_DIR, "light_theme.json")),
+        }
 
         self.design_tree = None
         self.dialog = None
@@ -124,7 +128,7 @@ class GUI(QMainWindow):
         self.Cp_graph_plot_handles = []
         self.forces_dict = {}
         self.te_thickness_edit_mode = False
-        self.dark_mode = False
+        # self.dark_mode = False
         self.worker = None
         self.n_analyses = 0
         self.n_converged_analyses = 0
@@ -174,7 +178,7 @@ class GUI(QMainWindow):
         # self.design_tree_widget.setStyleSheet('''QTreeWidget {color: black; alternate-background-color: red;
         #         selection-background-color: #36bacfaa;}
         #         QTreeView::item:hover {background: #36bacfaa;} QTreeView::item {border: 0px solid gray; color: black}''')
-        self.setStyleSheet("color: black; font-family: DejaVu; font-size: 12px;")
+        # self.setStyleSheet("color: black; font-family: DejaVu; font-size: 12px;")
         self.text_area = ConsoleTextArea()
         self.right_widget_layout = QVBoxLayout()
         # self.tab_widget = QTabWidget()
@@ -205,8 +209,12 @@ class GUI(QMainWindow):
         self.set_title_and_icon()
         self.create_menu_bar()
         self.main_icon_toolbar = MainIconToolbar(self)
+
         if self.main_icon_toolbar.buttons["change-background-color"]["button"].isChecked():
-            self.set_dark_mode()
+            self.set_theme("dark")
+        else:
+            self.set_theme("light")
+
         self.output_area_text(f"<font color='#1fbbcc' size='5'>pymead</font> <font size='5'>version</font> "
                               f"<font color='#44e37e' size='5'>{__version__}</font>",
                               mode='html')
@@ -236,25 +244,52 @@ class GUI(QMainWindow):
     def setStatusBarText(self, message: str):
         self.statusBar().showMessage(message)
 
-    def set_dark_mode(self):
-        self.current_theme = "dark"
-        self.setStyleSheet("background-color: #3e3f40; color: #dce1e6; font-family: DejaVu; font-size: 12px;")
-        for dock_widget in self.dockable_tab_window.dock_widgets:
-            if hasattr(dock_widget.widget(), 'setBackground'):
-                dock_widget.widget().setBackground('#2a2a2b')
-        if self.cbar is not None and self.cbar_label_attrs is not None:
-            self.cbar_label_attrs['color'] = '#dce1e6'
-            self.cbar.setLabel(**self.cbar_label_attrs)
+    # def set_dark_mode(self):
+    #     self.current_theme = "dark"
+    #     self.setStyleSheet("background-color: #3e3f40; color: #dce1e6; font-family: DejaVu; font-size: 12px;")
+    #     for dock_widget in self.dockable_tab_window.dock_widgets:
+    #         if hasattr(dock_widget.widget(), 'setBackground'):
+    #             dock_widget.widget().setBackground('#2a2a2b')
+    #     if self.cbar is not None and self.cbar_label_attrs is not None:
+    #         self.cbar_label_attrs['color'] = '#dce1e6'
+    #         self.cbar.setLabel(**self.cbar_label_attrs)
+    #
+    # def set_light_mode(self):
+    #     self.current_theme = "light"
+    #     self.setStyleSheet("font-family: DejaVu; font-size: 12px;")
+    #     for dock_widget in self.dockable_tab_window.dock_widgets:
+    #         if hasattr(dock_widget.widget(), 'setBackground'):
+    #             dock_widget.widget().setBackground('w')
+    #     if self.cbar is not None and self.cbar_label_attrs is not None:
+    #         self.cbar_label_attrs['color'] = '#000000'
+    #         self.cbar.setLabel(**self.cbar_label_attrs)
 
-    def set_light_mode(self):
-        self.current_theme = "light"
-        self.setStyleSheet("font-family: DejaVu; font-size: 12px;")
+    def set_theme(self, theme_name: str):
+        self.current_theme = theme_name
+        theme = self.themes[theme_name]
+        self.setStyleSheet(f"""background-color: {theme['background-color']}; 
+                           color: {theme['main-color']};
+                           font-family: {theme['font-family']}; font-size: {theme['font-size']};
+                           """
+                           )
+        self.menuBar().setStyleSheet(f"""
+                           QMenuBar {{ background-color: {theme['menu-background-color']}; 
+                            }}
+                            QMenuBar::item:selected {{ background: {theme['menu-item-selected-color']} }}
+                           QMenu {{ background-color: {theme['menu-background-color']}; 
+                           color: {theme['menu-main-color']};}} 
+                           QMenu::item:selected {{ background-color: {theme['menu-item-selected-color']}; }}
+                    """)
         for dock_widget in self.dockable_tab_window.dock_widgets:
             if hasattr(dock_widget.widget(), 'setBackground'):
-                dock_widget.widget().setBackground('w')
+                dock_widget.widget().setBackground(theme["dock-widget-background-color"])
         if self.cbar is not None and self.cbar_label_attrs is not None:
-            self.cbar_label_attrs['color'] = '#000000'
+            self.cbar_label_attrs['color'] = theme["cbar-color"]
             self.cbar.setLabel(**self.cbar_label_attrs)
+        if self.analysis_graph is not None:
+            self.analysis_graph.set_background(theme["graph-background-color"])
+        if self.param_tree_instance is not None:
+            self.param_tree_instance.set_theme(theme)
 
     def set_title_and_icon(self):
         self.setWindowTitle("pymead")
@@ -721,11 +756,7 @@ class GUI(QMainWindow):
             if aero_data['converged'] and not aero_data['errored_out'] and not aero_data['timed_out']:
                 if self.analysis_graph is None:
                     # Need to set analysis_graph to None if analysis window is closed! Might also not want to allow geometry docking window to be closed
-                    if self.dark_mode:
-                        bcolor = '#2a2a2b'
-                    else:
-                        bcolor = 'w'
-                    self.analysis_graph = AnalysisGraph(background_color=bcolor)
+                    self.analysis_graph = AnalysisGraph(background_color=self.themes[self.current_theme]["graph-background-color"])
                     self.dockable_tab_window.add_new_tab_widget(self.analysis_graph.w, "Analysis")
                 pg_plot_handle = self.analysis_graph.v.plot(pen=pg.mkPen(color=self.pens[self.n_converged_analyses][0],
                                                                          style=self.pens[self.n_converged_analyses][1]),
@@ -804,11 +835,7 @@ class GUI(QMainWindow):
             if self.analysis_graph is None:
                 # Need to set analysis_graph to None if analysis window is closed! Might also not want to allow
                 # geometry docking window to be closed
-                if self.dark_mode:
-                    bcolor = '#2a2a2b'
-                else:
-                    bcolor = 'w'
-                self.analysis_graph = AnalysisGraph(background_color=bcolor)
+                self.analysis_graph = AnalysisGraph(background_color=self.themes[self.current_theme]["graph-background-color"])
                 self.dockable_tab_window.add_new_tab_widget(self.analysis_graph.w, "Analysis")
             pen_idx = self.n_converged_analyses % len(self.pens)
             x_max = self.mea.calculate_max_x_extent()
@@ -1349,11 +1376,6 @@ class GUI(QMainWindow):
 
             progress_callback.emit(algorithm.display.progress_dict)
 
-            if self.dark_mode:
-                bcolor = '#2a2a2b'
-            else:
-                bcolor = 'w'
-
             if len(self.objectives) == 1:
                 if n_generation > 1:
                     X = algorithm.opt.get("X")[0]
@@ -1386,7 +1408,7 @@ class GUI(QMainWindow):
                                 self.forces_dict[k] = []
                             self.forces_dict[k].append(v)
 
-            progress_callback.emit(PlotAirfoilCallback(parent=self, mea=mea, X=X.tolist(), background_color=bcolor))
+            progress_callback.emit(PlotAirfoilCallback(parent=self, mea=mea, X=X.tolist(), background_color=self.themes[self.current_theme]["graph-background-color"]))
             # progress_callback.emit(ParallelCoordsCallback(parent=self, mea=mea, X=X.tolist(), background_color=bcolor))
             # if param_dict['tool'] == 'XFOIL':
             #     progress_callback.emit(CpPlotCallbackXFOIL(parent=self, background_color=bcolor))

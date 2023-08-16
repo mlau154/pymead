@@ -1,0 +1,23 @@
+{
+  "background-color":  "#ffffff",
+  "main-color": "000000",
+  "dock-widget-background-color": "#faf9f6",
+  "font-size": "12px",
+  "font-family": "DejaVu",
+  "cbar-color": "#faf9f6",
+  "progress-border-color": "#8e9091",
+  "progress-color": "#6495e3",
+  "graph-background-color": "#faf9f6",
+  "tree-background-color": "#ffffff",
+  "tree-alternate-color": "#ffffff",
+  "tree-selection-color": "#ffffff",
+  "tree-hover-color": "#3944bcdd",
+  "tree-item-color": "#000000",
+  "tree-item-selected-color": "#3944bcdd",
+  "tree-item-alternate-color": "#3944bcdd",
+  "menu-background-color": "#ffffff",
+  "menu-main-color": "#000000",
+  "menu-item-background-color": "#ffffff",
+  "menu-item-main-color": "#0f0e06",
+  "menu-item-selected-color": "#3944bcdd"
+}

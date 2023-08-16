@@ -1,5 +1,23 @@
 {
-  "airfoil_geometry_graph": {
-
-  }
+  "background-color":  "#3e3f40",
+  "main-color": "#dce1e6",
+  "dock-widget-background-color": "#2a2a2b",
+  "font-size": "12px",
+  "font-family": "DejaVu",
+  "cbar-color": "#dce1e6",
+  "progress-border-color": "#8e9091",
+  "progress-color": "#6495e3",
+  "graph-background-color": "#2a2a2b",
+  "tree-background-color": "#3e3f40",
+  "tree-alternate-color": "#3e3f40",
+  "tree-selection-color": "#3e3f40",
+  "tree-hover-color": "#3944bcdd",
+  "tree-item-color": "#dce1e6",
+  "tree-item-selected-color": "#3944bcdd",
+  "tree-item-alternate-color": "#3944bcdd",
+  "menu-background-color": "#3e3f40",
+  "menu-main-color": "white",
+  "menu-item-background-color": "#3e3f40",
+  "menu-item-main-color": "#0f0e06",
+  "menu-item-selected-color": "#3944bcdd"
 }
