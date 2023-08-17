@@ -7,7 +7,17 @@ Installation methods
 
 There are several easy ways to install pymead:
 
-Method 1: ``pip``
+Method 1: Windows Installer
+---------------------------
+
+For users merely wishing to use pymead rather than develop pymead, this is the recommended install method.
+Go to the `release page on GitHub <https://github.com/mlau154/pymead/releases>`_ and download the ``.exe``
+file under the "Assets" dropdown menu. Click on the ``.exe`` and follow the self-contained instructions
+to install pymead. For this install method, neither Python nor any of the "required_" dependencies are
+necessary to run the pymead executable. Only the "optional_" dependencies are necessary to run
+some commands in pymead.
+
+Method 2: ``pip``
 -----------------
 Use ``pip`` to install the latest stable version of pymead into the environment from the Python Package Index (PyPi):
 
@@ -18,12 +28,12 @@ Use ``pip`` to install the latest stable version of pymead into the environment 
 This method automatically installs all required dependencies that are not yet installed. It also
 allows the user to easily update pymead if desired when a new version is available.
 
-Method 2: IDE
+Method 3: IDE
 -------------
 Some IDEs, like `PyCharm <https://www.jetbrains.com/pycharm/>`_, have a plugin for ``pip``. In PyCharm,
 simply search for and install "pymead" in the "Python Packages" tab.
 
-Method 3: Local install
+Method 4: Local install
 -----------------------
 The pymead package can also be installed in a local location. To accomplish this, first clone the directory using
 
@@ -77,6 +87,7 @@ If the installation was successful, an airfoil will appear on the screen.
 Dependencies
 ============
 
+.. _required:
 Required
 --------
 
@@ -98,9 +109,9 @@ installed when using ``pip install pymead``. Alternatively, if cloning from the
 - `pymoo <https://pymoo.org/>`_: Aerodynamic shape optimization
 - `numba <https://numba.pydata.org/>`_: Speed-up of inviscid lift coefficient calculation
 
+.. _optional:
 Optional
 --------
-
 pymead relies on several external libraries for low- and medium-fidelity
 aerodynamic analysis. All the geometry tools in pymead are built-in, apart
 from several Python libraries that are installed automatically if ``pip`` is used
@@ -117,5 +128,16 @@ make the most of pymead, download the following software packages:
 - `Ghostscript <https://www.ghostscript.com/>`_: PS-to-PDF file conversion
 - `MuPDF <https://mupdf.com/>`_: PDF-to-SVG file conversion
 
-Note: each of these software packages are free except for MSES. However, even MSES
-is free by request for academic research.
+Each of these software packages are free except for MSES. However, even MSES
+is free by request for academic research. It is important that for each of these programs installed, the full path
+to the folder containing the executable be added to the system path. Please see
+this blog post at
+`medium.com <https://medium.com/@kevinmarkvi/how-to-add-executables-to-your-path-in-windows-5ffa4ce61a53>`_ for more
+details on how to accomplish this if you are unfamiliar. As an example, after XFOIL is downloaded from the linked web
+page and extracted to the same folder it was downloaded to, a path that looks like
+``C:\Users\<user-name>\Downloads\XFOIL6.99`` on Windows is the folder that should be added to the
+system path because it contains ``xfoil.exe``. If the XFOIL folder is moved to a more typical
+folder used for storing programs, such as ``C:\Program Files``, ``C:\Program Files (x86)``, or
+``C:\Users\<user-name>\AppData\Local\Programs`` in Windows, be sure to change the path
+accordingly in the environmental variable or Windows will be unable to find the program when
+run through pymead.
