@@ -35,7 +35,9 @@ simply search for and install "pymead" in the "Python Packages" tab.
 
 Method 4: Local install
 -----------------------
-The pymead package can also be installed in a local location. To accomplish this, first clone the directory using
+This method is recommended for those wishing to contribute to pymead in any capacity.
+The pymead package can be installed in a local location using `Git <https://gitforwindows.org/>`_.
+To accomplish this, first clone the directory using
 
 .. code-block::
 
