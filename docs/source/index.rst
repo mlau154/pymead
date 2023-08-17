@@ -10,7 +10,7 @@ Contents
 
 .. toctree::
 
-   usage
+   install
    quick_start
    tutorials
    api
