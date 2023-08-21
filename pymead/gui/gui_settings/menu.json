@@ -15,6 +15,9 @@
       "IGES": "export_IGES"
     }
   },
+  "Edit": {
+    "Bounds": ["edit_bounds", "Ctrl+B"]
+  },
   "View": {
     "Fit": "auto_range_geometry",
     "Toggle Full Screen": ["toggle_full_screen", "F11"]

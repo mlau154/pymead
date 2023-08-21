@@ -22,6 +22,7 @@ from functools import partial
 from pymead.utils.read_write_files import load_data, save_data
 from pymead.utils.dict_recursion import recursive_get
 from pymead.gui.default_settings import xfoil_settings_default
+from pymead.gui.bounds_values_table import BoundsValuesTable
 from pymead.optimization.objectives_and_constraints import Objective, Constraint, FunctionCompileError
 from pymead.analysis import cfd_output_templates
 from pymead.analysis.utils import viscosity_calculator
@@ -1874,6 +1875,24 @@ class NewMEADialog(QDialog):
     @pyqtSlot()
     def no(self):
         pass
+
+
+class EditBoundsDialog(QDialog):
+    def __init__(self, jmea_dict: dict, parent=None):
+        super().__init__(parent=parent)
+        self.setWindowTitle("Edit Bounds")
+        self.setFont(self.parent().font())
+        buttonBox = QDialogButtonBox(QDialogButtonBox.Save | QDialogButtonBox.Cancel, self)
+        layout = QFormLayout(self)
+
+        bv_table = BoundsValuesTable(jmea_dict=jmea_dict)
+
+        layout.addWidget(bv_table)
+
+        layout.addWidget(buttonBox)
+
+        buttonBox.button(QDialogButtonBox.Save).clicked.connect(self.accept)
+        buttonBox.rejected.connect(self.reject)
 
 
 class OptimizationDialogVTabWidget(PymeadDialogVTabWidget):

@@ -33,7 +33,7 @@ from pymead.core.transformation import Transformation3D
 from pymead import RESOURCE_DIR
 from pymead.gui.input_dialog import SingleAirfoilViscousDialog, LoadDialog, SaveAsDialog, OptimizationSetupDialog, \
     MultiAirfoilDialog, ColorInputDialog, ExportCoordinatesDialog, ExportControlPointsDialog, AirfoilPlotDialog, \
-    AirfoilMatchingDialog, MSESFieldPlotDialog, ExportIGESDialog, XFOILDialog, NewMEADialog
+    AirfoilMatchingDialog, MSESFieldPlotDialog, ExportIGESDialog, XFOILDialog, NewMEADialog, EditBoundsDialog
 from pymead.gui.pymeadPColorMeshItem import PymeadPColorMeshItem
 from pymead.gui.analysis_graph import AnalysisGraph
 from pymead.gui.parameter_tree import MEAParamTree
@@ -44,6 +44,7 @@ from pymead.optimization.opt_setup import read_stencil_from_array, convert_opt_s
 from pymead.analysis.single_element_inviscid import single_element_inviscid
 from pymead.gui.text_area import ConsoleTextArea
 from pymead.gui.dockable_tab_widget import DockableTabWidget
+from pymead.gui.bounds_values_table import BoundsValuesTable
 from pymead.core.mea import MEA
 from pymead.analysis.calc_aero_data import calculate_aero_data
 from pymead.optimization.opt_setup import CustomDisplay, TPAIOPT, SelfIntersectionRepair
@@ -370,6 +371,14 @@ class GUI(QMainWindow):
             self.load_mea_no_dialog(os.path.join(GUI_DEFAULT_AIRFOIL_DIR, "default_airfoil.jmea"))
             self.mea.file_name = None
             self.setWindowTitle(f"pymead")
+
+    def edit_bounds(self):
+        jmea_dict = self.mea.copy_as_param_dict(deactivate_airfoil_graphs=True)
+        bv_dialog = EditBoundsDialog(parent=self, jmea_dict=jmea_dict)
+        if bv_dialog.exec_():
+            print("Saving bounds edit...")
+        else:
+            print("Cancelling changes...")
 
     def auto_range_geometry(self):
         x_data_range, y_data_range = self.mea.get_curve_bounds()
