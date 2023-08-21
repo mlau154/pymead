@@ -1,5 +1,6 @@
 {
   "File": {
+    "New": ["new_mea", "Ctrl+N"],
     "Open": ["load_mea", "Ctrl+O"],
     "Save As": "save_as_mea",
     "Save": ["save_mea", "Ctrl+S"],

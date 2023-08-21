@@ -150,6 +150,17 @@ class HeaderParameter(pTypes.GroupParameter):
         pTypes.GroupParameter.__init__(self, **opts)
 
 
+class PlotGroup(pTypes.GroupParameter):
+    def __init__(self, **opts):
+        opts["type"] = "group"
+        super().__init__(**opts)
+
+    def add_plot_handle(self, name: str, color: str or tuple):
+        pg_param = Parameter.create(name=name, type="pen", color=color, width=1.4, removable=True,
+                                    renamable=True)
+        self.addChild(pg_param)
+
+
 class CustomGroup(pTypes.GroupParameter):
     """Class for addition of Custom Parameters to the Multi-Element Airfoil system within the GUI"""
     def __init__(self, mea: MEA, **opts):
@@ -200,15 +211,16 @@ class MEAParamTree:
         self.dialog = None
         self.parent = parent
         self.params = [
-            {'name': 'Save/Restore functionality', 'type': 'group', 'children': [
-                {'name': 'Save State', 'type': 'action'},
-                {'name': 'Restore State', 'type': 'action', 'children': [
-                    {'name': 'Add missing items', 'type': 'bool', 'value': True},
-                    {'name': 'Remove extra items', 'type': 'bool', 'value': True},
-                ]},
-            ]},
+            # {'name': 'Save/Restore functionality', 'type': 'group', 'children': [
+            #     {'name': 'Save State', 'type': 'action'},
+            #     {'name': 'Restore State', 'type': 'action', 'children': [
+            #         {'name': 'Add missing items', 'type': 'bool', 'value': True},
+            #         {'name': 'Remove extra items', 'type': 'bool', 'value': True},
+            #     ]},
+            # ]},
             {'name': 'Analysis', 'type': 'group', 'children': [
                 {'name': 'Inviscid Cl Calc', 'type': 'list', 'limits': [a.tag for a in mea.airfoils.values()]}]},
+            PlotGroup(name="Plot Handles"),
             MEAParameters(mea, status_bar, name='Airfoil Parameters'),
             # ScalableGroup(name="Expandable Parameter Group", tip='Click to add children', children=[
             #     {'name': 'ScalableParam 1', 'type': 'str', 'value': "default param 1"},
@@ -399,11 +411,20 @@ class MEAParamTree:
                 if change == 'contextMenu' and data == 'remove_ap':
                     self.remove_anchor_point(param)
 
+                # Removing a plot handle
+                if change == "childRemoved" and param.name() == "Plot Handles":
+                    self.parent.clear_geometry(data.name())
+                if change == 'name' and param.parent().name() == "Plot Handles":
+                    self.parent.change_geometry_name(data,
+                                                     [child_param.name() for child_param in param.parent().children()])
+                if change == "value" and param.parent().name() == "Plot Handles":
+                    self.parent.update_pen(param.name(), param.pen)
+
                 # Different value in QComboBox for the inviscid CL calculation is selected
                 if change == 'value' and param.name() == 'Inviscid Cl Calc':
                     self.cl_airfoil_tag = data
 
-                if change == 'name':
+                if change == 'name' and param.parent().name() != "Plot Handles":
                     new_name = param.name()
                     key_to_change = ''
                     for k, v in self.mea.param_dict['Custom'].items():

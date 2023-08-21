@@ -5,6 +5,8 @@ import shapely.errors
 import numpy as np
 
 from scipy.optimize import minimize
+from scipy.interpolate import BSpline, splrep
+import scipy
 from shapely.geometry import Polygon
 
 from pymead.utils.get_airfoil import extract_data_from_airfoiltools
@@ -99,6 +101,19 @@ def match_airfoil(mea: MEA, target_airfoil: str, airfoil_to_match: str or list o
     else:
         raise TypeError(f'airfoil_to_match be of type str, list, or np.ndarray, '
                         f'and type {type(airfoil_to_match)} was used')
+
+    # t, c, k = splrep(airfoil_to_match_xy[0:66, 0][::-1], airfoil_to_match_xy[0:66, 1][::-1], s=0, k=5)
+    # spline = BSpline(t, c, k, extrapolate=False)
+    # # hh = np.linspace(0, 1, 350)
+    # hh = np.concatenate((np.linspace(0, 0.01, 75), np.linspace(0.01, 1.0)[1:]))
+    # yy = spline(hh)
+    # import matplotlib.pyplot as plt
+    # fig, ax = plt.subplots()
+    # ax.plot(hh, yy)
+    # ax.plot(airfoil_to_match_xy[:, 0], airfoil_to_match_xy[:, 1], marker="*", ls="none", color="indianred")
+    # ax.set_aspect("equal")
+    # plt.show()
+
     # mea.deactivate_airfoil_matching_params(target_airfoil)
     new_mea = mea.deepcopy()
     new_mea.remove_airfoil_graphs()
@@ -108,7 +123,7 @@ def match_airfoil(mea: MEA, target_airfoil: str, airfoil_to_match: str or list o
     # bounds = [param.bounds for param in parameter_list]
     bounds = np.repeat(np.array([[0.0, 1.0]]), len(initial_guess), axis=0)
     # try:
-    res = minimize(airfoil_symmetric_area_difference, initial_guess, method='SLSQP',
+    res = scipy.optimize.minimize(airfoil_symmetric_area_difference, initial_guess, method='SLSQP',
                    bounds=bounds, args=(new_mea, target_airfoil, airfoil_to_match_xy), options={'disp': True})
     # finally:
     #     mea.activate_airfoil_matching_params(target_airfoil)

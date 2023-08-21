@@ -88,3 +88,4 @@ INCLUDE_FILES = [os.path.join(os.path.dirname(os.path.abspath(__file__)), "core"
 GUI_DEFAULTS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "gui", "gui_settings", "defaults")
 GUI_SETTINGS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "gui", "gui_settings")
 GUI_THEMES_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "gui", "gui_settings", "themes")
+GUI_DEFAULT_AIRFOIL_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "gui", "default_airfoil")

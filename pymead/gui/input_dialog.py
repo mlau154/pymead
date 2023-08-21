@@ -1851,6 +1851,31 @@ class SaveAsDialog(QFileDialog):
         self.setViewMode(QFileDialog.Detail)
 
 
+class NewMEADialog(QDialog):
+    def __init__(self, parent=None):
+        super().__init__(parent=parent)
+        self.setWindowTitle("Save Changes?")
+        self.setFont(self.parent().font())
+        buttonBox = QDialogButtonBox(QDialogButtonBox.Yes | QDialogButtonBox.No | QDialogButtonBox.Cancel, self)
+        layout = QFormLayout(self)
+
+        layout.addWidget(buttonBox)
+
+        buttonBox.button(QDialogButtonBox.Yes).clicked.connect(self.yes)
+        buttonBox.button(QDialogButtonBox.Yes).clicked.connect(self.accept)
+        buttonBox.button(QDialogButtonBox.No).clicked.connect(self.no)
+        buttonBox.button(QDialogButtonBox.No).clicked.connect(self.accept)
+        buttonBox.rejected.connect(self.reject)
+
+    @pyqtSlot()
+    def yes(self):
+        self.parent().save_mea()
+
+    @pyqtSlot()
+    def no(self):
+        pass
+
+
 class OptimizationDialogVTabWidget(PymeadDialogVTabWidget):
     def __init__(self, parent, widgets: dict, settings_override: dict):
         super().__init__(parent=parent, widgets=widgets, settings_override=settings_override)
@@ -2221,7 +2246,7 @@ class AirfoilMatchingDialog(QDialog):
 
     def setInputs(self):
         r0 = ["Airfoil to Match", QLineEdit(self)]
-        r0[1].setText('naca0012-il')
+        r0[1].setText('n0012-il')
         return [r0]
 
     def getInputs(self):

@@ -1,4 +1,6 @@
 import logging
+import typing
+
 import pyqtgraph as pg
 import numpy as np
 import pandas as pd
@@ -31,7 +33,7 @@ from pymead.core.transformation import Transformation3D
 from pymead import RESOURCE_DIR
 from pymead.gui.input_dialog import SingleAirfoilViscousDialog, LoadDialog, SaveAsDialog, OptimizationSetupDialog, \
     MultiAirfoilDialog, ColorInputDialog, ExportCoordinatesDialog, ExportControlPointsDialog, AirfoilPlotDialog, \
-    AirfoilMatchingDialog, MSESFieldPlotDialog, ExportIGESDialog, XFOILDialog
+    AirfoilMatchingDialog, MSESFieldPlotDialog, ExportIGESDialog, XFOILDialog, NewMEADialog
 from pymead.gui.pymeadPColorMeshItem import PymeadPColorMeshItem
 from pymead.gui.analysis_graph import AnalysisGraph
 from pymead.gui.parameter_tree import MEAParamTree
@@ -68,7 +70,7 @@ from pymead.gui.custom_graphics_view import CustomGraphicsView
 from pymead.gui.file_selection import select_directory
 from pymead.utils.dict_recursion import unravel_param_dict_deepcopy
 from pymead.core.param import Param
-from pymead import ICON_DIR, GUI_SETTINGS_DIR, GUI_THEMES_DIR
+from pymead import ICON_DIR, GUI_SETTINGS_DIR, GUI_THEMES_DIR, GUI_DEFAULT_AIRFOIL_DIR
 
 import pymoo.core.population
 from pymoo.algorithms.moo.unsga3 import UNSGA3
@@ -346,6 +348,7 @@ class GUI(QMainWindow):
                 self.disp_message_box('No file name specified. File not saved.', message_mode='warn')
         else:
             save_data(self.mea.copy_as_param_dict(), self.mea.file_name)
+            self.setWindowTitle(f"pymead - {os.path.split(self.mea.file_name)[-1]}")
             self.save_attempts = 0
 
     def copy_mea(self):
@@ -360,6 +363,13 @@ class GUI(QMainWindow):
         if file_name is not None:
             self.load_mea_no_dialog(file_name)
             self.setWindowTitle(f"pymead - {os.path.split(self.mea.file_name)[-1]}")
+
+    def new_mea(self):
+        dialog = NewMEADialog(self)
+        if dialog.exec_():
+            self.load_mea_no_dialog(os.path.join(GUI_DEFAULT_AIRFOIL_DIR, "default_airfoil.jmea"))
+            self.mea.file_name = None
+            self.setWindowTitle(f"pymead")
 
     def auto_range_geometry(self):
         x_data_range, y_data_range = self.mea.get_curve_bounds()
@@ -408,6 +418,21 @@ class GUI(QMainWindow):
                     self.geometry_plot_handles[geometry_name] = self.v.plot(pen=pg.mkPen(color=color), lw=1.4)
                     self.geometry_plot_handles[geometry_name].setData(coords[:, 0], coords[:, 1])
                     break
+            self.param_tree_instance.p.child("Plot Handles").add_plot_handle(geometry_name, color)
+
+    def clear_geometry(self, name: str):
+        self.geometry_plot_handles[name].clear()
+        self.geometry_plot_handles.pop(name)
+        self.v.update()
+
+    def change_geometry_name(self, name: str, new_names: typing.List[str]):
+        old_name = next(iter(set([k for k in self.geometry_plot_handles.keys()]) - set(new_names)))
+        temp_handle = self.geometry_plot_handles[old_name]
+        self.geometry_plot_handles.pop(old_name)
+        self.geometry_plot_handles[name] = temp_handle
+
+    def update_pen(self, name, qpen):
+        self.geometry_plot_handles[name].setPen(qpen)
 
     def clear_field(self):
         for child in self.v.allChildItems():
@@ -900,7 +925,8 @@ class GUI(QMainWindow):
         dialog = AirfoilMatchingDialog(self)
         if dialog.exec_():
             airfoil_name = dialog.getInputs()
-            res = match_airfoil_ga(self.mea, target_airfoil, airfoil_name)
+            # res = match_airfoil_ga(self.mea, target_airfoil, airfoil_name)
+            res = match_airfoil(self.mea, target_airfoil, airfoil_name)
             msg_mode = 'error'
             if hasattr(res, 'success') and res.success or hasattr(res, 'F') and res.F is not None:
                 if hasattr(res, 'x'):
