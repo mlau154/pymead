@@ -1885,9 +1885,9 @@ class EditBoundsDialog(QDialog):
         buttonBox = QDialogButtonBox(QDialogButtonBox.Save | QDialogButtonBox.Cancel, self)
         layout = QFormLayout(self)
 
-        bv_table = BoundsValuesTable(jmea_dict=jmea_dict)
+        self.bv_table = BoundsValuesTable(jmea_dict=jmea_dict)
 
-        layout.addWidget(bv_table)
+        layout.addWidget(self.bv_table)
 
         layout.addWidget(buttonBox)
 

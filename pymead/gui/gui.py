@@ -372,13 +372,30 @@ class GUI(QMainWindow):
             self.mea.file_name = None
             self.setWindowTitle(f"pymead")
 
+    def get_grandchild(self, full_param_name: str):
+        child_list = full_param_name.split(".")
+        current_param = self.param_tree_instance.p.child("Airfoil Parameters").child(child_list[0])
+        for idx in range(1, len(child_list) - 1):
+            current_param = current_param.child(child_list[idx])
+        return current_param.child(full_param_name)
+
     def edit_bounds(self):
         jmea_dict = self.mea.copy_as_param_dict(deactivate_airfoil_graphs=True)
         bv_dialog = EditBoundsDialog(parent=self, jmea_dict=jmea_dict)
         if bv_dialog.exec_():
-            print("Saving bounds edit...")
-        else:
-            print("Cancelling changes...")
+            data_to_modify = bv_dialog.bv_table.compare_data()
+            for k, data in data_to_modify.items():
+                p = self.get_grandchild(k)
+                p.airfoil_param.bounds = data["bounds"]
+                p.setValue(data["value"])
+                p.airfoil_param.active = data["active"]
+                p.setReadonly(not data["active"])
+                print(f"{p = }")
+                if not p.hasChildren():
+                    self.param_tree_instance.add_equation_box(p, data["eq"])
+                    self.param_tree_instance.update_equation(p.child("Equation Definition"), data["eq"])
+                else:
+                    self.param_tree_instance.update_equation(p.child("Equation Definition"), data["eq"])
 
     def auto_range_geometry(self):
         x_data_range, y_data_range = self.mea.get_curve_bounds()
