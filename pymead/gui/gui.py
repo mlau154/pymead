@@ -1511,9 +1511,15 @@ class GUI(QMainWindow):
         forces_temp = deepcopy(self.forces_dict)
         if "Cp" in forces_temp.keys():
             for el in forces_temp["Cp"]:
-                for k, v in el.items():
-                    if isinstance(v, np.ndarray):
-                        el[k] = v.tolist()
+                if isinstance(el, list):
+                    for e in el:
+                        for k, v in e.items():
+                            if isinstance(v, np.ndarray):
+                                e[k] = v.tolist()
+                else:
+                    for k, v in el.items():
+                        if isinstance(v, np.ndarray):
+                            el[k] = v.tolist()
         save_data(forces_temp, os.path.join(param_dict['opt_dir'], 'force_history.json'))
         if len(self.objectives) == 1:
             np.savetxt(os.path.join(param_dict['opt_dir'], 'opt_X.dat'), res.X)
