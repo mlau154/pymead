@@ -13,7 +13,7 @@ import numpy as np
 import re
 
 
-multi_point_keys = {
+multi_point_keys_mses = {
     0: 'MACHIN',
     1: 'REYNIN',
     2: 'ALFAIN',
@@ -37,12 +37,41 @@ multi_point_keys = {
     20: 'IFFBC',
 }
 
+multi_point_keys_xfoil = {
+    0: "Ma",
+    1: "Re",
+    2: "alfa",
+    3: "Cl",
+    4: "CLI",
+    5: "P",
+    6: "T",
+    7: "L",
+    8: "R",
+    9: "rho",
+    10: "gam",
+    11: "N",
+    12: "xtr_upper",
+    13: "xtr_lower",
+}
 
-def read_stencil_from_array(data: np.ndarray):
-    """Read the Multi-Point stencil from the Pandas DataFrame read from file and convert to a list of dictionaries"""
-    return [{'variable': multi_point_keys[int(col[0])], 'index': int(col[1]),
-             'points': col[2:].tolist()}
-            for col in data.T]
+
+def read_stencil_from_array(data: np.ndarray, tool: str):
+    """Read the Multi-Point stencil from a text file and converts it to a list of dictionaries"""
+    if tool == "MSES":
+        multi_point_keys = multi_point_keys_mses
+    elif tool == "XFOIL":
+        multi_point_keys = multi_point_keys_xfoil
+    else:
+        raise ValueError("Either 'MSES' or 'XFOIL' must be selected for the tool in the multipoint stencil")
+
+    if data.ndim == 1:
+        return [{"variable": multi_point_keys[int(data[0])], "index": int(data[1]), "points": data[2:].tolist()}]
+    elif data.ndim == 2:
+        return [{'variable': multi_point_keys[int(col[0])], 'index': int(col[1]),
+                 'points': col[2:].tolist()}
+                for col in data.T]
+    else:
+        raise ValueError(f"Discovered multipoint data that was not 1-D or 2-D. {data.ndim = }")
 
 
 def termination_condition(param_dict):

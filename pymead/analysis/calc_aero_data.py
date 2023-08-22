@@ -5,7 +5,6 @@ from copy import deepcopy
 import time
 
 import numpy as np
-import numpy.matlib
 from matplotlib import pyplot as plt
 from scipy.interpolate import CloughTocher2DInterpolator, RBFInterpolator, NearestNDInterpolator, LinearNDInterpolator
 from shapely.geometry import LineString, Point, MultiPoint
@@ -23,6 +22,37 @@ SVG_SETTINGS_TR = {
     SVG_PLOTS[1]: 'Grid',
     SVG_PLOTS[2]: 'Grid_Zoom',
 }
+
+
+def update_xfoil_settings_from_stencil(xfoil_settings: dict, stencil: typing.List[dict], idx: int):
+    """
+    Updates the XFOIL settings dictionary from a given multipoint stencil and multipoint index
+
+    Parameters
+    ==========
+    xfoil_settings: dict
+      MSES settings dictionary
+
+    stencil: typing.List[dict]
+      A list of dictionaries describing the multipoint stencil, where each entry in the list is a dictionary
+      representing a different stencil variable (Mach number, lift coefficient, etc.) and contains values for the
+      variable name, index (not used in XFOIL), and stencil
+      point values (e.g., ``stencil_var["points"]`` may look something like ``[0.65, 0.70, 0.75]`` for Mach number)
+
+    idx: int
+      Index within the multipoint stencil used to update the XFOIL settings dictionary
+
+    Returns
+    =======
+    dict
+      The modified XFOIL settings dictionary
+    """
+    for stencil_var in stencil:
+        if isinstance(xfoil_settings[stencil_var['variable']], list):
+            xfoil_settings[stencil_var['variable']][stencil_var['index']] = stencil_var['points'][idx]
+        else:
+            xfoil_settings[stencil_var['variable']] = stencil_var['points'][idx]
+    return xfoil_settings
 
 
 def update_mses_settings_from_stencil(mses_settings: dict, stencil: typing.List[dict], idx: int):
@@ -121,99 +151,40 @@ def calculate_aero_data(airfoil_coord_dir: str, airfoil_name: str, coords: typin
     if tool == 'XFOIL':
         if xfoil_settings is None:
             raise ValueError(f"\'xfoil_settings\' must be set if \'xfoil\' tool is selected")
-        if 'xtr' not in xfoil_settings.keys():
-            xfoil_settings['xtr'] = [1.0, 1.0]
-        if 'N' not in xfoil_settings.keys():
-            xfoil_settings['N'] = 9.0
-        f = os.path.join(base_dir, airfoil_name + ".dat")
-        if np.ndim(coords) == 2:
-            write_tuple_tuple_to_file(f, coords)
-        elif np.ndim(coords) == 3:
-            write_tuple_tuple_to_file(f, coords[0])
-        else:
-            raise ValueError("Found coordinate set with dimension other than 2 or 3")
-        xfoil_input_file = os.path.join(base_dir, 'xfoil_input.txt')
-        xfoil_input_list = ['', 'oper', f'iter {xfoil_settings["iter"]}', 'visc', str(xfoil_settings['Re']),
-                            f'M {xfoil_settings["Ma"]}',
-                            'vpar', f'xtr {xfoil_settings["xtr"][0]} {xfoil_settings["xtr"][1]}',
-                            f'N {xfoil_settings["N"]}', '']
 
-        # alpha/Cl input setup (must choose exactly one of alpha, Cl, or CLI)
-        if len([0 for prescribed_xfoil_val in (
-                'alfa', 'Cl', 'CLI') if prescribed_xfoil_val in xfoil_settings.keys()]) != 1:
-            raise ValueError('Either none or more than one of alpha, Cl, or CLI was set. '
-                             'Choose exactly one for XFOIL analysis.')
-        alpha = None
-        Cl = None
-        CLI = None
-        if 'alfa' in xfoil_settings.keys():
-            alpha = xfoil_settings['alfa']
-        elif 'Cl' in xfoil_settings.keys():
-            Cl = xfoil_settings['Cl']
-        elif 'CLI' in xfoil_settings.keys():
-            CLI = xfoil_settings['CLI']
-        if alpha is not None:
-            if not isinstance(alpha, list):
-                alpha = [alpha]
-            for idx, alf in enumerate(alpha):
-                xfoil_input_list.append('alfa ' + str(alf))
-        elif Cl is not None:
-            if not isinstance(Cl, list):
-                Cl = [Cl]
-            for idx, Cl_ in enumerate(Cl):
-                xfoil_input_list.append('Cl ' + str(Cl_))
-        elif CLI is not None:
-            if not isinstance(CLI, list):
-                CLI = [CLI]
-            for idx, CLI_ in enumerate(CLI):
-                xfoil_input_list.append('CLI ' + str(CLI_))
-        else:
-            raise ValueError('At least one of alpha, Cl, or CLI must be set for XFOIL analysis.')
+        xfoil_log = None
 
-        if export_Cp:
-            xfoil_input_list.append('cpwr ' + f"{airfoil_name}_Cp.dat")
-        xfoil_input_list.append('')
-        xfoil_input_list.append('quit')
-        write_input_file(xfoil_input_file, xfoil_input_list)
-        xfoil_log = os.path.join(base_dir, 'xfoil.log')
-        # with open(xfoil_log, 'wb') as h:
-        with open(xfoil_input_file, 'r') as g:
-            process = subprocess.Popen(['xfoil', f"{airfoil_name}.dat"], stdin=g, stdout=subprocess.PIPE,
-                                       stderr=subprocess.PIPE, cwd=base_dir, shell=False)
-            aero_data['converged'] = False
-            aero_data['timed_out'] = False
-            aero_data['errored_out'] = False
-            try:
-                # print(f"communicating")
-                outs, errs = process.communicate(timeout=xfoil_settings['timeout'])
-                # print(f"done communicating")
-                with open(xfoil_log, 'wb') as h:
-                    h.write('Output:\n'.encode('utf-8'))
-                    h.write(outs)
-                    h.write('\nErrors:\n'.encode('utf-8'))
-                    h.write(errs)
-                aero_data['timed_out'] = False
-                aero_data['converged'] = True
-            except subprocess.TimeoutExpired:
-                process.kill()
-                outs, errs = process.communicate()
-                with open(xfoil_log, 'wb') as h:
-                    h.write('After timeout, \nOutput: \n'.encode('utf-8'))
-                    h.write(outs)
-                    h.write('\nErrors:\n'.encode('utf-8'))
-                    h.write(errs)
-                aero_data['timed_out'] = True
-                aero_data['converged'] = False
-            finally:
-                if not aero_data['timed_out']:
-                    # time.sleep(3)
-                    line1, line2 = read_aero_data_from_xfoil(xfoil_log, aero_data)
-                    if line1 is not None:
-                        convert_xfoil_string_to_aero_data(line1, line2, aero_data)
-                        if export_Cp:
-                            aero_data['Cp'] = read_Cp_from_file_xfoil(os.path.join(base_dir, f"{airfoil_name}_Cp.dat"))
+        # Set up single-point or multipoint settings
+        xfoil_loop_iterations = 1
+        stencil = None
+        aero_data_list = None
+        if 'multi_point_stencil' in xfoil_settings.keys() and xfoil_settings['multi_point_stencil'] is not None:
+            stencil = xfoil_settings['multi_point_stencil']
+            xfoil_loop_iterations = len(stencil[0]['points'])
+            aero_data_list = []
 
-        # print(f"{aero_data = }")
+        # Multipoint Loop
+        for i in range(xfoil_loop_iterations):
+
+            if stencil is not None:
+                xfoil_settings = update_xfoil_settings_from_stencil(xfoil_settings=xfoil_settings, stencil=stencil, idx=i)
+                # print(f"{mses_settings['XCDELH'] = }, {mses_settings['CLIFIN'] = }, {mses_settings['PTRHIN'] = }")
+
+            aero_data, xfoil_log = run_xfoil(airfoil_name, base_dir, xfoil_settings, coords, export_Cp=export_Cp)
+
+            if aero_data["converged"]:
+                if aero_data_list is not None:
+                    aero_data_list.append(aero_data)
+            else:
+                if aero_data_list is not None:
+                    aero_data_list.append(aero_data)
+                break
+
+        if aero_data_list is not None:
+            aero_data = {k: [] for k in aero_data_list[0].keys()}
+            for aero_data_set in aero_data_list:
+                for k, v in aero_data_set.items():
+                    aero_data[k].append(v)
 
         return aero_data, xfoil_log
 
@@ -307,6 +278,103 @@ def calculate_aero_data(airfoil_coord_dir: str, airfoil_name: str, coords: typin
                     aero_data[k].append(v)
 
         return aero_data, logs
+
+
+def run_xfoil(airfoil_name: str, base_dir: str, xfoil_settings: dict, coords: typing.Tuple[tuple],
+              export_Cp: bool = True):
+    aero_data = {}
+
+    if "xtr" not in xfoil_settings.keys():
+        xfoil_settings["xtr"] = [1.0, 1.0]
+    if 'N' not in xfoil_settings.keys():
+        xfoil_settings['N'] = 9.0
+    f = os.path.join(base_dir, airfoil_name + ".dat")
+    if np.ndim(coords) == 2:
+        write_tuple_tuple_to_file(f, coords)
+    elif np.ndim(coords) == 3:
+        write_tuple_tuple_to_file(f, coords[0])
+    else:
+        raise ValueError("Found coordinate set with dimension other than 2 or 3")
+    xfoil_input_file = os.path.join(base_dir, 'xfoil_input.txt')
+    xfoil_input_list = ['', 'oper', f'iter {xfoil_settings["iter"]}', 'visc', str(xfoil_settings['Re']),
+                        f'M {xfoil_settings["Ma"]}',
+                        'vpar', f'xtr {xfoil_settings["xtr"][0]} {xfoil_settings["xtr"][1]}',
+                        f'N {xfoil_settings["N"]}', '']
+
+    # alpha/Cl input setup (must choose exactly one of alpha, Cl, or CLI)
+    if len([0 for prescribed_xfoil_val in (
+            'alfa', 'Cl', 'CLI') if prescribed_xfoil_val in xfoil_settings.keys()]) != 1:
+        raise ValueError('Either none or more than one of alpha, Cl, or CLI was set. '
+                         'Choose exactly one for XFOIL analysis.')
+    alpha = None
+    Cl = None
+    CLI = None
+    if 'alfa' in xfoil_settings.keys():
+        alpha = xfoil_settings['alfa']
+    elif 'Cl' in xfoil_settings.keys():
+        Cl = xfoil_settings['Cl']
+    elif 'CLI' in xfoil_settings.keys():
+        CLI = xfoil_settings['CLI']
+    if alpha is not None:
+        if not isinstance(alpha, list):
+            alpha = [alpha]
+        for idx, alf in enumerate(alpha):
+            xfoil_input_list.append(f"alfa {alf}")
+    elif Cl is not None:
+        if not isinstance(Cl, list):
+            Cl = [Cl]
+        for idx, Cl_ in enumerate(Cl):
+            xfoil_input_list.append(f"Cl {Cl_}")
+    elif CLI is not None:
+        if not isinstance(CLI, list):
+            CLI = [CLI]
+        for idx, CLI_ in enumerate(CLI):
+            xfoil_input_list.append(f"CLI {CLI_}")
+    else:
+        raise ValueError('At least one of alpha, Cl, or CLI must be set for XFOIL analysis.')
+
+    if export_Cp:
+        xfoil_input_list.append('cpwr ' + f"{airfoil_name}_Cp.dat")
+    xfoil_input_list.append('')
+    xfoil_input_list.append('quit')
+    write_input_file(xfoil_input_file, xfoil_input_list)
+    xfoil_log = os.path.join(base_dir, 'xfoil.log')
+    with open(xfoil_input_file, 'r') as g:
+        process = subprocess.Popen(['xfoil', f"{airfoil_name}.dat"], stdin=g, stdout=subprocess.PIPE,
+                                   stderr=subprocess.PIPE, cwd=base_dir, shell=False)
+        aero_data['converged'] = False
+        aero_data['timed_out'] = False
+        aero_data['errored_out'] = False
+        try:
+            # print(f"communicating")
+            outs, errs = process.communicate(timeout=xfoil_settings['timeout'])
+            # print(f"done communicating")
+            with open(xfoil_log, 'wb') as h:
+                h.write('Output:\n'.encode('utf-8'))
+                h.write(outs)
+                h.write('\nErrors:\n'.encode('utf-8'))
+                h.write(errs)
+            aero_data['timed_out'] = False
+            aero_data['converged'] = True
+        except subprocess.TimeoutExpired:
+            process.kill()
+            outs, errs = process.communicate()
+            with open(xfoil_log, 'wb') as h:
+                h.write('After timeout, \nOutput: \n'.encode('utf-8'))
+                h.write(outs)
+                h.write('\nErrors:\n'.encode('utf-8'))
+                h.write(errs)
+            aero_data['timed_out'] = True
+            aero_data['converged'] = False
+        finally:
+            if not aero_data['timed_out']:
+                line1, line2 = read_aero_data_from_xfoil(xfoil_log, aero_data)
+                if line1 is not None:
+                    convert_xfoil_string_to_aero_data(line1, line2, aero_data)
+                    if export_Cp:
+                        aero_data['Cp'] = read_Cp_from_file_xfoil(os.path.join(base_dir, f"{airfoil_name}_Cp.dat"))
+
+    return aero_data, xfoil_log
 
 
 def run_mset(name: str, base_dir: str, mset_settings: dict, coords: typing.Tuple[tuple]):

@@ -418,7 +418,8 @@ class Population:
                                                        mses_settings=mses_settings,
                                                        mplot_settings=mplot_settings,
                                                        export_Cp=True)
-            if xfoil_settings is not None or mses_settings['multi_point_stencil'] is None:
+            if (xfoil_settings is not None and xfoil_settings["multi_point_stencil"] is None) or (
+                    mses_settings is not None and mses_settings['multi_point_stencil'] is None):
                 if chromosome.forces['converged'] and not chromosome.forces['errored_out'] \
                         and not chromosome.forces['timed_out']:
                     chromosome.fitness = 1  # Set to any value that is not False and not None

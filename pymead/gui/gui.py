@@ -389,8 +389,10 @@ class GUI(QMainWindow):
                 p.airfoil_param.bounds = data["bounds"]
                 p.setValue(data["value"])
                 p.airfoil_param.active = data["active"]
-                p.setReadonly(not data["active"])
-                print(f"{p = }")
+                if isinstance(data["value"], list):
+                    p.setReadonly(not data["active"][0])
+                else:
+                    p.setReadonly(not data["active"])
                 if not p.hasChildren():
                     self.param_tree_instance.add_equation_box(p, data["eq"])
                     self.param_tree_instance.update_equation(p.child("Equation Definition"), data["eq"])
@@ -1110,7 +1112,7 @@ class GUI(QMainWindow):
                 if opt_settings['Multi-Point Optimization']['multi_point_active']:
                     try:
                         multi_point_data = np.loadtxt(param_dict['multi_point_stencil'], delimiter=',')
-                        multi_point_stencil = read_stencil_from_array(multi_point_data)
+                        multi_point_stencil = read_stencil_from_array(multi_point_data, tool=param_dict["tool"])
                     except FileNotFoundError:
                         message = f'Multi-point stencil file {param_dict["multi_point_stencil"]} not found'
                         self.disp_message_box(message=message, message_mode='error')
@@ -1296,6 +1298,16 @@ class GUI(QMainWindow):
                     else:
                         G = np.row_stack((G, np.array([
                             constraint.value for constraint in self.constraints])))
+
+            if new_X.ndim == 1:
+                new_X = np.array([new_X])
+
+            if J.ndim == 1:
+                J = np.array([J])
+
+            if len(self.constraints) > 0 and G.ndim == 1:
+                G = np.array([G])
+
             pop_initial = pymoo.core.population.Population.new("X", new_X)
             # objectives
             pop_initial.set("F", J)
@@ -1414,6 +1426,15 @@ class GUI(QMainWindow):
                     J = np.row_stack((J, 1000.0 * np.ones(param_dict['n_obj'])))
                     if len(self.constraints) > 0:
                         G = np.row_stack((G, 1000.0 * np.ones(param_dict['n_constr'])))
+
+                if new_X.ndim == 1:
+                    new_X = np.array([new_X])
+
+                if J.ndim == 1:
+                    J = np.array([J])
+
+                if len(self.constraints) > 0 and G.ndim == 1:
+                    G = np.array([G])
 
                 pop.set("X", new_X)
 

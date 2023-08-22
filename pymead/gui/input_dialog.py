@@ -26,7 +26,7 @@ from pymead.gui.bounds_values_table import BoundsValuesTable
 from pymead.optimization.objectives_and_constraints import Objective, Constraint, FunctionCompileError
 from pymead.analysis import cfd_output_templates
 from pymead.analysis.utils import viscosity_calculator
-from pymead import GUI_DEFAULTS_DIR
+from pymead import GUI_DEFAULTS_DIR, GUI_DIALOG_WIDGETS_DIR
 import pyqtgraph as pg
 from PyQt5.QtWidgets import QMenu, QAction
 from PyQt5.QtGui import QContextMenuEvent
@@ -1998,7 +1998,7 @@ class ExportCoordinatesDialog(QDialog):
         buttonBox.rejected.connect(self.reject)
 
     def setInputs(self):
-        widget_dict = load_data(os.path.join('dialog_widgets', 'export_coordinates_dialog.json'))
+        widget_dict = load_data(os.path.join(GUI_DIALOG_WIDGETS_DIR, 'export_coordinates_dialog.json'))
         for row_name, row_dict in widget_dict.items():
             self.grid_widget[row_name] = {}
             for w_name, w_dict in row_dict.items():
