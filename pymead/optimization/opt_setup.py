@@ -1,11 +1,11 @@
-from pymoo.core.repair import Repair
+
 from pymoo.core.problem import Problem
 from pymoo.util.termination.f_tol import MultiObjectiveSpaceToleranceTermination
 from pymoo.util.termination.default import MultiObjectiveDefaultTermination
 from pymoo.util.display import Display
 from pymoo.factory import get_decomposition
 from copy import deepcopy
-from pymead.optimization.pop_chrom import Chromosome
+
 from pymead.gui.input_dialog import convert_dialog_to_mset_settings, convert_dialog_to_mses_settings, \
     convert_dialog_to_mplot_settings
 import os
@@ -154,48 +154,69 @@ def convert_opt_settings_to_param_dict(opt_settings: dict) -> dict:
 
 
 class TPAIOPT(Problem):
-    def __init__(self, n_var, n_obj, n_constr, xl, xu, param_dict, ga_settings):
+    def __init__(self, n_var: int, n_obj: int, n_constr: int, xl: int or list or np.ndarray,
+                 xu: int or list or np.ndarray, param_dict: dict):
+        """
+        Simple problem statement for the ``pymoo`` package.
+
+        n_var: int
+            Number of design variables (equal to the length of the normalized paramter list)
+
+        n_obj: int
+            Number of objectives
+
+        n_constr: int
+            Number of constraints
+
+        xl: int or list or np.ndarray
+            Lower bounds for the parameters. If ``int``, all lower bounds are equal.
+
+        xu: int or list or np.ndarray
+            Upper bounds for the parameters. If ``int``, all lower bounds are equal.
+
+        param_dict: dict
+            Parameter dictionary used for the shape optimization.
+        """
         super().__init__(n_var=n_var, n_obj=n_obj, n_constr=n_constr, xl=xl, xu=xu)
 
         self.param_dict = deepcopy(param_dict)
-        self.ga_settings = ga_settings
 
     def _evaluate(self, X, out, *args, **kwargs):
         pass
 
 
-class SelfIntersectionRepair(Repair):
-    def __init__(self, mea):
-        super().__init__()
-        self.mea = mea
-
-    def _do(self, problem, pop, **kwargs):
-        # print('Repairing...')
-
-        # the packing plan for the whole population (each row one individual)
-        Z = pop.get("X")
-
-        # now repair each indvidiual i
-        for i in range(len(Z)):
-
-            # the packing plan for i
-            z = deepcopy(Z[i])
-
-            genes = z.tolist()
-
-            # Create a chromosome with "genes" and "ga_setup_params" being the only relevant parameters (this is just to
-            # check for geometry validity)
-            chromosome = Chromosome(genes=genes, param_dict=problem.param_dict, ga_settings=problem.ga_settings,
-                                    category=None,
-                                    population_idx=0, generation=0, verbose=False, mea=self.mea)
-            chromosome.generate()
-
-            if not chromosome.valid_geometry:
-                Z[int(i), :] = 9999
-
-        # set the design variables for the population
-        pop.set("X", Z)
-        return pop
+# class SelfIntersectionRepair(Repair):
+#     def __init__(self, mea):
+#         super().__init__()
+#         self.mea = mea
+#
+#     def _do(self, problem, pop, **kwargs):
+#         # print('Repairing...')
+#
+#         # the packing plan for the whole population (each row one individual)
+#         Z = pop.get("X")
+#
+#         # now repair each indvidiual i
+#         for i in range(len(Z)):
+#
+#             # the packing plan for i
+#             z = deepcopy(Z[i])
+#
+#             genes = z.tolist()
+#
+#             # Create a chromosome with "genes" and "ga_setup_params" being the only relevant parameters (this is just to
+#             # check for geometry validity)
+#             chromosome = Chromosome(genes=genes, param_dict=problem.param_dict, ga_settings=problem.ga_settings,
+#                                     category=None,
+#                                     population_idx=0, generation=0, verbose=False, mea=self.mea)
+#             chromosome.generate()
+#
+#             if not chromosome.valid_geometry:
+#                 Z[int(i), :] = 9999
+#
+#         # set the design variables for the population
+#         pop.set("X", Z)
+#         return pop
 
 
 class CustomDisplay(Display):

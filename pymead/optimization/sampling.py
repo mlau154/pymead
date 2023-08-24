@@ -13,7 +13,18 @@ from abc import abstractmethod
 
 
 class Sampling:
-    def __init__(self, n_samples, norm_param_list: list):
+    def __init__(self, n_samples: int, norm_param_list: list):
+        """
+        High-level generic class for any sampling method.
+
+        Parameters
+        ==========
+        n_samples: int
+            Number of samples
+
+        norm_param_list: list
+            List of normalized parameter values (usually from ``extract_parameters`` in ``MEA``).
+        """
         self.n_samples = n_samples
         self.norm_param_list = norm_param_list
 
@@ -24,10 +35,36 @@ class Sampling:
 
 class ConstrictedRandomSampling(Sampling):
     def __init__(self, n_samples: int, norm_param_list: list, max_sampling_width: float):
+        """
+        A custom sampling method where the probability distribution for the new parameter value is uniform with a
+        specified width on either side of the original parameter value. The probability of falling above or below the
+        original parameter value is 0.5 and 0.5, respectively. The sampling width is truncated by the parameter bounds
+        if necessary, retaining a probability of 0.5 on both sides of the original parameter value.
+
+        Parameters
+        ==========
+        n_samples: int
+            Number of samples
+
+        norm_param_list: list
+            List of normalized parameter values (usually from ``extract_parameters`` in ``MEA``).
+
+        max_sampling_width: float
+            Maximum distance of the new parameter value from the original parameter value. The actual new parameter
+            value falls randomly in between the original parameter value and this maximum distance in either direction.
+        """
         self.max_sampling_width = max_sampling_width
         super().__init__(n_samples, norm_param_list)
 
     def sample(self):
+        """
+        Randomly samples the design space.
+
+        Returns
+        =======
+        list
+            A new list of normalized parameter values to be used to update the airfoil system.
+        """
         X_list = [self.norm_param_list]
         for i in range(self.n_samples - 1):
             individual = []
@@ -54,15 +91,34 @@ class ConstrictedRandomSampling(Sampling):
 
 class PymooLHS(Sampling):
     def __init__(self, n_samples, norm_param_list):
+        """
+        Latin-Hypercube sampling method from the ``pymoo`` package.
+
+        Parameters
+        ==========
+        n_samples: int
+            Number of samples
+
+        norm_param_list: list
+            List of normalized parameter values (usually from ``extract_parameters`` in ``MEA``).
+        """
         super().__init__(n_samples, norm_param_list)
 
     def sample(self):
+        """
+        Randomly samples the design space.
+
+        Returns
+        =======
+        norm_param_list: np.ndarray
+            1-D array of normalized parameter values (usually from ``extract_parameters`` in ``MEA``).
+        """
         problem = Problem(n_var=len(self.norm_param_list), l=0.0, xu=1.0)
         sampling = LatinHypercubeSampling()
         return sampling._do(problem, self.n_samples)
 
 
-def run_analysis(analysis_dir: str, index: typing.Iterable, X_list, mea: dict, param_dict: dict, evaluate: bool = True,
+def _run_analysis(analysis_dir: str, index: typing.Iterable, X_list, mea: dict, param_dict: dict, evaluate: bool = True,
                  save_coords: bool = False,
                  save_control_points: bool = False,
                  save_airfoil_state: bool = False):
@@ -113,7 +169,7 @@ def run_analysis(analysis_dir: str, index: typing.Iterable, X_list, mea: dict, p
         # save_data(population_forces, post_process_force_file)
 
 
-def main():
+def _main():
     parametrization = r'C:\Users\mlauer2\Documents\pymead\pymead\pymead\tests\pai\root_underwing_opt\opt_runs\2023_03_16_A\pai_underwing.jmea'
     jmea_dict = load_data(parametrization)
     jmea_dict['airfoil_graphs_active'] = False
@@ -137,9 +193,9 @@ def main():
             a.plot_airfoil(axs, color=color, lw=1.0)
     axs.set_aspect('equal')
     plt.show()
-    # run_analysis(analysis_dir=analysis_dir, index=[i for i in range(n_samples)], X_list=X_list,
+    # _run_analysis(analysis_dir=analysis_dir, index=[i for i in range(n_samples)], X_list=X_list,
     #              mea=jmea_dict, param_dict=param_dict)
 
 
 if __name__ == '__main__':
-    main()
+    _main()

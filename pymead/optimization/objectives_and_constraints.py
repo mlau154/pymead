@@ -3,6 +3,16 @@ import math
 
 class ObjectiveConstraint:
     def __init__(self, func_str: str):
+        """
+        Objective or Constraint used in shape optimization. Allows for dynamic updates and equation validity checking
+        inside the GUI.
+
+        Parameters
+        ==========
+        func_str: str
+            Function string used to define the Objective or Constraint from the ``aero_data`` dictionary output
+            from the ``calc_aero_data``.
+        """
         self.func_str = func_str
         self.func = None
         self.function_dict = {}
@@ -12,19 +22,42 @@ class ObjectiveConstraint:
         self.tag_list = None
 
     def add_or_set_dependencies(self, dependencies: dict):
+        """
+        Adds performance parameter dependencies from a Python dictionary.
+
+        Parameters
+        ==========
+        dependencies: dict
+            Performance parameters extracted from an airfoil system analysis used to define value of an ``Objective``
+            or ``Constraint``.
+        """
         for k, v in dependencies.items():
-            # print(f"{k = }")
             self.depends_on[k] = v
 
     def set_func_str(self, func_str: str):
+        """
+        Simple method that overwrites the ``func_str`` attribute.
+
+        Parameters
+        ==========
+        func_str: str
+            Function string used to define the Objective or Constraint from the ``aero_data`` dictionary output
+            from the ``calc_aero_data``.
+        """
         self.func_str = func_str
 
     def remove_func(self):
+        """
+        Removes the ``Objective`` or ``Constraint`` function from all the relevant locations in the object.
+        """
         self.func_str = None
         self.func = None
         self.function_dict = {}
 
     def update_function(self):
+        """
+        Updates the function based on the function string and its dependencies.
+        """
         if self.func_str is None:
             pass
         else:
@@ -49,6 +82,9 @@ class ObjectiveConstraint:
                     raise FunctionCompileError('Error in function compilation')
 
     def update_value(self):
+        """
+        Update the value of the ``Objective`` or ``Constraint`` using the stored function.
+        """
         if self.func_str is None:
             pass
         else:
@@ -59,11 +95,25 @@ class ObjectiveConstraint:
                 raise FunctionCompileError('Error in function update')
 
     def update(self, dependencies: dict):
+        """
+        Updates the function and its value using a set of dependencies.
+
+        Parameters
+        ==========
+        dependencies: dict
+            Performance parameter dependencies from the airfoil system analysis.
+        """
         self.add_or_set_dependencies(dependencies)
         self.update_function()
         self.update_value()
 
     def parse_update_function_str(self):
+        """
+        Converts the function string to a function executable by Python. The special character "." is used to signal
+        a depth increment within the airfoil system hierarchy. The special character "$" is used to define the start of
+        a ``Param`` name. For example, the string ``"A0.Base.R_le"`` corresponds to the leading edge radius of the base
+        parameter set of airfoil ``"A0"``.
+        """
         self.tag_matrix = []
         self.func = 'def f(): return '
         math_functions_to_include = []
@@ -107,6 +157,7 @@ class ObjectiveConstraint:
         return math_functions_to_include
 
     def add_dependencies(self):
+        """Adds dependencies found in ``depends_on`` to the function dictionary for execution."""
 
         for idx, t in enumerate(self.tag_list):
             if t in self.depends_on.keys():
@@ -121,10 +172,26 @@ class ObjectiveConstraint:
 
 class Objective(ObjectiveConstraint):
     def __init__(self, func_str: str):
+        """
+        Subclass of ``ObjectiveConstraint`` simply specifying the object as an Objective.
+
+        Parameters
+        ==========
+        func_str: str
+            Function string to pass to ``ObjectiveConstraint``'s ``__init__``.
+        """
         super().__init__(func_str)
 
 
 class Constraint(ObjectiveConstraint):
+    """
+    Subclass of ``ObjectiveConstraint`` simply specifying the object as an Constraint.
+
+    Parameters
+    ==========
+    func_str: str
+        Function string to pass to ``ObjectiveConstraint``'s ``__init__``.
+    """
     def __init__(self, func_str: str):
         super().__init__(func_str)
 

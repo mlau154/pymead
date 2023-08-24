@@ -47,7 +47,7 @@ from pymead.gui.dockable_tab_widget import DockableTabWidget
 from pymead.gui.bounds_values_table import BoundsValuesTable
 from pymead.core.mea import MEA
 from pymead.analysis.calc_aero_data import calculate_aero_data
-from pymead.optimization.opt_setup import CustomDisplay, TPAIOPT, SelfIntersectionRepair
+from pymead.optimization.opt_setup import CustomDisplay, TPAIOPT
 from pymead.utils.read_write_files import load_data, save_data
 from pymead.utils.misc import count_func_strs
 from pymead.analysis.read_aero_data import read_grid_stats_from_mses, read_field_from_mses, \
@@ -56,8 +56,8 @@ from pymead.analysis.read_aero_data import flow_var_idx
 from pymead.post.mses_field import flow_var_label
 from pymead.utils.misc import make_ga_opt_dir
 from pymead.utils.get_airfoil import extract_data_from_airfoiltools
-from pymead.optimization.pop_chrom import Chromosome, Population, CustomGASettings
-from pymead.optimization.custom_ga_sampling import CustomGASampling
+from pymead.optimization.pop_chrom import Chromosome, Population
+
 from pymead.optimization.sampling import ConstrictedRandomSampling
 from pymead.optimization.opt_setup import termination_condition, calculate_warm_start_index
 from pymead.gui.message_box import disp_message_box
@@ -422,7 +422,7 @@ class GUI(QMainWindow):
         dialog = SaveAsDialog(self, file_filter=file_filter)
         if dialog.exec_():
             file_name = dialog.selectedFiles()[0]
-            parameter_list, _ = self.mea.extract_parameters(write_to_txt_file=True)
+            parameter_list, _ = self.mea.extract_parameters()
             np.savetxt(file_name, np.array(parameter_list))
 
     def plot_geometry(self):
@@ -1209,16 +1209,9 @@ class GUI(QMainWindow):
         mea_object = MEA.generate_from_param_dict(mea)
         parameter_list, _ = mea_object.extract_parameters()
         num_parameters = len(parameter_list)
-        max_genes_to_mutate = 2 if num_parameters > 1 else 1
-        ga_settings = CustomGASettings(population_size=param_dict['n_offsprings'],
-                                       mutation_bounds=([-0.002, 0.002]),
-                                       mutation_methods=('random-reset', 'random-perturb'),
-                                       max_genes_to_mutate=max_genes_to_mutate,
-                                       mutation_probability=0.06,
-                                       max_mutation_attempts_per_chromosome=500)
 
         problem = TPAIOPT(n_var=param_dict['n_var'], n_obj=param_dict['n_obj'], n_constr=param_dict['n_constr'],
-                          xl=param_dict['xl'], xu=param_dict['xu'], param_dict=param_dict, ga_settings=ga_settings)
+                          xl=param_dict['xl'], xu=param_dict['xu'], param_dict=param_dict)
 
         if not opt_settings['General Settings']['warm_start_active']:
             if param_dict['seed'] is not None:
@@ -1233,10 +1226,9 @@ class GUI(QMainWindow):
             sampling = ConstrictedRandomSampling(n_samples=param_dict['n_offsprings'], norm_param_list=parameter_list,
                                                  max_sampling_width=param_dict['max_sampling_width'])
             X_list = sampling.sample()
-            parents = [Chromosome(param_dict=param_dict, ga_settings=ga_settings, category='parent',
-                                  generation=0, population_idx=idx, mea=mea, genes=individual)
+            parents = [Chromosome(param_dict=param_dict, generation=0, population_idx=idx, mea=mea, genes=individual)
                        for idx, individual in enumerate(X_list)]
-            population = Population(param_dict=param_dict, ga_settings=ga_settings, generation=0, parents=parents,
+            population = Population(param_dict=param_dict, generation=0, parents=parents,
                                     mea=mea, verbose=param_dict['verbose'])
             # population.generate_chromosomes_parallel()
             # n_initial_evaluations = 0
@@ -1287,6 +1279,7 @@ class GUI(QMainWindow):
                     objective.update(chromosome.forces)
                 for constraint in self.constraints:
                     constraint.update(chromosome.forces)
+                    print(f"{constraint.value = }")
                 if J is None:
                     J = np.array([obj.value for obj in self.objectives])
                     # print(f"{J = } on this pass")
@@ -1386,10 +1379,9 @@ class GUI(QMainWindow):
                 J = None
                 G = None
 
-                parents = [Chromosome(param_dict=param_dict, ga_settings=ga_settings, category='parent',
-                                      generation=n_generation, population_idx=idx, mea=mea, genes=individual)
-                           for idx, individual in enumerate(X)]
-                population = Population(problem.param_dict, ga_settings=ga_settings, generation=n_generation,
+                parents = [Chromosome(param_dict=param_dict, generation=n_generation, population_idx=idx, mea=mea,
+                                      genes=individual) for idx, individual in enumerate(X)]
+                population = Population(problem.param_dict, generation=n_generation,
                                         parents=parents, verbose=param_dict['verbose'], mea=mea)
                 population.eval_pop_fitness()
 

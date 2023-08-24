@@ -21,10 +21,9 @@ from pymead.plugins.IGES.curves import BezierIGES
 from pymead import DATA_DIR, PLUGINS_DIR, INCLUDE_FILES
 
 
-
 class MEA:
     """
-    Class for multi-element airfoils. Serves as a container for `pymead.core.airfoil.Airfoil`s and adds a few methods
+    Class for multi-element airfoils. Serves as a container for ``pymead.core.airfoil.Airfoil``s and adds a few methods
     important for the Graphical User Interface.
     """
     def __init__(self, param_tree=None, airfoils: Airfoil or typing.List[Airfoil, ...] or None = None,
@@ -45,20 +44,38 @@ class MEA:
             for idx, airfoil in enumerate(airfoils):
                 self.add_airfoil(airfoil, idx, param_tree)
 
-    def __getstate__(self):
-        """
-        Reimplemented to ensure MEA picklability
-        """
-        state = self.__dict__.copy()
-        if state['v'] is not None:
-            state['v'].clear()
-        state['w'] = None  # Set unpicklable GraphicsLayoutWidget object to None
-        state['v'] = None  # Set unpicklable ViewBox object to None
-        return state
+    # def __getstate__(self):
+    #     """
+    #     Reimplemented to ensure MEA picklability
+    #     """
+    #     state = self.__dict__.copy()
+    #     if state['v'] is not None:
+    #         state['v'].clear()
+    #     state['w'] = None  # Set unpicklable GraphicsLayoutWidget object to None
+    #     state['v'] = None  # Set unpicklable ViewBox object to None
+    #     return state
 
     def add_airfoil(self, airfoil: Airfoil, idx: int, param_tree, w=None, v=None):
         """
-        Add an airfoil at index `idx` to the multi-element airfoil container.
+        Add an airfoil at index ``idx`` to the multi-element airfoil container.
+
+        Parameters
+        ==========
+        airfoil: Airfoil
+            Airfoil to insert into the MEA container
+
+        idx: int
+            Insertion index (0 corresponds to insertion at the beginning of the list)
+
+        param_tree
+            Parameter Tree from the GUI which is added as an airfoil attribute following insertion
+
+        w
+            A ``pyqtgraph`` ``GraphicsLayoutWidget`` associated with the GUI. Used to link the airfoil to its graph
+            in the GUI.
+
+        v
+            A ``pyqtgraph`` ``PlotDataItem`` associated with the GUI. Used to link the airfoil to its graph in the GUI.
         """
         if airfoil.tag is None:
             airfoil.tag = f'A{idx}'
@@ -91,11 +108,15 @@ class MEA:
         pass
 
     def assign_names_to_params_in_param_dict(self):
+        """
+        Recursively assigns the name of the airfoil along with all its base parameters, ``FreePoint``s, and
+        ``AnchorPoints`` to the parameter dictionary.
+        """
         assign_names_to_params_in_param_dict(self.param_dict)
 
     def add_airfoil_graph_to_airfoil(self, airfoil: Airfoil, idx: int, param_tree, w=None, v=None):
         """
-        Add a `pyqtgraph`-based `pymead.gui.airfoil_graph.AirfoilGraph` to the airfoil at index `int`.
+        Add a ``pyqtgraph``-based ``pymead.gui.airfoil_graph.AirfoilGraph`` to the airfoil at index ``int``.
         """
         from pymead.gui.airfoil_graph import AirfoilGraph
         if w is None:
@@ -122,7 +143,19 @@ class MEA:
         airfoil_graph.param_tree = param_tree
         airfoil.airfoil_graph = airfoil_graph
 
-    def extract_parameters(self, write_to_txt_file: bool = False):
+    def extract_parameters(self):
+        """
+        Extracts the 1-D list of parameters from the airfoil system corresponding to all the parameters with
+        ``active=True`` and ``linked=False``. Any ``PosParam`` corresponds to two consecutive parameters. All
+        parameters are normalized between their respective lower bounds (``bounds[0]``) and upper bounds (``bounds[1]``)
+        such that all values are between 0 and 1.
+
+        Returns
+        =======
+        list
+            1-D list of normalized parameter values
+        """
+
         parameter_list = []
         norm_value_list = []
 
@@ -179,14 +212,27 @@ class MEA:
             return error_message, None
         else:
             extract_parameters_recursively(self.param_dict)
-            if write_to_txt_file:
-                np.savetxt(os.path.join(DATA_DIR, 'parameter_list.dat'), np.array(norm_value_list))
             # parameter_list = np.loadtxt(os.path.join(DATA_DIR, 'parameter_list.dat'))
             # self.update_parameters(parameter_list)
             # fig_.savefig(os.path.join(DATA_DIR, 'test_airfoil.png'))
             return norm_value_list, parameter_list
 
     def copy_as_param_dict(self, deactivate_airfoil_graphs: bool = False):
+        """
+        Copies the entire airfoil system as a Python dictionary. This dictionary can later be converted back to an
+        airfoil system using the class method ``generate_from_param_dict``.
+
+        Parameters
+        ==========
+        deactivate_airfoil_graphs: bool
+            This argument should be set to ``True`` if the target case for re-loading the airfoil system is in a script
+            rather than the GUI. Default: ``False``.
+
+        Returns
+        =======
+        dict
+            A Python dictionary describing the airfoil system (corresponds to the ``.jmea`` files in the GUI).
+        """
         output_dict_ = {}
         unravel_param_dict_deepcopy(self.param_dict, output_dict=output_dict_)
         for k, v in output_dict_.items():
@@ -217,9 +263,32 @@ class MEA:
         save_data(mea_dict, file_name)
 
     def deepcopy(self, deactivate_airfoil_graphs: bool = False):
+        """
+        Composite function combining, in order, the ``copy_as_param_dict`` and ``generate_from_param_dict`` methods.
+        Copying the airfoil system this way avoids the complications associated with using the standard ``deepcopy``
+        function on some stored functions and ``Qt`` objects.
+
+        Parameters
+        ==========
+        deactivate_airfoil_graphs: bool
+            Deactivates the airfoil graph objects in the GUI. Default: ``False``.
+
+        Returns
+        =======
+        MEA
+            Airfoil system object
+        """
         return MEA.generate_from_param_dict(self.copy_as_param_dict(deactivate_airfoil_graphs))
 
     def write_to_IGES(self, file_name: str):
+        """
+        Writes the airfoil system to file using the IGES file format.
+
+        Parameters
+        ==========
+        file_name: str
+            Path to IGES file
+        """
         bez_IGES_entities = [
             [BezierIGES(np.column_stack((c.P[:, 0], np.zeros(len(c.P)), c.P[:, 1]))) for c in a.curve_list]
             for a in self.airfoils.values()]
@@ -228,6 +297,14 @@ class MEA:
         iges_generator.generate(file_name)
 
     def update_parameters(self, norm_value_list: list or np.ndarray):
+        """
+        Updates the airfoil system using the set of normalized parameter values extracted using ``extract_parameters``.
+
+        Parameters
+        ==========
+        norm_value_list: list or np.ndarray
+            List of normalized parameter values from ``extract_parameters``
+        """
 
         if isinstance(norm_value_list, list):
             norm_value_list = np.array(norm_value_list)
@@ -359,6 +436,15 @@ class MEA:
     #             p.deactivated_for_airfoil_matching = False
 
     def calculate_max_x_extent(self):
+        """
+        Calculates the maximum :math:`x`-value of the airfoil system using the absolute location of the trailing edge
+        of each airfoil.
+
+        Returns
+        =======
+        float
+            Left-most trailing edge position of all airfoils in the airfoil system
+        """
         x = None
         for a in self.airfoils.values():
             x_max = a.c.value * np.cos(a.alf.value) + a.dx.value
@@ -404,6 +490,15 @@ class MEA:
         return keypaths
 
     def get_curve_bounds(self):
+        """
+        Calculates the :math:`x`- and :math:`y`-ranges corresponding to the rectangle which just encapsulates the entire
+        airfoil system.
+
+        Returns
+        =======
+        typing.Tuple[tuple]
+            :math:`x`- and :math:`y`-ranges in the format ``(x_min,x_max), (y_min,y_max)``
+        """
         x_range, y_range = (None, None), (None, None)
         for a in self.airfoils.values():
             if not a.airfoil_graph:
@@ -504,7 +599,9 @@ class MEA:
     @classmethod
     def generate_from_param_dict(cls, param_dict: dict):
         """
-        Reconstruct an MEA from the MEA's JSON-saved param_dict
+        Reconstruct an MEA from the MEA's JSON-saved param_dict. This is the normal way of saving an airfoil system
+        in pymead because it avoids issues associated with serializing portions of the MEA. It also allows for direct
+        modification of the save file due to the human-readable JSON save format.
 
         Parameters
         ==========
@@ -599,6 +696,9 @@ class MEA:
         return mea
 
     def remove_airfoil_graphs(self):
+        """
+        Removes the airfoil graph from each airfoil in the system.
+        """
         self.airfoil_graphs_active = False
         for a in self.airfoils.values():
             a.airfoil_graph = None

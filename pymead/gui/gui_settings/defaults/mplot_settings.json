@@ -36,5 +36,15 @@
         "label": "Output CPK",
         "widget_type": "QCheckBox",
         "setCheckState": 0
+    },
+    "capSS": {
+        "label": "Calculate Supersonic Capture Streamtube",
+        "widget_type": "QCheckBox",
+        "setCheckState": 0
+    },
+    "epma": {
+        "label": "Calculate Exit Plane Mach Array",
+        "widget_type": "QCheckBox",
+        "setCheckState": 0
     }
 }

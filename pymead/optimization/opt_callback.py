@@ -63,7 +63,7 @@ class ParallelCoordsCallback(OptCallback):
 
     def exec_callback(self):
         self.mea.update_parameters(self.X)
-        norm_val_list, param_list = self.mea.extract_parameters(write_to_txt_file=False)
+        norm_val_list, param_list = self.mea.extract_parameters()
         if self.parent.parallel_coords_graph is None:
             self.parent.parallel_coords_graph = ParallelCoordsGraph(background_color=self.background_color)
         tab_name = "Parallel Coordinates"

@@ -247,10 +247,16 @@ def calculate_aero_data(airfoil_coord_dir: str, airfoil_name: str, coords: typin
 
                 if mplot_settings["CPK"]:
                     try:
-                        CPK = calculate_CPK_mses(os.path.join(airfoil_coord_dir, airfoil_name))
+                        func_CPK_kwargs = dict(calculate_capSS=False, calculate_exit_plane_Mach_array=False)
+                        if mplot_settings["capSS"]:
+                            func_CPK_kwargs["calculate_capSS"] = True
+                        if mplot_settings["epma"]:
+                            func_CPK_kwargs["calculate_exit_plane_Mach_array"] = False
+                        outputs_CPK = calculate_CPK_mses(os.path.join(airfoil_coord_dir, airfoil_name),
+                                                         **func_CPK_kwargs)
                     except:
-                        CPK = 1E9
-                    aero_data["CPK"] = CPK
+                        outputs_CPK = {"CPK": 1e9, "capSS": 1, "epma": [1e9]}
+                    aero_data = {**aero_data, **outputs_CPK}
 
             t2 = time.time()
             # print(f"Time for stencil point {i}: {t2 - t1} seconds")
@@ -1013,7 +1019,7 @@ def line_integral_CPK_bl(K, outlet: bool):
     Parameters
     ==========
     K: float
-        Non-dimensional kinetic energy thickness (:math:`0.5 \frac{\rho_e}{\rho_\infty} \left( \frac{u_e}{V_\infty} \right)^3 \theta^*`
+        Non-dimensional kinetic energy thickness, :math:`0.5 \frac{\rho_e}{\rho_\infty} \left( \frac{u_e}{V_\infty} \right)^3 \theta^*`
 
     outlet: bool
         Whether this boundary layer is part of an outlet
@@ -1026,7 +1032,8 @@ def line_integral_CPK_bl(K, outlet: bool):
     return -K if outlet else K
 
 
-def calculate_CPK_mses(analysis_subdir: str, configuration: str = "underwing_te"):
+def calculate_CPK_mses(analysis_subdir: str, configuration: str = "underwing_te", calculate_capSS: bool = False,
+                       calculate_exit_plane_Mach_array: bool = False):
     """
     A specialized function that calculates the mechanical flow power coefficient for an underwing trailing edge
     aero-propulsive configuration.
@@ -1056,6 +1063,9 @@ def calculate_CPK_mses(analysis_subdir: str, configuration: str = "underwing_te"
     main_te_lower = coords[0][-1, :]
     nacelle_te_upper = coords[2][0, :]
 
+    hub_te_upper = coords[1][0, :]
+    hub_te_lower = coords[1][-1, :]
+
     angle = np.arctan2(main_te_lower[1] - nacelle_te_upper[1], main_te_lower[0] - nacelle_te_upper[0])
 
     plot_planes = False
@@ -1065,8 +1075,10 @@ def calculate_CPK_mses(analysis_subdir: str, configuration: str = "underwing_te"
             plt.plot(c_set[:, 0], c_set[:, 1])
         plt.plot(np.array([chord_5perc[0], chord_5perc[0] + 0.3 * np.cos(angle)]),
                  np.array([chord_5perc[1], chord_5perc[1] + 0.3 * np.sin(angle)]))
-        plt.plot(np.array([nacelle_te[0], nacelle_te[0] + 0.3 * np.cos(angle)]),
-                 np.array([nacelle_te[1], nacelle_te[1] + 0.3 * np.sin(angle)]))
+        plt.plot(np.array([hub_te_upper[0], hub_te_upper[0] + 0.3 * np.cos(angle)]),
+                 np.array([hub_te_upper[1], hub_te_upper[1] + 0.3 * np.sin(angle)]))
+        plt.plot(np.array([hub_te_lower[0], hub_te_lower[0] - 0.3 * np.cos(angle)]),
+                 np.array([hub_te_lower[1], hub_te_lower[1] - 0.3 * np.sin(angle)]))
         plt.gca().set_aspect("equal")
 
         plt.show()
@@ -1083,6 +1095,10 @@ def calculate_CPK_mses(analysis_subdir: str, configuration: str = "underwing_te"
     }
 
     start_idx, end_idx = 0, x_grid[0].shape[1] - 1
+
+    capSS = None
+    epma = []  # Exit plane Mach array
+
     for flow_section_idx in range(grid_stats["numel"] + 1):
         if flow_section_idx in flow_sections:
             Cp = convert_cell_centered_to_edge_centered(x_grid[flow_section_idx].shape,
@@ -1095,29 +1111,43 @@ def calculate_CPK_mses(analysis_subdir: str, configuration: str = "underwing_te"
                                                        field[flow_var_idx["v"]][:, start_idx:end_idx])
             V = convert_cell_centered_to_edge_centered(x_grid[flow_section_idx].shape,
                                                        field[flow_var_idx["q"]][:, start_idx:end_idx])
+            M = convert_cell_centered_to_edge_centered(x_grid[flow_section_idx].shape,
+                                                       field[flow_var_idx["M"]][:, start_idx:end_idx])
+
+            if calculate_capSS or calculate_exit_plane_Mach_array:
+                if capSS in [None, -1]:
+                    capSS = -1
+                    if np.any(M > 1.0):
+                        capSS = np.sum((M[M > 1.0]) ** 2) ** 0.5
 
             bl_data_lower = bl_data[underwing_flow_section_bl_map[flow_section_idx][0]]
             bl_data_upper = bl_data[underwing_flow_section_bl_map[flow_section_idx][1]]
 
-            xyCprhouvV_out, bl_at_point_upper_out, bl_at_point_lower_out = extrapolate_data_line_mses_field(
-                [Cp, rho, u, v, V], x_grid[flow_section_idx], y_grid[flow_section_idx],
-                bl_data_lower=bl_data_lower, bl_data_upper=bl_data_upper, point=nacelle_te_upper, angle=angle
+            inlet_point = chord_5perc
+            outlet_point = nacelle_te_upper
+            # outlet_point = hub_te_upper
+
+            xyCprhouvVM_out, bl_at_point_upper_out, bl_at_point_lower_out = extrapolate_data_line_mses_field(
+                [Cp, rho, u, v, V, M], x_grid[flow_section_idx], y_grid[flow_section_idx],
+                bl_data_lower=bl_data_lower, bl_data_upper=bl_data_upper, point=outlet_point, angle=angle
             )
 
             xyCprhouvV_in, bl_at_point_upper_in, bl_at_point_lower_in = extrapolate_data_line_mses_field(
                 [Cp, rho, u, v, V], x_grid[flow_section_idx], y_grid[flow_section_idx],
-                bl_data_lower=bl_data_lower, bl_data_upper=bl_data_upper, point=chord_5perc, angle=angle
+                bl_data_lower=bl_data_lower, bl_data_upper=bl_data_upper, point=inlet_point, angle=angle
             )
 
             # Integrate over the propulsor outlet for the given flow section
-            Cp_out, rho_out, u_out, v_out, V_out = \
-                xyCprhouvV_out[:, 2], xyCprhouvV_out[:, 3], xyCprhouvV_out[:, 4], xyCprhouvV_out[:, 5], xyCprhouvV_out[:, 6]
-            x_out = xyCprhouvV_out[:, 0]
-            y_out = xyCprhouvV_out[:, 1]
+            Cp_out, rho_out, u_out, v_out, V_out, M_out = \
+                xyCprhouvVM_out[:, 2], xyCprhouvVM_out[:, 3], xyCprhouvVM_out[:, 4], xyCprhouvVM_out[:, 5], \
+                xyCprhouvVM_out[:, 6], xyCprhouvVM_out[:, 7]
+            x_out = xyCprhouvVM_out[:, 0]
+            y_out = xyCprhouvVM_out[:, 1]
             outlet_integral = line_integral_CPK_inviscid(Cp_out, rho_out, u_out, v_out, V_out, x_out, y_out,
                                                          n_hat_right=False)  # n_hat points into the propulsor
             CPK += outlet_integral
             # print(f"{outlet_integral = }")
+            epma.extend(M_out.tolist())
 
             if bl_at_point_upper_out is not None:
                 # print(f"{bl_at_point_upper_out['K'] = }")
@@ -1159,7 +1189,12 @@ def calculate_CPK_mses(analysis_subdir: str, configuration: str = "underwing_te"
 
     # print(f"{CPK = }, {inlet_integral = }, {outlet_integral = }")
 
-    return CPK
+    # if calculate_capSS:
+    #     return CPK, capSS
+    # else:
+    #     return CPK
+
+    return {"CPK": CPK, "capSS": capSS, "epma": epma}
 
 
 class GeometryError(Exception):

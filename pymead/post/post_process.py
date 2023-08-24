@@ -42,6 +42,7 @@ ylabel = {
             "Cdf": r"Design $C_{d_f}$ (counts)",
             "Cm": r"Design $C_m$",
             "CPK": r"Design $C_{P_K}$",
+            "capSS": r"Supersonic Capture Streamtube",
             "sf": r"Design $C_{F_{\parallel V_\infty}}$ (counts)",
             "sfmh": r"Design $C_{F_{\parallel V_\infty}} - C_{d_h}$ (counts)"
         }
@@ -398,6 +399,7 @@ class PostProcess:
             "Cdf": 10000,
             "Cm": 1,
             "CPK": 1,
+            "capSS": 1,
             "sf": 10000,
             "sfmh": 10000,
         }

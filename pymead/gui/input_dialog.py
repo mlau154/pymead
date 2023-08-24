@@ -147,7 +147,9 @@ def convert_dialog_to_mplot_settings(dialog_input: dict):
         'Grid_Zoom': dialog_input['Grid_Zoom'],
         'flow_field': dialog_input['Output_Field'],
         'Streamline_Grid': dialog_input["Streamline_Grid"],
-        'CPK': dialog_input['CPK']
+        'CPK': dialog_input['CPK'],
+        'capSS': dialog_input['capSS'],
+        'epma': dialog_input['epma']
     }
     return mplot_settings
 
