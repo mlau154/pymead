@@ -295,9 +295,9 @@ class PostProcess:
                 # parent_chromosomes.append(Chromosome(param_set=param_set, population_idx=s, mea=mea, X=X))
                 X = X_list[idx]
                 self.chromosomes.append(Chromosome(param_dict=param_set, population_idx=i, mea=self.mea, genes=X,
-                                                   ga_settings=None, category=None, generation=0))
+                                                   generation=0))
 
-            population = Population(param_dict=self.param_dict, ga_settings=None, generation=0, parents=self.chromosomes,
+            population = Population(param_dict=self.param_dict, generation=0, parents=self.chromosomes,
                                     mea=self.mea, verbose=True, skip_parent_assignment=False)
             population.generate_chromosomes_parallel()
             if save_coords:
