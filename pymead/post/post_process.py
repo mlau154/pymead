@@ -251,9 +251,9 @@ class PostProcess:
         param_set['name'] = [f"analysis_0"]
 
         chromosome = Chromosome(param_dict=param_set, population_idx=0, mea=self.mea, genes=None,
-                                ga_settings=None, category=None, generation=0)
+                                generation=0)
 
-        population = Population(param_dict=param_set, ga_settings=None, generation=0, parents=[chromosome],
+        population = Population(param_dict=param_set, generation=0, parents=[chromosome],
                                 mea=self.mea, verbose=True, skip_parent_assignment=False)
 
         population.eval_pop_fitness()

@@ -25,7 +25,7 @@ Alternatively, users working in an IDE can navigate to the ``gui`` module by cli
 GUI documentation:
 
 .. raw:: html
-   :file:`gui_help/test.html`
+   :file: gui_help/test.html
 
 Programmatic Interface
 ======================
