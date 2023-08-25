@@ -14,3 +14,4 @@ Contents
    quick_start
    tutorials
    api
+   gui
