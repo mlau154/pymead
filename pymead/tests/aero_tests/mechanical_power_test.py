@@ -131,3 +131,8 @@ class PKTest(unittest.TestCase):
         # ax.plot(x_main_te_field2, y_main_te_field2, marker="*", ls="none", mfc="none", mec="black", markersize=12)
         plt.show()
         pass
+
+    def test_PK_calculation_opt_pai2(self):
+        analysis_dir = r"C:\Users\mlauer2\Documents\pymead\pymead\pymead\tests\pai\root_underwing_opt\opt_runs\2023_05_03_A\ga_opt_68\analysis\analysis_158_w0-100"
+        CPK = calculate_CPK_mses(analysis_subdir=analysis_dir)
+        print(f"{CPK = }")

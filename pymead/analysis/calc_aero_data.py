@@ -1100,7 +1100,7 @@ def line_integral_CPK_inviscid(Cp_up: np.ndarray, Cp_down: np.ndarray, rho_up: n
     return integral
 
 
-def line_integral_CPK_bl(K, outlet: bool):
+def line_integral_CPK_bl(rhoe_rhoinf, ue_uinf, Cp, deltastar, outlet: bool):
     r"""
     Computes CPK at a given boundary layer location
 
@@ -1112,16 +1112,16 @@ def line_integral_CPK_bl(K, outlet: bool):
     outlet: bool
         Whether this boundary layer is part of an outlet
     """
-    # delta = 8 * deltastar
-    # integral = (7/8) * delta * ue * Cp + rhoe * ue * (
-    #         delta - deltastar) + rhoe * ue**3 * (delta - deltastar - thetastar)
-    # print(f"{delta = }, {ue = }, {Cp = }, {rhoe = }, {deltastar = }, {thetastar = }, {integral = }")
-    # return integral if outlet else -integral  # -V_vec dot n_hat is approximately V for the outlet and -V for the inlet
-    return -K if outlet else K
+    # 7/8 * edge velocity is an approximate average velocity based on a 1/7 power law velocity profile
+    dot_product = -7/8 * ue_uinf if outlet else 7/8 * ue_uinf
+    integrand = (rhoe_rhoinf * (1 - (ue_uinf * 7/8) ** 2) - Cp) * dot_product
+    dl = deltastar
+    integral = integrand * dl
+    return integral
 
 
 def calculate_CPK_mses_old(analysis_subdir: str, configuration: str = "underwing_te", calculate_capSS: bool = False,
-                       calculate_exit_plane_Mach_array: bool = False):
+                           calculate_exit_plane_Mach_array: bool = False):
     """
     A specialized function that calculates the mechanical flow power coefficient for an underwing trailing edge
     aero-propulsive configuration.
@@ -1299,11 +1299,13 @@ def calculate_CPK_mses(analysis_subdir: str, configuration: str = "underwing_te"
     grid_stats_file = os.path.join(analysis_subdir, 'mplot_grid_stats.log')
     grid_file = os.path.join(analysis_subdir, f'grid.{airfoil_system_name}')
     mses_log_file = os.path.join(analysis_subdir, "mses.log")
+    bl_file = os.path.join(analysis_subdir, f"bl.{airfoil_system_name}")
 
     field = read_field_from_mses(field_file)
     grid_stats = read_grid_stats_from_mses(grid_stats_file)
     x_grid, y_grid = read_streamline_grid_from_mses(grid_file, grid_stats)
     data_AD = read_actuator_disk_data_mses(mses_log_file, grid_stats)
+    bl_data = read_bl_data_from_mses(bl_file)
 
     CPK = 0.0
 
@@ -1323,139 +1325,49 @@ def calculate_CPK_mses(analysis_subdir: str, configuration: str = "underwing_te"
         CPK += line_integral_CPK_inviscid(Cp_up, Cp_down, rho_up, rho_down, u_up, u_down,
                                           v_up, v_down, V_up, V_down, x, y)
 
+        # Calculate the bounding boundary layer sides corresponding to the given flow section index
+        n_airfoils = len(x_grid) - 1
+        side_lower = (n_airfoils - data["flow_section_idx"]) * 2
+        side_upper = side_lower - 1
+
+        # Retrieve the boundary layer data for each boundary layer side
+        bl_data_dict = {
+            "upstream_lower": bl_data[side_lower],
+            "downstream_lower": bl_data[side_lower],
+            "upstream_upper": bl_data[side_upper],
+            "downstream_upper": bl_data[side_upper]
+        }
+
+        # Calculate edge center locations
+        xe = {
+            "upstream_lower": (x[0, 0] + x[1, 0]) / 2,
+            "downstream_lower": (x[1, 0] + x[2, 0]) / 2,
+            "upstream_upper": (x[0, -1] + x[1, -1]) / 2,
+            "downstream_upper": (x[1, -1] + x[2, -1]) / 2
+        }
+
+        outlet_bool = {
+            "upstream_lower": False,
+            "downstream_lower": True,
+            "upstream_upper": False,
+            "downstream_upper": True,
+        }
+
+        # Interpolate the boundary layer data for each edge center location and calculate the CPK value
+        for xe_k, xe_v in xe.items():
+            bl = bl_data_dict[xe_k]
+            rhoe_rhoinf = np.interp(xe_v, bl["x"], bl["rhoe/rhoinf"])
+            ue_uinf = np.interp(xe_v, bl["x"], bl["Ue/Uinf"])
+            Cp = np.interp(xe_v, bl["x"], bl["Cp"])
+            deltastar = np.interp(xe_v, bl["x"], bl["delta*"])
+            CPK_bl = line_integral_CPK_bl(rhoe_rhoinf=rhoe_rhoinf, ue_uinf=ue_uinf, Cp=Cp, deltastar=deltastar,
+                                          outlet=outlet_bool[xe_k])
+            CPK += CPK_bl
+
     if np.isnan(CPK):
         CPK = 1e9
 
     return {"CPK": CPK}
-
-
-# def calculate_CPV_mses(analysis_subdir: str, configuration: str = "underwing_te"):
-#     """
-#     A specialized function that calculates the volumetric mechanical power coefficient for an underwing trailing
-#     edge aero-propulsive configuration.
-#     """
-#     if configuration != "underwing_te":
-#         raise NotImplementedError("Only the underwing trailing edge configuration is currently implemented")
-#
-#     airfoil_system_name = os.path.split(analysis_subdir)[-1]
-#     field_file = os.path.join(analysis_subdir, f'field.{airfoil_system_name}')
-#     grid_stats_file = os.path.join(analysis_subdir, 'mplot_grid_stats.log')
-#     grid_file = os.path.join(analysis_subdir, f'grid.{airfoil_system_name}')
-#     blade_file = os.path.join(analysis_subdir, f"blade.{airfoil_system_name}")
-#     bl_file = os.path.join(analysis_subdir, f"bl.{airfoil_system_name}")
-#     coords = convert_blade_file_to_3d_array(blade_file)
-#
-#     field = read_field_from_mses(field_file)
-#     bl_data = read_bl_data_from_mses(bl_file)
-#     grid_stats = read_grid_stats_from_mses(grid_stats_file)
-#     x_grid, y_grid = read_streamline_grid_from_mses(grid_file, grid_stats)
-#
-#     nacelle_le = coords[2][150 + 2 * 149, :]
-#     nacelle_te = (coords[2][0, :] + coords[2][-1, :]) / 2
-#     dydx = (nacelle_te[1] - nacelle_le[1]) / (nacelle_te[0] - nacelle_le[0])
-#     nacelle_chord = np.hypot(nacelle_te[0] - nacelle_le[0], nacelle_te[1] - nacelle_le[1])
-#     chord_5perc = nacelle_le + 0.05 * nacelle_chord * np.array(
-#         [1 / np.sqrt(dydx ** 2 + 1), dydx / np.sqrt(dydx ** 2 + 1)])
-#
-#     main_te_lower = coords[0][-1, :]
-#     nacelle_te_upper = coords[2][0, :]
-#
-#     angle = np.arctan2(main_te_lower[1] - nacelle_te_upper[1], main_te_lower[0] - nacelle_te_upper[0])
-#
-#     flow_sections = [1, 2]
-#
-#     # inlet, outlet = {"p": [], "rho": [], "u": [], "v": []}, {"p": [], "rho": [], "u": [], "v": []}
-#
-#     underwing_flow_section_bl_map = {
-#         1: (4, 3),
-#         2: (2, 1)
-#     }
-#
-#     start_idx, end_idx = 0, x_grid[0].shape[1] - 1
-#
-#     for flow_section_idx in range(grid_stats["numel"] + 1):
-#         Cp = convert_cell_centered_to_edge_centered(x_grid[flow_section_idx].shape,
-#                                                     field[flow_var_idx["Cp"]][:, start_idx:end_idx])
-#         u = convert_cell_centered_to_edge_centered(x_grid[flow_section_idx].shape,
-#                                                    field[flow_var_idx["u"]][:, start_idx:end_idx])
-#         v = convert_cell_centered_to_edge_centered(x_grid[flow_section_idx].shape,
-#                                                    field[flow_var_idx["v"]][:, start_idx:end_idx])
-#
-#         bl_data_lower = bl_data[underwing_flow_section_bl_map[flow_section_idx][0]]
-#         bl_data_upper = bl_data[underwing_flow_section_bl_map[flow_section_idx][1]]
-#
-#         inlet_point = chord_5perc
-#         outlet_point = nacelle_te_upper
-#         # outlet_point = hub_te_upper
-#
-#         xyCprhouvVM_out, bl_at_point_upper_out, bl_at_point_lower_out = extrapolate_data_line_mses_field(
-#             [Cp, rho, u, v, V, M], x_grid[flow_section_idx], y_grid[flow_section_idx],
-#             bl_data_lower=bl_data_lower, bl_data_upper=bl_data_upper, point=outlet_point, angle=angle
-#         )
-#
-#         xyCprhouvV_in, bl_at_point_upper_in, bl_at_point_lower_in = extrapolate_data_line_mses_field(
-#             [Cp, rho, u, v, V], x_grid[flow_section_idx], y_grid[flow_section_idx],
-#             bl_data_lower=bl_data_lower, bl_data_upper=bl_data_upper, point=inlet_point, angle=angle
-#         )
-#
-#         # Integrate over the propulsor outlet for the given flow section
-#         Cp_out, rho_out, u_out, v_out, V_out, M_out = \
-#             xyCprhouvVM_out[:, 2], xyCprhouvVM_out[:, 3], xyCprhouvVM_out[:, 4], xyCprhouvVM_out[:, 5], \
-#             xyCprhouvVM_out[:, 6], xyCprhouvVM_out[:, 7]
-#         x_out = xyCprhouvVM_out[:, 0]
-#         y_out = xyCprhouvVM_out[:, 1]
-#         outlet_integral = line_integral_CPK_inviscid(Cp_out, rho_out, u_out, v_out, V_out, x_out, y_out,
-#                                                      n_hat_right=False)  # n_hat points into the propulsor
-#         # CPK += outlet_integral
-#         # print(f"{outlet_integral = }")
-#         # epma.extend(M_out.tolist())
-#
-#         # if bl_at_point_upper_out is not None:
-#         #     # print(f"{bl_at_point_upper_out['K'] = }")
-#         #     CPK += line_integral_CPK_bl(bl_at_point_upper_out["K"], outlet=True)
-#         #
-#         # if bl_at_point_lower_out is not None:
-#         #     # print(f"{bl_at_point_lower_out['K'] = }")
-#         #     CPK += line_integral_CPK_bl(bl_at_point_lower_out["K"], outlet=True)
-#
-#         # print(f"After adding the BL CPK, {CPK - outlet_integral = }")
-#
-#         # Integrate over the propulsor inlet for the given flow section
-#         Cp_in, rho_in, u_in, v_in, V_in = \
-#             xyCprhouvV_in[:, 2], xyCprhouvV_in[:, 3], xyCprhouvV_in[:, 4], xyCprhouvV_in[:, 5], xyCprhouvV_in[:, 6]
-#         x_in = xyCprhouvV_in[:, 0]
-#         y_in = xyCprhouvV_in[:, 1]
-#         inlet_integral = line_integral_CPK_inviscid(Cp_in, rho_in, u_in, v_in, V_in, x_in, y_in,
-#                                                     n_hat_right=True)  # n_hat points into the propulsor
-#         # CPK += inlet_integral
-#         # # CPK_temp = CPK
-#         # # print(f"{inlet_integral = }, {CPK = }")
-#         #
-#         # if bl_at_point_upper_in is not None:
-#         #     # print(f"{bl_at_point_upper_in['K'] = }")
-#         #     CPK += line_integral_CPK_bl(bl_at_point_upper_in["K"], outlet=False)
-#         #
-#         # if bl_at_point_lower_in is not None:
-#         #     # print(f"{bl_at_point_lower_in['K'] = }")
-#         #     CPK += line_integral_CPK_bl(bl_at_point_lower_in["K"], outlet=False)
-#
-#         # print(f"After adding the inlet BL contributions, {CPK - CPK_temp = }")
-#
-#     if flow_section_idx < grid_stats["numel"]:
-#         start_idx = end_idx
-#         end_idx += x_grid[flow_section_idx + 1].shape[1] - 1
-#
-#     # if np.isnan(CPK):
-#     #     CPK = 1e9
-#
-#     # print(f"{CPK = }, {inlet_integral = }, {outlet_integral = }")
-#
-#     # if calculate_capSS:
-#     #     return CPK, capSS
-#     # else:
-#     #     return CPK
-#
-#     # return {"CPK": CPK, "capSS": capSS, "epma": epma}
 
 
 class GeometryError(Exception):
