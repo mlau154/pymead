@@ -386,7 +386,8 @@ class PostProcess:
         if isinstance(var, str):
             var = [var]
         if var is None:
-            var = [k for k in post_process_forces.keys() if k not in ['converged', 'BL', 'errored_out', 'timed_out']]
+            var = [k for k in post_process_forces.keys() if k not in ['converged', 'BL', 'errored_out', 'timed_out',
+                                                                      'epma']]
             var.extend(["sf", "sfmh"])
         multiplier = {
             "Cd": 10000,

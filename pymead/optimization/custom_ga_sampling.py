@@ -2,6 +2,10 @@ from pymead.optimization.pop_chrom import Chromosome
 
 
 class CustomGASampling:
+    """
+    To be removed in the future.
+    """
+    # TODO: remove this class
     def __init__(self, param_dict: dict, mea: dict, genes: list):
         self.param_set = param_dict
         self.mea = mea

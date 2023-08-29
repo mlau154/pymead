@@ -416,7 +416,7 @@ class Population:
             if self.verbose and chromosome.fitness is not None:
                 if "CPK" in chromosome.forces.keys():
                     print(f"Fitness evaluated successfully for chromosome {chromosome.population_idx + 1} with "
-                          f"generation: {chromosome.generation} | CPK = {chromosome.forces['CPK']} | capSS = {chromosome.forces['capSS']} | epma = {chromosome.forces['epma']} | C_d = {chromosome.forces['Cd']} | C_l = "
+                          f"generation: {chromosome.generation} | CPK = {chromosome.forces['CPK']} | C_d = {chromosome.forces['Cd']} | C_l = "
                           f"{chromosome.forces['Cl']} | C_m = {chromosome.forces['Cm']}")
                 else:
                     print(f"Fitness evaluated successfully for chromosome {chromosome.population_idx + 1} with "

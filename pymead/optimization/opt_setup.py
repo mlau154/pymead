@@ -74,7 +74,18 @@ def read_stencil_from_array(data: np.ndarray, tool: str):
         raise ValueError(f"Discovered multipoint data that was not 1-D or 2-D. {data.ndim = }")
 
 
-def termination_condition(param_dict):
+def termination_condition(param_dict: dict):
+    """
+    Termination criteria for the optimization.
+
+    Parameters
+    ==========
+    param_dict: dict
+        Parameter dictionary for the optimization
+
+    pymoo.util.termination.default.MultiObjectiveDefaultTermination
+        Termination object used to define convergence for the genetic algorithm
+    """
     termination = MultiObjectiveDefaultTermination(
         x_tol=param_dict['x_tol'],
         cv_tol=param_dict['cv_tol'],
@@ -87,7 +98,25 @@ def termination_condition(param_dict):
     return termination
 
 
-def calculate_warm_start_index(warm_start_generation, warm_start_directory):
+def calculate_warm_start_index(warm_start_generation: int, warm_start_directory: str):
+    """
+    Calculates the generation from which to restart the optimization. If the specified warm start generation is not
+    found in the ``algorithm_gen_xxx.pkl`` files, an error is raised.
+
+    Parameters
+    ==========
+    warm_start_generation: int
+        Generation from which to restart the optimization. If this value is ``-1``, the optimization will start
+        from the most recent point.
+
+    warm_start_directory: str
+        Path to the optimization directory containing the ``algorithm_gen_xxx.pkl`` files
+
+    Returns
+    =======
+    int
+        The index of the generation to start from.
+    """
     generations = []
     for root, _, files in os.walk(warm_start_directory):
         for idx, f in enumerate(files):
@@ -159,6 +188,8 @@ class TPAIOPT(Problem):
         """
         Simple problem statement for the ``pymoo`` package.
 
+        Parameters
+        ==========
         n_var: int
             Number of design variables (equal to the length of the normalized paramter list)
 
@@ -185,41 +216,8 @@ class TPAIOPT(Problem):
         pass
 
 
-# class SelfIntersectionRepair(Repair):
-#     def __init__(self, mea):
-#         super().__init__()
-#         self.mea = mea
-#
-#     def _do(self, problem, pop, **kwargs):
-#         # print('Repairing...')
-#
-#         # the packing plan for the whole population (each row one individual)
-#         Z = pop.get("X")
-#
-#         # now repair each indvidiual i
-#         for i in range(len(Z)):
-#
-#             # the packing plan for i
-#             z = deepcopy(Z[i])
-#
-#             genes = z.tolist()
-#
-#             # Create a chromosome with "genes" and "ga_setup_params" being the only relevant parameters (this is just to
-#             # check for geometry validity)
-#             chromosome = Chromosome(genes=genes, param_dict=problem.param_dict, ga_settings=problem.ga_settings,
-#                                     category=None,
-#                                     population_idx=0, generation=0, verbose=False, mea=self.mea)
-#             chromosome.generate()
-#
-#             if not chromosome.valid_geometry:
-#                 Z[int(i), :] = 9999
-#
-#         # set the design variables for the population
-#         pop.set("X", Z)
-#         return pop
-
-
 class CustomDisplay(Display):
+    # TODO: this class needs work to be more general
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.term = MultiObjectiveSpaceToleranceTermination()

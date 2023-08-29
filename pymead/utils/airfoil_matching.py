@@ -22,28 +22,32 @@ from pymoo.optimize import minimize
 
 def airfoil_symmetric_area_difference(parameters: list, mea: MEA, target_airfoil: str, airfoil_to_match_xy: np.ndarray):
     r"""
-    ### Description:
-
-    This method uses the shapely package to convert the parametrized airfoil and the "discrete" airfoil to
-    [Polygon](https://shapely.readthedocs.io/en/stable/manual.html#Polygon)
+    This method uses the ``shapely`` package to convert the parametrized airfoil and the "discrete" airfoil to
+    `Polygon <https://shapely.readthedocs.io/en/stable/manual.html#Polygon>`_
     objects and calculate the boolean
-    [symmetric difference](https://shapely.readthedocs.io/en/stable/manual.html#object.symmetric_difference)
-    (a similarity metric) between the two airfoils
+    `symmetric difference <https://shapely.readthedocs.io/en/stable/manual.html#object.symmetric_difference>`_
+    (a similarity metric) between the two airfoils.
 
-    ### Args:
+    Parameters
+    ==========
+    parameters: list
+        A list of parameters used to override the ``pymead.core.param.Param`` and ``pymead.core.pos_param.PosParam``
+        values in the ``pymead.core.mea.MEA`` object.
 
-    `parameters`: A list of parameters used to override the `pymead.core.param.Param` values in the
-    `pymead.core.airfoil.Airfoil` class
+    mea: MEA
+        Multi-element airfoil
 
-    `airfoil`: instance of the Airfoil (or any sub-class) used to describe the airfoil parametrization
+    target_airfoil: str
+        Name of the airfoil in the MEA to match. For example, use ``"A0"`` to match the first airfoil.
 
-    `airfoil_to_match_xy`: [`numpy.ndarray`](https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html) of
-    `shape=(N, 2)` describing the "discrete" airfoil to match, where `N` is the number of coordinates,
-    and the columns represent \(x\) and \(y\)
+    airfoil_to_match_xy: np.ndarray
+        Array of ``shape=(N, 2)`` describing the "discrete" airfoil to match, where ``N`` is the number of coordinates,
+        and the columns represent :math:`x` and :math:`y`
 
-    ### Returns:
-
-    The boolean symmetric area difference between the parametrized airfoil and the discrete airfoil
+    Returns
+    =======
+    float
+        The boolean symmetric area difference between the parametrized airfoil and the discrete airfoil
     """
 
     # Override airfoil parameters with supplied sequence of parameters
@@ -71,26 +75,30 @@ def airfoil_symmetric_area_difference(parameters: list, mea: MEA, target_airfoil
 def match_airfoil(mea: MEA, target_airfoil: str, airfoil_to_match: str or list or np.ndarray,
                   repair: typing.Callable or None = None):
     r"""
-    ### Description:
-
-    This method uses the [`scipy.optimize.minimize(method='SLSQP')`](
-    https://docs.scipy.org/doc/scipy/reference/optimize.minimize-slsqp.html) optimization scheme to minimize the
-    boolean symmetric area difference between the input `pymead.core.airfoil.Airfoil` and set of "discrete" airfoil
+    This method uses the `sequential least-squares programming
+    <https://docs.scipy.org/doc/scipy/reference/optimize.minimize-slsqp.html>`_ optimization scheme to minimize the
+    boolean symmetric area difference between the input ``pymead.core.airfoil.Airfoil`` and a set of "discrete" airfoil
     coordinates
 
-    ### Args:
+    Parameters
+    ==========
+    mea: MEA
+        Multi-element airfoil containing the airfoil to match. The initial guess for the optimizer is the set of
+        input Param values set in the ``pymead.core.airfoil.Airfoil`` instance. The bounds for the optimizer must be
+        set by also supplying inputs to the ``bounds`` attribute of any active and unlinked
+        ``pymead.core.param.Param``'s and possibly ``pymead.core.pos_param.PosParam``'s in the MEA object.
 
-    `airfoil`: instance of the `pymead.core.airfoil.Airfoil` class (or any sub-class) which describes the
-    parametrized airfoil. The initial guess for the optimizer is the set of input Param values set in the
-    `pymead.core.airfoil.Airfoil` instance. The bounds for the optimizer must be set by also supplying inputs to
-    the `pymead.core.param.Param`'s `bounds` attribute in the `pymead.core.airfoil.Airfoil` instance.
+    target_airfoil: str
+        Airfoil from the MEA to match. For example, use ``"A0"`` to match the first airfoil. Only one airfoil may be
+        matched at a time.
 
-    `airfoil_to_match`: set of \(x\) - \(y\) airfoil coordinates to be matched, or a string representing the name
-    of the airfoil to be fetched from [Airfoil Tools](http://airfoiltools.com/).
+    airfoil_to_match: str or list or np.ndarray
+        Set of :math:`x`-:math:`y` airfoil coordinates to be matched, or a string representing the name
+        of the airfoil to be fetched from `Airfoil Tools <http://airfoiltools.com/>`_.
 
-    ### Returns:
-
-    The [`minimize`](https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.minimize.html) result.
+    Returns
+    =======
+    `OptimizeResult <https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.OptimizeResult.html#scipy.optimize.OptimizeResult>`_
     """
     if isinstance(airfoil_to_match, str):
         airfoil_to_match_xy = extract_data_from_airfoiltools(airfoil_to_match, repair=repair)
