@@ -12,7 +12,7 @@
         "label": "Objective Functions:",
         "widget_type": "QLineEdit",
         "setText": "$Cd",
-        "setToolTip": "Enter the objective functions to be minimized, separated by commas.\nVariables can be started with the dollar sign ($)."
+        "setToolTip": "Enter the objective functions to be minimized, separated by commas.\nVariables can be started with the dollar sign ($).\nNote: if multi-point optimization is active, each variable\nmust be indexed to ensure the return type is a float rather\nthat a list. For example, $Cd[0] must be used rather than\n$Cd if multi-point optimization is active. Here, $Cd[0]\ncorresponds to the drag coefficient of the airfoil (system) evaluated\nusing the first multi-point stencil point values."
     },
     "G": {
         "label": "Constraints:",

@@ -78,6 +78,10 @@ class ObjectiveConstraint:
             if execute:
                 try:
                     exec(self.func, self.function_dict)
+                    return_val = self.function_dict["f"]()
+                    if not isinstance(return_val, float):
+                        raise FunctionCompileError(f"Error in function compilation output type. Required type is float,"
+                                                   f"found type {type(return_val)}")
                 except (SyntaxError, NameError, TypeError):
                     raise FunctionCompileError('Error in function compilation')
 
@@ -114,7 +118,6 @@ class ObjectiveConstraint:
         a ``Param`` name. For example, the string ``"A0.Base.R_le"`` corresponds to the leading edge radius of the base
         parameter set of airfoil ``"A0"``.
         """
-        # TODO: throw an error if an objective function is setup without indexing despite multipoint being active
         self.tag_matrix = []
         self.func = 'def f(): return '
         math_functions_to_include = []
