@@ -145,6 +145,7 @@ def convert_opt_settings_to_param_dict(opt_settings: dict) -> dict:
                   'xu': 1.0,
                   'seed': opt_settings['Genetic Algorithm']['random_seed'],
                   'multi_point': opt_settings['Multi-Point Optimization']['multi_point_active'],
+                  'design_idx': opt_settings['Multi-Point Optimization']['design_idx'],
                   'num_processors': opt_settings['Genetic Algorithm']['num_processors'],
                   'x_tol': opt_settings['Constraints/Termination']['x_tol'],
                   'cv_tol': opt_settings['Constraints/Termination']['cv_tol'],

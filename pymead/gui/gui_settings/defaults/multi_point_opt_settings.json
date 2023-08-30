@@ -11,6 +11,14 @@
     "push_button": "Choose file",
     "push_button_action": "select_data_file"
   },
+  "design_idx": {
+    "label": "Design Point Index",
+    "widget_type": "QSpinBox",
+    "setMinimum": 0,
+    "setMaximum": 999,
+    "setToolTip": "Index (starting from 0) within the multipoint stencil corresponding to the design point",
+    "setValue": 0
+  },
   "information": {
     "label": "",
     "widget_type": "QTextEdit",

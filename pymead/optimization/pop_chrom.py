@@ -175,8 +175,8 @@ class Chromosome:
             min_radius = self.mea_object.airfoils[airfoil_name].compute_min_radius()
             min_radius_too_small = min_radius < self.param_set['constraints'][airfoil_name]['min_radius_curvature'][0]
             self.valid_geometry = not min_radius_too_small
-            if self.verbose:
-                print(f'Min radius of curvature too small? {min_radius_too_small}. Min radius is {min_radius}')
+            # if self.verbose:
+            #     print(f'Min radius of curvature too small? {min_radius_too_small}. Min radius is {min_radius}')
             return min_radius_too_small
 
     def chk_max_thickness(self, airfoil_name: str) -> bool:

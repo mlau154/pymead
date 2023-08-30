@@ -586,7 +586,7 @@ class ADWidget(QTabWidget):
         self.ADChanged.emit()
 
     def valueChanged(self, k1, k2, v2):
-        print(f"Value changed! {k1 = }, {k2 = }, {v2 = }")
+        # print(f"Value changed! {k1 = }, {k2 = }, {v2 = }")
         if k2 == 'from_geometry':
             print("Setting from_geometry!")
             self.input_dict[k1]["from_geometry"][k1] = v2
@@ -1609,7 +1609,7 @@ class GeneticAlgorithmDialogWidget(PymeadDialogWidget):
         pass
 
     def multi_point_changed(self, state: int or bool):
-        print("Multi point changed!")
+        # print("Multi point changed!")
         self.multi_point = state
         self.objectives_changed(self.widget_dict['J']['widget'], self.widget_dict['J']['widget'].text())
         self.constraints_changed(self.widget_dict['G']['widget'], self.widget_dict['G']['widget'].text())
@@ -1636,7 +1636,7 @@ class GeneticAlgorithmDialogWidget(PymeadDialogWidget):
                 widget.setStyleSheet("QLineEdit {background-color: rgba(16,201,87,50)}")
             except FunctionCompileError:
                 widget.setStyleSheet("QLineEdit {background-color: rgba(176,25,25,50)}")
-                print("Function compile error!")
+                # print("Function compile error!")
                 return
 
     def constraints_changed(self, widget, text: str):

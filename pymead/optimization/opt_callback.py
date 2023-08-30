@@ -54,16 +54,17 @@ class PlotAirfoilCallback(OptCallback):
 
 
 class ParallelCoordsCallback(OptCallback):
-    def __init__(self, parent, mea: MEA, X, background_color: str = 'w'):
+    def __init__(self, parent, mea: dict, X, background_color: str = 'w'):
         super().__init__(parent=parent)
-        self.mea = mea
+        self.mea = deepcopy(mea)
+        self.mea_object = MEA.generate_from_param_dict(self.mea)
         self.X = X
         self.parent = parent
         self.background_color = background_color
 
     def exec_callback(self):
-        self.mea.update_parameters(self.X)
-        norm_val_list, param_list = self.mea.extract_parameters()
+        self.mea_object.update_parameters(self.X)
+        norm_val_list, param_list = self.mea_object.extract_parameters()
         if self.parent.parallel_coords_graph is None:
             self.parent.parallel_coords_graph = ParallelCoordsGraph(background_color=self.background_color)
         tab_name = "Parallel Coordinates"
@@ -88,7 +89,7 @@ class ParallelCoordsCallback(OptCallback):
 
 
 class DragPlotCallbackXFOIL(OptCallback):
-    def __init__(self, parent, background_color: str = 'w'):
+    def __init__(self, parent, background_color: str = 'w', design_idx: int = 0):
         super().__init__(parent=parent)
         self.parent = parent
         self.background_color = background_color
@@ -96,6 +97,8 @@ class DragPlotCallbackXFOIL(OptCallback):
         self.Cd = self.forces['Cd']
         self.Cdp = self.forces['Cdp']
         self.Cdf = self.forces['Cdf']
+        print(f"{self.Cd = }")
+        self.design_idx = design_idx
 
     def exec_callback(self):
         if self.parent.drag_graph is None:
@@ -103,13 +106,16 @@ class DragPlotCallbackXFOIL(OptCallback):
         tab_name = "Drag"
         if tab_name not in self.parent.dockable_tab_window.names:
             self.parent.dockable_tab_window.add_new_tab_widget(self.parent.drag_graph.w, tab_name)
-        self.parent.drag_graph.pg_plot_handle_Cd.setData(1e4 * np.array(self.Cd))
-        self.parent.drag_graph.pg_plot_handle_Cdp.setData(1e4 * np.array(self.Cdp))
-        self.parent.drag_graph.pg_plot_handle_Cdf.setData(1e4 * np.array(self.Cdf))
+        Cd = self.Cd if not isinstance(self.Cd[0], list) else [d[self.design_idx] for d in self.Cd]
+        Cdp = self.Cdp if not isinstance(self.Cdp[0], list) else [d[self.design_idx] for d in self.Cdp]
+        Cdf = self.Cdf if not isinstance(self.Cdf[0], list) else [d[self.design_idx] for d in self.Cdf]
+        self.parent.drag_graph.pg_plot_handle_Cd.setData(1e4 * np.array(Cd))
+        self.parent.drag_graph.pg_plot_handle_Cdp.setData(1e4 * np.array(Cdp))
+        self.parent.drag_graph.pg_plot_handle_Cdf.setData(1e4 * np.array(Cdf))
 
 
 class DragPlotCallbackMSES(OptCallback):
-    def __init__(self, parent, background_color: str = 'w'):
+    def __init__(self, parent, background_color: str = 'w', design_idx: int = 0):
         super().__init__(parent=parent)
         self.parent = parent
         self.background_color = background_color
@@ -119,6 +125,7 @@ class DragPlotCallbackMSES(OptCallback):
         self.Cdf = self.forces['Cdf']
         self.Cdv = self.forces['Cdv']
         self.Cdw = self.forces['Cdw']
+        self.design_idx = design_idx
 
     def exec_callback(self):
         if self.parent.drag_graph is None:
@@ -126,20 +133,26 @@ class DragPlotCallbackMSES(OptCallback):
         tab_name = "Drag"
         if tab_name not in self.parent.dockable_tab_window.names:
             self.parent.dockable_tab_window.add_new_tab_widget(self.parent.drag_graph.w, tab_name)
-        self.parent.drag_graph.pg_plot_handle_Cd.setData(1e4 * np.array(self.Cd))
-        self.parent.drag_graph.pg_plot_handle_Cdp.setData(1e4 * np.array(self.Cdp))
-        self.parent.drag_graph.pg_plot_handle_Cdf.setData(1e4 * np.array(self.Cdf))
-        self.parent.drag_graph.pg_plot_handle_Cdv.setData(1e4 * np.array(self.Cdv))
-        self.parent.drag_graph.pg_plot_handle_Cdw.setData(1e4 * np.array(self.Cdw))
+        Cd = self.Cd if not isinstance(self.Cd[0], list) else [d[self.design_idx] for d in self.Cd]
+        Cdp = self.Cdp if not isinstance(self.Cdp[0], list) else [d[self.design_idx] for d in self.Cdp]
+        Cdf = self.Cdf if not isinstance(self.Cdf[0], list) else [d[self.design_idx] for d in self.Cdf]
+        Cdv = self.Cdv if not isinstance(self.Cdv[0], list) else [d[self.design_idx] for d in self.Cdv]
+        Cdw = self.Cdw if not isinstance(self.Cdw[0], list) else [d[self.design_idx] for d in self.Cdw]
+        self.parent.drag_graph.pg_plot_handle_Cd.setData(1e4 * np.array(Cd))
+        self.parent.drag_graph.pg_plot_handle_Cdp.setData(1e4 * np.array(Cdp))
+        self.parent.drag_graph.pg_plot_handle_Cdf.setData(1e4 * np.array(Cdf))
+        self.parent.drag_graph.pg_plot_handle_Cdv.setData(1e4 * np.array(Cdv))
+        self.parent.drag_graph.pg_plot_handle_Cdw.setData(1e4 * np.array(Cdw))
 
 
 class CpPlotCallbackXFOIL(OptCallback):
-    def __init__(self, parent, background_color: str = 'w'):
+    def __init__(self, parent, background_color: str = 'w', design_idx: int = 0):
         super().__init__(parent=parent)
         self.parent = parent
         self.background_color = background_color
         self.forces = self.parent.forces_dict
         self.Cp = self.forces['Cp'][-1]
+        self.design_idx = design_idx
 
     def exec_callback(self):
         if self.parent.Cp_graph is None:
@@ -153,20 +166,22 @@ class CpPlotCallbackXFOIL(OptCallback):
             pen = pg.mkPen(color='lightcoral', width=2)
         old_pen = pg.mkPen(color=pg.mkColor('l'), width=1)
         pg_plot_handle = self.parent.Cp_graph.v.plot(pen=pen)
-        pg_plot_handle.setData(self.Cp['x'], self.Cp['Cp'])
+        Cp = self.Cp if not isinstance(self.Cp, list) else self.Cp[self.design_idx]
+        pg_plot_handle.setData(Cp['x'], Cp['Cp'])
         if len(self.parent.Cp_graph_plot_handles) > 1:
             self.parent.Cp_graph_plot_handles[-1].setPen(old_pen)
         self.parent.Cp_graph_plot_handles.append(pg_plot_handle)
 
 
 class CpPlotCallbackMSES(OptCallback):
-    def __init__(self, parent, background_color: str = 'w'):
+    def __init__(self, parent, background_color: str = 'w', design_idx: int = 0):
         super().__init__(parent=parent)
         self.parent = parent
         self.background_color = background_color
         self.forces = self.parent.forces_dict
         # print(f"forces = {self.forces}")
-        self.Cp = self.forces['BL'][-1]
+        self.Cp = self.forces['BL'][-1] if isinstance(
+            self.forces['BL'][-1][0], dict) else self.forces['BL'][-1][design_idx]
         self.x_max = self.parent.mea.calculate_max_x_extent()
 
     def exec_callback(self):
@@ -180,7 +195,7 @@ class CpPlotCallbackMSES(OptCallback):
         else:
             pen = pg.mkPen(color='lightcoral', width=2)
         old_pen = pg.mkPen(color=pg.mkColor('l'), width=1)
-        pg_plot_handles = [self.parent.Cp_graph.v.plot(pen=pen), self.parent.Cp_graph.v.plot(pen=pen)]
+        pg_plot_handles = [self.parent.Cp_graph.v.plot(pen=pen) for _ in range(len(self.Cp))]
         for idx, side in enumerate(self.Cp):
             x = side['x']
             Cp = side['Cp']

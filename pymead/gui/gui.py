@@ -1482,15 +1482,19 @@ class GUI(QMainWindow):
                                 self.forces_dict[k] = []
                             self.forces_dict[k].append(v)
 
-            progress_callback.emit(PlotAirfoilCallback(parent=self, mea=mea, X=X.tolist(), background_color=self.themes[self.current_theme]["graph-background-color"]))
-            # progress_callback.emit(ParallelCoordsCallback(parent=self, mea=mea, X=X.tolist(), background_color=bcolor))
-            # if param_dict['tool'] == 'XFOIL':
-            #     progress_callback.emit(CpPlotCallbackXFOIL(parent=self, background_color=bcolor))
-            #     progress_callback.emit(DragPlotCallbackXFOIL(parent=self, background_color=bcolor))
-            # elif param_dict['tool'] == 'MSES':
-            #     progress_callback.emit(CpPlotCallbackMSES(parent=self, background_color=bcolor))
-            #     progress_callback.emit(DragPlotCallbackMSES(parent=self, background_color=bcolor))
-            #     pass
+            bcolor = self.themes[self.current_theme]["graph-background-color"]
+            progress_callback.emit(PlotAirfoilCallback(parent=self, mea=mea, X=X.tolist(), background_color=bcolor))
+            progress_callback.emit(ParallelCoordsCallback(parent=self, mea=mea, X=X.tolist(), background_color=bcolor))
+            if param_dict['tool'] == 'XFOIL':
+                progress_callback.emit(CpPlotCallbackXFOIL(parent=self, background_color=bcolor,
+                                                           design_idx=param_dict["design_idx"]))
+                progress_callback.emit(DragPlotCallbackXFOIL(parent=self, background_color=bcolor,
+                                                             design_idx=param_dict["design_idx"]))
+            elif param_dict['tool'] == 'MSES':
+                progress_callback.emit(CpPlotCallbackMSES(parent=self, background_color=bcolor,
+                                                          design_idx=param_dict["design_idx"]))
+                progress_callback.emit(DragPlotCallbackMSES(parent=self, background_color=bcolor,
+                                                            design_idx=param_dict["design_idx"]))
             # TODO: on graph close/exit, set the Plot object in GUI() to None so that it can be opened again
             # TODO: fix progress callbacks
 
