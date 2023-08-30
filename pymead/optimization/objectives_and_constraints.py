@@ -114,6 +114,7 @@ class ObjectiveConstraint:
         a ``Param`` name. For example, the string ``"A0.Base.R_le"`` corresponds to the leading edge radius of the base
         parameter set of airfoil ``"A0"``.
         """
+        # TODO: throw an error if an objective function is setup without indexing despite multipoint being active
         self.tag_matrix = []
         self.func = 'def f(): return '
         math_functions_to_include = []

@@ -43,7 +43,7 @@ class MEAParameters(pTypes.GroupParameter):
         pTypes.GroupParameter.__init__(self, **opts)
         self.mea = mea
         self.status_bar = status_bar
-        self.airfoil_headers = []
+        self.airfoil_headers = {}
         self.custom_header = self.addChild(CustomGroup(mea, name='Custom'))
         for k, v in self.mea.param_dict['Custom'].items():
             if isinstance(v.value, list):
@@ -65,17 +65,18 @@ class MEAParameters(pTypes.GroupParameter):
             pg_param.airfoil_param.name = pg_param.name()
 
         for idx, a in enumerate(self.mea.airfoils.values()):
-            self.add_airfoil(a, idx)
+            self.add_airfoil(a)
 
-    def add_airfoil(self, airfoil: Airfoil, idx: int):
+    def add_airfoil(self, airfoil: Airfoil):
         """Adds an airfoil, along with its associated Parameters, into a Multi-Element Airfoil system using the GUI."""
-        self.airfoil_headers.append(self.addChild(dict(name=airfoil.tag, type='selectable_header', value=True,
+        self.airfoil_headers[airfoil.tag] = self.addChild(dict(name=airfoil.tag, type='selectable_header', value=True,
                                                        context={"add_fp": "Add FreePoint",
-                                                                "add_ap": "Add AnchorPoint"})))
+                                                                "add_ap": "Add AnchorPoint",
+                                                                "remove_airfoil": "Remove Airfoil"}))
         header_params = ['Base', 'AnchorPoints', 'FreePoints']
         for hp in header_params:
             # print(f"children = {self.airfoil_headers[idx].children()}")
-            self.airfoil_headers[idx].addChild(HeaderParameter(name=hp, type='bool', value=True))
+            self.airfoil_headers[airfoil.tag].addChild(HeaderParameter(name=hp, type='bool', value=True))
         for p_key, p_val in self.mea.param_dict[airfoil.tag]['Base'].items():
             pg_param = AirfoilParameter(self.mea.param_dict[airfoil.tag]['Base'][p_key],
                                         name=f"{airfoil.tag}.Base.{p_key}",
@@ -84,7 +85,7 @@ class MEAParameters(pTypes.GroupParameter):
                                             p_key].value,
                                         context={'add_eq': 'Define by equation', 'deactivate': 'Deactivate parameter',
                                                  'activate': 'Activate parameter', 'setbounds': 'Set parameter bounds'})
-            self.airfoil_headers[idx].children()[0].addChild(pg_param)
+            self.airfoil_headers[airfoil.tag].children()[0].addChild(pg_param)
             pg_param.airfoil_param.name = pg_param.name()
         # print(f"param_dict = {self.mea.param_dict}")
         for ap_key, ap_val in self.mea.param_dict[airfoil.tag]['AnchorPoints'].items():
@@ -399,6 +400,7 @@ class MEAParamTree:
                 # Adding a FreePoint
                 if change == 'contextMenu' and data == 'add_fp':
                     self.add_free_point(param)
+                    # TODO: for all ParameterTree context menus: inherit style from parent
 
                 # Adding an AnchorPoint
                 if change == 'contextMenu' and data == 'add_ap':
@@ -408,8 +410,13 @@ class MEAParamTree:
                 if change == 'contextMenu' and data == 'remove_fp':
                     self.remove_free_point(param)
 
+                # Removing an AnchorPoint
                 if change == 'contextMenu' and data == 'remove_ap':
                     self.remove_anchor_point(param)
+
+                # Removing an Airfoil
+                if change == "contextMenu" and data == "remove_airfoil":
+                    self.mea.remove_airfoil(param.name())
 
                 # Removing a plot handle
                 if change == "childRemoved" and param.name() == "Plot Handles":

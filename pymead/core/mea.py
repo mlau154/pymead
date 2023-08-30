@@ -103,9 +103,23 @@ class MEA:
                 if param.mea.param_tree is None:
                     param.mea.param_tree = self.param_tree
 
-    def remove_airfoil(self):
-        # TODO: implement airfoil removal feature
-        pass
+    def remove_airfoil(self, airfoil_tag: str):
+        # Remove all items from the AirfoilGraph corresponding to this airfoil
+        airfoil_graph = self.airfoils[airfoil_tag].airfoil_graph
+        if airfoil_graph is not None:
+            for curve in self.airfoils[airfoil_tag].curve_list[::-1]:
+                airfoil_graph.v.removeItem(curve.pg_curve_handle)
+            airfoil_graph.v.removeItem(airfoil_graph.polygon_item)
+            airfoil_graph.v.removeItem(airfoil_graph)
+
+        # Remove the airfoil from the ParameterTree
+        if self.param_tree is not None:
+            self.param_tree.p.child("Airfoil Parameters").child(airfoil_tag).remove()
+            # self.param_tree.airfoil_headers.pop(airfoil_tag)
+
+        # Remove the airfoil from the MEA
+        self.param_dict.pop(airfoil_tag)
+        self.airfoils.pop(airfoil_tag)
 
     def assign_names_to_params_in_param_dict(self):
         """

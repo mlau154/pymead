@@ -102,7 +102,6 @@ class MainIconToolbar(QToolBar):
         self.parent.show()
 
     def add_airfoil_button_toggled(self):
-        # TODO: fix bug where frame rate is low until a new Airfoil is added using the toolbar
 
         def scene_clicked(ev):
             self.new_airfoil_location = self.parent.v.vb.mapSceneToView(ev.scenePos())

@@ -323,8 +323,6 @@ class GUI(QMainWindow):
 
         recursively_add_menus(menu_data, self.menu_bar)
 
-    # TODO: add "New" function to menu to allow for delete or save of current MEA and opening of new default MEA
-
     def save_as_mea(self):
         dialog = SaveAsDialog(self)
         if dialog.exec_():
@@ -640,7 +638,7 @@ class GUI(QMainWindow):
                                     w=self.w, v=self.v)
         self.airfoil_name_list = [k for k in self.mea.airfoils.keys()]
         self.param_tree_instance.p.child("Analysis").child("Inviscid Cl Calc").setLimits([a.tag for a in self.mea.airfoils.values()])
-        self.param_tree_instance.params[-1].add_airfoil(airfoil, len(self.mea.airfoils) - 1)
+        self.param_tree_instance.params[-1].add_airfoil(airfoil)
         for a in self.mea.airfoils.values():
             if a.airfoil_graph.airfoil_parameters is None:
                 a.airfoil_graph.airfoil_parameters = self.param_tree_instance.p.param('Airfoil Parameters')
@@ -846,7 +844,6 @@ class GUI(QMainWindow):
         self.dialog.show()
         self.dialog.accepted.connect(self.multi_airfoil_analysis_accepted)
         self.dialog.rejected.connect(self.multi_airfoil_analysis_rejected)
-        # TODO: add these to the opt setup as well
 
     def multi_airfoil_analysis_accepted(self):
 
@@ -1038,6 +1035,20 @@ class GUI(QMainWindow):
                     opt_settings = self.opt_settings
 
                 param_dict = deepcopy(convert_opt_settings_to_param_dict(opt_settings))
+
+                # First check to make sure MSET, MSES, and MPLOT can be found on system path and marked as executable:
+                if param_dict["tool"] == "XFOIL" and shutil.which('xfoil') is None:
+                    self.disp_message_box('XFOIL executable \'xfoil\' not found on system path')
+                    return
+                if param_dict["tool"] == "MSES" and shutil.which('mset') is None:
+                    self.disp_message_box('MSES suite executable \'mset\' not found on system path')
+                    return
+                if param_dict["tool"] == "MSES" and shutil.which('mses') is None:
+                    self.disp_message_box('MSES suite executable \'mses\' not found on system path')
+                    return
+                if param_dict["tool"] == "MSES" and shutil.which('mplot') is None:
+                    self.disp_message_box('MPLOT suite executable \'mplot\' not found on system path')
+                    return
 
                 # print(f"{opt_settings['General Settings']['use_current_mea'] = }")
                 if opt_settings['General Settings']['use_current_mea']:
@@ -1495,8 +1506,8 @@ class GUI(QMainWindow):
                                                           design_idx=param_dict["design_idx"]))
                 progress_callback.emit(DragPlotCallbackMSES(parent=self, background_color=bcolor,
                                                             design_idx=param_dict["design_idx"]))
+
             # TODO: on graph close/exit, set the Plot object in GUI() to None so that it can be opened again
-            # TODO: fix progress callbacks
 
             if n_generation % param_dict['algorithm_save_frequency'] == 0:
                 save_data(algorithm, os.path.join(param_dict['opt_dir'], f'algorithm_gen_{n_generation}.pkl'))
