@@ -20,7 +20,7 @@ from pymead.gui.main_icon_toolbar import MainIconToolbar
 
 from PyQt5.QtWidgets import QMainWindow, QApplication, QVBoxLayout, QHBoxLayout, \
     QWidget, QMenu, QStatusBar, QAction, QGraphicsScene, QGridLayout, QProgressBar
-from PyQt5.QtGui import QIcon, QFont, QFontDatabase, QPainter
+from PyQt5.QtGui import QIcon, QFont, QFontDatabase, QPainter, QCloseEvent
 from PyQt5.QtCore import QEvent, QObject, Qt, QThreadPool
 from PyQt5.QtSvg import QSvgWidget
 from PyQt5.QtCore import pyqtSlot
@@ -188,6 +188,7 @@ class GUI(QMainWindow):
         # self.tab_widget.addTab(self.w, "Geometry")
         self.dockable_tab_window = DockableTabWidget(self)
         self.dockable_tab_window.add_new_tab_widget(self.w, "Geometry")
+        self.dockable_tab_window.tab_closed.connect(self.on_tab_closed)
 
         self.right_widget_layout.addWidget(self.dockable_tab_window)
         self.right_widget_layout.addWidget(self.text_area)
@@ -242,6 +243,28 @@ class GUI(QMainWindow):
         # Load the airfoil system from the system argument variable if necessary
         if self.path is not None:
             self.load_mea_no_dialog(self.path)
+
+    def closeEvent(self, a0) -> None:
+        print(f"{a0 = }")
+        # a0.accept()
+        # TODO: Make an "abort" button for optimization
+
+    def on_tab_closed(self, name: str, event: QCloseEvent):
+        if name == "Geometry":
+            event.ignore()  # Do not allow user to close the geometry window
+        elif name == "Analysis":
+            self.analysis_graph = None
+            self.n_converged_analyses = 0
+        elif name == "Opt. Airfoil":
+            self.opt_airfoil_graph = None
+        elif name == "Drag":
+            self.drag_graph = None
+        elif name == "Parallel Coordinates":
+            self.parallel_coords_graph = None
+        elif name == "Cp":
+            self.Cp_graph = None
+        # TODO: need to do more than just set these to None (closing tab in the middle of optimization forces
+        #  additional data to be plotted in a new, non-dockable window)
 
     @pyqtSlot(str)
     def setStatusBarText(self, message: str):
@@ -396,6 +419,7 @@ class GUI(QMainWindow):
                     self.param_tree_instance.update_equation(p.child("Equation Definition"), data["eq"])
                 else:
                     self.param_tree_instance.update_equation(p.child("Equation Definition"), data["eq"])
+        # TODO: fix bounds edit always attaching an equation even when string is empty
 
     def auto_range_geometry(self):
         x_data_range, y_data_range = self.mea.get_curve_bounds()
@@ -1507,8 +1531,6 @@ class GUI(QMainWindow):
                 progress_callback.emit(DragPlotCallbackMSES(parent=self, background_color=bcolor,
                                                             design_idx=param_dict["design_idx"]))
 
-            # TODO: on graph close/exit, set the Plot object in GUI() to None so that it can be opened again
-
             if n_generation % param_dict['algorithm_save_frequency'] == 0:
                 save_data(algorithm, os.path.join(param_dict['opt_dir'], f'algorithm_gen_{n_generation}.pkl'))
 
@@ -1531,6 +1553,8 @@ class GUI(QMainWindow):
         if len(self.objectives) == 1:
             np.savetxt(os.path.join(param_dict['opt_dir'], 'opt_X.dat'), res.X)
         # self.save_opt_plots(param_dict['opt_dir'])  # not working at the moment
+
+        # TODO: font incorrect for optimization completed callback
 
     def save_opt_plots(self, opt_dir: str):
         # Not working at the moment
@@ -1587,6 +1611,8 @@ def main():
         gui = GUI(path=sys.argv[1])
     else:
         gui = GUI()
+
+    # TODO: ask the user to save before closing
     gui.show()
     sys.exit(app.exec_())
 
