@@ -1859,6 +1859,7 @@ class NewMEADialog(QDialog):
         super().__init__(parent=parent)
         self.setWindowTitle("Save Changes?")
         self.setFont(self.parent().font())
+        self.reject_changes = False
         buttonBox = QDialogButtonBox(QDialogButtonBox.Yes | QDialogButtonBox.No | QDialogButtonBox.Cancel, self)
         layout = QFormLayout(self)
 
@@ -1876,7 +1877,24 @@ class NewMEADialog(QDialog):
 
     @pyqtSlot()
     def no(self):
-        pass
+        self.reject_changes = True
+
+
+class ExitDialog(QDialog):
+    def __init__(self, parent=None):
+        super().__init__(parent=parent)
+        self.setWindowTitle("Exit?")
+        self.setFont(self.parent().font())
+        buttonBox = QDialogButtonBox(QDialogButtonBox.Yes | QDialogButtonBox.No, self)
+        layout = QFormLayout(self)
+
+        label = QLabel("Airfoil not saved.\nAre you sure you want to exit?", parent=self)
+
+        layout.addWidget(label)
+        layout.addWidget(buttonBox)
+
+        buttonBox.button(QDialogButtonBox.Yes).clicked.connect(self.accept)
+        buttonBox.button(QDialogButtonBox.No).clicked.connect(self.reject)
 
 
 class EditBoundsDialog(QDialog):

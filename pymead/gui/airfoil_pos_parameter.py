@@ -2,7 +2,13 @@ from pyqtgraph.parametertree.parameterTypes import WidgetParameterItem
 from pyqtgraph import SpinBox
 from PyQt5.QtWidgets import QWidget, QHBoxLayout, QDoubleSpinBox
 from PyQt5.QtCore import pyqtSignal, pyqtSlot, QObject
+from PyQt5 import QtCore
+from PyQt5.QtWidgets import QMenu
+
+translate = QtCore.QCoreApplication.translate
 import numpy as np
+
+from pymead.gui.custom_context_menu_event import custom_context_menu_event
 
 
 class SignalContainer(QObject):
@@ -57,3 +63,6 @@ class AirfoilPositionParameterItem(WidgetParameterItem):
         widget.value = value
         widget.setValue = setValue
         return widget
+
+    def contextMenuEvent(self, ev):
+        custom_context_menu_event(ev, self)

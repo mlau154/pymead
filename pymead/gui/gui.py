@@ -33,7 +33,8 @@ from pymead.core.transformation import Transformation3D
 from pymead import RESOURCE_DIR
 from pymead.gui.input_dialog import SingleAirfoilViscousDialog, LoadDialog, SaveAsDialog, OptimizationSetupDialog, \
     MultiAirfoilDialog, ColorInputDialog, ExportCoordinatesDialog, ExportControlPointsDialog, AirfoilPlotDialog, \
-    AirfoilMatchingDialog, MSESFieldPlotDialog, ExportIGESDialog, XFOILDialog, NewMEADialog, EditBoundsDialog
+    AirfoilMatchingDialog, MSESFieldPlotDialog, ExportIGESDialog, XFOILDialog, NewMEADialog, EditBoundsDialog, \
+    ExitDialog
 from pymead.gui.pymeadPColorMeshItem import PymeadPColorMeshItem
 from pymead.gui.analysis_graph import AnalysisGraph
 from pymead.gui.parameter_tree import MEAParamTree
@@ -245,8 +246,29 @@ class GUI(QMainWindow):
             self.load_mea_no_dialog(self.path)
 
     def closeEvent(self, a0) -> None:
-        print(f"{a0 = }")
-        # a0.accept()
+        """
+        Close Event handling for the GUI, allowing changes to be saved before exiting the program.
+
+        Parameters
+        ==========
+        a0: QCloseEvent
+            Qt CloseEvent object
+        """
+        save_dialog = NewMEADialog(parent=self)
+        exit_dialog = ExitDialog(parent=self)
+        while True:
+            if save_dialog.exec_():  # If "Yes" to "Save Changes,"
+                if self.mea.file_name is not None:  # If the changes were saved successfully, close the program.
+                    break
+                else:
+                    if exit_dialog.exec_():  # Otherwise, If "Yes" to "Exit the Program Anyway," close the program.
+                        break
+                if save_dialog.reject_changes:  # If "No" to "Save Changes," close the program.
+                    break
+            else:  # If "Cancel" to "Save Changes," end the CloseEvent and keep the program running.
+                a0.ignore()
+                break
+
         # TODO: Make an "abort" button for optimization
 
     def on_tab_closed(self, name: str, event: QCloseEvent):
@@ -263,8 +285,6 @@ class GUI(QMainWindow):
             self.parallel_coords_graph = None
         elif name == "Cp":
             self.Cp_graph = None
-        # TODO: need to do more than just set these to None (closing tab in the middle of optimization forces
-        #  additional data to be plotted in a new, non-dockable window)
 
     @pyqtSlot(str)
     def setStatusBarText(self, message: str):
@@ -1612,7 +1632,6 @@ def main():
     else:
         gui = GUI()
 
-    # TODO: ask the user to save before closing
     gui.show()
     sys.exit(app.exec_())
 

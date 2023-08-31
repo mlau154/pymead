@@ -2,6 +2,8 @@ from PyQt5.QtWidgets import QLineEdit, QCompleter
 from PyQt5.QtCore import Qt
 from pyqtgraph.parametertree.parameterTypes.basetypes import WidgetParameterItem
 
+from pymead.gui.custom_context_menu_event import custom_context_menu_event
+
 
 class AutoStrParameterItem(WidgetParameterItem):
     """Parameter type which displays a QLineEdit with an auto-completion mechanism built in"""
@@ -22,6 +24,9 @@ class AutoStrParameterItem(WidgetParameterItem):
         w.setPlaceholderText("$")
         self.widget = w
         return w
+
+    def contextMenuEvent(self, ev):
+        custom_context_menu_event(ev, self)
 
 
 class Completer(QCompleter):
