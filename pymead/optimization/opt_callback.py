@@ -1,5 +1,8 @@
+import typing
 from abc import abstractmethod
 from PyQt5.QtCore import QObject
+from PyQt5.QtGui import QFontDatabase
+
 from pymead.core.mea import MEA
 from pymead.gui.opt_airfoil_graph import OptAirfoilGraph
 from pymead.gui.parallel_coords_graph import ParallelCoordsGraph
@@ -16,6 +19,65 @@ class OptCallback(QObject):
     @abstractmethod
     def exec_callback(self):
         return
+
+
+class TextCallback(OptCallback):
+    def __init__(self, parent, text_list: typing.List[list], completed: bool = False):
+        super().__init__(parent=parent)
+        self.parent = parent
+        self.text_list = text_list
+        self.names = [attr[0] for attr in self.text_list]
+        self.widths = [attr[2] for attr in self.text_list]
+        self.values = [attr[1] for attr in self.text_list]
+        self.completed = completed
+
+    def generate_header(self):
+        t = ""
+        for idx, (w, n) in enumerate(zip(self.widths, self.names)):
+            if idx == 0:
+                t += "||"
+            t += f"{n.center(w + 2)}|"
+            if idx == len(self.widths) - 1:
+                t += "|"
+        header_length = len(t)
+        return "="*header_length + "\n" + t + "\n" + "="*header_length
+
+    def stringify_text_list(self):
+        t = ""
+        for idx, (w, v) in enumerate(zip(self.widths, self.values)):
+            if idx == 0:
+                t += "||"
+            if not isinstance(v, str):
+                v = str(v)
+            t += f"{v.center(w + 2)}|"
+            if idx == len(self.widths) - 1:
+                t += "|"
+        print(f"Row length = {len(t)}")
+        return t
+
+    @staticmethod
+    def generate_closer(length: int):
+        return "="*length
+
+    def exec_callback(self):
+        if self.values[0] == 1:
+            # font = self.parent.text_area.font()
+            # print(QFontDatabase().families())
+            # # font.setFamily("DejaVu Sans Mono")
+            # font.setFamily("Courier")
+            # font.setPointSize(10)
+            # self.parent.text_area.setFont(font)
+            # self.parent.output_area_text(f"<head><style>body {{font-family: DejaVu Sans Mono;}}</style></head><body><p><font size='4'>&#8203;</font></p></body>", mode="html")
+            # self.parent.output_area_text("\n")
+            self.parent.output_area_text(f"{self.generate_header()}")
+            self.parent.output_area_text("\n")
+        t = f"{self.stringify_text_list()}"
+        self.parent.output_area_text(t)
+        self.parent.output_area_text("\n")
+        if self.completed:
+            print("Completed!")
+            self.parent.output_area_text(f"{self.generate_closer(len(t))}")
+            self.parent.output_area_text("\n")
 
 
 class PlotAirfoilCallback(OptCallback):

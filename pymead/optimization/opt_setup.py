@@ -236,14 +236,15 @@ class CustomDisplay(Display):
         decomp = get_decomposition("asf")
         I = decomp.do(F, weights).argmin()
         n_nds = len(algorithm.opt)
-        f1_best = F[I][0]
-        f1_min = F[:, 0].min()
-        f1_mean = np.mean(F[:, 0])
-        g1_min = G[:, 0].min()
-        # cv_min = CV[:, 0].min()
-        g1_mean = np.mean(G[:, 0])
-        # cv_mean = np.mean(CV[:, 0])
-        self.set_progress_dict({'f1_best': f1_best})
+        f_best = [F[I][i] for i in range(F.shape[1])]
+        f_min = [F[:, i].min() for i in range(F.shape[1])]
+        f_mean = [np.mean(F[:, i]) for i in range(F.shape[1])]
+        g_best, g_min, g_mean = None, None, None
+        if G[0] is not None:
+            g_best = [G[I][i] for i in range(G.shape[1])]
+            g_min = [G[:, i].min() for i in range(G.shape[1])]
+            # cv_min = CV[:, 0].min()
+            g_mean = [np.mean(G[:, i]) for i in range(G.shape[1])]
         self.output.append("n_nds", n_nds, width=7)
         self.term.do_continue(algorithm)
 
@@ -266,14 +267,20 @@ class CustomDisplay(Display):
 
         self.output.append("eps", eps)
         self.output.append("indicator", max_from)
-        self.output.append("f1_best", f1_best)
-        # self.output.append("f2_best", f2_best)
-        self.output.append("f1_min", f1_min)
-        # self.output.append("f2_min", f2_min)
-        self.output.append("f1_mean", f1_mean)
-        # self.output.append("f2_mean", f2_mean)
-        self.output.append("g1_min", g1_min)
-        # self.output.append("cv_min", cv_min)
-        self.output.append("g1_mean", g1_mean)
-        # self.output.append("cv_mean", cv_mean)
-        pass
+        for i, f in enumerate(f_best):
+            self.output.append(f"f{i + 1}_best", f)
+        for i, f in enumerate(f_min):
+            self.output.append(f"f{i + 1}_min", f)
+        for i, f in enumerate(f_mean):
+            self.output.append(f"f{i + 1}_mean", f)
+
+        if G[0] is not None:
+            for i, g in enumerate(g_best):
+                self.output.append(f"g{i + 1}_best", g)
+            for i, g in enumerate(g_min):
+                self.output.append(f"g{i + 1}_min", g)
+            for i, g in enumerate(g_mean):
+                self.output.append(f"g{i + 1}_mean", g)
+
+        self.set_progress_dict(self.output.attrs)
+        # TODO: push this into the main textarea

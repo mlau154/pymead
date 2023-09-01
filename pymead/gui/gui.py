@@ -20,7 +20,7 @@ from pymead.gui.main_icon_toolbar import MainIconToolbar
 
 from PyQt5.QtWidgets import QMainWindow, QApplication, QVBoxLayout, QHBoxLayout, \
     QWidget, QMenu, QStatusBar, QAction, QGraphicsScene, QGridLayout, QProgressBar
-from PyQt5.QtGui import QIcon, QFont, QFontDatabase, QPainter, QCloseEvent
+from PyQt5.QtGui import QIcon, QFont, QFontDatabase, QPainter, QCloseEvent, QTextCursor
 from PyQt5.QtCore import QEvent, QObject, Qt, QThreadPool
 from PyQt5.QtSvg import QSvgWidget
 from PyQt5.QtCore import pyqtSlot
@@ -64,7 +64,7 @@ from pymead.optimization.opt_setup import termination_condition, calculate_warm_
 from pymead.gui.message_box import disp_message_box
 from pymead.gui.worker import Worker
 from pymead.optimization.opt_callback import PlotAirfoilCallback, ParallelCoordsCallback, OptCallback, \
-    DragPlotCallbackXFOIL, CpPlotCallbackXFOIL, DragPlotCallbackMSES, CpPlotCallbackMSES
+    DragPlotCallbackXFOIL, CpPlotCallbackXFOIL, DragPlotCallbackMSES, CpPlotCallbackMSES, TextCallback
 from pymead.gui.input_dialog import convert_dialog_to_mset_settings, convert_dialog_to_mses_settings, \
     convert_dialog_to_mplot_settings
 from pymead.gui.airfoil_statistics import AirfoilStatisticsDialog, AirfoilStatistics
@@ -223,7 +223,10 @@ class GUI(QMainWindow):
         self.output_area_text(f"<font color='#1fbbcc' size='5'>pymead</font> <font size='5'>version</font> "
                               f"<font color='#44e37e' size='5'>{__version__}</font>",
                               mode='html')
-        self.output_area_text('\n')
+        self.output_area_text(
+            f"<head><style>body {{font-family: DejaVu Sans Mono;}}</style></head><body><p><font size='4'>&#8203;</font></p></body>",
+            mode="html")
+        self.output_area_text('\n\n')
         # self.output_area_text("<font color='#ffffff' size='3'>\n\n</font>", mode='html')
         airfoil = Airfoil(base_airfoil_params=BaseAirfoilParams(dx=Param(0.0), dy=Param(0.0)))
         self.add_airfoil(airfoil)
@@ -693,12 +696,15 @@ class GUI(QMainWindow):
         disp_message_box(message, self, message_mode=message_mode)
 
     def output_area_text(self, text: str, mode: str = 'plain'):
+        previous_cursor = self.text_area.textCursor()
+        self.text_area.moveCursor(QTextCursor.End)
         if mode == 'plain':
             self.text_area.insertPlainText(text)
         elif mode == 'html':
             self.text_area.insertHtml(text)
         else:
             raise ValueError('Mode must be \'plain\' or \'html\'')
+        self.text_area.setTextCursor(previous_cursor)
         sb = self.text_area.verticalScrollBar()
         sb.setValue(sb.maximum())
 
@@ -839,20 +845,19 @@ class GUI(QMainWindow):
             if not aero_data['converged'] or aero_data['errored_out'] or aero_data['timed_out']:
                 self.disp_message_box("XFOIL Analysis Failed", message_mode='error')
                 self.output_area_text(
-                    f"<font size='4'>[{self.n_analyses:2.0f}] Converged = {aero_data['converged']} | Errored out = "
-                    f"{aero_data['errored_out']} | Timed out = {aero_data['timed_out']}</font>", mode='html')
+                    f"[{str(self.n_analyses).zfill(2)}] XFOIL Converged = {aero_data['converged']} | Errored out = "
+                    f"{aero_data['errored_out']} | Timed out = {aero_data['timed_out']}")
                 self.output_area_text('\n')
             else:
                 self.output_area_text(
-                    f"<font size='4'>[{str(self.n_analyses).zfill(2)}] ({xfoil_settings['airfoil']}, "
+                    f"[{str(self.n_analyses).zfill(2)}] XFOIL ({xfoil_settings['airfoil']}, "
                     f"\u03b1 = {aero_data['alf']:.3f}, Re = {xfoil_settings['Re']:.3E}, "
                     f"Ma = {xfoil_settings['Ma']:.3f}): "
-                    f"Cl = {aero_data['Cl']:+7.4f} | Cd = {aero_data['Cd']:.5f} (Cdp = {aero_data['Cdp']:.5f}, "
-                    f"Cdf = {aero_data['Cdf']:.5f}) | Cm = {aero_data['Cm']:+7.4f} "
-                    f"| L/D = {aero_data['L/D']:+8.4f}</font>".replace("-", "\u2212"),
-                    mode='html')
+                    f"Cl = {aero_data['Cl']:+7.4f} | Cd = {aero_data['Cd']:+.5f} | Cm = {aero_data['Cm']:+7.4f} "
+                    f"| L/D = {aero_data['L/D']:+8.4f}".replace("-", "\u2212"))
                 self.output_area_text('\n')
-            sb = self.text_area.verticalScrollBar()
+            bar = self.text_area.verticalScrollBar()
+            sb = bar
             sb.setValue(sb.maximum())
 
             if aero_data['converged'] and not aero_data['errored_out'] and not aero_data['timed_out']:
@@ -920,16 +925,18 @@ class GUI(QMainWindow):
         if not aero_data['converged'] or aero_data['errored_out'] or aero_data['timed_out']:
             self.disp_message_box("MSES Analysis Failed", message_mode='error')
             self.output_area_text(
-                f"<font size='4'>[{self.n_analyses:2.0f}] Converged = {aero_data['converged']} | Errored out = "
-                f"{aero_data['errored_out']} | Timed out = {aero_data['timed_out']}</font>", mode='html')
+                f"[{str(self.n_analyses).zfill(2)}] MSES Converged = {aero_data['converged']} | Errored out = "
+                f"{aero_data['errored_out']} | Timed out = {aero_data['timed_out']}")
             self.output_area_text('\n')
         else:
             # self.output_area_text('\n')
+            if "L/D" not in aero_data.keys():
+                aero_data["L/D"] = np.true_divide(aero_data["Cl"], aero_data["Cd"])
             self.output_area_text(
-                f"<font size='4'>[{self.n_analyses:2.0f}] (Re = {mses_settings['REYNIN']:.3E}, "
+                f"[{str(self.n_analyses).zfill(2)}] MSES  (    \u03b1 = {aero_data['alf']:.3f}, Re = {mses_settings['REYNIN']:.3E}, "
                 f"Ma = {mses_settings['MACHIN']:.3f}): "
                 f"Cl = {aero_data['Cl']:+7.4f} | Cd = {aero_data['Cd']:+.5f} | "
-                f"Cm = {aero_data['Cm']:+7.4f}</font>".replace("-", "\u2212"), mode='html')
+                f"Cm = {aero_data['Cm']:+7.4f} | L/D = {aero_data['L/D']:+8.4f}".replace("-", "\u2212"))
             self.output_area_text('\n')
         sb = self.text_area.verticalScrollBar()
         sb.setValue(sb.maximum())
@@ -1246,17 +1253,18 @@ class GUI(QMainWindow):
             progress_object.exec_callback()
 
     def shape_opt_finished_callback_fn(self):
-        self.output_area_text("Completed optimization.\n")
+        self.output_area_text("Completed aerodynamic shape optimization.\n\n")
         # self.finished_optimization = True
 
     def shape_opt_result_callback_fn(self, result_object: object):
-        self.output_area_text(f"Complete! Result = {result_object}\n")
+        pass
 
     def shape_opt_error_callback_fn(self, error_tuple: tuple):
         self.output_area_text(f"Error. Error = {error_tuple}\n")
 
     def shape_optimization(self, param_dict: dict, opt_settings: dict, mea: dict, progress_callback):
-        # print(f"{opt_settings = }")
+        self.output_area_text(f"\nBeginning aerodynamic shape optimization with "
+                              f"{param_dict['num_processors']} processors...\n")
         Config.show_compile_hint = False
         forces = []
         ref_dirs = get_reference_directions("energy", param_dict['n_obj'], param_dict['n_ref_dirs'],
@@ -1272,12 +1280,7 @@ class GUI(QMainWindow):
             if param_dict['seed'] is not None:
                 np.random.seed(param_dict['seed'])
                 random.seed(param_dict['seed'])
-            # tpaiga2_alg_instance = CustomGASampling(param_dict=problem.param_dict, ga_settings=ga_settings, mea=mea,
-            #                                         genes=parameter_list)
-            # population = Population(problem.param_dict, ga_settings, generation=0,
-            #                         parents=[tpaiga2_alg_instance.generate_first_parent()],
-            #                         verbose=param_dict['verbose'], mea=mea)
-            # population.generate()
+
             sampling = ConstrictedRandomSampling(n_samples=param_dict['n_offsprings'], norm_param_list=parameter_list,
                                                  max_sampling_width=param_dict['max_sampling_width'])
             X_list = sampling.sample()
@@ -1285,32 +1288,6 @@ class GUI(QMainWindow):
                        for idx, individual in enumerate(X_list)]
             population = Population(param_dict=param_dict, generation=0, parents=parents,
                                     mea=mea, verbose=param_dict['verbose'])
-            # population.generate_chromosomes_parallel()
-            # n_initial_evaluations = 0
-            # n_subpopulations = 0
-            # fully_converged_chromosomes = []
-            # while True:  # "Do while" loop (terminate when enough of chromosomes have fully converged solutions)
-            #     subpopulation = deepcopy(population)
-            #     subpopulation.population = subpopulation.population[param_dict['num_processors'] * n_subpopulations:
-            #                                                         param_dict['num_processors'] * (
-            #                                                                 n_subpopulations + 1)]
-            #     subpopulation.eval_pop_fitness()
-            #
-            #     for chromosome in subpopulation.population:
-            #         if chromosome.fitness is not None:
-            #             fully_converged_chromosomes.append(chromosome)
-            #
-            #     if len(fully_converged_chromosomes) >= param_dict['population_size']:
-            #         # Truncate the list of fully converged chromosomes to just the first <population_size> number of
-            #         # chromosomes:
-            #         fully_converged_chromosomes = fully_converged_chromosomes[:param_dict['population_size']]
-            #         break
-            #
-            #     n_subpopulations += 1
-            #     n_initial_evaluations += param_dict['num_processors']
-            #
-            #     if n_subpopulations * (param_dict['num_processors'] + 1) > param_dict['n_offsprings']:
-            #         raise Exception('Ran out of chromosomes to evaluate in initial population generation')
 
             population.eval_pop_fitness()
             print(f"Finished evaluating population fitness. Continuing...")
@@ -1337,7 +1314,6 @@ class GUI(QMainWindow):
                     print(f"{constraint.value = }")
                 if J is None:
                     J = np.array([obj.value for obj in self.objectives])
-                    # print(f"{J = } on this pass")
                 else:
                     J = np.row_stack((J, np.array([obj.value for obj in self.objectives])))
                 if len(self.constraints) > 0:
@@ -1346,6 +1322,8 @@ class GUI(QMainWindow):
                     else:
                         G = np.row_stack((G, np.array([
                             constraint.value for constraint in self.constraints])))
+
+                print(f"{J = }, {self.objectives = }")
 
             if new_X.ndim == 1:
                 new_X = np.array([new_X])
@@ -1464,6 +1442,8 @@ class GUI(QMainWindow):
                             G = np.row_stack((G, np.array([
                                 constraint.value for constraint in self.constraints])))
 
+                    print(f"{J = }, {self.objectives = }")
+
                 algorithm.evaluator.n_eval += param_dict['num_processors']
 
                 for idx in range(param_dict['n_offsprings'] - len(new_X)):
@@ -1503,7 +1483,8 @@ class GUI(QMainWindow):
 
             # print(f"{algorithm.opt.get('F') = }")
 
-            progress_callback.emit(algorithm.display.progress_dict)
+            progress_callback.emit(TextCallback(parent=self, text_list=algorithm.display.progress_dict,
+                                                completed=not algorithm.has_next()))
 
             if len(self.objectives) == 1:
                 if n_generation > 1:

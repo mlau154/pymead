@@ -10,6 +10,7 @@ class ConsoleTextArea(QTextEdit):
         font = self.font()
         # print(QFontDatabase().families())
         font.setFamily("DejaVu Sans Mono")
+        # font.setFamily("Courier")
         font.setPointSize(10)
         self.setFont(font)
         self.moveCursor(QTextCursor.End)
