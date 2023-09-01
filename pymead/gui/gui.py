@@ -437,12 +437,19 @@ class GUI(QMainWindow):
                     p.setReadonly(not data["active"][0])
                 else:
                     p.setReadonly(not data["active"])
-                if not p.hasChildren():
-                    self.param_tree_instance.add_equation_box(p, data["eq"])
-                    self.param_tree_instance.update_equation(p.child("Equation Definition"), data["eq"])
+                if data["eq"] is not None:
+                    if not p.hasChildren():
+                        self.param_tree_instance.add_equation_box(p, data["eq"])
+                        self.param_tree_instance.update_equation(p.child("Equation Definition"), data["eq"])
+                    else:
+                        self.param_tree_instance.update_equation(p.child("Equation Definition"), data["eq"])
                 else:
-                    self.param_tree_instance.update_equation(p.child("Equation Definition"), data["eq"])
-        # TODO: fix bounds edit always attaching an equation even when string is empty
+                    if not p.hasChildren():
+                        pass
+                    else:
+                        p.airfoil_param.remove_func()
+                        p.setReadonly(False)
+                        p.child("Equation Definition").remove()
 
     def auto_range_geometry(self):
         x_data_range, y_data_range = self.mea.get_curve_bounds()
@@ -1554,8 +1561,6 @@ class GUI(QMainWindow):
         if len(self.objectives) == 1:
             np.savetxt(os.path.join(param_dict['opt_dir'], 'opt_X.dat'), res.X)
         # self.save_opt_plots(param_dict['opt_dir'])  # not working at the moment
-
-        # TODO: font incorrect for optimization completed callback
 
     def save_opt_plots(self, opt_dir: str):
         # Not working at the moment

@@ -218,7 +218,6 @@ class TPAIOPT(Problem):
 
 
 class CustomDisplay(Display):
-    # TODO: this class needs work to be more general
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.term = MultiObjectiveSpaceToleranceTermination()
@@ -283,4 +282,3 @@ class CustomDisplay(Display):
                 self.output.append(f"g{i + 1}_mean", g)
 
         self.set_progress_dict(self.output.attrs)
-        # TODO: push this into the main textarea

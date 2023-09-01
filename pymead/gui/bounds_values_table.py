@@ -82,15 +82,16 @@ class BoundsValuesTable(TableWidget):
         for idx in indices_to_modify:
             if new_data[idx][0] == "" and new_data[idx - 1][0] not in params_to_modify:
                 params_to_modify.append(new_data[idx - 1][0])
-            elif new_data[idx + 1][0] == "" and new_data[idx + 1][0] not in params_to_modify:
-                params_to_modify.append(new_data[idx + 1][0])
             else:
                 params_to_modify.append(new_data[idx][0])
+            if idx + 1 < len(new_data):
+                if new_data[idx + 1][0] == "" and new_data[idx + 1][0] not in params_to_modify:
+                    params_to_modify.append(new_data[idx + 1][0])
 
         for idx in indices_to_modify:
             nd = new_data[idx]
             data_to_modify[nd[0]] = {"value": nd[1], "bounds": [nd[2], nd[3]], "active": bool(nd[4]), "eq": nd[5]}
 
-        print(f"{data_to_modify = }")
+        # TODO: make equation cell later
 
         return data_to_modify
