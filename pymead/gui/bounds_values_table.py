@@ -92,6 +92,6 @@ class BoundsValuesTable(TableWidget):
             nd = new_data[idx]
             data_to_modify[nd[0]] = {"value": nd[1], "bounds": [nd[2], nd[3]], "active": bool(nd[4]), "eq": nd[5]}
 
-        # TODO: make equation cell later
+        # TODO: make equation cell wider
 
         return data_to_modify
