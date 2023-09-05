@@ -91,6 +91,9 @@ class GUI(QMainWindow):
         # super().__init__(flags=Qt.FramelessWindowHint)
         super().__init__(parent=parent)
         # self.setWindowFlags(Qt.CustomizeWindowHint)
+        print(f"Running GUI with {os.getpid() = }")
+        self.pool = None
+        self.current_opt_folder = None
         self.menu_bar = None
         self.path = path
         # single_element_inviscid(np.array([[1, 0], [0, 0], [1, 0]]), 0.0)
@@ -137,7 +140,7 @@ class GUI(QMainWindow):
         self.n_analyses = 0
         self.n_converged_analyses = 0
         self.threadpool = QThreadPool().globalInstance()
-        self.threadpool.setMaxThreadCount(2)
+        self.threadpool.setMaxThreadCount(4)
         self.pens = [('#d4251c', Qt.SolidLine), ('darkorange', Qt.SolidLine), ('gold', Qt.SolidLine),
                      ('limegreen', Qt.SolidLine), ('cyan', Qt.SolidLine), ('mediumpurple', Qt.SolidLine),
                      ('deeppink', Qt.SolidLine), ('#d4251c', Qt.DashLine), ('darkorange', Qt.DashLine),
@@ -272,8 +275,6 @@ class GUI(QMainWindow):
                 a0.ignore()
                 break
 
-        # TODO: Make an "abort" button for optimization
-
     def on_tab_closed(self, name: str, event: QCloseEvent):
         if name == "Geometry":
             event.ignore()  # Do not allow user to close the geometry window
@@ -282,12 +283,15 @@ class GUI(QMainWindow):
             self.n_converged_analyses = 0
         elif name == "Opt. Airfoil":
             self.opt_airfoil_graph = None
+            self.opt_airfoil_plot_handles = []
         elif name == "Drag":
             self.drag_graph = None
         elif name == "Parallel Coordinates":
             self.parallel_coords_graph = None
+            self.parallel_coords_plot_handles = []
         elif name == "Cp":
             self.Cp_graph = None
+            self.Cp_graph_plot_handles = []
 
     @pyqtSlot(str)
     def setStatusBarText(self, message: str):
@@ -702,10 +706,14 @@ class GUI(QMainWindow):
     def disp_message_box(self, message: str, message_mode: str = 'error'):
         disp_message_box(message, self, message_mode=message_mode)
 
-    def output_area_text(self, text: str, mode: str = 'plain'):
+    def output_area_text(self, text: str, mode: str = 'plain', mono: bool = True):
+        prepend_html = f"<head><style>body {{font-family: DejaVu Sans Mono;}}</style>" \
+                       f"</head><body><p><font size='4'>&#8203;</font></p></body>"
         previous_cursor = self.text_area.textCursor()
         self.text_area.moveCursor(QTextCursor.End)
         if mode == 'plain':
+            if mode == "plain" and mono:
+                self.text_area.insertHtml(prepend_html)
             self.text_area.insertPlainText(text)
         elif mode == 'html':
             self.text_area.insertHtml(text)
@@ -1202,6 +1210,7 @@ class GUI(QMainWindow):
                                               opt_settings['Genetic Algorithm']['opt_dir_name'])
 
                 param_dict['opt_dir'] = opt_dir
+                self.current_opt_folder = opt_dir.replace(os.sep, "/")
 
                 name_base = 'ga_airfoil'
                 name = [f"{name_base}_{i}" for i in range(opt_settings['Genetic Algorithm']['n_offspring'])]
@@ -1219,6 +1228,8 @@ class GUI(QMainWindow):
                 if opt_settings['General Settings']['warm_start_active']:
                     param_dict['warm_start_generation'] = calculate_warm_start_index(
                         opt_settings['General Settings']['warm_start_generation'], opt_dir)
+                    if param_dict['warm_start_generation'] == 0:
+                        opt_settings['General Settings']['warm_start_active'] = False
                 param_dict_save = deepcopy(param_dict)
                 if not opt_settings['General Settings']['warm_start_active']:
                     save_data(param_dict_save, os.path.join(opt_dir, 'param_dict.json'))
@@ -1252,7 +1263,27 @@ class GUI(QMainWindow):
         self.worker.signals.result.connect(self.shape_opt_result_callback_fn)
         self.worker.signals.finished.connect(self.shape_opt_finished_callback_fn)
         self.worker.signals.error.connect(self.shape_opt_error_callback_fn)
+        self.worker.signals.message.connect(self.message_callback_fn)
+        self.worker.signals.text.connect(self.text_area_callback_fn)
+        self.worker.signals.pool.connect(self.set_pool)
         self.threadpool.start(self.worker)
+
+    def stop_optimization(self):
+        if self.pool is not None:
+            self.pool.terminate()
+            self.output_area_text("Optimization terminated. ")
+            self.output_area_text(self.generate_output_folder_link_text(self.current_opt_folder), mode="html")
+            self.pool = None
+            self.current_opt_folder = None
+
+    @staticmethod
+    def generate_output_folder_link_text(folder: str):
+        return f"<a href='{folder}' style='font-family:DejaVu Sans Mono; " \
+               f"color: #1FBBCC; font-size: 14px;'>Open output folder</a>\n"
+
+    def set_pool(self, pool_obj: object):
+        print(f"Setting pool! {pool_obj = }")
+        self.pool = pool_obj
 
     @staticmethod
     def shape_opt_progress_callback_fn(progress_object: object):
@@ -1260,18 +1291,36 @@ class GUI(QMainWindow):
             progress_object.exec_callback()
 
     def shape_opt_finished_callback_fn(self):
-        self.output_area_text("Completed aerodynamic shape optimization.\n\n")
+        self.forces_dict = {}
+        self.pool = None
+        self.status_bar.showMessage("Optimization Complete!", 3000)
+        self.output_area_text("Completed aerodynamic shape optimization. ")
+        self.output_area_text(self.generate_output_folder_link_text(self.current_opt_folder), mode="html")
+        self.output_area_text("\n\n")
+        self.current_opt_folder = None
+        self.status_bar.showMessage("")
         # self.finished_optimization = True
 
     def shape_opt_result_callback_fn(self, result_object: object):
         pass
 
+    def message_callback_fn(self, message: str):
+        self.status_bar.showMessage(message)
+
+    def text_area_callback_fn(self, message: str):
+        self.output_area_text(message)
+
     def shape_opt_error_callback_fn(self, error_tuple: tuple):
         self.output_area_text(f"Error. Error = {error_tuple}\n")
 
-    def shape_optimization(self, param_dict: dict, opt_settings: dict, mea: dict, progress_callback):
-        self.output_area_text(f"\nBeginning aerodynamic shape optimization with "
-                              f"{param_dict['num_processors']} processors...\n")
+    def shape_optimization(self, param_dict: dict, opt_settings: dict, mea: dict,
+                           progress_callback):
+        def start_message(warm_start: bool):
+            first_word = "Resuming" if warm_start else "Beginning"
+            return f"\n{first_word} aerodynamic shape optimization with {param_dict['num_processors']} processors...\n"
+
+        self.worker.signals.text.emit(start_message(opt_settings["General Settings"]["warm_start_active"]))
+
         Config.show_compile_hint = False
         forces = []
         ref_dirs = get_reference_directions("energy", param_dict['n_obj'], param_dict['n_ref_dirs'],
@@ -1279,6 +1328,8 @@ class GUI(QMainWindow):
         mea_object = MEA.generate_from_param_dict(mea)
         parameter_list, _ = mea_object.extract_parameters()
         num_parameters = len(parameter_list)
+        self.worker.signals.text.emit(f"Number of active and unlinked design variables: {num_parameters}\n")
+        # self.output_area_text(f"Number of active and unlinked design variables: {num_parameters}\n")
 
         problem = TPAIOPT(n_var=param_dict['n_var'], n_obj=param_dict['n_obj'], n_constr=param_dict['n_constr'],
                           xl=param_dict['xl'], xu=param_dict['xu'], param_dict=param_dict)
@@ -1296,7 +1347,7 @@ class GUI(QMainWindow):
             population = Population(param_dict=param_dict, generation=0, parents=parents,
                                     mea=mea, verbose=param_dict['verbose'])
 
-            population.eval_pop_fitness()
+            population.eval_pop_fitness(sig=self.worker.signals.message, pool_sig=self.worker.signals.pool)
             print(f"Finished evaluating population fitness. Continuing...")
 
             new_X = None
@@ -1330,7 +1381,7 @@ class GUI(QMainWindow):
                         G = np.row_stack((G, np.array([
                             constraint.value for constraint in self.constraints])))
 
-                print(f"{J = }, {self.objectives = }")
+                # print(f"{J = }, {self.objectives = }")
 
             if new_X.ndim == 1:
                 new_X = np.array([new_X])
@@ -1423,7 +1474,7 @@ class GUI(QMainWindow):
                                       genes=individual) for idx, individual in enumerate(X)]
                 population = Population(problem.param_dict, generation=n_generation,
                                         parents=parents, verbose=param_dict['verbose'], mea=mea)
-                population.eval_pop_fitness()
+                population.eval_pop_fitness(sig=self.worker.signals.message, pool_sig=self.worker.signals.pool)
 
                 for chromosome in population.converged_chromosomes:
                     forces.append(chromosome.forces)
@@ -1449,7 +1500,7 @@ class GUI(QMainWindow):
                             G = np.row_stack((G, np.array([
                                 constraint.value for constraint in self.constraints])))
 
-                    print(f"{J = }, {self.objectives = }")
+                    # print(f"{J = }, {self.objectives = }")
 
                 algorithm.evaluator.n_eval += param_dict['num_processors']
 
@@ -1490,8 +1541,12 @@ class GUI(QMainWindow):
 
             # print(f"{algorithm.opt.get('F') = }")
 
+            warm_start_gen = None
+            if opt_settings["General Settings"]["warm_start_active"]:
+                warm_start_gen = param_dict["warm_start_generation"]
+
             progress_callback.emit(TextCallback(parent=self, text_list=algorithm.display.progress_dict,
-                                                completed=not algorithm.has_next()))
+                                                completed=not algorithm.has_next(), warm_start_gen=warm_start_gen))
 
             if len(self.objectives) == 1:
                 if n_generation > 1:

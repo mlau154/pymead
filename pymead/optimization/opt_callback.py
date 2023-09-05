@@ -22,7 +22,8 @@ class OptCallback(QObject):
 
 
 class TextCallback(OptCallback):
-    def __init__(self, parent, text_list: typing.List[list], completed: bool = False):
+    def __init__(self, parent, text_list: typing.List[list], completed: bool = False,
+                 warm_start_gen: int or None = None):
         super().__init__(parent=parent)
         self.parent = parent
         self.text_list = text_list
@@ -30,6 +31,7 @@ class TextCallback(OptCallback):
         self.widths = [attr[2] for attr in self.text_list]
         self.values = [attr[1] for attr in self.text_list]
         self.completed = completed
+        self.warm_start_gen = warm_start_gen
 
     def generate_header(self):
         t = ""
@@ -52,7 +54,7 @@ class TextCallback(OptCallback):
             t += f"{v.center(w + 2)}|"
             if idx == len(self.widths) - 1:
                 t += "|"
-        print(f"Row length = {len(t)}")
+        # print(f"Row length = {len(t)}")
         return t
 
     @staticmethod
@@ -60,7 +62,7 @@ class TextCallback(OptCallback):
         return "="*length
 
     def exec_callback(self):
-        if self.values[0] == 1:
+        if self.values[0] == 1 or (self.warm_start_gen is not None and self.values[0] == self.warm_start_gen + 1):
             # font = self.parent.text_area.font()
             # print(QFontDatabase().families())
             # # font.setFamily("DejaVu Sans Mono")
@@ -159,7 +161,6 @@ class DragPlotCallbackXFOIL(OptCallback):
         self.Cd = self.forces['Cd']
         self.Cdp = self.forces['Cdp']
         self.Cdf = self.forces['Cdf']
-        print(f"{self.Cd = }")
         self.design_idx = design_idx
 
     def exec_callback(self):

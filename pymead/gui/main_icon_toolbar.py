@@ -53,6 +53,10 @@ class MainIconToolbar(QToolBar):
                     button.toggle()
             self.addWidget(button)
 
+    def on_stop_button_pressed(self):
+        if hasattr(self.parent, "pool") and self.parent.pool is not None:
+            self.parent.stop_optimization()
+
     def on_grid_button_pressed(self):
         # import pyqtgraph as pg
         if hasattr(self.parent.dockable_tab_window, "current_dock_widget"):

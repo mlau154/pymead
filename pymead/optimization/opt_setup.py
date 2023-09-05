@@ -128,7 +128,11 @@ def calculate_warm_start_index(warm_start_generation: int, warm_start_directory:
     if warm_start_generation not in generations and warm_start_generation != -1:
         raise ValueError(f'Invalid warm start generation. A value of {warm_start_generation} was input, and the valid '
                          f'generations in the directory are {generations}')
-    warm_start_index = generations[warm_start_generation]
+    if len(generations) > 0:
+        warm_start_index = generations[warm_start_generation]
+    else:
+        warm_start_index = 0
+
     return warm_start_index
 
 

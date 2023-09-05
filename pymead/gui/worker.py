@@ -1,4 +1,5 @@
 from PyQt5.QtCore import QObject, QRunnable, pyqtSignal, pyqtSlot
+from multiprocessing.pool import Pool
 import traceback
 import sys
 
@@ -11,6 +12,9 @@ class WorkerSignals(QObject):
     error = pyqtSignal(tuple)
     result = pyqtSignal(object)
     progress = pyqtSignal(object)
+    message = pyqtSignal(str)
+    text = pyqtSignal(str)
+    pool = pyqtSignal(object)
 
 
 class Worker(QRunnable):

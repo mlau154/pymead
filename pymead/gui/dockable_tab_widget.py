@@ -55,6 +55,9 @@ class DockableTabWidget(QMainWindow):
                 self.setCentralWidget(dw)
 
     def on_tab_closed(self, name: str, event: QCloseEvent):
+        if name == "Geometry":
+            event.ignore()
+            return
         idx = self.names.index(name)
         self.names.pop(idx)
         self.dock_widgets.pop(idx)
