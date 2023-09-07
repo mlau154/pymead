@@ -31,7 +31,7 @@ from pymoo.core.evaluator import set_cv
 
 
 def shape_optimization(conn: mp.connection.Connection or None, param_dict: dict, opt_settings: dict, mea: dict,
-                       objectives: typing.List[str], constraints: typing.List[str], forces_dict: dict, parent_process=None):
+                       objectives: typing.List[str], constraints: typing.List[str]):
 
     objectives = [Objective(func_str=func_str) for func_str in objectives]
     constraints = [Constraint(func_str=func_str) for func_str in constraints]
@@ -59,6 +59,9 @@ def shape_optimization(conn: mp.connection.Connection or None, param_dict: dict,
 
     def read_force_dict_from_file(file_name: str):
         return load_data(file_name)
+
+    forces_dict = {} if not opt_settings["General Settings"]["warm_start_active"] \
+        else read_force_dict_from_file(os.path.join(param_dict["opt_dir"], "force_history.json"))
 
     if conn is not None:
         conn.send(("text", start_message(opt_settings["General Settings"]["warm_start_active"])))
@@ -373,20 +376,6 @@ def shape_optimization(conn: mp.connection.Connection or None, param_dict: dict,
             Cdv = Cdv if not isinstance(Cdv[0], list) else [d[param_dict["design_idx"]] for d in Cdv]
             Cdw = Cdw if not isinstance(Cdw[0], list) else [d[param_dict["design_idx"]] for d in Cdw]
             conn.send(("drag_mses", (Cd, Cdp, Cdf, Cdv, Cdw)))
-
-        # bcolor = self.themes[self.current_theme]["graph-background-color"]
-        # progress_callback.emit(PlotAirfoilCallback(parent=self, mea=mea, X=X.tolist(), background_color=bcolor))
-        # progress_callback.emit(ParallelCoordsCallback(parent=self, mea=mea, X=X.tolist(), background_color=bcolor))
-        # if param_dict['tool'] == 'XFOIL':
-        #     progress_callback.emit(CpPlotCallbackXFOIL(parent=self, background_color=bcolor,
-        #                                                design_idx=param_dict["design_idx"]))
-        #     progress_callback.emit(DragPlotCallbackXFOIL(parent=self, background_color=bcolor,
-        #                                                  design_idx=param_dict["design_idx"]))
-        # elif param_dict['tool'] == 'MSES':
-        #     progress_callback.emit(CpPlotCallbackMSES(parent=self, background_color=bcolor,
-        #                                               design_idx=param_dict["design_idx"]))
-        #     progress_callback.emit(DragPlotCallbackMSES(parent=self, background_color=bcolor,
-        #                                                 design_idx=param_dict["design_idx"]))
 
         if n_generation % param_dict['algorithm_save_frequency'] == 0:
             save_data(algorithm, os.path.join(param_dict['opt_dir'], f'algorithm_gen_{n_generation}.pkl'))

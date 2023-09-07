@@ -1269,7 +1269,7 @@ class GUI(QMainWindow):
                 # Run the shape optimization in a worker thread
                 self.run_shape_optimization(param_dict, opt_settings,
                                             mea.copy_as_param_dict(deactivate_airfoil_graphs=True),
-                                            new_obj_list, new_constr_list, deepcopy(self.forces_dict)
+                                            new_obj_list, new_constr_list
                                             )
 
     def optimization_rejected(self):
@@ -1309,13 +1309,12 @@ class GUI(QMainWindow):
                                             background_color=bcolor)
             callback.exec_callback()
 
-    def run_shape_optimization(self, param_dict: dict, opt_settings: dict, mea: dict, objectives, constraints,
-                                forces_dict: dict):
+    def run_shape_optimization(self, param_dict: dict, opt_settings: dict, mea: dict, objectives, constraints):
 
         def run_cpu_bound_process():
             shape_opt_process = CPUBoundProcess(
                 shape_optimization_static,
-                args=(param_dict, opt_settings, mea, objectives, constraints, forces_dict)
+                args=(param_dict, opt_settings, mea, objectives, constraints)
             )
             shape_opt_process.progress_emitter.signals.progress.connect(self.progress_update)
             shape_opt_process.progress_emitter.signals.finished.connect(self.shape_opt_finished_callback_fn)
@@ -1325,6 +1324,9 @@ class GUI(QMainWindow):
         thread = Thread(target=run_cpu_bound_process)
         self.opt_thread = thread
         self.opt_thread.start()
+
+        # TODO: make sure thread.join() is run following premature optimization termination.
+        # TODO: follow this same code architecture for XFOIL and MSES one-off analysis
 
     def stop_optimization(self):
         # if self.pool is not None:
