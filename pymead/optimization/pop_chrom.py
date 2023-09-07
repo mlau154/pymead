@@ -1,6 +1,8 @@
 import os
+import time
 import typing
 from multiprocessing import Pool
+from multiprocessing.connection import Connection
 from copy import deepcopy
 
 import numpy as np
@@ -440,28 +442,38 @@ class Population:
             self.population = [chromosome if c.population_idx == chromosome.population_idx
                                else c for c in self.population]
 
-    def eval_pop_fitness(self, sig=None, pool_sig=None):
+    def eval_pop_fitness(self, sig: Connection = None):
         """
         Evaluates the fitness of the population using parallel processing
         """
+        n_eval = 0
         # print("Evaluating chromosomes in parallel using multiprocessing.Pool.map_async()...")
         with Pool(processes=self.param_set['num_processors']) as pool:
-            pool_sig.emit(pool)
+            # pool_sig.emit(pool)
+            # sig.send(("pool", pool))
             result = pool.imap_unordered(self.eval_chromosome_fitness, self.population)
             if self.verbose:
                 print(f'result = {result}')
             # print(f"{pool = }")
             for chromosome in result:
+                # TODO: need to be able to receive signal here to stop the Pool rather than just the parent Process
+                # if sig is not None:
+                #     status, data = sig.recv()
+                #     print(f"{status = }")
                 if chromosome.fitness is not None:
                     self.converged_chromosomes.append(chromosome)
                 n_converged_chromosomes = len(self.converged_chromosomes)
+                n_eval += 1
+                print(f"{n_converged_chromosomes = }")
 
                 gen = 1 if self.generation == 0 else self.generation
-                status_bar_message = f"Generation {gen}/{self.param_set['n_max_gen']}: Converged " \
-                                     f"{n_converged_chromosomes}/{self.param_set['population_size']} chromosomes\n"
+                status_bar_message = f"Generation {gen} of {self.param_set['n_max_gen']}: Converged " \
+                                     f"{n_converged_chromosomes} of {self.param_set['population_size']} chromosomes. " \
+                                     f"Total evaluations: {n_eval}\n"
 
                 if sig is not None:
-                    sig.emit(status_bar_message)
+                    # sig.emit(status_bar_message)
+                    sig.send(("message", status_bar_message))
                 else:
                     print(status_bar_message)
 
@@ -483,6 +495,7 @@ class Population:
             self.population = [chromosome if c.population_idx == chromosome.population_idx
                                else c for c in self.population]
         # print("Done writing converged chromosomes to the population.")
+        return n_eval
 
     def all_chromosomes_fitness_converged(self):
         for chromosome in self.population:

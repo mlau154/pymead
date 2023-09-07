@@ -1,5 +1,6 @@
 import logging
 import typing
+from threading import Thread
 
 import pyqtgraph as pg
 import numpy as np
@@ -13,7 +14,7 @@ import sys
 import os
 import random
 from collections import namedtuple
-import multiprocessing
+import multiprocessing as mp
 
 from pymead.gui.rename_popup import RenamePopup
 from pymead.gui.main_icon_toolbar import MainIconToolbar
@@ -25,11 +26,13 @@ from PyQt5.QtCore import QEvent, QObject, Qt, QThreadPool
 from PyQt5.QtSvg import QSvgWidget
 from PyQt5.QtCore import pyqtSlot
 
-
+from pymead.optimization.objectives_and_constraints import Objective, Constraint
 from pymead.version import __version__
 from pymead.core.airfoil import Airfoil
 from pymead.core.base_airfoil_params import BaseAirfoilParams
 from pymead.core.transformation import Transformation3D
+from pymead.gui.concurrency import CPUBoundProcess
+from pymead.optimization.shape_optimization import shape_optimization as shape_optimization_static
 from pymead import RESOURCE_DIR
 from pymead.gui.input_dialog import SingleAirfoilViscousDialog, LoadDialog, SaveAsDialog, OptimizationSetupDialog, \
     MultiAirfoilDialog, ColorInputDialog, ExportCoordinatesDialog, ExportControlPointsDialog, AirfoilPlotDialog, \
@@ -80,7 +83,7 @@ from pymoo.operators.mutation.pm import PolynomialMutation
 from pymoo.operators.crossover.sbx import SimulatedBinaryCrossover
 from pymoo.config import Config
 from pymoo.core.evaluator import Evaluator
-from pymoo.factory import get_reference_directions
+from pymoo.factory import get_reference_directions, get_decomposition
 from pymoo.core.evaluator import set_cv
 from pymead.analysis.calc_aero_data import SVG_PLOTS, SVG_SETTINGS_TR
 from pyqtgraph.exporters import CSVExporter, SVGExporter
@@ -94,6 +97,13 @@ class GUI(QMainWindow):
         print(f"Running GUI with {os.getpid() = }")
         self.pool = None
         self.current_opt_folder = None
+
+        # Set up optimization process (might want to also do this with analysis)
+        self.cpu_bound_process = None
+        self.opt_thread = None
+        self.shape_opt_process = None
+
+        self.closer = None  # This is a string of equal signs used to close out the optimization text progress
         self.menu_bar = None
         self.path = path
         # single_element_inviscid(np.array([[1, 0], [0, 0], [1, 0]]), 0.0)
@@ -1248,33 +1258,92 @@ class GUI(QMainWindow):
 
         if not early_return:
             for (opt_settings, param_dict, mea) in zip(opt_settings_list, param_dict_list, mea_list):
-                # The next two lines are just to make sure any calls to the GUI are performed before the optimization
+                # The next line is just to make sure any calls to the GUI are performed before the optimization
                 self.dialog.overrideInputs(new_inputs=opt_settings)
+
+                # Need to regenerate the objectives and constraints here since they contain references to
+                # (non-serializable) modules which must be passed through a multiprocessing.Pipe
+                new_obj_list = [obj.func_str for obj in self.objectives]
+                new_constr_list = [constr.func_str for constr in self.constraints]
+
+                # Run the shape optimization in a worker thread
                 self.run_shape_optimization(param_dict, opt_settings,
-                                            mea.copy_as_param_dict(deactivate_airfoil_graphs=True))
+                                            mea.copy_as_param_dict(deactivate_airfoil_graphs=True),
+                                            new_obj_list, new_constr_list, deepcopy(self.forces_dict)
+                                            )
 
     def optimization_rejected(self):
         self.opt_settings = self.dialog.getInputs()
         return
 
-    def run_shape_optimization(self, param_dict: dict, opt_settings: dict, mea: dict):
-        self.worker = Worker(self.shape_optimization, param_dict, opt_settings, mea)
-        self.worker.signals.progress.connect(self.shape_opt_progress_callback_fn)
-        self.worker.signals.result.connect(self.shape_opt_result_callback_fn)
-        self.worker.signals.finished.connect(self.shape_opt_finished_callback_fn)
-        self.worker.signals.error.connect(self.shape_opt_error_callback_fn)
-        self.worker.signals.message.connect(self.message_callback_fn)
-        self.worker.signals.text.connect(self.text_area_callback_fn)
-        self.worker.signals.pool.connect(self.set_pool)
-        self.threadpool.start(self.worker)
+    @pyqtSlot(str, object)
+    def progress_update(self, status: str, data: object):
+        bcolor = self.themes[self.current_theme]["graph-background-color"]
+        if status == "text" and isinstance(data, str):
+            self.output_area_text(data)
+        elif status == "message" and isinstance(data, str):
+            self.message_callback_fn(data)
+        elif status == "opt_progress" and isinstance(data, dict):
+            callback = TextCallback(parent=self, text_list=data["text"], completed=data["completed"],
+                                    warm_start_gen=data["warm_start_gen"])
+            callback.exec_callback()
+        elif status == "airfoil_coords" and isinstance(data, list):
+            callback = PlotAirfoilCallback(parent=self, coords=data,
+                                           background_color=bcolor)
+            callback.exec_callback()
+        elif status == "parallel_coords" and isinstance(data, tuple):
+            callback = ParallelCoordsCallback(parent=self, norm_val_list=data[0], param_name_list=data[1],
+                                              background_color=bcolor)
+            callback.exec_callback()
+        elif status == "cp_xfoil":
+            callback = CpPlotCallbackXFOIL(parent=self, Cp=data, background_color=bcolor)
+            callback.exec_callback()
+        elif status == "cp_mses":
+            callback = CpPlotCallbackMSES(parent=self, Cp=data, background_color=bcolor)
+            callback.exec_callback()
+        elif status == "drag_xfoil" and isinstance(data, tuple):
+            callback = DragPlotCallbackXFOIL(parent=self, Cd=data[0], Cdp=data[1], Cdf=data[2], background_color=bcolor)
+            callback.exec_callback()
+        elif status == "drag_mses" and isinstance(data, tuple):
+            callback = DragPlotCallbackMSES(parent=self, Cd=data[0], Cdp=data[1], Cdf=data[2], Cdv=data[3], Cdw=data[4],
+                                            background_color=bcolor)
+            callback.exec_callback()
+
+    def run_shape_optimization(self, param_dict: dict, opt_settings: dict, mea: dict, objectives, constraints,
+                                forces_dict: dict):
+
+        def run_cpu_bound_process():
+            shape_opt_process = CPUBoundProcess(
+                shape_optimization_static,
+                args=(param_dict, opt_settings, mea, objectives, constraints, forces_dict)
+            )
+            shape_opt_process.progress_emitter.signals.progress.connect(self.progress_update)
+            shape_opt_process.progress_emitter.signals.finished.connect(self.shape_opt_finished_callback_fn)
+            shape_opt_process.start()
+            self.shape_opt_process = shape_opt_process
+
+        thread = Thread(target=run_cpu_bound_process)
+        self.opt_thread = thread
+        self.opt_thread.start()
 
     def stop_optimization(self):
-        if self.pool is not None:
-            self.pool.terminate()
-            self.output_area_text("Optimization terminated. ")
-            self.output_area_text(self.generate_output_folder_link_text(self.current_opt_folder), mode="html")
-            self.pool = None
-            self.current_opt_folder = None
+        # if self.pool is not None:
+        #     self.pool.terminate()
+        #     if self.closer is not None:
+        #         self.output_area_text(self.closer)
+        #         self.output_area_text("\n")
+        #         self.closer = None
+        #     self.output_area_text("Optimization terminated. ")
+        #     self.output_area_text(self.generate_output_folder_link_text(self.current_opt_folder), mode="html")
+        #     self.pool = None
+        #     self.current_opt_folder = None
+        if self.shape_opt_process is not None:
+            try:
+                # self.shape_opt_process.progress_emitter.signals.progress.emit("terminate", None)
+                self.shape_opt_process.terminate()
+            except BrokenPipeError:  # This probably does not actually do anything since the BrokenPipe is in another
+                # thread
+                pass
 
     @staticmethod
     def generate_output_folder_link_text(folder: str):
@@ -1313,293 +1382,7 @@ class GUI(QMainWindow):
     def shape_opt_error_callback_fn(self, error_tuple: tuple):
         self.output_area_text(f"Error. Error = {error_tuple}\n")
 
-    def shape_optimization(self, param_dict: dict, opt_settings: dict, mea: dict,
-                           progress_callback):
-        def start_message(warm_start: bool):
-            first_word = "Resuming" if warm_start else "Beginning"
-            return f"\n{first_word} aerodynamic shape optimization with {param_dict['num_processors']} processors...\n"
-
-        self.worker.signals.text.emit(start_message(opt_settings["General Settings"]["warm_start_active"]))
-
-        Config.show_compile_hint = False
-        forces = []
-        ref_dirs = get_reference_directions("energy", param_dict['n_obj'], param_dict['n_ref_dirs'],
-                                            seed=param_dict['seed'])
-        mea_object = MEA.generate_from_param_dict(mea)
-        parameter_list, _ = mea_object.extract_parameters()
-        num_parameters = len(parameter_list)
-        self.worker.signals.text.emit(f"Number of active and unlinked design variables: {num_parameters}\n")
-        # self.output_area_text(f"Number of active and unlinked design variables: {num_parameters}\n")
-
-        problem = TPAIOPT(n_var=param_dict['n_var'], n_obj=param_dict['n_obj'], n_constr=param_dict['n_constr'],
-                          xl=param_dict['xl'], xu=param_dict['xu'], param_dict=param_dict)
-
-        if not opt_settings['General Settings']['warm_start_active']:
-            if param_dict['seed'] is not None:
-                np.random.seed(param_dict['seed'])
-                random.seed(param_dict['seed'])
-
-            sampling = ConstrictedRandomSampling(n_samples=param_dict['n_offsprings'], norm_param_list=parameter_list,
-                                                 max_sampling_width=param_dict['max_sampling_width'])
-            X_list = sampling.sample()
-            parents = [Chromosome(param_dict=param_dict, generation=0, population_idx=idx, mea=mea, genes=individual)
-                       for idx, individual in enumerate(X_list)]
-            population = Population(param_dict=param_dict, generation=0, parents=parents,
-                                    mea=mea, verbose=param_dict['verbose'])
-
-            population.eval_pop_fitness(sig=self.worker.signals.message, pool_sig=self.worker.signals.pool)
-            print(f"Finished evaluating population fitness. Continuing...")
-
-            new_X = None
-            J = None
-            G = None
-
-            for chromosome in population.converged_chromosomes:
-                forces.append(chromosome.forces)
-                if new_X is None:
-                    if param_dict['n_offsprings'] > 1:
-                        new_X = np.array([chromosome.genes])
-                    else:
-                        new_X = np.array(chromosome.genes)
-                else:
-                    new_X = np.row_stack((new_X, np.array(chromosome.genes)))
-                # print(f"{self.objectives = }")
-                # print(f"Before objective and constraint update, {chromosome.forces = }")
-                for objective in self.objectives:
-                    objective.update(chromosome.forces)
-                for constraint in self.constraints:
-                    constraint.update(chromosome.forces)
-                    print(f"{constraint.value = }")
-                if J is None:
-                    J = np.array([obj.value for obj in self.objectives])
-                else:
-                    J = np.row_stack((J, np.array([obj.value for obj in self.objectives])))
-                if len(self.constraints) > 0:
-                    if G is None:
-                        G = np.array([constraint.value for constraint in self.constraints])
-                    else:
-                        G = np.row_stack((G, np.array([
-                            constraint.value for constraint in self.constraints])))
-
-                # print(f"{J = }, {self.objectives = }")
-
-            if new_X.ndim == 1:
-                new_X = np.array([new_X])
-
-            if J.ndim == 1:
-                J = np.array([J])
-
-            if len(self.constraints) > 0 and G.ndim == 1:
-                G = np.array([G])
-
-            pop_initial = pymoo.core.population.Population.new("X", new_X)
-            # objectives
-            pop_initial.set("F", J)
-            # print(f"Initially, {J = }")
-            if len(self.constraints) > 0:
-                if G is not None:
-                    pop_initial.set("G", G)
-            set_cv(pop_initial)
-            for individual in pop_initial:
-                individual.evaluated = {"F", "G", "CV", "feasible"}
-            Evaluator(skip_already_evaluated=True).eval(problem, pop_initial)
-
-            algorithm = UNSGA3(ref_dirs=ref_dirs, sampling=pop_initial,
-                               n_offsprings=param_dict['n_offsprings'],
-                               crossover=SimulatedBinaryCrossover(eta=param_dict['eta_crossover']),
-                               mutation=PolynomialMutation(eta=param_dict['eta_mutation']))
-
-            termination = termination_condition(param_dict)
-
-            display = CustomDisplay()
-
-            # prepare the algorithm to solve the specific problem (same arguments as for the minimize function)
-            algorithm.setup(problem, termination, display=display, seed=param_dict['seed'], verbose=True,
-                            save_history=False)
-
-            algorithm.evaluator.n_eval += param_dict['num_processors']
-
-            # save_data(algorithm, os.path.join(param_dict['opt_dir'], 'algorithm_gen_0.pkl'))
-
-            # np.save('checkpoint', algorithm)
-            # until the algorithm has no terminated
-            n_generation = 0
-        else:
-            logging.debug('Starting from where we left off...')
-            warm_start_index = param_dict['warm_start_generation']
-            n_generation = warm_start_index
-            warm_start_alg_file = os.path.join(opt_settings['General Settings']['warm_start_dir'],
-                                               f'algorithm_gen_{warm_start_index}.pkl')
-            algorithm = load_data(warm_start_alg_file)
-            logging.debug(f'Loaded {warm_start_alg_file}.')
-            if not opt_settings['General Settings']['use_initial_settings']:
-                # Currently only set up to change n_offsprings
-                previous_offsprings = deepcopy(algorithm.n_offsprings)
-                algorithm.n_offsprings = opt_settings['Genetic Algorithm']['n_offspring']
-                algorithm.problem.param_dict['n_offsprings'] = algorithm.n_offsprings
-                if previous_offsprings != algorithm.n_offsprings:
-                    logging.debug(f'Number of offspring changed from {previous_offsprings} '
-                                  f'to {algorithm.n_offsprings}.')
-            term = deepcopy(algorithm.termination.terminations)
-            term = list(term)
-            term[0].n_max_gen = param_dict['n_max_gen']
-            term = tuple(term)
-            algorithm.termination.terminations = term
-            algorithm.has_terminated = False
-
-        while algorithm.has_next():
-
-            logging.debug(f'Asking the algorithm to get the next population...')
-
-            pop = algorithm.ask()
-
-            logging.debug(f'Acquired new population. pop = {pop}')
-
-            n_generation += 1
-
-            if n_generation > 1:
-
-                logging.debug(f'Starting generation {n_generation}...')
-
-                forces = []
-
-                # evaluate (objective function value arrays must be numpy column vectors)
-                X = pop.get("X")
-                logging.debug(f'Input matrix has shape {X.shape} ({X.shape[0]} chromosomes with {X.shape[1]} genes).')
-                new_X = None
-                J = None
-                G = None
-
-                parents = [Chromosome(param_dict=param_dict, generation=n_generation, population_idx=idx, mea=mea,
-                                      genes=individual) for idx, individual in enumerate(X)]
-                population = Population(problem.param_dict, generation=n_generation,
-                                        parents=parents, verbose=param_dict['verbose'], mea=mea)
-                population.eval_pop_fitness(sig=self.worker.signals.message, pool_sig=self.worker.signals.pool)
-
-                for chromosome in population.converged_chromosomes:
-                    forces.append(chromosome.forces)
-                    if new_X is None:
-                        if param_dict['n_offsprings'] > 1:
-                            new_X = np.array([chromosome.genes])
-                        else:
-                            new_X = np.array(chromosome.genes)
-                    else:
-                        new_X = np.row_stack((new_X, np.array(chromosome.genes)))
-                    for objective in self.objectives:
-                        objective.update(chromosome.forces)
-                    for constraint in self.constraints:
-                        constraint.update(chromosome.forces)
-                    if J is None:
-                        J = np.array([obj.value for obj in self.objectives])
-                    else:
-                        J = np.row_stack((J, np.array([obj.value for obj in self.objectives])))
-                    if len(self.constraints) > 0:
-                        if G is None:
-                            G = np.array([constraint.value for constraint in self.constraints])
-                        else:
-                            G = np.row_stack((G, np.array([
-                                constraint.value for constraint in self.constraints])))
-
-                    # print(f"{J = }, {self.objectives = }")
-
-                algorithm.evaluator.n_eval += param_dict['num_processors']
-
-                for idx in range(param_dict['n_offsprings'] - len(new_X)):
-                    # f1 = np.append(f1, np.array([1000.0]))
-                    # f2 = np.append(f2, np.array([1000.0]))
-                    new_X = np.row_stack((new_X, 9999 * np.ones(param_dict['n_var'])))
-                    J = np.row_stack((J, 1000.0 * np.ones(param_dict['n_obj'])))
-                    if len(self.constraints) > 0:
-                        G = np.row_stack((G, 1000.0 * np.ones(param_dict['n_constr'])))
-
-                if new_X.ndim == 1:
-                    new_X = np.array([new_X])
-
-                if J.ndim == 1:
-                    J = np.array([J])
-
-                if len(self.constraints) > 0 and G.ndim == 1:
-                    G = np.array([G])
-
-                pop.set("X", new_X)
-
-                # objectives
-                pop.set("F", J)
-
-                # print(f"{pop.get('F') = }")
-
-                # for constraints
-                if len(self.constraints) > 0:
-                    pop.set("G", G)
-
-                # this line is necessary to set the CV and feasbility status - even for unconstrained
-                set_cv(pop)
-
-            # returned the evaluated individuals which have been evaluated or even modified
-            # print(f"{pop.get('X') = }, {pop.get('F') = }")
-            algorithm.tell(infills=pop)
-
-            # print(f"{algorithm.opt.get('F') = }")
-
-            warm_start_gen = None
-            if opt_settings["General Settings"]["warm_start_active"]:
-                warm_start_gen = param_dict["warm_start_generation"]
-
-            progress_callback.emit(TextCallback(parent=self, text_list=algorithm.display.progress_dict,
-                                                completed=not algorithm.has_next(), warm_start_gen=warm_start_gen))
-
-            if len(self.objectives) == 1:
-                if n_generation > 1:
-                    X = algorithm.opt.get("X")[0]
-                else:
-                    X = algorithm.pop.get("X")[0, :]
-            else:
-                if n_generation > 1:
-                    X = algorithm.opt.get("X")[0, :]
-                else:
-                    X = algorithm.pop.get("X")[0, :]
-
-            best_in_previous_generation = False
-            forces_index = 0
-            try:
-                forces_index = np.where((new_X == X).all(axis=1))[0][0]
-            except IndexError:
-                best_in_previous_generation = True
-
-            if best_in_previous_generation:
-                for k, v in self.forces_dict.items():
-                    if k not in self.forces_dict.keys():
-                        self.forces_dict[k] = []
-                    self.forces_dict[k].append(v[-1])
-            else:
-                best_forces = forces[forces_index]
-                for k, v in best_forces.items():
-                    if param_dict['tool'] in ['xfoil', 'XFOIL', 'mses', 'MSES', 'Mses']:
-                        if k not in ['converged', 'timed_out', 'errored_out']:
-                            if k not in self.forces_dict.keys():
-                                self.forces_dict[k] = []
-                            self.forces_dict[k].append(v)
-
-            bcolor = self.themes[self.current_theme]["graph-background-color"]
-            progress_callback.emit(PlotAirfoilCallback(parent=self, mea=mea, X=X.tolist(), background_color=bcolor))
-            progress_callback.emit(ParallelCoordsCallback(parent=self, mea=mea, X=X.tolist(), background_color=bcolor))
-            if param_dict['tool'] == 'XFOIL':
-                progress_callback.emit(CpPlotCallbackXFOIL(parent=self, background_color=bcolor,
-                                                           design_idx=param_dict["design_idx"]))
-                progress_callback.emit(DragPlotCallbackXFOIL(parent=self, background_color=bcolor,
-                                                             design_idx=param_dict["design_idx"]))
-            elif param_dict['tool'] == 'MSES':
-                progress_callback.emit(CpPlotCallbackMSES(parent=self, background_color=bcolor,
-                                                          design_idx=param_dict["design_idx"]))
-                progress_callback.emit(DragPlotCallbackMSES(parent=self, background_color=bcolor,
-                                                            design_idx=param_dict["design_idx"]))
-
-            if n_generation % param_dict['algorithm_save_frequency'] == 0:
-                save_data(algorithm, os.path.join(param_dict['opt_dir'], f'algorithm_gen_{n_generation}.pkl'))
-
-        # obtain the result objective from the algorithm
-        res = algorithm.result()
-        save_data(res, os.path.join(param_dict['opt_dir'], 'res.pkl'))
+    def write_force_dict_to_file(self, file_name: str):
         forces_temp = deepcopy(self.forces_dict)
         if "Cp" in forces_temp.keys():
             for el in forces_temp["Cp"]:
@@ -1612,10 +1395,10 @@ class GUI(QMainWindow):
                     for k, v in el.items():
                         if isinstance(v, np.ndarray):
                             el[k] = v.tolist()
-        save_data(forces_temp, os.path.join(param_dict['opt_dir'], 'force_history.json'))
-        if len(self.objectives) == 1:
-            np.savetxt(os.path.join(param_dict['opt_dir'], 'opt_X.dat'), res.X)
-        # self.save_opt_plots(param_dict['opt_dir'])  # not working at the moment
+        save_data(forces_temp, file_name)
+
+    def read_force_dict_from_file(self, file_name: str):
+        self.forces_dict = load_data(file_name)
 
     def save_opt_plots(self, opt_dir: str):
         # Not working at the moment
@@ -1681,7 +1464,7 @@ if __name__ == "__main__":
     # First, we must add freeze support for multiprocessing.Pool to work properly in Windows in the version of the GUI
     # assembled by PyInstaller. This next statement affects only Windows; it has no impact on *nix OS since Pool
     # already works fine there.
-    multiprocessing.freeze_support()
+    mp.freeze_support()
 
     # Generate the graphical user interface
     main()
