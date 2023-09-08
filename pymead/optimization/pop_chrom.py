@@ -11,7 +11,6 @@ from benedict import benedict
 from pymead.core.mea import MEA
 from pymead.analysis.calc_aero_data import calculate_aero_data
 
-
 class CustomGASettings:
     pass
 # class CustomGASettings:
@@ -447,19 +446,11 @@ class Population:
         Evaluates the fitness of the population using parallel processing
         """
         n_eval = 0
-        # print("Evaluating chromosomes in parallel using multiprocessing.Pool.map_async()...")
         with Pool(processes=self.param_set['num_processors']) as pool:
-            # pool_sig.emit(pool)
-            # sig.send(("pool", pool))
             result = pool.imap_unordered(self.eval_chromosome_fitness, self.population)
             if self.verbose:
                 print(f'result = {result}')
-            # print(f"{pool = }")
             for chromosome in result:
-                # TODO: need to be able to receive signal here to stop the Pool rather than just the parent Process
-                # if sig is not None:
-                #     status, data = sig.recv()
-                #     print(f"{status = }")
                 if chromosome.fitness is not None:
                     self.converged_chromosomes.append(chromosome)
                 n_converged_chromosomes = len(self.converged_chromosomes)
@@ -472,29 +463,21 @@ class Population:
                                      f"Total evaluations: {n_eval}\n"
 
                 if sig is not None:
-                    # sig.emit(status_bar_message)
-                    sig.send(("message", status_bar_message))
+                    try:
+                        sig.send(("message", status_bar_message))
+                    except BrokenPipeError:
+                        pool.terminate()
                 else:
                     print(status_bar_message)
 
-                # if self.conn is not None:
-                #     self.conn.send(status_bar_message)
-
                 if n_converged_chromosomes >= self.param_set["population_size"]:
-                    # print(f"Converged enough chromosomes (at least population_size = {self.param_set['population_size']}. "
-                    #       f"Closing pool. {len(self.converged_chromosomes) = }")
                     break
-                # else:
-                #     print(f"Haven't yet converged enough chromosomes. {len(self.converged_chromosomes) = }.")
-        for chromosome in self.converged_chromosomes:
-            # print(f"{chromosome.population_idx = }")
-            # print(f"Chromosome index {chromosome.population_idx} is converged. Setting it to the population")
 
+        for chromosome in self.converged_chromosomes:
             # Re-write the population such that the order of the results from the multiprocessing.Pool does not
             # matter
             self.population = [chromosome if c.population_idx == chromosome.population_idx
                                else c for c in self.population]
-        # print("Done writing converged chromosomes to the population.")
         return n_eval
 
     def all_chromosomes_fitness_converged(self):
@@ -502,13 +485,3 @@ class Population:
             if chromosome.fitness is None:
                 return False
         return True
-
-    # def xfoil_timeout_callback(self, chromosome: Chromosome):
-    #     """
-    #     Simple print statement for MSES timeout callback
-    #     """
-    #     if self.verbose:
-    #         print(f"Fitness evaluation failed for chromosome {chromosome.population_idx + 1} of "
-    #               f"{self.ga_settings.population_size} with "
-    #               f"generation: {chromosome.generation} | category: {chromosome.category} | "
-    #               f"mutated: {chromosome.mutated}")

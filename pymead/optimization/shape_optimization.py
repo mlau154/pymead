@@ -60,11 +60,17 @@ def shape_optimization(conn: mp.connection.Connection or None, param_dict: dict,
     def read_force_dict_from_file(file_name: str):
         return load_data(file_name)
 
+    def send_over_pipe(data: object):
+        try:
+            if conn is not None:
+                conn.send(data)
+        except BrokenPipeError:
+            pass
+
     forces_dict = {} if not opt_settings["General Settings"]["warm_start_active"] \
         else read_force_dict_from_file(os.path.join(param_dict["opt_dir"], "force_history.json"))
 
-    if conn is not None:
-        conn.send(("text", start_message(opt_settings["General Settings"]["warm_start_active"])))
+    send_over_pipe(("text", start_message(opt_settings["General Settings"]["warm_start_active"])))
 
     Config.show_compile_hint = False
     forces = []
@@ -74,8 +80,7 @@ def shape_optimization(conn: mp.connection.Connection or None, param_dict: dict,
     parameter_list, _ = mea_object.extract_parameters()
     num_parameters = len(parameter_list)
 
-    if conn is not None:
-        conn.send(("text", f"Number of active and unlinked design variables: {num_parameters}\n"))
+    send_over_pipe(("text", f"Number of active and unlinked design variables: {num_parameters}\n"))
 
     problem = TPAIOPT(n_var=param_dict['n_var'], n_obj=param_dict['n_obj'], n_constr=param_dict['n_constr'],
                       xl=param_dict['xl'], xu=param_dict['xu'], param_dict=param_dict)
@@ -292,8 +297,8 @@ def shape_optimization(conn: mp.connection.Connection or None, param_dict: dict,
         if opt_settings["General Settings"]["warm_start_active"]:
             warm_start_gen = param_dict["warm_start_generation"]
 
-        conn.send(("opt_progress", {"text": algorithm.display.progress_dict, "completed": not algorithm.has_next(),
-                                    "warm_start_gen": warm_start_gen}))
+        send_over_pipe(("opt_progress", {"text": algorithm.display.progress_dict, "completed": not algorithm.has_next(),
+                                         "warm_start_gen": warm_start_gen}))
 
         if len(objectives) == 1:
             if n_generation > 1:
@@ -341,17 +346,17 @@ def shape_optimization(conn: mp.connection.Connection or None, param_dict: dict,
         mea_object.update_parameters(X.tolist())
         coords = [a.get_coords(body_fixed_csys=False) for a in mea_object.airfoils.values()]
 
-        conn.send(("airfoil_coords", coords))
+        send_over_pipe(("airfoil_coords", coords))
 
         norm_val_list, param_list = mea_object.extract_parameters()
 
-        conn.send(("parallel_coords", (norm_val_list, [param.name for param in param_list])))
+        send_over_pipe(("parallel_coords", (norm_val_list, [param.name for param in param_list])))
 
         if param_dict["tool"] == "XFOIL":
             Cp = forces_dict["Cp"][-1]
             if isinstance(Cp, list):
                 Cp = Cp[param_dict["design_idx"]]
-            conn.send(("cp_xfoil", Cp))
+            send_over_pipe(("cp_xfoil", Cp))
 
             Cd = forces_dict['Cd']
             Cdp = forces_dict['Cdp']
@@ -359,11 +364,11 @@ def shape_optimization(conn: mp.connection.Connection or None, param_dict: dict,
             Cd = Cd if not isinstance(Cd[0], list) else [d[param_dict["design_idx"]] for d in Cd]
             Cdp = Cdp if not isinstance(Cdp[0], list) else [d[param_dict["design_idx"]] for d in Cdp]
             Cdf = Cdf if not isinstance(Cdf[0], list) else [d[param_dict["design_idx"]] for d in Cdf]
-            conn.send(("drag_xfoil", (Cd, Cdp, Cdf)))
+            send_over_pipe(("drag_xfoil", (Cd, Cdp, Cdf)))
         elif param_dict["tool"] == "MSES":
             Cp = forces_dict['BL'][-1] if isinstance(
                 forces_dict['BL'][-1][0], dict) else forces_dict['BL'][-1][param_dict["design_idx"]]
-            conn.send(("cp_mses", Cp))
+            send_over_pipe(("cp_mses", Cp))
 
             Cd = forces_dict['Cd']
             Cdp = forces_dict['Cdp']
@@ -375,7 +380,7 @@ def shape_optimization(conn: mp.connection.Connection or None, param_dict: dict,
             Cdf = Cdf if not isinstance(Cdf[0], list) else [d[param_dict["design_idx"]] for d in Cdf]
             Cdv = Cdv if not isinstance(Cdv[0], list) else [d[param_dict["design_idx"]] for d in Cdv]
             Cdw = Cdw if not isinstance(Cdw[0], list) else [d[param_dict["design_idx"]] for d in Cdw]
-            conn.send(("drag_mses", (Cd, Cdp, Cdf, Cdv, Cdw)))
+            send_over_pipe(("drag_mses", (Cd, Cdp, Cdf, Cdv, Cdw)))
 
         if n_generation % param_dict['algorithm_save_frequency'] == 0:
             save_data(algorithm, os.path.join(param_dict['opt_dir'], f'algorithm_gen_{n_generation}.pkl'))
@@ -387,5 +392,5 @@ def shape_optimization(conn: mp.connection.Connection or None, param_dict: dict,
     if len(objectives) == 1:
         np.savetxt(os.path.join(param_dict['opt_dir'], 'opt_X.dat'), res.X)
 
-    conn.send(("finished", None))
+    send_over_pipe(("finished", None))
     # self.save_opt_plots(param_dict['opt_dir'])  # not working at the moment

@@ -12,7 +12,7 @@ class ProgressEmitter(QRunnable):
 
     class ProgressSignals(QObject):
         progress = pyqtSignal(str, object)
-        finished = pyqtSignal()
+        finished = pyqtSignal(bool)
 
     def __init__(self, conn, process):
         super().__init__()
@@ -23,18 +23,23 @@ class ProgressEmitter(QRunnable):
 
     def run(self):
         while self.running:
-            if self.conn.poll():
-                try:
-                    status, data = self.conn.recv()
-                    self.signals.progress.emit(status, data)
-                    if status in ["finished", "error", "terminate"]:
-                        self.signals.finished.emit()
+            try:
+                if self.conn.poll():
+                    try:
+                        status, data = self.conn.recv()
+                        self.signals.progress.emit(status, data)
+                        if status in ["finished"]:
+                            self.signals.finished.emit(True)
+                            self.running = False
+                    except EOFError:
+                        self.signals.finished.emit(True)
                         self.running = False
-                except EOFError:
-                    self.signals.finished.emit()
+                elif not self.process.is_alive():
+                    self.signals.progress.emit("terminated", None)
                     self.running = False
-            elif not self.process.is_alive():
-                self.signals.progress.emit("terminated", None)
+            except (BrokenPipeError, OSError, EOFError):
+                print("Terminating!")
+                self.signals.finished.emit(False)
                 self.running = False
 
 

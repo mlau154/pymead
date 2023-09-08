@@ -1269,7 +1269,7 @@ class GUI(QMainWindow):
                 # Run the shape optimization in a worker thread
                 self.run_shape_optimization(param_dict, opt_settings,
                                             mea.copy_as_param_dict(deactivate_airfoil_graphs=True),
-                                            new_obj_list, new_constr_list
+                                            new_obj_list, new_constr_list,
                                             )
 
     def optimization_rejected(self):
@@ -1339,13 +1339,21 @@ class GUI(QMainWindow):
         #     self.output_area_text(self.generate_output_folder_link_text(self.current_opt_folder), mode="html")
         #     self.pool = None
         #     self.current_opt_folder = None
-        if self.shape_opt_process is not None:
-            try:
-                # self.shape_opt_process.progress_emitter.signals.progress.emit("terminate", None)
-                self.shape_opt_process.terminate()
-            except BrokenPipeError:  # This probably does not actually do anything since the BrokenPipe is in another
-                # thread
-                pass
+        # print(f"Terminating! {self.shape_opt_process = }, {self.shape_opt_process.term_event = }")
+        self.shape_opt_process.parent_conn.close()
+        self.shape_opt_process.child_conn.close()
+        # if self.shape_opt_process is not None:
+        #     try:
+        #         # self.shape_opt_process.progress_emitter.signals.progress.emit("terminate", None)
+        #         # self.shape_opt_process.progress_emitter.conn.send(("terminate", None))
+        #         # self.shape_opt_process.term_event.set()
+        #         # print(f"{self.shape_opt_process.term_event.is_set()}")
+        #         self.shape_opt_process.terminate()
+        #     except BrokenPipeError:  # This probably does not actually do anything since the BrokenPipe is in another
+        #         # thread
+        #         pass
+        if self.opt_thread is not None:
+            self.opt_thread.join()
 
     @staticmethod
     def generate_output_folder_link_text(folder: str):
@@ -1361,11 +1369,12 @@ class GUI(QMainWindow):
         if isinstance(progress_object, OptCallback):
             progress_object.exec_callback()
 
-    def shape_opt_finished_callback_fn(self):
+    def shape_opt_finished_callback_fn(self, success: bool):
         self.forces_dict = {}
         self.pool = None
         self.status_bar.showMessage("Optimization Complete!", 3000)
-        self.output_area_text("Completed aerodynamic shape optimization. ")
+        first_word = "Completed" if success else "Terminated"
+        self.output_area_text(f"{first_word} aerodynamic shape optimization. ")
         self.output_area_text(self.generate_output_folder_link_text(self.current_opt_folder), mode="html")
         self.output_area_text("\n\n")
         self.current_opt_folder = None
