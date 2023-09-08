@@ -82,8 +82,6 @@ class TextCallback(OptCallback):
             self.parent.output_area_text(f"{self.generate_closer(len(t))}")
             self.parent.output_area_text("\n")
 
-    # TODO: fix plotting of MSES or XFOIL optimization results after a previous optimization was completed (need to clear the plots)
-
 
 class PlotAirfoilCallback(OptCallback):
     def __init__(self, parent, coords: list, background_color: str = 'w'):

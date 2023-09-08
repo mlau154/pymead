@@ -327,7 +327,6 @@ def shape_optimization(conn: mp.connection.Connection or None, param_dict: dict,
             best_in_previous_generation = True
 
         if best_in_previous_generation:
-            # TODO: need to make new forces_dict and overwrite for each generation because this can lead to a KeyError
             for k, v in forces_dict.items():
                 if k not in forces_dict.keys():
                     forces_dict[k] = []

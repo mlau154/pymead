@@ -1309,7 +1309,29 @@ class GUI(QMainWindow):
                                             background_color=bcolor)
             callback.exec_callback()
 
+    def clear_opt_plots(self):
+        def clear_handles(h_list: list):
+            for h in h_list:
+                if isinstance(h, list):
+                    for h_ in h:
+                        h_.clear()
+                else:
+                    h.clear()
+            h_list.clear()
+
+        for handle_list in [self.opt_airfoil_plot_handles, self.parallel_coords_plot_handles,
+                            self.Cp_graph_plot_handles]:
+            clear_handles(handle_list)
+
+        if self.drag_graph is not None:
+            for Cd_val in ["Cd", "Cdp", "Cdv", "Cdw", "Cdf"]:
+                if hasattr(self.drag_graph, f"pg_plot_handle_{Cd_val}"):
+                    handle = getattr(self.drag_graph, f"pg_plot_handle_{Cd_val}")
+                    handle.clear()
+
     def run_shape_optimization(self, param_dict: dict, opt_settings: dict, mea: dict, objectives, constraints):
+
+        self.clear_opt_plots()
 
         def run_cpu_bound_process():
             shape_opt_process = CPUBoundProcess(
@@ -1321,37 +1343,20 @@ class GUI(QMainWindow):
             shape_opt_process.start()
             self.shape_opt_process = shape_opt_process
 
+        # Start running the CPU-bound process from a worker thread (separate from the main GUI thread)
         thread = Thread(target=run_cpu_bound_process)
         self.opt_thread = thread
         self.opt_thread.start()
 
-        # TODO: make sure thread.join() is run following premature optimization termination.
         # TODO: follow this same code architecture for XFOIL and MSES one-off analysis
 
     def stop_optimization(self):
-        # if self.pool is not None:
-        #     self.pool.terminate()
-        #     if self.closer is not None:
-        #         self.output_area_text(self.closer)
-        #         self.output_area_text("\n")
-        #         self.closer = None
-        #     self.output_area_text("Optimization terminated. ")
-        #     self.output_area_text(self.generate_output_folder_link_text(self.current_opt_folder), mode="html")
-        #     self.pool = None
-        #     self.current_opt_folder = None
-        # print(f"Terminating! {self.shape_opt_process = }, {self.shape_opt_process.term_event = }")
+
+        # Close the Pipe, which triggers either an immediate termination of the worker process or a termination of the
+        # Pool after the next CFD evaluation completes, depending on the progress of the optimization.
         self.shape_opt_process.parent_conn.close()
         self.shape_opt_process.child_conn.close()
-        # if self.shape_opt_process is not None:
-        #     try:
-        #         # self.shape_opt_process.progress_emitter.signals.progress.emit("terminate", None)
-        #         # self.shape_opt_process.progress_emitter.conn.send(("terminate", None))
-        #         # self.shape_opt_process.term_event.set()
-        #         # print(f"{self.shape_opt_process.term_event.is_set()}")
-        #         self.shape_opt_process.terminate()
-        #     except BrokenPipeError:  # This probably does not actually do anything since the BrokenPipe is in another
-        #         # thread
-        #         pass
+
         if self.opt_thread is not None:
             self.opt_thread.join()
 
