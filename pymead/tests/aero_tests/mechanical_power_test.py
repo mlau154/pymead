@@ -73,6 +73,10 @@ class PKTest(unittest.TestCase):
         plt.show()
         pass
 
+    def test_CPK_calculation_baseline(self):
+        analysis_dir = r"C:\Users\mlauer2\Documents\pymead\pymead\pymead\tests\pai\root_underwing_opt\opt_runs\2023_05_03_A\ga_opt_70\analysis\analysis_0"
+        calculate_CPK_mses(analysis_dir)
+
     def test_PK_calculation_opt_pai(self):
         analysis_dir = r"C:\Users\mlauer2\Documents\pymead\pymead\pymead\tests\pai\root_underwing_opt\opt_runs\2023_05_03_A\ga_opt_61\analysis\analysis_284_w0-100"
         # fig, ax = plt.subplots()

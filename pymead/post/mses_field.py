@@ -3,7 +3,7 @@ from matplotlib import colors as mpl_colors
 import numpy as np
 import os
 from pymead.analysis.read_aero_data import read_grid_stats_from_mses, read_field_from_mses, \
-    read_streamline_grid_from_mses, read_bl_data_from_mses
+    read_streamline_grid_from_mses, read_bl_data_from_mses, read_Mach_from_mses_file
 from pymead.analysis.calc_aero_data import convert_cell_centered_to_edge_centered, extrapolate_data_line_mses_field
 from pymead.analysis.read_aero_data import flow_var_idx
 
@@ -15,7 +15,9 @@ flow_var_label = {'M': 'Mach Number',
                   'u': 'Velocity-x (u/V<sub>\u221e</sub>)',
                   'v': 'Velocity-y (v/V<sub>\u221e</sub>)',
                   'V': 'Velocity-mag (V/V<sub>\u221e</sub>)',
-                  'q': 'Speed of Sound (q/V<sub>\u221e</sub>)'}
+                  'q': 'Speed of Sound (q/V<sub>\u221e</sub>)',
+                  "Cpt": "Total Pressure / Pinf",
+                  "dCpt": "Delta Total Pressure"}
 
 
 def generate_field_matplotlib(axs: plt.Axes or None, analysis_subdir: str, var: str, cmap_field: mpl_colors.Colormap or str ,
@@ -25,6 +27,7 @@ def generate_field_matplotlib(axs: plt.Axes or None, analysis_subdir: str, var: 
     field_file = os.path.join(analysis_subdir, f'field.{os.path.split(analysis_subdir)[-1]}')
     grid_stats_file = os.path.join(analysis_subdir, 'mplot_grid_stats.log')
     grid_file = os.path.join(analysis_subdir, f'grid.{os.path.split(analysis_subdir)[-1]}')
+    mses_file = os.path.join(analysis_subdir, f"mses.{os.path.split(analysis_subdir)[-1]}")
     # bl_file = os.path.join(analysis_subdir, f'bl.{os.path.split(analysis_subdir)[-1]}')
     if not os.path.exists(field_file):
         raise OSError(f"Field file {field_file} not found")
@@ -34,7 +37,9 @@ def generate_field_matplotlib(axs: plt.Axes or None, analysis_subdir: str, var: 
         raise OSError(f"Grid file {grid_file} not found")
 
     # bl_data = read_bl_data_from_mses(bl_file)
-    field = read_field_from_mses(field_file)
+    M_inf = read_Mach_from_mses_file(mses_file)
+    gam = 1.4
+    field = read_field_from_mses(field_file, M_inf=M_inf, gam=gam)
     grid_stats = read_grid_stats_from_mses(grid_stats_file)
     x_grid, y_grid = read_streamline_grid_from_mses(grid_file, grid_stats)
 

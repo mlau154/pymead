@@ -6,6 +6,7 @@ import matplotlib.colors as mpl_colors
 import numpy
 from matplotlib import animation
 from matplotlib.lines import Line2D
+from matplotlib import ticker as mticker
 import scienceplots
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from matplotlib.ticker import MultipleLocator
@@ -447,58 +448,77 @@ class PostProcess:
             show_save_fig(fig, save_base_dir=self.image_dir, file_name_stub=f'design_{v}')
 
     def pareto_front(self, opt_start: int = 5, opt_end: int = None, opt_num: int = 10):
-        index = self.set_index(None)
-        if opt_end is None:
-            opt_end = index[-1]
-        all_opt_F = [self.get_full_gen_opt_F(os.path.join(self.analysis_dir, f"algorithm_gen_{i}.pkl"))
-                 if i != 0 else self.get_full_gen_opt_F(alg_file=None) for i in index]
-        all_pop_F = [self.get_full_gen_pop_F(os.path.join(self.analysis_dir, f"algorithm_gen_{i}.pkl"))
-                     if i != 0 else self.get_full_gen_pop_F(alg_file=None) for i in index]
-        opt_range = np.linspace(opt_start, opt_end, opt_num, endpoint=True).astype(int)
-        cmap = plt.get_cmap("plasma", len(opt_range))
-        cmap_dict = {v: i for i, v in enumerate(opt_range)}
-        fig, axs = plt.subplots(figsize=(8, 6))
-        pop_labeled = False
-        opt_labeled = False
-        for i, F in enumerate(all_pop_F):
-            if i != 0:
-                extra_kwargs = {}
-                if not pop_labeled:
-                    extra_kwargs["label"] = "Individual"
-                    pop_labeled = True
-                valid_rows = np.argwhere(F[:, 0] < 1.0).flatten()
-                axs.plot(F[valid_rows, 0], F[valid_rows, 1], ls="none", marker="s", mfc="lightgray", mec="lightgray",
-                         markersize=2, **extra_kwargs)
-        for i, F in enumerate(all_opt_F):
-            if F.ndim > 1:
-                sorted_order = np.argsort(F[:, 0], axis=None)
-                F[:, 0] = F[sorted_order, 0]
-                F[:, 1] = F[sorted_order, 1]
-            star_kwargs = dict(ls="--", marker="*")
-            gray_circle_kwargs = dict(ls="none", marker="o", mfc="none", mec="gray", markersize=3)
-            base_kwargs = dict(ls="none", marker="x", mfc="red", mec="red")
-            if i == 0:
-                axs.plot(F[0], F[1], **base_kwargs, label="Baseline")
-            else:
-                if i in opt_range:
-                    axs.plot(F[:, 0], F[:, 1], **star_kwargs, zorder=100, label=f"Opt, Gen {i}",
-                             color=cmap(cmap_dict[i]),
-                             mfc=cmap(cmap_dict[i]),
-                             mec=cmap(cmap_dict[i])
-                             )
-                else:
+
+        fig, axs = plt.subplots(figsize=(10, 6))
+
+        def generate_plots(ax: plt.Axes, opt_end_):
+            index = self.set_index(None)
+            if opt_end_ is None:
+                opt_end_ = index[-1]
+            all_opt_F = [self.get_full_gen_opt_F(os.path.join(self.analysis_dir, f"algorithm_gen_{i}.pkl"))
+                     if i != 0 else self.get_full_gen_opt_F(alg_file=None) for i in index]
+            all_pop_F = [self.get_full_gen_pop_F(os.path.join(self.analysis_dir, f"algorithm_gen_{i}.pkl"))
+                         if i != 0 else self.get_full_gen_pop_F(alg_file=None) for i in index]
+            opt_range = np.linspace(opt_start, opt_end_, opt_num, endpoint=True).astype(int)
+            cmap = plt.get_cmap("plasma", len(opt_range))
+            cmap_dict = {v: i for i, v in enumerate(opt_range)}
+
+            pop_labeled = False
+            opt_labeled = False
+            for i, F in enumerate(all_pop_F):
+                if i != 0:
                     extra_kwargs = {}
-                    if not opt_labeled:
-                        extra_kwargs["label"] = "Optimal"
-                        opt_labeled = True
-                    axs.plot(F[:, 0], F[:, 1], **gray_circle_kwargs, **extra_kwargs)
-        axs.set_xlim([0.058, 0.158])
-        axs.set_xlabel(r"$J_P$", fontdict=font)
-        axs.set_ylabel(r"$J_F$", fontdict=font)
+                    if not pop_labeled:
+                        extra_kwargs["label"] = "Individual"
+                        pop_labeled = True
+                    valid_rows = np.argwhere(F[:, 0] < 1.0).flatten()
+                    ax.plot(F[valid_rows, 0], F[valid_rows, 1], ls="none", marker="s", mfc="lightgray", mec="lightgray",
+                             markersize=2, **extra_kwargs)
+            for i, F in enumerate(all_opt_F):
+                if F.ndim > 1:
+                    sorted_order = np.argsort(F[:, 0], axis=None)
+                    F[:, 0] = F[sorted_order, 0]
+                    F[:, 1] = F[sorted_order, 1]
+                star_kwargs = dict(ls="--", marker="*")
+                gray_circle_kwargs = dict(ls="none", marker="o", mfc="none", mec="gray", markersize=3)
+                base_kwargs = dict(ls="none", marker="x", mfc="red", mec="red")
+                if i == 0:
+                    axs.plot(F[0], F[1], **base_kwargs, label="Baseline")
+                else:
+                    if i in opt_range:
+                        ax.plot(F[:, 0], F[:, 1], **star_kwargs, zorder=100, label=f"Opt, Gen {i}",
+                                 color=cmap(cmap_dict[i]),
+                                 mfc=cmap(cmap_dict[i]),
+                                 mec=cmap(cmap_dict[i])
+                                 )
+                    else:
+                        extra_kwargs = {}
+                        if not opt_labeled:
+                            extra_kwargs["label"] = "Optimal"
+                            opt_labeled = True
+                        ax.plot(F[:, 0], F[:, 1], **gray_circle_kwargs, **extra_kwargs)
+            ax.set_xlim([0.058, 0.19])
+            ax.set_xlabel(r"$J_P$", fontdict=font)
+            ax.set_ylabel(r"$J_F$", fontdict=font)
+            format_axis_scientific(ax)
+
+        generate_plots(axs, opt_end)
         legend_font_dict = {k: v for k, v in font.items() if k != "color"}
         legend_font_dict["size"] = 12
-        axs.legend(prop=legend_font_dict)
-        format_axis_scientific(axs)
+        axs.legend(prop=legend_font_dict, loc="lower right", ncol=2)
+
+        axs_inset = axs.inset_axes([0.6, 0.53, 0.35, 0.4])
+        generate_plots(axs_inset, opt_end)
+        x1, x2, y1, y2 = 0.068, 0.07, 0.012, 0.014
+        axs_inset.set_xlim(x1, x2)
+        axs_inset.set_ylim(y1, y2)
+        # x_labels = [item if idx % 2 else "" for idx, item in enumerate(axs_inset.get_xticklabels())]
+        # y_labels = [item if not idx % 2 else "" for idx, item in enumerate(axs_inset.get_yticklabels())]
+        # axs_inset.set_xticklabels(x_labels)
+        # axs_inset.set_yticklabels(y_labels)
+        axs_inset.xaxis.set_major_locator(mticker.MaxNLocator(2))
+        axs_inset.yaxis.set_major_locator(mticker.MaxNLocator(2, prune="lower"))
+
         show_save_fig(fig, save_base_dir=self.image_dir, file_name_stub="pareto_front")
 
     def compare_geometries(self, index: list, plot_actuator_disk: bool = True,
@@ -790,7 +810,9 @@ class PostProcess:
                                          'rho': r'Density ($\rho/\rho_\infty$)',
                                          'u': r'Velocity-x ($u/V_\infty$)',
                                          'v': r'Velocity-y ($v/V_\infty$)',
-                                         'q': r'Speed of Sound ($q/V_\infty$)'}
+                                         'q': r'Speed of Sound ($q/V_\infty$)',
+                                         "Cpt": r"Total Pressure Over P_inf",
+                                         "dCpt": r"Delta Total Pressure"}
             post_process_forces = load_data(
                 os.path.splitext(
                     self.post_process_force_file)[0] + weight_str + os.path.splitext(self.post_process_force_file)[1])
@@ -901,7 +923,8 @@ class PostProcess:
                                      'rho': r'Density ($\rho/\rho_\infty$)',
                                      'u': r'Velocity-x ($u/V_\infty$)',
                                      'v': r'Velocity-y ($v/V_\infty$)',
-                                     'q': r'Speed of Sound ($q/V_\infty$)'}
+                                     'q': r'Speed of Sound ($q/V_\infty$)',
+                                     "Cpt": "Total Pressure Coefficient"}
 
         airfoil_color = 'black'
 

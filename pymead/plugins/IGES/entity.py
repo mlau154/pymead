@@ -46,6 +46,7 @@ class Entity:
         self.parameter_data = parameter_data
         self.param_delimiter = None
         self.record_delimiter = None
+        # TODO: make the color for each entity (or at least all entities) an option in the IGES export (QComboBox?)
 
     def write_entity_string(self, entity_starting_line: int, data_starting_line: int, data_string_lines: int):
 

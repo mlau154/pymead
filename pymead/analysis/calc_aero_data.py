@@ -3,6 +3,7 @@ import os
 import typing
 from copy import deepcopy
 import time
+from collections import namedtuple
 
 import numpy as np
 from matplotlib import pyplot as plt
@@ -11,7 +12,7 @@ from shapely.geometry import LineString, Point, MultiPoint
 
 from pymead.analysis.read_aero_data import read_aero_data_from_xfoil, read_Cp_from_file_xfoil, read_bl_data_from_mses, \
     read_forces_from_mses, read_grid_stats_from_mses, read_field_from_mses, read_streamline_grid_from_mses, \
-    flow_var_idx, convert_blade_file_to_3d_array, read_actuator_disk_data_mses
+    flow_var_idx, convert_blade_file_to_3d_array, read_actuator_disk_data_mses, read_Mach_from_mses_file
 from pymead.utils.file_conversion import convert_ps_to_svg
 from pymead.utils.geometry import check_airfoil_self_intersection, convert_numpy_array_to_shapely_LineString, \
     calculate_area_triangle_heron
@@ -248,9 +249,10 @@ def calculate_aero_data(airfoil_coord_dir: str, airfoil_name: str, coords: typin
 
                 if mplot_settings["CPK"]:
                     try:
-                        outputs_CPK = calculate_CPK_mses(os.path.join(airfoil_coord_dir, airfoil_name))
-                    except:
-                        outputs_CPK = {"CPK": 1e9}
+                        outputs_CPK = calculate_CPK_power_consumption(os.path.join(airfoil_coord_dir, airfoil_name))
+                    except Exception as e:
+                        print(f"{e = }")
+                        outputs_CPK = {"CPK": 1e9, "diss_shock": 1e9, "diss_surf": 1e9, "Edot": 1e9}
                     aero_data = {**aero_data, **outputs_CPK}
 
             t2 = time.time()
@@ -1007,10 +1009,178 @@ def line_integral_CPK_inviscid_old(Cp: np.ndarray, rho: np.ndarray, u: np.ndarra
     return integral
 
 
+def line_integral_Edot_inviscid(Cp: np.ndarray, rho: np.ndarray, u: np.ndarray,
+                                v: np.ndarray, V: np.ndarray, x: np.ndarray, y: np.ndarray, n_hat_dir: str):
+    """
+    ... according to
+    Drela's "Power Balance in Aerodynamic Flows", a 2009 AIAA Journal article
+
+    Parameters
+    ==========
+    Cp: np.ndarray
+        Node-centered pressure coefficient field
+
+    rho: np.ndarray
+        Node-centered density field
+
+    u: np.ndarray
+        Node-centered x-velocity field
+
+    v: np.ndarray
+        Node-centered y-velocity field
+
+    V: np.ndarray
+        Node-centered velocity magnitude field
+
+    x: np.ndarray
+        1-d array of x-coordinates of the line along which to compute the line integral
+
+    y: np.ndarray
+        1-d array of y-coordinates of the line along which to compute the line integral
+
+    n_hat_right: bool
+        Whether the perpendicular n_hat vector points to the right of the line (If ``True``, computed as the sum of
+        the arctan of the value of dx/dy of the line less 90 degrees. If ``False``, 90 degrees is added instead).
+    """
+    if n_hat_dir not in ["up", "down", "left", "right"]:
+        raise ValueError("Invalid direction for n_hat")
+
+    perp_angle_dict = {
+        "right": -np.pi / 2,
+        "left": np.pi / 2,
+        "up": -np.pi / 2,
+        "down": np.pi / 2
+    }
+
+    # Calculate the direction of n_hat
+    with np.errstate(divide="ignore", invalid="ignore"):
+        # if n_hat_dir in ["right", "left"]:
+            # angle = np.arctan2(np.gradient(y, x), 1)
+        # angle = np.arctan2(y[1:] - y[:-1], x[1:] - x[:-1])
+        # else:
+        angle = np.arctan2(1, np.gradient(x, y))
+
+        # temp_angle = np.zeros(angle.shape)
+        # for idx, a in enumerate(angle):
+        #     if np.isnan(a):
+        #         if idx == 0:
+        #             temp_angle[idx] = angle[idx + 1]
+        #         else:
+        #             temp_angle[idx] = angle[idx - 1]
+        #     else:
+        #         temp_angle[idx] = angle[idx]
+        # angle = temp_angle
+
+    perp_angle = perp_angle_dict[n_hat_dir]
+    n_hat = np.column_stack((np.cos(angle + perp_angle), np.sin(angle + perp_angle)))
+    V_vec = np.column_stack((u, v))
+
+    # Compute the dot product V_vec * n_hat
+    dot_product = np.array([np.dot(V_vec_i, n_hat_i) for V_vec_i, n_hat_i in zip(V_vec, n_hat)])
+    # integrand = (-Cp - rho * V**2 + rho) * dot_product.flatten()
+    integrand = (Cp + rho * (V**2 - 1)) * dot_product.flatten()
+
+    # Build the length increment vector (dl)
+    dl = np.array([0.0])
+    dl = np.append(dl, np.hypot(x[1:] - x[:-1], y[1:] - y[:-1]))  # compute incremental length along x and y
+    # print(f"Before cumulative summation, {dl = }")
+    # print(f"{x = }")
+    # print(f"{y = }")
+    dl = np.cumsum(dl)
+
+    # Integrate
+    integral = np.trapz(integrand, dl)
+    return integral
+
+
+def viscous_Edot(last_BL_point: typing.Dict[str, np.ndarray]):
+    """
+    Eq. (75) of Drela's Power Balance in Aerodynamic Flows in 2-D form
+    """
+    if any([k not in last_BL_point.keys() for k in ("rhoe/rhoinf", "Ue/Uinf", "theta", "theta*")]):
+        raise ValueError(f"Missing a boundary layer key in the Edot calculation. {last_BL_point.keys() = }")
+
+    delta_K = 2 * last_BL_point["theta"] - last_BL_point["theta*"]
+    Edot_visc = np.sum(last_BL_point["rhoe/rhoinf"] * last_BL_point["Ue/Uinf"]**3 * delta_K)
+    return Edot_visc
+
+
+def surface_dissipation(last_BL_point: typing.Dict[str, np.ndarray]):
+    """
+    Eq. (73) of Drela's Power Balance in Aerodynamic Flows
+    """
+    if any([k not in last_BL_point.keys() for k in ("K",)]):
+        raise ValueError(f"Missing a boundary layer key in the Edot calculation. {last_BL_point.keys() = }")
+
+    diss = np.sum(2 * last_BL_point["K"])
+    return diss
+
+
+def shock_dissipation(x_edge: typing.List[np.ndarray], y_edge: typing.List[np.ndarray], u: np.ndarray,
+                      v: np.ndarray, dCpt: np.ndarray):
+    Shock = namedtuple("Shock", ("j", "i_start", "i_end"))
+    shock_indices = np.argwhere(dCpt < -0.002)
+    shock_indices = np.fliplr(shock_indices)
+    shock_indices = shock_indices[shock_indices[:, 1].argsort()]
+    shock_indices = shock_indices[shock_indices[:, 0].argsort(kind="mergesort")]
+    shocks = {k: [] for k in np.unique(shock_indices[:, 0])}
+
+    i_start = 0
+    for idx, row in enumerate(shock_indices):
+        j = row[0]
+        if idx == 0:
+            i_start = row[1]
+            continue
+        if row[0] == shock_indices[idx, 0] and row[1] == shock_indices[idx - 1, 1] + 1:
+            pass
+        else:
+            i_end = shock_indices[idx - 1, 1] + 1
+            shocks[j].append(Shock(j=j, i_start=i_start, i_end=i_end))
+            i_start = row[1]
+
+    i1 = 0
+    edge_split_i = []
+    for _idx, edge_array in enumerate(x_edge):
+        i2 = i1 + edge_array.shape[1] - 2
+        edge_split_i.append([i1, i2])
+        i1 = i2 + 1
+
+    def integral(s: Shock):
+        total_dCpt = np.sum(dCpt[s.i_start:s.i_end, s.j])
+        _u = u[s.i_start - 1, s.j]
+        _v = v[s.i_start - 1, s.j]
+
+        j_flow = 0
+        j_grid = 0
+        for flow_idx, split_idx in enumerate(edge_split_i):
+            if split_idx[0] <= s.j <= split_idx[1]:
+                j_flow = flow_idx
+                j_grid = s.j - split_idx[0]
+                break
+
+        x1 = x_edge[j_flow][s.i_start, j_grid]
+        x2 = x_edge[j_flow][s.i_start, j_grid + 1]
+        y1 = y_edge[j_flow][s.i_start, j_grid]
+        y2 = y_edge[j_flow][s.i_start, j_grid + 1]
+        n_hat_angle = np.arctan2(y2 - y1, x2 - x1) - np.pi / 2
+        n_hat = np.array([np.cos(n_hat_angle), np.sin(n_hat_angle)])
+        dot_product = np.dot(np.array([_u, _v]), n_hat)
+        dl = np.hypot(x2 - x1, y2 - y1)
+        shock_int = np.abs(total_dCpt) * dot_product * dl
+        return shock_int
+
+    shock_diss = 0.0
+    for shock_list in shocks.values():
+        for shock in shock_list:
+            shock_diss += integral(shock)
+
+    return shock_diss
+
+
 def line_integral_CPK_inviscid(Cp_up: np.ndarray, Cp_down: np.ndarray, rho_up: np.ndarray, rho_down: np.ndarray,
-                                u_up: np.ndarray, u_down: np.ndarray,
-                                v_up: np.ndarray, v_down: np.ndarray, V_up: np.ndarray, V_down: np.ndarray,
-                                x: np.ndarray, y: np.ndarray):
+                               u_up: np.ndarray, u_down: np.ndarray,
+                               v_up: np.ndarray, v_down: np.ndarray, V_up: np.ndarray, V_down: np.ndarray,
+                               x: np.ndarray, y: np.ndarray):
     """
     Computes the mechanical flow power line integral in the inviscid streamtube only according to
     Drela's "Power Balance in Aerodynamic Flows", a 2009 AIAA Journal article
@@ -1284,6 +1454,137 @@ def calculate_CPK_mses_old(analysis_subdir: str, configuration: str = "underwing
     #     return CPK
 
     return {"CPK": CPK, "capSS": capSS, "epma": epma}
+
+
+def calculate_CPK_power_consumption(analysis_subdir: str):
+    """
+    A specialized function that calculates the mechanical flow power coefficient for an underwing trailing edge
+    aero-propulsive configuration.
+    """
+    airfoil_system_name = os.path.split(analysis_subdir)[-1]
+    field_file = os.path.join(analysis_subdir, f'field.{airfoil_system_name}')
+    grid_stats_file = os.path.join(analysis_subdir, 'mplot_grid_stats.log')
+    grid_file = os.path.join(analysis_subdir, f'grid.{airfoil_system_name}')
+    blade_file = os.path.join(analysis_subdir, f"blade.{airfoil_system_name}")
+    bl_file = os.path.join(analysis_subdir, f"bl.{airfoil_system_name}")
+    mses_file = os.path.join(analysis_subdir, f"mses.{airfoil_system_name}")
+    mses_log_file = os.path.join(analysis_subdir, "mses.log")
+    coords = convert_blade_file_to_3d_array(blade_file)
+
+    M_inf = read_Mach_from_mses_file(mses_file)
+    gam = 1.4  # Hard-coded specific heat ratio
+    field = read_field_from_mses(field_file, M_inf=M_inf, gam=gam)
+    bl_data = read_bl_data_from_mses(bl_file)
+    grid_stats = read_grid_stats_from_mses(grid_stats_file)
+    x_grid, y_grid = read_streamline_grid_from_mses(grid_file, grid_stats)
+
+    Edot = 0.0
+
+    start_idx, end_idx = 0, x_grid[0].shape[1] - 1
+
+    for flow_section_idx in range(grid_stats["numel"] + 1):
+        Cp = convert_cell_centered_to_edge_centered(x_grid[flow_section_idx].shape,
+                                                   field[flow_var_idx["Cp"]][:, start_idx:end_idx])
+        rho = convert_cell_centered_to_edge_centered(x_grid[flow_section_idx].shape,
+                                                     field[flow_var_idx["rho"]][:, start_idx:end_idx])
+        u = convert_cell_centered_to_edge_centered(x_grid[flow_section_idx].shape,
+                                                   field[flow_var_idx["u"]][:, start_idx:end_idx])
+        v = convert_cell_centered_to_edge_centered(x_grid[flow_section_idx].shape,
+                                                   field[flow_var_idx["v"]][:, start_idx:end_idx])
+        V = convert_cell_centered_to_edge_centered(x_grid[flow_section_idx].shape,
+                                                   field[flow_var_idx["q"]][:, start_idx:end_idx])
+        x = x_grid[flow_section_idx]
+        y = y_grid[flow_section_idx]
+
+        # Integrate over the propulsor outlet for the given flow section
+
+        inlet_integral = line_integral_Edot_inviscid(Cp[0, :], rho[0, :], u[0, :], v[0, :], V[0, :], x[0, :],
+                                             y[0, :], n_hat_dir="left")
+        Edot += inlet_integral
+
+        outlet_integral = line_integral_Edot_inviscid(Cp[-1, :], rho[-1, :], u[-1, :], v[-1, :], V[-1, :], x[-1, :],
+                                             y[-1, :], n_hat_dir="right")
+        Edot += outlet_integral
+
+        # The side cylinder contributions are negligible
+        # if flow_section_idx == len(x_grid) - 1:
+        #
+        #     top_integral = line_integral_Edot_inviscid(Cp[:, -1], rho[:, -1], u[:, -1], v[:, -1], V[:, -1], x[:, -1],
+        #                                         y[:, -1], n_hat_dir="up")
+        #     CPK += top_integral
+        #     print(f"{top_integral = }")
+        #
+        # elif flow_section_idx == 0:
+        #     bottom_integral = line_integral_Edot_inviscid(Cp[:, 0], rho[:, 0], u[:, 0], v[:, 0], V[:, 0], x[:, 0],
+        #                                          y[:, 0], n_hat_dir="down")
+        #     CPK += bottom_integral
+        #     print(f"{bottom_integral = }")
+
+        # print(f"{outlet_integral = }, {inlet_integral = }, {Edot = }")
+
+        # print(f"After adding the inlet BL contributions, {CPK - CPK_temp = }")
+
+        if flow_section_idx < grid_stats["numel"]:
+            start_idx = end_idx
+            end_idx += x_grid[flow_section_idx + 1].shape[1] - 1
+
+    end_point_counter = 0
+    last_point_idx = -1
+    max_end_point_attempts = 10
+
+    while True:
+        if end_point_counter > max_end_point_attempts:
+            raise ValueError("Reached maximum attempts for setting the boundary layer end point.")
+
+        last_BL_point = {}
+        for side in bl_data:
+            for k in ("rhoe/rhoinf", "Ue/Uinf", "theta", "theta*", "K"):
+                if k not in last_BL_point.keys():
+                    last_BL_point[k] = []
+                val = side[k][last_point_idx]
+                if val <= 1e-12 and k == "K":
+                    end_point_counter += 1
+                    print(f"Decrementing last_point_idx...")
+                    last_point_idx -= 1
+                    continue
+                last_BL_point[k].append(val)
+
+        for k, v in last_BL_point.items():
+            last_BL_point[k] = np.array(v)
+        break
+
+    print(f"{Edot = }")
+
+    Edot_visc = viscous_Edot(last_BL_point=last_BL_point)
+
+    Edot += Edot_visc
+
+    print(f"{Edot_visc = }")
+
+    surface_diss = surface_dissipation(last_BL_point=last_BL_point)
+
+    print(f"{surface_diss = }")
+
+    shock_diss = shock_dissipation(x_edge=x_grid, y_edge=y_grid, u=field[flow_var_idx["u"]][:, :],
+                                   v=field[flow_var_idx["v"]][:, :], dCpt=field[flow_var_idx["dCpt"]][:, :])
+
+    print(f"{shock_diss = }")
+
+    CPK = Edot + surface_diss + shock_diss
+
+    print(f"{CPK = }")
+
+    if np.isnan(CPK):
+        CPK = 1e9
+
+    # print(f"{CPK = }, {inlet_integral = }, {outlet_integral = }")
+
+    # if calculate_capSS:
+    #     return CPK, capSS
+    # else:
+    #     return CPK
+
+    return {"CPK": CPK, "Edot": Edot, "diss_surf": surface_diss, "diss_shock": shock_diss}
 
 
 def calculate_CPK_mses(analysis_subdir: str, configuration: str = "underwing_te"):

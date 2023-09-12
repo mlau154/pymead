@@ -6,7 +6,7 @@ import pandas as pd
 import numpy as np
 
 
-flow_var_idx = {'M': 7, 'Cp': 8, 'p': 3, 'rho': 2, 'u': 4, 'v': 5, 'q': 6}
+flow_var_idx = {'M': 7, 'Cp': 8, 'p': 3, 'rho': 2, 'u': 4, 'v': 5, 'q': 6, "Cpt": 9, "dCpt": 10}
 
 
 def read_Cp_from_file_xfoil(fname: str):
@@ -297,7 +297,16 @@ def read_bl_data_from_mses(src_file: str):
     return bl
 
 
-def read_field_from_mses(src_file: str):
+def read_Mach_from_mses_file(mses_file: str):
+    with open(mses_file, "r") as f:
+        lines = f.readlines()
+    mach_line = lines[2]
+    mach_split = mach_line.split()
+    mach_float = float(mach_split[0])
+    return mach_float
+
+
+def read_field_from_mses(src_file: str, M_inf: float = None, gam: float = None):
     r"""
     Reads a field dump file from MSES (by default, of the form ``field.*``) and outputs the information to an array.
     The array has shape :math:`9 \times m \times n`, where :math:`m` is the number of streamlines and :math:`n`
@@ -338,6 +347,16 @@ def read_field_from_mses(src_file: str):
     n_streamwise_lines = int(data.shape[0] / n_streamlines)
 
     field_array = np.array([data[:, i].reshape(n_streamlines, n_streamwise_lines).T for i in range(n_flow_vars)])
+
+    if M_inf is not None and gam is not None:
+        Cpt = field_array[3][:, :] * (1 + (gam - 1) / 2 * field_array[7][:, :] ** 2) ** (gam / (gam - 1)) * (2 / gam / M_inf**2)
+        Cpt = np.array([Cpt])
+        field_array = np.concatenate((field_array, Cpt))
+        dCpt = np.zeros(Cpt[0].shape)
+        for idx in range(1, Cpt[0].shape[0]):
+            dCpt[idx, :] = Cpt[0][idx, :] - Cpt[0][idx - 1, :]
+        dCpt = np.array([dCpt])
+        field_array = np.concatenate((field_array, dCpt))
 
     return field_array
 
