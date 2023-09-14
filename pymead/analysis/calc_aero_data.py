@@ -13,6 +13,7 @@ from shapely.geometry import LineString, Point, MultiPoint
 from pymead.analysis.read_aero_data import read_aero_data_from_xfoil, read_Cp_from_file_xfoil, read_bl_data_from_mses, \
     read_forces_from_mses, read_grid_stats_from_mses, read_field_from_mses, read_streamline_grid_from_mses, \
     flow_var_idx, convert_blade_file_to_3d_array, read_actuator_disk_data_mses, read_Mach_from_mses_file
+from pymead.analysis.compressible_flow import calculate_normal_shock_total_pressure_ratio
 from pymead.utils.file_conversion import convert_ps_to_svg
 from pymead.utils.geometry import check_airfoil_self_intersection, convert_numpy_array_to_shapely_LineString, \
     calculate_area_triangle_heron
@@ -252,7 +253,7 @@ def calculate_aero_data(airfoil_coord_dir: str, airfoil_name: str, coords: typin
                         outputs_CPK = calculate_CPK_power_consumption(os.path.join(airfoil_coord_dir, airfoil_name))
                     except Exception as e:
                         print(f"{e = }")
-                        outputs_CPK = {"CPK": 1e9, "diss_shock": 1e9, "diss_surf": 1e9, "Edot": 1e9}
+                        outputs_CPK = {"CPK": 1e9, "diss_shock": 1e9, "diss_surf": 1e9, "Edot": 1e9, "Cd": 1e9}
                     aero_data = {**aero_data, **outputs_CPK}
 
             t2 = time.time()
@@ -1117,7 +1118,7 @@ def surface_dissipation(last_BL_point: typing.Dict[str, np.ndarray]):
 
 
 def shock_dissipation(x_edge: typing.List[np.ndarray], y_edge: typing.List[np.ndarray], u: np.ndarray,
-                      v: np.ndarray, dCpt: np.ndarray):
+                      v: np.ndarray, M: np.ndarray, Cpt: np.ndarray, dCpt: np.ndarray, dCp: np.ndarray, gam: float):
     Shock = namedtuple("Shock", ("j", "i_start", "i_end"))
     shock_indices = np.argwhere(dCpt < -0.002)
     shock_indices = np.fliplr(shock_indices)
@@ -1145,10 +1146,44 @@ def shock_dissipation(x_edge: typing.List[np.ndarray], y_edge: typing.List[np.nd
         edge_split_i.append([i1, i2])
         i1 = i2 + 1
 
+    # print(f"{edge_split_i = }")
+
     def integral(s: Shock):
-        total_dCpt = np.sum(dCpt[s.i_start:s.i_end, s.j])
-        _u = u[s.i_start - 1, s.j]
-        _v = v[s.i_start - 1, s.j]
+
+        _dCp = dCp[s.i_start:s.i_end, s.j]
+
+        if np.max(_dCp) < 0.1:  # If the static pressure rise is too small, do not consider this to be a shock wave
+            return 0.0, 0.0
+
+        # print(f"{_dCp = }, {s.i_start = }, {s.i_end = }")
+        #
+        # M_temp = M[s.i_start:s.i_end, s.j]
+        # print(f"{M_temp = }")
+
+        upstream_shock_cell_index = np.arange(s.i_start, s.i_end)[np.argwhere(_dCp > 0.0).flatten()[0]]
+        # print(f"{upstream_shock_cell_index = }, {s.j = }")
+
+        # max_Mach_number_search_iter = 7
+        # iter_count = 0
+        # old_M = M[upstream_shock_cell_index, s.j]
+        # while True:
+        #     print(f"{iter_count = }")
+        #     if iter_count > max_Mach_number_search_iter:
+        #         break
+        #     upstream_shock_cell_index -= 1
+        #     current_M = M[upstream_shock_cell_index, s.j]
+        #     print(f"{old_M = }, {current_M = }")
+        #     if current_M < old_M:
+        #         upstream_shock_cell_index += 1
+        #         break
+        #
+        #     old_M = current_M
+        #     iter_count += 1
+
+        _u = u[upstream_shock_cell_index, s.j]
+        _v = v[upstream_shock_cell_index, s.j]
+        _M = M[upstream_shock_cell_index, s.j]
+        _Cpt = Cpt[upstream_shock_cell_index, s.j]
 
         j_flow = 0
         j_grid = 0
@@ -1158,21 +1193,43 @@ def shock_dissipation(x_edge: typing.List[np.ndarray], y_edge: typing.List[np.nd
                 j_grid = s.j - split_idx[0]
                 break
 
-        x1 = x_edge[j_flow][s.i_start, j_grid]
-        x2 = x_edge[j_flow][s.i_start, j_grid + 1]
-        y1 = y_edge[j_flow][s.i_start, j_grid]
-        y2 = y_edge[j_flow][s.i_start, j_grid + 1]
+        x1 = x_edge[j_flow][upstream_shock_cell_index + 1, j_grid]
+        x2 = x_edge[j_flow][upstream_shock_cell_index + 1, j_grid + 1]
+        y1 = y_edge[j_flow][upstream_shock_cell_index + 1, j_grid]
+        y2 = y_edge[j_flow][upstream_shock_cell_index + 1, j_grid + 1]
         n_hat_angle = np.arctan2(y2 - y1, x2 - x1) - np.pi / 2
         n_hat = np.array([np.cos(n_hat_angle), np.sin(n_hat_angle)])
+
+        V_dir = np.array([_u, _v]) / np.hypot(_u, _v)
+        M_vec = _M * V_dir
+        M_normal_up = np.dot(M_vec, n_hat)
+
+        if isinstance(M_normal_up, np.ndarray):
+            M_normal_up = M_normal_up[0]
+
+        if M_normal_up <= 1.0:
+            return 0.0, 0.0
+        else:
+            # print(f"{M_normal_up = }, {x1 = }, {y1 = }, {s.j = }, {upstream_shock_cell_index = }")
+            Cpt2_Cpt1 = calculate_normal_shock_total_pressure_ratio(M_normal_up, gam)
+            _dCpt = _Cpt * Cpt2_Cpt1 - _Cpt
+
         dot_product = np.dot(np.array([_u, _v]), n_hat)
         dl = np.hypot(x2 - x1, y2 - y1)
-        shock_int = np.abs(total_dCpt) * dot_product * dl
-        return shock_int
+        shock_int = np.abs(_dCpt) * dot_product * dl
+        return shock_int, dl
+
+    # print(f"{shock_indices = }")
 
     shock_diss = 0.0
+    dl_total = 0.0
     for shock_list in shocks.values():
         for shock in shock_list:
-            shock_diss += integral(shock)
+            s_int, incremental_dl = integral(shock)
+            shock_diss += s_int
+            dl_total += incremental_dl
+
+    # print(f"{dl_total = }")
 
     return shock_diss
 
@@ -1470,9 +1527,11 @@ def calculate_CPK_power_consumption(analysis_subdir: str):
     mses_file = os.path.join(analysis_subdir, f"mses.{airfoil_system_name}")
     mses_log_file = os.path.join(analysis_subdir, "mses.log")
     coords = convert_blade_file_to_3d_array(blade_file)
+    mplot_log_file = os.path.join(analysis_subdir, "mplot.log")
 
     M_inf = read_Mach_from_mses_file(mses_file)
     gam = 1.4  # Hard-coded specific heat ratio
+    forces = read_forces_from_mses(mplot_log_file)
     field = read_field_from_mses(field_file, M_inf=M_inf, gam=gam)
     bl_data = read_bl_data_from_mses(bl_file)
     grid_stats = read_grid_stats_from_mses(grid_stats_file)
@@ -1498,13 +1557,11 @@ def calculate_CPK_power_consumption(analysis_subdir: str):
 
         # Integrate over the propulsor outlet for the given flow section
 
-        inlet_integral = line_integral_Edot_inviscid(Cp[0, :], rho[0, :], u[0, :], v[0, :], V[0, :], x[0, :],
-                                             y[0, :], n_hat_dir="left")
-        Edot += inlet_integral
-
         outlet_integral = line_integral_Edot_inviscid(Cp[-1, :], rho[-1, :], u[-1, :], v[-1, :], V[-1, :], x[-1, :],
                                              y[-1, :], n_hat_dir="right")
         Edot += outlet_integral
+
+        # print(f"{outlet_integral = }")
 
         # The side cylinder contributions are negligible
         # if flow_section_idx == len(x_grid) - 1:
@@ -1553,26 +1610,29 @@ def calculate_CPK_power_consumption(analysis_subdir: str):
             last_BL_point[k] = np.array(v)
         break
 
-    print(f"{Edot = }")
+    # print(f"{Edot = }")
 
     Edot_visc = viscous_Edot(last_BL_point=last_BL_point)
 
     Edot += Edot_visc
 
-    print(f"{Edot_visc = }")
+    # print(f"{Edot_visc = }")
 
     surface_diss = surface_dissipation(last_BL_point=last_BL_point)
 
-    print(f"{surface_diss = }")
+    # print(f"{surface_diss = }")
 
     shock_diss = shock_dissipation(x_edge=x_grid, y_edge=y_grid, u=field[flow_var_idx["u"]][:, :],
-                                   v=field[flow_var_idx["v"]][:, :], dCpt=field[flow_var_idx["dCpt"]][:, :])
+                                   v=field[flow_var_idx["v"]][:, :], M=field[flow_var_idx["M"]][:, :],
+                                   Cpt=field[flow_var_idx["Cpt"]][:, :], dCpt=field[flow_var_idx["dCpt"]][:, :],
+                                   dCp=field[flow_var_idx["dCp"]][:, :], gam=gam)
 
-    print(f"{shock_diss = }")
+    # print(f"{shock_diss = }")
+    # print(f"{forces['Cdw'] = }, {forces['Cd'] = }")
 
-    CPK = Edot + surface_diss + shock_diss
+    CPK = Edot + surface_diss + shock_diss - forces["Cd"]
 
-    print(f"{CPK = }")
+    # print(f"{CPK = }")
 
     if np.isnan(CPK):
         CPK = 1e9
@@ -1584,7 +1644,7 @@ def calculate_CPK_power_consumption(analysis_subdir: str):
     # else:
     #     return CPK
 
-    return {"CPK": CPK, "Edot": Edot, "diss_surf": surface_diss, "diss_shock": shock_diss}
+    return {"CPK": CPK, "Edot": Edot, "diss_surf": surface_diss, "diss_shock": shock_diss, "Cd": forces["Cd"]}
 
 
 def calculate_CPK_mses(analysis_subdir: str, configuration: str = "underwing_te"):

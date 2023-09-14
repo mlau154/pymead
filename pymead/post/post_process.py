@@ -812,7 +812,8 @@ class PostProcess:
                                          'v': r'Velocity-y ($v/V_\infty$)',
                                          'q': r'Speed of Sound ($q/V_\infty$)',
                                          "Cpt": r"Total Pressure Over P_inf",
-                                         "dCpt": r"Delta Total Pressure"}
+                                         "dCpt": r"Delta Total Pressure",
+                                         "dCp": r"Delta Pressure Coefficient"}
             post_process_forces = load_data(
                 os.path.splitext(
                     self.post_process_force_file)[0] + weight_str + os.path.splitext(self.post_process_force_file)[1])

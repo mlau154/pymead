@@ -33,11 +33,11 @@ class EdotTest(unittest.TestCase):
         analysis_dir = r"C:\Users\mlauer2\Documents\pymead\pymead\pymead\tests\pai\root_underwing_opt\opt_runs\2023_05_03_A\ga_opt_82\analysis\analysis_127_w70-30"
         Edot = calculate_CPK_power_consumption(analysis_dir)
         print(f"Opt: {Edot = }")
-
-    def test_Edot_opt_oblique_shock_5(self):
-        analysis_dir = r"C:\Users\mlauer2\Documents\pymead\pymead\pymead\tests\pai\root_underwing_opt\opt_runs\2023_05_03_A\ga_opt_82\analysis\analysis_127_w100-0"
-        Edot = calculate_CPK_power_consumption(analysis_dir)
-        print(f"Opt: {Edot = }")
+    #
+    # def test_Edot_opt_oblique_shock_5(self):
+    #     analysis_dir = r"C:\Users\mlauer2\Documents\pymead\pymead\pymead\tests\pai\root_underwing_opt\opt_runs\2023_05_03_A\ga_opt_82\analysis\analysis_127_w100-0"
+    #     Edot = calculate_CPK_power_consumption(analysis_dir)
+    #     print(f"Opt: {Edot = }")
 
     def test_Edot_opt_6(self):
         analysis_dir = r"C:\Users\mlauer2\Documents\pymead\pymead\pymead\tests\pai\root_underwing_opt\opt_runs\2023_05_03_A\analysis_temp\ga_airfoil_7"

@@ -6,7 +6,7 @@ import pandas as pd
 import numpy as np
 
 
-flow_var_idx = {'M': 7, 'Cp': 8, 'p': 3, 'rho': 2, 'u': 4, 'v': 5, 'q': 6, "Cpt": 9, "dCpt": 10}
+flow_var_idx = {'M': 7, 'Cp': 8, 'p': 3, 'rho': 2, 'u': 4, 'v': 5, 'q': 6, "Cpt": 9, "dCpt": 10, "dCp": 11}
 
 
 def read_Cp_from_file_xfoil(fname: str):
@@ -350,13 +350,19 @@ def read_field_from_mses(src_file: str, M_inf: float = None, gam: float = None):
 
     if M_inf is not None and gam is not None:
         Cpt = field_array[3][:, :] * (1 + (gam - 1) / 2 * field_array[7][:, :] ** 2) ** (gam / (gam - 1)) * (2 / gam / M_inf**2)
+        Cp = field_array[flow_var_idx["Cp"]][:, :]
         Cpt = np.array([Cpt])
+        Cp = np.array([Cp])
         field_array = np.concatenate((field_array, Cpt))
         dCpt = np.zeros(Cpt[0].shape)
+        dCp = np.zeros(Cpt[0].shape)
         for idx in range(1, Cpt[0].shape[0]):
             dCpt[idx, :] = Cpt[0][idx, :] - Cpt[0][idx - 1, :]
+            dCp[idx, :] = Cp[0][idx, :] - Cp[0][idx - 1, :]
         dCpt = np.array([dCpt])
+        dCp = np.array([dCp])
         field_array = np.concatenate((field_array, dCpt))
+        field_array = np.concatenate((field_array, dCp))
 
     return field_array
 
