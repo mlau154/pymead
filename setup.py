@@ -32,7 +32,7 @@ setup(
     ],
     package_data={"pymead": ["gui/gui_settings/defaults/*.json", "icons/*.png", "icons/*.jpg", "gui/*.json",
                              "gui/gui_settings/themes/*.json", "gui/gui_settings/*.json"]},
-    python_requires=">3.10.9",
+    python_requires=">=3.10",
     packages=["pymead", "pymead/core", "pymead/examples", "pymead/utils", "pymead/gui",
               "pymead/tests", "pymead/resources", "pymead/analysis", "pymead/data", "pymead/icons",
               "pymead/optimization", "pymead/plugins", "pymead/plugins/IGES", "pymead/plugins/NX",
