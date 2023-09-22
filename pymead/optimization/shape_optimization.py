@@ -17,8 +17,6 @@ from pymead.optimization.objectives_and_constraints import Objective, Constraint
 
 from pymead.optimization.sampling import ConstrictedRandomSampling
 from pymead.optimization.opt_setup import termination_condition
-from pymead.optimization.opt_callback import PlotAirfoilCallback, ParallelCoordsCallback, \
-    DragPlotCallbackXFOIL, CpPlotCallbackXFOIL, DragPlotCallbackMSES, CpPlotCallbackMSES
 
 import pymoo.core.population
 from pymoo.algorithms.moo.unsga3 import UNSGA3
