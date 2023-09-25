@@ -228,6 +228,18 @@ def calculate_aero_data(airfoil_coord_dir: str, airfoil_name: str, coords: typin
             if mset_success and converged:
                 mplot_log = run_mplot(airfoil_name, airfoil_coord_dir, mplot_settings, mode='forces')
                 aero_data = read_forces_from_mses(mplot_log)
+
+                # This is error is triggered in read_aero_data() in the rare case that there is an error reading the
+                # force file. If this error is triggered, break out of them multipoint loop.
+                errored_out = np.isclose(aero_data["Cd"], 1000.0)
+                if errored_out:
+                    aero_data["converged"] = True
+                    aero_data["timed_out"] = False
+                    aero_data['errored_out'] = True
+                    if aero_data_list is not None:
+                        aero_data_list.append(aero_data)
+                    break
+
                 if export_Cp:
                     run_mplot(airfoil_name, airfoil_coord_dir, mplot_settings, mode='Cp')
                     aero_data['BL'] = []
@@ -267,6 +279,8 @@ def calculate_aero_data(airfoil_coord_dir: str, airfoil_name: str, coords: typin
                     aero_data_list.append(aero_data)
             else:
                 aero_data['converged'] = False
+                aero_data["timed_out"] = False
+                aero_data["errored_out"] = False
                 if aero_data_list is not None:
                     aero_data_list.append(aero_data)
                 break
