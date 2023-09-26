@@ -45,7 +45,10 @@ ylabel = {
             "CPK": r"Design $C_{P_K}$",
             "capSS": r"Supersonic Capture Streamtube",
             "sf": r"Design $C_{F_{\parallel V_\infty}}$ (counts)",
-            "sfmh": r"Design $C_{F_{\parallel V_\infty}} - C_{d_h}$ (counts)"
+            "sfmh": r"Design $C_{F_{\parallel V_\infty}} - C_{d_h}$ (counts)",
+            "Edot": r"TP Energy Rate Coefficient",
+            "diss_surf": r"Surface Dissipation Coefficient",
+            "diss_shock": r"Shock Dissipation Coefficient",
         }
 
 bl_matplotlib_labels = {
@@ -404,6 +407,9 @@ class PostProcess:
             "capSS": 1,
             "sf": 10000,
             "sfmh": 10000,
+            "diss_shock": 1,
+            "diss_surf": 1,
+            "Edot": 1,
         }
         for v in var:
             fig, axs = plt.subplots()

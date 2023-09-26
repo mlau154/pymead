@@ -1,10 +1,8 @@
-import logging
 import typing
 from threading import Thread
 
 import pyqtgraph as pg
 import numpy as np
-import pandas as pd
 from copy import deepcopy
 from functools import partial
 import itertools
@@ -12,7 +10,6 @@ import benedict
 import shutil
 import sys
 import os
-import random
 from collections import namedtuple
 import multiprocessing as mp
 
@@ -26,15 +23,15 @@ from PyQt5.QtCore import QEvent, QObject, Qt, QThreadPool
 from PyQt5.QtSvg import QSvgWidget
 from PyQt5.QtCore import pyqtSlot
 
-from pymead.optimization.objectives_and_constraints import Objective, Constraint
 from pymead.version import __version__
+from pymead.utils.version_check import using_latest
 from pymead.core.airfoil import Airfoil
 from pymead.core.base_airfoil_params import BaseAirfoilParams
 from pymead.core.transformation import Transformation3D
 from pymead.gui.concurrency import CPUBoundProcess
 from pymead.optimization.shape_optimization import shape_optimization as shape_optimization_static
 from pymead import RESOURCE_DIR
-from pymead.gui.input_dialog import SingleAirfoilViscousDialog, LoadDialog, SaveAsDialog, OptimizationSetupDialog, \
+from pymead.gui.input_dialog import LoadDialog, SaveAsDialog, OptimizationSetupDialog, \
     MultiAirfoilDialog, ColorInputDialog, ExportCoordinatesDialog, ExportControlPointsDialog, AirfoilPlotDialog, \
     AirfoilMatchingDialog, MSESFieldPlotDialog, ExportIGESDialog, XFOILDialog, NewMEADialog, EditBoundsDialog, \
     ExitDialog
@@ -43,15 +40,13 @@ from pymead.gui.analysis_graph import AnalysisGraph
 from pymead.gui.parameter_tree import MEAParamTree
 from pymead.plugins.IGES.curves import BezierIGES
 from pymead.plugins.IGES.iges_generator import IGESGenerator
-from pymead.utils.airfoil_matching import match_airfoil, match_airfoil_ga
+from pymead.utils.airfoil_matching import match_airfoil
 from pymead.optimization.opt_setup import read_stencil_from_array, convert_opt_settings_to_param_dict
 from pymead.analysis.single_element_inviscid import single_element_inviscid
 from pymead.gui.text_area import ConsoleTextArea
 from pymead.gui.dockable_tab_widget import DockableTabWidget
-from pymead.gui.bounds_values_table import BoundsValuesTable
 from pymead.core.mea import MEA
 from pymead.analysis.calc_aero_data import calculate_aero_data
-from pymead.optimization.opt_setup import CustomDisplay, TPAIOPT
 from pymead.utils.read_write_files import load_data, save_data
 from pymead.utils.misc import count_func_strs
 from pymead.analysis.read_aero_data import read_grid_stats_from_mses, read_field_from_mses, \
@@ -60,31 +55,16 @@ from pymead.analysis.read_aero_data import flow_var_idx
 from pymead.post.mses_field import flow_var_label
 from pymead.utils.misc import make_ga_opt_dir
 from pymead.utils.get_airfoil import extract_data_from_airfoiltools
-from pymead.optimization.pop_chrom import Chromosome, Population
-
-from pymead.optimization.sampling import ConstrictedRandomSampling
-from pymead.optimization.opt_setup import termination_condition, calculate_warm_start_index
+from pymead.optimization.opt_setup import calculate_warm_start_index
 from pymead.gui.message_box import disp_message_box
-from pymead.gui.worker import Worker
 from pymead.optimization.opt_callback import PlotAirfoilCallback, ParallelCoordsCallback, OptCallback, \
     DragPlotCallbackXFOIL, CpPlotCallbackXFOIL, DragPlotCallbackMSES, CpPlotCallbackMSES, TextCallback
 from pymead.gui.input_dialog import convert_dialog_to_mset_settings, convert_dialog_to_mses_settings, \
     convert_dialog_to_mplot_settings
 from pymead.gui.airfoil_statistics import AirfoilStatisticsDialog, AirfoilStatistics
 from pymead.gui.custom_graphics_view import CustomGraphicsView
-from pymead.gui.file_selection import select_directory
-from pymead.utils.dict_recursion import unravel_param_dict_deepcopy
 from pymead.core.param import Param
 from pymead import ICON_DIR, GUI_SETTINGS_DIR, GUI_THEMES_DIR, GUI_DEFAULT_AIRFOIL_DIR
-
-import pymoo.core.population
-from pymoo.algorithms.moo.unsga3 import UNSGA3
-from pymoo.operators.mutation.pm import PolynomialMutation
-from pymoo.operators.crossover.sbx import SimulatedBinaryCrossover
-from pymoo.config import Config
-from pymoo.core.evaluator import Evaluator
-from pymoo.factory import get_reference_directions, get_decomposition
-from pymoo.core.evaluator import set_cv
 from pymead.analysis.calc_aero_data import SVG_PLOTS, SVG_SETTINGS_TR
 from pyqtgraph.exporters import CSVExporter, SVGExporter
 
@@ -261,6 +241,13 @@ class GUI(QMainWindow):
         if self.path is not None:
             self.load_mea_no_dialog(self.path)
 
+        using_latest_res, latest_ver, current_ver = using_latest()
+        if not using_latest_res:
+            self.disp_message_box(f"A newer version of pymead ({latest_ver}) is available for download at "
+                                  f"<a href='https://github.com/mlau154/pymead/releases' style='color:#45C5E6;'>"
+                                  f"https://github.com/mlau154/pymead/releases</a>", message_mode="info",
+                                  rich_text=True)
+
     def closeEvent(self, a0) -> None:
         """
         Close Event handling for the GUI, allowing changes to be saved before exiting the program.
@@ -306,26 +293,6 @@ class GUI(QMainWindow):
     @pyqtSlot(str)
     def setStatusBarText(self, message: str):
         self.statusBar().showMessage(message)
-
-    # def set_dark_mode(self):
-    #     self.current_theme = "dark"
-    #     self.setStyleSheet("background-color: #3e3f40; color: #dce1e6; font-family: DejaVu; font-size: 12px;")
-    #     for dock_widget in self.dockable_tab_window.dock_widgets:
-    #         if hasattr(dock_widget.widget(), 'setBackground'):
-    #             dock_widget.widget().setBackground('#2a2a2b')
-    #     if self.cbar is not None and self.cbar_label_attrs is not None:
-    #         self.cbar_label_attrs['color'] = '#dce1e6'
-    #         self.cbar.setLabel(**self.cbar_label_attrs)
-    #
-    # def set_light_mode(self):
-    #     self.current_theme = "light"
-    #     self.setStyleSheet("font-family: DejaVu; font-size: 12px;")
-    #     for dock_widget in self.dockable_tab_window.dock_widgets:
-    #         if hasattr(dock_widget.widget(), 'setBackground'):
-    #             dock_widget.widget().setBackground('w')
-    #     if self.cbar is not None and self.cbar_label_attrs is not None:
-    #         self.cbar_label_attrs['color'] = '#000000'
-    #         self.cbar.setLabel(**self.cbar_label_attrs)
 
     def set_theme(self, theme_name: str):
         self.current_theme = theme_name
@@ -713,8 +680,8 @@ class GUI(QMainWindow):
         airfoil.airfoil_graph.scatter.sigPlotChanged.connect(partial(self.param_tree_instance.plot_changed,
                                                                      f"A{len(self.mea.airfoils) - 1}"))
 
-    def disp_message_box(self, message: str, message_mode: str = 'error'):
-        disp_message_box(message, self, message_mode=message_mode)
+    def disp_message_box(self, message: str, message_mode: str = 'error', rich_text: bool = False):
+        disp_message_box(message, self, message_mode=message_mode, rich_text=rich_text)
 
     def output_area_text(self, text: str, mode: str = 'plain', mono: bool = True):
         prepend_html = f"<head><style>body {{font-family: DejaVu Sans Mono;}}</style>" \
@@ -1359,6 +1326,8 @@ class GUI(QMainWindow):
 
         if self.opt_thread is not None:
             self.opt_thread.join()
+
+        print("Optimization terminated.")
 
     @staticmethod
     def generate_output_folder_link_text(folder: str):
