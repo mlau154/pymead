@@ -170,6 +170,7 @@ class MEAParameters(pTypes.GroupParameter):
                         context={'add_eq': 'Define by equation', 'deactivate': 'Deactivate parameter',
                                  'activate': 'Activate parameter', 'setbounds': 'Set parameter bounds'})
                     pg_param.airfoil_param = self.mea.param_dict[airfoil.tag]['AnchorPoints'][ap_key][p_key]
+                    self.child(airfoil.tag).child('AnchorPoints').child(ap_key).addChild(pg_param)
                 else:
                     airfoil_param = self.mea.param_dict[airfoil.tag]['AnchorPoints'][ap_key][p_key]
                     pg_param = Parameter.create(name=f"{airfoil.tag}.AnchorPoints.{ap_key}.{p_key}",
@@ -789,30 +790,39 @@ class MEAParamTree:
           HeaderParameter within the ParameterTree named with the AnchorPoint's Airfoil tag
         """
         a_tag = pg_param.name()
-        self.dialog = AnchorPointInputDialog(items=[("x", "double", 0.5), ("y", "double", 0.1),
-                                                    ("L", "double", 0.1), ("R", "double", 2.0),
-                                                    ("r", "double", 0.5), ("phi", "double", 0.0),
-                                                    ("psi1", "double", 1.5), ("psi2", "double", 1.5),
+        self.dialog = AnchorPointInputDialog(items=[("x", "double", 0.5),
+                                                    ("y", "double", 0.1),
+                                                    ("L", "double", 0.1),
+                                                    ("R", "double", 2.0),
+                                                    ("r", "double", 0.5),
+                                                    ("phi", "double", 0.0),
+                                                    ("psi1", "double", 1.5),
+                                                    ("psi2", "double", 1.5),
                                                     ("Previous Anchor Point", "combo"),
                                                     ("Anchor Point Name", "string")],
                                              ap=self.mea.airfoils[a_tag].anchor_points, parent=self.parent)
+
         if self.dialog.exec():
             inputs = self.dialog.getInputs()
         else:
             inputs = None
 
         if inputs:  # Continue only if the dialog was accepted:
+
+            # Stop execution if the AnchorPoint tag already exists for the airfoil
+            if inputs[9] in self.mea.airfoils[a_tag].anchor_point_order:
+                self.parent.disp_message_box(f"AnchorPoint tag {inputs[9]} already exists in Airfoil {a_tag}. "
+                                             f"Please choose a different name.")
+                return
+            elif inputs[9] == "":
+                self.parent.disp_message_box(f"AnchorPoint tag is empty. Please input a name for the AnchorPoint name.")
+                return
+
             for curve in self.mea.airfoils[a_tag].curve_list:
                 curve.clear_curve_pg()
             ap = AnchorPoint(xy=PosParam((inputs[0], inputs[1])), L=Param(inputs[2]), R=Param(inputs[3]),
                              r=Param(inputs[4]), phi=Param(inputs[5]), psi1=Param(inputs[6]),
                              psi2=Param(inputs[7]), previous_anchor_point=inputs[8], tag=inputs[9], airfoil_tag=a_tag)
-
-            # Stop execution if the AnchorPoint tag already exists for the airfoil
-            if ap.tag in self.mea.airfoils[a_tag].anchor_point_order:
-                self.parent.disp_message_box(f"AnchorPoint tag {ap.tag} already exists in Airfoil {a_tag}. "
-                                             f"Please choose a different name.")
-                return
 
             # Insert the AnchorPoint and update the Airfoil
             self.mea.airfoils[a_tag].insert_anchor_point(ap)
@@ -844,6 +854,8 @@ class MEAParamTree:
                                  'activate': 'Activate parameter', 'setbounds': 'Set parameter bounds'}
                     )
                     pg_param.airfoil_param = self.mea.param_dict[a_tag]['AnchorPoints'][ap.tag][p_key]
+                    self.params[-1].child(a_tag).child('AnchorPoints').child(
+                        ap.tag).addChild(pg_param)
                 else:
                     airfoil_param = self.mea.param_dict[a_tag]['AnchorPoints'][ap.tag][p_key]
                     pg_param = Parameter.create(name=f"{a_tag}.AnchorPoints.{ap.tag}.{p_key}",

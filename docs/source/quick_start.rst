@@ -22,10 +22,11 @@ containing the ``gui.py`` file (the ``gui`` module) and then run the script usin
 
 Alternatively, users working in an IDE can navigate to the ``gui`` module by clicking through the directory tree.
 
-GUI documentation:
+..
+    GUI documentation:
 
-.. raw:: html
-   :file: gui_help/test.html
+    .. raw:: html
+       :file: gui_help/test.html
 
 Programmatic Interface
 ======================

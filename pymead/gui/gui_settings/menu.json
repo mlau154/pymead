@@ -37,7 +37,8 @@
   "Tools": {
     "Plot Airfoil from AirfoilTools": "plot_airfoil_from_airfoiltools",
     "Match Airfoil": "match_airfoil",
-    "Airfoil Statistics": "display_airfoil_statistics"
+    "Airfoil Statistics": "display_airfoil_statistics",
+    "Take Screenshot": ["take_screenshot", "Ctrl+Shift+S"]
   },
   "Plot": {
     "Geometry From File": "plot_geometry"

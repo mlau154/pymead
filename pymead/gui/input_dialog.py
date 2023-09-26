@@ -1767,6 +1767,62 @@ class InviscidCpCalcDialog(QDialog):
         layout = QFormLayout(self)
 
 
+class ScreenshotDialog(QDialog):
+    def __init__(self, parent: QWidget):
+
+        super().__init__(parent=parent)
+
+        self.setWindowTitle("Screenshot")
+        self.setFont(self.parent().font())
+
+        self.grid_widget = {}
+
+        buttonBox = QDialogButtonBox(self)
+        buttonBox.addButton(QDialogButtonBox.Ok)
+        buttonBox.addButton(QDialogButtonBox.Cancel)
+        self.grid_layout = QGridLayout(self)
+
+        self.setInputs()
+
+        self.grid_layout.addWidget(buttonBox, self.grid_layout.rowCount(), 1, 1, 2)
+
+        buttonBox.accepted.connect(self.accept)
+        buttonBox.rejected.connect(self.reject)
+
+    def setInputs(self):
+        widget_dict = load_data(os.path.join('dialog_widgets', 'screenshot_dialog.json'))
+        for row_name, row_dict in widget_dict.items():
+            self.grid_widget[row_name] = {}
+            for w_name, w_dict in row_dict.items():
+                widget = getattr(sys.modules[__name__], w_dict["w"])(self)
+                self.grid_widget[row_name][w_name] = widget
+                if "text" in w_dict.keys() and isinstance(widget, (QLabel, QLineEdit, QPushButton)):
+                    widget.setText(w_dict["text"])
+                if "func" in w_dict.keys() and isinstance(widget, QPushButton):
+                    if "choose" in row_name:
+                        widget.clicked.connect(partial(getattr(self, w_dict["func"]),
+                                                       self.grid_widget[row_name]["line"]))
+                    else:
+                        widget.clicked.connect(getattr(self, w_dict["func"]))
+                if "tool_tip" in w_dict.keys():
+                    widget.setToolTip(w_dict["tool_tip"])
+                for attr_name, attr_value in w_dict.items():
+                    if attr_name not in ["text", "func", "tool_tip", "grid", "w"]:
+                        getattr(widget, attr_name)(attr_value)
+                self.grid_layout.addWidget(widget, w_dict["grid"][0], w_dict["grid"][1], w_dict["grid"][2],
+                                           w_dict["grid"][3])
+
+    def getInputs(self):
+        inputs = {
+            "image_file": self.grid_widget["choose_image_file"]["line"].text(),
+            "window": self.grid_widget["window"]["combobox"].currentText()
+        }
+        return inputs
+
+    def select_jpg_file(self, line_edit: QLineEdit):
+        select_jpg_file(parent=self.parent(), line_edit=line_edit)
+
+
 class BoundsDialog(QDialog):
     def __init__(self, bounds, parent=None, pos_param: bool = False):
         super().__init__(parent)

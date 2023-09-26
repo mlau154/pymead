@@ -9,9 +9,18 @@ Contents
 --------
 
 .. toctree::
+   :maxdepth: 5
 
    install
    quick_start
+
+.. toctree::
+   :maxdepth: 2
+
    tutorials
-   api
    gui
+
+.. toctree::
+   :maxdepth: 3
+
+   api

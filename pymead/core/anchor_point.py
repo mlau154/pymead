@@ -498,7 +498,7 @@ class AnchorPoint(ControlPoint):
                     if self.anchor_type == 'upper_surf':
                         if self.R.value > 0:
                             # angle = np.pi + psi + phi
-                            self.psi1.value = self.abs_psi1 - np.pi - self.phi.value
+                            self.psi1.value = self.abs_psi1 + np.pi - self.phi.value
                         else:
                             # angle = np.pi - psi + phi
                             self.psi1.value = -self.abs_psi1 + np.pi + self.phi.value
@@ -533,7 +533,7 @@ class AnchorPoint(ControlPoint):
                             self.psi1.value = np.pi - self.abs_psi1 - self.phi.value
                         else:
                             # angle = np.pi + psi - phi
-                            self.psi1.value = self.abs_psi1 - np.pi + self.phi.value
+                            self.psi1.value = self.abs_psi1 + np.pi + self.phi.value
                     elif self.anchor_type == 'le':
                         if self.R.value > 0:
                             # angle = -psi + phi
@@ -546,6 +546,20 @@ class AnchorPoint(ControlPoint):
 
         map_psi_to_airfoil_csys_inverse()
 
+        # Take care of the case where R is bounded and the mouse is dragged such that R would flip signs otherwise
+        if self.R.at_boundary:
+            for psi in [self.psi1, self.psi2]:
+                if self.anchor_type == "le":
+                    if psi.value > np.pi / 2:
+                        psi.value -= 2 * (psi.value - np.pi / 2)
+                    elif psi.value < -np.pi / 2:
+                        psi.value += 2 * (psi.value - np.pi / 2)
+                else:
+                    if psi.value > np.pi:
+                        psi.value -= 2 * (psi.value - np.pi)
+                    elif psi.value < 0.0:
+                        psi.value *= -1
+
         if (minus_plus == 'minus' and self.anchor_type in ['upper_surf', 'le']) or (
                 minus_plus == 'plus' and self.anchor_type == 'lower_surf'):
             apsi = self.psi1.value
@@ -553,20 +567,19 @@ class AnchorPoint(ControlPoint):
             apsi = self.psi2.value
 
         if self.R.active and not self.R.linked:
+            R_multiplier = -1.0 if negate_R else 1.0
             if self.tag == 'le':
                 if minus_plus == 'minus':
-                    self.R.value = self.Lt_minus ** 2 / (
+                    self.R.value = R_multiplier * self.Lt_minus ** 2 / (
                                 self.Lc_minus * (1 - 1 / self.n1) * np.sin(apsi + np.pi / 2))
                 else:
-                    self.R.value = self.Lt_plus ** 2 / (
+                    self.R.value = R_multiplier * self.Lt_plus ** 2 / (
                             self.Lc_plus * (1 - 1 / self.n2) * np.sin(apsi + np.pi / 2))
             else:
                 if minus_plus == 'minus':
-                    self.R.value = self.Lt_minus ** 2 / (self.Lc_minus * (1 - 1 / self.n1) * np.sin(apsi))
+                    self.R.value = R_multiplier * self.Lt_minus ** 2 / (self.Lc_minus * (1 - 1 / self.n1) * np.sin(apsi))
                 else:
-                    self.R.value = self.Lt_plus ** 2 / (self.Lc_plus * (1 - 1 / self.n2) * np.sin(apsi))
-            if negate_R:
-                self.R.value *= -1
+                    self.R.value = R_multiplier * self.Lt_plus ** 2 / (self.Lc_plus * (1 - 1 / self.n2) * np.sin(apsi))
 
     def recalculate_ap_branch_props_from_g1_pt(self, minus_plus: str, measured_phi, measured_Lt):
         """

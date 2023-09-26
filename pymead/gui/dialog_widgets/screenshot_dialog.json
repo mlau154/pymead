@@ -1,0 +1,34 @@
+{
+  "window": {
+    "label": {
+      "w": "QLabel",
+      "text": "Select window",
+      "grid": [0, 0, 1, 1],
+      "tool_tip": "Name of the window to screenshot"
+    },
+    "combobox": {
+      "w": "QComboBox",
+      "addItems": ["Full Window","Parameter Tree", "Geometry", "Analysis", "Console"],
+      "grid": [0, 1, 1, 2]
+    }
+  },
+  "choose_image_file": {
+    "label": {
+      "w": "QLabel",
+      "text": "Choose image file",
+      "grid": [1, 0, 1, 1],
+      "tool_tip": "Choose a name for the image file (JPEG format)"
+    },
+    "line": {
+      "w": "QLineEdit",
+      "text": "",
+      "grid": [1, 1, 1, 1]
+    },
+    "button": {
+      "w": "QPushButton",
+      "text": "Select",
+      "grid": [1, 2, 1, 1],
+      "func": "select_jpg_file"
+    }
+  }
+}

@@ -32,6 +32,13 @@ def select_json_file(parent, line_edit: QLineEdit = None):
     return single_file_output_rule(file_dialog, line_edit)
 
 
+def select_jpg_file(parent, line_edit: QLineEdit = None):
+    file_dialog = QFileDialog(parent)
+    file_dialog.setFileMode(QFileDialog.AnyFile)
+    file_dialog.setNameFilter(parent.tr("JPEG Files (*.jpg *.jpeg)"))
+    return single_file_output_rule(file_dialog, line_edit)
+
+
 def select_existing_json_file(parent, line_edit: QLineEdit = None):
     file_dialog = QFileDialog(parent)
     file_dialog.setFileMode(QFileDialog.ExistingFile)

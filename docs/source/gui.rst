@@ -1,4 +1,9 @@
-GUI help documentation test:
+GUI Help
+========
 
-.. raw::html
-    :file: gui_help/test.html
+This section contains tutorials and helpful hints for the pymead GUI.
+
+.. toctree::
+
+   gui_help/gui_airfoil.rst
+   gui_help/gui_opt.rst

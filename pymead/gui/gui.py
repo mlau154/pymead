@@ -34,7 +34,7 @@ from pymead import RESOURCE_DIR
 from pymead.gui.input_dialog import LoadDialog, SaveAsDialog, OptimizationSetupDialog, \
     MultiAirfoilDialog, ColorInputDialog, ExportCoordinatesDialog, ExportControlPointsDialog, AirfoilPlotDialog, \
     AirfoilMatchingDialog, MSESFieldPlotDialog, ExportIGESDialog, XFOILDialog, NewMEADialog, EditBoundsDialog, \
-    ExitDialog
+    ExitDialog, ScreenshotDialog
 from pymead.gui.pymeadPColorMeshItem import PymeadPColorMeshItem
 from pymead.gui.analysis_graph import AnalysisGraph
 from pymead.gui.parameter_tree import MEAParamTree
@@ -349,6 +349,48 @@ class GUI(QMainWindow):
                         action.triggered.connect(getattr(self, val))
 
         recursively_add_menus(menu_data, self.menu_bar)
+
+    def take_screenshot(self):
+
+        if hasattr(self.dockable_tab_window, "current_dock_widget"):
+            analysis_id = self.dockable_tab_window.current_dock_widget.winId()
+        else:
+            analysis_id = self.dockable_tab_window.dock_widgets[-1].winId()
+
+        id_dict = {
+            "Full Window": self.winId(),
+            "Parameter Tree": self.param_tree_instance.t.winId(),
+            "Geometry": self.dockable_tab_window.dock_widgets[0].winId(),
+            "Analysis": analysis_id,
+            "Console": self.text_area.winId()
+        }
+
+        dialog = ScreenshotDialog(self)
+        if dialog.exec_():
+            inputs = dialog.getInputs()
+
+            # Take the screenshot
+            screen = QApplication.primaryScreen()
+            screenshot = screen.grabWindow(id_dict[inputs["window"]])
+
+            # Handle improper directory names and file extensions
+            file_path_split = os.path.split(inputs['image_file'])
+            dir_name = file_path_split[0]
+            file_name = file_path_split[1]
+            file_name_no_ext = os.path.splitext(file_name)[0]
+            file_ext = os.path.splitext(file_name)[1]
+            if file_ext not in [".jpg", ".jpeg"]:
+                file_ext = ".jpg"
+
+            final_file_name = os.path.join(dir_name, file_name_no_ext + file_ext)
+
+            if os.path.isdir(dir_name):
+                screenshot.save(final_file_name, "jpg")  # Save the screenshot
+                self.disp_message_box(f"{inputs['window']} window screenshot saved to {final_file_name}",
+                                      message_mode="info")
+            else:
+                self.disp_message_box(f"Directory {dir_name} for"
+                                      f"file {file_name} not found")
 
     def save_as_mea(self):
         dialog = SaveAsDialog(self)

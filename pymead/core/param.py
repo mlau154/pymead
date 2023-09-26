@@ -12,10 +12,8 @@ class Param:
                  active: bool or typing.Tuple[bool] = True, linked: bool or typing.Tuple[bool] = False,
                  func_str: str = None, name: str = None, periodic: bool = False):
         """
-        ### Description:
-
         This is the class used to define parameters used for the airfoil and airfoil parametrization definitions
-        in `pymead`.
+        in pymead.
 
         ### Args:
 
