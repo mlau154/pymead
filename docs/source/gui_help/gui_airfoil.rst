@@ -7,23 +7,35 @@ Next, we will insert some ``FreePoint``\ s into the airfoil, which adds addition
 of freedom to individual Bézier curves. To insert a ``FreePoint`` from the GUI, right-click
 on the desired airfoil in the Parameter Tree, which brings up a context menu as shown below:
 
-.. image:: images/fp_ap_menu_dark.*
+
+.. figure:: images/fp_ap_menu_dark.*
    :align: center
    :class: only-dark
 
-.. image:: images/fp_ap_menu_light.*
+   Airfoil context menu
+
+.. figure:: images/fp_ap_menu_light.*
    :align: center
    :class: only-light
+
+   Airfoil context menu
+
 
 This brings up a dialog as shown below.
 
-.. image:: images/fp_menu_dark.*
+
+.. figure:: images/fp_menu_dark.*
    :align: center
    :class: only-dark
 
-.. image:: images/fp_menu_light.*
+   FreePoint menu
+
+.. figure:: images/fp_menu_light.*
    :align: center
    :class: only-light
+
+   FreePoint menu
+
 
 Here is a description of each of the ``FreePoint`` menu items:
 
@@ -54,13 +66,17 @@ Here is a description of each of the ``FreePoint`` menu items:
        Note that if no ``FreePoint``\ s have been added yet to the Bézier curve corresponding to the
        ``AnchorPoint`` specified by "Previous Anchor Point", ``None`` is automatically selected.
 
-.. image:: images/ap_menu_dark.*
+.. figure:: images/ap_menu_dark.*
    :align: center
    :class: only-dark
 
-.. image:: images/ap_menu_light.*
+   AnchorPoint menu
+
+.. figure:: images/ap_menu_light.*
    :align: center
    :class: only-light
+
+   AnchorPoint menu
 
 Here is a description of each of the ``AnchorPoint`` menu items:
 
@@ -110,3 +126,18 @@ Here is a description of each of the ``AnchorPoint`` menu items:
        difference here is that an existing ``FreePoint`` is specified, rather than an ``AnchorPoint``.
        Note that if no ``FreePoint``\ s have been added yet to the Bézier curve corresponding to the
        ``AnchorPoint`` specified by "Previous Anchor Point", ``None`` is automatically selected.
+
+
+.. figure:: images/bezier_g2_diagram_dark.*
+   :width: 500px
+   :align: center
+   :class: only-dark
+
+   Bézier G\ :sup:`2` continuity
+
+.. figure:: images/bezier_g2_diagram_light.*
+   :width: 500px
+   :align: center
+   :class: only-light
+
+   Bézier G\ :sup:`2` continuity

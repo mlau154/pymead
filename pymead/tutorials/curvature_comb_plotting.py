@@ -12,10 +12,13 @@ Examples of plotting curvature combs for Bézier curves and airfoils
     :align: center
 
 """
+import matplotlib.pyplot as plt
+
 from pymead.core.bezier import Bezier
 from pymead.core.airfoil import Airfoil
 from pymead.core.base_airfoil_params import BaseAirfoilParams
 from pymead.core.param import Param
+from pymead.post.plot_formatters import dark_mode
 from matplotlib.pyplot import subplots, show, rcParams
 from matplotlib.lines import Line2D
 import numpy as np
@@ -28,6 +31,7 @@ def main(dark: bool = False):
     normal_props = dict(color='mediumaquamarine', lw=0.8)
     comb_props = dict(color='indianred', lw=0.8)
     skeleton_props = dict(color='gray', lw=0.7, marker='x', mec='grey', mfc='grey')
+    title_props = dict(size=14)
 
     # Plot the curvature comb for a single Bezier curve:
     C = Bezier(np.array([[0, 0], [1, 1], [2, 1], [3, 0]]), nt=500)
@@ -37,7 +41,7 @@ def main(dark: bool = False):
     C.plot_curvature_comb_normals(axs[0], scale_factor, **normal_props, interval=3)
     C.plot_curvature_comb_curve(axs[0], scale_factor, **comb_props, interval=3)
     C.plot_control_point_skeleton(axs[0], **skeleton_props)
-    axs[0].set_title("A single Bézier curve", size=14)
+    axs[0].set_title("A single Bézier curve", **title_props)
 
     # Create an airfoil and plot the curvature comb for all the airfoil curves:
     A = Airfoil(base_airfoil_params=BaseAirfoilParams(L_le=Param(0.2),
@@ -51,7 +55,7 @@ def main(dark: bool = False):
         curve.plot_curvature_comb_curve(axs[1], scale_factor_airfoil, **comb_props)
     for ax in axs:
         ax.set_aspect('equal')
-    axs[1].set_title("A pymead-generated Bézier airfoil", size=14)
+    axs[1].set_title("A pymead-generated Bézier airfoil", **title_props)
 
     # Create a legend on top:
     labels = ["Bézier curve", "Curve normals", "Curvature comb", "Control point skeleton"]
@@ -60,8 +64,10 @@ def main(dark: bool = False):
     box = axs[0].get_position()
     axs[0].set_position([box.x0, box.y0, box.width, box.height * 0.8])
 
-    extra_leg_props = dict(facecolor="black", labelcolor="white") if dark else {}
-    fig.legend(line_proxies, labels, ncol=2, fancybox=True, shadow=True, loc="upper center", **extra_leg_props)
+    fig.legend(line_proxies, labels, ncol=2, fancybox=True, shadow=True, loc="upper center")
+
+    if dark:
+        dark_mode(fig)
 
     # Show the plot
     show()
@@ -71,3 +77,4 @@ def main(dark: bool = False):
 
 if __name__ == '__main__':
     main()
+    # main(dark=True)
