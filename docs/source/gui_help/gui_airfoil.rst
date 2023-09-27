@@ -7,21 +7,21 @@ Next, we will insert some ``FreePoint``\ s into the airfoil, which adds addition
 of freedom to individual Bézier curves. To insert a ``FreePoint`` from the GUI, right-click
 on the desired airfoil in the Parameter Tree, which brings up a context menu as shown below:
 
-.. image:: ../images/fp_ap_menu_dark.png
+.. image:: images/fp_ap_menu_dark.*
    :align: center
    :class: only-dark
 
-.. image:: ../images/fp_ap_menu_light.png
+.. image:: images/fp_ap_menu_light.*
    :align: center
    :class: only-light
 
 This brings up a dialog as shown below.
 
-.. image:: ../images/fp_menu_dark.png
+.. image:: images/fp_menu_dark.*
    :align: center
    :class: only-dark
 
-.. image:: ../images/fp_menu_light.png
+.. image:: images/fp_menu_light.*
    :align: center
    :class: only-light
 
@@ -54,11 +54,11 @@ Here is a description of each of the ``FreePoint`` menu items:
        Note that if no ``FreePoint``\ s have been added yet to the Bézier curve corresponding to the
        ``AnchorPoint`` specified by "Previous Anchor Point", ``None`` is automatically selected.
 
-.. image:: ../images/ap_menu_dark.png
+.. image:: images/ap_menu_dark.*
    :align: center
    :class: only-dark
 
-.. image:: ../images/ap_menu_light.png
+.. image:: images/ap_menu_light.*
    :align: center
    :class: only-light
 
