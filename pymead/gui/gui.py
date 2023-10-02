@@ -770,11 +770,15 @@ class GUI(QMainWindow):
 
             airfoils = inputs['airfoil_order'].split(',')
 
+            extra_get_coords_kwargs = dict(downsample=inputs["use_downsampling"],
+                                           ds_max_points=inputs["downsampling_max_pts"],
+                                           ds_curve_exp=inputs["downsampling_curve_exp"]) if inputs["use_downsampling"] else {}
+
             if json:
                 coord_dict = {}
                 for a in airfoils:
                     airfoil = self.mea.airfoils[a]
-                    coords = airfoil.get_coords(body_fixed_csys=False)
+                    coords = airfoil.get_coords(body_fixed_csys=False, **extra_get_coords_kwargs)
                     coord_dict[a] = coords.tolist()
                 save_data(coord_dict, f_)
             else:
@@ -785,7 +789,7 @@ class GUI(QMainWindow):
                     f.write(f"{inputs['header']}{new_line}")
                     for idx, a in enumerate(airfoils):
                         airfoil = self.mea.airfoils[a]
-                        coords = airfoil.get_coords(body_fixed_csys=False)
+                        coords = airfoil.get_coords(body_fixed_csys=False, **extra_get_coords_kwargs)
                         for coord in coords:
                             f.write(f"{coord[0]}{inputs['delimiter']}{coord[1]}\n")
                         if idx < len(airfoils) - 1:

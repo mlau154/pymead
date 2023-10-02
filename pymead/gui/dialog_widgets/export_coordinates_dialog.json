@@ -90,5 +90,51 @@
       "grid": [6, 0, 1, 1],
       "func": "format_mses"
     }
+  },
+  "use_downsampling": {
+    "label": {
+      "w": "QLabel",
+      "text": "Use downsampling?",
+      "grid": [7, 0, 1, 1],
+      "tool_tip": "Downsample the airfoil coordinates based on the curvature"
+    },
+    "checkbox": {
+      "w": "QCheckBox",
+      "setCheckState": 2,
+      "grid": [7, 1, 1, 1],
+      "tool_tip": "Downsample the airfoil coordinates based on the curvature"
+    }
+  },
+  "downsampling_max_pts": {
+    "label": {
+      "w": "QLabel",
+      "text": "Max downsampling points",
+      "grid": [8, 0, 1, 1],
+      "tool_tip": "Maximum number of airfoil coordinates allowed"
+    },
+    "spinbox": {
+      "w": "QSpinBox",
+      "value": 200,
+      "lower_bound": 20,
+      "upper_bound": 10000,
+      "grid": [8, 1, 1, 1],
+      "tool_tip": "Maximum number of airfoil coordinates allowed"
+    }
+  },
+  "downsampling_curve_exp": {
+    "label": {
+      "w": "QLabel",
+      "text": "Downsampling curvature exponent",
+      "grid": [9, 0, 1, 1],
+      "tool_tip": "Importance of curvature in the downsampling scheme. Values close to 0 place high emphasis on curvature, while values close to positive infinity place no emphasis on curvature and leave the parameter vector effectively uniformly spaced"
+    },
+    "spinbox": {
+      "w": "QDoubleSpinBox",
+      "value": 2.0,
+      "lower_bound": 0.0001,
+      "upper_bound": 10000.0,
+      "grid": [9, 1, 1, 1],
+      "tool_tip": "Importance of curvature in the downsampling scheme. Values close to 0 place high emphasis on curvature, while values close to positive infinity place no emphasis on curvature and leave the parameter vector effectively uniformly spaced"
+    }
   }
 }

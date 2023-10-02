@@ -717,7 +717,8 @@ class Airfoil:
         for curve in self.curve_list:
             curve.update_curve_pg()
 
-    def get_coords(self, body_fixed_csys: bool = False, as_tuple: bool = False):
+    def get_coords(self, body_fixed_csys: bool = False, as_tuple: bool = False, downsample: bool = False,
+                   ds_max_points: int or None = None, ds_curve_exp: float = None):
         """Gets the set of discrete airfoil coordinates for the airfoil
 
         Parameters
@@ -737,7 +738,16 @@ class Airfoil:
         x = np.array([])
         y = np.array([])
         self.coords = []
+        original_t = []
+        new_t_list = None
+
+        if downsample:
+            for c_idx, curve in enumerate(self.curve_list):
+                original_t.append(deepcopy(curve.t))
+            new_t_list = self.downsample(max_airfoil_points=ds_max_points, curvature_exp=ds_curve_exp)
         for idx, curve in enumerate(self.curve_list):
+            if downsample:
+                curve.update(curve.P, t=new_t_list[idx])
             if idx == 0:
                 x = curve.x
                 y = curve.y
@@ -749,6 +759,11 @@ class Airfoil:
             self.coords = translate_matrix(self.coords, -self.dx.value, -self.dy.value)
             self.coords = rotate_matrix(self.coords, self.alf.value)
             self.coords = scale_matrix(self.coords, 1 / self.c.value)
+
+        if downsample:
+            for c_idx, curve in enumerate(self.curve_list):
+                curve.update(curve.P, t=original_t[c_idx])
+
         if as_tuple:
             return tuple(map(tuple, self.coords))
         else:
@@ -878,7 +893,49 @@ class Airfoil:
         for curve in self.curve_list:
             curve.update_curvature_comb_curve()
 
+    def downsample(self, max_airfoil_points: int, curvature_exp: float = 2.0):
+
+        if max_airfoil_points > sum([len(curve.t) for curve in self.curve_list]):
+            for curve in self.curve_list:
+                curve.update(P=curve.P, nt=np.ceil(max_airfoil_points / len(self.curve_list)).astype(int))
+
+        new_param_vec_list = []
+        new_t_concat = np.array([])
+
+        for c_idx, curve in enumerate(self.curve_list):
+            exp_R = np.abs(curve.R) ** (1 / curvature_exp)
+            new_t = np.zeros(exp_R.shape)
+            for i in range(1, new_t.shape[0]):
+                new_t[i] = new_t[i - 1] + (exp_R[i] + exp_R[i - 1]) / 2
+            new_t = new_t / np.max(new_t)
+            new_t_concat = np.concatenate((new_t_concat, new_t))
+
+        indices_to_select = np.linspace(0, new_t_concat.shape[0] - 1,
+                                        max_airfoil_points - 2 * len(self.curve_list)).astype(int)
+
+        t_old = 0.0
+        for selection_idx in indices_to_select:
+            t = new_t_concat[selection_idx]
+
+            if t == 0.0 and selection_idx == 0:
+                new_param_vec_list.append(np.array([0.0]))
+            elif t < t_old:
+                if t_old != 1.0:
+                    new_param_vec_list[-1] = np.append(new_param_vec_list[-1], 1.0)
+                new_param_vec_list.append(np.array([0.0]))
+                new_param_vec_list[-1] = np.append(new_param_vec_list[-1], t)
+                t_old = t
+            else:
+                new_param_vec_list[-1] = np.append(new_param_vec_list[-1], t)
+                t_old = t
+
+        return new_param_vec_list
+
+    def count_airfoil_points(self):
+        return sum([len(curve.t) for curve in self.curve_list]) - (len(self.curve_list) - 1)
+
 
 if __name__ == '__main__':
     airfoil_ = Airfoil()
-    airfoil_.calculate_Cl_Cp(5.0)
+    # airfoil_.calculate_Cl_Cp(5.0)
+    airfoil_.downsample(70, 2)

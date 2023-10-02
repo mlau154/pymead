@@ -20,7 +20,7 @@ class Bezier(ParametricCurve):
 
         .. math::
 
-            B_{i,n}={n \choose i} t^i (1-t)^{n-i}
+            B_{i,n}(t)={n \choose i} t^i (1-t)^{n-i}
 
         Also included are first derivative, second derivative, and curvature information. These are given by
 
@@ -203,7 +203,7 @@ class Bezier(ParametricCurve):
             y += P[i, 1] * nchoosek(n - 1, i) * t ** i * (1 - t) ** (n - 1 - i)
         return np.sum(np.hypot(x[1:] - x[:-1], y[1:] - y[:-1]))
 
-    def update(self, P, nt, t: np.ndarray = None):
+    def update(self, P, nt: int = None, t: np.ndarray = None):
         self.P = P
         self.n = len(self.P) - 1
 

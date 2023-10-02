@@ -2068,7 +2068,7 @@ class ExportCoordinatesDialog(QDialog):
 
         self.grid_widget['airfoil_order']['line'].setText(','.join([k for k in self.parent().mea.airfoils.keys()]))
 
-        self.grid_layout.addWidget(buttonBox, 7, 1, 1, 2)
+        self.grid_layout.addWidget(buttonBox, 10, 1, 1, 2)
 
         buttonBox.accepted.connect(self.accept)
         buttonBox.rejected.connect(self.reject)
@@ -2090,11 +2090,28 @@ class ExportCoordinatesDialog(QDialog):
                         widget.clicked.connect(getattr(self, w_dict["func"]))
                 if "tool_tip" in w_dict.keys():
                     widget.setToolTip(w_dict["tool_tip"])
+                if "checkstate" in w_dict.keys() and isinstance(widget, QCheckBox):
+                    widget.setCheckState(w_dict["checkstate"])
+                if "lower_bound" in w_dict.keys() and (isinstance(widget, QSpinBox) or isinstance(widget, QDoubleSpinBox)):
+                    widget.setMinimum(w_dict["lower_bound"])
+                if "upper_bound" in w_dict.keys() and (isinstance(widget, QSpinBox) or isinstance(widget, QDoubleSpinBox)):
+                    widget.setMaximum(w_dict["upper_bound"])
+                if "value" in w_dict.keys() and (isinstance(widget, QSpinBox) or isinstance(widget, QDoubleSpinBox)):
+                    widget.setValue(w_dict["value"])
                 self.grid_layout.addWidget(widget, w_dict["grid"][0], w_dict["grid"][1], w_dict["grid"][2],
                                            w_dict["grid"][3])
 
     def getInputs(self):
-        inputs = {k: v["line"].text() if "line" in v.keys() else None for k, v in self.grid_widget.items()}
+        inputs = {}
+        for k, v in self.grid_widget.items():
+            if "line" in v.keys():
+                inputs[k] = v["line"].text()
+            elif "spinbox" in v.keys():
+                inputs[k] = v["spinbox"].value()
+            elif "checkbox" in v.keys():
+                inputs[k] = bool(v["checkbox"].checkState())
+            else:
+                inputs[k] = None
 
         # Make sure any newline characters are not double-escaped:
         for k, input_ in inputs.items():

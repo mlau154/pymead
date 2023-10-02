@@ -2,17 +2,16 @@
 Images for documentation
 """
 import typing
+from functools import partial
 
 import matplotlib.pyplot as plt
+from matplotlib.animation import FuncAnimation
 import numpy as np
 import os
-import logging
 
 from pymead.core.bezier import Bezier
 from pymead.tutorials import curvature_comb_plotting
-
-
-logging.getLogger().setLevel(logging.INFO)
+from pymead.post.plot_formatters import dark_mode
 
 
 def save_figure(fig: plt.Figure, axs: plt.Axes, name: str,
@@ -22,10 +21,10 @@ def save_figure(fig: plt.Figure, axs: plt.Axes, name: str,
     if light:
         if png:
             fig.savefig(os.path.join('images', f'{name}_light.png'), **png_kwargs)
-            logging.info(f"Saved {os.path.join('images', f'{name}_light.png')}")
+            print(f"Saved {os.path.join('images', f'{name}_light.png')}")
         if pdf:
             fig.savefig(os.path.join('images', f'{name}_light.pdf'), **pdf_kwargs)
-            logging.info(f"Saved {os.path.join('images', f'{name}_light.pdf')}")
+            print(f"Saved {os.path.join('images', f'{name}_light.pdf')}")
     if dark:
         black = '#121212'
         fig.patch.set_facecolor(black)
@@ -44,10 +43,10 @@ def save_figure(fig: plt.Figure, axs: plt.Axes, name: str,
                 ax.title.set_color("white")
         if png:
             fig.savefig(os.path.join('images', f'{name}_dark.png'), **png_kwargs)
-            logging.info(f"Saved {os.path.join('images', f'{name}_dark.png')}")
+            print(f"Saved {os.path.join('images', f'{name}_dark.png')}")
         if pdf:
             fig.savefig(os.path.join('images', f'{name}_dark.pdf'), **pdf_kwargs)
-            logging.info(f"Saved {os.path.join('images', f'{name}_dark.pdf')}")
+            print(f"Saved {os.path.join('images', f'{name}_dark.pdf')}")
 
 
 def cubic_bezier(show: bool, save: bool):
@@ -78,14 +77,70 @@ def cubic_bezier(show: bool, save: bool):
         save_figure(fig, axs, "cubic_bezier")
 
 
+def cubic_bezier_animated():
+    # Plot settings
+    plt.rcParams["font.family"] = "serif"
+    color_control_points = "#b3b3b3ff"
+    color_curve = "#2cdbcaff"
+
+    # Generate the plot
+    fig, axs = plt.subplots(figsize=(8, 3))
+
+    # Generate the control points for the Bezier curve
+    P = np.array([
+        [0, 0],
+        [0.25, 0.5],
+        [0.75, -0.5],
+        [1, 0]
+    ])
+
+    # Generate the path for the second control point to follow in the animation
+    t = np.linspace(np.pi / 2, -3/2 * np.pi, 100)
+    r = 0.15  # radius of the circle
+    xc = 0.25  # x-location of the center of the circle
+    yc = 0.5 - r  # y-location of the center of the circle (positioned directly below the starting point of the cp)
+    x = r * np.cos(t) + xc
+    y = r * np.sin(t) + yc
+
+    bez = Bezier(P=P, nt=150)
+    curve, = axs.plot(bez.x, bez.y, color=color_curve, lw=2, label="curve")
+    cps, = axs.plot(P[:, 0], P[:, 1], color=color_control_points, ls="--", marker="*", lw=1.5, label="control points",
+                    markersize=10)
+    fig.set_tight_layout("tight")
+
+    def init_func():
+        curve.set_data([], [])
+        cps.set_data([], [])
+        axs.legend()
+        axs.set_xlabel(r"$x$")
+        axs.set_ylabel(r"$y$")
+        return [curve, cps]
+
+    def func(frame):
+        P[1, 0] = x[frame + 1]
+        P[1, 1] = y[frame + 1]
+        b = Bezier(P=P, nt=150)
+        curve.set_data(b.x, b.y)
+        cps.set_data(P[:, 0], P[:, 1])
+        return [curve, cps]
+
+    ani = FuncAnimation(fig=fig, frames=len(t) - 1, func=func, init_func=init_func, interval=20, blit=True)
+    ani.save("gui_help/images/cubic_bezier_animated_light.gif")
+
+    dark_mode(fig)
+    ani = FuncAnimation(fig=fig, frames=len(t) - 1, func=func, init_func=init_func, interval=20, blit=True)
+    ani.save("gui_help/images/cubic_bezier_animated_dark.gif")
+
+
 def main():
     show = False
     save = True
-    cubic_bezier(show, save)
-    fig, axs = curvature_comb_plotting.main()
-    save_figure(fig, axs, "curvature_comb", dark=False)
-    fig, axs = curvature_comb_plotting.main(dark=True)
-    save_figure(fig, axs, "curvature_comb", light=False)
+    # cubic_bezier(show, save)
+    # fig, axs = curvature_comb_plotting.main()
+    # save_figure(fig, axs, "curvature_comb", dark=False)
+    # fig, axs = curvature_comb_plotting.main(dark=True)
+    # save_figure(fig, axs, "curvature_comb", light=False)
+    cubic_bezier_animated()
 
 
 if __name__ == '__main__':
