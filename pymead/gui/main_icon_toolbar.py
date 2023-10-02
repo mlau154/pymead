@@ -29,6 +29,7 @@ class MainIconToolbar(QToolBar):
         self.button_settings = load_data(os.path.join(GUI_SETTINGS_DIR, "buttons.json"))
         self.button_settings.pop("template")
         self.buttons = None
+        self.browser = None
         self.add_all_buttons()
 
     def add_all_buttons(self):
@@ -262,3 +263,6 @@ class MainIconToolbar(QToolBar):
         eq.setValue(eq_string)
         self.parent.param_tree_instance.flush_changes(eq)
         self.parent.param_tree_instance.update_equation(eq, eq_string)
+
+    def on_help_button_pressed(self):
+        self.parent.show_help()

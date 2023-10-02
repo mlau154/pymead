@@ -22,7 +22,8 @@ curve junction. In particular, :math:`G^0` (point) continuity, :math:`G^1` (slop
    practical purposes, as long as a sufficiently small change in parameter (:math:`\Delta t \lessapprox 0.01`) is
    chosen, there will be little difference either from a graphical or aerodynamic perspective. If this does make a
    difference aerodynamically (e.g., if the airfoil is being used in a panel code), the parameter vector density
-   can be increased, or the parameter vector can take non-linear spacing (e.g., cosine spacing).
+   can be increased, or the parameter vector can take non-linear spacing (e.g., cosine spacing or curvature-based
+   spacing).
 
 The enforcement of point continuity is straightforward; the end control point location of one Bézier curve just needs to
 match the start control point location of the next Bézier curve. Slope continuity is similarly straightforward.

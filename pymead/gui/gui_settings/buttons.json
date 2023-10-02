@@ -45,6 +45,13 @@
     "checked-by-default": false,
     "function": "on_stop_button_pressed"
   },
+  "help": {
+    "icon": "help.png",
+    "status_tip": "pymead help",
+    "checkable": false,
+    "checked-by-default": false,
+    "function": "on_help_button_pressed"
+  },
   "template": {
     "icon": "picture.png",
     "status_tip": "A helpful hint",

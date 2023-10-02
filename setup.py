@@ -40,7 +40,7 @@ setup(
               "pymead/gui/pyqt_vertical_tab_widget/pyqt_vertical_tab_widget"],
     include_package_data=True,
     install_requires=["scipy", "numpy", "shapely", "matplotlib", "requests", "PyQt5==5.15.7",
-                      "pyqtgraph", "python-benedict", "pandas", "pymoo==0.5.0", "numba"],
+                      "pyqtgraph", "python-benedict", "pandas", "pymoo==0.5.0", "numba", "PyQtWebEngine"],
 )
 
 # TODO: fix relative file-pathing (like "menu.json") when calling the GUI main directly from a Python interpreter after

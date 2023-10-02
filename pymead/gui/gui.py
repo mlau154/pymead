@@ -63,6 +63,7 @@ from pymead.gui.input_dialog import convert_dialog_to_mset_settings, convert_dia
     convert_dialog_to_mplot_settings
 from pymead.gui.airfoil_statistics import AirfoilStatisticsDialog, AirfoilStatistics
 from pymead.gui.custom_graphics_view import CustomGraphicsView
+from pymead.gui.help_browser import HelpBrowserWindow
 from pymead.core.param import Param
 from pymead import ICON_DIR, GUI_SETTINGS_DIR, GUI_THEMES_DIR, GUI_DEFAULT_AIRFOIL_DIR
 from pymead.analysis.calc_aero_data import SVG_PLOTS, SVG_SETTINGS_TR
@@ -816,6 +817,9 @@ class GUI(QMainWindow):
 
     def export_nx_macro(self):
         self.mea.write_NX_macro('test_ctrlpts.py', {})
+
+    def show_help(self):
+        HelpBrowserWindow(parent=self)
 
     def export_IGES(self):
         self.dialog = ExportIGESDialog(parent=self)

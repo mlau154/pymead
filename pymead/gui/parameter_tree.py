@@ -1002,11 +1002,11 @@ class CustomParameterTree(ParameterTree):
             # Emit signals required for symmetry enforcement
             param = sel[-1].param
             parent = sel[-1].param.parent()
-            if (parent and isinstance(parent, CustomGroup)) or param.type == "header_param":
+            if (parent and isinstance(parent, CustomGroup)) or param.type() == "header_param":
                 self.sigSymmetry.emit(self.get_full_param_name_path(param))
                 self.sigPosConstraint.emit(self.get_full_param_name_path(param))
                 self.sigSelChanged.emit((self.get_full_param_name_path(param), param.value()))
-            elif param.type == "airfoil_param":
+            elif param.type() == "airfoil_param":
                 self.sigSymmetry.emit(f"${param.name()}")
                 self.sigPosConstraint.emit(f"${param.name()}")
                 self.sigSelChanged.emit((f"${param.name()}", param.value()))
