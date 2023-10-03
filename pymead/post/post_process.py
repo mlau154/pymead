@@ -503,7 +503,9 @@ class PostProcess:
                             extra_kwargs["label"] = "Optimal"
                             opt_labeled = True
                         ax.plot(F[:, 0], F[:, 1], **gray_circle_kwargs, **extra_kwargs)
-            ax.set_xlim([0.058, 0.19])
+            # ax.set_xlim([0.058, 0.19])  # FOR POP50 input ga_opt_70
+            ax.set_xlim([0.17, 0.25])  # FOR POP50 consumption ga_opt_93
+            # ax.set_xlim([0.17, 0.25])  # FOR POP150 consumption ga_opt_92
             ax.set_xlabel(r"$J_P$", fontdict=font)
             ax.set_ylabel(r"$J_F$", fontdict=font)
             format_axis_scientific(ax)
@@ -511,19 +513,19 @@ class PostProcess:
         generate_plots(axs, opt_end)
         legend_font_dict = {k: v for k, v in font.items() if k != "color"}
         legend_font_dict["size"] = 12
-        axs.legend(prop=legend_font_dict, loc="lower right", ncol=2)
+        axs.legend(prop=legend_font_dict, loc="upper right", ncol=2)
 
-        axs_inset = axs.inset_axes([0.6, 0.53, 0.35, 0.4])
-        generate_plots(axs_inset, opt_end)
-        x1, x2, y1, y2 = 0.068, 0.07, 0.012, 0.014
-        axs_inset.set_xlim(x1, x2)
-        axs_inset.set_ylim(y1, y2)
-        # x_labels = [item if idx % 2 else "" for idx, item in enumerate(axs_inset.get_xticklabels())]
-        # y_labels = [item if not idx % 2 else "" for idx, item in enumerate(axs_inset.get_yticklabels())]
-        # axs_inset.set_xticklabels(x_labels)
-        # axs_inset.set_yticklabels(y_labels)
-        axs_inset.xaxis.set_major_locator(mticker.MaxNLocator(2))
-        axs_inset.yaxis.set_major_locator(mticker.MaxNLocator(2, prune="lower"))
+        # axs_inset = axs.inset_axes([0.6, 0.53, 0.35, 0.4])
+        # generate_plots(axs_inset, opt_end)
+        # x1, x2, y1, y2 = 0.19, 0.20, 0.012, 0.014
+        # axs_inset.set_xlim(x1, x2)
+        # axs_inset.set_ylim(y1, y2)
+        # # x_labels = [item if idx % 2 else "" for idx, item in enumerate(axs_inset.get_xticklabels())]
+        # # y_labels = [item if not idx % 2 else "" for idx, item in enumerate(axs_inset.get_yticklabels())]
+        # # axs_inset.set_xticklabels(x_labels)
+        # # axs_inset.set_yticklabels(y_labels)
+        # axs_inset.xaxis.set_major_locator(mticker.MaxNLocator(2))
+        # axs_inset.yaxis.set_major_locator(mticker.MaxNLocator(2, prune="lower"))
 
         show_save_fig(fig, save_base_dir=self.image_dir, file_name_stub="pareto_front")
 

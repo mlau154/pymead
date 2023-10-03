@@ -4,7 +4,7 @@ Bézier Curves
 The core of pymead's geometric parametrization code is built around Bézier curves. Bézier curves are a subclass
 of B-splines, which are in turn a subclass of Non-Uniform Rational B-Splines (NURBS). More specifically,
 Bézier curves are uniform, non-rational, clamped B-splines. **Uniform** means that Bézier curves have uniform
-knot vectors. **Non-rational** means that Bézier curves can be represented by non-rational polynomials (such as
+knot vectors. **Non-rational** means that Bézier curves can be represented by non-rational polynomials (e.g.,
 :math:`t^2 + 1` as opposed to :math:`\frac{t^2+1}{t^3+2}`\ ).  **Clamped** means that Bézier curves have the useful
 property that they start at their starting control point and end at their ending control point. In addition,
 the local curve tangent at the endpoints is equal to slope of the line connecting the first and second or last and
