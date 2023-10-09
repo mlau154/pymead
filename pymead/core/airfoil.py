@@ -922,7 +922,10 @@ class Airfoil:
             elif t < t_old:
                 if t_old != 1.0:
                     new_param_vec_list[-1] = np.append(new_param_vec_list[-1], 1.0)
-                new_param_vec_list.append(np.array([0.0]))
+                if t == 0.0:
+                    new_param_vec_list.append(np.array([]))
+                else:
+                    new_param_vec_list.append(np.array([0.0]))
                 new_param_vec_list[-1] = np.append(new_param_vec_list[-1], t)
                 t_old = t
             else:

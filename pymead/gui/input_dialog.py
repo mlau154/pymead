@@ -1,3 +1,4 @@
+import typing
 from abc import abstractmethod
 
 import PyQt5.QtWidgets
@@ -8,7 +9,9 @@ from PyQt5.QtWidgets import QDialog, QDialogButtonBox, QFormLayout, QDoubleSpinB
 from PyQt5.QtCore import QEvent, Qt, pyqtSignal
 from PyQt5.QtGui import QStandardItem, QStandardItemModel
 import tempfile
-from PyQt5.QtCore import pyqtSlot, pyqtSignal
+from PyQt5.QtCore import pyqtSlot, pyqtSignal, QStandardPaths
+
+from pymead.core.mea import MEA
 from pymead.gui.infty_doublespinbox import InftyDoubleSpinBox
 from pymead.gui.pyqt_vertical_tab_widget.pyqt_vertical_tab_widget import VerticalTabWidget
 from pymead.gui.scientificspinbox_master.ScientificDoubleSpinBox import ScientificDoubleSpinBox
@@ -26,7 +29,7 @@ from pymead.gui.bounds_values_table import BoundsValuesTable
 from pymead.optimization.objectives_and_constraints import Objective, Constraint, FunctionCompileError
 from pymead.analysis import cfd_output_templates
 from pymead.analysis.utils import viscosity_calculator
-from pymead import GUI_DEFAULTS_DIR, GUI_DIALOG_WIDGETS_DIR
+from pymead import GUI_DEFAULTS_DIR, GUI_DIALOG_WIDGETS_DIR, q_settings
 import pyqtgraph as pg
 from PyQt5.QtWidgets import QMenu, QAction
 from PyQt5.QtGui import QContextMenuEvent
@@ -1139,6 +1142,59 @@ class SingleAirfoilViscousDialog(QDialog):
         return self.inputs
 
 
+class DownsamplingPreviewDialog(QDialog):
+    def __init__(self, use_downsampling: bool, downsampling_max_pts: int, downsampling_curve_exp: float,
+                 parent: QWidget or None = None):
+        super().__init__(parent=parent)
+
+        self.setWindowTitle("Airfoil Coordinates Preview")
+        self.setFont(self.parent().font())
+        self.setGeometry(300, 300, 700, 250)
+
+        self.grid_widget = {}
+
+        # buttonBox = QDialogButtonBox(self)
+        # buttonBox.addButton(QDialogButtonBox.Ok)
+        # buttonBox.addButton(QDialogButtonBox.Cancel)
+        self.grid_layout = QGridLayout(self)
+
+        # Add pyqtgraph widget
+        self.w = pg.GraphicsLayoutWidget(parent=self, size=(700, 250))
+        # self.w.setBackground('#2a2a2b')
+        self.v = self.w.addPlot()
+        self.v.setAspectLocked()
+
+        gui_object = get_parent(self, depth=5)
+
+        theme = gui_object.themes[gui_object.current_theme]
+        self.w.setBackground(theme["graph-background-color"])
+
+        # Make a copy of the MEA
+        mea = gui_object.mea.deepcopy()
+        if not isinstance(mea, MEA):
+            raise TypeError(f"Generated mea was of type {type(mea)} instead of type pymead.core.mea.MEA")
+
+        # Update the curves, using downsampling if specified
+        for a in mea.airfoils.values():
+            new_param_vec_list = None
+            if use_downsampling:
+                new_param_vec_list = a.downsample(max_airfoil_points=downsampling_max_pts,
+                                                  curvature_exp=downsampling_curve_exp)
+            for c_idx, curve in enumerate(a.curve_list):
+                if new_param_vec_list is not None:
+                    curve.update(curve.P, t=new_param_vec_list[c_idx])
+
+        for a in mea.airfoils.values():
+            for c in a.curve_list:
+                self.v.plot(x=c.x, y=c.y, symbol="o")
+
+        self.grid_layout.addWidget(self.w, 0, 0, 3, 3)
+        # self.grid_layout.addWidget(buttonBox, 1, 1, 1, 2)
+        #
+        # buttonBox.accepted.connect(self.accept)
+        # buttonBox.rejected.connect(self.reject)
+
+
 class MSETDialogWidget(PymeadDialogWidget):
     airfoilOrderChanged = pyqtSignal(object)
 
@@ -1197,6 +1253,17 @@ class MSETDialogWidget(PymeadDialogWidget):
             get_parent(self, 3).setWindowTitle(f"Optimization Setup - {os.path.split(load_file)[-1]}")
             get_parent(self, 2).overrideInputs(override_inputs)  # Overrides the inputs for the whole PymeadDialogVTabWidget
             get_parent(self, 2).setStatusTip(f"Loaded {load_file}")
+
+    def show_airfoil_coordinates_preview(self, _):
+        override_inputs = get_parent(self, 2).getInputs()
+        use_downsampling = bool(override_inputs["MSET"]["use_downsampling"])
+        downsampling_max_pts = override_inputs["MSET"]["downsampling_max_pts"]
+        downsampling_curve_exp = override_inputs["MSET"]["downsampling_curve_exp"]
+        preview_dialog = DownsamplingPreviewDialog(use_downsampling=use_downsampling,
+                                                   downsampling_max_pts=downsampling_max_pts,
+                                                   downsampling_curve_exp=downsampling_curve_exp,
+                                                   parent=self)
+        preview_dialog.exec_()
 
 
 class MSESDialogWidget(PymeadDialogWidget):
@@ -1895,11 +1962,21 @@ class BoundsDialog(QDialog):
 
 
 class LoadDialog(QFileDialog):
-    def __init__(self, parent, file_filter: str = "JMEA Files (*.jmea)"):
+    def __init__(self, parent, settings_var: str, file_filter: str = "JMEA Files (*.jmea)"):
         super().__init__(parent=parent)
+
         self.setFileMode(QFileDialog.ExistingFile)
         self.setNameFilter(self.tr(file_filter))
         self.setViewMode(QFileDialog.Detail)
+        self.settings_var = settings_var
+
+        # Get default open location
+        if q_settings.contains(settings_var):
+            path = q_settings.value(settings_var)
+        else:
+            path = QStandardPaths.writableLocation(QStandardPaths.DocumentsLocation)
+
+        self.setDirectory(path)
 
 
 class SaveAsDialog(QFileDialog):
@@ -1911,13 +1988,19 @@ class SaveAsDialog(QFileDialog):
 
 
 class NewMEADialog(QDialog):
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, window_title: str or None = None, message: str or None = None):
         super().__init__(parent=parent)
-        self.setWindowTitle("Save Changes?")
+        window_title = window_title if window_title is not None else "Save Changes?"
+        self.setWindowTitle(window_title)
         self.setFont(self.parent().font())
         self.reject_changes = False
+        self.save_successful = False
         buttonBox = QDialogButtonBox(QDialogButtonBox.Yes | QDialogButtonBox.No | QDialogButtonBox.Cancel, self)
         layout = QFormLayout(self)
+
+        if message is not None:
+            label = QLabel(message, parent=self)
+            layout.addWidget(label)
 
         layout.addWidget(buttonBox)
 
@@ -1929,7 +2012,11 @@ class NewMEADialog(QDialog):
 
     @pyqtSlot()
     def yes(self):
-        self.parent().save_mea()
+        try:
+            save_successful = self.parent().save_mea()
+            self.save_successful = save_successful
+        except:
+            self.save_successful = False
 
     @pyqtSlot()
     def no(self):
@@ -1937,14 +2024,16 @@ class NewMEADialog(QDialog):
 
 
 class ExitDialog(QDialog):
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, window_title: str or None = None, message: str or None = None):
         super().__init__(parent=parent)
-        self.setWindowTitle("Exit?")
+        window_title = window_title if window_title is not None else "Exit?"
+        self.setWindowTitle(window_title)
         self.setFont(self.parent().font())
         buttonBox = QDialogButtonBox(QDialogButtonBox.Yes | QDialogButtonBox.No, self)
         layout = QFormLayout(self)
 
-        label = QLabel("Airfoil not saved.\nAre you sure you want to exit?", parent=self)
+        message = message if message is not None else "Airfoil not saved.\nAre you sure you want to exit?"
+        label = QLabel(message, parent=self)
 
         layout.addWidget(label)
         layout.addWidget(buttonBox)
@@ -2484,20 +2573,20 @@ class GridBounds(QWidget):
         super().__init__(parent=parent)
         layout = QGridLayout()
         self.setLayout(layout)
-        label_names = ['Left', 'Right', 'Top', 'Bottom']
+        label_names = ['Left', 'Right', 'Bottom', 'Top']
         self.labels = {k: QLabel(k, self) for k in label_names}
         label_positions = {
             'Left': [1, 0],
             'Right': [1, 2],
-            'Top': [2, 0],
-            'Bottom': [2, 2],
+            'Bottom': [2, 0],
+            'Top': [2, 2],
         }
         self.widgets = {k: QDoubleSpinBox() for k in label_positions}
         defaults = {
             'Left': [-5.0, 1, 1],
             'Right': [5.0, 1, 3],
-            'Top': [5.0, 2, 1],
-            'Bottom': [-5.0, 2, 3],
+            'Bottom': [5.0, 2, 1],
+            'Top': [-5.0, 2, 3],
         }
         for k, v in defaults.items():
             self.widgets[k].setMinimum(-np.inf)

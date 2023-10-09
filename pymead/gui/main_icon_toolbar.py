@@ -10,7 +10,7 @@ from pymead.core.pos_param import PosParam
 from pymead.utils.read_write_files import load_data
 from pymead.gui.input_dialog import SymmetryDialog, PosConstraintDialog
 # from pymead.core.symmetry import symmetry
-from pymead import ICON_DIR, GUI_SETTINGS_DIR
+from pymead import ICON_DIR, GUI_SETTINGS_DIR, q_settings
 # from functools import partial
 
 
@@ -59,6 +59,7 @@ class MainIconToolbar(QToolBar):
 
     def on_grid_button_pressed(self):
         # import pyqtgraph as pg
+        print(f"{q_settings.value('dark_theme_checked') = }")
         if hasattr(self.parent.dockable_tab_window, "current_dock_widget"):
             dw = self.parent.dockable_tab_window.current_dock_widget
         else:
@@ -82,27 +83,14 @@ class MainIconToolbar(QToolBar):
                     v.showGrid(x=True, y=True)
 
     def change_background_color_button_toggled(self, checked):
+
         if checked:
-            self.parent.dark_mode = True
             self.parent.set_theme("dark")
+            q_settings.setValue("dark_theme_checked", 2)
         else:
-            self.parent.dark_mode = False
             self.parent.set_theme("light")
+            q_settings.setValue("dark_theme_checked", 0)
 
-        # if self.parent.analysis_graph is not None:
-        #     if checked:
-        #         self.parent.analysis_graph.set_background('#2a2a2b')
-        #     else:
-        #         self.parent.analysis_graph.set_background('w')
-
-        # if checked:
-        #     self.parent.param_tree_instance.set_dark_mode()
-        # else:
-        #     self.parent.param_tree_instance.set_light_mode()
-        # QTreeView::branch:closed {color: white;} QTreeView::branch:open {color: white;}''')
-        # QTreeView::item {border: 1px solid black;}''')  # need to use image, not
-        # color for open closed arrows
-        # self.parent.design_tree_widget.updatePalette()
         self.parent.show()
 
     def add_airfoil_button_toggled(self):
@@ -112,16 +100,6 @@ class MainIconToolbar(QToolBar):
             self.parent.v.scene().sigMouseClicked.disconnect()
             airfoil = Airfoil(base_airfoil_params=BaseAirfoilParams(dx=Param(self.new_airfoil_location.x()),
                                                                     dy=Param(self.new_airfoil_location.y())))
-            # self.parent.mea.te_thickness_edit_mode = self.parent.te_thickness_edit_mode
-            # self.parent.mea.add_airfoil(airfoil, len(self.parent.mea.airfoils), self.parent.param_tree_instance, w=self.parent.w, v=self.parent.v)
-            # self.parent.airfoil_name_list = [k for k in self.parent.mea.airfoils.keys()]
-            # # self.parent.param_tree_instance.p.child("Analysis").child("Inviscid Cl Calc").setLimits([a.tag for a in self.parent.mea.airfoils.values()])
-            # self.parent.param_tree_instance.params[-1].add_airfoil(airfoil, len(self.parent.mea.airfoils) - 1)
-            # for a in self.parent.mea.airfoils.values():
-            #     if a.airfoil_graph.airfoil_parameters is None:
-            #         a.airfoil_graph.airfoil_parameters = self.parent.param_tree_instance.p.param('Airfoil Parameters')
-            # airfoil.airfoil_graph.scatter.sigPlotChanged.connect(partial(self.parent.param_tree_instance.plot_changed,
-            #                                                              f"A{len(self.parent.mea.airfoils) - 1}"))
             self.parent.add_airfoil(airfoil)
 
         self.parent.v.scene().sigMouseClicked.connect(scene_clicked)

@@ -46,9 +46,9 @@ ylabel = {
             "capSS": r"Supersonic Capture Streamtube",
             "sf": r"Design $C_{F_{\parallel V_\infty}}$ (counts)",
             "sfmh": r"Design $C_{F_{\parallel V_\infty}} - C_{d_h}$ (counts)",
-            "Edot": r"TP Energy Rate Coefficient",
-            "diss_surf": r"Surface Dissipation Coefficient",
-            "diss_shock": r"Shock Dissipation Coefficient",
+            "Edot": r"Design $C_{\dot{\mathcal{E}}}$",
+            "diss_surf": r"Design $C_{\Phi_{\mathrm{surf}}}$",
+            "diss_shock": r"Design $C_{\Phi_{\mathrm{shock}}}$",
         }
 
 bl_matplotlib_labels = {
@@ -106,6 +106,8 @@ class PostProcess:
         self.mea['airfoil_graphs_active'] = False
         self.underwing = underwing
         self.param_dict = load_data(os.path.join(self.analysis_dir, 'param_dict.json'))
+        self.pop_size = deepcopy(self.param_dict["population_size"])
+        print(f"{self.pop_size = }")
         self.param_dict_original = deepcopy(self.param_dict)
         self.modify_param_dict_func = modify_param_dict_func
         if self.modify_param_dict_func is not None:
@@ -356,6 +358,12 @@ class PostProcess:
             for i, F in enumerate(F_list):
                 weight_str = self.get_weight_str(i)
                 label = None if self.weights.shape[0] < 2 else weight_str[1:]
+                label_dict = {
+                    "w0-100": f"POP{self.pop_size}L",
+                    "w50-50": f"POP{self.pop_size}M",
+                    "w100-0": f"POP{self.pop_size}R"
+                }
+                label = label_dict[label]
 
                 # Determine what ydata to plot
                 ydata = F[:, obj_fun_idx]
@@ -364,6 +372,8 @@ class PostProcess:
                 axs.plot(ydata, label=label)
 
             fig.set_tight_layout('tight')
+            if obj_fun_idx == 0 and self.pop_size == 150:
+                axs.set_ylim([0.165, 0.235])
             axs.set_xlabel("Generation", fontdict=font)
             axs.set_ylabel(obj_fun_label_dict[obj_fun_idx], fontdict=font)
             axs.grid("on", ls=":")
@@ -420,6 +430,12 @@ class PostProcess:
             for i, ppf in enumerate(post_process_forces_list):
                 weight_str = self.get_weight_str(i)
                 label = None if self.weights.shape[0] < 2 else weight_str[1:]
+                label_dict = {
+                    "w0-100": f"POP{self.pop_size}L",
+                    "w50-50": f"POP{self.pop_size}M",
+                    "w100-0": f"POP{self.pop_size}R"
+                }
+                label = label_dict[label]
 
                 # Determine what ydata to plot
                 if v in ppf.keys():
@@ -455,7 +471,7 @@ class PostProcess:
 
     def pareto_front(self, opt_start: int = 5, opt_end: int = None, opt_num: int = 10):
 
-        fig, axs = plt.subplots(figsize=(10, 6))
+        fig, axs = plt.subplots(figsize=(8, 4.8))
 
         def generate_plots(ax: plt.Axes, opt_end_):
             index = self.set_index(None)
@@ -512,7 +528,7 @@ class PostProcess:
 
         generate_plots(axs, opt_end)
         legend_font_dict = {k: v for k, v in font.items() if k != "color"}
-        legend_font_dict["size"] = 12
+        legend_font_dict["size"] = 14
         axs.legend(prop=legend_font_dict, loc="upper right", ncol=2)
 
         # axs_inset = axs.inset_axes([0.6, 0.53, 0.35, 0.4])
@@ -595,12 +611,13 @@ class PostProcess:
                 legend_loc = "lower left"
             else:
                 legend_loc = "upper left"
-            axs.legend(legend_proxies, legend_names, prop={'size': 14, 'family': font['family']},
+            axs.legend(legend_proxies, legend_names, prop={'size': 18, 'family': font['family']},
                        fancybox=False, shadow=False, loc=legend_loc, ncol=ncols, frameon=False)
             axs.set_aspect('equal')
-            axs.set_xlabel(r'$x/c_{main}$', fontdict=font)
-            axs.set_ylabel(r'$y/c_{main}$', fontdict=font)
+            axs.set_xlabel(r'$x/c_{main}$', fontdict=dict(family="serif", size=18))
+            axs.set_ylabel(r'$y/c_{main}$', fontdict=dict(family="serif", size=18))
             axs.grid('on', ls=':')
+            format_axis_scientific(axs)
             modifiers = ""
             if rotate_x_axis_wind_direction:
                 modifiers += "_rotateWind"

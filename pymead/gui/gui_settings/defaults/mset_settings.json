@@ -163,5 +163,34 @@
         "clicked_connect": "load_mset_mses_mplot_settings",
         "column": 5,
         "label.column": 4
+    },
+    "use_downsampling": {
+        "label": "Use downsampling?",
+        "widget_type": "QCheckBox",
+        "push_button": "Preview",
+        "push_button_action": "show_airfoil_coordinates_preview",
+        "setToolTip": "Downsample the airfoil coordinates based on the curvature.\nMay be necessary if many AnchorPoints are used.",
+        "column": 5,
+        "label.column": 4
+    },
+    "downsampling_max_pts": {
+        "label": "Max downsampling points",
+        "widget_type": "QSpinBox",
+        "setMinimum": 20,
+        "setMaximum": 10000,
+        "setValue": 200,
+        "column": 5,
+        "label.column": 4,
+        "setToolTip": "Maximum number of airfoil coordinates allowed per airfoil"
+    },
+    "downsampling_curve_exp": {
+        "label": "Downsampling curvature exponent",
+        "widget_type": "QDoubleSpinBox",
+        "setMinimum": 0.0001,
+        "setMaximum": 10000.0,
+        "setValue": 2.0,
+        "column": 5,
+        "label.column": 4,
+        "setToolTip": "Importance of curvature in the downsampling scheme.\nValues close to 0 place high emphasis on curvature,\nwhile values close to positive infinity place no emphasis\non curvature and leave the parameter\nvector effectively uniformly spaced"
     }
 }

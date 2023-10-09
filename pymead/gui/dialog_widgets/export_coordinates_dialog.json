@@ -126,7 +126,7 @@
       "w": "QLabel",
       "text": "Downsampling curvature exponent",
       "grid": [9, 0, 1, 1],
-      "tool_tip": "Importance of curvature in the downsampling scheme. Values close to 0 place high emphasis on curvature, while values close to positive infinity place no emphasis on curvature and leave the parameter vector effectively uniformly spaced"
+      "tool_tip": "Importance of curvature in the downsampling scheme.\nValues close to 0 place high emphasis on curvature,\nwhile values close to positive infinity place no emphasis\non curvature and leave the parameter\nvector effectively uniformly spaced"
     },
     "spinbox": {
       "w": "QDoubleSpinBox",
@@ -134,7 +134,7 @@
       "lower_bound": 0.0001,
       "upper_bound": 10000.0,
       "grid": [9, 1, 1, 1],
-      "tool_tip": "Importance of curvature in the downsampling scheme. Values close to 0 place high emphasis on curvature, while values close to positive infinity place no emphasis on curvature and leave the parameter vector effectively uniformly spaced"
+      "tool_tip": "Importance of curvature in the downsampling scheme.\nValues close to 0 place high emphasis on curvature,\nwhile values close to positive infinity place no emphasis\non curvature and leave the parameter\nvector effectively uniformly spaced"
     }
   }
 }

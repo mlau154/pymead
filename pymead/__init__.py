@@ -73,12 +73,8 @@ Version Notes
 
 """
 import os
-from matplotlib import colormaps
-import logging
-# Set the default logging level to DEBUG (lowest level)
-# logging.basicConfig(format='%(levelname)s: %(message)s', level=logging.INFO)
-logger = logging.getLogger("pymead")
-logger.setLevel("INFO")
+
+from PyQt5.QtCore import QCoreApplication, QSettings
 
 DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")
 RESOURCE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "resources")
@@ -90,3 +86,8 @@ GUI_SETTINGS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "gui
 GUI_THEMES_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "gui", "gui_settings", "themes")
 GUI_DEFAULT_AIRFOIL_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "gui", "default_airfoil")
 GUI_DIALOG_WIDGETS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "gui", "dialog_widgets")
+
+QCoreApplication.setOrganizationName("mlaero")
+QCoreApplication.setApplicationName("pymead")
+
+q_settings = QSettings()

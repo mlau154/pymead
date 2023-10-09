@@ -1,0 +1,6 @@
+{
+  "jmea_default_open_location": "Directory where load_mea() starts by default",
+  "parameter_list_default_open_location": "Directory where import_parameter_list() starts by default",
+  "geometry_plot_default_open_location": "Directory where plot_geometry() starts by default",
+  "dark_theme_checked": "set_theme('dark') used if true, else set_theme('light')"
+}

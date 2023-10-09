@@ -65,7 +65,7 @@ from pymead.gui.airfoil_statistics import AirfoilStatisticsDialog, AirfoilStatis
 from pymead.gui.custom_graphics_view import CustomGraphicsView
 from pymead.gui.help_browser import HelpBrowserWindow
 from pymead.core.param import Param
-from pymead import ICON_DIR, GUI_SETTINGS_DIR, GUI_THEMES_DIR, GUI_DEFAULT_AIRFOIL_DIR
+from pymead import ICON_DIR, GUI_SETTINGS_DIR, GUI_THEMES_DIR, GUI_DEFAULT_AIRFOIL_DIR, q_settings
 from pymead.analysis.calc_aero_data import SVG_PLOTS, SVG_SETTINGS_TR
 from pyqtgraph.exporters import CSVExporter, SVGExporter
 
@@ -126,7 +126,6 @@ class GUI(QMainWindow):
         self.Cp_graph_plot_handles = []
         self.forces_dict = {}
         self.te_thickness_edit_mode = False
-        # self.dark_mode = False
         self.worker = None
         self.n_analyses = 0
         self.n_converged_analyses = 0
@@ -209,10 +208,20 @@ class GUI(QMainWindow):
         self.create_menu_bar()
         self.main_icon_toolbar = MainIconToolbar(self)
 
-        if self.main_icon_toolbar.buttons["change-background-color"]["button"].isChecked():
-            self.set_theme("dark")
+        if q_settings.contains("dark_theme_checked"):
+            theme = "dark" if q_settings.value("dark_theme_checked") else "light"
         else:
+            theme = "dark"
+            q_settings.setValue("dark_theme_checked", 2)
+
+        if theme == "dark":
+            self.set_theme("dark")
+            self.main_icon_toolbar.buttons["change-background-color"]["button"].setChecked(True)
+        elif theme == "light":
             self.set_theme("light")
+            self.main_icon_toolbar.buttons["change-background-color"]["button"].setChecked(False)
+        else:
+            raise ValueError(f"Current theme options are 'dark' and 'light'. Theme chosen was {theme}")
 
         self.output_area_text(f"<font color='#1fbbcc' size='5'>pymead</font> <font size='5'>version</font> "
                               f"<font color='#44e37e' size='5'>{__version__}</font>",
@@ -239,8 +248,11 @@ class GUI(QMainWindow):
         #     dw.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.MinimumExpanding)
 
         # Load the airfoil system from the system argument variable if necessary
+        self.mea_start_dict = None
         if self.path is not None:
             self.load_mea_no_dialog(self.path)
+        else:
+            self.mea_start_dict = self.copy_mea_dict()
 
         using_latest_res, latest_ver, current_ver = using_latest()
         if not using_latest_res:
@@ -258,20 +270,22 @@ class GUI(QMainWindow):
         a0: QCloseEvent
             Qt CloseEvent object
         """
-        save_dialog = NewMEADialog(parent=self)
-        exit_dialog = ExitDialog(parent=self)
-        while True:
-            if save_dialog.exec_():  # If "Yes" to "Save Changes,"
-                if self.mea.file_name is not None:  # If the changes were saved successfully, close the program.
-                    break
-                else:
-                    if exit_dialog.exec_():  # Otherwise, If "Yes" to "Exit the Program Anyway," close the program.
-                        break
-                if save_dialog.reject_changes:  # If "No" to "Save Changes," close the program.
-                    break
-            else:  # If "Cancel" to "Save Changes," end the CloseEvent and keep the program running.
-                a0.ignore()
-                break
+        if self.mea_start_dict != self.copy_mea_dict():  # Only run this code if changes have been made
+            save_dialog = NewMEADialog(parent=self)
+            exit_dialog = ExitDialog(parent=self)
+            while True:
+                if save_dialog.exec_():  # If "Yes" to "Save Changes,"
+                    if save_dialog.save_successful:  # If the changes were saved successfully, close the program.
+                        return
+                    else:
+                        if exit_dialog.exec_():  # Otherwise, If "Yes" to "Exit the Program Anyway," close the program.
+                            return
+                        else:
+                            a0.ignore()
+                            return
+                else:  # If "Cancel" to "Save Changes," end the CloseEvent and keep the program running.
+                    a0.ignore()
+                    return
 
     def on_tab_closed(self, name: str, event: QCloseEvent):
         if name == "Geometry":
@@ -402,31 +416,59 @@ class GUI(QMainWindow):
             self.save_mea()
             self.setWindowTitle(f"pymead - {os.path.split(self.mea.file_name)[-1]}")
             self.disp_message_box(f"Multi-element airfoil saved as {self.mea.file_name}", message_mode='info')
+            return True
         else:
             if self.save_attempts > 0:
                 self.save_attempts = 0
                 self.disp_message_box('No file name specified. File not saved.', message_mode='warn')
+            return False
 
     def save_mea(self):
         if self.mea.file_name is None:
             if self.save_attempts < 1:
                 self.save_attempts += 1
-                self.save_as_mea()
+                return self.save_as_mea()
             else:
                 self.save_attempts = 0
                 self.disp_message_box('No file name specified. File not saved.', message_mode='warn')
+                return False
         else:
             save_data(self.mea.copy_as_param_dict(), self.mea.file_name)
             self.setWindowTitle(f"pymead - {os.path.split(self.mea.file_name)[-1]}")
             self.save_attempts = 0
+            return True
 
     def copy_mea(self):
         return self.mea.deepcopy()
 
+    def copy_mea_dict(self, deactivate_airfoil_graphs: bool = False):
+        return self.mea.copy_as_param_dict(deactivate_airfoil_graphs=deactivate_airfoil_graphs)
+
     def load_mea(self):
-        dialog = LoadDialog(self)
+
+        if self.mea_start_dict is not None:
+            if self.mea_start_dict != self.copy_mea_dict():
+                save_dialog = NewMEADialog(parent=self, message="Airfoil has changes. Save?")
+                exit_dialog = ExitDialog(parent=self, window_title="Load anyway?",
+                                         message="Airfoil not saved.\nAre you sure you want to load a new one?")
+                while True:
+                    if save_dialog.exec_():  # If "Yes" to "Save Changes,"
+                        if save_dialog.save_successful:  # If the changes were saved successfully, close the program.
+                            break
+                        else:
+                            if exit_dialog.exec_():  # Otherwise, If "Yes" to "Exit the Program Anyway," close the program.
+                                break
+                        if save_dialog.reject_changes:  # If "No" to "Save Changes," do not load an MEA.
+                            return
+                    else:  # If "Cancel" to "Save Changes," do not load an MEA
+                        return
+
+        dialog = LoadDialog(self, settings_var="jmea_default_open_location")
+
         if dialog.exec_():
             file_name = dialog.selectedFiles()[0]
+            file_name_parent_dir = os.path.dirname(file_name)
+            q_settings.setValue(dialog.settings_var, file_name_parent_dir)
         else:
             file_name = None
         if file_name is not None:
@@ -482,9 +524,10 @@ class GUI(QMainWindow):
     def import_parameter_list(self):
         """This function imports a list of parameters normalized by their bounds"""
         file_filter = "DAT Files (*.dat)"
-        dialog = LoadDialog(self, file_filter=file_filter)
+        dialog = LoadDialog(self, settings_var="parameter_list_default_open_location", file_filter=file_filter)
         if dialog.exec_():
             file_name = dialog.selectedFiles()[0]
+            q_settings.setValue(dialog.settings_var, os.path.dirname(file_name))
             parameter_list = np.loadtxt(file_name).tolist()
             for airfoil in self.mea.airfoils.values():
                 airfoil.airfoil_graph.airfoil_parameters = self.param_tree_instance.p.param('Airfoil Parameters')
@@ -503,9 +546,10 @@ class GUI(QMainWindow):
 
     def plot_geometry(self):
         file_filter = "DAT Files (*.dat)"
-        dialog = LoadDialog(self, file_filter=file_filter)
+        dialog = LoadDialog(self, settings_var="geometry_plot_default_open_location", file_filter=file_filter)
         if dialog.exec_():
             file_name = dialog.selectedFiles()[0]
+            q_settings.setValue(dialog.settings_var, os.path.dirname(file_name))
             coords = np.loadtxt(file_name)
             geometry_idx = 0
             while True:
@@ -706,6 +750,7 @@ class GUI(QMainWindow):
         self.main_layout.replaceWidget(widget0, self.design_tree_widget)
         widget0.deleteLater()
         self.auto_range_geometry()
+        self.mea_start_dict = self.copy_mea_dict()
         self.progress_bar.setValue(100)
         self.statusBar().showMessage("Airfoil system load complete.", 2000)
         self.progress_bar.hide()
@@ -874,7 +919,9 @@ class GUI(QMainWindow):
             elif xfoil_settings['prescribe'] == 'Inviscid Cl':
                 xfoil_settings['CLI'] = inputs['CLI']
 
-            coords = tuple(self.mea.airfoils[xfoil_settings['airfoil']].get_coords(
+            #TODO: insert downsampling step here
+
+            coords = tuple(self.mea.deepcopy().airfoils[xfoil_settings['airfoil']].get_coords(
                 body_fixed_csys=False, as_tuple=True))
 
             aero_data, _ = calculate_aero_data(xfoil_settings['airfoil_analysis_dir'],
@@ -954,8 +1001,12 @@ class GUI(QMainWindow):
     def multi_airfoil_analysis(self, mset_settings: dict, mses_settings: dict,
                                mplot_settings: dict):
         # print(f"{mplot_settings = }")
-        coords = tuple([self.mea.airfoils[k].get_coords(
-            body_fixed_csys=False, as_tuple=True) for k in mset_settings['airfoil_order']])
+        mea = self.mea.deepcopy() if mset_settings["use_downsampling"] else self.mea
+
+        coords = tuple([mea.airfoils[k].get_coords(
+            body_fixed_csys=False, as_tuple=True, downsample=mset_settings["use_downsampling"],
+            ds_max_points=mset_settings["downsampling_max_pts"],
+            ds_curve_exp=mset_settings["downsampling_curve_exp"]) for k in mset_settings['airfoil_order']])
         aero_data, _ = calculate_aero_data(mset_settings['airfoil_analysis_dir'],
                                            mset_settings['airfoil_coord_file_name'],
                                            coords=coords,
