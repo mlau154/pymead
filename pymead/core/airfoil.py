@@ -903,7 +903,14 @@ class Airfoil:
         new_t_concat = np.array([])
 
         for c_idx, curve in enumerate(self.curve_list):
-            exp_R = np.abs(curve.R) ** (1 / curvature_exp)
+            temp_R = deepcopy(curve.R)
+            for r_idx, r in enumerate(temp_R):
+                if np.isinf(r) and r > 0:
+                    temp_R[r_idx] = 10000
+                elif np.isinf(r) and r < 0:
+                    temp_R[r_idx] = -10000
+
+            exp_R = np.abs(temp_R) ** (1 / curvature_exp)
             new_t = np.zeros(exp_R.shape)
             for i in range(1, new_t.shape[0]):
                 new_t[i] = new_t[i - 1] + (exp_R[i] + exp_R[i - 1]) / 2
