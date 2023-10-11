@@ -254,6 +254,9 @@ def calculate_aero_data(airfoil_coord_dir: str, airfoil_name: str, coords: typin
                     mplot_settings["flow_field"] = 2
                     mplot_settings["Streamline_Grid"] = 2
 
+                if mplot_settings["flow_field"]:
+                    mplot_settings["Streamline_Grid"] = 2
+
                 for mplot_output_name in ['Mach', 'Streamline_Grid', 'Grid', 'Grid_Zoom', 'flow_field']:
                     if mplot_settings[mplot_output_name]:
                         run_mplot(airfoil_name, airfoil_coord_dir, mplot_settings, mode=mplot_output_name)
