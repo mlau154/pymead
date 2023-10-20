@@ -35,6 +35,13 @@ templates_path = ['_templates']
 
 html_theme = 'pydata_sphinx_theme'
 
+html_context = {
+    'display_github': True,
+    'github_user': 'mlau154',
+    'github_repo': 'pymead',
+    'github_version': 'master',
+}
+
 add_module_names = False
 
 numfig = True

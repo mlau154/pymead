@@ -17,10 +17,14 @@ Contents
 .. toctree::
    :maxdepth: 2
 
-   tutorials
    gui
 
 .. toctree::
    :maxdepth: 3
 
    api
+
+.. toctree::
+   :maxdepth: 2
+
+   tutorials

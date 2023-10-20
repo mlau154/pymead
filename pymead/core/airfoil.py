@@ -857,10 +857,33 @@ class Airfoil:
         elif tool == 'XFOIL':
             subprocess.run((['xfoil', os.path.join(DATA_DIR, coord_file_name)]))
 
-    def plot_control_point_skeleton(self, axs: plt.axes, **plot_kwargs):
+    def plot_control_point_skeleton(self, axs: plt.Axes, **plot_kwargs):
+        """
+        Plots the control points, in counter-clockwise order, without duplicates.
+
+        Parameters
+        ==========
+        axs: plt.Axes
+            Matplotlib Axes on which to plot the control points
+
+        Returns
+        =======
+        list[Line2D]
+            Matplotlib plot handle list
+        """
         return axs.plot(self.control_point_array[:, 0], self.control_point_array[:, 1], **plot_kwargs)
 
-    def set_curvature_scale_factor(self, scale_factor=None):
+    def set_curvature_scale_factor(self, scale_factor: float or None = None):
+        """
+        Sets the curvature scale factor used for curvature comb plotting.
+
+        Parameters
+        ==========
+        scale_factor: float or None
+            If of type float, assign the scale factor and calculate the scale factor normalized by the maximum
+            curvature point on the airfoil. If ``None`` and there is already an assigned curvature scale factor,
+            use that value. Otherwise, return an error.
+        """
         if scale_factor is None and self.curvature_scale_factor is None:
             raise ValueError('Curvature scale factor not initialized for airfoil!')
         if scale_factor is not None:
@@ -868,9 +891,31 @@ class Airfoil:
         self.normalized_curvature_scale_factor = self.curvature_scale_factor / np.max([np.max(abs(curve.k)) for curve in self.curve_list])
 
     def plot_curvature_comb_normals(self, axs: plt.axes, scale_factor, **plot_kwargs):
+        """
+        Plots all the curvature comb normals for each Bézier curve in the airfoil on a specified Matplotlib ``plt.Axes``.
+        See `this tutorial <https://pymead.readthedocs.io/en/latest/_autosummary/pymead.tutorials.curvature_comb_plotting.html>`__
+        for an example of how to call this method for an Airfoil.
+
+        Parameters
+        ==========
+        axs: plt.Axes
+            Matplotlib axis on which to plot the curvature comb
+
+        scale_factor: float
+            Factor by which to scale the curvature combs. The length of each comb tooth is equal to
+            ``k_i / max(k) * scale_factor``, where ``k_i`` is the curvature (normalized by the airfoil chord)
+            at a given airfoil coordinate and ``k`` is the vector of curvature for the curve. Default: 0.1
+
+        plot_kwargs
+            Keyword arguments to pass to Matplotlib's plot function (e.g., ``color="blue"``, ``lw=1.5``, etc.)
+
+        Returns
+        =======
+        list
+            Matplotlib plot handles to the curvature comb
+        """
         self.set_curvature_scale_factor(scale_factor)
         self.plt_normals = []
-        # print(f"Setting plt_normals...")
         for curve in self.curve_list:
             plt_normal = curve.plot_curvature_comb_normals(axs, self.normalized_curvature_scale_factor, **plot_kwargs)
             self.plt_normals.append(plt_normal)
@@ -925,7 +970,7 @@ class Airfoil:
         r"""
         Downsamples the airfoil coordinates based on a curvature exponent. This method works by evaluating each
         Bézier curve using a set number of points (150) and then calculating
-        :math:`\mathbf{R_e} = \mathbf{R}^{e_c}`, where :math:`\mathbf{R}` is the radius of curvature vector and
+        :math:`\mathbf{R_e} = \mathbf{R}^{1/e_c}`, where :math:`\mathbf{R}` is the radius of curvature vector and
         :math:`e_c` is the curvature exponent (an input to this method). Then, :math:`\mathbf{R_e}` is
         normalized by its maximum value and concatenated to a single array for all curves in a given airfoil.
         Finally, ``max_airfoil_points`` are chosen from this array to create a new set of parameter vectors
@@ -944,7 +989,7 @@ class Airfoil:
 
         Returns
         =======
-        typing.List[np.ndarray]
+        list[np.ndarray]
             List of parameter vectors (one for each Bézier curve)
         """
 

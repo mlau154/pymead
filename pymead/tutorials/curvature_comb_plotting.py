@@ -1,6 +1,6 @@
 """
 Examples of plotting curvature combs for Bézier curves and airfoils. See the code below or by
-clicking [source] next to the ``main`` function.
+clicking on ``main`` under "Functions" at the bottom and then clicking [source] next to the ``main`` function.
 
 
 .. figure:: ../images/curvature_comb_light.*
