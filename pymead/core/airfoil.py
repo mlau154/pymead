@@ -877,11 +877,36 @@ class Airfoil:
         return self.plt_normals
 
     def update_curvature_comb_normals(self):
+        """
+        Updates the curvature comb normals for each Bézier curve in the airfoil.
+        """
         for curve in self.curve_list:
-            # print(f"scale_factor = {curve.scale_factor}")
             curve.update_curvature_comb_normals()
 
-    def plot_curvature_comb_curve(self, axs: plt.axes, scale_factor, **plot_kwargs):
+    def plot_curvature_comb_curve(self, axs: plt.Axes, scale_factor: float = 0.1, **plot_kwargs):
+        """
+        Plots all the curvature combs for each Bézier curve in the airfoil on a specified Matplotlib ``plt.Axes``.
+        See `this tutorial <https://pymead.readthedocs.io/en/latest/_autosummary/pymead.tutorials.curvature_comb_plotting.html>`__
+        for an example of how to call this method for an Airfoil.
+
+        Parameters
+        ==========
+        axs: plt.Axes
+            Matplotlib axis on which to plot the curvature comb
+
+        scale_factor: float
+            Factor by which to scale the curvature combs. The length of each comb tooth is equal to
+            ``k_i / max(k) * scale_factor``, where ``k_i`` is the curvature (normalized by the airfoil chord)
+            at a given airfoil coordinate and ``k`` is the vector of curvature for the curve. Default: 0.1
+
+        plot_kwargs
+            Keyword arguments to pass to Matplotlib's plot function (e.g., ``color="blue"``, ``lw=1.5``, etc.)
+
+        Returns
+        =======
+        list
+            Matplotlib plot handles to the curvature comb
+        """
         self.set_curvature_scale_factor(scale_factor)
         self.plt_comb_curves = []
         for curve in self.curve_list:
@@ -890,10 +915,38 @@ class Airfoil:
         return self.plt_comb_curves
 
     def update_curvature_comb_curve(self):
+        """
+        Updates the curvature combs for each Bézier curve in the airfoil.
+        """
         for curve in self.curve_list:
             curve.update_curvature_comb_curve()
 
     def downsample(self, max_airfoil_points: int, curvature_exp: float = 2.0):
+        r"""
+        Downsamples the airfoil coordinates based on a curvature exponent. This method works by evaluating each
+        Bézier curve using a set number of points (150) and then calculating
+        :math:`\mathbf{R_e} = \mathbf{R}^{e_c}`, where :math:`\mathbf{R}` is the radius of curvature vector and
+        :math:`e_c` is the curvature exponent (an input to this method). Then, :math:`\mathbf{R_e}` is
+        normalized by its maximum value and concatenated to a single array for all curves in a given airfoil.
+        Finally, ``max_airfoil_points`` are chosen from this array to create a new set of parameter vectors
+        for the airfoil.
+
+        Parameters
+        ==========
+        max_airfoil_points: int
+            Maximum number of points in the airfoil (the actual number in the final airfoil may be slightly less)
+
+        curvature_exp: float
+            Curvature exponent used to scale the radius of curvature. Values close to 0 place high emphasis on
+            curvature, while values close to :math:`\infty` place low emphasis on curvature (creating nearly
+            uniform spacing)
+
+
+        Returns
+        =======
+        typing.List[np.ndarray]
+            List of parameter vectors (one for each Bézier curve)
+        """
 
         if max_airfoil_points > sum([len(curve.t) for curve in self.curve_list]):
             for curve in self.curve_list:
@@ -942,6 +995,14 @@ class Airfoil:
         return new_param_vec_list
 
     def count_airfoil_points(self):
+        """
+        Counts the number of discrete airfoil coordinates based on the current evaluation parameter vector.
+
+        Returns
+        =======
+        int
+            Number of unique airfoil coordinates
+        """
         return sum([len(curve.t) for curve in self.curve_list]) - (len(self.curve_list) - 1)
 
 

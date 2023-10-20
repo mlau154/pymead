@@ -1,8 +1,8 @@
 import matplotlib.pyplot as plt
+import numpy as np
 
 from pymead.utils.nchoosek import nchoosek
 from pymead.core.parametric_curve import ParametricCurve
-import numpy as np
 
 
 class Bezier(ParametricCurve):
