@@ -7,4 +7,8 @@ API
    :template: custom-module-template.rst
    :recursive:
 
-    pymead
+    pymead.analysis
+    pymead.core
+    pymead.optimization
+    pymead.plugins
+    pymead.utils
