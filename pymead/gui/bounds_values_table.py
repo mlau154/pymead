@@ -1,5 +1,8 @@
 from copy import deepcopy
 
+import numpy as np
+from PyQt5.QtCore import Qt, pyqtSlot
+from PyQt5.QtGui import QColor, QFont, QPalette
 from pyqtgraph import TableWidget
 import benedict
 
@@ -35,7 +38,46 @@ class BoundsValuesTable(TableWidget):
         data = flatten_dict(jmea_dict)
         super().__init__(editable=True, sortable=False)
         self.setData(data)
+        self.highlight_unbounded_params(data=data)
         self.original_data = deepcopy(self.data())
+
+    def handleItemChanged(self, item):
+        super().handleItemChanged(item)
+        self.highlight_unbounded_params(item=item)
+
+    def set_red_cell_background(self, row: int, col: int):
+        item = self.item(row, col)
+        item.setBackground(QColor(247, 84, 92, 150))
+
+    def reset_cell_background(self, row: int, col: int):
+        item = self.item(row, col)
+        bcolor = self.item(row, 0).background()
+        item.setBackground(bcolor)
+
+    def highlight_unbounded_params(self, item=None, data: list or None = None):
+        if data is not None:
+            for row_idx, row in enumerate(data):
+                if np.isinf(row["lower"]) and bool(row["active"]) and (len(row["eq"]) == 0):
+                    self.set_red_cell_background(row_idx, 2)
+                if np.isinf(row["upper"]) and bool(row["active"]) and (len(row["eq"]) == 0):
+                    self.set_red_cell_background(row_idx, 3)
+        if item is not None:
+            row_idx = item.row()
+            if self.item(row_idx, 5) is None:
+                return
+            lower = self.item(row_idx, 2).value
+            upper = self.item(row_idx, 3).value
+            active = bool(self.item(row_idx, 4).value)
+            linked = bool(len(self.item(row_idx, 5).value) > 0)
+
+            if np.isinf(lower) and active and not linked:
+                self.set_red_cell_background(row_idx, 2)
+            else:
+                self.reset_cell_background(row_idx, 2)
+            if np.isinf(upper) and active and not linked:
+                self.set_red_cell_background(row_idx, 3)
+            else:
+                self.reset_cell_background(row_idx, 3)
 
     def data(self):
         rows = list(range(self.rowCount()))
@@ -69,8 +111,6 @@ class BoundsValuesTable(TableWidget):
 
         new_data = self.data()
 
-        # flattened_new = flatten_dict(self.data())
-
         indices_to_modify = []
         params_to_modify = []
         data_to_modify = {}
@@ -103,15 +143,24 @@ class BoundsValuesTable(TableWidget):
                 ndx, ndy = None, None
 
             if ndx is None and ndy is None:
-                data_to_modify[nd[0]] = {"value": nd[1], "bounds": [nd[2], nd[3]], "active": bool(nd[4]), "eq": nd[5]}
+                # For Param
+                data_to_modify[nd[0]] = {
+                    "value": nd[1],
+                    "bounds": [nd[2], nd[3]],
+                    "active": bool(nd[4]),
+                    "eq": nd[5]
+                }
             else:
+                # For PosParam
+                if ndx[5] is None or ndy[5] is None:
+                    eq = None
+                else:
+                    eq = f"{{{ndx[5]},{ndy[5]}}}"
                 data_to_modify[ndx[0]] = {
                     "value": [ndx[1], ndy[1]],
                     "bounds": [[ndx[2], ndx[3]], [ndy[2], ndy[3]]],
                     "active": [bool(ndx[4]), bool(ndy[4])],
-                    "eq": ndx[5]
+                    "eq": eq
                 }
-
-        # TODO: make equation cell wider
 
         return data_to_modify
