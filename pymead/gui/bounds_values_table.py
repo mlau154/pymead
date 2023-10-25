@@ -90,7 +90,27 @@ class BoundsValuesTable(TableWidget):
 
         for idx in indices_to_modify:
             nd = new_data[idx]
-            data_to_modify[nd[0]] = {"value": nd[1], "bounds": [nd[2], nd[3]], "active": bool(nd[4]), "eq": nd[5]}
+            # Treat the positional parameters (PosParam) differently than the regular parameters (Param)
+            if nd[0] is None:
+                # Identified that this row in the table corresponds to the "y" value of a PosParam
+                ndy = nd
+                ndx = new_data[idx - 1]
+            elif (idx + 1 < len(new_data)) and new_data[idx + 1][0] is None:
+                # Identified that the next row in the table corresponds to the "y" value of a PosParam
+                ndx = nd
+                ndy = new_data[idx + 1]
+            else:
+                ndx, ndy = None, None
+
+            if ndx is None and ndy is None:
+                data_to_modify[nd[0]] = {"value": nd[1], "bounds": [nd[2], nd[3]], "active": bool(nd[4]), "eq": nd[5]}
+            else:
+                data_to_modify[ndx[0]] = {
+                    "value": [ndx[1], ndy[1]],
+                    "bounds": [[ndx[2], ndx[3]], [ndy[2], ndy[3]]],
+                    "active": [bool(ndx[4]), bool(ndy[4])],
+                    "eq": ndx[5]
+                }
 
         # TODO: make equation cell wider
 
