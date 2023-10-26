@@ -1,20 +1,18 @@
-/* anything related to the light theme *//*
-html[data-theme="light"] {
+/* anything related to the light theme */
+/*html[data-theme="light"] {
 
-    *//* whatever you want to change *//*
-    --pst-color-primary: blue;
-}
+    /* whatever you want to change */
+    /*--pst-color-primary: blue;
+/*}
 
-p[data-theme="light"]{
-    color: orange;
-}
+/*p[data-theme="light"]{
+    /*color: orange;
+/*}
 
-*//* anything related to the dark theme *//*
+/* anything related to the dark theme */
 html[data-theme="dark"] {
-
-    *//* whatever you want to change *//*
-    --pst-color-primary: red;
-}*/
+    --bs-body-bg: 33,37,41;
+}
 
 /*
 figure {

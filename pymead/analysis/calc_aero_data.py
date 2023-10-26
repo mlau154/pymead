@@ -7,16 +7,15 @@ from collections import namedtuple
 
 import numpy as np
 from matplotlib import pyplot as plt
-from scipy.interpolate import CloughTocher2DInterpolator, RBFInterpolator, NearestNDInterpolator, LinearNDInterpolator
-from shapely.geometry import LineString, Point, MultiPoint
+from scipy.interpolate import CloughTocher2DInterpolator
+from shapely.geometry import MultiPoint
 
 from pymead.analysis.read_aero_data import read_aero_data_from_xfoil, read_Cp_from_file_xfoil, read_bl_data_from_mses, \
     read_forces_from_mses, read_grid_stats_from_mses, read_field_from_mses, read_streamline_grid_from_mses, \
     flow_var_idx, convert_blade_file_to_3d_array, read_actuator_disk_data_mses, read_Mach_from_mses_file
 from pymead.analysis.compressible_flow import calculate_normal_shock_total_pressure_ratio
 from pymead.utils.file_conversion import convert_ps_to_svg
-from pymead.utils.geometry import check_airfoil_self_intersection, convert_numpy_array_to_shapely_LineString, \
-    calculate_area_triangle_heron
+from pymead.utils.geometry import convert_numpy_array_to_shapely_LineString
 from pymead.utils.read_write_files import write_tuple_tuple_to_file
 
 SVG_PLOTS = ['Mach_contours', 'grid', 'grid_zoom']
@@ -131,8 +130,10 @@ def calculate_aero_data(airfoil_coord_dir: str, airfoil_name: str, coords: typin
       Whether to calculate and export the surface pressure coefficient distribution in the case of XFOIL, or the
       entire set of boundary layer data in the case of MSES. Default: ``True``
 
-    export_CPK: bool
-      Whether to calculate the mechanical flow power coefficient for the aero-propulsive case. Default: ``False``
+    Returns
+    =======
+    dict, str
+        A dictionary containing the evaluated aerodynamic data and the path to the log file
     """
 
     tool_list = ['XFOIL', 'MSES']
@@ -618,7 +619,7 @@ def run_mplot(name: str, base_dir: str, mplot_settings: dict, mode: str = "force
     return mplot_log
 
 
-def write_blade_file(name: str, base_dir: str, grid_bounds: typing.Iterable, coords: typing.Tuple[tuple]):
+def write_blade_file(name: str, base_dir: str, grid_bounds: typing.Iterable, coords: typing.Tuple[tuple]) -> str:
     r"""
     Writes airfoil geometry to an MSES blade file
 
@@ -642,6 +643,11 @@ def write_blade_file(name: str, base_dir: str, grid_bounds: typing.Iterable, coo
       :math:`M \times N \times 2` where :math:`M` is the number of airfoils and :math:`N` is the number of airfoil
       coordinates. The coordinates can be input as a ragged array, where :math:`N` changes with each 3-D slice (i.e.,
       the number of airfoil coordinates can be different for each airfoil).
+
+    Returns
+    =======
+    str
+        Absolute path to the generated MSES blade file
     """
     if not os.path.exists(os.path.join(base_dir, name)):  # if specified directory doesn't exist,
         os.mkdir(os.path.join(base_dir, name))  # create it

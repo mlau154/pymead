@@ -1,17 +1,17 @@
 
 
-def viscosity_calculator(T, rho=None, input_units: str = 'K'):
+def viscosity_calculator(T: float, rho: float or None = None, input_units: str = 'K') -> float:
     r"""
     Used to calculate the viscosity from temperature using Sutherland's law for dialogs in the GUI
 
     Parameters
     ==========
-    T
-      The input temperature (can be in units of :math:`K`, :math:`^{\circ}C`, or :math:`^{\circ}F`
+    T: float
+        The input temperature (can be in units of :math:`K`, :math:`^{\circ}C`, or :math:`^{\circ}F`)
 
-    rho
+    rho: float or None
       The density, specified if an output of kinematic viscosity is desired instead of dynamic viscosity.
-      Default: ``None``
+      Default: ``None``.
 
     input_units: str
       Input units. Must be one of ``"K"``, ``"C"``, or ``"F"``. Default: ``"K"``
@@ -19,7 +19,7 @@ def viscosity_calculator(T, rho=None, input_units: str = 'K'):
     Returns
     =======
     float
-      The dynamic viscosity if the density is not specified, or the kinematic viscosity if the density *is* specified
+        The dynamic viscosity if the density is not specified, or the kinematic viscosity if the density *is* specified
     """
     if input_units == 'K':
         pass

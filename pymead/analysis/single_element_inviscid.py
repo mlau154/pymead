@@ -15,7 +15,7 @@ def single_element_inviscid(coord: np.ndarray, alpha: float or np.float64):
     A linear strength vortex panel method for the inviscid solution of a single airfoil, sped up using the
     just-in-time compiler in *numba*. Directly adapted from "Program 7" of Appendix D in [1].
 
-    [1] J. Katz and and A. Plotkin, Low-Speed Aerodynamics, Second Edition, 2nd ed. New York, NY,
+    [1] J. Katz and A. Plotkin, Low-Speed Aerodynamics, Second Edition, 2nd ed. New York, NY,
     USA: Cambridge University Press, 2004. Accessed: Mar. 07, 2023. [Online].
     Available: `<https://asmedigitalcollection.asme.org/fluidsengineering/article/126/2/293/458666/LowSpeed-Aerodynamics-Second-Edition>`_
 
@@ -175,7 +175,7 @@ def single_element_inviscid(coord: np.ndarray, alpha: float or np.float64):
     return CO, CP, CL
 
 
-def main():
+def _main():
     # Insert airfoil points here
     coords = pd.read_csv(os.path.join(DATA_DIR, 'naca0012.dat'), skiprows=1, names=['x', 'y'], delim_whitespace=True)
     # print(coord)
@@ -196,5 +196,5 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    _main()
 

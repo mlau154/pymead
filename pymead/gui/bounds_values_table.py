@@ -1,8 +1,7 @@
 from copy import deepcopy
 
 import numpy as np
-from PyQt5.QtCore import Qt, pyqtSlot
-from PyQt5.QtGui import QColor, QFont, QPalette
+from PyQt5.QtGui import QColor
 from pyqtgraph import TableWidget
 import benedict
 

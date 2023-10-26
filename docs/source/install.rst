@@ -89,7 +89,6 @@ If the installation was successful, an airfoil will appear on the screen.
 Dependencies
 ============
 
-.. _required:
 Required
 --------
 
@@ -111,7 +110,6 @@ installed when using ``pip install pymead``. Alternatively, if cloning from the
 - `pymoo <https://pymoo.org/>`_: Aerodynamic shape optimization
 - `numba <https://numba.pydata.org/>`_: Speed-up of inviscid lift coefficient calculation
 
-.. _optional:
 Optional
 --------
 pymead relies on several external libraries for low- and medium-fidelity
