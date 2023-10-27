@@ -55,7 +55,7 @@ class MEA:
     #     state['v'] = None  # Set unpicklable ViewBox object to None
     #     return state
 
-    def add_airfoil(self, airfoil: Airfoil, idx: int, param_tree, w=None, v=None):
+    def add_airfoil(self, airfoil: Airfoil, idx: int, param_tree, w=None, v=None, gui_obj=None):
         """
         Add an airfoil at index ``idx`` to the multi-element airfoil container.
 
@@ -92,7 +92,7 @@ class MEA:
         assign_names_to_params_in_param_dict(self.param_dict)
 
         if self.airfoil_graphs_active:
-            self.add_airfoil_graph_to_airfoil(airfoil, idx, param_tree, w=w, v=v)
+            self.add_airfoil_graph_to_airfoil(airfoil, idx, param_tree, w=w, v=v, gui_obj=gui_obj)
 
         dben = benedict.benedict(self.param_dict)
         for k in dben.keypaths():
@@ -128,7 +128,7 @@ class MEA:
         """
         assign_names_to_params_in_param_dict(self.param_dict)
 
-    def add_airfoil_graph_to_airfoil(self, airfoil: Airfoil, idx: int, param_tree, w=None, v=None):
+    def add_airfoil_graph_to_airfoil(self, airfoil: Airfoil, idx: int, param_tree, w=None, v=None, gui_obj=None):
         """
         Add a ``pyqtgraph``-based ``pymead.gui.airfoil_graph.AirfoilGraph`` to the airfoil at index ``int``.
         """
@@ -143,12 +143,12 @@ class MEA:
             else:  # Assign the first airfoil's Graphics Window and ViewBox to each subsequent airfoil
                 airfoil_graph = AirfoilGraph(airfoil,
                                              w=self.airfoils['A0'].airfoil_graph.w,
-                                             v=self.airfoils['A0'].airfoil_graph.v)
+                                             v=self.airfoils['A0'].airfoil_graph.v, gui_obj=gui_obj)
                 # print(f"setting te_thickness_edit_mode of airfoil {airfoil.tag} to {self.te_thickness_edit_mode}")
                 airfoil_graph.te_thickness_edit_mode = self.te_thickness_edit_mode
         else:
             # print("Creating new AirfoilGraph!")
-            airfoil_graph = AirfoilGraph(airfoil, w=w, v=v)
+            airfoil_graph = AirfoilGraph(airfoil, w=w, v=v, gui_obj=gui_obj)
             # print(f"setting te_thickness_edit_mode of airfoil {airfoil.tag} to {self.te_thickness_edit_mode}")
             airfoil_graph.te_thickness_edit_mode = self.te_thickness_edit_mode
             self.w = w

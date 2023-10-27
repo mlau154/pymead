@@ -1,13 +1,18 @@
 import pyqtgraph as pg
-from PyQt5.QtGui import QPicture, QPainter, QPolygonF
-from PyQt5.QtCore import QPointF, QRectF
+from pyqtgraph.GraphicsScene.mouseEvents import HoverEvent
+import shapely.geometry
+from PyQt5.QtGui import QPicture, QPainter, QPolygonF, QPainterPath
+from PyQt5.QtCore import QPointF, QRectF, pyqtSignal
 
 
 # Create a subclass of GraphicsObject.
 # The only required methods are paint() and boundingRect()
 # (see QGraphicsItem documentation)
 class PolygonItem(pg.GraphicsObject):
-    def __init__(self, data, pen=None, brush=None):
+    sigPolyEnter = pyqtSignal(str, float, float)
+    sigPolyExit = pyqtSignal()
+
+    def __init__(self, data, airfoil_name: str, pen=None, brush=None):
         pg.GraphicsObject.__init__(self)
         self.data = data
         self.pen = pen
@@ -18,16 +23,21 @@ class PolygonItem(pg.GraphicsObject):
         self.picture = None
         self.polygon = QPolygonF()
         self.generatePicture()
+        self.airfoil_name = airfoil_name
 
     def update_polygon(self):
+        """
+        Updates the polygon based on a new set of vertices (contained in ``self.data``)
+        """
         if len(self.polygon) != 0:
             self.polygon.clear()
         for row in self.data:
             self.polygon.append(QPointF(row[0], row[1]))
 
     def generatePicture(self):
-        # pre-computing a QPicture object allows paint() to run much more quickly,
-        # rather than re-drawing the shapes every time.
+        """
+        Pre-computes the QPicture for speed.
+        """
         self.picture = QPicture()
         p = QPainter(self.picture)
         p.setPen(self.pen)
@@ -35,6 +45,21 @@ class PolygonItem(pg.GraphicsObject):
         self.update_polygon()
         p.drawPolygon(self.polygon)
         p.end()
+
+    def shape(self):
+        """
+        Defines the shape of the polygon as a ``QPainterPath`` so that the hover detection is more accurate. Note that
+        by default, Qt simply uses the shape returned by ``boundingRect()`` if this method is not overridden.
+
+        Returns
+        =======
+        QPainterPath
+            Painter path for the polygon
+        """
+        path = QPainterPath()
+        path.addPolygon(self.polygon)
+        path.closeSubpath()
+        return path
 
     def paint(self, p, *args):
         p.drawPicture(0, 0, self.picture)
@@ -45,10 +70,38 @@ class PolygonItem(pg.GraphicsObject):
         # (in this case, QPicture does all the work of computing the bounding rect for us)
         return QRectF(self.picture.boundingRect())
 
+    def getCentroid(self):
+        """
+        Gets the centroid of the polygon using shapely
+
+        Returns
+        =======
+        typing.List[float]
+            List of [x,y] representing the centroid
+        """
+        shapely_poly = shapely.geometry.polygon.Polygon(shell=self.data)
+        centroid = shapely_poly.centroid.xy
+        return [centroid[0][0], centroid[1][0]]
+
+    def hoverEvent(self, ev: HoverEvent):
+        """
+        Emits custom signals sigPolyEnter and sigPolyExit on airfoil polygon enter and exit
+
+        Parameters
+        ==========
+        ev: pg.GraphicsScene.mouseEvents.HoverEvent
+            Event emitted by pyqtgraph whenever the mouse hovers over the polygon defined by ``shape()``
+        """
+        centroid = self.getCentroid()
+        if ev.isExit():
+            self.sigPolyExit.emit()
+        elif ev.isEnter():
+            self.sigPolyEnter.emit(self.airfoil_name, centroid[0], centroid[1])
+
 
 if __name__ == '__main__':
     data_ = [[0, 0], [0.1, 0.1], [0.2, 0.3], [-1, 1], [0, 0]]
-    item = PolygonItem(data_)
+    item = PolygonItem(data_, "A0")
     plt = pg.plot()
     plt.addItem(item)
     plt.setWindowTitle('pyqtgraph example: customGraphicsItem')

@@ -1,7 +1,6 @@
 """
 Interactive airfoil graph object
 """
-from time import time
 
 import numpy as np
 
@@ -12,7 +11,6 @@ from pymead.gui.polygon_item import PolygonItem
 from pymead.core.pos_param import PosParam
 
 from pymead.core.airfoil import Airfoil
-from pymead.analysis.single_element_inviscid import single_element_inviscid
 
 from time import time
 
@@ -20,7 +18,7 @@ from time import time
 class AirfoilGraph(pg.GraphItem):
 
     def __init__(self, airfoil: Airfoil = None, pen=None,
-                 size: tuple = (1000, 300), background_color: str = 'w', w=None, v=None):
+                 size: tuple = (1000, 300), background_color: str = 'w', w=None, v=None, gui_obj=None):
         # Enable antialiasing for prettier plots
         pg.setConfigOptions(antialias=True)
 
@@ -48,20 +46,30 @@ class AirfoilGraph(pg.GraphItem):
         # self.point_label.anchor(itemPos=(1, 0), parentPos=(1, 0), offset=(-10, 10))
 
         self.airfoil = airfoil
+        self.gui_obj = gui_obj
+
         self.last_time = None
         if not self.airfoil:
             self.airfoil = Airfoil()
         self.airfoil.init_airfoil_curve_pg(self.v, pen)
-        self.polygon_item = PolygonItem(self.airfoil.get_coords())
-        self.poly = self.v.addItem(self.polygon_item)
+        if self.airfoil.tag is None:
+            self.airfoil.tag = "A0"
+        self.polygon_item = PolygonItem(self.airfoil.get_coords(), airfoil_name=self.airfoil.tag)
+        self.v.addItem(self.polygon_item)
+        # self.polygon_item.setAcceptHoverEvents(True)
         self.dragPoint = None
         self.dragOffset = None
         self.te_thickness_edit_mode = False
         self.param_tree = None
         self.airfoil_parameters = None
+        self.text_item = None
         self.textItems = []
         pg.GraphItem.__init__(self)
         self.v.addItem(self)
+
+        # Connect the custom signals in polygon_item to detect when airfoil fill shape is hovered or exited
+        self.polygon_item.sigPolyEnter.connect(self.airfoil_hovered)
+        self.polygon_item.sigPolyExit.connect(self.airfoil_exited)
 
         pos, adj, symbols = self.update_airfoil_data()
 
@@ -271,18 +279,6 @@ class AirfoilGraph(pg.GraphItem):
         ev.accept()
         t2 = time()
         self.last_time = t2
-    #
-    # @staticmethod
-    # def update_affected_parameters(obj, param_name_list: list, affected_airfoil_list: list):
-    #     for param_name in param_name_list:
-    #         if hasattr(obj, param_name):
-    #             for affected_param in getattr(obj, param_name).affects:
-    #                 print(f"{affected_param.name = }")
-    #                 affected_param.update()
-    #                 if affected_param.airfoil_tag is not None:
-    #                     if affected_param.airfoil_tag not in affected_airfoil_list:
-    #                         affected_airfoil_list.append(affected_param.airfoil_tag)
-    #     return affected_airfoil_list
 
     def plot_change_recursive(self, child_list: list):
 
@@ -314,8 +310,55 @@ class AirfoilGraph(pg.GraphItem):
                     self.plot_change_recursive(child.children())
 
     def hover_tip(self, x, y, data):
+        """
+        Shows data about each airfoil curve control point when hovered
+
+        Parameters
+        ==========
+        x
+            x-location of the control point
+
+        y
+            y-location of the control point
+
+        data
+            Signaled by the hover (first index represents the control point index within the airfoil)
+        """
         idx = data[0]
         return f"{self.airfoil.control_points[idx]}\nx: {x:.8f}\ny: {y:.8f}\nindex: {idx}"
+
+    def airfoil_hovered(self, airfoil_name: str, x_centroid: float, y_centroid: float):
+        """
+        Adds the name of the airfoil as a label to the airfoil's centroid when the airfoil shape is
+        hovered with the mouse
+
+        Parameters
+        ==========
+        airfoil_name: str
+            Name of the airfoil (A0, A1, etc.)
+
+        x_centroid: float
+            x-location of the airfoil's centroid
+
+        y_centroid: float
+            y-location of the airfoil's centroid
+        """
+
+        # Get the color for the text
+        main_color = None if self.gui_obj is None else self.gui_obj.themes[self.gui_obj.current_theme]["main-color"]
+
+        # Add the name of the airfoil as a pg.TextItem if not dragging
+        if self.dragPoint is None:
+            self.text_item = pg.TextItem(airfoil_name, anchor=(0.5, 0.5), color=main_color)
+            self.text_item.setPos(x_centroid, y_centroid)
+            self.v.addItem(self.text_item)
+
+    def airfoil_exited(self):
+        """
+        Remove the label from the airfoil centroid on mouse hover exit
+        """
+        if self.text_item is not None:
+            self.v.removeItem(self.text_item)
 
 
 if __name__ == '__main__':

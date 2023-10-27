@@ -141,49 +141,21 @@ class GUI(QMainWindow):
         self.setFont(QFont("DejaVu Sans"))
 
         self.mea = MEA(airfoil_graphs_active=True)
-        # self.mea.add_airfoil_graph_to_airfoil(self.mea.airfoils['A0'], 0, None)
-
-        # self.mea.airfoils['A0'].insert_free_point(FreePoint(Param(0.5), Param(0.1), previous_anchor_point='te_1'))
-        # self.mea.airfoils['A0'].update()
-        # self.airfoil_graphs = [AirfoilGraph(self.mea.airfoils['A0'])]
         self.w = pg.GraphicsLayoutWidget(show=True, size=(1000, 300))
         self.w.setBackground('#2a2a2b')
         self.v = self.w.addPlot()
         self.v.setAspectLocked()
         self.v.hideButtons()
-        # self.w = self.mea.airfoils['A0'].airfoil_graph.w
-        # self.v = self.mea.airfoils['A0'].airfoil_graph.v
-        # internal_geometry_xy = np.loadtxt(os.path.join(DATA_DIR, 'sec_6.txt'))
-        # # print(f"geometry = {internal_geometry_xy}")
-        # scale_factor = 0.612745
-        # x_start = 0.13352022
-        # self.internal_geometry = self.v.plot(internal_geometry_xy[:, 0] * scale_factor + x_start,
-        #                                      internal_geometry_xy[:, 1] * scale_factor,
-        #                                      pen=pg.mkPen(color='orange', width=1))
-        # self.airfoil_graphs.append(AirfoilGraph(self.mea.airfoils['A1'], w=self.w, v=self.v))
         self.main_layout = QHBoxLayout()
         self.status_bar = QStatusBar()
         self.setStatusBar(self.status_bar)
         self.param_tree_instance = MEAParamTree(self.mea, self.statusBar(), parent=self)
-        # self.mea.airfoils['A0'].airfoil_graph.param_tree = self.param_tree_instance
-        # self.mea.airfoils['A0'].airfoil_graph.airfoil_parameters = self.param_tree_instance.p.param(
-        #     'Airfoil Parameters')
-        # print(f"param_tree_instance = {self.param_tree_instance}")
         self.design_tree_widget = self.param_tree_instance.t
-        # self.design_tree_widget.setAlternatingRowColors(False)
-        # self.design_tree_widget.setStyleSheet("selection-background-color: #36bacfaa; selection-color: black;")
-        # self.design_tree_widget.setStyleSheet('''QTreeWidget {color: black; alternate-background-color: red;
-        #         selection-background-color: #36bacfaa;}
-        #         QTreeView::item:hover {background: #36bacfaa;} QTreeView::item {border: 0px solid gray; color: black}''')
-        # self.setStyleSheet("color: black; font-family: DejaVu; font-size: 12px;")
         self.text_area = ConsoleTextArea()
         self.right_widget_layout = QVBoxLayout()
-        # self.tab_widget = QTabWidget()
-        # self.tab_widget.addTab(self.w, "Geometry")
         self.dockable_tab_window = DockableTabWidget(self)
         self.dockable_tab_window.add_new_tab_widget(self.w, "Geometry")
         self.dockable_tab_window.tab_closed.connect(self.on_tab_closed)
-
         self.right_widget_layout.addWidget(self.dockable_tab_window)
         self.right_widget_layout.addWidget(self.text_area)
         self.right_widget = QWidget()
@@ -192,18 +164,7 @@ class GUI(QMainWindow):
         self.main_layout.addWidget(self.right_widget, 3)
         self.main_widget = QWidget()
         self.main_widget.setLayout(self.main_layout)
-        # print(f"children of gui = {self.main_widget.children()}")
-        # self.airfoil_graph.w.setFocus()
-        # self.main_layout_upper.addWidget(MyBar(self))
-        # self.main_layout_upper.addWidget(self.main_widget)
-        # self.main_widget_upper = QWidget()
-        # self.main_widget_upper.setLayout(self.main_layout_upper)
         self.setCentralWidget(self.main_widget)
-
-        # self.setWindowFlags(self.windowFlags() | Qt.FramelessWindowHint)
-
-        # self.resize(640, self.titleBar.height() + 480)
-
         self.set_title_and_icon()
         self.create_menu_bar()
         self.main_icon_toolbar = MainIconToolbar(self)
@@ -254,6 +215,10 @@ class GUI(QMainWindow):
         else:
             self.mea_start_dict = self.copy_mea_dict()
 
+        # Check if we are using the most recent release of pymead (notify if not)
+        self.check_for_new_version()
+
+    def check_for_new_version(self):
         using_latest_res, latest_ver, current_ver = using_latest()
         if not using_latest_res:
             self.disp_message_box(f"A newer version of pymead ({latest_ver}) is available for download at "
@@ -623,31 +588,6 @@ class GUI(QMainWindow):
         field = read_field_from_mses(field_file)
         grid_stats = read_grid_stats_from_mses(grid_stats_file)
         x_grid, y_grid = read_streamline_grid_from_mses(grid_file, grid_stats)
-
-        # with open(field_file, 'r') as f:
-        #     lines = f.readlines()
-        #
-        # n_streamlines = 0
-        # for line in lines:
-        #     if line == '\n':
-        #         n_streamlines += 1
-        #
-        # n_streamwise_lines = int(data.shape[0] / n_streamlines)
-        #
-        # x = data[:, 0].reshape(n_streamlines, n_streamwise_lines).T
-        # y = data[:, 1].reshape(n_streamlines, n_streamwise_lines).T
-
-        # flow_var_idx = {'M': 7, 'Cp': 8, 'p': 5, 'rho': 4, 'u': 2, 'v': 3, 'q': 6}
-        #
-        # flow_var_label = {'M': 'Mach Number',
-        #                   'Cp': 'Pressure Coefficient',
-        #                   'p': 'Static Pressure (p / p<sub>\u221e</sub>)',
-        #                   'rho': 'Density (\u03c1/\u03c1<sub>\u221e</sub>)',
-        #                   'u': 'Velocity-x (u/V<sub>\u221e</sub>)',
-        #                   'v': 'Velocity-y (v/V<sub>\u221e</sub>)',
-        #                   'q': 'Speed of Sound (q/V<sub>\u221e</sub>)'}
-
-        # flow_var = data[:, flow_var_idx[inputs['flow_variable']]].reshape(n_streamlines, n_streamwise_lines).T[:-1, :-1]
         flow_var = field[flow_var_idx[inputs['flow_variable']]]
 
         edgecolors = None
@@ -726,7 +666,7 @@ class GUI(QMainWindow):
         self.param_tree_instance.t.clear()
         self.progress_bar.setValue(20)
         for idx, airfoil in enumerate(self.mea.airfoils.values()):
-            self.mea.add_airfoil_graph_to_airfoil(airfoil, idx, None, w=self.w, v=self.v)
+            self.mea.add_airfoil_graph_to_airfoil(airfoil, idx, None, w=self.w, v=self.v, gui_obj=self)
         self.progress_bar.setValue(25)
         ProgressInfo = namedtuple("ProgressInfo", ("start", "end", "n"))
         progress_info = ProgressInfo(25, 85, n_func_strs)
@@ -758,7 +698,7 @@ class GUI(QMainWindow):
     def add_airfoil(self, airfoil: Airfoil):
         self.mea.te_thickness_edit_mode = self.te_thickness_edit_mode
         self.mea.add_airfoil(airfoil, len(self.mea.airfoils), self.param_tree_instance,
-                                    w=self.w, v=self.v)
+                             w=self.w, v=self.v, gui_obj=self)
         self.airfoil_name_list = [k for k in self.mea.airfoils.keys()]
         self.param_tree_instance.p.child("Analysis").child("Inviscid Cl Calc").setLimits([a.tag for a in self.mea.airfoils.values()])
         self.param_tree_instance.params[-1].add_airfoil(airfoil)
