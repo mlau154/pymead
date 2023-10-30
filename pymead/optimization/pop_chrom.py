@@ -120,7 +120,10 @@ class Chromosome:
                     else:
                         raise ValueError('External geometry timing after aerodynamic evaluation not yet implemented')
         self.coords = tuple([self.mea_object.airfoils[k].get_coords(
-            body_fixed_csys=False, as_tuple=True) for k in self.param_set['mset_settings']['airfoil_order']])
+            body_fixed_csys=False, as_tuple=True, downsample=self.param_set['mset_settings']["use_downsampling"],
+            ds_max_points=self.param_set['mset_settings']["downsampling_max_pts"],
+            ds_curve_exp=self.param_set['mset_settings']["downsampling_curve_exp"]
+        ) for k in self.param_set['mset_settings']['airfoil_order']])
         self.control_points = [[c.P.tolist() for c in self.mea_object.airfoils[k].curve_list]
                                for k in self.mea_object.airfoils.keys()]
         self.airfoil_state = {k: {p: getattr(a, p).value for p in ['c', 'alf', 'dx', 'dy']} for k, a in self.mea_object.airfoils.items()}

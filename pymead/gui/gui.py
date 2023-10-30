@@ -452,7 +452,10 @@ class GUI(QMainWindow):
         current_param = self.param_tree_instance.p.child("Airfoil Parameters").child(child_list[0])
         for idx in range(1, len(child_list) - 1):
             current_param = current_param.child(child_list[idx])
-        return current_param.child(full_param_name)
+        if child_list[0] == "Custom":
+            return current_param.child(child_list[-1])
+        else:
+            return current_param.child(full_param_name)
 
     def edit_bounds(self):
         jmea_dict = self.mea.copy_as_param_dict(deactivate_airfoil_graphs=True)

@@ -44,9 +44,12 @@
     "max_sampling_width": {
         "label": "Max. Sampling Width",
         "widget_type": "QDoubleSpinBox",
+        "setDecimals": 8,
         "setMinimum": 0.0,
         "setMaximum": 1.0,
         "setValue": 0.08,
+        "push_button": "Visualize sampling",
+        "push_button_action": "visualize_sampling",
         "setToolTip": "Maximum random distance from original (seed) parameter\n value for each active and unlinked parameter"
     },
     "eta_crossover": {

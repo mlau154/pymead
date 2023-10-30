@@ -132,6 +132,9 @@ def shape_optimization(conn: mp.connection.Connection or None, param_dict: dict,
 
             # print(f"{J = }, {self.objectives = }")
 
+        if new_X is None:
+            raise ValueError("Could not get converge any individuals in the population")
+
         if new_X.ndim == 1:
             new_X = np.array([new_X])
 

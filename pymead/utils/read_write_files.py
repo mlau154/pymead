@@ -3,6 +3,10 @@ import os
 import pickle
 import typing
 
+from PyQt5.QtCore import QStandardPaths
+
+from pymead import q_settings
+
 
 def save_data(var, file):
     if os.path.splitext(file)[-1] == '.pkl':
@@ -35,3 +39,24 @@ def write_tuple_tuple_to_file(fname: str, data: typing.Tuple[tuple]):
             for col in row:
                 f.write(f"{col} ")
             f.write("\n")
+
+
+def load_documents_path(settings_var: str):
+    """
+    Utility function that returns a specified QSettings path location if saved, otherwise returns the Documents location
+
+    Parameters
+    ==========
+    settings_var: str
+        Key to the path location in ``pymead.q_settings``
+
+    Returns
+    =======
+    str
+        Path specified by ``settings_var``, otherwise the Documents location
+    """
+    if q_settings.contains(settings_var):
+        path = q_settings.value(settings_var)
+    else:
+        path = QStandardPaths.writableLocation(QStandardPaths.DocumentsLocation)
+    return path

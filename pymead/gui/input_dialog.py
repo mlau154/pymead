@@ -12,6 +12,7 @@ import tempfile
 from PyQt5.QtCore import pyqtSlot, pyqtSignal, QStandardPaths
 
 from pymead.core.mea import MEA
+from pymead.gui.sampling_visualization import SamplingVisualizationWidget
 from pymead.gui.infty_doublespinbox import InftyDoubleSpinBox
 from pymead.gui.pyqt_vertical_tab_widget.pyqt_vertical_tab_widget import VerticalTabWidget
 from pymead.gui.scientificspinbox_master.ScientificDoubleSpinBox import ScientificDoubleSpinBox
@@ -22,7 +23,7 @@ import sys
 import os
 from copy import deepcopy
 from functools import partial
-from pymead.utils.read_write_files import load_data, save_data
+from pymead.utils.read_write_files import load_data, save_data, load_documents_path
 from pymead.utils.dict_recursion import recursive_get
 from pymead.gui.default_settings import xfoil_settings_default
 from pymead.gui.bounds_values_table import BoundsValuesTable
@@ -508,6 +509,8 @@ class ADWidget(QTabWidget):
                         'label': w_label,
                     }
             for k2, v2 in v1['from_geometry'].items():
+                if len(v2) == 0:
+                    continue
                 w = QLineEdit(self.widget_dict[k1][k2]['widget'])
                 w.setText(v2)
                 w.setMinimumWidth(100)
@@ -570,6 +573,8 @@ class ADWidget(QTabWidget):
     def setValues(self, values: dict):
         for k1, v1 in values.items():
             for k2, v2 in v1['from_geometry'].items():
+                if len(v2) == 0:
+                    continue
                 self.input_dict[k1]['from_geometry'][k2] = v2
         self.updateTabNames([k for k in values.keys()])
         self.regenerateWidgets()
@@ -579,6 +584,8 @@ class ADWidget(QTabWidget):
                     self.widget_dict[k1][k2]['widget'].setValue(v2)
                     self.input_dict[k1][k2] = v2
             for k2, v2 in v1['from_geometry'].items():
+                if len(v2) == 0:
+                    continue
                 self.widget_dict[k1][k2]['from_geometry'].setText(v2)
 
     def values(self):
@@ -1545,9 +1552,10 @@ class GAGeneralSettingsDialogWidget(PymeadDialogWidget):
             self.saveas_opt_settings()
 
     def load_opt_settings(self):
-        load_dialog = select_existing_json_file(parent=self)
+        load_dialog = select_existing_json_file(parent=self, starting_dir=load_documents_path("ga-settings-dir"))
         if load_dialog.exec_():
             load_file = load_dialog.selectedFiles()[0]
+            q_settings.setValue("ga-settings-dir", os.path.split(load_file)[0])
             new_inputs = load_data(load_file)
             great_great_grandparent = get_parent(self, depth=4)
             if great_great_grandparent:
@@ -1669,6 +1677,22 @@ class GeneticAlgorithmDialogWidget(PymeadDialogWidget):
         self.objectives_changed(self.widget_dict['J']['widget'], inputs['J'])
         self.constraints_changed(self.widget_dict['G']['widget'], inputs['G'])
 
+    def visualize_sampling(self, ws_widget, _):
+        general_settings = self.parent().findChild(GAGeneralSettingsDialogWidget).getInputs()
+        starting_value = ws_widget.value()
+        use_current_mea = bool(general_settings["use_current_mea"])
+        mea_file = general_settings["mea_file"]
+        gui_obj = get_parent(self, depth=4)
+        background_color = gui_obj.themes[gui_obj.current_theme]["graph-background-color"]
+        if use_current_mea or len(mea_file) == 0 or not os.path.exists(mea_file):
+            jmea_dict = gui_obj.mea.copy_as_param_dict(deactivate_airfoil_graphs=True)
+        else:
+            jmea_dict = load_data(mea_file)
+
+        dialog = SamplingVisualizationDialog(jmea_dict=jmea_dict, initial_sampling_width=starting_value,
+                                             initial_n_samples=20, background_color=background_color, parent=self)
+        dialog.exec_()
+
     def select_directory(self, line_edit: QLineEdit):
         select_directory(parent=self.parent(), line_edit=line_edit)
 
@@ -1739,6 +1763,28 @@ class GeneticAlgorithmDialogWidget(PymeadDialogWidget):
                 v = float(text_split[1])
                 data_dict[k] = v
         return data_dict
+
+
+class SamplingVisualizationDialog(QDialog):
+    def __init__(self, jmea_dict: dict, initial_sampling_width: float, initial_n_samples: int, background_color: str,
+                 parent=None):
+        super().__init__(parent=parent)
+        self.setWindowTitle("Visualize Sampling")
+        self.setFont(self.parent().font())
+        buttonBox = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel, self)
+        layout = QFormLayout(self)
+
+        self.sampling_widget = SamplingVisualizationWidget(self, jmea_dict,
+                                                           initial_sampling_width=initial_sampling_width,
+                                                           initial_n_samples=initial_n_samples,
+                                                           background_color=background_color)
+
+        layout.addWidget(self.sampling_widget)
+
+        layout.addWidget(buttonBox)
+
+        buttonBox.accepted.connect(self.accept)
+        buttonBox.rejected.connect(self.reject)
 
 
 class PymeadDialogVTabWidget(VerticalTabWidget):
