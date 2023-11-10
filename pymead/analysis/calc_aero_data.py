@@ -16,7 +16,7 @@ from pymead.analysis.read_aero_data import read_aero_data_from_xfoil, read_Cp_fr
 from pymead.analysis.compressible_flow import calculate_normal_shock_total_pressure_ratio
 from pymead.utils.file_conversion import convert_ps_to_svg
 from pymead.utils.geometry import convert_numpy_array_to_shapely_LineString
-from pymead.utils.read_write_files import write_tuple_tuple_to_file
+from pymead.utils.read_write_files import write_tuple_tuple_to_file, save_data
 
 SVG_PLOTS = ['Mach_contours', 'grid', 'grid_zoom']
 SVG_SETTINGS_TR = {
@@ -90,7 +90,8 @@ def update_mses_settings_from_stencil(mses_settings: dict, stencil: typing.List[
 
 def calculate_aero_data(airfoil_coord_dir: str, airfoil_name: str, coords: typing.Tuple[tuple],
                         tool: str = 'XFOIL', xfoil_settings: dict = None, mset_settings: dict = None,
-                        mses_settings: dict = None, mplot_settings: dict = None, export_Cp: bool = True):
+                        mses_settings: dict = None, mplot_settings: dict = None, export_Cp: bool = True,
+                        save_aero_data: bool = True):
     r"""
     Convenience function calling either XFOIL or MSES depending on the ``tool`` specified
 
@@ -129,6 +130,9 @@ def calculate_aero_data(airfoil_coord_dir: str, airfoil_name: str, coords: typin
     export_Cp: bool
       Whether to calculate and export the surface pressure coefficient distribution in the case of XFOIL, or the
       entire set of boundary layer data in the case of MSES. Default: ``True``
+
+    save_aero_data: bool
+        Whether to save the aerodynamic data as a JSON file to the analysis directory
 
     Returns
     =======
@@ -189,6 +193,9 @@ def calculate_aero_data(airfoil_coord_dir: str, airfoil_name: str, coords: typin
             for aero_data_set in aero_data_list:
                 for k, v in aero_data_set.items():
                     aero_data[k].append(v)
+
+        if save_aero_data:
+            save_data(aero_data, os.path.join(base_dir, airfoil_name, "aero_data.json"))
 
         return aero_data, xfoil_log
 
@@ -298,6 +305,9 @@ def calculate_aero_data(airfoil_coord_dir: str, airfoil_name: str, coords: typin
             for aero_data_set in aero_data_list:
                 for k, v in aero_data_set.items():
                     aero_data[k].append(v)
+
+        if save_aero_data:
+            save_data(aero_data, os.path.join(airfoil_coord_dir, airfoil_name, "aero_data.json"))
 
         return aero_data, logs
 
