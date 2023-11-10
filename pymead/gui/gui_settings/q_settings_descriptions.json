@@ -3,5 +3,6 @@
   "parameter_list_default_open_location": "Directory where import_parameter_list() starts by default",
   "geometry_plot_default_open_location": "Directory where plot_geometry() starts by default",
   "dark_theme_checked": "set_theme('dark') used if true, else set_theme('light')",
-  "ga-settings-dir": "Directory where GAGeneralSettingsDialogWidget.load_opt_settings starts"
+  "ga-settings-dir": "Directory where GAGeneralSettingsDialogWidget.load_opt_settings starts",
+  "pkl_file_dir": "Directory where import_algorithm_pkl_file starts"
 }

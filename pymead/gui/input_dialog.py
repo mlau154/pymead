@@ -5,7 +5,7 @@ import PyQt5.QtWidgets
 import numpy as np
 from typing import List
 from PyQt5.QtWidgets import QDialog, QDialogButtonBox, QFormLayout, QDoubleSpinBox, QComboBox, QSpinBox, \
-    QTabWidget, QLabel, QMessageBox, QCheckBox, QVBoxLayout, QWidget, QGridLayout, QPushButton, QListView
+    QTabWidget, QLabel, QMessageBox, QCheckBox, QVBoxLayout, QWidget, QGridLayout, QPushButton, QListView, QRadioButton
 from PyQt5.QtCore import QEvent, Qt, pyqtSignal
 from PyQt5.QtGui import QStandardItem, QStandardItemModel
 import tempfile
@@ -2023,6 +2023,110 @@ class LoadDialog(QFileDialog):
             path = QStandardPaths.writableLocation(QStandardPaths.DocumentsLocation)
 
         self.setDirectory(path)
+
+
+class LoadAirfoilAlgFileWidget(QWidget):
+    def __init__(self, parent):
+        super().__init__(parent)
+        layout = QGridLayout(self)
+
+        self.pkl_line = QLineEdit("", self)
+        self.pkl_selection_button = QPushButton("Choose File", self)
+        self.index_button = QRadioButton("Use Index", self)
+        self.weight_button = QRadioButton("Use Weights", self)
+        self.index_spin = QSpinBox(self)
+        self.index_spin.setValue(0)
+        self.index_spin.setMaximum(9999)
+        self.weight_line = QLineEdit(self)
+
+        self.index_button.toggled.connect(self.index_selected)
+        self.weight_button.toggled.connect(self.weight_selected)
+
+        self.weight_line.textChanged.connect(self.weights_changed)
+        self.pkl_selection_button.clicked.connect(self.choose_file_clicked)
+
+        self.weight_line.setText("0.5,0.5")
+
+        self.index_button.toggle()
+
+        layout.addWidget(self.pkl_line, 0, 0)
+        layout.addWidget(self.pkl_selection_button, 0, 1)
+        layout.addWidget(self.index_button, 1, 0)
+        layout.addWidget(self.weight_button, 1, 1)
+        layout.addWidget(self.index_spin, 2, 0)
+        layout.addWidget(self.weight_line, 2, 1)
+
+        self.setLayout(layout)
+
+    def choose_file_clicked(self):
+        dialog = LoadDialog(self, settings_var="pkl_file_dir", file_filter="PKL files (*.pkl)")
+
+        if dialog.exec_():
+            file_name = dialog.selectedFiles()[0]
+            self.pkl_line.setText(file_name)
+            file_name_parent_dir = os.path.dirname(file_name)
+            q_settings.setValue(dialog.settings_var, file_name_parent_dir)
+
+    def index_selected(self):
+        self.index_spin.setReadOnly(False)
+        self.weight_line.setReadOnly(True)
+
+    def weight_selected(self):
+        self.index_spin.setReadOnly(True)
+        self.weight_line.setReadOnly(False)
+
+    def weights_changed(self, new_text: str):
+        weights = self.validate_weights(new_text)
+        if len(weights) > 0:
+            self.weight_line.setStyleSheet("QLineEdit { background: rgba(16,201,87,50) }")
+        else:
+            self.weight_line.setStyleSheet("QLineEdit { background: rgba(176,25,25,50) }")
+
+    @staticmethod
+    def validate_weights(text: str):
+        text = text.strip()
+        text_list = text.split(",")
+        try:
+            weights = [float(t) for t in text_list]
+            weight_sum = sum(weights)
+            if not np.isclose(weight_sum, 1.0, rtol=1e-12):
+                return []
+        except:
+            return []
+
+        return weights
+
+    def getInputs(self):
+        return {
+            "pkl_file": self.pkl_line.text(),
+            "use_index": self.index_button.isChecked(),
+            "use_weights": self.weight_button.isChecked(),
+            "index": self.index_spin.value(),
+            "weights": self.validate_weights(self.weight_line.text())
+        }
+
+
+class LoadAirfoilAlgFile(QDialog):
+    def __init__(self, parent):
+        super().__init__(parent=parent)
+
+        self.setWindowTitle("Load Optimized Airfoil")
+        self.setFont(self.parent().font())
+
+        buttonBox = QDialogButtonBox(self)
+        buttonBox.addButton(QDialogButtonBox.Ok)
+        buttonBox.addButton(QDialogButtonBox.Cancel)
+        self.grid_layout = QGridLayout(self)
+
+        self.load_airfoil_alg_file_widget = LoadAirfoilAlgFileWidget(self)
+        self.grid_layout.addWidget(self.load_airfoil_alg_file_widget, 0, 0)
+        self.grid_layout.addWidget(buttonBox, self.grid_layout.rowCount(), 0)
+
+        buttonBox.accepted.connect(self.accept)
+        buttonBox.rejected.connect(self.reject)
+
+    def getInputs(self):
+        return self.load_airfoil_alg_file_widget.getInputs()
 
 
 class SaveAsDialog(QFileDialog):

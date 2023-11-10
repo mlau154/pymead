@@ -129,6 +129,8 @@ def run():
     else:
         raise ValueError("iss setup install command failed")
 
+    print(f"Install complete. Output is in {install_dir}")
+
 
 if __name__ == "__main__":
     run()

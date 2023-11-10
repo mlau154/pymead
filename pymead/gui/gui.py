@@ -13,6 +13,8 @@ import os
 from collections import namedtuple
 import multiprocessing as mp
 
+from pymoo.factory import get_decomposition
+
 from pymead.gui.rename_popup import RenamePopup
 from pymead.gui.main_icon_toolbar import MainIconToolbar
 
@@ -34,7 +36,7 @@ from pymead import RESOURCE_DIR
 from pymead.gui.input_dialog import LoadDialog, SaveAsDialog, OptimizationSetupDialog, \
     MultiAirfoilDialog, ColorInputDialog, ExportCoordinatesDialog, ExportControlPointsDialog, AirfoilPlotDialog, \
     AirfoilMatchingDialog, MSESFieldPlotDialog, ExportIGESDialog, XFOILDialog, NewMEADialog, EditBoundsDialog, \
-    ExitDialog, ScreenshotDialog
+    ExitDialog, ScreenshotDialog, LoadAirfoilAlgFile
 from pymead.gui.pymeadPColorMeshItem import PymeadPColorMeshItem
 from pymead.gui.analysis_graph import AnalysisGraph
 from pymead.gui.parameter_tree import MEAParamTree
@@ -489,6 +491,20 @@ class GUI(QMainWindow):
         x_data_range, y_data_range = self.mea.get_curve_bounds()
         self.v.getViewBox().setRange(xRange=x_data_range, yRange=y_data_range)
 
+    def update_airfoil_parameters_from_vector(self, param_vec: np.ndarray):
+        for airfoil in self.mea.airfoils.values():
+            airfoil.airfoil_graph.airfoil_parameters = self.param_tree_instance.p.param('Airfoil Parameters')
+
+        try:
+            self.mea.update_parameters(param_vec)
+        except:
+            self.disp_message_box("Could not load parameters into airfoil. Check that the current airfoil system"
+                                  " displayed matches the one used in the optimization.")
+            return
+
+        self.param_tree_instance.plot_change_recursive(
+            self.param_tree_instance.p.param('Airfoil Parameters').child('Custom').children())
+
     def import_parameter_list(self):
         """This function imports a list of parameters normalized by their bounds"""
         file_filter = "DAT Files (*.dat)"
@@ -496,12 +512,51 @@ class GUI(QMainWindow):
         if dialog.exec_():
             file_name = dialog.selectedFiles()[0]
             q_settings.setValue(dialog.settings_var, os.path.dirname(file_name))
-            parameter_list = np.loadtxt(file_name).tolist()
-            for airfoil in self.mea.airfoils.values():
-                airfoil.airfoil_graph.airfoil_parameters = self.param_tree_instance.p.param('Airfoil Parameters')
-            self.mea.update_parameters(parameter_list)
-            self.param_tree_instance.plot_change_recursive(
-                self.param_tree_instance.p.param('Airfoil Parameters').child('Custom').children())
+            param_vec = np.loadtxt(file_name).tolist()
+            self.update_airfoil_parameters_from_vector(param_vec)
+
+    def import_algorithm_pkl_file(self):
+        dialog = LoadAirfoilAlgFile(self)
+        if dialog.exec_():
+            inputs = dialog.getInputs()
+
+            try:
+                alg = load_data(inputs["pkl_file"])
+            except:
+                self.disp_message_box("Could not load .pkl file. Check that the file selected is of the form"
+                                      " algorithm_gen_XX.pkl.")
+                return
+
+            try:
+                X = alg.opt.get("X")
+            except AttributeError:
+                self.disp_message_box("Algorithm file not recognized. Check that the file selected is of the form"
+                                      " algorithm_gen_XX.pkl.")
+                return
+
+            if X.shape[0] == 1:  # If single-objective:
+                x = X[0, :]
+            elif X.shape[0] == 0:  # If the optimization result is empty:
+                self.disp_message_box("Empty optimization result")
+                return
+            else:  # If multi-objective
+                if inputs["use_index"]:
+                    x = X[inputs["index"], :]
+                elif inputs["use_weights"]:
+                    F = alg.opt.get("F")
+                    decomp = get_decomposition("asf")
+
+                    if len(inputs["weights"]) != F.shape[0]:
+                        self.disp_message_box(f"Length of the requested weight list ({len(inputs['weights'])}) does"
+                                              f" not match the number of objective functions ({F.shape[0]})")
+                        return
+
+                    IDX = decomp.do(F, inputs["weights"]).argmin()
+                    x = X[IDX, :]
+                else:
+                    raise ValueError("Either 'index' or 'weights' must be selected in the dialog")
+
+            self.update_airfoil_parameters_from_vector(x)
 
     def export_parameter_list(self):
         """This function imports a list of parameters normalized by their bounds"""

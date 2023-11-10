@@ -5,7 +5,8 @@
     "Save As": "save_as_mea",
     "Save": ["save_mea", "Ctrl+S"],
     "Import": {
-      "Parameter List": "import_parameter_list"
+      "Parameter List": "import_parameter_list",
+      "Optimized Airfoil": "import_algorithm_pkl_file"
     },
     "Export": {
       "Airfoil Coordinates": "export_coordinates",
