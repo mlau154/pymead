@@ -2058,6 +2058,12 @@ class LoadAirfoilAlgFileWidget(QWidget):
 
         self.setLayout(layout)
 
+        inputs = self.getInputs()
+        for setting_var in ("pkl_file", "pkl_use_index", "pkl_use_weights", "pkl_index", "pkl_weights"):
+            if q_settings.contains(setting_var):
+                inputs[setting_var] = q_settings.value(setting_var)
+        self.setInputs(inputs)
+
     def choose_file_clicked(self):
         dialog = LoadDialog(self, settings_var="pkl_file_dir", file_filter="PKL files (*.pkl)")
 
@@ -2097,13 +2103,35 @@ class LoadAirfoilAlgFileWidget(QWidget):
         return weights
 
     def getInputs(self):
-        return {
+        inputs = {
             "pkl_file": self.pkl_line.text(),
-            "use_index": self.index_button.isChecked(),
-            "use_weights": self.weight_button.isChecked(),
-            "index": self.index_spin.value(),
-            "weights": self.validate_weights(self.weight_line.text())
+            "pkl_use_index": int(self.index_button.isChecked()),
+            "pkl_use_weights": int(self.weight_button.isChecked()),
+            "pkl_index": self.index_spin.value(),
+            "pkl_weights": self.validate_weights(self.weight_line.text())
         }
+        return inputs
+
+    def setInputs(self, inputs: dict):
+        self.pkl_line.setText(inputs["pkl_file"])
+        if inputs["pkl_use_index"]:
+            self.index_button.toggle()
+        elif inputs["pkl_use_weights"]:
+            self.weight_button.toggle()
+        self.index_spin.setValue(inputs["pkl_index"])
+
+        if isinstance(inputs["pkl_weights"], list):
+            self.weight_line.setText(",".join([str(w) for w in inputs["pkl_weights"]]))
+        elif isinstance(inputs["pkl_weights"], str):
+            self.weight_line.setText(inputs["pkl_weights"])
+
+    @staticmethod
+    def assignQSettings(inputs: dict):
+        q_settings.setValue("pkl_file", inputs["pkl_file"])
+        q_settings.setValue("pkl_use_index", inputs["pkl_use_index"])
+        q_settings.setValue("pkl_use_weights", inputs["pkl_use_weights"])
+        q_settings.setValue("pkl_index", inputs["pkl_index"])
+        q_settings.setValue("pkl_weights", inputs["pkl_weights"])
 
 
 class LoadAirfoilAlgFile(QDialog):

@@ -495,6 +495,13 @@ class GUI(QMainWindow):
         for airfoil in self.mea.airfoils.values():
             airfoil.airfoil_graph.airfoil_parameters = self.param_tree_instance.p.param('Airfoil Parameters')
 
+        N_dv = self.mea.count_design_variables()
+        if N_dv != len(param_vec):
+            self.disp_message_box("Number of parameters in parameter vector does not match number of design variables "
+                                  "found in the airfoil system. Check that the currently displayed airfoil system"
+                                  " matches the one used to generate the parameter vector.")
+            return
+
         try:
             self.mea.update_parameters(param_vec)
         except:
@@ -519,6 +526,7 @@ class GUI(QMainWindow):
         dialog = LoadAirfoilAlgFile(self)
         if dialog.exec_():
             inputs = dialog.getInputs()
+            dialog.load_airfoil_alg_file_widget.assignQSettings(inputs)
 
             try:
                 alg = load_data(inputs["pkl_file"])
@@ -529,29 +537,34 @@ class GUI(QMainWindow):
 
             try:
                 X = alg.opt.get("X")
+                F = alg.opt.get("F")
             except AttributeError:
                 self.disp_message_box("Algorithm file not recognized. Check that the file selected is of the form"
                                       " algorithm_gen_XX.pkl.")
                 return
 
-            if X.shape[0] == 1:  # If single-objective:
-                x = X[0, :]
-            elif X.shape[0] == 0:  # If the optimization result is empty:
+            if len(F) == 0:
                 self.disp_message_box("Empty optimization result")
                 return
+
+            if alg.problem.n_var == 1:  # If single-objective:
+                x = X[0, :]
             else:  # If multi-objective
-                if inputs["use_index"]:
-                    x = X[inputs["index"], :]
-                elif inputs["use_weights"]:
-                    F = alg.opt.get("F")
+                if inputs["pkl_use_index"]:
+                    x = X[inputs["pkl_index"], :]
+                elif inputs["pkl_use_weights"]:
                     decomp = get_decomposition("asf")
 
-                    if len(inputs["weights"]) != F.shape[0]:
-                        self.disp_message_box(f"Length of the requested weight list ({len(inputs['weights'])}) does"
-                                              f" not match the number of objective functions ({F.shape[0]})")
+                    if len(inputs["pkl_weights"]) == 0:
+                        self.disp_message_box("The requested weights do not sum to 1.0.")
                         return
 
-                    IDX = decomp.do(F, inputs["weights"]).argmin()
+                    if len(inputs["pkl_weights"]) != F.shape[1]:
+                        self.disp_message_box(f"Length of the requested weight list ({len(inputs['pkl_weights'])}) does"
+                                              f" not match the number of objective functions ({F.shape[1]})")
+                        return
+
+                    IDX = decomp.do(F, inputs["pkl_weights"]).argmin()
                     x = X[IDX, :]
                 else:
                     raise ValueError("Either 'index' or 'weights' must be selected in the dialog")

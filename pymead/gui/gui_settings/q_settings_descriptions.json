@@ -4,5 +4,10 @@
   "geometry_plot_default_open_location": "Directory where plot_geometry() starts by default",
   "dark_theme_checked": "set_theme('dark') used if true, else set_theme('light')",
   "ga-settings-dir": "Directory where GAGeneralSettingsDialogWidget.load_opt_settings starts",
-  "pkl_file_dir": "Directory where import_algorithm_pkl_file starts"
+  "pkl_file_dir": "Directory where import_algorithm_pkl_file starts",
+  "pkl_file": "Starting value for the .pkl file to extract",
+  "pkl_use_index": "Whether to extract parameter vector from optimal set by index",
+  "pkl_use_weights": "Whether to extract parameter vector from optimal set by weights",
+  "pkl_index": "Value of the index used to extract parameter vector from optimal set",
+  "pkl_weights": "Value of the weights used to extract parameter vector from optimal set (as a string)"
 }

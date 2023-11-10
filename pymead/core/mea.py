@@ -157,6 +157,29 @@ class MEA:
         airfoil_graph.param_tree = param_tree
         airfoil.airfoil_graph = airfoil_graph
 
+    def count_design_variables(self):
+        dv = [0]
+
+        def increment_dv_count(d: dict, _dv: list):
+            for k_, v in d.items():
+                if isinstance(v, dict):
+                    increment_dv_count(v, _dv)
+                else:
+                    if isinstance(v, Param) and not isinstance(v, PosParam):
+                        if v.active and not v.linked:
+                            _dv[0] += 1
+                    elif isinstance(v, PosParam):
+                        if v.active[0] and not v.linked[0]:
+                            _dv[0] += 1
+                        if v.active[1] and not v.linked[1]:
+                            _dv[0] += 1
+                    else:
+                        raise ValueError('Found value in dictionary not of type \'Param\' or \'PosParam\'')
+
+        increment_dv_count(self.param_dict, dv)
+
+        return dv[0]
+
     def extract_parameters(self):
         """
         Extracts the 1-D list of parameters from the airfoil system corresponding to all the parameters with
