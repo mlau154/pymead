@@ -9,7 +9,7 @@ from pymead.version import __version__
 def check_dependencies():
     if shutil.which("pyinstaller") is None:
         raise ValueError("pyinstaller not found on system path. Must install before proceeding.")
-    if shutil.which("iscc") is None:
+    if platform.system() == "Windows" and shutil.which("iscc") is None:
         raise ValueError("iscc Inno Setup command line installer not found on system path. Install and/or add to path"
                          "before proceeding.")
 
@@ -108,28 +108,42 @@ def run():
     else:
         raise ValueError("pyinstaller command failed")
 
-    print("Copying executable...")
-    shutil.copy(os.path.join(exe_dir, exe_name), install_dir)
+    if system == "Windows":
+        print("Copying executable...")
+        shutil.copy(os.path.join(exe_dir, exe_name), install_dir)
 
-    # Run the installer compiler
-    print("Writing ISS file...")
-    write_iss_file(iss_file=iss_file,
-                   version=__version__,
-                   app_name=exe_name,
-                   logo_path=os.path.join(top_level_dir, "pymead", "icons", "pymead-logo.ico"),
-                   output_dir=install_dir,
-                   pymead_exe_dir=exe_dir
-                   )
+        # Run the installer compiler
+        print("Writing ISS file...")
+        write_iss_file(iss_file=iss_file,
+                       version=__version__,
+                       app_name=exe_name,
+                       logo_path=os.path.join(top_level_dir, "pymead", "icons", "pymead-logo.ico"),
+                       output_dir=install_dir,
+                       pymead_exe_dir=exe_dir
+                       )
 
-    print("Running Inno Setup to compile the setup wizard...")
-    iss_process = subprocess.run(["iscc", iss_file])
+        print("Running Inno Setup to compile the setup wizard...")
+        iss_process = subprocess.run(["iscc", iss_file])
 
-    if iss_process.returncode == 0:
-        pass
-    else:
-        raise ValueError("iss setup install command failed")
+        if iss_process.returncode == 0:
+            pass
+        else:
+            raise ValueError("iss setup install command failed")
 
-    print(f"Install complete. Output is in {install_dir}")
+        print(f"Install complete. Output is in {install_dir}")
+
+    elif system == "Linux":
+        print("Compressing app...")
+        tarball_name = f"pymead-{__version__}.tar.gz"
+        tarball_process = subprocess.run(["tar", "-czvf", tarball_name, "pymead"], cwd=dist_dir)
+
+        if tarball_process.returncode == 0:
+            pass
+        else:
+            raise ValueError("Tarball compression command failed")
+
+        print("Moving tarball to install directory...")
+        shutil.move(os.path.join(dist_dir, tarball_name), install_dir)
 
 
 if __name__ == "__main__":

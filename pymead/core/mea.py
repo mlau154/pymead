@@ -676,7 +676,6 @@ class MEA:
                             ap_param_dict[pname] = PosParam.from_param_dict(pdict)
                         else:
                             ap_param_dict[pname] = Param.from_param_dict(pdict)
-
                     # Create an AnchorPoint from the saved parameter dictionary:
                     ap = AnchorPoint(airfoil_tag=a_name, tag=ap_name, previous_anchor_point=ap_order[idx - 1],
                                      **ap_param_dict)

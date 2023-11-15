@@ -133,7 +133,8 @@ def shape_optimization(conn: mp.connection.Connection or None, param_dict: dict,
             # print(f"{J = }, {self.objectives = }")
 
         if new_X is None:
-            raise ValueError("Could not get converge any individuals in the population")
+            send_over_pipe(("text", f"Could not converge any individuals in the population. Optimization terminated."))
+            return
 
         if new_X.ndim == 1:
             new_X = np.array([new_X])
@@ -256,6 +257,11 @@ def shape_optimization(conn: mp.connection.Connection or None, param_dict: dict,
                 # print(f"{J = }, {self.objectives = }")
 
             algorithm.evaluator.n_eval += n_eval
+
+            if new_X is None:
+                send_over_pipe(
+                    ("text", f"Could not converge any individuals in the population. Optimization terminated."))
+                return
 
             for idx in range(param_dict['n_offsprings'] - len(new_X)):
                 # f1 = np.append(f1, np.array([1000.0]))

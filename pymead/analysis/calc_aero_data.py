@@ -273,10 +273,12 @@ def calculate_aero_data(airfoil_coord_dir: str, airfoil_name: str, coords: typin
 
                 if mplot_settings["CPK"]:
                     try:
-                        outputs_CPK = calculate_CPK_power_consumption(os.path.join(airfoil_coord_dir, airfoil_name))
+                        # outputs_CPK = calculate_CPK_power_consumption(os.path.join(airfoil_coord_dir, airfoil_name))
+                        outputs_CPK = calculate_CPK_mses_inviscid_only(os.path.join(airfoil_coord_dir, airfoil_name))
                     except Exception as e:
                         print(f"{e = }")
-                        outputs_CPK = {"CPK": 1e9, "diss_shock": 1e9, "diss_surf": 1e9, "Edot": 1e9, "Cd": 1e9}
+                        # outputs_CPK = {"CPK": 1e9, "diss_shock": 1e9, "diss_surf": 1e9, "Edot": 1e9, "Cd": 1e9}
+                        outputs_CPK = {"CPK": 1e9}
                     aero_data = {**aero_data, **outputs_CPK}
 
             t2 = time.time()
@@ -1678,6 +1680,49 @@ def calculate_CPK_power_consumption(analysis_subdir: str):
     #     return CPK
 
     return {"CPK": CPK, "Edot": Edot, "diss_surf": surface_diss, "diss_shock": shock_diss, "Cd": forces["Cd"]}
+
+
+def calculate_CPK_mses_inviscid_only(analysis_subdir: str):
+    """
+    Calculates the mechanical flower power coefficient input to the control volume across the airfoil system control
+    surface. Assumes that the control surface wraps just around the actuator disk and that the normal vectors point
+    into the propulsor. Also assumes that there is no change in the kinetic defect across the actuator disk (and thus
+    no change in CPK due to the boundary layer).
+    """
+
+    airfoil_system_name = os.path.split(analysis_subdir)[-1]
+    field_file = os.path.join(analysis_subdir, f'field.{airfoil_system_name}')
+    grid_stats_file = os.path.join(analysis_subdir, 'mplot_grid_stats.log')
+    grid_file = os.path.join(analysis_subdir, f'grid.{airfoil_system_name}')
+    mses_log_file = os.path.join(analysis_subdir, "mses.log")
+
+    field = read_field_from_mses(field_file)
+    grid_stats = read_grid_stats_from_mses(grid_stats_file)
+    x_grid, y_grid = read_streamline_grid_from_mses(grid_file, grid_stats)
+    data_AD = read_actuator_disk_data_mses(mses_log_file, grid_stats)
+
+    CPK = 0.0
+
+    for data in data_AD:
+        Cp_up = field[flow_var_idx["Cp"]][data["field_i_up"], data["field_j_start"]:data["field_j_end"] + 1]
+        Cp_down = field[flow_var_idx["Cp"]][data["field_i_down"], data["field_j_start"]:data["field_j_end"] + 1]
+        rho_up = field[flow_var_idx["rho"]][data["field_i_up"], data["field_j_start"]:data["field_j_end"] + 1]
+        rho_down = field[flow_var_idx["rho"]][data["field_i_down"], data["field_j_start"]:data["field_j_end"] + 1]
+        u_up = field[flow_var_idx["u"]][data["field_i_up"], data["field_j_start"]:data["field_j_end"] + 1]
+        u_down = field[flow_var_idx["u"]][data["field_i_down"], data["field_j_start"]:data["field_j_end"] + 1]
+        v_up = field[flow_var_idx["v"]][data["field_i_up"], data["field_j_start"]:data["field_j_end"] + 1]
+        v_down = field[flow_var_idx["v"]][data["field_i_down"], data["field_j_start"]:data["field_j_end"] + 1]
+        V_up = field[flow_var_idx["q"]][data["field_i_up"], data["field_j_start"]:data["field_j_end"] + 1]
+        V_down = field[flow_var_idx["q"]][data["field_i_down"], data["field_j_start"]:data["field_j_end"] + 1]
+        x = x_grid[data["flow_section_idx"]][data["field_i_up"]:data["field_i_up"] + 3, :]
+        y = y_grid[data["flow_section_idx"]][data["field_i_up"]:data["field_i_up"] + 3, :]
+        CPK += line_integral_CPK_inviscid(Cp_up, Cp_down, rho_up, rho_down, u_up, u_down,
+                                          v_up, v_down, V_up, V_down, x, y)
+
+    if np.isnan(CPK):
+        CPK = 1e9
+
+    return {"CPK": CPK}
 
 
 def calculate_CPK_mses(analysis_subdir: str, configuration: str = "underwing_te"):

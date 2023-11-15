@@ -2062,6 +2062,10 @@ class LoadAirfoilAlgFileWidget(QWidget):
         for setting_var in ("pkl_file", "pkl_use_index", "pkl_use_weights", "pkl_index", "pkl_weights"):
             if q_settings.contains(setting_var):
                 inputs[setting_var] = q_settings.value(setting_var)
+                if setting_var in ("pkl_use_index", "pkl_use_weights", "pkl_index"):
+                    inputs[setting_var] = int(inputs[setting_var])
+                if setting_var == "pkl_weights":
+                    inputs[setting_var] = [float(s) for s in inputs[setting_var]]
         self.setInputs(inputs)
 
     def choose_file_clicked(self):

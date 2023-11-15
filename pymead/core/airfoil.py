@@ -348,6 +348,7 @@ class Airfoil:
                 new_control_points.append([cp.x_val, cp.y_val])
             else:
                 new_control_points.append([cp.xp, cp.yp])
+        # new_control_points = [[cp.xp, cp.yp] for cp in self.control_points]
         self.control_point_array = np.array(new_control_points)
         return self.control_point_array
 

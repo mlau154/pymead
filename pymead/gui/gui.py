@@ -25,6 +25,7 @@ from PyQt5.QtCore import QEvent, QObject, Qt, QThreadPool
 from PyQt5.QtSvg import QSvgWidget
 from PyQt5.QtCore import pyqtSlot
 
+from pymead.gui.airfoil_canvas import AirfoilCanvas
 from pymead.version import __version__
 from pymead.utils.version_check import using_latest
 from pymead.core.airfoil import Airfoil
@@ -158,6 +159,7 @@ class GUI(QMainWindow):
         self.dockable_tab_window = DockableTabWidget(self)
         self.dockable_tab_window.add_new_tab_widget(self.w, "Geometry")
         self.dockable_tab_window.tab_closed.connect(self.on_tab_closed)
+        self.dockable_tab_window.add_new_tab_widget(AirfoilCanvas(), "Custom")
         self.right_widget_layout.addWidget(self.dockable_tab_window)
         self.right_widget_layout.addWidget(self.text_area)
         self.right_widget = QWidget()
@@ -547,7 +549,7 @@ class GUI(QMainWindow):
                 self.disp_message_box("Empty optimization result")
                 return
 
-            if alg.problem.n_var == 1:  # If single-objective:
+            if alg.problem.n_obj == 1:  # If single-objective:
                 x = X[0, :]
             else:  # If multi-objective
                 if inputs["pkl_use_index"]:

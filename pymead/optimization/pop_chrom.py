@@ -83,13 +83,15 @@ class Chromosome:
         self.fitness = None
         self.forces = None
 
-    def generate(self):
+    def generate(self, deactivate_airfoil_graphs: bool = False):
         """
         Chromosome generation flow
         :return:
         """
         print(f"Generating {self.population_idx} with {os.getpid() = } from param_dict...")
         self.mea_object = MEA.generate_from_param_dict(self.mea)
+        if deactivate_airfoil_graphs:
+            self.mea_object.remove_airfoil_graphs()
         if self.verbose:
             print(f'Generating chromosome idx = {self.population_idx}, gen = {self.generation}')
         self.generate_airfoil_sys_from_genes()
@@ -259,46 +261,6 @@ class Chromosome:
         self.valid_geometry = True
         return self.valid_geometry
 
-    # def mutate_robust(self):
-    #     """
-    #     Tries to mutate a particular Chromosome until geometry is valid or max_mutation_attempts reached
-    #     :return:
-    #     """
-    #     self.mutated = True
-    #     mutation_attempts = 0
-    #     max_mutation_attempts = self.ga_settings.max_mutation_attempts_per_chromosome
-    #     while True:
-    #         if mutation_attempts < max_mutation_attempts:
-    #             temp_saved_genes = deepcopy(self.genes)
-    #             mutation_attempts += 1
-    #             num_genes_to_mutate = np.random.randint(low=1, high=1 + self.ga_settings.max_genes_to_mutate)
-    #             genes_to_mutate = random.sample([*range(0, len(self.genes))], num_genes_to_mutate)
-    #             for gene_idx in genes_to_mutate:
-    #                 mutation_method = random.sample(self.ga_settings.mutation_methods, 1)[0]
-    #                 if mutation_method == 'random-reset':
-    #                     if self.verbose:
-    #                         print('Mutating random-reset...')
-    #                     self.genes[gene_idx] = np.random.uniform(low=0, high=1)
-    #                 elif mutation_method == 'random-perturb':
-    #                     if self.verbose:
-    #                         print(f'Mutating random-perturb with bounds {self.mutation_bounds}...')
-    #                     self.genes[gene_idx] = self.genes[gene_idx] + np.random.uniform(
-    #                         low=self.mutation_bounds[0],
-    #                         high=self.mutation_bounds[1])
-    #                     if self.genes[gene_idx] < 0:
-    #                         self.genes[gene_idx] = 0
-    #                     elif self.genes[gene_idx] > 1:
-    #                         self.genes[gene_idx] = 1
-    #                 else:
-    #                     raise Exception('Invalid mutation_method designation in ga_settings. Aborting GA.')
-    #             self.generate()
-    #             if self.valid_geometry:
-    #                 break
-    #             else:
-    #                 self.genes = deepcopy(temp_saved_genes)
-    #         else:
-    #             raise Exception(f'Exceeded maximum number of mutation attempts ({max_mutation_attempts}). Aborting GA.')
-
 
 class Population:
     def __init__(self, param_dict: dict, generation: int,
@@ -319,61 +281,6 @@ class Population:
                 # self.parents.append(chromosome)
                 self.parent_indices.append(population_idx)
             self.num_parents = len(self.parent_indices)
-
-    # def generate(self):
-    #     self.random_perturb_best()
-    #     self.mutation()
-    #
-    # def regenerate(self, attempt: int):
-    #     """Regenerates the population after a Chromosome fitness evaluation fails"""
-    #     if self.verbose:
-    #         print(f"Performing random perturbation...")
-    #     self.random_perturb_best()
-    #     if self.verbose:
-    #         print(f"Performing mutation...")
-    #     self.mutation()
-    #
-    # def random_perturb_best(self):
-    #     best_parent = self.parents[0]
-    #     for population_idx in range(self.ga_settings.population_size):
-    #         chromosome = Chromosome(self.param_set, population_idx=population_idx, generation=self.generation,
-    #                                 mea=self.mea)
-    #         chromosome = self.random_perturb(chromosome=chromosome, best_parent=best_parent)
-    #         self.population.append(chromosome)
-    #     self.population = self.population[1:]
-    #
-    # def random_perturb(self, chromosome: Chromosome, best_parent: Chromosome):
-    #     random_perturb_attempts = 0
-    #     while True:
-    #         if random_perturb_attempts >= 10:
-    #             chromosome.mutation_bounds = random.sample(self.ga_settings.mutation_bounds, 1)[0]
-    #             random_perturb_attempts = 0
-    #         random_perturb_attempts += 1
-    #         chromosome.genes = deepcopy(best_parent.genes)
-    #         for gene_idx, gene in enumerate(chromosome.genes):
-    #             chromosome.genes[gene_idx] = chromosome.genes[gene_idx] + np.random.uniform(
-    #                 low=chromosome.mutation_bounds[0],
-    #                 high=chromosome.mutation_bounds[1])
-    #             if chromosome.genes[gene_idx] < 0:
-    #                 chromosome.genes[gene_idx] = 0
-    #             elif chromosome.genes[gene_idx] > 1:
-    #                 chromosome.genes[gene_idx] = 1
-    #         chromosome.generate()
-    #         if chromosome.valid_geometry:
-    #             break
-    #     return chromosome
-    #
-    # def mutation(self):
-    #     """
-    #     Mutates all non-parent chromosomes in population at a low probability with a biased coin flip
-    #     """
-    #     mutation_possible_list = [chromosome for chromosome in self.population if chromosome.category != 'parent'
-    #                               and chromosome.fitness is None]
-    #     for chromosome in mutation_possible_list:  # For each chromosome that is allowed to mutate,
-    #         # Toss a coin that is heavily weighted toward the outcome of no mutation:
-    #         biased_coin_flip = np.random.binomial(n=1, p=self.ga_settings.mutation_probability)
-    #         if biased_coin_flip:  # If the coin flip results in a mutation,
-    #             chromosome.mutate_robust()  # Mutate the chromosome
 
     def eval_chromosome_fitness(self, chromosome: Chromosome):
         """

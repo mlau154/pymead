@@ -26,7 +26,7 @@ class Sampling:
             List of normalized parameter values (usually from ``extract_parameters`` in ``MEA``).
         """
         self.n_samples = n_samples
-        self.norm_param_list = norm_param_list
+        self.norm_param_list = deepcopy(norm_param_list)
 
     @abstractmethod
     def sample(self) -> list or np.ndarray:

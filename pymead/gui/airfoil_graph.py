@@ -14,6 +14,8 @@ from pymead.core.airfoil import Airfoil
 
 from time import time
 
+from pymead.gui.airfoil_canvas import AirfoilCanvas
+
 
 class AirfoilGraph(pg.GraphItem):
 
