@@ -11,6 +11,7 @@ class Point:
         self._x = None
         self._y = None
         self.geo_col = None
+        self.geo_cons = []
         self.setting_from_geo_col = setting_from_geo_col
         self.set_name(name)
         self.set_x(x)
@@ -61,9 +62,19 @@ class Point:
         return cls(x=arr[0], y=arr[1], name=name)
 
     def measure_distance(self, other: "Point"):
-        # Interesting note: the quotes around "Point" are necessary here because this type hint is a forward reference.
+        # Note: the quotes around "Point" are necessary here because this type hint is a forward reference.
         # This means that an object of type <Class> is specified as a hint somewhere inside the definition for <Class>
         return np.hypot(other.x().value() - self.x().value(), other.y().value() - self.y().value())
+
+    def request_move(self, xp: float, yp: float):
+        self.x().set_value(xp)
+        self.y().set_value(yp)
+        for geo_con in self.geo_cons:
+            geo_con.enforce(calling_point=self)
+
+    def force_move(self, xp: float, yp: float):
+        self.x().set_value(xp)
+        self.y().set_value(yp)
 
 
 class PointSequence:

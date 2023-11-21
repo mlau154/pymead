@@ -179,8 +179,8 @@ class GeometryCollection:
         """
         Adds a point by value to the geometry collection
 
-        Parameter
-        =========
+        Parameters
+        ==========
         x: float
             :math:`x`-location of the point
 

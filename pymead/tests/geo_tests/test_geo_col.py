@@ -1,8 +1,11 @@
 import unittest
 
+import numpy as np
 
+from pymead.core.constraints import PositionConstraint
 from pymead.core.geometry_collection import GeometryCollection
 from pymead.core.param2 import Param, DesVar
+from pymead.core.point import Point
 
 
 class GeoColTests(unittest.TestCase):
@@ -159,3 +162,78 @@ class ParamTests(unittest.TestCase):
         self.assertEqual(desvar_dict["value"], 0.5)
         self.assertEqual(desvar_dict["lower"], 0.1)
         self.assertEqual(desvar_dict["upper"], 0.9)
+
+
+class ConstraintTests(unittest.TestCase):
+    def test_pos_constraint(self):
+        dv_length = DesVar(0.2, "length", lower=0.1, upper=0.3)
+        dv_angle = DesVar(0.5, "angle", lower=0.1, upper=0.9)
+        point1 = Point(0.2, 0.1, name="tool_point", setting_from_geo_col=True)
+        point2 = Point(-0.1, 0.3, name="target_point", setting_from_geo_col=True)
+        constraint = PositionConstraint(tool=point1, target=point2, dist=dv_length, angle=dv_angle, bidirectional=False)
+        constraint.enforce("tool")
+        dv_length.set_value(0.25)
+        new_x1 = point1.x().value()
+        new_y1 = point1.y().value()
+        new_x2 = point2.x().value()
+        new_y2 = point2.y().value()
+        self.assertAlmostEqual(0.25, np.hypot(new_y2 - new_y1, new_x2 - new_x1))
+        self.assertAlmostEqual(0.5, np.arctan2(new_y2 - new_y1, new_x2 - new_x1))
+
+        point1.request_move(0.3, 0.0)
+        new_x1 = point1.x().value()
+        new_y1 = point1.y().value()
+        new_x2 = point2.x().value()
+        new_y2 = point2.y().value()
+        self.assertAlmostEqual(0.3, new_x1)
+        self.assertAlmostEqual(0.0, new_y1)
+        self.assertAlmostEqual(0.25, np.hypot(new_y2 - new_y1, new_x2 - new_x1))
+        self.assertAlmostEqual(0.5, np.arctan2(new_y2 - new_y1, new_x2 - new_x1))
+
+        point2.request_move(0.8, 0.4)
+        new_x1 = point1.x().value()
+        new_y1 = point1.y().value()
+        newer_x2 = point2.x().value()
+        newer_y2 = point2.y().value()
+        self.assertAlmostEqual(0.3, new_x1)
+        self.assertAlmostEqual(0.0, new_y1)
+        self.assertAlmostEqual(0.25, np.hypot(newer_y2 - new_y1, newer_x2 - new_x1))
+        self.assertAlmostEqual(0.5, np.arctan2(newer_y2 - new_y1, newer_x2 - new_x1))
+        # The x and y location of point2 should not have changed, because point2 has no degrees of freedom
+        self.assertAlmostEqual(new_x2, newer_x2)
+        self.assertAlmostEqual(new_y2, newer_y2)
+
+    def test_pos_constraint_bidirectional(self):
+        dv_length = DesVar(0.2, "length", lower=0.1, upper=0.3)
+        dv_angle = DesVar(0.5, "angle", lower=0.1, upper=0.9)
+        point1 = Point(0.2, 0.1, name="tool_point", setting_from_geo_col=True)
+        point2 = Point(-0.1, 0.3, name="target_point", setting_from_geo_col=True)
+        constraint = PositionConstraint(tool=point1, target=point2, dist=dv_length, angle=dv_angle, bidirectional=True)
+        constraint.enforce("tool")
+        dv_length.set_value(0.25)
+        new_x1 = point1.x().value()
+        new_y1 = point1.y().value()
+        new_x2 = point2.x().value()
+        new_y2 = point2.y().value()
+        self.assertAlmostEqual(0.25, np.hypot(new_y2 - new_y1, new_x2 - new_x1))
+        self.assertAlmostEqual(0.5, np.arctan2(new_y2 - new_y1, new_x2 - new_x1))
+
+        point1.request_move(0.3, 0.0)
+        new_x1 = point1.x().value()
+        new_y1 = point1.y().value()
+        new_x2 = point2.x().value()
+        new_y2 = point2.y().value()
+        self.assertAlmostEqual(0.3, new_x1)
+        self.assertAlmostEqual(0.0, new_y1)
+        self.assertAlmostEqual(0.25, np.hypot(new_y2 - new_y1, new_x2 - new_x1))
+        self.assertAlmostEqual(0.5, np.arctan2(new_y2 - new_y1, new_x2 - new_x1))
+
+        point2.request_move(0.8, 0.4)
+        new_x1 = point1.x().value()
+        new_y1 = point1.y().value()
+        new_x2 = point2.x().value()
+        new_y2 = point2.y().value()
+        self.assertAlmostEqual(0.8, new_x2)
+        self.assertAlmostEqual(0.4, new_y2)
+        self.assertAlmostEqual(0.25, np.hypot(new_y2 - new_y1, new_x2 - new_x1))
+        self.assertAlmostEqual(0.5, np.arctan2(new_y2 - new_y1, new_x2 - new_x1))
