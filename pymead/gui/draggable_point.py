@@ -1,10 +1,19 @@
+import os
+
 import pyqtgraph as pg
 from PyQt5.QtCore import Qt, pyqtSignal
 import numpy as np
 
+from pymead import q_settings, GUI_SETTINGS_DIR
+from pymead.utils.read_write_files import load_data
+
+q_settings_descriptions = load_data(os.path.join(GUI_SETTINGS_DIR, "q_settings_descriptions.json"))
+
 
 class DraggablePoint(pg.GraphItem):
     sigPointClicked = pyqtSignal(object, object, object, object)
+    sigPointHovered = pyqtSignal(object, object, object, object)
+    sigPointLeaveHovered = pyqtSignal(object, object, object, object)
     sigPointMoved = pyqtSignal(object)
 
     def __init__(self):
@@ -14,6 +23,8 @@ class DraggablePoint(pg.GraphItem):
         self.textItems = []
         super().__init__()
         self.scatter.sigClicked.connect(self.clicked)
+        self.scatter.sigHovered.connect(self.hovered)
+        self.hoverable = True
 
     def setData(self, **kwds):
         self.text = kwds.pop('text', [])
@@ -41,9 +52,6 @@ class DraggablePoint(pg.GraphItem):
             item.setParentItem(self)
 
     def mouseDragEvent(self, ev):
-        # if self.last_time is not None:
-        #     print(f"Time since last update: {t1 - self.last_time} seconds")
-
         if ev.button() != Qt.MouseButton.LeftButton:
             ev.ignore()
             return
@@ -84,7 +92,8 @@ class DraggablePoint(pg.GraphItem):
 
         ev.accept()
 
-    def hover_tip(self, x: float, y: float, data):
+    @staticmethod
+    def hover_tip(x: float, y: float, data):
         """
         Shows data about a point when it is hovered
 
@@ -99,8 +108,30 @@ class DraggablePoint(pg.GraphItem):
         data
             Signaled by the hover
         """
-        idx = data[0]
-        return f"x: {x:.8f}\ny: {y:.8f}\nindex: {idx}"
+        return f"x: {x:.8f}\ny: {y:.8f}"
 
     def clicked(self, item, spot, ev):
         self.sigPointClicked.emit(item, spot, ev, self)
+
+    def hovered(self, item, spot, ev):
+        if self.hoverable:
+            if ev.exit:
+                self.sigPointLeaveHovered.emit(item, spot, ev, self)
+            else:
+                self.sigPointHovered.emit(item, spot, ev, self)
+
+    def setScatterStyle(self, mode: str = "default"):
+        implemented_style_modes = ["default", "hovered", "selected"]
+        if mode not in implemented_style_modes:
+            raise NotImplementedError(f"Selected mode ({mode}) not implemented. "
+                                      f"Currently implemented modes: {implemented_style_modes}.")
+        self.scatter.setPen(pg.mkPen(color=q_settings.value(f"scatter_{mode}_pen_color",
+                                                            q_settings_descriptions[f"scatter_{mode}_pen_color"][1])))
+        self.scatter.setBrush(
+            pg.mkBrush(color=q_settings.value(f"scatter_{mode}_brush_color",
+                                              q_settings_descriptions[f"scatter_{mode}_brush_color"][1]))
+        )
+        self.scatter.setSize(q_settings.value(f"scatter_{mode}_size",
+                                              q_settings_descriptions[f"scatter_{mode}_size"][1]))
+        self.scatter.setSymbol(q_settings.value(f"scatter_{mode}_symbol",
+                                                q_settings_descriptions[f"scatter_{mode}_symbol"][1]))

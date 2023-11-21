@@ -26,6 +26,7 @@ from PyQt5.QtSvg import QSvgWidget
 from PyQt5.QtCore import pyqtSlot
 
 from pymead.gui.airfoil_canvas import AirfoilCanvas
+from pymead.core.geometry_collection import GeometryCollection
 from pymead.version import __version__
 from pymead.utils.version_check import using_latest
 from pymead.core.airfoil import Airfoil
@@ -159,7 +160,9 @@ class GUI(QMainWindow):
         self.dockable_tab_window = DockableTabWidget(self)
         self.dockable_tab_window.add_new_tab_widget(self.w, "Geometry")
         self.dockable_tab_window.tab_closed.connect(self.on_tab_closed)
-        self.dockable_tab_window.add_new_tab_widget(AirfoilCanvas(), "Custom")
+        self.airfoil_canvas = AirfoilCanvas(geo_col=GeometryCollection())
+        self.airfoil_canvas.sigStatusBarUpdate.connect(self.setStatusBarText)
+        self.dockable_tab_window.add_new_tab_widget(self.airfoil_canvas, "Custom")
         self.right_widget_layout.addWidget(self.dockable_tab_window)
         self.right_widget_layout.addWidget(self.text_area)
         self.right_widget = QWidget()
@@ -274,9 +277,9 @@ class GUI(QMainWindow):
             self.Cp_graph = None
             self.Cp_graph_plot_handles = []
 
-    @pyqtSlot(str)
-    def setStatusBarText(self, message: str):
-        self.statusBar().showMessage(message)
+    @pyqtSlot(str, int)
+    def setStatusBarText(self, message: str, msecs: int):
+        self.statusBar().showMessage(message, msecs)
 
     def set_theme(self, theme_name: str):
         self.current_theme = theme_name
