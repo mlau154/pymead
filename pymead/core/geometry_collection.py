@@ -1,7 +1,7 @@
 import re
 import typing
 
-from pymead.core.param2 import Param, DesVar
+from pymead.core.param2 import Param, LengthParam, AngleParam, DesVar, LengthDesVar, AngleDesVar
 from pymead.core.point import Point
 
 
@@ -145,7 +145,8 @@ class GeometryCollection:
 
         self.container()[sub_container].pop(obj)
 
-    def add_param(self, value: float, name: str or None = None):
+    def add_param(self, value: float, name: str or None = None, lower: float or None = None,
+                  upper: float or None = None, unit_type: str or None = None):
         """
         Adds a parameter to the geometry collection sub-container ``"params"``, and modifies the name to make it
         unique if necessary.
@@ -157,8 +158,31 @@ class GeometryCollection:
 
         name: str or None
             Parameter name
+
+        lower: float or None
+            Lower bound. If ``None``, no bound will be set. Default: ``None``.
+
+        upper: float or None
+            Upper bound. If ``None``, no bound will be set. Default: ``None``.
+
+        unit_type: str or None:
+            The unit type of design variable to create. Default: ``None``.
+
+        Returns
+        =======
+        Param
+            The generated parameter
         """
-        param = Param(value=value, name=name, setting_from_geo_col=True)
+        kwargs = dict(value=value, name=name, lower=lower, upper=upper, setting_from_geo_col=True)
+        if unit_type is None:
+            param = Param(**kwargs)
+        elif unit_type == "length":
+            param = LengthParam(**kwargs)
+        elif unit_type == "angle":
+            param = AngleParam(**kwargs)
+        else:
+            raise ValueError(f"unit_type must be None, 'length', or 'angle'. Found type: {type(unit_type)}")
+
         param.geo_col = self
 
         self.add_to_subcontainer(param, "params")
@@ -218,7 +242,8 @@ class GeometryCollection:
         self.remove_from_subcontainer(point.y(), "params")
         self.remove_from_subcontainer(point.name(), "points")
 
-    def add_desvar(self, value: float, name: str, lower: float or None = None, upper: float or None = None):
+    def add_desvar(self, value: float, name: str, lower: float or None = None, upper: float or None = None,
+                   unit_type: str or None = None):
         """
         Directly adds a design variable value to the geometry collection.
 
@@ -234,16 +259,28 @@ class GeometryCollection:
             Lower bound for the design variable. If ``None``, a reasonable value will be chosen automatically.
             Default: ``None``.
 
-        upper: float or none.
+        upper: float or None.
             Upper bound for the design variable. If ``None``, a reasonable value will be chosen automatically.
             Default: ``None``.
+
+        unit_type: str or None:
+            The unit type of design variable to create. Default: ``None``.
 
         Returns
         =======
         DesVar
             The generated design variable
         """
-        desvar = DesVar(value=value, name=name, lower=lower, upper=upper, setting_from_geo_col=True)
+        kwargs = dict(value=value, name=name, lower=lower, upper=upper, setting_from_geo_col=True)
+        if unit_type is None:
+            desvar = DesVar(**kwargs)
+        elif unit_type == "length":
+            desvar = LengthDesVar(**kwargs)
+        elif unit_type == "angle":
+            desvar = AngleDesVar(**kwargs)
+        else:
+            raise ValueError(f"unit_type must be None, 'length', or 'angle'. Found type: {type(unit_type)}")
+
         desvar.geo_col = self
 
         self.add_to_subcontainer(desvar, "desvar")
@@ -309,7 +346,14 @@ class GeometryCollection:
         """
         param = param if isinstance(param, Param) else self.container()["params"][param]
 
-        desvar = self.add_desvar(value=param.value(), name=param.name(), lower=lower, upper=upper)
+        if isinstance(param, LengthParam):
+            unit_type = "length"
+        elif isinstance(param, AngleParam):
+            unit_type = "angle"
+        else:
+            unit_type = None
+
+        desvar = self.add_desvar(value=param.value(), name=param.name(), lower=lower, upper=upper, unit_type=unit_type)
 
         # Replace the corresponding x() or y() in parameter with the new design variable
         self.replace_geo_objs(tool=param, target=desvar)
@@ -337,7 +381,14 @@ class GeometryCollection:
         Param
             The generated parameter
         """
-        param = self.add_param(value=desvar.value(), name=desvar.name())
+        if isinstance(desvar, LengthDesVar):
+            unit_type = "length"
+        elif isinstance(desvar, AngleDesVar):
+            unit_type = "angle"
+        else:
+            unit_type = None
+
+        param = self.add_param(value=desvar.value(), name=desvar.name(), unit_type=unit_type)
 
         # Replace the corresponding x() or y() in parameter with the new parameter
         self.replace_geo_objs(tool=desvar, target=param)
@@ -455,3 +506,15 @@ class GeometryCollection:
             sorted_list[idx] = ks
 
         return sorted_list
+
+    def add_constraint(self):
+        pass
+
+    def remove_constraint(self):
+        pass
+
+    def add_dimension(self):
+        pass
+
+    def remove_dimension(self):
+        pass

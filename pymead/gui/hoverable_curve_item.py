@@ -120,6 +120,10 @@ class HoverableCurveItem(pg.PlotCurveItem):
         self.setData(x=curve_data.xy.as_array()[:, 0], y=curve_data.xy.as_array()[:, 1])
         # self.updateControlPointNetItem()
 
+    def updateGUIObj(self, curve_data: PCurveData):
+        arr = curve_data.xy.as_array()
+        self.setData(x=arr[:, 0], y=arr[:, 1])
+
     @staticmethod
     def generateControlPointNetLine(parametric_curve: ParametricCurve, point_items: typing.List[DraggablePoint]):
         line_item = HoverableCurveItem(curve_type="LineSegment")

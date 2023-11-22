@@ -17,6 +17,7 @@ class DraggablePoint(pg.GraphItem):
     sigPointMoved = pyqtSignal(object)
 
     def __init__(self):
+        self.point = None
         self.dragPoint = None
         self.dragOffset = None
         self.curveOwners = []
@@ -34,6 +35,10 @@ class DraggablePoint(pg.GraphItem):
             self.data['data'] = np.empty(npts, dtype=[('index', int)])
             self.data['data']['index'] = np.arange(npts)
         self.setTexts(self.text)
+        self.updateGraph()
+
+    def updateGUIObj(self, x: float, y: float):
+        self.data["pos"][0] = np.array([x, y])
         self.updateGraph()
 
     def updateGraph(self):
@@ -84,11 +89,12 @@ class DraggablePoint(pg.GraphItem):
                 ev.ignore()
                 return
 
-        ind = self.dragPoint.data()[0]
-        self.data['pos'][ind] = ev.pos() + self.dragOffset
-        x = self.data['pos'][:, 0]
-        y = self.data['pos'][:, 1]
-        self.updateGraph()
+        data = ev.pos() + self.dragOffset
+        x = data.x()
+        y = data.y()
+
+        # Make a request to the API to move the point. The GUI representation of the point will move if successful
+        self.point.request_move(x, y)
 
         ev.accept()
 

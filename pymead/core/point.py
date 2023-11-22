@@ -2,7 +2,7 @@ import typing
 
 import numpy as np
 
-from pymead.core.param2 import Param
+from pymead.core.param2 import LengthParam
 
 
 class Point:
@@ -12,6 +12,9 @@ class Point:
         self._y = None
         self.geo_col = None
         self.geo_cons = []
+        self.dims = []
+        self.gui_obj = None
+        self.curves = []
         self.setting_from_geo_col = setting_from_geo_col
         self.set_name(name)
         self.set_x(x)
@@ -29,14 +32,14 @@ class Point:
     def xy(self):
         return [self._x, self._y]
 
-    def set_x(self, x: Param or float):
-        self._x = x if isinstance(x, Param) else Param(
+    def set_x(self, x: LengthParam or float):
+        self._x = x if isinstance(x, LengthParam) else LengthParam(
             value=x, name=self.name() + ".x", setting_from_geo_col=self.setting_from_geo_col)
         if self not in self._x.geo_objs:
             self._x.geo_objs.append(self)
 
-    def set_y(self, y: Param or float):
-        self._y = y if isinstance(y, Param) else Param(
+    def set_y(self, y: LengthParam or float):
+        self._y = y if isinstance(y, LengthParam) else LengthParam(
             value=y, name=self.name() + ".y", setting_from_geo_col=self.setting_from_geo_col)
         if self not in self._y.geo_objs:
             self._y.geo_objs.append(self)
@@ -47,10 +50,6 @@ class Point:
             self.x().set_name(f"{self.name()}.x")
         if self.y() is not None:
             self.y().set_name(f"{self.name()}.y")
-
-    def set_xy(self, xy: typing.List[Param]):
-        self._x = xy[0]
-        self._y = xy[1]
 
     def as_array(self):
         return np.array([self.x().value(), self.y().value()])
@@ -76,6 +75,8 @@ class Point:
         self.y().set_value(yp)
         for geo_con in self.geo_cons:
             kwargs = {}
+
+            # Get class by name to avoid circular import
             class_name = str(geo_con.__class__)
             if "PositionConstraint" in class_name:
                 kwargs = dict(calling_point=self)
@@ -85,9 +86,26 @@ class Point:
             # Enforce the constraint
             geo_con.enforce(**kwargs)
 
+        for dim in self.dims:
+            dim.update_param_from_points()
+
+        # Update the GUI object, if there is one
+        if self.gui_obj is not None:
+            self.gui_obj.updateGUIObj(self.x().value(), self.y().value())
+
+        for curve in self.curves:
+            curve.update()
+
     def force_move(self, xp: float, yp: float):
         self.x().set_value(xp)
         self.y().set_value(yp)
+
+        # Update the GUI object, if there is one
+        if self.gui_obj is not None:
+            self.gui_obj.updateGUIObj(self.x().value(), self.y().value())
+
+        for curve in self.curves:
+            curve.update()
 
 
 class PointSequence:
@@ -136,5 +154,5 @@ class SurfPointSequence(PointSequence):
     def generate_from_array(cls, arr: np.ndarray):
         if arr.shape[1] != 2:
             raise ValueError(f"Array must have two columns, x and y. Found {arr.shape[1]} columns.")
-        return cls(surf_points=[SurfPoint(x=x, y=y, name=f"SurfPointFromArray-Index{idx}")
+        return cls(surf_points=[SurfPoint(x=x, y=y, name=f"SurfPointFromArrayIndex{idx}")
                                 for idx, (x, y) in enumerate(zip(arr[:, 0], arr[:, 1]))])

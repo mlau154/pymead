@@ -2,9 +2,11 @@ import unittest
 
 import numpy as np
 
+from pymead.core import UNITS
 from pymead.core.constraints import PositionConstraint, CollinearConstraint
+from pymead.core.dimensions import LengthDimension, AngleDimension
 from pymead.core.geometry_collection import GeometryCollection
-from pymead.core.param2 import Param, DesVar
+from pymead.core.param2 import Param, DesVar, LengthParam, AngleParam
 from pymead.core.point import Point
 
 
@@ -244,7 +246,6 @@ class ConstraintTests(unittest.TestCase):
         end_point = Point(3.0, 2.0, name="end_point", setting_from_geo_col=True)
 
         original_end_middle_distance = middle_point.measure_distance(end_point)
-        original_start_end_distance = start_point.measure_distance(end_point)
         constraint = CollinearConstraint(start_point=start_point, middle_point=middle_point, end_point=end_point)
         constraint.enforce("start")
 
@@ -266,3 +267,112 @@ class ConstraintTests(unittest.TestCase):
         # Move the start point and ensure that the three points are still collinear
         start_point.request_move(5.0, -2.0)
         self.assertAlmostEqual(start_point.measure_angle(middle_point), middle_point.measure_angle(end_point))
+
+    def test_length_dimension(self):
+        # First, test the case where a param is directly specified
+        param = LengthParam(0.25, "LengthDim")
+        start_point = Point(0.0, 0.0, "start_point", setting_from_geo_col=True)
+        end_point = Point(0.3, 0.4, "end_point", setting_from_geo_col=True)
+        LengthDimension(tool_point=start_point, target_point=end_point, length_param=param)
+
+        # Make sure that the param length value gets changed to sqrt(0.3**2 + 0.4**2)
+        self.assertAlmostEqual(0.5, param.value())
+
+        # Now, test the case where a param is not directly specified
+        dimension = LengthDimension(tool_point=start_point, target_point=end_point)
+        end_point.request_move(8.0, 6.0)
+
+        # Make sure that the param length value gets changed to sqrt(8**2 + 6**2)
+        self.assertAlmostEqual(10.0, dimension.param().value())
+
+    def test_angle_dimension(self):
+        # Set the units to degrees
+        UNITS.set_current_angle_unit("deg")
+
+        # First, test the case where a param is directly specified
+        param = AngleParam(0.25, "AngleDim")
+        start_point = Point(0.0, 0.0, "start_point", setting_from_geo_col=True)
+        end_point = Point(0.4, 0.4, "end_point", setting_from_geo_col=True)
+        AngleDimension(tool_point=start_point, target_point=end_point, angle_param=param)
+
+        # Make sure that the param angle value gets changed to 45 degrees
+        self.assertAlmostEqual(45.0, param.value())
+
+        # Now, test the case where a param is not directly specified
+        dimension = AngleDimension(tool_point=start_point, target_point=end_point)
+        end_point.request_move(-4.0, 4.0)
+
+        # Make sure that the param length value gets changed to sqrt(8**2 + 6**2)
+        self.assertAlmostEqual(135.0, dimension.param().value())
+
+    def test_units(self):
+        start_point = Point(0.0, 0.0, "start_point", setting_from_geo_col=True)
+        end_point = Point(0.3, 0.4, "end_point", setting_from_geo_col=True)
+
+        dimension = LengthDimension(tool_point=start_point, target_point=end_point)
+
+        UNITS.set_current_length_unit("mm")
+        start_point.x().set_unit()
+        start_point.y().set_unit()
+        end_point.x().set_unit()
+        end_point.y().set_unit()
+        dimension.param().set_unit()
+
+        self.assertAlmostEqual(300.0, end_point.x().value())
+        self.assertAlmostEqual(400.0, end_point.y().value())
+        self.assertAlmostEqual(dimension.param().value(), 500.0)
+
+        end_point.request_move(8000.0, 6000.0)
+
+        UNITS.set_current_length_unit("m")
+        start_point.x().set_unit()
+        start_point.y().set_unit()
+        end_point.x().set_unit()
+        end_point.y().set_unit()
+        dimension.param().set_unit()
+
+        # Make sure that the points get moved to 8, 6 and param length value gets changed to sqrt(8**2 + 6**2)
+        self.assertAlmostEqual(8.0, end_point.x().value())
+        self.assertAlmostEqual(6.0, end_point.y().value())
+        self.assertAlmostEqual(10.0, dimension.param().value())
+
+        end_point.request_move(0.0762, 0.1016)
+
+        UNITS.set_current_length_unit("in")
+        start_point.x().set_unit()
+        start_point.y().set_unit()
+        end_point.x().set_unit()
+        end_point.y().set_unit()
+        dimension.param().set_unit()
+
+        # Make sure that the points get moved to 8, 6 and param length value gets changed to sqrt(8**2 + 6**2)
+        self.assertAlmostEqual(3.0, end_point.x().value())
+        self.assertAlmostEqual(4.0, end_point.y().value())
+        self.assertAlmostEqual(5.0, dimension.param().value())
+
+    def test_collinear_plus_length_and_angle_dim(self):
+        UNITS.set_current_angle_unit("deg")
+        geo_col = GeometryCollection()
+        start_point = geo_col.add_point(-1.0, -1.0)
+        middle_point = geo_col.add_point(0.0, 0.0)
+        end_point = geo_col.add_point(3.0, 4.0)
+        collinear = CollinearConstraint(start_point=start_point, middle_point=middle_point, end_point=end_point)
+        collinear.enforce("start")
+
+        length_dimension1 = LengthDimension(tool_point=middle_point, target_point=end_point)
+        length_dimension2 = LengthDimension(tool_point=start_point, target_point=middle_point)
+
+        # The distance between the middle and end points should be preserved after collinear constraint enforcement
+        self.assertAlmostEqual(5.0, length_dimension1.param().value())
+
+        # The distance between the start and middle points should be preserved after collinear constraint enforcement
+        self.assertAlmostEqual(np.sqrt(2.0), length_dimension2.param().value())
+
+        angle_dimension1 = AngleDimension(tool_point=middle_point, target_point=end_point)
+        angle_dimension2 = AngleDimension(tool_point=start_point, target_point=middle_point)
+
+        # The angle should be 45 degrees because the collinear constraint was enforced at the start
+        self.assertAlmostEqual(45.0, angle_dimension2.param().value())
+
+        # These angles should be equal due to the collinear constraint
+        self.assertAlmostEqual(angle_dimension1.param().value(), angle_dimension2.param().value())

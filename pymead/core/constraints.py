@@ -4,6 +4,7 @@ import numpy as np
 
 from pymead.core.param2 import Param
 from pymead.core.point import PointSequence, Point
+from pymead.core import UNITS
 
 
 class GeoCon:
@@ -11,6 +12,7 @@ class GeoCon:
         self._tool = None
         self._target = None
         self._bidirectional = None
+        self.geo_col = None
         self.set_tool(tool)
         self.set_target(target)
         self.set_bidirectional(bidirectional)
@@ -152,7 +154,15 @@ class CollinearConstraint(GeoCon):
             point.geo_cons.append(self)
 
     def validate(self):
-        pass
+        msg = ("A point in the CollinearConstraint was found to already have an existing CollinearConstraint. To make "
+               "these additional points collinear, modify the original collinear constraint.")
+        for geo_con in self.tool().geo_cons:
+            if isinstance(geo_con, CollinearConstraint):
+                raise ValueError(msg)
+        for point in self.target().points():
+            for geo_con in point.geo_cons:
+                if isinstance(geo_con, CollinearConstraint):
+                    raise ValueError(msg)
 
     def enforce(self, calling_point: Point or str, initial_x: float or None = None, initial_y: float or None = None):
         if isinstance(calling_point, str):
@@ -197,6 +207,8 @@ class CollinearConstraint(GeoCon):
             new_x = middle_point.x().value() + length * np.cos(target_angle)
             new_y = middle_point.y().value() + length * np.sin(target_angle)
             start_point.force_move(new_x, new_y)
+            # TODO: if a collinear constraint already exists on a point and another collinear constraint is attempted,
+            #  just add the selected points to the existing constraint
 
 
 class ConstraintValidationError(Exception):

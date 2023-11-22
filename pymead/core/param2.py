@@ -2,6 +2,8 @@ import typing
 
 import numpy as np
 
+from pymead.core import UNITS
+
 
 class Param:
     """
@@ -32,6 +34,7 @@ class Param:
         self.geo_col = None
         self.geo_objs = []
         self.geo_cons = []
+        self.dims = []
         self.setting_from_geo_col = setting_from_geo_col
 
         if upper is not None and lower is not None:
@@ -112,6 +115,9 @@ class Param:
         for geo_con in self.geo_cons:
             geo_con.enforce("tool")
 
+        for dim in self.dims:
+            dim.update_points_from_param()
+
     def name(self):
         """
         Retrieves the parameter name
@@ -135,9 +141,11 @@ class Param:
         if "-" in name and not self.setting_from_geo_col:
             raise ValueError("Hyphens are reserved characters and cannot be used unless setting from geometry "
                              "collection")
-        if "." in name and not self.setting_from_geo_col:
-            raise ValueError("Dots are reserved characters and cannot be used unless setting from geometry "
-                             "collection")
+        # if "." in name and not self.setting_from_geo_col:
+        #     raise ValueError("Dots are reserved characters and cannot be used unless setting from geometry "
+        #                      "collection")
+        # TODO: revisit this. SurfPoints should not need to have setting_from_geo_col=True, but they do currently
+        #  for this error not to be raised
         self._name = name
 
     def lower(self):
@@ -238,6 +246,95 @@ class Param:
         return self.value() != other.value()
 
 
+class LengthParam(Param):
+    def __init__(self, value: float, name: str, lower: float or None = None, upper: float or None = None,
+                 setting_from_geo_col: bool = False):
+        self._unit = None
+        self.set_unit(UNITS.current_length_unit())
+        super().__init__(value=value, name=name, lower=lower, upper=upper, setting_from_geo_col=setting_from_geo_col)
+
+    def unit(self):
+        return self._unit
+
+    def set_unit(self, unit: str or None = None):
+        if unit is not None:
+            self._unit = unit
+        else:
+            self._unit = UNITS.current_length_unit()
+
+    def lower(self):
+        return UNITS.convert_length_from_base(self._lower, self.unit())
+
+    def upper(self):
+        return UNITS.convert_length_from_base(self._upper, self.unit())
+
+    def value(self, bounds_normalized: bool = False):
+        new_value = super().value(bounds_normalized=bounds_normalized)
+        if bounds_normalized:
+            return new_value
+        else:
+            return UNITS.convert_length_from_base(new_value, self.unit())
+
+    def set_lower(self, lower: float):
+        return super().set_lower(UNITS.convert_length_to_base(lower, self.unit()))
+
+    def set_upper(self, upper: float):
+        return super().set_upper(UNITS.convert_length_to_base(upper, self.unit()))
+
+    def set_value(self, value: float, bounds_normalized: bool = False):
+        return super().set_value(UNITS.convert_length_to_base(value, self.unit()), bounds_normalized=bounds_normalized)
+
+
+class AngleParam(Param):
+    def __init__(self, value: float, name: str, lower: float or None = None, upper: float or None = None,
+                 setting_from_geo_col: bool = False):
+        self._unit = None
+        self.set_unit(UNITS.current_angle_unit())
+        super().__init__(value=value, name=name, lower=lower, upper=upper, setting_from_geo_col=setting_from_geo_col)
+
+    def unit(self):
+        return self._unit
+
+    def set_unit(self, unit: str or None = None):
+        if unit is not None:
+            self._unit = unit
+        else:
+            self._unit = UNITS.current_angle_unit()
+
+    def lower(self):
+        return UNITS.convert_angle_from_base(self._lower, self.unit())
+
+    def upper(self):
+        return UNITS.convert_angle_from_base(self._upper, self.unit())
+
+    def value(self, bounds_normalized: bool = False):
+        new_value = super().value(bounds_normalized=bounds_normalized)
+        if bounds_normalized:
+            return new_value
+        else:
+            return UNITS.convert_angle_from_base(new_value, self.unit())
+
+    def rad(self):
+        """
+        Returns the value of the angle parameter in radians, the base angle unit of pymead
+
+        Returns
+        =======
+        float
+            Angle in radians
+        """
+        return self._value
+
+    def set_lower(self, lower: float):
+        return super().set_lower(UNITS.convert_angle_to_base(lower, self.unit()))
+
+    def set_upper(self, upper: float):
+        return super().set_upper(UNITS.convert_angle_to_base(upper, self.unit()))
+
+    def set_value(self, value: float, bounds_normalized: bool = False):
+        return super().set_value(UNITS.convert_angle_to_base(value, self.unit()), bounds_normalized=bounds_normalized)
+
+
 class ParamCollection:
     """
     Collection (list) of Params. Allows for import from/export to array.
@@ -259,14 +356,34 @@ class ParamCollection:
     @classmethod
     def generate_from_array(cls, arr: np.ndarray):
         if arr.ndim == 1:
-            return cls(params=[Param(value=v, name=f"FromArray-Index{idx}") for idx, v in enumerate(arr)])
+            return cls(params=[Param(value=v, name=f"FromArrayIndex{idx}") for idx, v in enumerate(arr)])
         elif arr.ndim == 2:
             if arr.shape[1] != 1:
                 raise ValueError(f"Shape of the input array must be Nx1 (found {arr.shape = })")
-            return cls(params=[Param(value=v, name=f"FromArray-Index{idx}") for idx, v in enumerate(arr[:, 0])])
+            return cls(params=[Param(value=v, name=f"FromArrayIndex{idx}") for idx, v in enumerate(arr[:, 0])])
 
     def __len__(self):
         return len(self.params())
+
+
+def default_lower(value: float):
+    if -0.1 <= value <= 0.1:
+        return value - 0.02
+    else:
+        if value < 0.0:
+            return 1.2 * value
+        else:
+            return 0.8 * value
+
+
+def default_upper(value: float):
+    if -0.1 <= value <= 0.1:
+        return value + 0.02
+    else:
+        if value < 0.0:
+            return 0.8 * value
+        else:
+            return 1.2 * value
 
 
 class DesVar(Param):
@@ -296,22 +413,84 @@ class DesVar(Param):
 
         # Default behavior for lower bound
         if lower is None:
-            if -0.1 <= value <= 0.1:
-                lower = value - 0.02
-            else:
-                if value < 0.0:
-                    lower = 1.2 * value
-                else:
-                    lower = 0.8 * value
+            lower = default_lower(value)
 
         # Default behavior for upper bound
         if upper is None:
-            if -0.1 <= value <= 0.1:
-                upper = value + 0.02
-            else:
-                if value < 0.0:
-                    upper = 0.8 * value
-                else:
-                    upper = 1.2 * value
+            upper = default_upper(value)
+
+        super().__init__(value=value, name=name, lower=lower, upper=upper, setting_from_geo_col=setting_from_geo_col)
+
+
+class LengthDesVar(LengthParam):
+    """
+    Design variable class for length values; subclasses the base-level Param. Adds lower and upper bound
+    default behavior.
+    """
+    def __init__(self, value: float, name: str, lower: float or None = None, upper: float or None = None,
+                 setting_from_geo_col: bool = False):
+        """
+        Parameters
+        ==========
+        value: float
+            Starting value of the design variable
+
+        name: str
+            Name of the design variable
+
+        lower: float or None
+            Lower bound for the design variable. If ``None``, a reasonable value is chosen. Default: ``None``.
+
+        upper: float or None
+            Upper bound for the design variable. If ``None``, a reasonable value is chosen. Default: ``None``.
+
+        setting_from_geo_col: bool
+            Whether this method is being called directly from the geometric collection. Default: ``False``.
+        """
+
+        # Default behavior for lower bound
+        if lower is None:
+            lower = default_lower(value)
+
+        # Default behavior for upper bound
+        if upper is None:
+            upper = default_upper(value)
+
+        super().__init__(value=value, name=name, lower=lower, upper=upper, setting_from_geo_col=setting_from_geo_col)
+
+
+class AngleDesVar(AngleParam):
+    """
+    Design variable class for angle values; subclasses the base-level Param. Adds lower and upper bound
+    default behavior.
+    """
+    def __init__(self, value: float, name: str, lower: float or None = None, upper: float or None = None,
+                 setting_from_geo_col: bool = False):
+        """
+        Parameters
+        ==========
+        value: float
+            Starting value of the design variable
+
+        name: str
+            Name of the design variable
+
+        lower: float or None
+            Lower bound for the design variable. If ``None``, a reasonable value is chosen. Default: ``None``.
+
+        upper: float or None
+            Upper bound for the design variable. If ``None``, a reasonable value is chosen. Default: ``None``.
+
+        setting_from_geo_col: bool
+            Whether this method is being called directly from the geometric collection. Default: ``False``.
+        """
+
+        # Default behavior for lower bound
+        if lower is None:
+            lower = default_lower(value)
+
+        # Default behavior for upper bound
+        if upper is None:
+            upper = default_upper(value)
 
         super().__init__(value=value, name=name, lower=lower, upper=upper, setting_from_geo_col=setting_from_geo_col)

@@ -3,7 +3,6 @@ import matplotlib.pyplot as plt
 
 from pymead.core.param2 import ParamCollection
 from pymead.core.parametric_curve2 import ParametricCurve, PCurveData
-from pymead.core.line2 import LineSegment
 from pymead.core.point import PointSequence, SurfPointSequence, Point
 from pymead.utils.nchoosek import nchoosek
 
@@ -12,10 +11,11 @@ class Bezier(ParametricCurve):
 
     def __init__(self, point_sequence: PointSequence, *args, **kwargs):
         self._point_sequence = None
-        self.control_point_lines = None
+        self.gui_obj = None
         self.set_point_sequence(point_sequence)
-        self.generate_control_point_lines()
-        self.parent_curve = None
+        for point in self.point_sequence().points():
+            if self not in point.curves:
+                point.curves.append(self)
         super().__init__(*args, **kwargs)
 
     def point_sequence(self):
@@ -24,23 +24,16 @@ class Bezier(ParametricCurve):
     def set_point_sequence(self, point_sequence: PointSequence):
         self._point_sequence = point_sequence
 
-    def generate_control_point_lines(self):
-        self.control_point_lines = []
-        for idx in range(len(self.point_sequence()) - 1):
-            line = LineSegment(point_sequence=self.point_sequence().extract_subsequence([idx, idx + 1]),
-                               parent_curve=self)
-            self.control_point_lines.append(line)
-
     def insert_point(self, idx: int, point: Point):
-        print(f"Before, lines = {self.control_point_lines}")
         self.point_sequence().insert_point(idx, point)
-        if idx == 0:
-            new_line = LineSegment(point_sequence=PointSequence(points=[point, self.point_sequence().points()[1]]))
-            self.control_point_lines.insert(0, new_line)
-        print(f"After, lines = {self.control_point_lines}")
 
     def remove_point(self, idx: int):
         self.point_sequence().remove_point(idx)
+
+    def update(self):
+        p_curve_data = self.evaluate()
+        if self.gui_obj is not None:
+            self.gui_obj.updateGUIObj(curve_data=p_curve_data)
 
     @staticmethod
     def bernstein_poly(n: int, i: int, t: int or float or np.ndarray):

@@ -5,7 +5,10 @@ import pyqtgraph as pg
 from PyQt5 import QtWidgets
 from PyQt5.QtCore import pyqtSignal, QEventLoop, Qt
 
+from pymead.core.bezier2 import Bezier
+from pymead.core.constraints import CollinearConstraint
 from pymead.core.geometry_collection import GeometryCollection
+from pymead.core.point import PointSequence
 from pymead.gui.hoverable_curve_item import HoverableCurveItem
 from pymead.gui.draggable_point import DraggablePoint
 from pymead.utils.read_write_files import load_data
@@ -27,23 +30,33 @@ class AirfoilCanvas(pg.PlotWidget):
         self.points = []
         self.selected_points = None
         self.drawing_curve = None
+        self.creating_collinear_constraint = None
         self.adding_point_to_curve = None
         self.curve_hovered_item = None
         self.point_hovered_item = None
         self.geo_col = geo_col
 
     def drawPoint(self, x, y):
-        point = DraggablePoint()
-        point.setData(pos=np.array([[x[0], y[0]]]), adj=None,
+        point_gui = DraggablePoint()
+        point_gui.setData(pos=np.array([[x[0], y[0]]]), adj=None,
                       pen=pg.mkPen(color=q_settings.value("scatter_default_pen_color",
                                                           q_settings_descriptions["scatter_default_pen_color"][1])),
-                      pxMode=True, hoverable=True, tip=point.hover_tip)
-        point.setScatterStyle("default")
-        point.sigPointClicked.connect(self.pointClicked)
-        point.sigPointHovered.connect(self.pointHovered)
-        point.sigPointLeaveHovered.connect(self.pointLeaveHovered)
-        point.sigPointMoved.connect(self.pointMoved)
-        self.addItem(point)
+                      pxMode=True, hoverable=True, tip=point_gui.hover_tip)
+        point = self.geo_col.add_point(x[0], y[0])
+
+        # Establish a two-way connection between the point data structure and the GUI representation
+        point.gui_obj = point_gui
+        point_gui.point = point
+
+        # Set the style
+        point_gui.setScatterStyle("default")
+
+        # Connect signals
+        point_gui.sigPointClicked.connect(self.pointClicked)
+        point_gui.sigPointHovered.connect(self.pointHovered)
+        point_gui.sigPointLeaveHovered.connect(self.pointLeaveHovered)
+        point_gui.sigPointMoved.connect(self.pointMoved)
+        self.addItem(point_gui)
 
     def generateCurve(self, curve_type: str):
         if len(self.selected_points) < 2:
@@ -54,10 +67,14 @@ class AirfoilCanvas(pg.PlotWidget):
         # for idx, pt in enumerate(self.selected_points):
         #     selected_data[idx, :] = pt.data["pos"][0, :]
 
+        bezier = Bezier(point_sequence=PointSequence(points=[pt.point for pt in self.selected_points]))
+
         # Generate the curve item
         curve_item = HoverableCurveItem(curve_type=curve_type)
+        bezier.gui_obj = curve_item
+
         curve_item.setCurveStyle("default")
-        curve_item.point_items = self.selected_points
+        # curve_item.point_items = self.selected_points
 
         # Set the curve to be clickable within a specified radius
         curve_item.setClickable(True, width=4)
@@ -68,26 +85,27 @@ class AirfoilCanvas(pg.PlotWidget):
         curve_item.sigLineItemAdded.connect(self.onLineItemAdded)
 
         # Update the curve data based on the selected control points
-        curve_item.updateCurveItem()
+        # curve_item.updateCurveItem(curve_data=bezier.evaluate())
+        bezier.update()
 
         # Update the control point net
-        curve_item.generateControlPointNetItems()
+        # curve_item.generateControlPointNetItems()
         # curve_item.setControlPointNetStyle("default")
 
         # Add the curve as an owner to each of the curve's point items
-        for pt in curve_item.point_items:
-            pt.curveOwners.append(curve_item)
-        for line_item in curve_item.control_point_line_items:
-            for pt in line_item.point_items:
-                pt.curveOwners.append(line_item)
+        # for pt in curve_item.point_items:
+        #     pt.curveOwners.append(curve_item)
+        # for line_item in curve_item.control_point_line_items:
+        #     for pt in line_item.point_items:
+        #         pt.curveOwners.append(line_item)
 
         # Add the curve to the plot
         self.addItem(curve_item)
 
         # Add the control point net to the plot
-        if curve_item.control_point_line_items is not None:
-            for item in curve_item.control_point_line_items:
-                self.addItem(item)
+        # if curve_item.control_point_line_items is not None:
+        #     for item in curve_item.control_point_line_items:
+        #         self.addItem(item)
 
         # Reset the status bar
         self.sigStatusBarUpdate.emit("", 0)
@@ -103,6 +121,27 @@ class AirfoilCanvas(pg.PlotWidget):
             self.generateCurve(curve_type=curve_type)
             self.clearSelectedPoints()
         self.drawing_curve = None
+
+    def makeCollinearConstraint(self):
+        if len(self.selected_points) != 3:
+            msg = f"Choose exactly 3 points for a collinear constraint"
+            self.sigStatusBarUpdate.emit(msg, 2000)
+            return
+        constraint = CollinearConstraint(start_point=self.selected_points[0].point,
+                                         middle_point=self.selected_points[1].point,
+                                         end_point=self.selected_points[2].point)
+        constraint.enforce("start")
+
+    def makePointsCollinear(self):
+        self.creating_collinear_constraint = True
+        loop = QEventLoop()
+        self.sigEnterPressed.connect(loop.quit)
+        self.sigEscapePressed.connect(loop.quit)
+        loop.exec()
+        if self.selected_points is not None:
+            self.makeCollinearConstraint()
+            self.clearSelectedPoints()
+        self.creating_collinear_constraint = None
 
     def addPointToCurve(self, curve_item: HoverableCurveItem):
         self.adding_point_to_curve = curve_item
@@ -198,6 +237,7 @@ class AirfoilCanvas(pg.PlotWidget):
         drawPointAction = menu.addAction("Insert Point")
         drawBezierCurveThroughPointsAction = menu.addAction("Bezier Curve Through Points")
         drawLineSegmentThroughPointsAction = menu.addAction("Line Segment Through Points")
+        makePointsCollinearAction = menu.addAction("Make 3 Points Collinear")
         view_pos = self.getPlotItem().getViewBox().mapSceneToView(event.pos())
         res = menu.exec_(event.globalPos())
         if res == drawPointAction:
@@ -206,6 +246,8 @@ class AirfoilCanvas(pg.PlotWidget):
             self.drawCurveThroughPoints(curve_type="Bezier")
         elif res == drawLineSegmentThroughPointsAction:
             self.drawCurveThroughPoints(curve_type="LineSegment")
+        elif res == makePointsCollinearAction:
+            self.makePointsCollinear()
         elif res == removeCurveAction and curve_item is not None:
             curve_item.remove()
             self.removeCurve(curve_item)
@@ -250,7 +292,7 @@ if __name__ == '__main__':
     import sys
 
     app = QtWidgets.QApplication(sys.argv)
-    geo_col = GeometryCollection()
-    plot = AirfoilCanvas(geo_col=geo_col)
+    _geo_col = GeometryCollection()
+    plot = AirfoilCanvas(geo_col=_geo_col)
     plot.show()
     app.exec_()
