@@ -66,11 +66,24 @@ class Point:
         # This means that an object of type <Class> is specified as a hint somewhere inside the definition for <Class>
         return np.hypot(other.x().value() - self.x().value(), other.y().value() - self.y().value())
 
+    def measure_angle(self, other: "Point"):
+        return np.arctan2(other.y().value() - self.y().value(), other.x().value() - self.x().value())
+
     def request_move(self, xp: float, yp: float):
+        initial_x = self.x().value()
+        initial_y = self.y().value()
         self.x().set_value(xp)
         self.y().set_value(yp)
         for geo_con in self.geo_cons:
-            geo_con.enforce(calling_point=self)
+            kwargs = {}
+            class_name = str(geo_con.__class__)
+            if "PositionConstraint" in class_name:
+                kwargs = dict(calling_point=self)
+            elif "CollinearConstraint" in class_name:
+                kwargs = dict(calling_point=self, initial_x=initial_x, initial_y=initial_y)
+
+            # Enforce the constraint
+            geo_con.enforce(**kwargs)
 
     def force_move(self, xp: float, yp: float):
         self.x().set_value(xp)

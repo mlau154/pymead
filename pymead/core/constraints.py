@@ -1,4 +1,3 @@
-import typing
 from abc import abstractmethod
 
 import numpy as np
@@ -142,6 +141,62 @@ class PositionConstraint(GeoCon):
                                          original_tool_y + dist * np.sin(angle))
             else:
                 raise ValueError("Calling point for the positional constraint was neither tool nor target")
+
+
+class CollinearConstraint(GeoCon):
+    def __init__(self, start_point: Point, middle_point: Point, end_point: Point):
+        start_end_seq = PointSequence(points=[start_point, end_point])
+        super().__init__(tool=middle_point, target=start_end_seq)
+        self.tool().geo_cons.append(self)
+        for point in self.target().points():
+            point.geo_cons.append(self)
+
+    def validate(self):
+        pass
+
+    def enforce(self, calling_point: Point or str, initial_x: float or None = None, initial_y: float or None = None):
+        if isinstance(calling_point, str):
+            if calling_point == "middle":
+                calling_point = self.tool()
+            elif calling_point == "start":
+                calling_point = self.target().points()[0]
+            elif calling_point == "end":
+                calling_point = self.target().points()[1]
+            else:
+                raise ValueError(f"If calling_point is a str, it must be either 'start', 'middle', or 'end'. "
+                                 f"Specified value: {calling_point}")
+
+        if calling_point is self.tool():  # If the middle point called the enforcement
+            if initial_x is None:
+                raise ValueError("Must set initial_x if calling enforcement of collinear constraint from the "
+                                 "middle point")
+            if initial_y is None:
+                raise ValueError("Must set initial_y if calling enforcement of collinear constraint from the "
+                                 "middle point")
+            dx = self.tool().x().value() - initial_x
+            dy = self.tool().y().value() - initial_y
+            for point in self.target().points():
+                point.force_move(point.x().value() + dx, point.y().value() + dy)
+        elif calling_point is self.target().points()[0]:
+            start_point = self.target().points()[0]
+            middle_point = self.tool()
+            end_point = self.target().points()[1]
+            target_angle_minus_pi = middle_point.measure_angle(start_point)
+            target_angle = target_angle_minus_pi + np.pi
+            length = middle_point.measure_distance(end_point)
+            new_x = middle_point.x().value() + length * np.cos(target_angle)
+            new_y = middle_point.y().value() + length * np.sin(target_angle)
+            end_point.force_move(new_x, new_y)
+        elif calling_point is self.target().points()[1]:
+            start_point = self.target().points()[0]
+            middle_point = self.tool()
+            end_point = self.target().points()[1]
+            target_angle_minus_pi = middle_point.measure_angle(end_point)
+            target_angle = target_angle_minus_pi + np.pi
+            length = middle_point.measure_distance(start_point)
+            new_x = middle_point.x().value() + length * np.cos(target_angle)
+            new_y = middle_point.y().value() + length * np.sin(target_angle)
+            start_point.force_move(new_x, new_y)
 
 
 class ConstraintValidationError(Exception):

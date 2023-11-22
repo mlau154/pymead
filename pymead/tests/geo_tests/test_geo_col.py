@@ -2,7 +2,7 @@ import unittest
 
 import numpy as np
 
-from pymead.core.constraints import PositionConstraint
+from pymead.core.constraints import PositionConstraint, CollinearConstraint
 from pymead.core.geometry_collection import GeometryCollection
 from pymead.core.param2 import Param, DesVar
 from pymead.core.point import Point
@@ -237,3 +237,32 @@ class ConstraintTests(unittest.TestCase):
         self.assertAlmostEqual(0.4, new_y2)
         self.assertAlmostEqual(0.25, np.hypot(new_y2 - new_y1, new_x2 - new_x1))
         self.assertAlmostEqual(0.5, np.arctan2(new_y2 - new_y1, new_x2 - new_x1))
+
+    def test_collinear_constraint(self):
+        start_point = Point(-1.0, -0.5, name="start_point", setting_from_geo_col=True)
+        middle_point = Point(0.5, 1.0, name="middle_point", setting_from_geo_col=True)
+        end_point = Point(3.0, 2.0, name="end_point", setting_from_geo_col=True)
+
+        original_end_middle_distance = middle_point.measure_distance(end_point)
+        original_start_end_distance = start_point.measure_distance(end_point)
+        constraint = CollinearConstraint(start_point=start_point, middle_point=middle_point, end_point=end_point)
+        constraint.enforce("start")
+
+        # Ensure that the three points are now collinear after initial enforcement
+        angle_minus_pi = middle_point.measure_angle(start_point)
+        self.assertAlmostEqual(middle_point.measure_angle(end_point), angle_minus_pi + np.pi)
+
+        # Ensure that the distance between the end and middle points remains the same as before enforcement
+        self.assertAlmostEqual(middle_point.measure_distance(end_point), original_end_middle_distance)
+
+        # Move the middle point and ensure that the three points are still collinear
+        middle_point.request_move(0.0, 0.0)
+        self.assertAlmostEqual(start_point.measure_angle(middle_point), middle_point.measure_angle(end_point))
+
+        # Move the start point and ensure that the three points are still collinear
+        start_point.request_move(-5.0, 10.0)
+        self.assertAlmostEqual(start_point.measure_angle(middle_point), middle_point.measure_angle(end_point))
+
+        # Move the start point and ensure that the three points are still collinear
+        start_point.request_move(5.0, -2.0)
+        self.assertAlmostEqual(start_point.measure_angle(middle_point), middle_point.measure_angle(end_point))
