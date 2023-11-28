@@ -35,6 +35,7 @@ class AirfoilCanvas(pg.PlotWidget):
         self.curve_hovered_item = None
         self.point_hovered_item = None
         self.geo_col = geo_col
+        self.geo_col.geo_canvas = self
 
     def drawPoint(self, x, y):
         point_gui = DraggablePoint()
@@ -83,6 +84,7 @@ class AirfoilCanvas(pg.PlotWidget):
         curve_item.sigCurveHovered.connect(self.curveHovered)
         curve_item.sigCurveNotHovered.connect(self.curveLeaveHovered)
         curve_item.sigLineItemAdded.connect(self.onLineItemAdded)
+        curve_item.sigRemove.connect(self.removeCurve)
 
         # Update the curve data based on the selected control points
         # curve_item.updateCurveItem(curve_data=bezier.evaluate())
@@ -213,10 +215,10 @@ class AirfoilCanvas(pg.PlotWidget):
         item.setCurveStyle("default")
 
     def removeCurve(self, item):
-        if item.control_point_line_items is not None:
-            for sub_item in item.control_point_line_items:
-                self.removeItem(sub_item)
-        item.remove()
+        # if item.control_point_line_items is not None:
+        #     for sub_item in item.control_point_line_items:
+        #         self.removeItem(sub_item)
+        # item.remove()
         self.removeItem(item)
 
     def contextMenuEvent(self, event):
@@ -255,16 +257,34 @@ class AirfoilCanvas(pg.PlotWidget):
             self.addPointToCurve(curve_item)
 
     def removeSelectedPoints(self):
+        curves_to_delete = []
+        curves_to_update = []
         for pt in self.selected_points:
-            for curve in pt.curveOwners:
-                curve.removeControlPointFromNet(pt)  # Action only occurs if curve_type == "Bezier"
-                curve.point_items.remove(pt)
-                if len(curve.point_items) < 2:  # No curve is valid with only one point, so just remove the curve
-                    self.removeCurve(curve)
-                else:  # Otherwise, update the curve
-                    curve.updateCurveItem()
+            self.geo_col.remove_point(pt.point)
+            delete_curve = False
+            for curve in pt.point.curves:
+                delete_curve = curve.remove_point(point=pt.point)
+                if delete_curve and curve not in curves_to_delete:
+                    curves_to_delete.append(curve)
+                    if curve in curves_to_update:
+                        curves_to_update.remove(curve)
+                if not delete_curve and curve not in curves_to_update:
+                    curves_to_update.append(curve)
+
+            # for curve in pt.curveOwners:
+            #     curve.removeControlPointFromNet(pt)  # Action only occurs if curve_type == "Bezier"
+            #     curve.point_items.remove(pt)
+            #     if len(curve.point_items) < 2:  # No curve is valid with only one point, so just remove the curve
+            #         self.removeCurve(curve)
+            #     else:  # Otherwise, update the curve
+            #         curve.updateCurveItem()
             self.removeItem(pt)
         self.selected_points.clear()
+
+        for curve in curves_to_delete:
+            curve.remove()
+        for curve in curves_to_update:
+            curve.update()
 
     def clearSelectedPoints(self):
         if self.selected_points is None:

@@ -19,7 +19,7 @@ from pymead.gui.rename_popup import RenamePopup
 from pymead.gui.main_icon_toolbar import MainIconToolbar
 
 from PyQt5.QtWidgets import QMainWindow, QApplication, QVBoxLayout, QHBoxLayout, \
-    QWidget, QMenu, QStatusBar, QAction, QGraphicsScene, QGridLayout, QProgressBar
+    QWidget, QMenu, QStatusBar, QAction, QGraphicsScene, QGridLayout, QProgressBar, QSizePolicy, QDockWidget
 from PyQt5.QtGui import QIcon, QFont, QFontDatabase, QPainter, QCloseEvent, QTextCursor
 from PyQt5.QtCore import QEvent, QObject, Qt, QThreadPool
 from PyQt5.QtSvg import QSvgWidget
@@ -42,13 +42,14 @@ from pymead.gui.input_dialog import LoadDialog, SaveAsDialog, OptimizationSetupD
 from pymead.gui.pymeadPColorMeshItem import PymeadPColorMeshItem
 from pymead.gui.analysis_graph import AnalysisGraph
 from pymead.gui.parameter_tree import MEAParamTree
+from pymead.gui.parameter_tree2 import ParameterTree
 from pymead.plugins.IGES.curves import BezierIGES
 from pymead.plugins.IGES.iges_generator import IGESGenerator
 from pymead.utils.airfoil_matching import match_airfoil
 from pymead.optimization.opt_setup import read_stencil_from_array, convert_opt_settings_to_param_dict
 from pymead.analysis.single_element_inviscid import single_element_inviscid
 from pymead.gui.text_area import ConsoleTextArea
-from pymead.gui.dockable_tab_widget import DockableTabWidget
+from pymead.gui.dockable_tab_widget import DockableTabWidget, PymeadDockWidget
 from pymead.core.mea import MEA
 from pymead.analysis.calc_aero_data import calculate_aero_data
 from pymead.utils.read_write_files import load_data, save_data
@@ -144,34 +145,62 @@ class GUI(QMainWindow):
         # self.setFont(QFont("DejaVu Serif"))
         self.setFont(QFont("DejaVu Sans"))
 
-        self.mea = MEA(airfoil_graphs_active=True)
-        self.w = pg.GraphicsLayoutWidget(show=True, size=(1000, 300))
-        self.w.setBackground('#2a2a2b')
-        self.v = self.w.addPlot()
-        self.v.setAspectLocked()
-        self.v.hideButtons()
-        self.main_layout = QHBoxLayout()
+        # self.mea = MEA(airfoil_graphs_active=True)
+        # self.w = pg.GraphicsLayoutWidget(show=True, size=(1000, 300))
+        # self.w.setBackground('#2a2a2b')
+        # self.v = self.w.addPlot()
+        # self.v.setAspectLocked()
+        # self.v.hideButtons()
+
+        # Dock widget items
+        # self.w = QWidget()
+        # self.w.setSizePolicy(QSizePolicy.MinimumExpanding, QSizePolicy.MinimumExpanding)
+        # layout = QGridLayout()
+        # self.w.setLayout(layout)
+        # self.setCentralWidget(self.w)
+        self.dock_widgets = []
+        self.dock_widget_names = []
+        self.first_dock_widget = None
+        self.current_dock_widget = None
+        self.tabifiedDockWidgetActivated.connect(self.activated)
+        self.setDockNestingEnabled(True)
+
         self.status_bar = QStatusBar()
         self.setStatusBar(self.status_bar)
-        self.param_tree_instance = MEAParamTree(self.mea, self.statusBar(), parent=self)
-        self.design_tree_widget = self.param_tree_instance.t
-        self.text_area = ConsoleTextArea()
-        self.right_widget_layout = QVBoxLayout()
-        self.dockable_tab_window = DockableTabWidget(self)
-        self.dockable_tab_window.add_new_tab_widget(self.w, "Geometry")
-        self.dockable_tab_window.tab_closed.connect(self.on_tab_closed)
-        self.airfoil_canvas = AirfoilCanvas(geo_col=GeometryCollection())
+        # self.param_tree_instance = MEAParamTree(self.mea, self.statusBar(), parent=self)
+        # self.design_tree_widget = self.param_tree_instance.t
+
+        self.text_area = ConsoleTextArea(self)
+
+        # self.right_widget_layout = QVBoxLayout()
+        # self.dockable_tab_window = DockableTabWidget(self)
+        # self.main_layout.addWidget(self.dockable_tab_window)
+        # self.dockable_tab_window.add_new_tab_widget(self.w, "Geometry")
+        # self.dockable_tab_window.tab_closed.connect(self.on_tab_closed)
+        self.geo_col = GeometryCollection()
+
+        self.airfoil_canvas = AirfoilCanvas(geo_col=self.geo_col)
         self.airfoil_canvas.sigStatusBarUpdate.connect(self.setStatusBarText)
-        self.dockable_tab_window.add_new_tab_widget(self.airfoil_canvas, "Custom")
-        self.right_widget_layout.addWidget(self.dockable_tab_window)
-        self.right_widget_layout.addWidget(self.text_area)
-        self.right_widget = QWidget()
-        self.right_widget.setLayout(self.right_widget_layout)
-        self.main_layout.addWidget(self.design_tree_widget, 1)
-        self.main_layout.addWidget(self.right_widget, 3)
-        self.main_widget = QWidget()
-        self.main_widget.setLayout(self.main_layout)
-        self.setCentralWidget(self.main_widget)
+
+        # self.temp_text = ConsoleTextArea(self)
+
+        self.parameter_tree = ParameterTree(geo_col=self.geo_col, parent=self)
+
+        self.geo_col.add_param(value=0.5, name="test_param")
+
+        self.add_new_tab_widget(self.parameter_tree, "Tree")
+        self.add_new_tab_widget(self.airfoil_canvas, "Geometry")
+        self.add_new_tab_widget(self.text_area, "Console")
+        # self.right_widget_layout.addWidget(self.dockable_tab_window)
+        # self.right_widget_layout.addWidget(self.text_area)
+        # self.right_widget = QWidget()
+        # self.right_widget.setLayout(self.right_widget_layout)
+        # self.main_layout.addWidget(self.design_tree_widget, 1)
+        # self.main_layout.addWidget(self.right_widget, 3)
+        # self.main_widget = QWidget()
+        # self.main_widget.setLayout(self.main_layout)
+        # self.setCentralWidget(self.main_widget)
+
         self.set_title_and_icon()
         self.create_menu_bar()
         self.main_icon_toolbar = MainIconToolbar(self)
@@ -199,9 +228,9 @@ class GUI(QMainWindow):
             mode="html")
         self.output_area_text('\n\n')
         # self.output_area_text("<font color='#ffffff' size='3'>\n\n</font>", mode='html')
-        airfoil = Airfoil(base_airfoil_params=BaseAirfoilParams(dx=Param(0.0), dy=Param(0.0)))
-        self.add_airfoil(airfoil)
-        self.auto_range_geometry()
+        # airfoil = Airfoil(base_airfoil_params=BaseAirfoilParams(dx=Param(0.0), dy=Param(0.0)))
+        # self.add_airfoil(airfoil)
+        # self.auto_range_geometry()
         self.statusBar().clearMessage()
         self.progress_bar = QProgressBar(parent=self)
         self.progress_bar.setTextVisible(False)
@@ -212,15 +241,15 @@ class GUI(QMainWindow):
         self.progress_bar.setValue(0)
         self.progress_bar.hide()
         # self.showMaximized()
-        # for dw in self.dockable_tab_window.dock_widgets:
+        # for dw in self.dock_widgets:
         #     dw.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.MinimumExpanding)
 
         # Load the airfoil system from the system argument variable if necessary
-        self.mea_start_dict = None
-        if self.path is not None:
-            self.load_mea_no_dialog(self.path)
-        else:
-            self.mea_start_dict = self.copy_mea_dict()
+        # self.mea_start_dict = None
+        # if self.path is not None:
+        #     self.load_mea_no_dialog(self.path)
+        # else:
+        #     self.mea_start_dict = self.copy_mea_dict()
 
         # Check if we are using the most recent release of pymead (notify if not)
         self.check_for_new_version()
@@ -232,6 +261,52 @@ class GUI(QMainWindow):
                                   f"<a href='https://github.com/mlau154/pymead/releases' style='color:#45C5E6;'>"
                                   f"https://github.com/mlau154/pymead/releases</a>", message_mode="info",
                                   rich_text=True)
+
+    def add_new_tab_widget(self, widget, name):
+        if not (name in self.dock_widget_names):
+            dw = PymeadDockWidget(name, self)
+            dw.setAllowedAreas(Qt.AllDockWidgetAreas)
+            dw.setWidget(widget)
+            dw.setFloating(False)
+            if name in ["Tree", "Geometry", "Console"]:
+                dw.setFeatures(dw.features() & ~QDockWidget.DockWidgetClosable)
+            dw.tab_closed.connect(self.on_tab_closed)
+            self.dock_widgets.append(dw)
+            self.dock_widget_names.append(name)
+            if len(self.dock_widgets) == 2:
+                self.addDockWidget(Qt.LeftDockWidgetArea, self.dock_widgets[-2])  # Left
+                self.addDockWidget(Qt.RightDockWidgetArea, dw)  # Right
+                # self.setCentralWidget(QWidget())
+                # self.tabifyDockWidget(self.dock_widgets[-2], self.dock_widgets[-1])
+                self.splitDockWidget(self.dock_widgets[-2], self.dock_widgets[-1], Qt.Horizontal)
+            elif len(self.dock_widgets) == 3:
+                self.addDockWidget(Qt.RightDockWidgetArea, dw)  # Bottom
+                # self.tabifyDockWidget(self.dock_widgets[-2], self.dock_widgets[-1])
+                self.splitDockWidget(self.dock_widgets[-2], self.dock_widgets[-1], Qt.Vertical)
+            elif len(self.dock_widgets) > 3:
+                self.addDockWidget(Qt.RightDockWidgetArea, dw)  # Right
+
+    def on_tab_closed(self, name: str, event: QCloseEvent):
+        if name == "Analysis":
+            self.analysis_graph = None
+            self.n_converged_analyses = 0
+        elif name == "Opt. Airfoil":
+            self.opt_airfoil_graph = None
+            self.opt_airfoil_plot_handles = []
+        elif name == "Drag":
+            self.drag_graph = None
+        elif name == "Parallel Coordinates":
+            self.parallel_coords_graph = None
+            self.parallel_coords_plot_handles = []
+        elif name == "Cp":
+            self.Cp_graph = None
+            self.Cp_graph_plot_handles = []
+        idx = self.dock_widget_names.index(name)
+        self.dock_widget_names.pop(idx)
+        self.dock_widgets.pop(idx)
+
+    def activated(self, dw: QDockWidget):
+        self.current_dock_widget = dw
 
     def closeEvent(self, a0) -> None:
         """
@@ -259,24 +334,6 @@ class GUI(QMainWindow):
                     a0.ignore()
                     return
 
-    def on_tab_closed(self, name: str, event: QCloseEvent):
-        if name == "Geometry":
-            event.ignore()  # Do not allow user to close the geometry window
-        elif name == "Analysis":
-            self.analysis_graph = None
-            self.n_converged_analyses = 0
-        elif name == "Opt. Airfoil":
-            self.opt_airfoil_graph = None
-            self.opt_airfoil_plot_handles = []
-        elif name == "Drag":
-            self.drag_graph = None
-        elif name == "Parallel Coordinates":
-            self.parallel_coords_graph = None
-            self.parallel_coords_plot_handles = []
-        elif name == "Cp":
-            self.Cp_graph = None
-            self.Cp_graph_plot_handles = []
-
     @pyqtSlot(str, int)
     def setStatusBarText(self, message: str, msecs: int):
         self.statusBar().showMessage(message, msecs)
@@ -297,16 +354,16 @@ class GUI(QMainWindow):
                            color: {theme['menu-main-color']};}} 
                            QMenu::item:selected {{ background-color: {theme['menu-item-selected-color']}; }}
                     """)
-        for dock_widget in self.dockable_tab_window.dock_widgets:
+        for dock_widget in self.dock_widgets:
             if hasattr(dock_widget.widget(), 'setBackground'):
                 dock_widget.widget().setBackground(theme["dock-widget-background-color"])
         if self.cbar is not None and self.cbar_label_attrs is not None:
             self.cbar_label_attrs['color'] = theme["cbar-color"]
             self.cbar.setLabel(**self.cbar_label_attrs)
-        if self.analysis_graph is not None:
-            self.analysis_graph.set_background(theme["graph-background-color"])
-        if self.param_tree_instance is not None:
-            self.param_tree_instance.set_theme(theme)
+        # if self.analysis_graph is not None:
+        #     self.analysis_graph.set_background(theme["graph-background-color"])
+        # if self.param_tree_instance is not None:
+        #     self.param_tree_instance.set_theme(theme)
 
     def set_title_and_icon(self):
         self.setWindowTitle("pymead")

@@ -32,6 +32,7 @@ class Param:
         self._lower = None
         self._upper = None
         self.geo_col = None
+        self.tree_item = None
         self.geo_objs = []
         self.geo_cons = []
         self.dims = []

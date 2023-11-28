@@ -27,8 +27,21 @@ class Bezier(ParametricCurve):
     def insert_point(self, idx: int, point: Point):
         self.point_sequence().insert_point(idx, point)
 
-    def remove_point(self, idx: int):
+    def remove_point(self, idx: int or None = None, point: Point or None = None):
+        if isinstance(point, Point):
+            idx = self.point_sequence().point_idx_from_ref(point)
         self.point_sequence().remove_point(idx)
+
+        if len(self.point_sequence()) > 1:
+            delete_curve = False
+        else:
+            delete_curve = True
+
+        return delete_curve
+
+    def remove(self):
+        if self.gui_obj is not None:
+            self.gui_obj.sigRemove.emit(self.gui_obj)
 
     def update(self):
         p_curve_data = self.evaluate()

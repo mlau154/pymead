@@ -93,6 +93,8 @@ class Point:
         if self.gui_obj is not None:
             self.gui_obj.updateGUIObj(self.x().value(), self.y().value())
 
+        # TODO: add tree object update here as well
+
         for curve in self.curves:
             curve.update()
 
@@ -103,6 +105,8 @@ class Point:
         # Update the GUI object, if there is one
         if self.gui_obj is not None:
             self.gui_obj.updateGUIObj(self.x().value(), self.y().value())
+
+        # TODO: add tree object update here as well
 
         for curve in self.curves:
             curve.update()
@@ -115,6 +119,9 @@ class PointSequence:
 
     def points(self):
         return self._points
+
+    def point_idx_from_ref(self, point: Point):
+        return self.points().index(point)
 
     def set_points(self, points: typing.List[Point]):
         self._points = points

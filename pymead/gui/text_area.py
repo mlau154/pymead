@@ -15,6 +15,6 @@ class ConsoleTextArea(QTextBrowser):
         self.setFont(font)
         self.moveCursor(QTextCursor.End)
         # self.setTextColor(QColor("#13294B"))
-        self.setFixedHeight(200)
+        self.setMinimumHeight(50)
         self.setOpenLinks(True)
         self.setOpenExternalLinks(True)

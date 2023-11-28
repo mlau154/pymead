@@ -1,3 +1,5 @@
+import typing
+
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QCloseEvent
 from PyQt5.QtWidgets import QMainWindow, QDockWidget, QGridLayout, QApplication, QWidget
@@ -34,7 +36,7 @@ class DockableTabWidget(QMainWindow):
         self.cancel_if_tab_name_exists = cancel_if_tab_name_exists
         self.tabifiedDockWidgetActivated.connect(self.activated)
 
-    def add_new_tab_widget(self, widget, name):
+    def add_new_tab_widget(self, widget, name, connect_func: typing.Callable):
         if not (self.cancel_if_tab_name_exists and name in self.names):
             dw = PymeadDockWidget(name, self)
             dw.setWidget(widget)
@@ -48,11 +50,16 @@ class DockableTabWidget(QMainWindow):
                 self.setCentralWidget(QWidget())
                 self.tabifyDockWidget(self.dock_widgets[-2], self.dock_widgets[-1])
                 self.splitDockWidget(self.dock_widgets[-2], self.dock_widgets[-1], Qt.Horizontal)
-            elif len(self.dock_widgets) > 2:
+            elif len(self.dock_widgets) == 3:
+                self.addDockWidget(Qt.BottomDockWidgetArea, dw)
+                self.tabifyDockWidget(self.dock_widgets[-2], self.dock_widgets[-1])
+                self.splitDockWidget(self.dock_widgets[-2], self.dock_widgets[-1], Qt.Vertical)
+            elif len(self.dock_widgets) > 3:
                 self.addDockWidget(Qt.RightDockWidgetArea, dw)
                 self.tabifyDockWidget(self.dock_widgets[-2], self.dock_widgets[-1])
             else:
                 self.setCentralWidget(dw)
+            self.tab_closed.connect(connect_func)
 
     def on_tab_closed(self, name: str, event: QCloseEvent):
         if name == "Geometry":

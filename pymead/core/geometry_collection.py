@@ -6,7 +6,7 @@ from pymead.core.point import Point
 
 
 class GeometryCollection:
-    def __init__(self, geo_ui=None):
+    def __init__(self):
         self._container = {
             "desvar": {},
             "params": {},
@@ -15,7 +15,8 @@ class GeometryCollection:
             "bezier": {},
             "geocon": {}
         }
-        self.geo_canvas = geo_ui
+        self.geo_canvas = None
+        self.geo_tree = None
 
     def container(self):
         """
@@ -186,6 +187,10 @@ class GeometryCollection:
         param.geo_col = self
 
         self.add_to_subcontainer(param, "params")
+
+        if self.geo_tree is not None:
+            self.geo_tree.addParam(param)
+
         return param
 
     def remove_param(self, param: Param or str):
@@ -222,6 +227,10 @@ class GeometryCollection:
         self.add_to_subcontainer(point.x(), "params", assign_unique_name=False)
         self.add_to_subcontainer(point.y(), "params", assign_unique_name=False)
 
+        if self.geo_tree is not None:
+            self.geo_tree.addParam(point.x())
+            self.geo_tree.addParam(point.y())
+
         point.x().geo_col = self
         point.y().geo_col = self
         point.geo_col = self
@@ -241,6 +250,13 @@ class GeometryCollection:
         self.remove_from_subcontainer(point.x(), "params")
         self.remove_from_subcontainer(point.y(), "params")
         self.remove_from_subcontainer(point.name(), "points")
+
+        print("Removing point!")
+
+        if self.geo_tree is not None:
+
+            self.geo_tree.removeParam(point.x())
+            self.geo_tree.removeParam(point.y())
 
     def add_desvar(self, value: float, name: str, lower: float or None = None, upper: float or None = None,
                    unit_type: str or None = None):
