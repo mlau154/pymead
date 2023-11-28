@@ -228,12 +228,9 @@ class GeometryCollection:
         point = Point(x=x, y=y, name="Point", setting_from_geo_col=True)
 
         self.add_to_subcontainer(point, "points")
-        self.add_to_subcontainer(point.x(), "params", assign_unique_name=False)
-        self.add_to_subcontainer(point.y(), "params", assign_unique_name=False)
 
         if self.geo_tree is not None:
-            self.geo_tree.addParam(point.x())
-            self.geo_tree.addParam(point.y())
+            self.geo_tree.addPoint(point)
 
         point.x().geo_col = self
         point.y().geo_col = self
@@ -251,14 +248,10 @@ class GeometryCollection:
             Reference to or name of the point
         """
         point = point if isinstance(point, Point) else self.container()["points"][point]
-        self.remove_from_subcontainer(point.x(), "params")
-        self.remove_from_subcontainer(point.y(), "params")
         self.remove_from_subcontainer(point.name(), "points")
 
         if self.geo_tree is not None:
-
-            self.geo_tree.removeParam(point.x())
-            self.geo_tree.removeParam(point.y())
+            self.geo_tree.removePoint(point)
 
     def add_bezier(self, point_sequence: PointSequence):
         bezier = Bezier(point_sequence=point_sequence)
@@ -266,8 +259,16 @@ class GeometryCollection:
 
         self.add_to_subcontainer(bezier, "bezier")
 
+        if self.geo_tree is not None:
+            self.geo_tree.addBezier(bezier)
+
+        return bezier
+
     def remove_bezier(self, bezier: Bezier or str):
         bezier = bezier if isinstance(bezier, Bezier) else self.container()["bezier"][bezier]
+        for pt in bezier.point_sequence().points():
+            pt.curves.remove(bezier)
+
         self.remove_from_subcontainer(bezier, "bezier")
 
         if self.geo_tree is not None:
@@ -279,8 +280,16 @@ class GeometryCollection:
 
         self.add_to_subcontainer(line, "lines")
 
+        if self.geo_tree is not None:
+            self.geo_tree.addLine(line)
+
+        return line
+
     def remove_line(self, line: LineSegment or str):
         line = line if isinstance(line, LineSegment) else self.container()["lines"][line]
+        for pt in line.point_sequence().points():
+            pt.curves.remove(line)
+
         self.remove_from_subcontainer(line, "lines")
 
         if self.geo_tree is not None:

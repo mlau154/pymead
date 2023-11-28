@@ -6,6 +6,7 @@ from PyQt5 import QtWidgets
 from PyQt5.QtCore import pyqtSignal, QEventLoop, Qt
 
 from pymead.core.bezier2 import Bezier
+from pymead.core.line2 import LineSegment
 from pymead.core.constraints import CollinearConstraint
 from pymead.core.geometry_collection import GeometryCollection
 from pymead.core.point import PointSequence
@@ -34,6 +35,7 @@ class AirfoilCanvas(pg.PlotWidget):
         self.adding_point_to_curve = None
         self.curve_hovered_item = None
         self.point_hovered_item = None
+        self.point_text_item = None
         self.geo_col = geo_col
         self.geo_col.geo_canvas = self
 
@@ -42,7 +44,7 @@ class AirfoilCanvas(pg.PlotWidget):
         point_gui.setData(pos=np.array([[x[0], y[0]]]), adj=None,
                       pen=pg.mkPen(color=q_settings.value("scatter_default_pen_color",
                                                           q_settings_descriptions["scatter_default_pen_color"][1])),
-                      pxMode=True, hoverable=True, tip=point_gui.hover_tip)
+                      pxMode=True, hoverable=True, tip=None)
         point = self.geo_col.add_point(x[0], y[0])
 
         # Establish a two-way connection between the point data structure and the GUI representation
@@ -68,11 +70,23 @@ class AirfoilCanvas(pg.PlotWidget):
         # for idx, pt in enumerate(self.selected_points):
         #     selected_data[idx, :] = pt.data["pos"][0, :]
 
-        bezier = Bezier(point_sequence=PointSequence(points=[pt.point for pt in self.selected_points]))
+        # bezier = Bezier(point_sequence=PointSequence(points=[pt.point for pt in self.selected_points]))
+
+        if curve_type == "Bezier":
+            curve = self.geo_col.add_bezier(
+                point_sequence=PointSequence(points=[pt.point for pt in self.selected_points])
+            )
+        elif curve_type == "LineSegment":
+            curve = self.geo_col.add_line(
+                point_sequence=PointSequence(points=[pt.point for pt in self.selected_points])
+            )
+        else:
+            raise NotImplementedError(f"Curve type {curve_type} not implemented")
 
         # Generate the curve item
         curve_item = HoverableCurveItem(curve_type=curve_type)
-        bezier.gui_obj = curve_item
+        curve.gui_obj = curve_item
+        curve_item.parametric_curve = curve
 
         curve_item.setCurveStyle("default")
         # curve_item.point_items = self.selected_points
@@ -88,7 +102,7 @@ class AirfoilCanvas(pg.PlotWidget):
 
         # Update the curve data based on the selected control points
         # curve_item.updateCurveItem(curve_data=bezier.evaluate())
-        bezier.update()
+        curve.update()
 
         # Update the control point net
         # curve_item.generateControlPointNetItems()
@@ -168,6 +182,9 @@ class AirfoilCanvas(pg.PlotWidget):
             self.selected_points = []
         if point_item in self.selected_points:
             return
+        if self.point_text_item is not None:
+            self.removeItem(self.point_text_item)
+            self.point_text_item = None
         point_item.hoverable = False
         point_item.setScatterStyle("selected")
         if self.drawing_curve is None and self.adding_point_to_curve is None:
@@ -193,17 +210,29 @@ class AirfoilCanvas(pg.PlotWidget):
                 self.sigEnterPressed.emit()
                 self.sigStatusBarUpdate.emit("", 0)
 
-    @staticmethod
-    def pointMoved(point: DraggablePoint):
+    def pointMoved(self, point: DraggablePoint):
+        if self.point_text_item is not None:
+            self.removeItem(self.point_text_item)
+            self.point_text_item = None
         for curve in point.curveOwners:
             curve.updateCurveItem()
 
     def pointHovered(self, scatter_item, spot, ev, point_item):
+        if point_item.dragPoint is not None:
+            return
         self.point_hovered_item = point_item
+        point = self.point_hovered_item.point
+        if self.point_text_item is None:
+            self.point_text_item = pg.TextItem(
+                f"{point.name()}\nx: {point.x().value():.6f}\ny: {point.y().value():.6f}", anchor=(0, 1))
+            self.addItem(self.point_text_item)
+            self.point_text_item.setPos(point.x().value(), point.y().value())
         point_item.setScatterStyle(mode="hovered")
 
     def pointLeaveHovered(self, scatter_item, spot, ev, point_item):
         self.point_hovered_item = None
+        self.removeItem(self.point_text_item)
+        self.point_text_item = None
         point_item.setScatterStyle(mode="default")
 
     def curveHovered(self, item):
@@ -219,6 +248,10 @@ class AirfoilCanvas(pg.PlotWidget):
         #     for sub_item in item.control_point_line_items:
         #         self.removeItem(sub_item)
         # item.remove()
+        if isinstance(item.parametric_curve, Bezier):
+            self.geo_col.remove_bezier(item.parametric_curve)
+        elif isinstance(item.parametric_curve, LineSegment):
+            self.geo_col.remove_line(item.parametric_curve)
         self.removeItem(item)
 
     def contextMenuEvent(self, event):

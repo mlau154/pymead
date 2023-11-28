@@ -148,10 +148,12 @@ class Param:
         #                      "collection")
         # TODO: revisit this. SurfPoints should not need to have setting_from_geo_col=True, but they do currently
         #  for this error not to be raised
+
+        # Rename the reference in the geometry collection
         if self.geo_col is not None and self.name() in self.geo_col.container()["params"]:
             self.geo_col.container()["params"][name] = self.geo_col.container()["params"][self.name()]
             self.geo_col.container()["params"].pop(self.name())
-        # TODO: add this functionality to other types of geometry objects
+
         self._name = name
 
     def lower(self):

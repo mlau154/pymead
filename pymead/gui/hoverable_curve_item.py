@@ -189,7 +189,7 @@ class HoverableCurveItem(pg.PlotCurveItem):
 
     def remove(self):
         for point in self.point_items:
-            point.curveOwners.remove(self)
+            point.curves.remove(self)
 
     def setCurveStyle(self, mode: str = "default"):
         implemented_style_modes = ["default", "hovered"]

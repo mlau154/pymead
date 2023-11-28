@@ -11,6 +11,7 @@ class Point:
         self._x = None
         self._y = None
         self.geo_col = None
+        self.tree_item = None
         self.geo_cons = []
         self.dims = []
         self.gui_obj = None
@@ -47,11 +48,18 @@ class Point:
         self._y.point = self
 
     def set_name(self, name: str or None = None):
-        self._name = "Point" if name is None else name
+        name = "Point" if name is None else name
         if self.x() is not None:
-            self.x().set_name(f"{self.name()}.x")
+            self.x().set_name(f"{name}.x")
         if self.y() is not None:
-            self.y().set_name(f"{self.name()}.y")
+            self.y().set_name(f"{name}.y")
+
+        # Rename the reference in the geometry collection
+        if self.geo_col is not None and self.name() in self.geo_col.container()["points"]:
+            self.geo_col.container()["points"][name] = self.geo_col.container()["points"][self.name()]
+            self.geo_col.container()["points"].pop(self.name())
+
+        self._name = name
 
     def as_array(self):
         return np.array([self.x().value(), self.y().value()])
