@@ -1,8 +1,10 @@
 import re
 import typing
 
+from pymead.core.bezier2 import Bezier
+from pymead.core.line2 import LineSegment
 from pymead.core.param2 import Param, LengthParam, AngleParam, DesVar, LengthDesVar, AngleDesVar
-from pymead.core.point import Point
+from pymead.core.point import Point, PointSequence
 
 
 class GeometryCollection:
@@ -188,6 +190,8 @@ class GeometryCollection:
 
         self.add_to_subcontainer(param, "params")
 
+        print(f"{self.container() = }")
+
         if self.geo_tree is not None:
             self.geo_tree.addParam(param)
 
@@ -251,12 +255,36 @@ class GeometryCollection:
         self.remove_from_subcontainer(point.y(), "params")
         self.remove_from_subcontainer(point.name(), "points")
 
-        print("Removing point!")
-
         if self.geo_tree is not None:
 
             self.geo_tree.removeParam(point.x())
             self.geo_tree.removeParam(point.y())
+
+    def add_bezier(self, point_sequence: PointSequence):
+        bezier = Bezier(point_sequence=point_sequence)
+        bezier.geo_col = self
+
+        self.add_to_subcontainer(bezier, "bezier")
+
+    def remove_bezier(self, bezier: Bezier or str):
+        bezier = bezier if isinstance(bezier, Bezier) else self.container()["bezier"][bezier]
+        self.remove_from_subcontainer(bezier, "bezier")
+
+        if self.geo_tree is not None:
+            self.geo_tree.removeBezier(bezier)
+
+    def add_line(self, point_sequence: PointSequence):
+        line = LineSegment(point_sequence=point_sequence)
+        line.geo_col = self
+
+        self.add_to_subcontainer(line, "lines")
+
+    def remove_line(self, line: LineSegment or str):
+        line = line if isinstance(line, LineSegment) else self.container()["lines"][line]
+        self.remove_from_subcontainer(line, "lines")
+
+        if self.geo_tree is not None:
+            self.geo_tree.removeLine(line)
 
     def add_desvar(self, value: float, name: str, lower: float or None = None, upper: float or None = None,
                    unit_type: str or None = None):

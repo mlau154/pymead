@@ -7,11 +7,13 @@ from pymead.core.parametric_curve2 import ParametricCurve, PCurveData
 
 class LineSegment(ParametricCurve):
 
-    def __init__(self, point_sequence: PointSequence, parent_curve: ParametricCurve or None = None, *args, **kwargs):
+    def __init__(self, point_sequence: PointSequence, name: str or None = None, **kwargs):
         self._point_sequence = None
+        self.gui_obj = None
+        self.geo_col = None
         self.set_point_sequence(point_sequence)
-        self.parent_curve = parent_curve
-        super().__init__(*args, **kwargs)
+        name = "Line" if name is None else name
+        super().__init__(name=name, **kwargs)
 
     def point_sequence(self):
         return self._point_sequence

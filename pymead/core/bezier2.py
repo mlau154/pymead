@@ -9,14 +9,33 @@ from pymead.utils.nchoosek import nchoosek
 
 class Bezier(ParametricCurve):
 
-    def __init__(self, point_sequence: PointSequence, *args, **kwargs):
+    def __init__(self, point_sequence: PointSequence, name: str or None = None, **kwargs):
         self._point_sequence = None
         self.gui_obj = None
+        self.geo_col = None
         self.set_point_sequence(point_sequence)
-        for point in self.point_sequence().points():
+        name = "Bezier" if name is None else name
+        self.curve_connections = []
+        self._add_references()
+        super().__init__(name=name, **kwargs)
+
+    def _add_references(self):
+        for idx, point in enumerate(self.point_sequence().points()):
+            # If any curves are found at the start point, add their pointers as curve connections
+            if idx == 0:
+                for curve in point.curves:
+                    if not curve.reference:  # Do not include reference curves
+                        self.curve_connections.append(curve)
+
+            # If any other curves are found at the end point, add their pointers as curve connections
+            elif idx == len(self.point_sequence()) - 1:
+                for curve in point.curves:
+                    if not curve.reference:  # Do not include reference curves
+                        self.curve_connections.append(curve)
+
+            # Add the object reference to each point in the curve
             if self not in point.curves:
                 point.curves.append(self)
-        super().__init__(*args, **kwargs)
 
     def point_sequence(self):
         return self._point_sequence
@@ -50,7 +69,8 @@ class Bezier(ParametricCurve):
 
     @staticmethod
     def bernstein_poly(n: int, i: int, t: int or float or np.ndarray):
-        """Calculates the Bernstein polynomial for a given Bézier curve order, index, and parameter vector
+        """
+        Calculates the Bernstein polynomial for a given Bézier curve order, index, and parameter vector
 
         Arguments
         =========

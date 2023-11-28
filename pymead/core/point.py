@@ -37,12 +37,14 @@ class Point:
             value=x, name=self.name() + ".x", setting_from_geo_col=self.setting_from_geo_col)
         if self not in self._x.geo_objs:
             self._x.geo_objs.append(self)
+        self._x.point = self
 
     def set_y(self, y: LengthParam or float):
         self._y = y if isinstance(y, LengthParam) else LengthParam(
             value=y, name=self.name() + ".y", setting_from_geo_col=self.setting_from_geo_col)
         if self not in self._y.geo_objs:
             self._y.geo_objs.append(self)
+        self._y.point = self
 
     def set_name(self, name: str or None = None):
         self._name = "Point" if name is None else name

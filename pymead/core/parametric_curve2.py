@@ -25,8 +25,15 @@ class PCurveDerivData:
 
 
 class ParametricCurve:
-    def __init__(self, reference: bool = False):
+    def __init__(self, name: str, reference: bool = False):
+        self._name = None
         self.reference = reference
+
+    def name(self):
+        return self._name
+
+    def set_name(self, name: str):
+        self._name = name
 
     @staticmethod
     def generate_t_collection(nt: int = 100, spacing: str = "linear", start: int = 0.0, end: int = 1.0):
