@@ -104,7 +104,7 @@ class GeometryCollection:
         else:
             return f"{specified_name}-{max_index + 1}"
 
-    def add_to_subcontainer(self, obj: Param or DesVar or Point, sub_container: str,
+    def add_to_subcontainer(self, obj: Param or DesVar or Point or Bezier or LineSegment, sub_container: str,
                             assign_unique_name: bool = True):
         """
         Adds an object to a sub-container within the geometry collection's ``container()``. Also performs the task
@@ -122,12 +122,18 @@ class GeometryCollection:
             Whether to assign the object a unique name before insertion into the sub-container. Default: ``True``.
         """
         # Set the object's name to a unique name if necessary
+        print(f"{self.container()['bezier'] = }")
         if assign_unique_name:
             name_list = self.get_name_list(sub_container=sub_container)
+            print(f"{name_list = }")
             unique_name = self.unique_namer(obj.name(), name_list)
+            print(f"{unique_name = }")
+            print(f"{self.container()['bezier'] = }")
             obj.set_name(unique_name)
+            print(f"{self.container()['bezier'] = }")
 
         # Add the object to the geometry collection sub-container
+        print(f"{obj.name() = }")
         self.container()[sub_container][obj.name()] = obj
 
     def remove_from_subcontainer(self, obj: Param or DesVar or Point or str, sub_container: str):
@@ -145,6 +151,8 @@ class GeometryCollection:
         """
         if not isinstance(obj, str):
             obj = obj.name()
+
+        print(f"{self.container()[sub_container] = }")
 
         self.container()[sub_container].pop(obj)
 
@@ -258,6 +266,8 @@ class GeometryCollection:
         bezier.geo_col = self
 
         self.add_to_subcontainer(bezier, "bezier")
+
+        print(f"{bezier.geo_col.container()['bezier'] = }")
 
         if self.geo_tree is not None:
             self.geo_tree.addBezier(bezier)

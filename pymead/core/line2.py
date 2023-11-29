@@ -23,7 +23,7 @@ class LineSegment(ParametricCurve):
 
     def set_name(self, name: str):
         # Rename the reference in the geometry collection
-        if self.geo_col is not None and self.name() in self.geo_col.container()["lines"]:
+        if self.geo_col is not None and self.name() in self.geo_col.container()["lines"].keys():
             self.geo_col.container()["lines"][name] = self.geo_col.container()["lines"][self.name()]
             self.geo_col.container()["lines"].pop(self.name())
 
