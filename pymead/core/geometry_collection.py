@@ -1,6 +1,7 @@
 import re
 import typing
 
+from pymead.core.airfoil2 import Airfoil
 from pymead.core.bezier2 import Bezier
 from pymead.core.line2 import LineSegment
 from pymead.core.param2 import Param, LengthParam, AngleParam, DesVar, LengthDesVar, AngleDesVar
@@ -15,6 +16,7 @@ class GeometryCollection:
             "points": {},
             "lines": {},
             "bezier": {},
+            "airfoils": {},
             "geocon": {}
         }
         self.geo_canvas = None
@@ -127,7 +129,7 @@ class GeometryCollection:
         if assign_unique_name:
             name_list = self.get_name_list(sub_container=sub_container)
             unique_name = self.unique_namer(obj.name(), name_list)
-            if isinstance(obj, Param) or isinstance(obj, DesVar) and unique_name.split("-")[1] == 1:
+            if (isinstance(obj, Param) or isinstance(obj, DesVar)) and unique_name.split("-")[1] == "1":
                 pass
             else:
                 obj.set_name(unique_name)
@@ -418,7 +420,8 @@ class GeometryCollection:
         desvar.geo_objs = param.geo_objs.copy()
 
         # Remove the parameter
-        self.remove_param(param)
+        if param.point is None:
+            self.remove_param(param)
 
         return desvar
 
@@ -562,6 +565,26 @@ class GeometryCollection:
             sorted_list[idx] = ks
 
         return sorted_list
+
+    def add_airfoil(self, leading_edge: Point, trailing_edge: Point, upper_surf_end: Point, lower_surf_end: Point):
+        airfoil = Airfoil(leading_edge=leading_edge, trailing_edge=trailing_edge, upper_surf_end=upper_surf_end,
+                          lower_surf_end=lower_surf_end)
+        airfoil.geo_col = self
+
+        self.add_to_subcontainer(airfoil, "airfoils")
+
+        if self.geo_tree is not None:
+            self.geo_tree.addAirfoil(airfoil)
+
+        return airfoil
+
+    def remove_airfoil(self, airfoil: Airfoil or str):
+        airfoil = airfoil if isinstance(airfoil, Airfoil) else self.container()["airfoils"][airfoil]
+
+        self.remove_from_subcontainer(airfoil, "airfoil")
+
+        if self.geo_tree is not None:
+            self.geo_tree.removeAirfoil(airfoil)
 
     def add_constraint(self):
         pass

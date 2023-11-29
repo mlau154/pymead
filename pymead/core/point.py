@@ -133,6 +133,9 @@ class PointSequence:
     def point_idx_from_ref(self, point: Point):
         return self.points().index(point)
 
+    def reverse(self):
+        self.points().reverse()
+
     def set_points(self, points: typing.List[Point]):
         self._points = points
 

@@ -51,6 +51,9 @@ class Bezier(ParametricCurve):
     def set_point_sequence(self, point_sequence: PointSequence):
         self._point_sequence = point_sequence
 
+    def reverse_point_sequence(self):
+        self.point_sequence().reverse()
+
     def insert_point(self, idx: int, point: Point):
         self.point_sequence().insert_point(idx, point)
 

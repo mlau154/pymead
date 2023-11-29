@@ -3,15 +3,18 @@ import unittest
 import numpy as np
 
 from pymead.core import UNITS
+from pymead.core.bezier2 import Bezier
 from pymead.core.constraints import PositionConstraint, CollinearConstraint
 from pymead.core.dimensions import LengthDimension, AngleDimension
 from pymead.core.geometry_collection import GeometryCollection
+from pymead.core.line2 import LineSegment
 from pymead.core.param2 import Param, DesVar, LengthParam, AngleParam
-from pymead.core.point import Point
+from pymead.core.point import Point, PointSequence
+from pymead.core.airfoil2 import Airfoil, ClosureError, BranchError
 
 
 class GeoColTests(unittest.TestCase):
-    geo_col = GeometryCollection(geo_ui=None)
+    geo_col = GeometryCollection()
 
     def test_add_remove_param(self):
         self.geo_col.add_param(0.1, "LC1")
@@ -35,17 +38,9 @@ class GeoColTests(unittest.TestCase):
 
         self.geo_col.remove_point("Point-2")
 
-        self.assertIn("Point", point_container)
+        self.assertIn("Point-1", point_container)
         self.assertIn("Point-3", point_container)
         self.assertNotIn("Point-2", point_container)
-
-        param_container = self.geo_col.container()["params"]
-        self.assertIn("Point.x", param_container)
-        self.assertIn("Point.y", param_container)
-        self.assertIn("Point-3.x", param_container)
-        self.assertIn("Point-3.y", param_container)
-        self.assertNotIn("Point-2.x", param_container)
-        self.assertNotIn("Point-2.y", param_container)
 
     def test_add_remove_desvar(self):
         desvar_container = self.geo_col.container()["desvar"]
@@ -99,24 +94,23 @@ class GeoColTests(unittest.TestCase):
         self.assertAlmostEqual(desvar.value(), 0.3)
 
     def test_alphabetical_sub_container_list(self):
+        geo_col = GeometryCollection()
         for _ in range(12):
-            self.geo_col.add_param(0.5, "Spin")
+            geo_col.add_param(0.5, "Spin")
         for _ in range(5):
-            self.geo_col.add_param(0.1, "myParam")
-        self.geo_col.remove_param("myParam-3")
+            geo_col.add_param(0.1, "myParam")
+        geo_col.remove_param("myParam-3")
         for _ in range(11):
-            self.geo_col.add_point(0.3, 0.1)
+            geo_col.add_point(0.3, 0.1)
 
-        alphabetical_list = self.geo_col.alphabetical_sub_container_key_list("params")
+        alphabetical_list = geo_col.alphabetical_sub_container_key_list("params")
 
         self.assertGreater(alphabetical_list.index("myParam-5"), alphabetical_list.index("myParam"))
         self.assertGreater(alphabetical_list.index("Spin-10"), alphabetical_list.index("Spin-9"))
-        self.assertGreater(alphabetical_list.index("Point-10.x"), alphabetical_list.index("Point-9.x"))
-        self.assertGreater(alphabetical_list.index("Spin-5"), alphabetical_list.index("Point-4.y"))
         self.assertGreater(alphabetical_list.index("Spin-6"), alphabetical_list.index("myParam"))
 
     def test_extract_assign_design_variable_values(self):
-        geo_col = GeometryCollection(geo_ui=None)
+        geo_col = GeometryCollection()
         dv1 = geo_col.add_desvar(0.3, "dv", lower=0.1, upper=0.5)
         dv2 = geo_col.add_desvar(0.8, "dv", lower=0.0, upper=2.0)
         dv3 = geo_col.add_desvar(-4.0, "dv", lower=-10.0, upper=10.0)
@@ -148,6 +142,33 @@ class GeoColTests(unittest.TestCase):
         # number of design variables
         self.assertRaises(ValueError, geo_col.assign_design_variable_values,
                           dv_values=[0.6, 0.4, 0.2, 0.8], bounds_normalized=True)
+
+    def test_complex_airfoil_geo_col(self):
+        geo_col = GeometryCollection()
+        le = geo_col.add_point(0.0, 0.0)
+        upper1 = geo_col.add_point(0.0, 0.05)
+        upper2 = geo_col.add_point(0.05, 0.05)
+        upper3 = geo_col.add_point(0.6, 0.03)
+        upper5 = geo_col.add_point(0.8, 0.04)
+        upper4 = geo_col.add_point(1.0, 0.005)
+        te = geo_col.add_point(1.0, 0.0)
+        lower1 = geo_col.add_point(0.0, -0.03)
+        lower2 = geo_col.add_point(0.03, -0.03)
+        lower3 = geo_col.add_point(0.7, 0.03)
+        lower4 = geo_col.add_point(1.0, -0.005)
+
+        upper = geo_col.add_bezier(point_sequence=PointSequence(points=[le, upper1, upper2, upper3, upper5]))
+        upper_line = geo_col.add_line(point_sequence=PointSequence(points=[upper5, upper4]))
+        lower = geo_col.add_bezier(point_sequence=PointSequence(points=[le, lower1, lower2, lower3, lower4]))
+        geo_col.add_line(point_sequence=PointSequence(points=[upper4, te]))
+        geo_col.add_line(point_sequence=PointSequence(points=[te, lower4]))
+        airfoil = geo_col.add_airfoil(leading_edge=le, trailing_edge=te, upper_surf_end=upper4, lower_surf_end=lower4)
+
+        self.assertEqual(3, len(airfoil.curves))
+        self.assertEqual(2, len(airfoil.curves_to_reverse))
+
+        self.assertEqual(airfoil.curves, [upper_line, upper, lower])
+        self.assertEqual(airfoil.curves_to_reverse, [upper_line, upper])
 
 
 class ParamTests(unittest.TestCase):
@@ -376,3 +397,153 @@ class ConstraintTests(unittest.TestCase):
 
         # These angles should be equal due to the collinear constraint
         self.assertAlmostEqual(angle_dimension1.param().value(), angle_dimension2.param().value())
+
+
+class AirfoilTests(unittest.TestCase):
+
+    def test_correct_airfoil_generation_sharp_te(self):
+        le = Point(0.0, 0.0)
+        upper1 = Point(0.0, 0.05)
+        upper2 = Point(0.05, 0.05)
+        upper3 = Point(0.6, 0.03)
+        te = Point(1.0, 0.0)
+        lower1 = Point(0.0, -0.03)
+        lower2 = Point(0.03, -0.03)
+        lower3 = Point(0.7, 0.03)
+
+        upper = Bezier(point_sequence=PointSequence(points=[le, upper1, upper2, upper3, te]), name="UpperSurf")
+        lower = Bezier(point_sequence=PointSequence(points=[le, lower1, lower2, lower3, te]), name="LowerSurf")
+        airfoil = Airfoil(leading_edge=le, trailing_edge=te, upper_surf_end=te, lower_surf_end=te)
+
+        self.assertEqual(2, len(airfoil.curves))
+        self.assertEqual(1, len(airfoil.curves_to_reverse))
+
+        self.assertEqual(airfoil.curves, [upper, lower])
+        self.assertEqual(airfoil.curves_to_reverse, [upper])
+
+    def test_correct_airfoil_generation_blunt_te(self):
+        le = Point(0.0, 0.0)
+        upper1 = Point(0.0, 0.05)
+        upper2 = Point(0.05, 0.05)
+        upper3 = Point(0.6, 0.03)
+        upper4 = Point(1.0, 0.005)
+        te = Point(1.0, 0.0)
+        lower1 = Point(0.0, -0.03)
+        lower2 = Point(0.03, -0.03)
+        lower3 = Point(0.7, 0.03)
+        lower4 = Point(1.0, -0.005)
+
+        upper = Bezier(point_sequence=PointSequence(points=[le, upper1, upper2, upper3, upper4]), name="UpperSurf")
+        lower = Bezier(point_sequence=PointSequence(points=[le, lower1, lower2, lower3, lower4]), name="LowerSurf")
+        LineSegment(point_sequence=PointSequence(points=[te, upper4]))
+        LineSegment(point_sequence=PointSequence(points=[te, lower4]))
+        airfoil = Airfoil(leading_edge=le, trailing_edge=te, upper_surf_end=upper4, lower_surf_end=lower4)
+
+        self.assertEqual(2, len(airfoil.curves))
+        self.assertEqual(1, len(airfoil.curves_to_reverse))
+
+        self.assertEqual(airfoil.curves, [upper, lower])
+        self.assertEqual(airfoil.curves_to_reverse, [upper])
+
+    def test_no_te_lines_airfoil_generation_blunt_te(self):
+        le = Point(0.0, 0.0)
+        upper1 = Point(0.0, 0.05)
+        upper2 = Point(0.05, 0.05)
+        upper3 = Point(0.6, 0.03)
+        upper4 = Point(1.0, 0.005)
+        te = Point(1.0, 0.0)
+        lower1 = Point(0.0, -0.03)
+        lower2 = Point(0.03, -0.03)
+        lower3 = Point(0.7, 0.03)
+        lower4 = Point(1.0, -0.005)
+
+        Bezier(point_sequence=PointSequence(points=[le, upper1, upper2, upper3, upper4]), name="UpperSurf")
+        Bezier(point_sequence=PointSequence(points=[le, lower1, lower2, lower3, lower4]), name="LowerSurf")
+        # LineSegment(point_sequence=PointSequence(points=[te, upper4]))
+        # LineSegment(point_sequence=PointSequence(points=[te, lower4]))
+        self.assertRaises(ClosureError, Airfoil, leading_edge=le, trailing_edge=te, upper_surf_end=upper4,
+                          lower_surf_end=lower4)
+
+    def test_no_upper_te_line_airfoil_generation_blunt_te(self):
+        le = Point(0.0, 0.0)
+        upper1 = Point(0.0, 0.05)
+        upper2 = Point(0.05, 0.05)
+        upper3 = Point(0.6, 0.03)
+        upper4 = Point(1.0, 0.005)
+        te = Point(1.0, 0.0)
+        lower1 = Point(0.0, -0.03)
+        lower2 = Point(0.03, -0.03)
+        lower3 = Point(0.7, 0.03)
+        lower4 = Point(1.0, -0.005)
+
+        Bezier(point_sequence=PointSequence(points=[le, upper1, upper2, upper3, upper4]), name="UpperSurf")
+        Bezier(point_sequence=PointSequence(points=[le, lower1, lower2, lower3, lower4]), name="LowerSurf")
+        # LineSegment(point_sequence=PointSequence(points=[te, upper4]))
+        LineSegment(point_sequence=PointSequence(points=[te, lower4]))
+        self.assertRaises(ClosureError, Airfoil, leading_edge=le, trailing_edge=te, upper_surf_end=upper4,
+                          lower_surf_end=lower4)
+
+    def test_no_lower_te_line_airfoil_generation_blunt_te(self):
+        le = Point(0.0, 0.0)
+        upper1 = Point(0.0, 0.05)
+        upper2 = Point(0.05, 0.05)
+        upper3 = Point(0.6, 0.03)
+        upper4 = Point(1.0, 0.005)
+        te = Point(1.0, 0.0)
+        lower1 = Point(0.0, -0.03)
+        lower2 = Point(0.03, -0.03)
+        lower3 = Point(0.7, 0.03)
+        lower4 = Point(1.0, -0.005)
+
+        Bezier(point_sequence=PointSequence(points=[le, upper1, upper2, upper3, upper4]), name="UpperSurf")
+        Bezier(point_sequence=PointSequence(points=[le, lower1, lower2, lower3, lower4]), name="LowerSurf")
+        LineSegment(point_sequence=PointSequence(points=[te, upper4]))
+        # LineSegment(point_sequence=PointSequence(points=[te, lower4]))
+        self.assertRaises(ClosureError, Airfoil, leading_edge=le, trailing_edge=te, upper_surf_end=upper4,
+                          lower_surf_end=lower4)
+
+    def test_extra_branch_airfoil_generation_blunt_te_1(self):
+        le = Point(0.0, 0.0)
+        upper1 = Point(0.0, 0.05)
+        upper2 = Point(0.05, 0.05)
+        upper3 = Point(0.6, 0.03)
+        upper4 = Point(1.0, 0.005)
+        te = Point(1.0, 0.0)
+        lower1 = Point(0.0, -0.03)
+        lower2 = Point(0.03, -0.03)
+        lower3 = Point(0.7, 0.03)
+        lower4 = Point(1.0, -0.005)
+
+        Bezier(point_sequence=PointSequence(points=[le, upper1, upper2, upper3, upper4]), name="UpperSurf")
+        Bezier(point_sequence=PointSequence(points=[le, lower1, lower2, lower3, lower4]), name="LowerSurf")
+        Bezier(point_sequence=PointSequence(points=[le, upper2, upper3]))  # Extra curve branching from LE
+        LineSegment(point_sequence=PointSequence(points=[te, upper4]))
+        LineSegment(point_sequence=PointSequence(points=[te, lower4]))
+        self.assertRaises(BranchError, Airfoil, leading_edge=le, trailing_edge=te, upper_surf_end=upper4,
+                          lower_surf_end=lower4)
+
+    def test_complex_airfoil_1(self):
+        le = Point(0.0, 0.0)
+        upper1 = Point(0.0, 0.05)
+        upper2 = Point(0.05, 0.05)
+        upper3 = Point(0.6, 0.03)
+        upper5 = Point(0.8, 0.04)
+        upper4 = Point(1.0, 0.005)
+        te = Point(1.0, 0.0)
+        lower1 = Point(0.0, -0.03)
+        lower2 = Point(0.03, -0.03)
+        lower3 = Point(0.7, 0.03)
+        lower4 = Point(1.0, -0.005)
+
+        upper = Bezier(point_sequence=PointSequence(points=[le, upper1, upper2, upper3, upper5]), name="UpperSurf")
+        upper_line = LineSegment(point_sequence=PointSequence(points=[upper5, upper4]))
+        lower = Bezier(point_sequence=PointSequence(points=[le, lower1, lower2, lower3, lower4]), name="LowerSurf")
+        LineSegment(point_sequence=PointSequence(points=[upper4, te]))
+        LineSegment(point_sequence=PointSequence(points=[te, lower4]))
+        airfoil = Airfoil(leading_edge=le, trailing_edge=te, upper_surf_end=upper4, lower_surf_end=lower4)
+
+        self.assertEqual(3, len(airfoil.curves))
+        self.assertEqual(2, len(airfoil.curves_to_reverse))
+
+        self.assertEqual(airfoil.curves, [upper_line, upper, lower])
+        self.assertEqual(airfoil.curves_to_reverse, [upper_line, upper])

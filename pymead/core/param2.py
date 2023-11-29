@@ -140,9 +140,9 @@ class Param:
         name: str
             The parameter name
         """
-        if "-" in name and not self.setting_from_geo_col:
-            raise ValueError("Hyphens are reserved characters and cannot be used unless setting from geometry "
-                             "collection")
+        # if "-" in name and not self.setting_from_geo_col:
+        #     raise ValueError("Hyphens are reserved characters and cannot be used unless setting from geometry "
+        #                      "collection")
         # if "." in name and not self.setting_from_geo_col:
         #     raise ValueError("Dots are reserved characters and cannot be used unless setting from geometry "
         #                      "collection")
@@ -150,7 +150,8 @@ class Param:
         #  for this error not to be raised
 
         # Rename the reference in the geometry collection
-        if self.geo_col is not None and self.name() in self.geo_col.container()["params"]:
+        if (self.geo_col is not None and self.name() in self.geo_col.container()["params"] and
+                self.geo_col.container()["params"][self.name()] is self):
             self.geo_col.container()["params"][name] = self.geo_col.container()["params"][self.name()]
             self.geo_col.container()["params"].pop(self.name())
 

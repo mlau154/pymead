@@ -37,6 +37,9 @@ class LineSegment(ParametricCurve):
             raise ValueError("Point sequence must contain exactly two points")
         self._point_sequence = point_sequence
 
+    def reverse_point_sequence(self):
+        self.point_sequence().reverse()
+
     def remove_point(self, idx: int or None = None, point: Point or None = None):
         if isinstance(point, Point):
             idx = self.point_sequence().point_idx_from_ref(point)

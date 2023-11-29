@@ -32,6 +32,7 @@ class AirfoilCanvas(pg.PlotWidget):
         self.points = []
         self.selected_points = None
         self.drawing_curve = None
+        self.generating_airfoil = None
         self.creating_collinear_constraint = None
         self.adding_point_to_curve = None
         self.curve_hovered_item = None
@@ -129,7 +130,6 @@ class AirfoilCanvas(pg.PlotWidget):
 
     def drawCurveThroughPoints(self, curve_type: str):
         self.drawing_curve = curve_type
-        self.setWindowModality(Qt.ApplicationModal)
         loop = QEventLoop()
         self.sigEnterPressed.connect(loop.quit)
         self.sigEscapePressed.connect(loop.quit)
@@ -138,6 +138,38 @@ class AirfoilCanvas(pg.PlotWidget):
             self.generateCurve(curve_type=curve_type)
             self.clearSelectedPoints()
         self.drawing_curve = None
+
+    def generateAirfoil(self):
+        le = self.selected_points[0].point
+        te = self.selected_points[1].point
+        if len(self.selected_points) > 2:
+            upper_surf_end = self.selected_points[2].point
+            lower_surf_end = self.selected_points[3].point
+        else:
+            upper_surf_end = te
+            lower_surf_end = te
+
+        airfoil = self.geo_col.add_airfoil(leading_edge=le, trailing_edge=te, upper_surf_end=upper_surf_end,
+                                           lower_surf_end=lower_surf_end)
+        print(f"{airfoil.curves = }")
+
+        # Now add the GUI object and pass references
+
+    def selectAirfoilPoints(self):
+        self.generating_airfoil = True
+        loop = QEventLoop()
+        self.sigEnterPressed.connect(loop.quit)
+        self.sigEscapePressed.connect(loop.quit)
+        self.sigStatusBarUpdate.emit("Select the leading edge point.", 0)
+        loop.exec()
+        if self.selected_points is not None:
+            if len(self.selected_points) in [2, 4]:
+                self.generateAirfoil()
+            else:
+                self.sigStatusBarUpdate("Choose either 2 points (sharp trailing edge) or 4 points (blunt trailing edge)"
+                                        " to generate an airfoil", 4000)
+            self.clearSelectedPoints()
+        self.generating_airfoil = None
 
     def makeCollinearConstraint(self):
         if len(self.selected_points) != 3:
@@ -188,7 +220,7 @@ class AirfoilCanvas(pg.PlotWidget):
             self.point_text_item = None
         point_item.hoverable = False
         point_item.setScatterStyle("selected")
-        if self.drawing_curve is None and self.adding_point_to_curve is None:
+        if self.drawing_curve is None and self.adding_point_to_curve is None and self.generating_airfoil is None:
             self.appendSelectedPoint(point_item)
         elif self.drawing_curve == "Bezier":
             self.appendSelectedPoint(point_item)
@@ -208,6 +240,20 @@ class AirfoilCanvas(pg.PlotWidget):
             if len(self.selected_points) == 1:
                 self.sigStatusBarUpdate.emit("Now, choose the preceding point in the sequence", 0)
             if len(self.selected_points) == 2:
+                self.sigEnterPressed.emit()
+                self.sigStatusBarUpdate.emit("", 0)
+        elif self.generating_airfoil is not None:
+            self.appendSelectedPoint(point_item)
+            if len(self.selected_points) == 1:
+                self.sigStatusBarUpdate.emit("Now, select the trailing edge point. For a blunt trailing edge, the "
+                                             "point must have two associated lines (connecting to the upper and lower"
+                                             " surface end points).", 0)
+            elif len(self.selected_points) == 2:
+                self.sigStatusBarUpdate.emit("Now, select the upper surface endpoint. For a sharp trailing edge, "
+                                             "press the enter key to finish generating the airfoil.", 0)
+            elif len(self.selected_points) == 3:
+                self.sigStatusBarUpdate.emit("Now, select the lower surface endpoint.", 0)
+            elif len(self.selected_points) == 4:
                 self.sigEnterPressed.emit()
                 self.sigStatusBarUpdate.emit("", 0)
 
@@ -273,6 +319,7 @@ class AirfoilCanvas(pg.PlotWidget):
         drawPointAction = menu.addAction("Insert Point")
         drawBezierCurveThroughPointsAction = menu.addAction("Bezier Curve Through Points")
         drawLineSegmentThroughPointsAction = menu.addAction("Line Segment Through Points")
+        generateAirfoilAction = menu.addAction("Generate Airfoil")
         makePointsCollinearAction = menu.addAction("Make 3 Points Collinear")
         view_pos = self.getPlotItem().getViewBox().mapSceneToView(event.pos())
         res = menu.exec_(event.globalPos())
@@ -282,6 +329,8 @@ class AirfoilCanvas(pg.PlotWidget):
             self.drawCurveThroughPoints(curve_type="Bezier")
         elif res == drawLineSegmentThroughPointsAction:
             self.drawCurveThroughPoints(curve_type="LineSegment")
+        elif res == generateAirfoilAction:
+            self.selectAirfoilPoints()
         elif res == makePointsCollinearAction:
             self.makePointsCollinear()
         elif res == removeCurveAction and curve_item is not None:

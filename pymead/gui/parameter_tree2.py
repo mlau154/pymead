@@ -3,6 +3,7 @@ from PyQt5.QtWidgets import QTreeWidget, QTreeWidgetItem, QPushButton, QHBoxLayo
     QDoubleSpinBox, QLineEdit, QLabel, QDialogButtonBox
 from PyQt5.QtCore import Qt, pyqtSignal, pyqtSlot, QRegExp, QRegularExpression
 
+from pymead.core.airfoil2 import Airfoil
 from pymead.core.point import Point
 from pymead.core.bezier2 import Bezier
 from pymead.core.line2 import LineSegment
@@ -91,6 +92,8 @@ class NameEdit(QLineEdit):
             sub_container = "bezier"
         elif isinstance(obj, LineSegment):
             sub_container = "lines"
+        elif isinstance(obj, Airfoil):
+            sub_container = "airfoils"
         else:
             raise ValueError("Invalid NameEdit input object")
 
@@ -360,6 +363,57 @@ class LineButton(QPushButton):
         self.line.gui_obj.setCurveStyle("default")
 
 
+class AirfoilButton(QPushButton):
+    def __init__(self, airfoil: Airfoil, tree):
+        self.airfoil = airfoil
+        super().__init__(airfoil.name())
+        self.setMaximumWidth(100)
+        self.tree = tree
+        self.dialog = None
+        self.clicked.connect(self.onClicked)
+
+    def onClicked(self):
+        self.dialog = QDialog(self)
+        self.dialog.setWindowTitle(f"Line - {self.airfoil.name()}")
+        layout = QGridLayout()
+        name_label = QLabel("Name", self)
+        name_edit = NameEdit(self, self.airfoil, self.tree)
+        name_edit.textChanged.connect(self.onNameChange)
+        layout.addWidget(name_label, 1, 0)
+        layout.addWidget(name_edit, 1, 1)
+        labels = ["Leading Edge", "Trailing Edge", "Upper Surface End", "Lower Surface End"]
+        points = [self.airfoil.leading_edge, self.airfoil.trailing_edge, self.airfoil.upper_surf_end,
+                  self.airfoil.lower_surf_end]
+
+        for label, point in zip(labels, points):
+            q_label = QLabel(label)
+            point_button = PointButton(point, self.tree)
+            point_button.sigNameChanged.connect(self.onPointNameChange)
+            row_count = layout.rowCount()
+            layout.addWidget(q_label, row_count, 0)
+            layout.addWidget(point_button, row_count, 1)
+
+        # Add the button box
+        buttonBox = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel, self)
+        layout.addWidget(buttonBox, layout.rowCount(), 1)
+        buttonBox.accepted.connect(self.dialog.accept)
+        buttonBox.rejected.connect(self.dialog.reject)
+
+        self.dialog.setLayout(layout)
+        if self.dialog.exec_():
+            pass
+        self.dialog = None
+
+    def onPointNameChange(self, name: str, point: Point):
+        if point.tree_item is not None:
+            self.tree.itemWidget(point.tree_item, 0).setText(name)
+
+    def onNameChange(self, name: str):
+        if self.dialog is not None:
+            self.dialog.setWindowTitle(f"Airfoil - {name}")
+        self.setText(name)
+
+
 class ParameterTree(QTreeWidget):
     def __init__(self, geo_col: GeometryCollection, parent):
         super().__init__(parent)
@@ -433,6 +487,19 @@ class ParameterTree(QTreeWidget):
         top_level_item = self.items[self.topLevelDict["lines"]]
         top_level_item.removeChild(line.tree_item)
         line.tree_item = None
+
+    def addAirfoil(self, airfoil: Airfoil):
+        top_level_item = self.items[self.topLevelDict["airfoils"]]
+        child_item = QTreeWidgetItem([""])
+        top_level_item.addChild(child_item)
+        airfoil.tree_item = child_item
+        airfoil_button = AirfoilButton(airfoil, self)
+        self.setItemWidget(child_item, 0, airfoil_button)
+
+    def removeAirfoil(self, airfoil: Airfoil):
+        top_level_item = self.items[self.topLevelDict["airfoils"]]
+        top_level_item.removeChild(airfoil.tree_item)
+        airfoil.tree_item = None
 
     def onExpandPressed(self):
         self.expandAll()
