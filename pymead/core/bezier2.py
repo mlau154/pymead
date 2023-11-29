@@ -14,7 +14,7 @@ class Bezier(ParametricCurve):
         self.geo_col = None
         self.tree_item = None
         self.set_point_sequence(point_sequence)
-        name = "Bezier" if name is None else name
+        name = "Bezier-1" if name is None else name
         self.curve_connections = []
         self._add_references()
         super().__init__(name=name, **kwargs)

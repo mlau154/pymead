@@ -12,3 +12,4 @@ This section contains tutorials and helpful hints for the pymead GUI.
    gui_help/gui_ap.rst
    gui_help/gui_opt.rst
    gui_help/gui_airfoil_matching.rst
+   gui_help/gui_helpful_hints.rst

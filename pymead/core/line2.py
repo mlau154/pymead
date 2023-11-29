@@ -11,7 +11,7 @@ class LineSegment(ParametricCurve):
         self._point_sequence = None
         self.geo_col = None
         self.set_point_sequence(point_sequence)
-        name = "Line" if name is None else name
+        name = "Line-1" if name is None else name
         self._add_references()
         super().__init__(name=name, **kwargs)
 

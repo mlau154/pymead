@@ -55,9 +55,9 @@ class GeometryCollection:
         This static method creates unique names for parameters or geometry by incrementing the appended index, which
         is attached with a hyphen. A dot separator is used to distinguish between levels within the geometry
         collection hierarchy. For example, the :math:`x`-location of the second point added is given by
-        ``"Point-2.x"``. Note that the first parameter added with a given name will not have an index by default.
-        For example, if a ``Param`` with ``name=="my_param"`` is added three times, the resulting names, in order,
-        will be ``"my_param"``, ``"my_param-2"``, and ``"my_param-3"``.
+        ``"Point-2.x"``. Note that, for parameters and design variables, the first parameter added with a given name
+        will not have an index by default. For example, if a ``Param`` with ``name=="my_param"`` is added three times,
+        the resulting names, in order, will be ``"my_param"``, ``"my_param-2"``, and ``"my_param-3"``.
 
         If a parameter is removed, and another
         parameter with the same name added, the index assigned will be the maximum index plus one. In the previous
@@ -79,6 +79,7 @@ class GeometryCollection:
         str
             The (possibly modified) ``specified_name``
         """
+        specified_name = specified_name.split("-")[0]
         max_index = 0
         for name in name_list:
             dot_split = name.split(".")
@@ -87,9 +88,10 @@ class GeometryCollection:
                 prefix = dash_split[0]
             else:
                 prefix = ".".join(dot_split)[:-1] + dash_split[0]
-            if specified_name != prefix:  # If the specified name does not match the name being analyzed, continue to
-                # next name
+            if specified_name != prefix:  # If the specified name does not match the name
+                # being analyzed, continue to next name
                 continue
+            print(f"{dash_split = }, {max_index = }")
             if len(dash_split) < 2 and max_index == 0:  # If the string after the last dot had no hyphen
                 # and max_index is still 0, set the max_index to 1.
                 max_index = 1
@@ -99,8 +101,10 @@ class GeometryCollection:
                 if idx > max_index:
                     max_index = idx
 
+        print(f"{max_index = }")
+
         if max_index == 0:
-            return specified_name
+            return f"{specified_name}-1"
         else:
             return f"{specified_name}-{max_index + 1}"
 
@@ -122,18 +126,15 @@ class GeometryCollection:
             Whether to assign the object a unique name before insertion into the sub-container. Default: ``True``.
         """
         # Set the object's name to a unique name if necessary
-        print(f"{self.container()['bezier'] = }")
         if assign_unique_name:
             name_list = self.get_name_list(sub_container=sub_container)
-            print(f"{name_list = }")
             unique_name = self.unique_namer(obj.name(), name_list)
-            print(f"{unique_name = }")
-            print(f"{self.container()['bezier'] = }")
-            obj.set_name(unique_name)
-            print(f"{self.container()['bezier'] = }")
+            if isinstance(obj, Param) or isinstance(obj, DesVar) and unique_name.split("-")[1] == 1:
+                pass
+            else:
+                obj.set_name(unique_name)
 
         # Add the object to the geometry collection sub-container
-        print(f"{obj.name() = }")
         self.container()[sub_container][obj.name()] = obj
 
     def remove_from_subcontainer(self, obj: Param or DesVar or Point or str, sub_container: str):

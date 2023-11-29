@@ -48,7 +48,7 @@ class Point:
         self._y.point = self
 
     def set_name(self, name: str or None = None):
-        name = "Point" if name is None else name
+        name = "Point-1" if name is None else name
         if self.x() is not None:
             self.x().set_name(f"{name}.x")
         if self.y() is not None:
