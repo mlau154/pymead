@@ -1,3 +1,5 @@
+import numpy as np
+
 from pymead.core.point import Point
 
 
@@ -62,14 +64,6 @@ class Airfoil:
                     break
             if self.lower_te_curve is None:
                 raise ClosureError("Could not identify the lower trailing edge line/curve")
-        #
-        # # Check that there is only one curve attached to upper_surf_end if upper_te_curve is not found
-        # if self.upper_te_curve is None and len(self.upper_surf_end.curves) > 1:
-        #     raise BranchError("Detected multiple curves branching from a sharp upper trailing edge point")
-        #
-        # # Check that there is only one curve attached to lower_surf_end if lower_te_curve is not found
-        # if self.lower_te_curve is None and len(self.lower_surf_end.curves) > 1:
-        #     raise BranchError("Detected multiple curves branching from a sharp lower trailing edge point")
 
         # Loop through the rest of the curves
         current_curve = None
@@ -116,6 +110,33 @@ class Airfoil:
 
         if not closed:
             raise ClosureError("Curve loop not closed")
+
+    def get_coords_selig_format(self) -> np.ndarray:
+        coords = None
+        for curve in self.curves:
+            p_curve_data = curve.evaluate()
+            arr = p_curve_data.xy.as_array()
+            if curve in self.curves_to_reverse:
+                arr = np.flipud(arr)
+            if coords is None:
+                coords = arr
+            else:
+                coords = np.row_stack((coords, arr[1:, :]))
+        return coords
+
+    def save_coords_selig_format(self, file_name: str) -> None:
+        """
+        Saves this airfoil's coords in Selig file format: :math:`x`- and :math:`y`-columns in counter-clockwise order,
+        starting at the upper surface trailing edge and ending at the lower surface trailing edge. File saves as a
+        text file (usually a :code:`.txt` or :code:`.dat` file extension).
+
+        Parameters
+        ==========
+        file_name: str
+            Full path to the coordinate file save location
+        """
+        coords = self.get_coords_selig_format()
+        np.savetxt(file_name, coords)
 
 
 class BranchError(Exception):

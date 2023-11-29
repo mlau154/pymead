@@ -547,3 +547,37 @@ class AirfoilTests(unittest.TestCase):
 
         self.assertEqual(airfoil.curves, [upper_line, upper, lower])
         self.assertEqual(airfoil.curves_to_reverse, [upper_line, upper])
+
+    def test_coords(self):
+        le = Point(0.0, 0.0)
+        upper1 = Point(0.0, 0.05)
+        upper2 = Point(0.05, 0.05)
+        upper3 = Point(0.6, 0.03)
+        upper5 = Point(0.8, 0.04)
+        upper4 = Point(1.0, 0.005)
+        te = Point(1.0, 0.0)
+        lower1 = Point(0.0, -0.03)
+        lower2 = Point(0.03, -0.03)
+        lower3 = Point(0.7, 0.03)
+        lower4 = Point(1.0, -0.005)
+
+        Bezier(point_sequence=PointSequence(points=[le, upper1, upper2, upper3, upper5]), name="UpperSurf")
+        LineSegment(point_sequence=PointSequence(points=[upper5, upper4]))
+        Bezier(point_sequence=PointSequence(points=[le, lower1, lower2, lower3, lower4]), name="LowerSurf")
+        LineSegment(point_sequence=PointSequence(points=[upper4, te]))
+        LineSegment(point_sequence=PointSequence(points=[te, lower4]))
+        airfoil = Airfoil(leading_edge=le, trailing_edge=te, upper_surf_end=upper4, lower_surf_end=lower4)
+
+        coords = airfoil.get_coords_selig_format()
+
+        # Make sure no points repeat
+        repeat = False
+        prev_xy = None
+        for row in coords:
+            if prev_xy is not None:
+                if all([el_old == el_new for el_old, el_new in zip(prev_xy, row)]):
+                    repeat = True
+                    break
+            prev_xy = row
+
+        self.assertFalse(repeat)
