@@ -1,7 +1,7 @@
-from PyQt5.QtGui import QRegExpValidator, QValidator
+from PyQt5.QtGui import QValidator
 from PyQt5.QtWidgets import QTreeWidget, QTreeWidgetItem, QPushButton, QHBoxLayout, QHeaderView, QDialog, QGridLayout, \
     QDoubleSpinBox, QLineEdit, QLabel, QDialogButtonBox
-from PyQt5.QtCore import Qt, pyqtSignal, pyqtSlot, QRegExp, QRegularExpression
+from PyQt5.QtCore import Qt, pyqtSignal, pyqtSlot, QRegularExpression
 
 from pymead.core.airfoil2 import Airfoil
 from pymead.core.point import Point

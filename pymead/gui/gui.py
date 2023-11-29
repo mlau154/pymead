@@ -33,6 +33,7 @@ from pymead.core.airfoil import Airfoil
 from pymead.core.base_airfoil_params import BaseAirfoilParams
 from pymead.core.transformation import Transformation3D
 from pymead.gui.concurrency import CPUBoundProcess
+from pymead.gui.permanent_widget import PermanentWidget
 from pymead.optimization.shape_optimization import shape_optimization as shape_optimization_static
 from pymead import RESOURCE_DIR
 from pymead.gui.input_dialog import LoadDialog, SaveAsDialog, OptimizationSetupDialog, \
@@ -80,7 +81,7 @@ class GUI(QMainWindow):
         # super().__init__(flags=Qt.FramelessWindowHint)
         super().__init__(parent=parent)
         # self.setWindowFlags(Qt.CustomizeWindowHint)
-        print(f"Running GUI with {os.getpid() = }")
+        # print(f"Running GUI with {os.getpid() = }")
         self.pool = None
         self.current_opt_folder = None
 
@@ -220,26 +221,28 @@ class GUI(QMainWindow):
         else:
             raise ValueError(f"Current theme options are 'dark' and 'light'. Theme chosen was {theme}")
 
-        self.output_area_text(f"<font color='#1fbbcc' size='5'>pymead</font> <font size='5'>version</font> "
-                              f"<font color='#44e37e' size='5'>{__version__}</font>",
-                              mode='html')
-        self.output_area_text(
-            f"<head><style>body {{font-family: DejaVu Sans Mono;}}</style></head><body><p><font size='4'>&#8203;</font></p></body>",
-            mode="html")
-        self.output_area_text('\n\n')
+        # self.output_area_text(f"<font color='#1fbbcc' size='5'>pymead</font> <font size='5'>version</font> "
+        #                       f"<font color='#44e37e' size='5'>{__version__}</font>",
+        #                       mode='html')
+        # self.output_area_text(
+        #     f"<head><style>body {{font-family: DejaVu Sans Mono;}}</style></head><body><p><font size='4'>&#8203;</font></p></body>",
+        #     mode="html")
+        # self.output_area_text('\n\n')
         # self.output_area_text("<font color='#ffffff' size='3'>\n\n</font>", mode='html')
         # airfoil = Airfoil(base_airfoil_params=BaseAirfoilParams(dx=Param(0.0), dy=Param(0.0)))
         # self.add_airfoil(airfoil)
         # self.auto_range_geometry()
         self.statusBar().clearMessage()
-        self.progress_bar = QProgressBar(parent=self)
-        self.progress_bar.setTextVisible(False)
-        self.progress_bar.setStyleSheet('''QProgressBar {border: 2px solid; border-color: #8E9091;} 
-        QProgressBar::chunk {background-color: #6495ED; width: 10px; margin: 0.5px;}
-        ''')
-        self.statusBar().addPermanentWidget(self.progress_bar)
-        self.progress_bar.setValue(0)
-        self.progress_bar.hide()
+        # self.progress_bar = QProgressBar(parent=self)
+        # self.progress_bar.setTextVisible(False)
+        # self.progress_bar.setStyleSheet('''QProgressBar {border: 2px solid; border-color: #8E9091;}
+        # QProgressBar::chunk {background-color: #6495ED; width: 10px; margin: 0.5px;}
+        # ''')
+        # self.statusBar().addPermanentWidget(self.progress_bar)
+        # self.progress_bar.setValue(0)
+        # self.progress_bar.hide()
+        self.permanent_widget = PermanentWidget(self)
+        self.statusBar().addPermanentWidget(self.permanent_widget)
         # self.showMaximized()
         # for dw in self.dock_widgets:
         #     dw.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.MinimumExpanding)
