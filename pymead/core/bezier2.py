@@ -22,9 +22,6 @@ class Bezier(ParametricCurve):
     def set_name(self, name: str):
         # Rename the reference in the geometry collection
         if self.geo_col is not None and self.name() in self.geo_col.container()["bezier"].keys():
-            print(f"{self.geo_col.container()['bezier'].keys() = }")
-            # TODO: buggy - adding a second Bezier curve renames the first Bezier curve, but not so with subsequent curves
-
             self.geo_col.container()["bezier"][name] = self.geo_col.container()["bezier"][self.name()]
             self.geo_col.container()["bezier"].pop(self.name())
 

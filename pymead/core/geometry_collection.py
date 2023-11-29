@@ -19,6 +19,7 @@ class GeometryCollection:
         }
         self.geo_canvas = None
         self.geo_tree = None
+        self.single_step = 0.01
 
     def container(self):
         """
@@ -91,7 +92,6 @@ class GeometryCollection:
             if specified_name != prefix:  # If the specified name does not match the name
                 # being analyzed, continue to next name
                 continue
-            print(f"{dash_split = }, {max_index = }")
             if len(dash_split) < 2 and max_index == 0:  # If the string after the last dot had no hyphen
                 # and max_index is still 0, set the max_index to 1.
                 max_index = 1
@@ -100,8 +100,6 @@ class GeometryCollection:
                 idx = int(dash_split[-1])
                 if idx > max_index:
                     max_index = idx
-
-        print(f"{max_index = }")
 
         if max_index == 0:
             return f"{specified_name}-1"
@@ -153,8 +151,6 @@ class GeometryCollection:
         if not isinstance(obj, str):
             obj = obj.name()
 
-        print(f"{self.container()[sub_container] = }")
-
         self.container()[sub_container].pop(obj)
 
     def add_param(self, value: float, name: str or None = None, lower: float or None = None,
@@ -198,8 +194,6 @@ class GeometryCollection:
         param.geo_col = self
 
         self.add_to_subcontainer(param, "params")
-
-        print(f"{self.container() = }")
 
         if self.geo_tree is not None:
             self.geo_tree.addParam(param)
@@ -267,8 +261,6 @@ class GeometryCollection:
         bezier.geo_col = self
 
         self.add_to_subcontainer(bezier, "bezier")
-
-        print(f"{bezier.geo_col.container()['bezier'] = }")
 
         if self.geo_tree is not None:
             self.geo_tree.addBezier(bezier)

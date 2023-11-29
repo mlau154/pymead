@@ -4,6 +4,7 @@ import numpy as np
 import pyqtgraph as pg
 from PyQt5 import QtWidgets
 from PyQt5.QtCore import pyqtSignal, QEventLoop, Qt
+from PyQt5.QtWidgets import QApplication
 
 from pymead.core.bezier2 import Bezier
 from pymead.core.line2 import LineSegment
@@ -331,7 +332,23 @@ class AirfoilCanvas(pg.PlotWidget):
         line_item.sigCurveHovered.connect(self.curveHovered)
         line_item.sigCurveNotHovered.connect(self.curveLeaveHovered)
 
+    def arrowKeyPointMove(self, key, mods):
+        step = 10 * self.geo_col.single_step if mods == Qt.ShiftModifier else self.geo_col.single_step
+        if key == Qt.Key_Left:
+            for point in self.selected_points:
+                point.point.request_move(point.point.x().value() - step, point.point.y().value())
+        elif key == Qt.Key_Right:
+            for point in self.selected_points:
+                point.point.request_move(point.point.x().value() + step, point.point.y().value())
+        elif key == Qt.Key_Up:
+            for point in self.selected_points:
+                point.point.request_move(point.point.x().value(), point.point.y().value() + step)
+        elif key == Qt.Key_Down:
+            for point in self.selected_points:
+                point.point.request_move(point.point.x().value(), point.point.y().value() - step)
+
     def keyPressEvent(self, ev):
+        mods = QApplication.keyboardModifiers()
         if ev.key() == Qt.Key_Return:
             self.sigEnterPressed.emit()
         elif ev.key() == Qt.Key_Delete:
@@ -339,6 +356,8 @@ class AirfoilCanvas(pg.PlotWidget):
         elif ev.key() == Qt.Key_Escape:
             self.clearSelectedPoints()
             self.sigEscapePressed.emit()
+        elif ev.key() in (Qt.Key_Left, Qt.Key_Right, Qt.Key_Down, Qt.Key_Up) and self.selected_points is not None:
+            self.arrowKeyPointMove(ev.key(), mods)
 
 
 if __name__ == '__main__':
