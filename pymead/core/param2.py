@@ -1,11 +1,10 @@
-import typing
-
 import numpy as np
 
 from pymead.core import UNITS
+from pymead.core.dual_rep import DualRep
 
 
-class Param:
+class Param(DualRep):
     """
     Base-level parameter in ``pymead``. Sub-classed by ``DesVar`` (design variable). Provides operator overloading and
     getter/setter methods.
@@ -344,35 +343,35 @@ class AngleParam(Param):
         return super().set_value(UNITS.convert_angle_to_base(value, self.unit()), bounds_normalized=bounds_normalized)
 
 
-class ParamCollection:
-    """
-    Collection (list) of Params. Allows for import from/export to array.
-    """
-    def __init__(self, params: typing.List[Param]):
-        self._params = None
-        self.set_params(params)
-        self.shape = len(self.params())
-
-    def params(self):
-        return self._params
-
-    def set_params(self, params: typing.List[Param]):
-        self._params = params
-
-    def as_array(self):
-        return np.array([[p.value()] for p in self.params()])
-
-    @classmethod
-    def generate_from_array(cls, arr: np.ndarray):
-        if arr.ndim == 1:
-            return cls(params=[Param(value=v, name=f"FromArrayIndex{idx}") for idx, v in enumerate(arr)])
-        elif arr.ndim == 2:
-            if arr.shape[1] != 1:
-                raise ValueError(f"Shape of the input array must be Nx1 (found {arr.shape = })")
-            return cls(params=[Param(value=v, name=f"FromArrayIndex{idx}") for idx, v in enumerate(arr[:, 0])])
-
-    def __len__(self):
-        return len(self.params())
+# class ParamCollection:
+#     """
+#     Collection (list) of Params. Allows for import from/export to array.
+#     """
+#     def __init__(self, params: typing.List[Param]):
+#         self._params = None
+#         self.set_params(params)
+#         self.shape = len(self.params())
+#
+#     def params(self):
+#         return self._params
+#
+#     def set_params(self, params: typing.List[Param]):
+#         self._params = params
+#
+#     def as_array(self):
+#         return np.array([[p.value()] for p in self.params()])
+#
+#     @classmethod
+#     def generate_from_array(cls, arr: np.ndarray):
+#         if arr.ndim == 1:
+#             return cls(params=[Param(value=v, name=f"FromArrayIndex{idx}") for idx, v in enumerate(arr)])
+#         elif arr.ndim == 2:
+#             if arr.shape[1] != 1:
+#                 raise ValueError(f"Shape of the input array must be Nx1 (found {arr.shape = })")
+#             return cls(params=[Param(value=v, name=f"FromArrayIndex{idx}") for idx, v in enumerate(arr[:, 0])])
+#
+#     def __len__(self):
+#         return len(self.params())
 
 
 def default_lower(value: float):

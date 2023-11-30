@@ -3,12 +3,13 @@ import typing
 
 from pymead.core.airfoil2 import Airfoil
 from pymead.core.bezier2 import Bezier
+from pymead.core.dual_rep import DualRep
 from pymead.core.line2 import LineSegment
 from pymead.core.param2 import Param, LengthParam, AngleParam, DesVar, LengthDesVar, AngleDesVar
 from pymead.core.point import Point, PointSequence
 
 
-class GeometryCollection:
+class GeometryCollection(DualRep):
     def __init__(self):
         self._container = {
             "desvar": {},

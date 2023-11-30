@@ -1,4 +1,5 @@
 import os
+from copy import deepcopy
 
 import numpy as np
 import pyqtgraph as pg
@@ -301,6 +302,19 @@ class AirfoilCanvas(pg.PlotWidget):
             self.geo_col.remove_line(item.parametric_curve)
         self.removeItem(item)
 
+    def selectPointsToDeepcopy(self):
+        self.sigStatusBarUpdate.emit("Click the point to deepcopy", 0)
+        loop = QEventLoop()
+        self.sigEnterPressed.connect(loop.quit)
+        loop.exec()
+        self.deepcopy_point()
+        self.clearSelectedPoints()
+
+    def deepcopy_point(self):
+        point = self.selected_points[0].point
+        new_point = deepcopy(point)
+        print(f"{point.tree_item = }, {new_point.tree_item = }, {point.gui_obj = }, {new_point.gui_obj = }")
+
     def contextMenuEvent(self, event):
         menu = QtWidgets.QMenu(self)
 
@@ -321,6 +335,7 @@ class AirfoilCanvas(pg.PlotWidget):
         drawLineSegmentThroughPointsAction = menu.addAction("Line Segment Through Points")
         generateAirfoilAction = menu.addAction("Generate Airfoil")
         makePointsCollinearAction = menu.addAction("Make 3 Points Collinear")
+        deepcopyPointsAction = menu.addAction("Deepcopy point")
         view_pos = self.getPlotItem().getViewBox().mapSceneToView(event.pos())
         res = menu.exec_(event.globalPos())
         if res == drawPointAction:
@@ -338,6 +353,8 @@ class AirfoilCanvas(pg.PlotWidget):
             self.removeCurve(curve_item)
         elif res == insertCurvePointAction and curve_item is not None:
             self.addPointToCurve(curve_item)
+        elif res == deepcopyPointsAction:
+            self.selectPointsToDeepcopy()
 
     def removeSelectedPoints(self):
         curves_to_delete = []

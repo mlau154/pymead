@@ -1,9 +1,7 @@
 import numpy as np
-import matplotlib.pyplot as plt
 
-from pymead.core.param2 import ParamCollection
 from pymead.core.parametric_curve2 import ParametricCurve, PCurveData
-from pymead.core.point import PointSequence, SurfPointSequence, Point
+from pymead.core.point import PointSequence, Point
 from pymead.utils.nchoosek import nchoosek
 
 
@@ -94,36 +92,85 @@ class Bezier(ParametricCurve):
         """
         return nchoosek(n, i) * t ** i * (1.0 - t) ** (n - i)
 
-    def evaluate(self, t: ParamCollection or None = None, **kwargs):
-        t = ParametricCurve.generate_t_collection(**kwargs) if t is None else t
+    @staticmethod
+    def finite_diff_P(P: np.ndarray, k: int, i: int):
+        """Calculates the finite difference of the control points as shown in
+        https://pages.mtu.edu/~shene/COURSES/cs3621/NOTES/spline/Bezier/bezier-der.html
+
+        Arguments
+        =========
+        P: np.ndarray
+            Array of control points for the Bézier curve
+        k: int
+            Finite difference level (e.g., k = 1 is the first derivative finite difference)
+        i: int
+            An index referencing a location in the control point array
+        """
+
+        def finite_diff_recursive(_k, _i):
+            if _k > 1:
+                return finite_diff_recursive(_k - 1, _i + 1) - finite_diff_recursive(_k - 1, _i)
+            else:
+                return P[_i + 1, :] - P[_i, :]
+
+        return finite_diff_recursive(k, i)
+
+    def derivative(self, P: np.ndarray, t: np.ndarray, degree: int, order: int):
+        """
+        Calculates an arbitrary-order derivative of the Bézier curve
+
+        Parameters
+        ==========
+        P: np.ndarray
+            The control point array
+
+        t: np.ndarray
+            The parameter vector
+
+        degree: int
+            The degree of the Bézier curve
+
+        order: int
+          The derivative order. For example, ``order=2`` returns the second derivative.
+
+        Returns
+        =======
+        np.ndarray
+          An array of ``shape=(N,2)`` where ``N`` is the number of evaluated points specified by the :math:`t` vector.
+          The columns represent :math:`C^{(m)}_x(t)` and :math:`C^{(m)}_y(t)`, where :math:`m` is the
+          derivative order.
+        """
+        return np.sum(np.array([np.prod(np.array([degree - idx for idx in range(order)])) *
+                                np.array([self.finite_diff_P(P, order, i)]).T *
+                                np.array([self.bernstein_poly(degree - order, i, t)])
+                                for i in range(degree + 1 - order)]), axis=0).T
+
+    def evaluate(self, t: np.array or None = None, **kwargs):
+        t = ParametricCurve.generate_t_vec(**kwargs) if t is None else t
         n_ctrl_points = len(self.point_sequence())
         degree = n_ctrl_points - 1
         P = self.point_sequence().as_array()
         x, y = np.zeros(t.shape), np.zeros(t.shape)
         for i in range(n_ctrl_points):
             # Calculate the x- and y-coordinates of the Bézier curve given the input vector t
-            x += P[i, 0] * self.bernstein_poly(degree, i, t.as_array().flatten())
-            y += P[i, 1] * self.bernstein_poly(degree, i, t.as_array().flatten())
-        xy = SurfPointSequence.generate_from_array(np.column_stack((x, y)))
-        return PCurveData(t=t, xy=xy)
+            x += P[i, 0] * self.bernstein_poly(degree, i, t)
+            y += P[i, 1] * self.bernstein_poly(degree, i, t)
+        xy = np.column_stack((x, y))
 
+        first_deriv = self.derivative(P=P, t=t, degree=degree, order=1)
+        xp = first_deriv[:, 0]
+        yp = first_deriv[:, 1]
+        second_deriv = self.derivative(P=P, t=t, degree=degree, order=2)
+        xpp = second_deriv[:, 0]
+        ypp = second_deriv[:, 1]
+        xpyp = np.column_stack((xp, yp))
+        xppypp = np.column_stack((xpp, ypp))
 
-if __name__ == "__main__":
-    fig, ax = plt.subplots(1, 3)
-    _P = np.array([[0.0, 0.0], [0.3, 0.2], [0.5, -0.1], [0.7, -0.05], [0.9, 0.15], [1.0, 0.0]])
-    _point_seq = PointSequence.generate_from_array(_P)
-    bez = Bezier(point_sequence=_point_seq)
-    data = bez.evaluate(nt=150)
-    data.plot(ax[0], color="steelblue")
-    ax[0].plot(_P[:, 0], _P[:, 1], ls="--", marker="o", color="gray", mfc="indianred", mec="gray")
-    bez.insert_point(2, point=Point.generate_from_array(np.array([0.5, 0.5])))
-    new_data = bez.evaluate(nt=150)
-    new_data.plot(ax[1], color="steelblue")
-    new_P = bez.point_sequence().as_array()
-    ax[1].plot(new_P[:, 0], new_P[:, 1], ls="--", marker="o", color="gray", mfc="indianred", mec="gray")
-    bez.remove_point(2)
-    remove_data = bez.evaluate(nt=150)
-    remove_data.plot(ax[2], color="steelblue")
-    newest_P = bez.point_sequence().as_array()
-    ax[2].plot(newest_P[:, 0], newest_P[:, 1], ls="--", marker="o", color="gray", mfc="indianred", mec="gray")
-    plt.show()
+        with np.errstate(divide='ignore', invalid='ignore'):
+            # Calculate the curvature of the Bézier curve (k = kappa = 1 / R, where R is the radius of curvature)
+            k = np.true_divide((xp * ypp - yp * xpp), (xp ** 2 + yp ** 2) ** (3 / 2))
+
+        with np.errstate(divide='ignore', invalid='ignore'):
+            R = np.true_divide(1, k)
+
+        return PCurveData(t=t, xy=xy, xpyp=xpyp, xppypp=xppypp, k=k, R=R)

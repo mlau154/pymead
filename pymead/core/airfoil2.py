@@ -1,4 +1,5 @@
 import numpy as np
+from shapely.geometry import Polygon, LineString
 
 from pymead.core.point import Point
 
@@ -115,7 +116,7 @@ class Airfoil:
         coords = None
         for curve in self.curves:
             p_curve_data = curve.evaluate()
-            arr = p_curve_data.xy.as_array()
+            arr = p_curve_data.xy
             if curve in self.curves_to_reverse:
                 arr = np.flipud(arr)
             if coords is None:
@@ -137,6 +138,197 @@ class Airfoil:
         """
         coords = self.get_coords_selig_format()
         np.savetxt(file_name, coords)
+
+    @staticmethod
+    def convert_coords_to_shapely_format(coords: np.ndarray):
+        return list(map(tuple, coords))
+
+    def compute_area(self, airfoil_polygon: Polygon):
+        """Computes the area of the airfoil as the area of a many-sided polygon enclosed by the airfoil coordinates
+        using the `shapely <https://shapely.readthedocs.io/en/stable/manual.html>`_ library.
+
+        Returns
+        =======
+        float
+          The area of the airfoil
+        """
+        #polygon = Polygon(points_shapely)
+        return airfoil_polygon.area
+
+    def check_self_intersection(self, airfoil_line_string: LineString):
+        """Determines whether the airfoil intersects itself using the `is_simple()` function of the
+        `shapely <https://shapely.readthedocs.io/en/stable/manual.html>`_ library.
+
+        Returns
+        =======
+        bool
+          Describes whether the airfoil intersects itself
+        """
+        # self.get_coords(body_fixed_csys=True)
+        # points_shapely = list(map(tuple, self.coords))
+        # line_string = LineString(points_shapely)
+        # is_simple = line_string.is_simple
+        # return not is_simple
+        return not airfoil_line_string.is_simple
+
+    @staticmethod
+    def compute_thickness(airfoil_line_string: LineString, n_lines: int = 201):
+        r"""Calculates the thickness distribution and maximum thickness of the airfoil.
+
+        Parameters
+        ==========
+        n_lines: int
+          Describes the number of lines evenly spaced along the chordline produced to determine the thickness
+          distribution. Default: :code:`201`
+
+        return_max_thickness_loc: bool
+          Whether to return the :math:`x/c`-location of the maximum thickness. Return type will be a :code:`dict`
+          rather than a :code:`tuple` if this value is selected to be :code:`True`. Default: :code:`False`
+
+        Returns
+        =======
+        tuple or dict
+          The list of \(x\)-values used for the thickness distribution calculation, the thickness distribution, the
+          maximum value of the thickness distribution, and, if :code:`return_max_thickness_location=True`,
+          the :math:`x/c`-location of the maximum thickness value.
+        """
+        # self.get_coords(body_fixed_csys=True)
+        # points_shapely = list(map(tuple, self.coords))
+        # airfoil_line_string = LineString(points_shapely)
+        x_thickness = np.linspace(0.0, 1.0, n_lines)
+        thickness = []
+        for idx in range(n_lines):
+            line_string = LineString([(x_thickness[idx], -1), (x_thickness[idx], 1)])
+            x_inters = line_string.intersection(airfoil_line_string)
+            if x_inters.is_empty:
+                thickness.append(0.0)
+            else:
+                thickness.append(x_inters.convex_hull.length)
+        x_thickness = x_thickness
+        thickness = thickness
+        max_thickness = max(thickness)
+        x_c_loc_idx = np.argmax(thickness)
+        x_c_loc = x_thickness[x_c_loc_idx]
+        return {
+            "x/c": x_thickness,
+            "t/c": thickness,
+            "t/c_max": max_thickness,
+            "t/c_max_x/c_loc": x_c_loc
+        }
+
+    def compute_thickness_at_points(self, airfoil_line_string: LineString, x_over_c: np.ndarray,
+                                    start_y_over_c=-1.0, end_y_over_c=1.0):
+        """Calculates the thickness (t/c) at a set of x-locations (x/c)
+
+        Parameters
+        ==========
+        x_over_c: float or list or np.ndarray
+          The :math:`x/c` locations at which to evaluate the thickness
+
+        start_y_over_c: float
+          The :math:`y/c` location to draw the first point in a line whose intersection with the airfoil is checked. May
+          need to decrease this value for unusually thick airfoils
+
+        end_y_over_c: float
+          The :math:`y/c` location to draw the last point in a line whose intersection with the airfoil is checked. May
+          need to increase this value for unusually thick airfoils
+
+        Returns
+        =======
+        np.ndarray
+          An array of thickness (:math:`t/c`) values corresponding to the input :math:`x/c` values
+        """
+        # self.get_coords(body_fixed_csys=True)  # Get the airfoil coordinates
+        # points_shapely = list(map(tuple, self.coords))  # Convert the coordinates to Shapely input format
+        # airfoil_line_string = LineString(points_shapely)  # Create a LineString from the points
+        thickness = np.array([])
+        for pt in x_over_c:
+            line_string = LineString([(pt, start_y_over_c), (pt, end_y_over_c)])
+            x_inters = line_string.intersection(airfoil_line_string)
+            if pt == 1.0:
+                thickness = np.append(thickness, self.t_te.value)
+            elif x_inters.is_empty:  # If no intersection between line and airfoil LineString,
+                thickness = np.append(thickness, 0.0)
+            else:
+                thickness = np.append(thickness, x_inters.convex_hull.length)
+        return thickness  # Return an array of t/c values corresponding to the x/c locations
+
+    def compute_camber_at_points(self, airfoil_line_string: LineString, x_over_c: np.ndarray,
+                                 start_y_over_c=-1.0, end_y_over_c=1.0):
+        """Calculates the thickness (t/c) at a set of x-locations (x/c)
+
+        Parameters
+        ==========
+        x_over_c: float or list or np.ndarray
+          The :math:`x/c` locations at which to evaluate the camber
+
+        start_y_over_c: float
+          The :math:`y/c` location to draw the first point in a line whose intersection with the airfoil is checked. May
+          need to decrease this value for unusually thick airfoils
+
+        end_y_over_c: float
+          The :math:`y/c` location to draw the last point in a line whose intersection with the airfoil is checked. May
+          need to increase this value for unusually thick airfoils
+
+        Returns
+        =======
+        np.ndarray
+          An array of thickness (:math:`t/c`) values corresponding to the input :math:`x/c` values
+        """
+        # self.get_coords(body_fixed_csys=True)  # Get the airfoil coordinates
+        # points_shapely = list(map(tuple, self.coords))  # Convert the coordinates to Shapely input format
+        # airfoil_line_string = LineString(points_shapely)  # Create a LineString from the points
+        camber = np.array([])
+        for pt in x_over_c:
+            line_string = LineString([(pt, start_y_over_c), (pt, end_y_over_c)])
+            x_inters = line_string.intersection(airfoil_line_string)
+            if pt == 0.0 or pt == 1.0 or x_inters.is_empty:
+                camber = np.append(camber, 0.0)
+            else:
+                camber = np.append(camber, x_inters.convex_hull.centroid.xy[1])
+        return camber  # Return an array of h/c values corresponding to the x/c locations
+
+    def contains_point(self, airfoil_polygon: Polygon, point: np.ndarray):
+        """Determines whether a point is contained inside the airfoil
+
+        Parameters
+        ==========
+        point: np.ndarray or list
+          The point to test. Should be either a 1-D :code:`ndarray` of the format :code:`array([<x_val>,<y_val>])` or a
+          list of the format :code:`[<x_val>,<y_val>]`
+
+        Returns
+        =======
+        bool
+          Whether the point is contained inside the airfoil
+        """
+        # if isinstance(point, list):
+        #     point = np.array(point)
+        # self.get_coords(body_fixed_csys=False)
+        # points_shapely = list(map(tuple, self.coords))
+        # polygon = Polygon(points_shapely)
+        return airfoil_polygon.contains(Point(point[0], point[1]))
+
+    def contains_line_string(self, airfoil_polygon: Polygon, points: np.ndarray or list) -> bool:
+        """Whether a connected string of points is contained the airfoil
+
+        Parameters
+        ==========
+        points: np.ndarray or list
+          Should be a 2-D array or list of the form :code:`[[<x_val_1>, <y_val_1>], [<x_val_2>, <y_val_2>], ...]`
+
+        Returns
+        =======
+        bool
+          Whether the line string is contained inside the airfoil
+        """
+        # if isinstance(points, list):
+        #     points = np.array(points)
+        # self.get_coords(body_fixed_csys=False)
+        # points_shapely = list(map(tuple, self.coords))
+        # polygon = Polygon(points_shapely)
+        line_string = LineString(list(map(tuple, points)))
+        return airfoil_polygon.contains(line_string)
 
 
 class BranchError(Exception):

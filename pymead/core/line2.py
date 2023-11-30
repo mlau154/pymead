@@ -1,7 +1,6 @@
 import numpy as np
 
-from pymead.core.param2 import ParamCollection, Param
-from pymead.core.point import PointSequence, SurfPointSequence, Point
+from pymead.core.point import PointSequence, Point
 from pymead.core.parametric_curve2 import ParametricCurve, PCurveData
 
 
@@ -61,10 +60,10 @@ class LineSegment(ParametricCurve):
         if self.gui_obj is not None:
             self.gui_obj.updateGUIObj(curve_data=p_curve_data)
 
-    def evaluate(self, t: ParamCollection or None = None, **kwargs):
+    def evaluate(self, t: np.ndarray or None = None, **kwargs):
         if "nt" not in kwargs.keys() and t is None:
             kwargs["nt"] = 2  # Set the default parameter vector for the line to be [0.0, 1.0]
-        t = ParametricCurve.generate_t_collection(**kwargs) if t is None else t
+        t = ParametricCurve.generate_t_vec(**kwargs) if t is None else t
         p1 = self.point_sequence().points()[0]
         p2 = self.point_sequence().points()[1]
         x1 = p1.x().value()
@@ -73,8 +72,11 @@ class LineSegment(ParametricCurve):
         y2 = p2.y().value()
         theta = np.arctan2(y2 - y1, x2 - x1)
         r = np.hypot(x2 - x1, y2 - y1)
-        x = x1 + t.as_array().flatten() * r * np.cos(theta)
-        y = y1 + t.as_array().flatten() * r * np.sin(theta)
-        xy_arr = np.column_stack((x, y))
-        surf_points = SurfPointSequence.generate_from_array(xy_arr)
-        return PCurveData(t=t, xy=surf_points)
+        x = x1 + t * r * np.cos(theta)
+        y = y1 + t * r * np.sin(theta)
+        xy = np.column_stack((x, y))
+        xpyp = np.repeat(np.array([r * np.cos(theta), r * np.sin(theta)]), t.shape[0])
+        xppypp = np.repeat(np.array([0.0, 0.0]), t.shape[0])
+        k = np.zeros(t.shape)
+        R = np.inf * np.ones(t.shape)
+        return PCurveData(t=t, xy=xy, xpyp=xpyp, xppypp=xppypp, k=k, R=R)

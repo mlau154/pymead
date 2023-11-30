@@ -3,9 +3,10 @@ import typing
 import numpy as np
 
 from pymead.core.param2 import LengthParam
+from pymead.core.dual_rep import DualRep
 
 
-class Point:
+class Point(DualRep):
     def __init__(self, x: float, y: float, name: str or None = None, setting_from_geo_col: bool = False):
         self._name = None
         self._x = None

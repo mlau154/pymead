@@ -117,11 +117,11 @@ class HoverableCurveItem(pg.PlotCurveItem):
             curve_data = self.getControlPointArray()
         if isinstance(curve_data, np.ndarray):
             curve_data = self.updateCurveData(curve_data)
-        self.setData(x=curve_data.xy.as_array()[:, 0], y=curve_data.xy.as_array()[:, 1])
+        self.setData(x=curve_data.xy[:, 0], y=curve_data.xy[:, 1])
         # self.updateControlPointNetItem()
 
     def updateGUIObj(self, curve_data: PCurveData):
-        arr = curve_data.xy.as_array()
+        arr = curve_data.xy
         self.setData(x=arr[:, 0], y=arr[:, 1])
 
     @staticmethod
