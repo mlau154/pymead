@@ -2,9 +2,10 @@ import numpy as np
 from shapely.geometry import Polygon, LineString
 
 from pymead.core.point import Point
+from pymead.core.dual_rep import DualRep
 
 
-class Airfoil:
+class Airfoil(DualRep):
     def __init__(self, leading_edge: Point, trailing_edge: Point,
                  upper_surf_end: Point, lower_surf_end: Point, name: str or None = None):
 
