@@ -152,7 +152,6 @@ class AirfoilCanvas(pg.PlotWidget):
 
         airfoil = self.geo_col.add_airfoil(leading_edge=le, trailing_edge=te, upper_surf_end=upper_surf_end,
                                            lower_surf_end=lower_surf_end)
-        print(f"{airfoil.curves = }")
 
         # Now add the GUI object and pass references
 
@@ -350,9 +349,10 @@ class AirfoilCanvas(pg.PlotWidget):
             self.selectPointsToDeepcopy()
 
     def removeSelectedPoints(self):
-        for pt in self.selected_points:
-            self.geo_col.remove_pymead_obj(pt.point)
-        self.clearSelectedPoints()
+        if self.selected_points is not None:
+            for pt in self.selected_points:
+                self.geo_col.remove_pymead_obj(pt.point)
+            self.clearSelectedPoints()
 
     def clearSelectedPoints(self):
         if self.selected_points is None:

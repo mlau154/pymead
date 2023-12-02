@@ -31,17 +31,6 @@ class Airfoil(PymeadObj):
         # Check if the curves in the curve list form a single closed loop
         self.check_closed()
 
-    def name(self):
-        return self._name
-
-    def set_name(self, name: str):
-        # Rename the reference in the geometry collection
-        if self.geo_col is not None and self.name() in self.geo_col.container()["airfoils"].keys():
-            self.geo_col.container()["airfoils"][name] = self.geo_col.container()["airfoils"][self.name()]
-            self.geo_col.container()["airfoils"].pop(self.name())
-
-        self._name = name
-
     def check_closed(self):
         # Get the trailing edge upper curve
         if self.trailing_edge is self.upper_surf_end:

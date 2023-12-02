@@ -13,12 +13,6 @@ class MEA(PymeadObj):
         super().__init__(sub_container="mea")
         self.airfoils = airfoils
 
-    def name(self) -> str:
-        return self._name
-
-    def set_name(self, *args, **kwargs) -> None:
-        pass
-
     def add_airfoil(self, airfoil: Airfoil):
         self.airfoils.append(airfoil)
 

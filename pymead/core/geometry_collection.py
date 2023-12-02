@@ -194,20 +194,6 @@ class GeometryCollection(DualRep):
 
         return param
 
-    # def remove_param(self, param: Param or str):
-    #     """
-    #     Removes a parameter from the geometry collection by name or object reference.
-    #
-    #     Parameters
-    #     ==========
-    #     param: Param or str
-    #         Parameter (or parameter name) to remove
-    #     """
-    #     self.remove_from_subcontainer(param)
-    #
-    #     if self.tree is not None:
-    #         self.tree.removeTreeItem(param)
-
     def remove_pymead_obj(self, pymead_obj: PymeadObj):
         """
         Removes a pymead object from the geometry collection.
@@ -219,19 +205,26 @@ class GeometryCollection(DualRep):
         """
         # Type-specific actions
         if isinstance(pymead_obj, Bezier) or isinstance(pymead_obj, LineSegment):
+            # Remove all the references to this curve in each of the curve's points
             for pt in pymead_obj.point_sequence().points():
                 pt.curves.remove(pymead_obj)
 
         if isinstance(pymead_obj, Point):
+            # Loop through the curves associated with this point to see which ones need to be deleted if one point
+            # is removed from their point sequence
+            curves_to_delete = []
             for curve in pymead_obj.curves:
-                delete_curve = curve.remove_point(point=pymead_obj)
+                if curve.point_removal_deletes_curve():
+                    curves_to_delete.append(curve)
 
-                if delete_curve:
-                    self.remove_pymead_obj(curve)
-                else:
-                    curve.update()
+            # Remove the curves that need to be removed due to insufficient points in the point sequence
+            for curve in curves_to_delete:
+                self.remove_pymead_obj(curve)
 
-        # TODO: remove bug where deleting a point shared by two curves fails to delete both curves
+            # Update any remaining curves
+            for curve in pymead_obj.curves:
+                curve.remove_point(point=pymead_obj)
+                curve.update()
 
         # Remove the item from the geometry collection subcontainer
         self.remove_from_subcontainer(pymead_obj)
@@ -274,21 +267,6 @@ class GeometryCollection(DualRep):
 
         return point
 
-    # def remove_point(self, point: Point or str):
-    #     """
-    #     Removes a point by object reference or by name
-    #
-    #     Parameters
-    #     ==========
-    #     point: Point or str
-    #         Reference to or name of the point
-    #     """
-    #     point = point if isinstance(point, Point) else self.container()["points"][point]
-    #     self.remove_from_subcontainer(point)
-    #
-    #     if self.tree is not None:
-    #         self.tree.removePoint(point)
-
     def add_bezier(self, point_sequence: PointSequence):
         bezier = Bezier(point_sequence=point_sequence)
         bezier.geo_col = self
@@ -300,16 +278,6 @@ class GeometryCollection(DualRep):
 
         return bezier
 
-    # def remove_bezier(self, bezier: Bezier or str):
-    #     bezier = bezier if isinstance(bezier, Bezier) else self.container()["bezier"][bezier]
-    #     for pt in bezier.point_sequence().points():
-    #         pt.curves.remove(bezier)
-    #
-    #     self.remove_from_subcontainer(bezier)
-    #
-    #     if self.tree is not None:
-    #         self.tree.removeBezier(bezier)
-
     def add_line(self, point_sequence: PointSequence):
         line = LineSegment(point_sequence=point_sequence)
         line.geo_col = self
@@ -320,16 +288,6 @@ class GeometryCollection(DualRep):
             self.tree.addPymeadTreeItem(line)
 
         return line
-
-    # def remove_line(self, line: LineSegment or str):
-    #     line = line if isinstance(line, LineSegment) else self.container()["lines"][line]
-    #     for pt in line.point_sequence().points():
-    #         pt.curves.remove(line)
-    #
-    #     self.remove_from_subcontainer(line)
-    #
-    #     if self.tree is not None:
-    #         self.tree.removeLine(line)
 
     def add_desvar(self, value: float, name: str, lower: float or None = None, upper: float or None = None,
                    unit_type: str or None = None):
@@ -378,23 +336,6 @@ class GeometryCollection(DualRep):
             self.tree.addPymeadTreeItem(desvar)
 
         return desvar
-
-    # def remove_desvar(self, desvar: DesVar or str):
-    #     """
-    #     Removes a design variable from the geometry collection
-    #
-    #     Parameters
-    #     ==========
-    #     desvar: DesVar or str
-    #         Design variable to remove. If a ``str`` is not specified, the objects ``name()`` method will be called
-    #         to deduce the storage key.
-    #     """
-    #     desvar = desvar if isinstance(desvar, DesVar) else self.container()["desvar"][desvar]
-    #
-    #     self.remove_from_subcontainer(desvar)
-    #
-    #     if self.tree is not None:
-    #         self.tree.removeDesVar(desvar)
 
     @staticmethod
     def replace_geo_objs(tool: Param or DesVar, target: Param or DesVar):
@@ -615,14 +556,6 @@ class GeometryCollection(DualRep):
             self.tree.addPymeadTreeItem(airfoil)
 
         return airfoil
-
-    # def remove_airfoil(self, airfoil: Airfoil or str):
-    #     airfoil = airfoil if isinstance(airfoil, Airfoil) else self.container()["airfoils"][airfoil]
-    #
-    #     self.remove_from_subcontainer(airfoil)
-    #
-    #     if self.tree is not None:
-    #         self.tree.removeAirfoil(airfoil)
 
     def add_mea(self, airfoils: typing.List[Airfoil]):
         mea = MEA(airfoils=airfoils)

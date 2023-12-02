@@ -31,6 +31,9 @@ class LineSegment(ParametricCurve):
     def reverse_point_sequence(self):
         self.point_sequence().reverse()
 
+    def point_removal_deletes_curve(self):
+        return True
+
     def remove_point(self, idx: int or None = None, point: Point or None = None):
         if isinstance(point, Point):
             idx = self.point_sequence().point_idx_from_ref(point)

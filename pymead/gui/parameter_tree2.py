@@ -3,7 +3,7 @@ from abc import abstractmethod
 
 from PyQt5.QtGui import QValidator
 from PyQt5.QtWidgets import QTreeWidget, QTreeWidgetItem, QPushButton, QHBoxLayout, QHeaderView, QDialog, QGridLayout, \
-    QDoubleSpinBox, QLineEdit, QLabel, QDialogButtonBox
+    QDoubleSpinBox, QLineEdit, QLabel, QDialogButtonBox, QMenu
 from PyQt5.QtCore import Qt, pyqtSignal, pyqtSlot, QRegularExpression
 
 from pymead.core.airfoil2 import Airfoil
@@ -506,7 +506,6 @@ class ParameterTree(QTreeWidget):
 
     def contextMenuEvent(self, a0):
         item = self.itemAt(a0.x(), a0.y())
-        print(f"{item = }")
         if item is None:
             return
 
@@ -514,7 +513,13 @@ class ParameterTree(QTreeWidget):
         if item_text == "Design Variables":
             self.geo_col.add_desvar(0.0, "dv")
         elif item_text == "Parameters":
-            self.geo_col.add_param(0.0, "param")
+            menu = QMenu(self)
+            addParameterAction = menu.addAction("Add Parameter")
+            res = menu.exec_(a0.globalPos())
+
+            if res == addParameterAction:
+                self.geo_col.add_param(0.0, "param")
+
         elif item_text == "":
             button = self.itemWidget(item, 0)
             if isinstance(button, TreeButton):

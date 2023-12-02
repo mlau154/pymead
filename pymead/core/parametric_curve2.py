@@ -31,22 +31,14 @@ class ParametricCurve(PymeadObj, ABC):
         if self.canvas_item is not None:
             self.canvas_item.updateCanvasItem(curve_data=p_curve_data)
 
-    def name(self) -> str:
-        return self._name
-
-    def set_name(self, name: str):
-        # Rename the reference in the geometry collection
-        if self.geo_col is not None and self.name() in self.geo_col.container()[self.sub_container].keys():
-            sub_container = self.geo_col.container()[self.sub_container]
-            sub_container[name] = sub_container[self.name()]
-            sub_container.pop(self.name())
-
-        self._name = name
-
     @staticmethod
     def generate_t_vec(nt: int = 100, spacing: str = "linear", start: int = 0.0, end: int = 1.0):
         if spacing == "linear":
             return np.linspace(start, end, nt)
+
+    @abstractmethod
+    def point_removal_deletes_curve(self) -> bool:
+        pass
 
     @abstractmethod
     def evaluate(self, t: np.ndarray or None = None, **kwargs):
