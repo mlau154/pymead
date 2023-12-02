@@ -11,7 +11,7 @@ class Param(PymeadObj):
     """
 
     def __init__(self, value: float, name: str, lower: float or None = None, upper: float or None = None,
-                 setting_from_geo_col: bool = False):
+                 sub_container: str = "params", setting_from_geo_col: bool = False):
         """
         Parameters
         ==========
@@ -27,7 +27,7 @@ class Param(PymeadObj):
         upper: float
             Upper bound for the parameter
         """
-        super().__init__(sub_container="params")
+        super().__init__(sub_container=sub_container)
 
         self._value = None
         self._lower = None
@@ -390,7 +390,8 @@ class DesVar(Param):
         if upper is None:
             upper = default_upper(value)
 
-        super().__init__(value=value, name=name, lower=lower, upper=upper, setting_from_geo_col=setting_from_geo_col)
+        super().__init__(value=value, name=name, lower=lower, upper=upper, sub_container="desvar",
+                         setting_from_geo_col=setting_from_geo_col)
 
 
 class LengthDesVar(LengthParam):

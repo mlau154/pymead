@@ -9,15 +9,13 @@ class Airfoil(PymeadObj):
     def __init__(self, leading_edge: Point, trailing_edge: Point,
                  upper_surf_end: Point, lower_surf_end: Point, name: str or None = None):
 
+        super().__init__(sub_container="airfoils")
+
         # Point inputs
         self.leading_edge = leading_edge
         self.trailing_edge = trailing_edge
         self.upper_surf_end = upper_surf_end
         self.lower_surf_end = lower_surf_end
-
-        # References
-        self.geo_col = None
-        self.tree_item = None
 
         # Name the airfoil
         name = "Airfoil-1" if name is None else name

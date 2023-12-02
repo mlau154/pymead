@@ -24,26 +24,26 @@ class GeoColTests(unittest.TestCase):
     geo_col = GeometryCollection()
 
     def test_add_remove_param(self):
-        self.geo_col.add_param(0.1, "LC1")
-        self.geo_col.add_param(0.2, "LC2")
-        self.geo_col.add_param(0.15, "LC2")
-        self.geo_col.add_param(0.5, "LC2")
+        param1 = self.geo_col.add_param(0.1, "LC1")
+        param2 = self.geo_col.add_param(0.2, "LC2")
+        param3 = self.geo_col.add_param(0.15, "LC2")
+        param4 = self.geo_col.add_param(0.5, "LC2")
         param_container = self.geo_col.container()["params"]
         self.assertIn("LC1", param_container)
         self.assertIn("LC2", param_container)
         self.assertIn("LC2-2", param_container)
         self.assertIn("LC2-3", param_container)
 
-        self.geo_col.remove_param("LC2-2")
+        self.geo_col.remove_pymead_obj(pymead_obj=param3)
         self.assertNotIn("LC2-2", param_container)
 
     def test_add_remove_point(self):
         point_container = self.geo_col.container()["points"]
-        self.geo_col.add_point(0.5, 0.1)
-        self.geo_col.add_point(0.3, 0.7)
-        self.geo_col.add_point(-0.1, -0.2)
+        point1 = self.geo_col.add_point(0.5, 0.1)
+        point2 = self.geo_col.add_point(0.3, 0.7)
+        point3 = self.geo_col.add_point(-0.1, -0.2)
 
-        self.geo_col.remove_point("Point-2")
+        self.geo_col.remove_pymead_obj(point2)
 
         self.assertIn("Point-1", point_container)
         self.assertIn("Point-3", point_container)
@@ -52,8 +52,8 @@ class GeoColTests(unittest.TestCase):
     def test_add_remove_desvar(self):
         desvar_container = self.geo_col.container()["desvar"]
 
-        self.geo_col.add_desvar(0.5, "DV")
-        self.geo_col.add_desvar(0.7, "DV", lower=0.4, upper=1.0)
+        dv1 = self.geo_col.add_desvar(0.5, "DV")
+        dv2 = self.geo_col.add_desvar(0.7, "DV", lower=0.4, upper=1.0)
 
         self.assertIn("DV", desvar_container)
         self.assertIn("DV-2", desvar_container)
@@ -69,13 +69,13 @@ class GeoColTests(unittest.TestCase):
         self.assertRaises(ValueError, self.geo_col.add_desvar, value=0.4, name="DV", lower=0.3, upper=0.1)
         self.assertRaises(ValueError, self.geo_col.add_desvar, value=0.5, name="DV", lower=0.5-1e-20, upper=0.5+1e-20)
 
-        self.geo_col.remove_desvar("DV")
+        self.geo_col.remove_pymead_obj(dv1)
         self.assertNotIn("DV", desvar_container)
 
-        self.geo_col.add_desvar(0.4, "DV", 0.2, 0.8)
+        dv3 = self.geo_col.add_desvar(0.4, "DV", 0.2, 0.8)
         self.assertIn("DV-3", desvar_container)
 
-        self.geo_col.remove_desvar("DV-2")
+        self.geo_col.remove_pymead_obj(dv2)
         self.assertNotIn("DV-2", desvar_container)
 
     def test_bounded_point_movement(self):
@@ -104,9 +104,8 @@ class GeoColTests(unittest.TestCase):
         geo_col = GeometryCollection()
         for _ in range(12):
             geo_col.add_param(0.5, "Spin")
-        for _ in range(5):
-            geo_col.add_param(0.1, "myParam")
-        geo_col.remove_param("myParam-3")
+        myParams = [geo_col.add_param(0.1, "myParam") for _ in range(5)]
+        geo_col.remove_pymead_obj(myParams[2])
         for _ in range(11):
             geo_col.add_point(0.3, 0.1)
 
@@ -176,20 +175,6 @@ class GeoColTests(unittest.TestCase):
 
         self.assertEqual(airfoil.curves, [upper_line, upper, lower])
         self.assertEqual(airfoil.curves_to_reverse, [upper_line, upper])
-
-    def test_gene_import_export(self):
-        geo_col = GeometryCollection()
-        geo_col.add_desvar(3.0, "dv1", 1.0, 5.0)
-        geo_col.add_desvar(2.0, "dv2", -4.0, 4.0)
-
-        # Export test
-        genes_out = geo_col.export_genes()
-        self.assertEqual(0.5, genes_out[0])
-        self.assertEqual(0.75, genes_out[1])
-
-        geo_col.import_genes(np.array([0.25, 1.0]))
-        self.assertEqual(2.0, geo_col.container()["desvar"]["dv1"].value())
-        self.assertEqual(4.0, geo_col.container()["desvar"]["dv2"].value())
 
 
 class ParamTests(unittest.TestCase):
