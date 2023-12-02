@@ -7,8 +7,9 @@ from copy import deepcopy
 
 import numpy as np
 from benedict import benedict
+from pymead.core.geometry_collection import GeometryCollection
 
-from pymead.core.mea import MEA
+from pymead.core.mea2 import MEA
 from pymead.analysis.calc_aero_data import calculate_aero_data
 
 class CustomGASettings:
@@ -61,17 +62,19 @@ class CustomGASettings:
 
 
 class Chromosome:
-    def __init__(self, param_dict: dict, generation: int,
-                 population_idx: int, mea: dict, genes: list = None, verbose: bool = True):
+    def __init__(self, geo_col_deepcopy: GeometryCollection, param_dict_deepcopy: dict, mea_name: str, generation: int,
+                 population_idx: int, genes: list or None = None, verbose: bool = True):
         """
         Chromosome class constructor. Each Chromosome is the member of a particular Population.
         """
+        self.geo_col = geo_col_deepcopy
+        self.mea = self.geo_col.container()["mea"][mea_name]
+        self.param_dict = param_dict_deepcopy
         self.genes = deepcopy(genes)
         self.generation = generation
         self.population_idx = population_idx
-        self.mea = deepcopy(mea)
-        self.mea_object = None
-        self.param_set = deepcopy(param_dict)
+
+        # Might be able to remove a number of these attributes
         self.coords = None
         self.control_points = None
         self.airfoil_state = None
@@ -83,15 +86,15 @@ class Chromosome:
         self.fitness = None
         self.forces = None
 
-    def generate(self, deactivate_airfoil_graphs: bool = False):
+    def generate(self):
         """
         Chromosome generation flow
         :return:
         """
         print(f"Generating {self.population_idx} with {os.getpid() = } from param_dict...")
-        self.mea_object = MEA.generate_from_param_dict(self.mea)
-        if deactivate_airfoil_graphs:
-            self.mea_object.remove_airfoil_graphs()
+        # self.mea_object = MEA.generate_from_param_dict(self.mea)
+        # if deactivate_airfoil_graphs:
+        #     self.mea_object.remove_airfoil_graphs()
         if self.verbose:
             print(f'Generating chromosome idx = {self.population_idx}, gen = {self.generation}')
         self.generate_airfoil_sys_from_genes()

@@ -37,7 +37,7 @@ class DraggablePoint(pg.GraphItem):
         self.setTexts(self.text)
         self.updateGraph()
 
-    def updateGUIObj(self, x: float, y: float):
+    def updateCanvasItem(self, x: float, y: float):
         self.data["pos"][0] = np.array([x, y])
         self.updateGraph()
 

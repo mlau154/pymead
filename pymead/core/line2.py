@@ -7,26 +7,18 @@ from pymead.core.parametric_curve2 import ParametricCurve, PCurveData
 class LineSegment(ParametricCurve):
 
     def __init__(self, point_sequence: PointSequence, name: str or None = None, **kwargs):
+        super().__init__(sub_container="lines", **kwargs)
         self._point_sequence = None
-        self.geo_col = None
         self.set_point_sequence(point_sequence)
         name = "Line-1" if name is None else name
+        self.set_name(name)
         self._add_references()
-        super().__init__(name=name, **kwargs)
 
     def _add_references(self):
         for idx, point in enumerate(self.point_sequence().points()):
             # Add the object reference to each point in the curve
             if self not in point.curves:
                 point.curves.append(self)
-
-    def set_name(self, name: str):
-        # Rename the reference in the geometry collection
-        if self.geo_col is not None and self.name() in self.geo_col.container()["lines"].keys():
-            self.geo_col.container()["lines"][name] = self.geo_col.container()["lines"][self.name()]
-            self.geo_col.container()["lines"].pop(self.name())
-
-        self._name = name
 
     def point_sequence(self):
         return self._point_sequence
@@ -52,13 +44,13 @@ class LineSegment(ParametricCurve):
         return delete_curve
 
     def remove(self):
-        if self.gui_obj is not None:
-            self.gui_obj.sigRemove.emit(self.gui_obj)
+        if self.canvas_item is not None:
+            self.canvas_item.sigRemove.emit(self.canvas_item)
 
     def update(self):
         p_curve_data = self.evaluate()
-        if self.gui_obj is not None:
-            self.gui_obj.updateGUIObj(curve_data=p_curve_data)
+        if self.canvas_item is not None:
+            self.canvas_item.updateCanvasItem(curve_data=p_curve_data)
 
     def evaluate(self, t: np.ndarray or None = None, **kwargs):
         if "nt" not in kwargs.keys() and t is None:

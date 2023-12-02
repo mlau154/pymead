@@ -1,14 +1,15 @@
 import numpy as np
 
 from pymead.core import UNITS
-from pymead.core.dual_rep import DualRep
+from pymead.core.pymead_obj import PymeadObj
 
 
-class Param(DualRep):
+class Param(PymeadObj):
     """
     Base-level parameter in ``pymead``. Sub-classed by ``DesVar`` (design variable). Provides operator overloading and
     getter/setter methods.
     """
+
     def __init__(self, value: float, name: str, lower: float or None = None, upper: float or None = None,
                  setting_from_geo_col: bool = False):
         """
@@ -26,12 +27,11 @@ class Param(DualRep):
         upper: float
             Upper bound for the parameter
         """
+        super().__init__(sub_container="params")
+
         self._value = None
-        self._name = None
         self._lower = None
         self._upper = None
-        self.geo_col = None
-        self.tree_item = None
         self.point = None
         self.geo_objs = []
         self.geo_cons = []
@@ -118,43 +118,6 @@ class Param(DualRep):
 
         for dim in self.dims:
             dim.update_points_from_param()
-
-    def name(self):
-        """
-        Retrieves the parameter name
-
-        Returns
-        =======
-        str
-            The parameter name
-        """
-        return self._name
-
-    def set_name(self, name: str):
-        """
-        Sets the parameter name. Must not contain hyphens unless setting from the geometry collection.
-
-        Parameters
-        ==========
-        name: str
-            The parameter name
-        """
-        # if "-" in name and not self.setting_from_geo_col:
-        #     raise ValueError("Hyphens are reserved characters and cannot be used unless setting from geometry "
-        #                      "collection")
-        # if "." in name and not self.setting_from_geo_col:
-        #     raise ValueError("Dots are reserved characters and cannot be used unless setting from geometry "
-        #                      "collection")
-        # TODO: revisit this. SurfPoints should not need to have setting_from_geo_col=True, but they do currently
-        #  for this error not to be raised
-
-        # Rename the reference in the geometry collection
-        if (self.geo_col is not None and self.name() in self.geo_col.container()["params"] and
-                self.geo_col.container()["params"][self.name()] is self):
-            self.geo_col.container()["params"][name] = self.geo_col.container()["params"][self.name()]
-            self.geo_col.container()["params"].pop(self.name())
-
-        self._name = name
 
     def lower(self):
         """

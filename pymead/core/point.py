@@ -3,21 +3,19 @@ import typing
 import numpy as np
 
 from pymead.core.param2 import LengthParam
-from pymead.core.dual_rep import DualRep
+from pymead.core.pymead_obj import PymeadObj
 
 
-class Point(DualRep):
+class Point(PymeadObj):
     def __init__(self, x: float, y: float, name: str or None = None, setting_from_geo_col: bool = False):
-        self._name = None
+        super().__init__(sub_container="points")
         self._x = None
         self._y = None
-        self.geo_col = None
-        self.tree_item = None
         self.geo_cons = []
         self.dims = []
-        self.gui_obj = None
         self.curves = []
         self.setting_from_geo_col = setting_from_geo_col
+        name = "Point-1" if name is None else name
         self.set_name(name)
         self.set_x(x)
         self.set_y(y)
@@ -27,12 +25,6 @@ class Point(DualRep):
 
     def y(self):
         return self._y
-
-    def name(self):
-        return self._name
-
-    def xy(self):
-        return [self._x, self._y]
 
     def set_x(self, x: LengthParam or float):
         self._x = x if isinstance(x, LengthParam) else LengthParam(
@@ -48,19 +40,14 @@ class Point(DualRep):
             self._y.geo_objs.append(self)
         self._y.point = self
 
-    def set_name(self, name: str or None = None):
-        name = "Point-1" if name is None else name
+    def set_name(self, name: str):
+        # Rename the x and y parameters of the Point
         if self.x() is not None:
             self.x().set_name(f"{name}.x")
         if self.y() is not None:
             self.y().set_name(f"{name}.y")
 
-        # Rename the reference in the geometry collection
-        if self.geo_col is not None and self.name() in self.geo_col.container()["points"]:
-            self.geo_col.container()["points"][name] = self.geo_col.container()["points"][self.name()]
-            self.geo_col.container()["points"].pop(self.name())
-
-        self._name = name
+        super().set_name(name)
 
     def as_array(self):
         return np.array([self.x().value(), self.y().value()])
@@ -101,8 +88,8 @@ class Point(DualRep):
             dim.update_param_from_points()
 
         # Update the GUI object, if there is one
-        if self.gui_obj is not None:
-            self.gui_obj.updateGUIObj(self.x().value(), self.y().value())
+        if self.canvas_item is not None:
+            self.canvas_item.updateCanvasItem(self.x().value(), self.y().value())
 
         # TODO: add tree object update here as well
 
@@ -114,8 +101,8 @@ class Point(DualRep):
         self.y().set_value(yp)
 
         # Update the GUI object, if there is one
-        if self.gui_obj is not None:
-            self.gui_obj.updateGUIObj(self.x().value(), self.y().value())
+        if self.canvas_item is not None:
+            self.canvas_item.updateCanvasItem(self.x().value(), self.y().value())
 
         # TODO: add tree object update here as well
 
@@ -161,19 +148,3 @@ class PointSequence:
 
     def extract_subsequence(self, indices: list):
         return PointSequence(points=[self.points()[idx] for idx in indices])
-
-
-class SurfPoint(Point):
-    pass
-
-
-class SurfPointSequence(PointSequence):
-    def __init__(self, surf_points: typing.List[SurfPoint]):
-        super().__init__(points=surf_points)
-
-    @classmethod
-    def generate_from_array(cls, arr: np.ndarray):
-        if arr.shape[1] != 2:
-            raise ValueError(f"Array must have two columns, x and y. Found {arr.shape[1]} columns.")
-        return cls(surf_points=[SurfPoint(x=x, y=y, name=f"SurfPointFromArrayIndex{idx}")
-                                for idx, (x, y) in enumerate(zip(arr[:, 0], arr[:, 1]))])

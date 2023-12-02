@@ -8,22 +8,13 @@ from pymead.utils.nchoosek import nchoosek
 class Bezier(ParametricCurve):
 
     def __init__(self, point_sequence: PointSequence, name: str or None = None, **kwargs):
+        super().__init__(sub_container="bezier", **kwargs)
         self._point_sequence = None
-        self.geo_col = None
-        self.tree_item = None
         self.set_point_sequence(point_sequence)
         name = "Bezier-1" if name is None else name
+        self.set_name(name)
         self.curve_connections = []
         self._add_references()
-        super().__init__(name=name, **kwargs)
-
-    def set_name(self, name: str):
-        # Rename the reference in the geometry collection
-        if self.geo_col is not None and self.name() in self.geo_col.container()["bezier"].keys():
-            self.geo_col.container()["bezier"][name] = self.geo_col.container()["bezier"][self.name()]
-            self.geo_col.container()["bezier"].pop(self.name())
-
-        self._name = name
 
     def _add_references(self):
         for idx, point in enumerate(self.point_sequence().points()):
@@ -60,7 +51,7 @@ class Bezier(ParametricCurve):
             idx = self.point_sequence().point_idx_from_ref(point)
         self.point_sequence().remove_point(idx)
 
-        if len(self.point_sequence()) > 1:
+        if len(self.point_sequence()) > 2:
             delete_curve = False
         else:
             delete_curve = True
@@ -68,8 +59,8 @@ class Bezier(ParametricCurve):
         return delete_curve
 
     def remove(self):
-        if self.gui_obj is not None:
-            self.gui_obj.sigRemove.emit(self.gui_obj)
+        if self.canvas_item is not None:
+            self.canvas_item.sigRemove.emit(self.canvas_item)
 
     @staticmethod
     def bernstein_poly(n: int, i: int, t: int or float or np.ndarray):

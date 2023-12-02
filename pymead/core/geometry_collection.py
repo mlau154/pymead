@@ -3,7 +3,8 @@ import typing
 
 from pymead.core.airfoil2 import Airfoil
 from pymead.core.bezier2 import Bezier
-from pymead.core.dual_rep import DualRep
+from pymead.core.mea2 import MEA
+from pymead.core.pymead_obj import DualRep, PymeadObj
 from pymead.core.line2 import LineSegment
 from pymead.core.param2 import Param, LengthParam, AngleParam, DesVar, LengthDesVar, AngleDesVar
 from pymead.core.point import Point, PointSequence
@@ -18,10 +19,11 @@ class GeometryCollection(DualRep):
             "lines": {},
             "bezier": {},
             "airfoils": {},
-            "geocon": {}
+            "mea": {},
+            "geocon": {},
         }
-        self.geo_canvas = None
-        self.geo_tree = None
+        self.canvas = None
+        self.tree = None
         self.single_step = 0.01
 
     def container(self):
@@ -109,52 +111,41 @@ class GeometryCollection(DualRep):
         else:
             return f"{specified_name}-{max_index + 1}"
 
-    def add_to_subcontainer(self, obj: Param or DesVar or Point or Bezier or LineSegment, sub_container: str,
-                            assign_unique_name: bool = True):
+    def add_to_subcontainer(self, pymead_obj: PymeadObj, assign_unique_name: bool = True):
         """
         Adds an object to a sub-container within the geometry collection's ``container()``. Also performs the task
         of assigning a unique name to the object before insertion into the sub-container, if necessary.
         
         Parameters
         ==========
-        obj: Param or DesVar or Point
+        pymead_obj: PymeadObj
             Object to add to the sub-container
-
-        sub_container: str
-            Specified sub-container within ``container()``
             
         assign_unique_name: bool
             Whether to assign the object a unique name before insertion into the sub-container. Default: ``True``.
         """
         # Set the object's name to a unique name if necessary
         if assign_unique_name:
-            name_list = self.get_name_list(sub_container=sub_container)
-            unique_name = self.unique_namer(obj.name(), name_list)
-            if (isinstance(obj, Param) or isinstance(obj, DesVar)) and unique_name.split("-")[1] == "1":
+            name_list = self.get_name_list(sub_container=pymead_obj.sub_container)
+            unique_name = self.unique_namer(pymead_obj.name(), name_list)
+            if isinstance(pymead_obj, Param) and unique_name.split("-")[1] == "1":
                 pass
             else:
-                obj.set_name(unique_name)
+                pymead_obj.set_name(unique_name)
 
         # Add the object to the geometry collection sub-container
-        self.container()[sub_container][obj.name()] = obj
+        self.container()[pymead_obj.sub_container][pymead_obj.name()] = pymead_obj
 
-    def remove_from_subcontainer(self, obj: Param or DesVar or Point or str, sub_container: str):
+    def remove_from_subcontainer(self, pymead_obj: PymeadObj):
         """
         Removes an object from the specified sub-container.
 
         Parameters
         ==========
-        obj: Param or DesVar or Point or str
-            Object to remove. If a ``str`` is not specified, the objects ``name()`` method will be called to deduce
-            the storage key.
-
-        sub_container: str
-            Sub-container within the ``container()``
+        pymead_obj: PymeadObj
+            Object to remove.
         """
-        if not isinstance(obj, str):
-            obj = obj.name()
-
-        self.container()[sub_container].pop(obj)
+        self.container()[pymead_obj.sub_container].pop(pymead_obj.name())
 
     def add_param(self, value: float, name: str or None = None, lower: float or None = None,
                   upper: float or None = None, unit_type: str or None = None):
@@ -196,23 +187,62 @@ class GeometryCollection(DualRep):
 
         param.geo_col = self
 
-        self.add_to_subcontainer(param, "params")
+        self.add_to_subcontainer(param)
 
-        if self.geo_tree is not None:
-            self.geo_tree.addParam(param)
+        if self.tree is not None:
+            self.tree.addPymeadTreeItem(pymead_obj=param)
 
         return param
 
-    def remove_param(self, param: Param or str):
+    # def remove_param(self, param: Param or str):
+    #     """
+    #     Removes a parameter from the geometry collection by name or object reference.
+    #
+    #     Parameters
+    #     ==========
+    #     param: Param or str
+    #         Parameter (or parameter name) to remove
+    #     """
+    #     self.remove_from_subcontainer(param)
+    #
+    #     if self.tree is not None:
+    #         self.tree.removeTreeItem(param)
+
+    def remove_pymead_obj(self, pymead_obj: PymeadObj):
         """
-        Removes a parameter from the geometry collection by name or object reference.
+        Removes a pymead object from the geometry collection.
 
         Parameters
         ==========
-        param: Param or str
-            Parameter (or parameter name) to remove
+        pymead_obj: PymeadObj
+            Pymead object to remove
         """
-        self.remove_from_subcontainer(param, "params")
+        # Type-specific actions
+        if isinstance(pymead_obj, Bezier) or isinstance(pymead_obj, LineSegment):
+            for pt in pymead_obj.point_sequence().points():
+                pt.curves.remove(pymead_obj)
+
+        if isinstance(pymead_obj, Point):
+            for curve in pymead_obj.curves:
+                delete_curve = curve.remove_point(point=pymead_obj)
+
+                if delete_curve:
+                    self.remove_pymead_obj(curve)
+                else:
+                    curve.update()
+
+        # TODO: remove bug where deleting a point shared by two curves fails to delete both curves
+
+        # Remove the item from the geometry collection subcontainer
+        self.remove_from_subcontainer(pymead_obj)
+
+        # Remove the tree item if it exists
+        if self.tree is not None:
+            self.tree.removePymeadTreeItem(pymead_obj)
+
+        # Remove the canvas item if it exists
+        if self.canvas is not None:
+            self.canvas.removeItem(pymead_obj.canvas_item)
 
     def add_point(self, x: float, y: float):
         """
@@ -233,10 +263,10 @@ class GeometryCollection(DualRep):
         """
         point = Point(x=x, y=y, name="Point", setting_from_geo_col=True)
 
-        self.add_to_subcontainer(point, "points")
+        self.add_to_subcontainer(point)
 
-        if self.geo_tree is not None:
-            self.geo_tree.addPoint(point)
+        if self.tree is not None:
+            self.tree.addPymeadTreeItem(point)
 
         point.x().geo_col = self
         point.y().geo_col = self
@@ -244,62 +274,62 @@ class GeometryCollection(DualRep):
 
         return point
 
-    def remove_point(self, point: Point or str):
-        """
-        Removes a point by object reference or by name
-
-        Parameters
-        ==========
-        point: Point or str
-            Reference to or name of the point
-        """
-        point = point if isinstance(point, Point) else self.container()["points"][point]
-        self.remove_from_subcontainer(point.name(), "points")
-
-        if self.geo_tree is not None:
-            self.geo_tree.removePoint(point)
+    # def remove_point(self, point: Point or str):
+    #     """
+    #     Removes a point by object reference or by name
+    #
+    #     Parameters
+    #     ==========
+    #     point: Point or str
+    #         Reference to or name of the point
+    #     """
+    #     point = point if isinstance(point, Point) else self.container()["points"][point]
+    #     self.remove_from_subcontainer(point)
+    #
+    #     if self.tree is not None:
+    #         self.tree.removePoint(point)
 
     def add_bezier(self, point_sequence: PointSequence):
         bezier = Bezier(point_sequence=point_sequence)
         bezier.geo_col = self
 
-        self.add_to_subcontainer(bezier, "bezier")
+        self.add_to_subcontainer(bezier)
 
-        if self.geo_tree is not None:
-            self.geo_tree.addBezier(bezier)
+        if self.tree is not None:
+            self.tree.addPymeadTreeItem(bezier)
 
         return bezier
 
-    def remove_bezier(self, bezier: Bezier or str):
-        bezier = bezier if isinstance(bezier, Bezier) else self.container()["bezier"][bezier]
-        for pt in bezier.point_sequence().points():
-            pt.curves.remove(bezier)
-
-        self.remove_from_subcontainer(bezier, "bezier")
-
-        if self.geo_tree is not None:
-            self.geo_tree.removeBezier(bezier)
+    # def remove_bezier(self, bezier: Bezier or str):
+    #     bezier = bezier if isinstance(bezier, Bezier) else self.container()["bezier"][bezier]
+    #     for pt in bezier.point_sequence().points():
+    #         pt.curves.remove(bezier)
+    #
+    #     self.remove_from_subcontainer(bezier)
+    #
+    #     if self.tree is not None:
+    #         self.tree.removeBezier(bezier)
 
     def add_line(self, point_sequence: PointSequence):
         line = LineSegment(point_sequence=point_sequence)
         line.geo_col = self
 
-        self.add_to_subcontainer(line, "lines")
+        self.add_to_subcontainer(line)
 
-        if self.geo_tree is not None:
-            self.geo_tree.addLine(line)
+        if self.tree is not None:
+            self.tree.addPymeadTreeItem(line)
 
         return line
 
-    def remove_line(self, line: LineSegment or str):
-        line = line if isinstance(line, LineSegment) else self.container()["lines"][line]
-        for pt in line.point_sequence().points():
-            pt.curves.remove(line)
-
-        self.remove_from_subcontainer(line, "lines")
-
-        if self.geo_tree is not None:
-            self.geo_tree.removeLine(line)
+    # def remove_line(self, line: LineSegment or str):
+    #     line = line if isinstance(line, LineSegment) else self.container()["lines"][line]
+    #     for pt in line.point_sequence().points():
+    #         pt.curves.remove(line)
+    #
+    #     self.remove_from_subcontainer(line)
+    #
+    #     if self.tree is not None:
+    #         self.tree.removeLine(line)
 
     def add_desvar(self, value: float, name: str, lower: float or None = None, upper: float or None = None,
                    unit_type: str or None = None):
@@ -342,22 +372,29 @@ class GeometryCollection(DualRep):
 
         desvar.geo_col = self
 
-        self.add_to_subcontainer(desvar, "desvar")
+        self.add_to_subcontainer(desvar)
+
+        if self.tree is not None:
+            self.tree.addPymeadTreeItem(desvar)
+
         return desvar
 
-    def remove_desvar(self, desvar: DesVar or str):
-        """
-        Removes a design variable from the geometry collection
-
-        Parameters
-        ==========
-        desvar: DesVar or str
-            Design variable to remove. If a ``str`` is not specified, the objects ``name()`` method will be called
-            to deduce the storage key.
-        """
-        desvar = desvar if isinstance(desvar, DesVar) else self.container()["desvar"][desvar]
-
-        self.remove_from_subcontainer(desvar, "desvar")
+    # def remove_desvar(self, desvar: DesVar or str):
+    #     """
+    #     Removes a design variable from the geometry collection
+    #
+    #     Parameters
+    #     ==========
+    #     desvar: DesVar or str
+    #         Design variable to remove. If a ``str`` is not specified, the objects ``name()`` method will be called
+    #         to deduce the storage key.
+    #     """
+    #     desvar = desvar if isinstance(desvar, DesVar) else self.container()["desvar"][desvar]
+    #
+    #     self.remove_from_subcontainer(desvar)
+    #
+    #     if self.tree is not None:
+    #         self.tree.removeDesVar(desvar)
 
     @staticmethod
     def replace_geo_objs(tool: Param or DesVar, target: Param or DesVar):
@@ -422,7 +459,7 @@ class GeometryCollection(DualRep):
 
         # Remove the parameter
         if param.point is None:
-            self.remove_param(param)
+            self.remove_pymead_obj(param)
 
         return desvar
 
@@ -457,7 +494,7 @@ class GeometryCollection(DualRep):
         param.geo_objs = desvar.geo_objs.copy()
 
         # Remove the design variable
-        self.remove_desvar(desvar)
+        self.remove_pymead_obj(desvar)
 
         return param
 
@@ -572,20 +609,28 @@ class GeometryCollection(DualRep):
                           lower_surf_end=lower_surf_end)
         airfoil.geo_col = self
 
-        self.add_to_subcontainer(airfoil, "airfoils")
+        self.add_to_subcontainer(airfoil)
 
-        if self.geo_tree is not None:
-            self.geo_tree.addAirfoil(airfoil)
+        if self.tree is not None:
+            self.tree.addPymeadTreeItem(airfoil)
 
         return airfoil
 
-    def remove_airfoil(self, airfoil: Airfoil or str):
-        airfoil = airfoil if isinstance(airfoil, Airfoil) else self.container()["airfoils"][airfoil]
+    # def remove_airfoil(self, airfoil: Airfoil or str):
+    #     airfoil = airfoil if isinstance(airfoil, Airfoil) else self.container()["airfoils"][airfoil]
+    #
+    #     self.remove_from_subcontainer(airfoil)
+    #
+    #     if self.tree is not None:
+    #         self.tree.removeAirfoil(airfoil)
 
-        self.remove_from_subcontainer(airfoil, "airfoil")
-
-        if self.geo_tree is not None:
-            self.geo_tree.removeAirfoil(airfoil)
+    def add_mea(self, airfoils: typing.List[Airfoil]):
+        mea = MEA(airfoils=airfoils)
+        mea.geo_col = self
+        self.add_to_subcontainer(mea)
+        if self.tree is not None:
+            self.tree.addPymeadTreeItem(mea)
+        return mea
 
     def add_constraint(self):
         pass

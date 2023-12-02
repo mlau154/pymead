@@ -12,7 +12,7 @@ from pymead.core.line2 import LineSegment
 from pymead.core.constraints import CollinearConstraint
 from pymead.core.geometry_collection import GeometryCollection
 from pymead.core.point import PointSequence
-from pymead.gui.hoverable_curve_item import HoverableCurveItem
+from pymead.gui.hoverable_curve import HoverableCurve
 from pymead.gui.draggable_point import DraggablePoint
 from pymead.utils.read_write_files import load_data
 from pymead import q_settings, GUI_SETTINGS_DIR
@@ -40,7 +40,7 @@ class AirfoilCanvas(pg.PlotWidget):
         self.point_hovered_item = None
         self.point_text_item = None
         self.geo_col = geo_col
-        self.geo_col.geo_canvas = self
+        self.geo_col.canvas = self
 
     def drawPoint(self, x, y):
         point_gui = DraggablePoint()
@@ -51,7 +51,7 @@ class AirfoilCanvas(pg.PlotWidget):
         point = self.geo_col.add_point(x[0], y[0])
 
         # Establish a two-way connection between the point data structure and the GUI representation
-        point.gui_obj = point_gui
+        point.canvas_item = point_gui
         point_gui.point = point
 
         # Set the style
@@ -87,8 +87,8 @@ class AirfoilCanvas(pg.PlotWidget):
             raise NotImplementedError(f"Curve type {curve_type} not implemented")
 
         # Generate the curve item
-        curve_item = HoverableCurveItem(curve_type=curve_type)
-        curve.gui_obj = curve_item
+        curve_item = HoverableCurve(curve_type=curve_type)
+        curve.canvas_item = curve_item
         curve_item.parametric_curve = curve
 
         curve_item.setCurveStyle("default")
@@ -193,7 +193,7 @@ class AirfoilCanvas(pg.PlotWidget):
             self.clearSelectedPoints()
         self.creating_collinear_constraint = None
 
-    def addPointToCurve(self, curve_item: HoverableCurveItem):
+    def addPointToCurve(self, curve_item: HoverableCurve):
         self.adding_point_to_curve = curve_item
         self.sigStatusBarUpdate.emit("First, click the point to add to the curve", 0)
         loop = QEventLoop()
@@ -296,11 +296,7 @@ class AirfoilCanvas(pg.PlotWidget):
         #     for sub_item in item.control_point_line_items:
         #         self.removeItem(sub_item)
         # item.remove()
-        if isinstance(item.parametric_curve, Bezier):
-            self.geo_col.remove_bezier(item.parametric_curve)
-        elif isinstance(item.parametric_curve, LineSegment):
-            self.geo_col.remove_line(item.parametric_curve)
-        self.removeItem(item)
+        self.geo_col.remove_pymead_obj(item.parametric_curve)
 
     def selectPointsToDeepcopy(self):
         self.sigStatusBarUpdate.emit("Click the point to deepcopy", 0)
@@ -313,15 +309,13 @@ class AirfoilCanvas(pg.PlotWidget):
     def deepcopy_point(self):
         point = self.selected_points[0].point
         new_point = deepcopy(point)
-        print(f"{point.tree_item = }, {new_point.tree_item = }, {point.gui_obj = }, {new_point.gui_obj = }")
+        print(f"{point.tree_item = }, {new_point.tree_item = }, {point.canvas_item = }, {new_point.canvas_item = }")
 
     def contextMenuEvent(self, event):
         menu = QtWidgets.QMenu(self)
 
         removeCurveAction, curve_item, insertCurvePointAction = None, None, None
         if self.curve_hovered_item is not None:
-            print(f"{self.curve_hovered_item.parametric_curve.parent_curve = }")
-        if self.curve_hovered_item is not None and self.curve_hovered_item.parametric_curve.parent_curve is None:
             # Curve removal action
             removeCurveAction = menu.addAction("Remove Curve")
             curve_item = self.curve_hovered_item
@@ -349,7 +343,6 @@ class AirfoilCanvas(pg.PlotWidget):
         elif res == makePointsCollinearAction:
             self.makePointsCollinear()
         elif res == removeCurveAction and curve_item is not None:
-            curve_item.remove()
             self.removeCurve(curve_item)
         elif res == insertCurvePointAction and curve_item is not None:
             self.addPointToCurve(curve_item)
@@ -357,34 +350,9 @@ class AirfoilCanvas(pg.PlotWidget):
             self.selectPointsToDeepcopy()
 
     def removeSelectedPoints(self):
-        curves_to_delete = []
-        curves_to_update = []
         for pt in self.selected_points:
-            self.geo_col.remove_point(pt.point)
-            delete_curve = False
-            for curve in pt.point.curves:
-                delete_curve = curve.remove_point(point=pt.point)
-                if delete_curve and curve not in curves_to_delete:
-                    curves_to_delete.append(curve)
-                    if curve in curves_to_update:
-                        curves_to_update.remove(curve)
-                if not delete_curve and curve not in curves_to_update:
-                    curves_to_update.append(curve)
-
-            # for curve in pt.curveOwners:
-            #     curve.removeControlPointFromNet(pt)  # Action only occurs if curve_type == "Bezier"
-            #     curve.point_items.remove(pt)
-            #     if len(curve.point_items) < 2:  # No curve is valid with only one point, so just remove the curve
-            #         self.removeCurve(curve)
-            #     else:  # Otherwise, update the curve
-            #         curve.updateCurveItem()
-            self.removeItem(pt)
-        self.selected_points.clear()
-
-        for curve in curves_to_delete:
-            curve.remove()
-        for curve in curves_to_update:
-            curve.update()
+            self.geo_col.remove_pymead_obj(pt.point)
+        self.clearSelectedPoints()
 
     def clearSelectedPoints(self):
         if self.selected_points is None:

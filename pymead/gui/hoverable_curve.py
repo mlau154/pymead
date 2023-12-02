@@ -4,7 +4,6 @@ import typing
 import numpy as np
 import pyqtgraph as pg
 from PyQt5.QtCore import pyqtSignal
-from PyQt5.QtWidgets import QMenu
 
 from pymead.core.bezier2 import Bezier
 from pymead.core.line2 import LineSegment
@@ -18,7 +17,7 @@ from pymead.utils.misc import convert_str_to_Qt_dash_pattern
 q_settings_descriptions = load_data(os.path.join(GUI_SETTINGS_DIR, "q_settings_descriptions.json"))
 
 
-class HoverableCurveItem(pg.PlotCurveItem):
+class HoverableCurve(pg.PlotCurveItem):
     """
     Hoverable curve item to be drawn on an AirfoilCanvas. Inspired in part by https://stackoverflow.com/a/68857695.
     """
@@ -120,13 +119,13 @@ class HoverableCurveItem(pg.PlotCurveItem):
         self.setData(x=curve_data.xy[:, 0], y=curve_data.xy[:, 1])
         # self.updateControlPointNetItem()
 
-    def updateGUIObj(self, curve_data: PCurveData):
+    def updateCanvasItem(self, curve_data: PCurveData):
         arr = curve_data.xy
         self.setData(x=arr[:, 0], y=arr[:, 1])
 
     @staticmethod
     def generateControlPointNetLine(parametric_curve: ParametricCurve, point_items: typing.List[DraggablePoint]):
-        line_item = HoverableCurveItem(curve_type="LineSegment")
+        line_item = HoverableCurve(curve_type="LineSegment")
         line_item.parametric_curve = parametric_curve
         line_item.point_items = point_items
         line_item.updateCurveItem()
@@ -164,7 +163,6 @@ class HoverableCurveItem(pg.PlotCurveItem):
 
         # General case:
         else:
-            print(f"General case!")
             # First, generate a line spanning the points on either side of the point we are deleting
             point_sequence = self.parametric_curve.point_sequence().extract_subsequence(indices=[idx - 1, idx + 1])
             line = LineSegment(point_sequence=point_sequence, reference=True)

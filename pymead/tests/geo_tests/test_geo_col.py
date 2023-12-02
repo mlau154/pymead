@@ -1,6 +1,9 @@
+import os
 import unittest
+import tempfile
 
 import numpy as np
+from matplotlib import pyplot as plt
 
 from pymead.core import UNITS
 from pymead.core.bezier2 import Bezier
@@ -8,9 +11,13 @@ from pymead.core.constraints import PositionConstraint, CollinearConstraint
 from pymead.core.dimensions import LengthDimension, AngleDimension
 from pymead.core.geometry_collection import GeometryCollection
 from pymead.core.line2 import LineSegment
+from pymead.core.mea2 import MEA
 from pymead.core.param2 import Param, DesVar, LengthParam, AngleParam
 from pymead.core.point import Point, PointSequence
 from pymead.core.airfoil2 import Airfoil, ClosureError, BranchError
+
+
+temp_dir = tempfile.gettempdir()
 
 
 class GeoColTests(unittest.TestCase):
@@ -169,6 +176,20 @@ class GeoColTests(unittest.TestCase):
 
         self.assertEqual(airfoil.curves, [upper_line, upper, lower])
         self.assertEqual(airfoil.curves_to_reverse, [upper_line, upper])
+
+    def test_gene_import_export(self):
+        geo_col = GeometryCollection()
+        geo_col.add_desvar(3.0, "dv1", 1.0, 5.0)
+        geo_col.add_desvar(2.0, "dv2", -4.0, 4.0)
+
+        # Export test
+        genes_out = geo_col.export_genes()
+        self.assertEqual(0.5, genes_out[0])
+        self.assertEqual(0.75, genes_out[1])
+
+        geo_col.import_genes(np.array([0.25, 1.0]))
+        self.assertEqual(2.0, geo_col.container()["desvar"]["dv1"].value())
+        self.assertEqual(4.0, geo_col.container()["desvar"]["dv2"].value())
 
 
 class ParamTests(unittest.TestCase):
@@ -581,3 +602,66 @@ class AirfoilTests(unittest.TestCase):
             prev_xy = row
 
         self.assertFalse(repeat)
+
+
+class MEATests(unittest.TestCase):
+
+    def test_blade_file_output(self):
+        # Make the Bezier curve arrays
+        b1_array = np.array([[0, 0], [0.0, 0.1], [0.3, 0.08], [0.7, 0.07], [1.0, 0.0]])
+        b2_array = np.array([[0.0, -0.1], [0.3, -0.08], [0.7, -0.07]])
+        b3_array = np.array([[0, 0], [0.0, 0.1], [0.3, 0.08], [0.7, 0.07], [1.0, 0.0]])
+        b4_array = np.array([[0.0, -0.1], [0.3, -0.08], [0.7, -0.07]])
+        b5_array = np.array([[0, 0], [0.0, 0.1], [0.3, 0.08], [0.7, 0.07], [1.0, 0.0]])
+        b6_array = np.array([[0.0, -0.1], [0.3, -0.08], [0.7, -0.07]])
+
+        b3_array += np.column_stack((np.zeros(shape=(b1_array.shape[0])), 0.2 * np.ones(shape=(b1_array.shape[0]))))
+        b4_array += np.column_stack((np.zeros(shape=(b2_array.shape[0])), 0.2 * np.ones(shape=(b2_array.shape[0]))))
+        b5_array += np.column_stack((np.zeros(shape=(b1_array.shape[0])), -0.2 * np.ones(shape=(b1_array.shape[0]))))
+        b6_array += np.column_stack((np.zeros(shape=(b2_array.shape[0])), -0.2 * np.ones(shape=(b2_array.shape[0]))))
+
+        # Generate the Points
+        b1_points = [Point(xy[0], xy[1]) for xy in b1_array]
+        b2_points = [b1_points[0]]
+        b2_points.extend([Point(xy[0], xy[1]) for xy in b2_array])
+        b2_points.append(b1_points[-1])
+        b3_points = [Point(xy[0], xy[1]) for xy in b3_array]
+        b4_points = [b3_points[0]]
+        b4_points.extend([Point(xy[0], xy[1]) for xy in b4_array])
+        b4_points.append(b3_points[-1])
+        b5_points = [Point(xy[0], xy[1]) for xy in b5_array]
+        b6_points = [b5_points[0]]
+        b6_points.extend([Point(xy[0], xy[1]) for xy in b6_array])
+        b6_points.append(b5_points[-1])
+
+        # Generate the curves
+        bez_curves = [Bezier(point_sequence=PointSequence(points=points)) for points in
+                      [b1_points, b2_points, b3_points, b4_points, b5_points, b6_points]]
+
+        # Generate the airfoils
+        a1 = Airfoil(leading_edge=b1_points[0], trailing_edge=b1_points[-1], upper_surf_end=b1_points[-1],
+                     lower_surf_end=b1_points[-1])
+        a2 = Airfoil(leading_edge=b3_points[0], trailing_edge=b3_points[-1], upper_surf_end=b3_points[-1],
+                     lower_surf_end=b3_points[-1])
+        a3 = Airfoil(leading_edge=b5_points[0], trailing_edge=b5_points[-1], upper_surf_end=b5_points[-1],
+                     lower_surf_end=b5_points[-1])
+
+        # Generate the MEA
+        mea = MEA(airfoils=[a1, a2, a3])
+
+        # Output the blade file
+        blade_file_dir = temp_dir
+        airfoil_sys_name = "testAirfoilSys"
+        blade_file = mea.write_mses_blade_file(airfoil_sys_name=airfoil_sys_name, blade_file_dir=blade_file_dir)
+
+        # Load the coordinates from the created file
+        blade = np.loadtxt(blade_file, skiprows=2)
+
+        # Make sure that the 999.0 delimiter shows up exactly twice in the created blade file in each column
+        # This means that there are 3 airfoils.
+        self.assertEqual(2, len(np.where(blade[:, 0] == 999.0)[0]))
+        self.assertEqual(2, len(np.where(blade[:, 1] == 999.0)[0]))
+
+        # Remove the created blade file
+        if os.path.exists(blade_file):
+            os.remove(blade_file)

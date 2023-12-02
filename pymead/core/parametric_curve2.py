@@ -1,9 +1,9 @@
-from abc import abstractmethod
+from abc import ABC, abstractmethod
 
 import numpy as np
 import matplotlib.pyplot as plt
 
-from pymead.core.dual_rep import DualRep
+from pymead.core.pymead_obj import PymeadObj
 
 
 class PCurveData:
@@ -21,23 +21,27 @@ class PCurveData:
         ax.plot(self.xy[:, 0], self.xy[:, 1], **kwargs)
 
 
-class ParametricCurve(DualRep):
-    def __init__(self, name: str, reference: bool = False):
-        self._name = None
-        self.gui_obj = None
-        self.set_name(name)
+class ParametricCurve(PymeadObj, ABC):
+    def __init__(self, sub_container: str, reference: bool = False):
+        super().__init__(sub_container=sub_container)
         self.reference = reference
-
-    def name(self):
-        return self._name
-
-    def set_name(self, name: str):
-        self._name = name
 
     def update(self):
         p_curve_data = self.evaluate()
-        if self.gui_obj is not None:
-            self.gui_obj.updateGUIObj(curve_data=p_curve_data)
+        if self.canvas_item is not None:
+            self.canvas_item.updateCanvasItem(curve_data=p_curve_data)
+
+    def name(self) -> str:
+        return self._name
+
+    def set_name(self, name: str):
+        # Rename the reference in the geometry collection
+        if self.geo_col is not None and self.name() in self.geo_col.container()[self.sub_container].keys():
+            sub_container = self.geo_col.container()[self.sub_container]
+            sub_container[name] = sub_container[self.name()]
+            sub_container.pop(self.name())
+
+        self._name = name
 
     @staticmethod
     def generate_t_vec(nt: int = 100, spacing: str = "linear", start: int = 0.0, end: int = 1.0):

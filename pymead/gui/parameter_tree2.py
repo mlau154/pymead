@@ -1,14 +1,20 @@
+import sys
+from abc import abstractmethod
+
 from PyQt5.QtGui import QValidator
 from PyQt5.QtWidgets import QTreeWidget, QTreeWidgetItem, QPushButton, QHBoxLayout, QHeaderView, QDialog, QGridLayout, \
     QDoubleSpinBox, QLineEdit, QLabel, QDialogButtonBox
 from PyQt5.QtCore import Qt, pyqtSignal, pyqtSlot, QRegularExpression
 
 from pymead.core.airfoil2 import Airfoil
+from pymead.core.constraints import GeoCon
+from pymead.core.mea2 import MEA
 from pymead.core.point import Point
 from pymead.core.bezier2 import Bezier
 from pymead.core.line2 import LineSegment
 from pymead.core.geometry_collection import GeometryCollection
-from pymead.core.param2 import Param
+from pymead.core.param2 import Param, DesVar, LengthParam, AngleParam, LengthDesVar, AngleDesVar
+from pymead.core.pymead_obj import PymeadObj
 
 
 class HeaderButtonRow(QHeaderView):
@@ -79,31 +85,18 @@ class NameValidator(QValidator):
 
 
 class NameEdit(QLineEdit):
-    def __init__(self, parent, obj: Param or LineSegment or Bezier or Point, tree):
+    def __init__(self, parent, pymead_obj: PymeadObj, tree):
         super().__init__(parent)
-        self.obj = obj
+        self.pymead_obj = pymead_obj
         self.tree = tree
 
-        if isinstance(obj, Point):
-            sub_container = "points"
-        elif isinstance(obj, Param):
-            sub_container = "params"
-        elif isinstance(obj, Bezier):
-            sub_container = "bezier"
-        elif isinstance(obj, LineSegment):
-            sub_container = "lines"
-        elif isinstance(obj, Airfoil):
-            sub_container = "airfoils"
-        else:
-            raise ValueError("Invalid NameEdit input object")
-
-        validator = NameValidator(self, tree, sub_container=sub_container)
+        validator = NameValidator(self, tree, sub_container=pymead_obj.sub_container)
         self.setValidator(validator)
-        self.setText(self.obj.name())
+        self.setText(self.pymead_obj.name())
         self.textChanged.connect(self.onTextChanged)
 
-    def onTextChanged(self, name: float):
-        self.obj.set_name(name)
+    def onTextChanged(self, name: str):
+        self.pymead_obj.set_name(name)
 
 
 class LowerSpin(QDoubleSpinBox):
@@ -136,22 +129,59 @@ class UpperSpin(QDoubleSpinBox):
         self.param.set_upper(upper)
 
 
-class ParamButton(QPushButton):
-    sigValueChanged = pyqtSignal(float)  # value
+class TreeButton(QPushButton):
+    sigNameChanged = pyqtSignal(str, object)
 
-    def __init__(self, param, tree, name_editable: bool = True):
-        self.param = param
-        super().__init__(param.name())
+    def __init__(self, pymead_obj: PymeadObj, tree):
+        super().__init__(pymead_obj.name())
         self.setMaximumWidth(100)
+        self.pymead_obj = pymead_obj
         self.tree = tree
         self.dialog = None
-        self.name_editable = name_editable
         self.clicked.connect(self.onClicked)
 
     def onClicked(self):
-        self.dialog = QDialog(self)
-        self.dialog.setWindowTitle(f"Param - {self.param.name()}")
+        self.dialog = self.createDialog()
+        if self.dialog.exec_():
+            pass
+        self.dialog = None
+
+    def onNameChange(self, name: str):
+        if self.dialog is not None:
+            self.dialog.setWindowTitle(f"{name}")
+        self.setText(name)
+        self.sigNameChanged.emit(name, self.pymead_obj)
+
+    def createDialog(self):
+        dialog = QDialog(self)
+        dialog.setWindowTitle(f"{self.pymead_obj.name()}")
         layout = QGridLayout()
+        dialog.setLayout(layout)
+        self.modifyDialogInternals(dialog, layout)
+        self.addButtonBoxToDialog(dialog, layout)
+        return dialog
+
+    @abstractmethod
+    def modifyDialogInternals(self, dialog: QDialog, layout: QGridLayout) -> None:
+        pass
+
+    def addButtonBoxToDialog(self, dialog: QDialog, layout: QGridLayout):
+        # Add the button box
+        buttonBox = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel, self)
+        layout.addWidget(buttonBox, layout.rowCount(), 1)
+        buttonBox.accepted.connect(dialog.accept)
+        buttonBox.rejected.connect(dialog.reject)
+
+
+class ParamButton(TreeButton):
+    sigValueChanged = pyqtSignal(float)  # value
+
+    def __init__(self, param: Param, tree, name_editable: bool = True):
+        super().__init__(pymead_obj=param, tree=tree)
+        self.name_editable = name_editable
+        self.param = param
+
+    def modifyDialogInternals(self, dialog: QDialog, layout: QGridLayout) -> None:
         value_label = QLabel("Value", self)
         value_spin = ValueSpin(self, self.param)
         value_spin.valueChanged.connect(self.onValueChange)
@@ -175,43 +205,19 @@ class ParamButton(QPushButton):
             layout.addWidget(upper_label, layout.rowCount(), 0)
             layout.addWidget(upper_spin, layout.rowCount(), 1)
 
-        # Add the button box
-        buttonBox = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel, self)
-        layout.addWidget(buttonBox, layout.rowCount(), 1)
-        buttonBox.accepted.connect(self.dialog.accept)
-        buttonBox.rejected.connect(self.dialog.reject)
-
-        self.dialog.setLayout(layout)
-        if self.dialog.exec_():
-            pass
-        self.dialog = None
-
-    def onNameChange(self, name: str):
-        if self.dialog is not None:
-            self.dialog.setWindowTitle(f"Param - {name}")
-        self.setText(name)
-
     def onValueChange(self, value: float):
         self.sigValueChanged.emit(value)
 
 
-class PointButton(QPushButton):
-    sigNameChanged = pyqtSignal(str, object)
+class PointButton(TreeButton):
 
     def __init__(self, point: Point, tree):
+        super().__init__(pymead_obj=point, tree=tree)
         self.point = point
-        super().__init__(point.name())
-        self.setMaximumWidth(100)
-        self.tree = tree
-        self.dialog = None
         self.x_button = None
         self.y_button = None
-        self.clicked.connect(self.onClicked)
 
-    def onClicked(self):
-        self.dialog = QDialog(self)
-        self.dialog.setWindowTitle(f"Point - {self.point.name()}")
-        layout = QGridLayout()
+    def modifyDialogInternals(self, dialog: QDialog, layout: QGridLayout) -> None:
         name_label = QLabel("Name", self)
         name_edit = NameEdit(self, self.point, self.tree)
         name_edit.textChanged.connect(self.onNameChange)
@@ -228,17 +234,6 @@ class PointButton(QPushButton):
         layout.addWidget(y_label, 2, 0)
         layout.addWidget(self.y_button, 2, 1)
 
-        # Add the button box
-        buttonBox = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel, self)
-        layout.addWidget(buttonBox, layout.rowCount(), 1)
-        buttonBox.accepted.connect(self.dialog.accept)
-        buttonBox.rejected.connect(self.dialog.reject)
-
-        self.dialog.setLayout(layout)
-        if self.dialog.exec_():
-            pass
-        self.dialog = None
-
     def onXChanged(self, x: float):
         self.point.request_move(x, self.point.y().value())
 
@@ -246,33 +241,24 @@ class PointButton(QPushButton):
         self.point.request_move(self.point.x().value(), y)
 
     def onNameChange(self, name: str):
-        if self.dialog is not None:
-            self.dialog.setWindowTitle(f"Point - {name}")
-        self.setText(name)
         self.x_button.setText(f"{name}.x")
         self.y_button.setText(f"{name}.y")
-        self.sigNameChanged.emit(name, self.point)
+        super().onNameChange(name=name)
 
     def enterEvent(self, a0):
-        self.point.gui_obj.setScatterStyle("hovered")
+        self.point.canvas_item.setScatterStyle("hovered")
 
     def leaveEvent(self, a0):
-        self.point.gui_obj.setScatterStyle("default")
+        self.point.canvas_item.setScatterStyle("default")
 
 
-class BezierButton(QPushButton):
+class BezierButton(TreeButton):
+
     def __init__(self, bezier: Bezier, tree):
+        super().__init__(pymead_obj=bezier, tree=tree)
         self.bezier = bezier
-        super().__init__(bezier.name())
-        self.setMaximumWidth(100)
-        self.tree = tree
-        self.dialog = None
-        self.clicked.connect(self.onClicked)
 
-    def onClicked(self):
-        self.dialog = QDialog(self)
-        self.dialog.setWindowTitle(f"Bezier - {self.bezier.name()}")
-        layout = QGridLayout()
+    def modifyDialogInternals(self, dialog: QDialog, layout: QGridLayout) -> None:
         name_label = QLabel("Name", self)
         name_edit = NameEdit(self, self.bezier, self.tree)
         name_edit.textChanged.connect(self.onNameChange)
@@ -283,49 +269,24 @@ class BezierButton(QPushButton):
             point_button.sigNameChanged.connect(self.onPointNameChange)
             layout.addWidget(point_button, layout.rowCount(), 0)
 
-        # Add the button box
-        buttonBox = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel, self)
-        layout.addWidget(buttonBox, layout.rowCount(), 1)
-        buttonBox.accepted.connect(self.dialog.accept)
-        buttonBox.rejected.connect(self.dialog.reject)
-
-        self.dialog.setLayout(layout)
-        if self.dialog.exec_():
-            pass
-        self.dialog = None
-
     def onPointNameChange(self, name: str, point: Point):
         if point.tree_item is not None:
             self.tree.itemWidget(point.tree_item, 0).setText(name)
 
-    def onNameChange(self, name: str):
-        if self.dialog is not None:
-            self.dialog.setWindowTitle(f"Bezier - {name}")
-        self.setText(name)
-        # for point in self.bezier.point_sequence().points():
-        #     if point.tree_item is not None:
-        #         self.tree.itemWidget(point.tree_item, 0).setText(name)
-
     def enterEvent(self, a0):
-        self.bezier.gui_obj.setCurveStyle("hovered")
+        self.bezier.canvas_item.setCurveStyle("hovered")
 
     def leaveEvent(self, a0):
-        self.bezier.gui_obj.setCurveStyle("default")
+        self.bezier.canvas_item.setCurveStyle("default")
 
 
-class LineButton(QPushButton):
+class LineSegmentButton(TreeButton):
+
     def __init__(self, line: LineSegment, tree):
+        super().__init__(pymead_obj=line, tree=tree)
         self.line = line
-        super().__init__(line.name())
-        self.setMaximumWidth(100)
-        self.tree = tree
-        self.dialog = None
-        self.clicked.connect(self.onClicked)
 
-    def onClicked(self):
-        self.dialog = QDialog(self)
-        self.dialog.setWindowTitle(f"Line - {self.line.name()}")
-        layout = QGridLayout()
+    def modifyDialogInternals(self, dialog: QDialog, layout: QGridLayout) -> None:
         name_label = QLabel("Name", self)
         name_edit = NameEdit(self, self.line, self.tree)
         name_edit.textChanged.connect(self.onNameChange)
@@ -336,46 +297,23 @@ class LineButton(QPushButton):
             point_button.sigNameChanged.connect(self.onPointNameChange)
             layout.addWidget(point_button, layout.rowCount(), 0)
 
-        # Add the button box
-        buttonBox = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel, self)
-        layout.addWidget(buttonBox, layout.rowCount(), 1)
-        buttonBox.accepted.connect(self.dialog.accept)
-        buttonBox.rejected.connect(self.dialog.reject)
-
-        self.dialog.setLayout(layout)
-        if self.dialog.exec_():
-            pass
-        self.dialog = None
-
     def onPointNameChange(self, name: str, point: Point):
         if point.tree_item is not None:
             self.tree.itemWidget(point.tree_item, 0).setText(name)
 
-    def onNameChange(self, name: str):
-        if self.dialog is not None:
-            self.dialog.setWindowTitle(f"Line - {name}")
-        self.setText(name)
-
     def enterEvent(self, a0):
-        self.line.gui_obj.setCurveStyle("hovered")
+        self.line.canvas_item.setCurveStyle("hovered")
 
     def leaveEvent(self, a0):
-        self.line.gui_obj.setCurveStyle("default")
+        self.line.canvas_item.setCurveStyle("default")
 
 
-class AirfoilButton(QPushButton):
+class AirfoilButton(TreeButton):
     def __init__(self, airfoil: Airfoil, tree):
+        super().__init__(pymead_obj=airfoil, tree=tree)
         self.airfoil = airfoil
-        super().__init__(airfoil.name())
-        self.setMaximumWidth(100)
-        self.tree = tree
-        self.dialog = None
-        self.clicked.connect(self.onClicked)
 
-    def onClicked(self):
-        self.dialog = QDialog(self)
-        self.dialog.setWindowTitle(f"Line - {self.airfoil.name()}")
-        layout = QGridLayout()
+    def modifyDialogInternals(self, dialog: QDialog, layout: QGridLayout) -> None:
         name_label = QLabel("Name", self)
         name_edit = NameEdit(self, self.airfoil, self.tree)
         name_edit.textChanged.connect(self.onNameChange)
@@ -393,25 +331,31 @@ class AirfoilButton(QPushButton):
             layout.addWidget(q_label, row_count, 0)
             layout.addWidget(point_button, row_count, 1)
 
-        # Add the button box
-        buttonBox = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel, self)
-        layout.addWidget(buttonBox, layout.rowCount(), 1)
-        buttonBox.accepted.connect(self.dialog.accept)
-        buttonBox.rejected.connect(self.dialog.reject)
-
-        self.dialog.setLayout(layout)
-        if self.dialog.exec_():
-            pass
-        self.dialog = None
-
     def onPointNameChange(self, name: str, point: Point):
         if point.tree_item is not None:
             self.tree.itemWidget(point.tree_item, 0).setText(name)
 
-    def onNameChange(self, name: str):
-        if self.dialog is not None:
-            self.dialog.setWindowTitle(f"Airfoil - {name}")
-        self.setText(name)
+
+class MEAButton(TreeButton):
+    def __init__(self, mea: MEA, tree):
+        super().__init__(pymead_obj=mea, tree=tree)
+        self.mea = mea
+
+    def modifyDialogInternals(self, dialog: QDialog, layout: QGridLayout) -> None:
+        name_label = QLabel("Name", self)
+        name_edit = NameEdit(self, self.mea, self.tree)
+        name_edit.textChanged.connect(self.onNameChange)
+        layout.addWidget(name_label, 1, 0)
+        layout.addWidget(name_edit, 1, 1)
+
+        for airfoil in self.mea.airfoils:
+            airfoil_button = AirfoilButton(airfoil, self.tree)
+            airfoil_button.sigNameChanged.connect(self.onAirfoilNameChange)
+            layout.addWidget(airfoil_button, layout.rowCount(), 0)
+
+    def onAirfoilNameChange(self, name: str, airfoil: Airfoil):
+        if airfoil.tree_item is not None:
+            self.tree.itemWidget(airfoil.tree_item, 0).setText(name)
 
 
 class ParameterTree(QTreeWidget):
@@ -419,11 +363,22 @@ class ParameterTree(QTreeWidget):
         super().__init__(parent)
 
         self.geo_col = geo_col
-        self.geo_col.geo_tree = self
+        self.geo_col.tree = self
 
         self.setColumnCount(1)
 
-        self.items = [QTreeWidgetItem(None, [f"{k}"]) for k in self.geo_col.container().keys()]
+        self.container_titles = {
+            "desvar": "Design Variables",
+            "params": "Parameters",
+            "points": "Points",
+            "lines": "Lines",
+            "bezier": "Bézier Curves",
+            "airfoils": "Airfoils",
+            "mea": "Multi-Element Airfoils",
+            "geocon": "Geometric Constraints"
+        }
+
+        self.items = [QTreeWidgetItem(None, [f"{self.container_titles[k]}"]) for k in self.geo_col.container().keys()]
         self.topLevelDict = {k: i for i, k in enumerate(self.geo_col.container().keys())}
         self.insertTopLevelItems(0, self.items)
 
@@ -449,6 +404,30 @@ class ParameterTree(QTreeWidget):
         top_level_item = self.items[self.topLevelDict["params"]]
         top_level_item.removeChild(param.tree_item)
         param.tree_item = None
+
+    def addDesVar(self, desvar: DesVar):
+        top_level_item = self.items[self.topLevelDict["desvar"]]
+        child_item = QTreeWidgetItem([""])
+        top_level_item.addChild(child_item)
+        desvar.tree_item = child_item
+        self.setItemWidget(child_item, 0, ParamButton(desvar, self))
+
+    def removeDesVar(self, desvar: DesVar):
+        top_level_item = self.items[self.topLevelDict["desvar"]]
+        top_level_item.removeChild(desvar.tree_item)
+        desvar.tree_item = None
+
+    def addLengthDesVar(self):
+        pass
+
+    def removeLengthDesVar(self):
+        pass
+
+    def addAngleDesVar(self):
+        pass
+
+    def removeAngleDesVar(self):
+        pass
 
     def addPoint(self, point: Point):
         top_level_item = self.items[self.topLevelDict["points"]]
@@ -480,7 +459,7 @@ class ParameterTree(QTreeWidget):
         child_item = QTreeWidgetItem([""])
         top_level_item.addChild(child_item)
         line.tree_item = child_item
-        line_button = LineButton(line, self)
+        line_button = LineSegmentButton(line, self)
         self.setItemWidget(child_item, 0, line_button)
 
     def removeLine(self, line: LineSegment):
@@ -501,8 +480,42 @@ class ParameterTree(QTreeWidget):
         top_level_item.removeChild(airfoil.tree_item)
         airfoil.tree_item = None
 
+    def addPymeadTreeItem(self, pymead_obj: PymeadObj):
+        top_level_item = self.items[self.topLevelDict[pymead_obj.sub_container]]
+        child_item = QTreeWidgetItem([""])
+        top_level_item.addChild(child_item)
+        pymead_obj.tree_item = child_item
+
+        button_args = (pymead_obj, self)
+        button_mappings = {"Param": "ParamButton", "Point": "PointButton", "Bezier": "BezierButton",
+                           "LineSegment": "LineSegmentButton", "Airfoil": "AirfoilButton", "MEA": "MEAButton"}
+        button = getattr(sys.modules[__name__], button_mappings[type(pymead_obj).__name__])(*button_args)
+
+        self.setItemWidget(child_item, 0, button)
+
+    def removePymeadTreeItem(self, pymead_obj: PymeadObj):
+        top_level_item = self.items[self.topLevelDict[pymead_obj.sub_container]]
+        top_level_item.removeChild(pymead_obj.tree_item)
+        pymead_obj.tree_item = None
+
     def onExpandPressed(self):
         self.expandAll()
 
     def onCollapsePressed(self):
         self.collapseAll()
+
+    def contextMenuEvent(self, a0):
+        item = self.itemAt(a0.x(), a0.y())
+        print(f"{item = }")
+        if item is None:
+            return
+
+        item_text = item.text(0)
+        if item_text == "Design Variables":
+            self.geo_col.add_desvar(0.0, "dv")
+        elif item_text == "Parameters":
+            self.geo_col.add_param(0.0, "param")
+        elif item_text == "":
+            button = self.itemWidget(item, 0)
+            if isinstance(button, TreeButton):
+                self.geo_col.remove_pymead_obj(button.pymead_obj)
