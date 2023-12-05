@@ -268,13 +268,15 @@ class ParamButton(TreeButton):
         if self.param.lower() is not None:
             lower_label = QLabel("Lower Bound", self)
             lower_spin = LowerSpin(self, self.param)
-            layout.addWidget(lower_label, layout.rowCount(), 0)
-            layout.addWidget(lower_spin, layout.rowCount(), 1)
+            row_count = layout.rowCount()
+            layout.addWidget(lower_label, row_count, 0)
+            layout.addWidget(lower_spin, row_count, 1)
         if self.param.upper() is not None:
             upper_label = QLabel("Upper Bound", self)
-            upper_spin = LowerSpin(self, self.param)
-            layout.addWidget(upper_label, layout.rowCount(), 0)
-            layout.addWidget(upper_spin, layout.rowCount(), 1)
+            upper_spin = UpperSpin(self, self.param)
+            row_count = layout.rowCount()
+            layout.addWidget(upper_label, row_count, 0)
+            layout.addWidget(upper_spin, row_count, 1)
 
     def onValueChange(self, value: float):
         self.sigValueChanged.emit(value)
@@ -285,6 +287,50 @@ class LengthParamButton(ParamButton):
 
 
 class AngleParamButton(ParamButton):
+    pass
+
+
+class DesVarButton(TreeButton):
+    sigValueChanged = pyqtSignal(float)  # value
+
+    def __init__(self, desvar: DesVar, tree, name_editable: bool = True):
+        super().__init__(pymead_obj=desvar, tree=tree)
+        self.name_editable = name_editable
+        self.desvar = desvar
+
+    def modifyDialogInternals(self, dialog: QDialog, layout: QGridLayout) -> None:
+        value_label = QLabel("Value", self)
+        value_spin = ValueSpin(self, self.desvar)
+        value_spin.valueChanged.connect(self.onValueChange)
+        name_label = QLabel("Name", self)
+        name_edit = NameEdit(self, self.desvar, self.tree)
+        name_edit.textChanged.connect(self.onNameChange)
+        if not self.name_editable:
+            name_edit.setReadOnly(True)
+        layout.addWidget(value_label, 0, 0)
+        layout.addWidget(value_spin, 0, 1)
+        layout.addWidget(name_label, 1, 0)
+        layout.addWidget(name_edit, 1, 1)
+        lower_label = QLabel("Lower Bound", self)
+        lower_spin = LowerSpin(self, self.desvar)
+        row_count = layout.rowCount()
+        layout.addWidget(lower_label, row_count, 0)
+        layout.addWidget(lower_spin, row_count, 1)
+        upper_label = QLabel("Upper Bound", self)
+        upper_spin = UpperSpin(self, self.desvar)
+        row_count = layout.rowCount()
+        layout.addWidget(upper_label, row_count, 0)
+        layout.addWidget(upper_spin, row_count, 1)
+
+    def onValueChange(self, value: float):
+        self.sigValueChanged.emit(value)
+
+
+class LengthDesVarButton(DesVarButton):
+    pass
+
+
+class AngleDesVarButton(DesVarButton):
     pass
 
 
@@ -600,6 +646,9 @@ class ParameterTree(QTreeWidget):
         button_mappings = {"Param": "ParamButton",
                            "LengthParam": "LengthParamButton",
                            "AngleParam": "AngleParamButton",
+                           "DesVar": "DesVarButton",
+                           "LengthDesVar": "LengthDesVarButton",
+                           "AngleDesVar": "AngleDesVarButton",
                            "Point": "PointButton",
                            "Bezier": "BezierButton",
                            "LineSegment": "LineSegmentButton",
@@ -631,8 +680,15 @@ class ParameterTree(QTreeWidget):
             return
 
         item_text = item.text(0)
+
         if item_text == "Design Variables":
-            self.geo_col.add_desvar(0.0, "dv")
+            menu = QMenu(self)
+            addDesVarAction = menu.addAction("Add Design Variable")
+            res = menu.exec_(a0.globalPos())
+
+            if res == addDesVarAction:
+                self.geo_col.add_desvar(0.0, "dv")
+
         elif item_text == "Parameters":
             menu = QMenu(self)
             addParameterAction = menu.addAction("Add Parameter")
@@ -644,4 +700,25 @@ class ParameterTree(QTreeWidget):
         elif item_text == "":
             button = self.itemWidget(item, 0)
             if isinstance(button, TreeButton):
-                self.geo_col.remove_pymead_obj(button.pymead_obj)
+                menu = QMenu(self)
+
+                promoteAction = None
+                demoteAction = None
+
+                pymead_obj = button.pymead_obj
+                pymead_obj_type = type(pymead_obj)
+
+                if pymead_obj_type is Param:
+                    promoteAction = menu.addAction("Promote to Design Variable")
+                elif pymead_obj_type is DesVar:
+                    demoteAction = menu.addAction("Demote to Parameter")
+
+                removeObjectAction = menu.addAction("Delete")
+                res = menu.exec_(a0.globalPos())
+
+                if res == removeObjectAction:
+                    self.geo_col.remove_pymead_obj(button.pymead_obj)
+                elif res == promoteAction:
+                    self.geo_col.promote_param_to_desvar(pymead_obj)
+                elif res == demoteAction:
+                    self.geo_col.demote_desvar_to_param(pymead_obj)

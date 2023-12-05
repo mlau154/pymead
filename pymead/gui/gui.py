@@ -399,15 +399,16 @@ class GUI(QMainWindow):
 
     def take_screenshot(self):
 
-        if hasattr(self.dockable_tab_window, "current_dock_widget"):
-            analysis_id = self.dockable_tab_window.current_dock_widget.winId()
+        # if hasattr(self.dockable_tab_window, "current_dock_widget"):
+        if self.current_dock_widget is not None:
+            analysis_id = self.current_dock_widget.winId()
         else:
-            analysis_id = self.dockable_tab_window.dock_widgets[-1].winId()
+            analysis_id = self.dock_widgets[-1].winId()
 
         id_dict = {
             "Full Window": self.winId(),
-            "Parameter Tree": self.param_tree_instance.t.winId(),
-            "Geometry": self.dockable_tab_window.dock_widgets[0].winId(),
+            # "Parameter Tree": self.param_tree_instance.t.winId(),
+            "Geometry": self.dock_widgets[0].winId(),
             "Analysis": analysis_id,
             "Console": self.text_area.winId()
         }
