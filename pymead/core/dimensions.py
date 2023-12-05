@@ -18,6 +18,24 @@ class Dimension(PymeadObj):
         self.set_tool(tool)
         self.set_target(target)
         self.set_param(param)
+
+        # Add associated dimensions (usually an AngleDimension if this object is a LengthDimension, or vice versa).
+        # This code block helps prevents recursion errors where a dimension parameter update triggers a point
+        # movement, which in turn triggers a dimension parameter update, which triggers a point movement, etc.
+        # This dimension along with any associated dimensions get passed to the Point.request_move() method
+        # as a "requestor," which prevents more than one Dimension.update().set_value() from occurring.
+        self.associated_dims = []
+        for point in [self.target(), self.tool()]:
+            for dim in point.dims:
+                if dim is self:
+                    continue
+                if (dim.tool() is self.tool() and dim.target() is self.target()) or (
+                        dim.tool() is self.target() and dim.target() is self.tool()):
+                    if dim not in self.associated_dims:
+                        self.associated_dims.append(dim)
+                    if self not in dim.associated_dims:
+                        dim.associated_dims.append(self)
+
         super().__init__(sub_container="dims")
         self.set_name(name)
 
@@ -80,8 +98,9 @@ class LengthDimension(Dimension):
 
     def update_points_from_param(self):
         target_angle = self.tool().measure_angle(self.target())
-        self.target().force_move(self.tool().x().value() + self.param().value() * np.cos(target_angle),
-                                 self.tool().y().value() + self.param().value() * np.sin(target_angle))
+        self.target().request_move(self.tool().x().value() + self.param().value() * np.cos(target_angle),
+                                   self.tool().y().value() + self.param().value() * np.sin(target_angle),
+                                   requestor=self)
 
     def update_param_from_points(self):
         length = self.tool().measure_distance(self.target())
@@ -104,8 +123,9 @@ class AngleDimension(Dimension):
 
     def update_points_from_param(self):
         target_length = self.tool().measure_distance(self.target())
-        self.target().force_move(self.tool().x().value() + target_length * np.cos(self.param().rad()),
-                                 self.tool().y().value() + target_length * np.sin(self.param().rad()))
+        self.target().request_move(self.tool().x().value() + target_length * np.cos(self.param().rad()),
+                                   self.tool().y().value() + target_length * np.sin(self.param().rad()),
+                                   requestor=self)
 
     def update_param_from_points(self):
         angle = self.tool().measure_angle(self.target())

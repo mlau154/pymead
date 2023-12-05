@@ -294,6 +294,47 @@ class ConstraintTests(unittest.TestCase):
         start_point.request_move(5.0, -2.0)
         self.assertAlmostEqual(start_point.measure_angle(middle_point), middle_point.measure_angle(end_point))
 
+    def test_curvature_constraint(self):
+        geo_col = GeometryCollection()
+        p1 = geo_col.add_point(0.0, 0.0)
+        p2 = geo_col.add_point(0.05, 0.12)
+        p3 = geo_col.add_point(0.12, 0.36)
+        p4 = geo_col.add_point(0.05, -0.12)
+        p5 = geo_col.add_point(0.35, -0.52)
+        geo_col.add_bezier(point_sequence=PointSequence(points=[p1, p2, p3]))
+        geo_col.add_bezier(point_sequence=PointSequence(points=[p1, p4, p5]))
+        curvature_con = geo_col.add_curvature_constraint(curve_joint=p1)
+
+        # Test the curvature data method
+        data = curvature_con.calculate_curvature_data()
+        self.assertIs(p2, curvature_con.g1_point_curve_1)
+        self.assertIs(p3, curvature_con.g2_point_curve_1)
+        self.assertIs(p4, curvature_con.g1_point_curve_2)
+        self.assertIs(p5, curvature_con.g2_point_curve_2)
+        self.assertAlmostEqual(0.13, data.Lt1)
+        self.assertAlmostEqual(0.13, data.Lt2)
+        self.assertAlmostEqual(0.25, data.Lc1)
+        self.assertAlmostEqual(0.5, data.Lc2)
+        self.assertAlmostEqual(np.arctan2(0.12, 0.05), data.phi1)
+        self.assertAlmostEqual(np.arctan2(-0.12, 0.05), data.phi2)
+        self.assertAlmostEqual(np.arctan2(0.24, 0.07), data.theta1)
+        self.assertAlmostEqual(np.arctan2(-0.4, 0.3), data.theta2)
+
+        curvature_con.enforce(p2)
+        # curvature_con.enforce(p3)
+        data = curvature_con.calculate_curvature_data()
+        self.assertAlmostEqual(data.phi1 % (2 * np.pi), (data.phi2 + np.pi) % (2 * np.pi))
+        self.assertAlmostEqual(data.R1, data.R2)
+
+        old_psi1 = data.psi1
+        old_psi2 = data.psi2
+        p2.request_move(0.06, 0.13)
+        data = curvature_con.calculate_curvature_data()
+        self.assertAlmostEqual(data.psi1, old_psi1)
+        self.assertAlmostEqual(data.psi2, old_psi2)
+        self.assertAlmostEqual(data.phi1 % (2 * np.pi), (data.phi2 + np.pi) % (2 * np.pi))
+        self.assertAlmostEqual(data.R1, data.R2)
+
     def test_length_dimension(self):
         # First, test the case where a param is directly specified
         param = LengthParam(0.25, "LengthDim")

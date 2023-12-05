@@ -188,15 +188,7 @@ class GeometryCollection(DualRep):
         else:
             raise ValueError(f"unit_type must be None, 'length', or 'angle'. Found type: {type(unit_type)}")
 
-        # param.geo_col = self
-        #
-        # self.add_to_subcontainer(param)
-        #
-        # if self.tree is not None:
-        #     self.tree.addPymeadTreeItem(pymead_obj=param)
-        #
-        # return param
-        self.add_pymead_obj_by_ref(param)
+        return self.add_pymead_obj_by_ref(param)
 
     def add_pymead_obj_by_ref(self, pymead_obj: PymeadObj):
         """
@@ -604,5 +596,11 @@ class GeometryCollection(DualRep):
 
     def add_curvature_constraint(self, curve_joint: Point):
         curvature_constraint = CurvatureConstraint(curve_joint=curve_joint)
+
+        # Remove any collinear constraints because the CurvatureConstraint behavior provides collinear constraint
+        # behavior automatically
+        for con in curvature_constraint.curve_joint.geo_cons:
+            if isinstance(con, CollinearConstraint):
+                self.remove_pymead_obj(con)
 
         return self.add_pymead_obj_by_ref(curvature_constraint)

@@ -101,7 +101,7 @@ class AirfoilCanvas(pg.PlotWidget):
             self.addItem(curve_item)
 
     @staticmethod
-    def runSelectionEventLoop(drawing_object: str, starting_message):
+    def runSelectionEventLoop(drawing_object: str, starting_message: str):
         drawing_object = drawing_object
         starting_message = starting_message
 
@@ -203,18 +203,8 @@ class AirfoilCanvas(pg.PlotWidget):
             self.sigStatusBarUpdate.emit(msg, 2000)
             return
         constraint = self.geo_col.add_curvature_constraint(curve_joint=self.selected_points[0].point)
+        constraint.enforce(constraint.target().points()[1])
         constraint.enforce(constraint.target().points()[0])
-
-    # def makePointsCollinear(self):
-    #     self.creating_collinear_constraint = True
-    #     loop = QEventLoop()
-    #     self.sigEnterPressed.connect(loop.quit)
-    #     self.sigEscapePressed.connect(loop.quit)
-    #     loop.exec()
-    #     if self.selected_points is not None:
-    #         self.makeCollinearConstraint()
-    #         self.clearSelectedPoints()
-    #     self.creating_collinear_constraint = None
 
     def addPointToCurve(self, curve_item: HoverableCurve):
         self.adding_point_to_curve = curve_item
@@ -244,7 +234,6 @@ class AirfoilCanvas(pg.PlotWidget):
             self.point_text_item = None
         point_item.hoverable = False
         point_item.setScatterStyle("selected")
-        print(f"{self.drawing_object = }")
         if self.drawing_object == "Bezier":
             self.appendSelectedPoint(point_item)
             n_ctrl_pts = len(self.selected_points)

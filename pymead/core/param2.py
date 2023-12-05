@@ -11,7 +11,7 @@ class Param(PymeadObj):
     """
 
     def __init__(self, value: float, name: str, lower: float or None = None, upper: float or None = None,
-                 sub_container: str = "params", setting_from_geo_col: bool = False):
+                 sub_container: str = "params", setting_from_geo_col: bool = False, point=None):
         """
         Parameters
         ==========
@@ -32,7 +32,7 @@ class Param(PymeadObj):
         self._value = None
         self._lower = None
         self._upper = None
-        self.point = None
+        self.point = point
         self.geo_objs = []
         self.geo_cons = []
         self.dims = []
@@ -219,11 +219,12 @@ class Param(PymeadObj):
 
 class LengthParam(Param):
     def __init__(self, value: float, name: str, lower: float or None = None, upper: float or None = None,
-                 setting_from_geo_col: bool = False):
+                 setting_from_geo_col: bool = False, point=None):
         self._unit = None
         self.set_unit(UNITS.current_length_unit())
         name = "Length-1" if name is None else name
-        super().__init__(value=value, name=name, lower=lower, upper=upper, setting_from_geo_col=setting_from_geo_col)
+        super().__init__(value=value, name=name, lower=lower, upper=upper, setting_from_geo_col=setting_from_geo_col,
+                         point=point)
 
     def unit(self):
         return self._unit

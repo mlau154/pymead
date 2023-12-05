@@ -1,8 +1,8 @@
 from abc import abstractmethod
+from dataclasses import dataclass
 
 import numpy as np
 
-from pymead.core.dimensions import LengthDimension, AngleDimension
 from pymead.core.param2 import Param
 from pymead.core.point import PointSequence, Point
 from pymead.core.pymead_obj import PymeadObj
@@ -171,6 +171,7 @@ class CollinearConstraint(GeoCon):
                     raise ValueError(msg)
 
     def enforce(self, calling_point: Point or str, initial_x: float or None = None, initial_y: float or None = None):
+
         if isinstance(calling_point, str):
             if calling_point == "middle":
                 calling_point = self.tool()
@@ -217,6 +218,24 @@ class CollinearConstraint(GeoCon):
             #  just add the selected points to the existing constraint
 
 
+@dataclass
+class CurvatureConstraintData:
+    Lt1: float
+    Lt2: float
+    Lc1: float
+    Lc2: float
+    n1: int
+    n2: int
+    theta1: float
+    theta2: float
+    phi1: float
+    phi2: float
+    psi1: float
+    psi2: float
+    R1: float
+    R2: float
+
+
 class CurvatureConstraint(GeoCon):
     def __init__(self, curve_joint: Point, name: str or None = None):
         if len(curve_joint.curves) != 2:
@@ -237,14 +256,6 @@ class CurvatureConstraint(GeoCon):
         self.g1_point_index_curve_2 = 1 if self.g2_point_index_curve_2 == 2 else -2
         self.g1_point_curve_1 = self.curve_1.point_sequence().points()[self.g1_point_index_curve_1]
         self.g1_point_curve_2 = self.curve_2.point_sequence().points()[self.g1_point_index_curve_2]
-
-        # G1 parameters
-        # self.g1_length_param_curve1 = None
-        # self.g1_angle_param_curve1 = None
-        # self.g1_length_param_curve2 = None
-        # self.g1_angle_param_curve2 = None
-        # self.find_g1_dims()
-
         self.g2_point_curve_1 = self.curve_1.point_sequence().points()[self.g2_point_index_curve_1]
         self.g2_point_curve_2 = self.curve_2.point_sequence().points()[self.g2_point_index_curve_2]
         g1_g2_point_seq = PointSequence(points=[self.g2_point_curve_1, self.g1_point_curve_1,
@@ -256,35 +267,24 @@ class CurvatureConstraint(GeoCon):
         for point in self.target().points():
             point.geo_cons.append(self)
 
-    # def find_g1_dims(self):
-    #     g1_curve1_length_dim = None
-    #     g1_curve1_angle_dim = None
-    #     g1_curve2_length_dim = None
-    #     g1_curve2_angle_dim = None
-    #
-    #     for dim in self.curve_joint.dims:
-    #         if (isinstance(dim, LengthDimension) and dim.tool() == self.curve_joint
-    #                 and dim.target() == self.g1_point_curve_1):
-    #             g1_curve1_length_dim = dim
-    #         if (isinstance(dim, AngleDimension) and dim.tool() == self.curve_joint
-    #                 and dim.target() == self.g1_point_curve_1):
-    #             g1_curve1_angle_dim = dim
-    #         if (isinstance(dim, LengthDimension) and dim.tool() == self.curve_joint
-    #                 and dim.target() == self.g1_point_curve_2):
-    #             g1_curve2_length_dim = dim
-    #         if (isinstance(dim, AngleDimension) and dim.tool() == self.curve_joint
-    #                 and dim.target() == self.g1_point_curve_2):
-    #             g1_curve2_angle_dim = dim
-    #
-    #     if any([dim is None for dim in [g1_curve1_length_dim, g1_curve1_angle_dim,
-    #                                     g1_curve2_length_dim, g1_curve2_angle_dim]]):
-    #         raise ConstraintValidationError("Must have a length and angle dimension for each point immediately "
-    #                                         "adjacent to the curve joint")
-    #
-    #     self.g1_length_param_curve1 = g1_curve1_length_dim.param()
-    #     self.g1_angle_param_curve1 = g1_curve2_angle_dim.param()
-    #     self.g1_length_param_curve2 = g1_curve1_length_dim.param()
-    #     self.g1_angle_param_curve2 = g1_curve2_angle_dim.param()
+    def calculate_curvature_data(self):
+        Lt1 = self.g1_point_curve_1.measure_distance(self.curve_joint)
+        Lt2 = self.g1_point_curve_2.measure_distance(self.curve_joint)
+        Lc1 = self.g1_point_curve_1.measure_distance(self.g2_point_curve_1)
+        Lc2 = self.g1_point_curve_2.measure_distance(self.g2_point_curve_2)
+        n1 = self.curve_1.degree
+        n2 = self.curve_2.degree
+        phi1 = self.curve_joint.measure_angle(self.g1_point_curve_1)
+        phi2 = self.curve_joint.measure_angle(self.g1_point_curve_2)
+        theta1 = self.g1_point_curve_1.measure_angle(self.g2_point_curve_1)
+        theta2 = self.g1_point_curve_2.measure_angle(self.g2_point_curve_2)
+        psi1 = theta1 - phi1
+        psi2 = theta2 - phi2
+        R1 = np.abs(np.true_divide((Lt1 * Lt1), (Lc1 * (1 - 1 / n1) * np.sin(psi1))))
+        R2 = np.abs(np.true_divide((Lt2 * Lt2), (Lc2 * (1 - 1 / n2) * np.sin(psi2))))
+        data = CurvatureConstraintData(Lt1=Lt1, Lt2=Lt2, Lc1=Lc1, Lc2=Lc2, n1=n1, n2=n2, theta1=theta1, theta2=theta2,
+                                       phi1=phi1, phi2=phi2, psi1=psi1, psi2=psi2, R1=R1, R2=R2)
+        return data
 
     def validate(self):
         msg = "A point in the CurvatureConstraint was found to already have an existing CurvatureConstraint"
@@ -296,17 +296,8 @@ class CurvatureConstraint(GeoCon):
                 if isinstance(geo_con, CurvatureConstraint):
                     raise ConstraintValidationError(msg)
 
-    def enforce(self, calling_point: Point, initial_x: float or None = None, initial_y: float or None = None):
-        # if isinstance(calling_point, str):
-        #     if calling_point == "middle":
-        #         calling_point = self.tool()
-        #     elif calling_point == "start":
-        #         calling_point = self.target().points()[0]
-        #     elif calling_point == "end":
-        #         calling_point = self.target().points()[1]
-        #     else:
-        #         raise ValueError(f"If calling_point is a str, it must be either 'start', 'middle', or 'end'. "
-        #                          f"Specified value: {calling_point}")
+    def enforce(self, calling_point: Point, initial_x: float = None, initial_y: float = None,
+                initial_psi1: float = None, initial_psi2: float = None, initial_R: float = None):
 
         if calling_point is self.tool():  # If the middle point called the enforcement
             if initial_x is None:
@@ -317,31 +308,117 @@ class CurvatureConstraint(GeoCon):
                                  "middle point")
             dx = self.tool().x().value() - initial_x
             dy = self.tool().y().value() - initial_y
-            for point in self.target().points():
-                point.force_move(point.x().value() + dx, point.y().value() + dy)
-        elif calling_point is self.target().points()[0]:  # Curve 1 g2 point modified -> update curve 2 g2 point
-            Lt1 = self.g1_point_curve_1.measure_distance(self.curve_joint)
-            Lt2 = self.g1_point_curve_2.measure_distance(self.curve_joint)
-            Lc1 = self.g1_point_curve_1.measure_distance(self.g2_point_curve_1)
-            n1 = self.curve_1.degree
-            n2 = self.curve_2.degree
-            theta1 = self.g1_point_curve_1.measure_angle(self.curve_joint)
-            theta2 = self.g1_point_curve_2.measure_angle(self.curve_joint)
-            phi1 = self.g1_point_curve_1.measure_angle(self.g2_point_curve_1)
-            phi2 = self.g1_point_curve_2.measure_angle(self.g2_point_curve_2)
-            psi1 = theta1 - phi1
-            psi2 = theta2 - phi2
-            target_Lc2 = (Lt2 * Lt2) / (Lt1 * Lt1) * (
-                    (1 - 1 / n1) * Lc1 * np.abs(np.sin(psi1))) / ((1 - 1 / n2) * np.abs(np.sin(psi2)))
-            if (0 <= psi1 % (2 * np.pi) < np.pi and 0 <= psi2 % (2 * np.pi) < np.pi) or (
-                np.pi <= psi1 % (2 * np.pi) < 2 * np.pi and np.pi <= psi2 % (2 * np.pi) < 2 * np.pi
-            ):
-                phi2 = theta2 + psi2
-            self.target().points()[3].force_move(self.target().points()[2].x().value() + target_Lc2 * np.cos(phi2),
-                                                 self.target().points()[2].y().value() + target_Lc2 * np.sin(phi2))
-        elif calling_point in self.target().points()[2:]:  # Curve 2 modified -> update curve 1 g2 point
 
-            pass
+            collinear_constraint_found = False
+            for geo_con in self.tool().geo_cons:
+                if isinstance(geo_con, CollinearConstraint):
+                    collinear_constraint_found = True
+                    break
+
+            points_to_move = [self.target().points()[0], self.target().points()[3]] \
+                if collinear_constraint_found else self.target().points()
+            for point in points_to_move:
+                point.force_move(point.x().value() + dx, point.y().value() + dy)
+
+        elif calling_point is self.target().points()[0]:  # Curve 1 g2 point modified -> update curve 2 g2 point
+            # Calculate the new curvature control arm 2 length
+            data = self.calculate_curvature_data()
+            target_Lc2 = (data.Lt2 * data.Lt2) / (data.Lt1 * data.Lt1) * (
+                    (1 - 1 / data.n1) * data.Lc1 * np.abs(np.sin(data.psi1))) / (
+                    (1 - 1 / data.n2) * np.abs(np.sin(data.psi2)))
+
+            # Calculate if the radius of curvature needs to be reversed for this step
+            if (0 <= data.psi1 % (2 * np.pi) < np.pi and 0 <= data.psi2 % (2 * np.pi) < np.pi) or (
+                np.pi <= data.psi1 % (2 * np.pi) < 2 * np.pi and np.pi <= data.psi2 % (2 * np.pi) < 2 * np.pi
+            ):
+                theta2 = data.phi2 - data.psi2  # Reverse
+            else:
+                theta2 = data.theta2  # Do not reverse
+
+            # Move the other G2 point to match the curvature
+            self.target().points()[3].force_move(self.target().points()[2].x().value() + target_Lc2 * np.cos(theta2),
+                                                 self.target().points()[2].y().value() + target_Lc2 * np.sin(theta2))
+
+        elif calling_point is self.target().points()[3]:  # Curve 2 g2 point modified -> update curve 1 g2 point
+            # Calculate the new curvature control arm 1 length
+            data = self.calculate_curvature_data()
+            target_Lc1 = (data.Lt1 * data.Lt1) / (data.Lt2 * data.Lt2) * (
+                    (1 - 1 / data.n2) * data.Lc2 * np.abs(np.sin(data.psi2))) / (
+                    (1 - 1 / data.n1) * np.abs(np.sin(data.psi1)))
+
+            # Calculate if the radius of curvature needs to be reversed for this step
+            if (0 <= data.psi1 % (2 * np.pi) < np.pi and 0 <= data.psi2 % (2 * np.pi) < np.pi) or (
+                    np.pi <= data.psi1 % (2 * np.pi) < 2 * np.pi and np.pi <= data.psi2 % (2 * np.pi) < 2 * np.pi
+            ):
+                theta1 = data.phi1 - data.psi1  # Reverse
+            else:
+                theta1 = data.theta1  # Do not reverse
+
+            # Move the other G2 point to match the curvature
+            self.target().points()[0].force_move(self.target().points()[1].x().value() + target_Lc1 * np.cos(theta1),
+                                                 self.target().points()[1].y().value() + target_Lc1 * np.sin(theta1))
+
+        elif calling_point is self.target().points()[1]:  # Curve 1 g1 point modified -> update curve 2 g1 point and g2 points
+            if initial_psi1 is None or initial_psi2 is None or initial_R is None:
+                data = self.calculate_curvature_data()
+                initial_psi1 = data.psi1
+                initial_psi2 = data.psi2
+                initial_R = np.abs(data.R1)
+
+            # Calculate the new curvature control arm lengths and absolute angles
+            data = self.calculate_curvature_data()
+
+            target_Lc1 = (data.Lt1 * data.Lt1) / (
+                    initial_R * (1 - 1 / data.n1) * np.abs(np.sin(initial_psi1)))
+            target_theta1 = initial_psi1 + data.phi1
+
+            target_Lc2 = (data.Lt2 * data.Lt2) / (
+                    initial_R * (1 - 1 / data.n2) * np.abs(np.sin(initial_psi2)))
+            target_theta2 = initial_psi2 + (data.phi1 + np.pi)
+
+            # Move the other G2 points to preserve the radius of curvature and angles
+            self.target().points()[2].force_move(
+                self.curve_joint.x().value() + data.Lt2 * np.cos(data.phi1 + np.pi),
+                self.curve_joint.y().value() + data.Lt2 * np.sin(data.phi1 + np.pi)
+            )
+            self.target().points()[0].force_move(
+                self.target().points()[1].x().value() + target_Lc1 * np.cos(target_theta1),
+                self.target().points()[1].y().value() + target_Lc1 * np.sin(target_theta1)
+            )
+            self.target().points()[3].force_move(
+                self.target().points()[2].x().value() + target_Lc2 * np.cos(target_theta2),
+                self.target().points()[2].y().value() + target_Lc2 * np.sin(target_theta2)
+            )
+
+        elif calling_point is self.target().points()[2]:  # Curve 2 g1 point modified -> update curve 1 g1 point and g2 points
+            if initial_psi1 is None or initial_psi2 is None or initial_R is None:
+                raise ValueError("Must specify initial_psi1, initial_psi2, and initial_R when enforcing the "
+                                 "curvature constraint from a G1 point")
+
+            # Calculate the new curvature control arm lengths and absolute angles
+            data = self.calculate_curvature_data()
+
+            target_Lc1 = (data.Lt1 * data.Lt1) / (
+                    initial_R * (1 - 1 / data.n1) * np.abs(np.sin(initial_psi1)))
+            target_theta1 = initial_psi1 + (data.phi2 + np.pi)
+
+            target_Lc2 = (data.Lt2 * data.Lt2) / (
+                    initial_R * (1 - 1 / data.n2) * np.abs(np.sin(initial_psi2)))
+            target_theta2 = initial_psi2 + data.phi2
+
+            # Move the other G2 points to preserve the radius of curvature and angles
+            self.target().points()[1].force_move(
+                self.curve_joint.x().value() + data.Lt1 * np.cos(data.phi2 + np.pi),
+                self.curve_joint.y().value() + data.Lt1 * np.sin(data.phi2 + np.pi)
+            )
+            self.target().points()[0].force_move(
+                self.target().points()[1].x().value() + target_Lc1 * np.cos(target_theta1),
+                self.target().points()[1].y().value() + target_Lc1 * np.sin(target_theta1)
+            )
+            self.target().points()[3].force_move(
+                self.target().points()[2].x().value() + target_Lc2 * np.cos(target_theta2),
+                self.target().points()[2].y().value() + target_Lc2 * np.sin(target_theta2)
+            )
 
 
 class ConstraintValidationError(Exception):

@@ -1,3 +1,4 @@
+import sys
 import typing
 
 import numpy as np
@@ -28,14 +29,14 @@ class Point(PymeadObj):
 
     def set_x(self, x: LengthParam or float):
         self._x = x if isinstance(x, LengthParam) else LengthParam(
-            value=x, name=self.name() + ".x", setting_from_geo_col=self.setting_from_geo_col)
+            value=x, name=self.name() + ".x", setting_from_geo_col=self.setting_from_geo_col, point=self)
         if self not in self._x.geo_objs:
             self._x.geo_objs.append(self)
         self._x.point = self
 
     def set_y(self, y: LengthParam or float):
         self._y = y if isinstance(y, LengthParam) else LengthParam(
-            value=y, name=self.name() + ".y", setting_from_geo_col=self.setting_from_geo_col)
+            value=y, name=self.name() + ".y", setting_from_geo_col=self.setting_from_geo_col, point=self)
         if self not in self._y.geo_objs:
             self._y.geo_objs.append(self)
         self._y.point = self
@@ -66,9 +67,29 @@ class Point(PymeadObj):
     def measure_angle(self, other: "Point"):
         return np.arctan2(other.y().value() - self.y().value(), other.x().value() - self.x().value())
 
-    def request_move(self, xp: float, yp: float):
-        initial_x = self.x().value()
-        initial_y = self.y().value()
+    def request_move(self, xp: float, yp: float, requestor: PymeadObj or None = None):
+        # Initialize variables which may or may not be used
+        initial_x = None  # x-location of the current point before the movement
+        initial_y = None  # y-location of the current point before the movement
+        initial_psi1 = None  # Curvature control arm 1 angle before the current point movement
+        initial_psi2 = None  # Curvature control arm 2 angle before the current point movement
+        initial_R = None  # Radius of curvature before the current point movement
+
+        # Get the concrete class names of all the constraints associated with this point so that we calculate the
+        # minimum required amount of information
+        geo_con_classes = [str(geo_con.__class__.__name__) for geo_con in self.geo_cons]
+        if "CollinearConstraint" in geo_con_classes or "CurvatureConstraint" in geo_con_classes:
+            initial_x = self.x().value()
+            initial_y = self.y().value()
+        if "CurvatureConstraint" in geo_con_classes:
+            for idx, geo_con in enumerate(self.geo_cons):
+                if geo_con_classes[idx] == "CurvatureConstraint":
+                    data = geo_con.calculate_curvature_data()
+                    initial_psi1 = data.psi1
+                    initial_psi2 = data.psi2
+                    initial_R = data.R1
+                    break
+
         self.x().set_value(xp)
         self.y().set_value(yp)
         for geo_con in self.geo_cons:
@@ -81,12 +102,21 @@ class Point(PymeadObj):
             elif "CollinearConstraint" in class_name:
                 kwargs = dict(calling_point=self, initial_x=initial_x, initial_y=initial_y)
             elif "CurvatureConstraint" in class_name:
-                kwargs = dict(calling_point=self, initial_x=initial_x, initial_y=initial_y)
+                kwargs = dict(calling_point=self, initial_x=initial_x, initial_y=initial_y, initial_psi1=initial_psi1,
+                              initial_psi2=initial_psi2, initial_R=initial_R)
 
             # Enforce the constraint
             geo_con.enforce(**kwargs)
 
+        print(f"{requestor = }")
         for dim in self.dims:
+            print(f"{dim = }")
+            if requestor is not None:
+                print(f"{requestor.associated_dims = }")
+            if requestor is not None and dim is requestor:
+                continue
+            if requestor is not None and dim in requestor.associated_dims:
+                continue
             dim.update_param_from_points()
 
         # Update the GUI object, if there is one
