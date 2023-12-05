@@ -130,7 +130,7 @@ class HoverableCurve(pg.PlotCurveItem):
         line_item.point_items = point_items
         line_item.updateCurveItem()
         line_item.hoverable = True
-        line_item.setZValue(-100)
+        # line_item.setZValue(-100)
         return line_item
 
     def generateControlPointNetItems(self):

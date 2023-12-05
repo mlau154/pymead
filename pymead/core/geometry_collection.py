@@ -3,6 +3,8 @@ import typing
 
 from pymead.core.airfoil2 import Airfoil
 from pymead.core.bezier2 import Bezier
+from pymead.core.constraints import CollinearConstraint, CurvatureConstraint
+from pymead.core.dimensions import LengthDimension, AngleDimension, Dimension
 from pymead.core.mea2 import MEA
 from pymead.core.pymead_obj import DualRep, PymeadObj
 from pymead.core.line2 import LineSegment
@@ -21,6 +23,7 @@ class GeometryCollection(DualRep):
             "airfoils": {},
             "mea": {},
             "geocon": {},
+            "dims": {},
         }
         self.canvas = None
         self.tree = None
@@ -185,14 +188,46 @@ class GeometryCollection(DualRep):
         else:
             raise ValueError(f"unit_type must be None, 'length', or 'angle'. Found type: {type(unit_type)}")
 
-        param.geo_col = self
+        # param.geo_col = self
+        #
+        # self.add_to_subcontainer(param)
+        #
+        # if self.tree is not None:
+        #     self.tree.addPymeadTreeItem(pymead_obj=param)
+        #
+        # return param
+        self.add_pymead_obj_by_ref(param)
 
-        self.add_to_subcontainer(param)
+    def add_pymead_obj_by_ref(self, pymead_obj: PymeadObj):
+        """
+        This method adds a pymead object by passing it directly to the geometry collection. If the
+        object is already associated with a geometry collection, a ``ValueError`` is raised.
+
+        Parameters
+        ==========
+        pymead_obj: PymeadObj
+            The pymead object to add to the collection
+
+        Returns
+        =======
+        PymeadObj
+            The modified pymead object
+        """
+        if pymead_obj.geo_col is not None:
+            raise ValueError("Can only add a pymead object by reference if it has not yet been added to a "
+                             "geometry collection")
+
+        pymead_obj.geo_col = self
+
+        self.add_to_subcontainer(pymead_obj)
 
         if self.tree is not None:
-            self.tree.addPymeadTreeItem(pymead_obj=param)
+            self.tree.addPymeadTreeItem(pymead_obj=pymead_obj)
 
-        return param
+        if self.canvas is not None:
+            self.canvas.addPymeadCanvasItem(pymead_obj=pymead_obj)
+
+        return pymead_obj
 
     def remove_pymead_obj(self, pymead_obj: PymeadObj):
         """
@@ -226,6 +261,10 @@ class GeometryCollection(DualRep):
                 curve.remove_point(point=pymead_obj)
                 curve.update()
 
+        if isinstance(pymead_obj, Dimension):
+            # Remove the parameter associated with the dimension
+            self.remove_pymead_obj(pymead_obj.param())
+
         # Remove the item from the geometry collection subcontainer
         self.remove_from_subcontainer(pymead_obj)
 
@@ -254,40 +293,21 @@ class GeometryCollection(DualRep):
         Point
             Object reference
         """
-        point = Point(x=x, y=y, name="Point", setting_from_geo_col=True)
-
-        self.add_to_subcontainer(point)
-
-        if self.tree is not None:
-            self.tree.addPymeadTreeItem(point)
-
+        point = Point(x=x, y=y, setting_from_geo_col=True)
         point.x().geo_col = self
         point.y().geo_col = self
-        point.geo_col = self
 
-        return point
+        return self.add_pymead_obj_by_ref(point)
 
     def add_bezier(self, point_sequence: PointSequence):
         bezier = Bezier(point_sequence=point_sequence)
-        bezier.geo_col = self
 
-        self.add_to_subcontainer(bezier)
-
-        if self.tree is not None:
-            self.tree.addPymeadTreeItem(bezier)
-
-        return bezier
+        return self.add_pymead_obj_by_ref(bezier)
 
     def add_line(self, point_sequence: PointSequence):
         line = LineSegment(point_sequence=point_sequence)
-        line.geo_col = self
 
-        self.add_to_subcontainer(line)
-
-        if self.tree is not None:
-            self.tree.addPymeadTreeItem(line)
-
-        return line
+        return self.add_pymead_obj_by_ref(line)
 
     def add_desvar(self, value: float, name: str, lower: float or None = None, upper: float or None = None,
                    unit_type: str or None = None):
@@ -328,14 +348,15 @@ class GeometryCollection(DualRep):
         else:
             raise ValueError(f"unit_type must be None, 'length', or 'angle'. Found type: {type(unit_type)}")
 
-        desvar.geo_col = self
-
-        self.add_to_subcontainer(desvar)
-
-        if self.tree is not None:
-            self.tree.addPymeadTreeItem(desvar)
-
-        return desvar
+        # desvar.geo_col = self
+        #
+        # self.add_to_subcontainer(desvar)
+        #
+        # if self.tree is not None:
+        #     self.tree.addPymeadTreeItem(desvar)
+        #
+        # return desvar
+        return self.add_pymead_obj_by_ref(desvar)
 
     @staticmethod
     def replace_geo_objs(tool: Param or DesVar, target: Param or DesVar):
@@ -548,31 +569,40 @@ class GeometryCollection(DualRep):
     def add_airfoil(self, leading_edge: Point, trailing_edge: Point, upper_surf_end: Point, lower_surf_end: Point):
         airfoil = Airfoil(leading_edge=leading_edge, trailing_edge=trailing_edge, upper_surf_end=upper_surf_end,
                           lower_surf_end=lower_surf_end)
-        airfoil.geo_col = self
 
-        self.add_to_subcontainer(airfoil)
-
-        if self.tree is not None:
-            self.tree.addPymeadTreeItem(airfoil)
-
-        return airfoil
+        return self.add_pymead_obj_by_ref(airfoil)
 
     def add_mea(self, airfoils: typing.List[Airfoil]):
         mea = MEA(airfoils=airfoils)
-        mea.geo_col = self
-        self.add_to_subcontainer(mea)
-        if self.tree is not None:
-            self.tree.addPymeadTreeItem(mea)
-        return mea
+
+        return self.add_pymead_obj_by_ref(mea)
 
     def add_constraint(self):
         pass
 
-    def remove_constraint(self):
-        pass
+    def add_length_dimension(self, tool_point: Point, target_point: Point, length_param: LengthParam or None = None):
+        length_dim = LengthDimension(tool_point=tool_point, target_point=target_point, length_param=length_param)
 
-    def add_dimension(self):
-        pass
+        if length_dim.param().geo_col is None:
+            self.add_pymead_obj_by_ref(pymead_obj=length_dim.param())
 
-    def remove_dimension(self):
-        pass
+        return self.add_pymead_obj_by_ref(length_dim)
+
+    def add_angle_dimension(self, tool_point: Point, target_point: Point, angle_param: AngleDimension or None = None):
+        angle_dim = AngleDimension(tool_point=tool_point, target_point=target_point, angle_param=angle_param)
+
+        if angle_dim.param().geo_col is None:
+            self.add_pymead_obj_by_ref(pymead_obj=angle_dim.param())
+
+        return self.add_pymead_obj_by_ref(angle_dim)
+
+    def add_collinear_constraint(self, start_point: Point, middle_point: Point, end_point: Point):
+        collinear_constraint = CollinearConstraint(start_point=start_point, middle_point=middle_point,
+                                                   end_point=end_point)
+
+        return self.add_pymead_obj_by_ref(collinear_constraint)
+
+    def add_curvature_constraint(self, curve_joint: Point):
+        curvature_constraint = CurvatureConstraint(curve_joint=curve_joint)
+
+        return self.add_pymead_obj_by_ref(curvature_constraint)

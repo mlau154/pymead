@@ -24,6 +24,7 @@ class PCurveData:
 class ParametricCurve(PymeadObj, ABC):
     def __init__(self, sub_container: str, reference: bool = False):
         super().__init__(sub_container=sub_container)
+        self.curve_type = self.__class__.__name__
         self.reference = reference
 
     def update(self):

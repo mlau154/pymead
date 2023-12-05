@@ -10,6 +10,7 @@ class Bezier(ParametricCurve):
     def __init__(self, point_sequence: PointSequence, name: str or None = None, **kwargs):
         super().__init__(sub_container="bezier", **kwargs)
         self._point_sequence = None
+        self.degree = None
         self.set_point_sequence(point_sequence)
         name = "Bezier-1" if name is None else name
         self.set_name(name)
@@ -39,12 +40,14 @@ class Bezier(ParametricCurve):
 
     def set_point_sequence(self, point_sequence: PointSequence):
         self._point_sequence = point_sequence
+        self.degree = len(point_sequence) - 1
 
     def reverse_point_sequence(self):
         self.point_sequence().reverse()
 
     def insert_point(self, idx: int, point: Point):
         self.point_sequence().insert_point(idx, point)
+        self.degree += 1
 
     def point_removal_deletes_curve(self):
         return len(self.point_sequence()) <= 3
@@ -53,6 +56,7 @@ class Bezier(ParametricCurve):
         if isinstance(point, Point):
             idx = self.point_sequence().point_idx_from_ref(point)
         self.point_sequence().remove_point(idx)
+        self.degree -= 1
 
         if len(self.point_sequence()) > 2:
             delete_curve = False

@@ -3,7 +3,6 @@ import unittest
 import tempfile
 
 import numpy as np
-from matplotlib import pyplot as plt
 
 from pymead.core import UNITS
 from pymead.core.bezier2 import Bezier

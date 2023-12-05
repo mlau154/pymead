@@ -80,6 +80,8 @@ class Point(PymeadObj):
                 kwargs = dict(calling_point=self)
             elif "CollinearConstraint" in class_name:
                 kwargs = dict(calling_point=self, initial_x=initial_x, initial_y=initial_y)
+            elif "CurvatureConstraint" in class_name:
+                kwargs = dict(calling_point=self, initial_x=initial_x, initial_y=initial_y)
 
             # Enforce the constraint
             geo_con.enforce(**kwargs)

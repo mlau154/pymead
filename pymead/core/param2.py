@@ -222,6 +222,7 @@ class LengthParam(Param):
                  setting_from_geo_col: bool = False):
         self._unit = None
         self.set_unit(UNITS.current_length_unit())
+        name = "Length-1" if name is None else name
         super().__init__(value=value, name=name, lower=lower, upper=upper, setting_from_geo_col=setting_from_geo_col)
 
     def unit(self):
@@ -247,13 +248,22 @@ class LengthParam(Param):
             return UNITS.convert_length_from_base(new_value, self.unit())
 
     def set_lower(self, lower: float):
+        if self.point is None and lower < 0.0:
+            lower = 0.0
+
         return super().set_lower(UNITS.convert_length_to_base(lower, self.unit()))
 
     def set_upper(self, upper: float):
         return super().set_upper(UNITS.convert_length_to_base(upper, self.unit()))
 
     def set_value(self, value: float, bounds_normalized: bool = False):
-        return super().set_value(UNITS.convert_length_to_base(value, self.unit()), bounds_normalized=bounds_normalized)
+
+        # Negative lengths are prohibited unless this represents a point
+        if self.point is None and value < 0.0:
+            return
+
+        new_value = UNITS.convert_length_to_base(value, self.unit())
+        return super().set_value(new_value, bounds_normalized=bounds_normalized)
 
 
 class AngleParam(Param):
@@ -261,6 +271,7 @@ class AngleParam(Param):
                  setting_from_geo_col: bool = False):
         self._unit = None
         self.set_unit(UNITS.current_angle_unit())
+        name = "Angle-1" if name is None else name
         super().__init__(value=value, name=name, lower=lower, upper=upper, setting_from_geo_col=setting_from_geo_col)
 
     def unit(self):
@@ -297,13 +308,24 @@ class AngleParam(Param):
         return self._value
 
     def set_lower(self, lower: float):
+        if lower < 0.0:
+            lower = 0.0
+
         return super().set_lower(UNITS.convert_angle_to_base(lower, self.unit()))
 
     def set_upper(self, upper: float):
+        if upper > UNITS.convert_angle_from_base(2 * np.pi, self.unit()):
+            upper = UNITS.convert_angle_from_base(2 * np.pi, self.unit())
+
         return super().set_upper(UNITS.convert_angle_to_base(upper, self.unit()))
 
     def set_value(self, value: float, bounds_normalized: bool = False):
-        return super().set_value(UNITS.convert_angle_to_base(value, self.unit()), bounds_normalized=bounds_normalized)
+
+        new_value = UNITS.convert_angle_to_base(value, self.unit())
+
+        zero_to_2pi_value = new_value % (2 * np.pi)
+
+        return super().set_value(zero_to_2pi_value, bounds_normalized=bounds_normalized)
 
 
 # class ParamCollection:

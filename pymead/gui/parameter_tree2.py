@@ -1,13 +1,16 @@
 import sys
 from abc import abstractmethod
 
+import numpy as np
 from PyQt5.QtGui import QValidator
 from PyQt5.QtWidgets import QTreeWidget, QTreeWidgetItem, QPushButton, QHBoxLayout, QHeaderView, QDialog, QGridLayout, \
     QDoubleSpinBox, QLineEdit, QLabel, QDialogButtonBox, QMenu
 from PyQt5.QtCore import Qt, pyqtSignal, pyqtSlot, QRegularExpression
 
 from pymead.core.airfoil2 import Airfoil
-from pymead.core.constraints import GeoCon
+from pymead.core.constraints import GeoCon, CollinearConstraint, CurvatureConstraint
+from pymead.core import UNITS
+from pymead.core.dimensions import LengthDimension, AngleDimension
 from pymead.core.mea2 import MEA
 from pymead.core.point import Point
 from pymead.core.bezier2 import Bezier
@@ -47,20 +50,74 @@ class ValueSpin(QDoubleSpinBox):
         super().__init__(parent)
         self.setDecimals(6)
         self.setSingleStep(0.01)
+        if isinstance(param, LengthParam) or isinstance(param, AngleParam):
+            self.setSuffix(f" {param.unit()}")
         self.param = param
         if self.param.lower() is not None:
             self.setMinimum(self.param.lower())
         else:
+            # if isinstance(self.param, LengthParam) or isinstance(self.param, AngleParam):
+            #     self.setMinimum(0.0)
+            # else:
             self.setMinimum(-1.0e9)
         if self.param.upper() is not None:
             self.setMaximum(self.param.upper())
         else:
+            # if isinstance(self.param, AngleParam):
+            #     self.setMaximum(UNITS.convert_angle_to_base(2 * np.pi, self.param.unit()))
+            # else:
             self.setMaximum(1.0e9)
         self.setValue(self.param.value())
         self.valueChanged.connect(self.onValueChanged)
 
+    # def setValue(self, val):
+    #
+    #     print(f"{val = }")
+    #
+    #     if isinstance(self.param, LengthParam) and self.param.point is None and val < 0.0:
+    #         return
+    #     elif isinstance(self.param, AngleParam):
+    #         val = val % (2 * np.pi)
+    #
+    #     super().setValue(val)
+
+    # def validate(self, inp, pos):
+    #     if not hasattr(self, "param"):
+    #         return QValidator.Acceptable
+    #     elif isinstance(self.param, LengthParam) or isinstance(self.param, AngleParam) and len(inp.split()) > 1:
+    #
+    #         print(f"{inp = }, {pos = }")
+    #         val = float(inp.split()[0])
+    #         print(f"{val = }")
+    #
+    #         if isinstance(self.param, LengthParam) and val > 0.0:
+    #             return QValidator.Acceptable
+    #
+    #         if isinstance(self.param, AngleParam) and 0.0 <= val < UNITS.convert_angle_to_base(2 * np.pi,
+    #                                                                                            self.param.unit()):
+    #             return QValidator.Acceptable
+    #
+    #         return QValidator.Intermediate
+    #     else:
+    #         return QValidator.Acceptable
+    #
+    # def fixup(self, s):
+    #     suffix = None
+    #     s_split = s.split()
+    #     number = float(s_split[0])
+    #     if len(s_split) > 1:
+    #         suffix = s_split[1]
+    #     print(f"{s = }")
+    #
+    #     if (isinstance(self.param, LengthParam) or isinstance(self.param, AngleParam)) and number < 0.0:
+    #         return f"0.0 {suffix}"
+    #
+    #     if isinstance(self.param, AngleParam) and number > UNITS.convert_angle_from_base(2 * np.pi, self.param.unit()):
+    #         return f"{UNITS.convert_angle_from_base(2 * np.pi)} {suffix}"
+
     def onValueChanged(self, value: float):
         self.param.set_value(value)
+        self.setValue(self.param.value())
 
 
 class NameValidator(QValidator):
@@ -105,8 +162,16 @@ class LowerSpin(QDoubleSpinBox):
         self.setDecimals(6)
         self.setSingleStep(0.01)
         self.param = param
-        self.setMinimum(-1e9)
-        self.setMaximum(1e9)
+        if (isinstance(param, LengthParam) and self.param.point is None) or isinstance(param, AngleParam):
+            self.setMinimum(0.0)
+        else:
+            self.setMinimum(-1e9)
+
+        if isinstance(param, AngleParam):
+            self.setMaximum(UNITS.convert_angle_to_base(2 * np.pi, self.param.unit()))
+        else:
+            self.setMaximum(1e9)
+
         self.setValue(self.param.lower())
         self.valueChanged.connect(self.onValueChanged)
 
@@ -207,6 +272,14 @@ class ParamButton(TreeButton):
 
     def onValueChange(self, value: float):
         self.sigValueChanged.emit(value)
+
+
+class LengthParamButton(ParamButton):
+    pass
+
+
+class AngleParamButton(ParamButton):
+    pass
 
 
 class PointButton(TreeButton):
@@ -358,6 +431,123 @@ class MEAButton(TreeButton):
             self.tree.itemWidget(airfoil.tree_item, 0).setText(name)
 
 
+class LengthDimensionButton(TreeButton):
+
+    def __init__(self, length_dim: LengthDimension, tree):
+        super().__init__(pymead_obj=length_dim, tree=tree)
+        self.length_dimension = length_dim
+
+    def modifyDialogInternals(self, dialog: QDialog, layout: QGridLayout) -> None:
+        name_label = QLabel("Name", self)
+        name_edit = NameEdit(self, self.length_dimension, self.tree)
+        name_edit.textChanged.connect(self.onNameChange)
+        layout.addWidget(name_label, 1, 0)
+        layout.addWidget(name_edit, 1, 1)
+        labels = ["Tool Point", "Target Point"]
+        points = [self.length_dimension.tool(), self.length_dimension.target()]
+        for label, point in zip(labels, points):
+            point_button = PointButton(point, self.tree)
+            point_button.sigNameChanged.connect(self.onPointNameChange)
+            q_label = QLabel(label, self)
+            row_count = layout.rowCount()
+            layout.addWidget(q_label, row_count, 0)
+            layout.addWidget(point_button, row_count, 1)
+        row_count = layout.rowCount()
+        layout.addWidget(QLabel("Length Param", self), row_count, 0)
+        layout.addWidget(LengthParamButton(self.length_dimension.param(), self.tree), row_count, 1)
+
+    def onPointNameChange(self, name: str, point: Point):
+        if point.tree_item is not None:
+            self.tree.itemWidget(point.tree_item, 0).setText(name)
+
+
+class AngleDimensionButton(TreeButton):
+
+    def __init__(self, angle_dim: AngleDimension, tree):
+        super().__init__(pymead_obj=angle_dim, tree=tree)
+        self.angle_dimension = angle_dim
+
+    def modifyDialogInternals(self, dialog: QDialog, layout: QGridLayout) -> None:
+        name_label = QLabel("Name", self)
+        name_edit = NameEdit(self, self.angle_dimension, self.tree)
+        name_edit.textChanged.connect(self.onNameChange)
+        layout.addWidget(name_label, 1, 0)
+        layout.addWidget(name_edit, 1, 1)
+        labels = ["Tool Point", "Target Point"]
+        points = [self.angle_dimension.tool(), self.angle_dimension.target()]
+        for label, point in zip(labels, points):
+            point_button = PointButton(point, self.tree)
+            point_button.sigNameChanged.connect(self.onPointNameChange)
+            q_label = QLabel(label, self)
+            row_count = layout.rowCount()
+            layout.addWidget(q_label, row_count, 0)
+            layout.addWidget(point_button, row_count, 1)
+        row_count = layout.rowCount()
+        layout.addWidget(QLabel("Angle Param", self), row_count, 0)
+        layout.addWidget(LengthParamButton(self.angle_dimension.param(), self.tree), row_count, 1)
+
+    def onPointNameChange(self, name: str, point: Point):
+        if point.tree_item is not None:
+            self.tree.itemWidget(point.tree_item, 0).setText(name)
+
+
+class CollinearConstraintButton(TreeButton):
+
+    def __init__(self, collinear_constraint: CollinearConstraint, tree):
+        super().__init__(pymead_obj=collinear_constraint, tree=tree)
+        self.collinear_constraint = collinear_constraint
+
+    def modifyDialogInternals(self, dialog: QDialog, layout: QGridLayout) -> None:
+        name_label = QLabel("Name", self)
+        name_edit = NameEdit(self, self.collinear_constraint, self.tree)
+        name_edit.textChanged.connect(self.onNameChange)
+        layout.addWidget(name_label, 1, 0)
+        layout.addWidget(name_edit, 1, 1)
+        labels = ["Start Point", "Middle Point", "End Point"]
+        points = [self.collinear_constraint.target().points()[0], self.collinear_constraint.tool(),
+                  self.collinear_constraint.target().points()[1]]
+        for label, point in zip(labels, points):
+            point_button = PointButton(point, self.tree)
+            point_button.sigNameChanged.connect(self.onPointNameChange)
+            q_label = QLabel(label, self)
+            row_count = layout.rowCount()
+            layout.addWidget(q_label, row_count, 0)
+            layout.addWidget(point_button, row_count, 1)
+
+    def onPointNameChange(self, name: str, point: Point):
+        if point.tree_item is not None:
+            self.tree.itemWidget(point.tree_item, 0).setText(name)
+
+
+class CurvatureConstraintButton(TreeButton):
+
+    def __init__(self, curvature_constraint: CurvatureConstraint, tree):
+        super().__init__(pymead_obj=curvature_constraint, tree=tree)
+        self.curvature_constraint = curvature_constraint
+
+    def modifyDialogInternals(self, dialog: QDialog, layout: QGridLayout) -> None:
+        name_label = QLabel("Name", self)
+        name_edit = NameEdit(self, self.curvature_constraint, self.tree)
+        name_edit.textChanged.connect(self.onNameChange)
+        layout.addWidget(name_label, 1, 0)
+        layout.addWidget(name_edit, 1, 1)
+        labels = ["Curve 1 G2 Point", "Curve 1 G1 Point", "Curve Joint", "Curve 2 G1 Point", "Curve 2 G2 Point"]
+        points = [self.curvature_constraint.target().points()[0], self.curvature_constraint.target().points()[1],
+                  self.curvature_constraint.tool(),
+                  self.curvature_constraint.target().points()[2], self.curvature_constraint.target().points()[3]]
+        for label, point in zip(labels, points):
+            point_button = PointButton(point, self.tree)
+            point_button.sigNameChanged.connect(self.onPointNameChange)
+            q_label = QLabel(label, self)
+            row_count = layout.rowCount()
+            layout.addWidget(q_label, row_count, 0)
+            layout.addWidget(point_button, row_count, 1)
+
+    def onPointNameChange(self, name: str, point: Point):
+        if point.tree_item is not None:
+            self.tree.itemWidget(point.tree_item, 0).setText(name)
+
+
 class ParameterTree(QTreeWidget):
     def __init__(self, geo_col: GeometryCollection, parent):
         super().__init__(parent)
@@ -375,7 +565,8 @@ class ParameterTree(QTreeWidget):
             "bezier": "Bézier Curves",
             "airfoils": "Airfoils",
             "mea": "Multi-Element Airfoils",
-            "geocon": "Geometric Constraints"
+            "geocon": "Geometric Constraints",
+            "dims": "Dimensions"
         }
 
         self.items = [QTreeWidgetItem(None, [f"{self.container_titles[k]}"]) for k in self.geo_col.container().keys()]
@@ -393,93 +584,6 @@ class ParameterTree(QTreeWidget):
         self.setMinimumWidth(200)
         self.header().setSectionResizeMode(0, QHeaderView.Stretch)
 
-    def addParam(self, param: Param):
-        top_level_item = self.items[self.topLevelDict["params"]]
-        child_item = QTreeWidgetItem([""])
-        top_level_item.addChild(child_item)
-        param.tree_item = child_item
-        self.setItemWidget(child_item, 0, ParamButton(param, self))
-
-    def removeParam(self, param: Param):
-        top_level_item = self.items[self.topLevelDict["params"]]
-        top_level_item.removeChild(param.tree_item)
-        param.tree_item = None
-
-    def addDesVar(self, desvar: DesVar):
-        top_level_item = self.items[self.topLevelDict["desvar"]]
-        child_item = QTreeWidgetItem([""])
-        top_level_item.addChild(child_item)
-        desvar.tree_item = child_item
-        self.setItemWidget(child_item, 0, ParamButton(desvar, self))
-
-    def removeDesVar(self, desvar: DesVar):
-        top_level_item = self.items[self.topLevelDict["desvar"]]
-        top_level_item.removeChild(desvar.tree_item)
-        desvar.tree_item = None
-
-    def addLengthDesVar(self):
-        pass
-
-    def removeLengthDesVar(self):
-        pass
-
-    def addAngleDesVar(self):
-        pass
-
-    def removeAngleDesVar(self):
-        pass
-
-    def addPoint(self, point: Point):
-        top_level_item = self.items[self.topLevelDict["points"]]
-        child_item = QTreeWidgetItem([""])
-        top_level_item.addChild(child_item)
-        point.tree_item = child_item
-        self.setItemWidget(child_item, 0, PointButton(point, self))
-
-    def removePoint(self, point: Point):
-        top_level_item = self.items[self.topLevelDict["points"]]
-        top_level_item.removeChild(point.tree_item)
-        point.tree_item = None
-
-    def addBezier(self, bezier: Bezier):
-        top_level_item = self.items[self.topLevelDict["bezier"]]
-        child_item = QTreeWidgetItem([""])
-        top_level_item.addChild(child_item)
-        bezier.tree_item = child_item
-        bezier_button = BezierButton(bezier, self)
-        self.setItemWidget(child_item, 0, bezier_button)
-
-    def removeBezier(self, bezier: Bezier):
-        top_level_item = self.items[self.topLevelDict["bezier"]]
-        top_level_item.removeChild(bezier.tree_item)
-        bezier.tree_item = None
-
-    def addLine(self, line: LineSegment):
-        top_level_item = self.items[self.topLevelDict["lines"]]
-        child_item = QTreeWidgetItem([""])
-        top_level_item.addChild(child_item)
-        line.tree_item = child_item
-        line_button = LineSegmentButton(line, self)
-        self.setItemWidget(child_item, 0, line_button)
-
-    def removeLine(self, line: LineSegment):
-        top_level_item = self.items[self.topLevelDict["lines"]]
-        top_level_item.removeChild(line.tree_item)
-        line.tree_item = None
-
-    def addAirfoil(self, airfoil: Airfoil):
-        top_level_item = self.items[self.topLevelDict["airfoils"]]
-        child_item = QTreeWidgetItem([""])
-        top_level_item.addChild(child_item)
-        airfoil.tree_item = child_item
-        airfoil_button = AirfoilButton(airfoil, self)
-        self.setItemWidget(child_item, 0, airfoil_button)
-
-    def removeAirfoil(self, airfoil: Airfoil):
-        top_level_item = self.items[self.topLevelDict["airfoils"]]
-        top_level_item.removeChild(airfoil.tree_item)
-        airfoil.tree_item = None
-
     def addPymeadTreeItem(self, pymead_obj: PymeadObj):
         top_level_item = self.items[self.topLevelDict[pymead_obj.sub_container]]
         child_item = QTreeWidgetItem([""])
@@ -487,8 +591,19 @@ class ParameterTree(QTreeWidget):
         pymead_obj.tree_item = child_item
 
         button_args = (pymead_obj, self)
-        button_mappings = {"Param": "ParamButton", "Point": "PointButton", "Bezier": "BezierButton",
-                           "LineSegment": "LineSegmentButton", "Airfoil": "AirfoilButton", "MEA": "MEAButton"}
+        button_mappings = {"Param": "ParamButton",
+                           "LengthParam": "LengthParamButton",
+                           "AngleParam": "AngleParamButton",
+                           "Point": "PointButton",
+                           "Bezier": "BezierButton",
+                           "LineSegment": "LineSegmentButton",
+                           "Airfoil": "AirfoilButton",
+                           "MEA": "MEAButton",
+                           "LengthDimension": "LengthDimensionButton",
+                           "AngleDimension": "AngleDimensionButton",
+                           "CollinearConstraint": "CollinearConstraintButton",
+                           "CurvatureConstraint": "CurvatureConstraintButton",
+                           }
         button = getattr(sys.modules[__name__], button_mappings[type(pymead_obj).__name__])(*button_args)
 
         self.setItemWidget(child_item, 0, button)

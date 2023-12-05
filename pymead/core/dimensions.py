@@ -5,10 +5,12 @@ import numpy as np
 from pymead.core import UNITS
 from pymead.core.param2 import Param, LengthParam, AngleParam
 from pymead.core.point import PointSequence, Point
+from pymead.core.pymead_obj import PymeadObj
 
 
-class Dimension:
-    def __init__(self, tool: PointSequence or Point, target: PointSequence or Point, param: Param or None = None):
+class Dimension(PymeadObj):
+    def __init__(self, tool: PointSequence or Point, target: PointSequence or Point, param: Param or None = None,
+                 name: str or None = None):
         self._tool = None
         self._target = None
         self._param = None
@@ -16,6 +18,8 @@ class Dimension:
         self.set_tool(tool)
         self.set_target(target)
         self.set_param(param)
+        super().__init__(sub_container="dims")
+        self.set_name(name)
 
     def tool(self):
         return self._tool
@@ -56,6 +60,8 @@ class Dimension:
         else:
             self._param = param
             self.update_param_from_points()
+        if self not in self._param.dims:
+            self._param.dims.append(self)
 
     @abstractmethod
     def update_points_from_param(self):
@@ -67,21 +73,23 @@ class Dimension:
 
 
 class LengthDimension(Dimension):
-    def __init__(self, tool_point: Point, target_point: Point, length_param: LengthParam or None = None):
-        super().__init__(tool=tool_point, target=target_point, param=length_param)
+    def __init__(self, tool_point: Point, target_point: Point, length_param: LengthParam or None = None,
+                 name: str or None = None):
+        name = "LengthDim-1" if name is None else name
+        super().__init__(tool=tool_point, target=target_point, param=length_param, name=name)
 
     def update_points_from_param(self):
         target_angle = self.tool().measure_angle(self.target())
-        self.target().request_move(self.tool().x().value() + self.param().value() * np.cos(target_angle),
-                                   self.tool().y().value() + self.param().value() * np.sin(target_angle))
+        self.target().force_move(self.tool().x().value() + self.param().value() * np.cos(target_angle),
+                                 self.tool().y().value() + self.param().value() * np.sin(target_angle))
 
     def update_param_from_points(self):
         length = self.tool().measure_distance(self.target())
         if self.param() is None:
             if self.geo_col is None:
-                param = LengthParam(value=length, name="LengthDim")
+                param = LengthParam(value=length, name="Length-1")
             else:
-                param = self.geo_col.add_param(value=length, name="LengthDim", unit_type="length")
+                param = self.geo_col.add_param(value=length, name="Length-1", unit_type="length")
         else:
             param = self.param()
         param.set_value(self.tool().measure_distance(self.target()))
@@ -89,23 +97,25 @@ class LengthDimension(Dimension):
 
 
 class AngleDimension(Dimension):
-    def __init__(self, tool_point: Point, target_point: Point, angle_param: AngleParam or None = None):
-        super().__init__(tool=tool_point, target=target_point, param=angle_param)
+    def __init__(self, tool_point: Point, target_point: Point, angle_param: AngleParam or None = None,
+                 name: str or None = None):
+        name = "AngleDim-1" if name is None else name
+        super().__init__(tool=tool_point, target=target_point, param=angle_param, name=name)
 
     def update_points_from_param(self):
         target_length = self.tool().measure_distance(self.target())
-        self.target().request_move(self.tool().x().value() + target_length * np.cos(self.param().rad()),
-                                   self.tool().y().value() + target_length * np.sin(self.param().rad()))
+        self.target().force_move(self.tool().x().value() + target_length * np.cos(self.param().rad()),
+                                 self.tool().y().value() + target_length * np.sin(self.param().rad()))
 
     def update_param_from_points(self):
         angle = self.tool().measure_angle(self.target())
         if self.param() is None:
             if self.geo_col is None:
-                param = AngleParam(value=angle, name="AngleDim")
+                param = AngleParam(value=angle, name="Angle-1")
             else:
-                param = self.geo_col.add_param(value=angle, name="LengthDim", unit_type="angle")
+                param = self.geo_col.add_param(value=angle, name="Angle-1", unit_type="angle")
         else:
             param = self.param()
         param.set_value(UNITS.convert_angle_from_base(self.tool().measure_angle(self.target()),
-                                                    unit=UNITS.current_angle_unit()))
+                                                      unit=UNITS.current_angle_unit()))
         return param
