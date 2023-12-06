@@ -213,6 +213,9 @@ class GeometryCollection(DualRep):
 
         self.add_to_subcontainer(pymead_obj)
 
+        print(f"{pymead_obj = }")
+        print(f"{self.container()[pymead_obj.sub_container] = }")
+
         if self.tree is not None:
             self.tree.addPymeadTreeItem(pymead_obj=pymead_obj)
 
@@ -408,8 +411,12 @@ class GeometryCollection(DualRep):
         # Replace the corresponding x() or y() in parameter with the new design variable
         self.replace_geo_objs(tool=param, target=desvar)
 
-        # Make a copy of the geometry object reference list in the new design variable
+        # Make a copy of the geometry object reference lists in the new design variable
         desvar.geo_objs = param.geo_objs.copy()
+        desvar.geo_cons = param.geo_cons.copy()
+        desvar.dims = param.dims.copy()
+        for dim in desvar.dims:
+            dim.set_param(desvar)
 
         # Remove the parameter
         if param.point is None:
@@ -446,6 +453,10 @@ class GeometryCollection(DualRep):
 
         # Make a copy of the geometry object reference list in the new parameter
         param.geo_objs = desvar.geo_objs.copy()
+        param.geo_cons = desvar.geo_cons.copy()
+        param.dims = desvar.dims.copy()
+        for dim in param.dims:
+            dim.set_param(param)
 
         # Remove the design variable
         self.remove_pymead_obj(desvar)
@@ -468,8 +479,7 @@ class GeometryCollection(DualRep):
         """
         return [dv.value(bounds_normalized=bounds_normalized) for dv in self.container()["desvar"].values()]
 
-    def assign_design_variable_values(self, dv_values: typing.Union[typing.Iterable, typing.Sized],
-                                      bounds_normalized: bool = False):
+    def assign_design_variable_values(self, dv_values: list, bounds_normalized: bool = False):
         """
         Assigns a list or array of design variable values, possibly normalized by the bounds, to the design variables
         in the geometry collection 'desvar' container.

@@ -301,8 +301,8 @@ class ConstraintTests(unittest.TestCase):
         p3 = geo_col.add_point(0.12, 0.36)
         p4 = geo_col.add_point(0.05, -0.12)
         p5 = geo_col.add_point(0.35, -0.52)
-        geo_col.add_bezier(point_sequence=PointSequence(points=[p1, p2, p3]))
-        geo_col.add_bezier(point_sequence=PointSequence(points=[p1, p4, p5]))
+        b1 = geo_col.add_bezier(point_sequence=PointSequence(points=[p1, p2, p3]))
+        b2 = geo_col.add_bezier(point_sequence=PointSequence(points=[p1, p4, p5]))
         curvature_con = geo_col.add_curvature_constraint(curve_joint=p1)
 
         # Test the curvature data method
@@ -321,7 +321,6 @@ class ConstraintTests(unittest.TestCase):
         self.assertAlmostEqual(np.arctan2(-0.4, 0.3), data.theta2)
 
         curvature_con.enforce(p2)
-        # curvature_con.enforce(p3)
         data = curvature_con.calculate_curvature_data()
         self.assertAlmostEqual(data.phi1 % (2 * np.pi), (data.phi2 + np.pi) % (2 * np.pi))
         self.assertAlmostEqual(data.R1, data.R2)
@@ -334,6 +333,12 @@ class ConstraintTests(unittest.TestCase):
         self.assertAlmostEqual(data.psi2, old_psi2)
         self.assertAlmostEqual(data.phi1 % (2 * np.pi), (data.phi2 + np.pi) % (2 * np.pi))
         self.assertAlmostEqual(data.R1, data.R2)
+
+        # Check that the evaluated curvature at the curve joint matches exactly between both curves
+        b1_data = b1.evaluate()
+        b2_data = b2.evaluate()
+        self.assertAlmostEqual(b1_data.R[0], b2_data.R[0])
+        self.assertAlmostEqual(b1_data.k[0], b2_data.k[0])
 
     def test_length_dimension(self):
         # First, test the case where a param is directly specified

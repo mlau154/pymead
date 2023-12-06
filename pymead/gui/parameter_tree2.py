@@ -116,6 +116,7 @@ class ValueSpin(QDoubleSpinBox):
     #         return f"{UNITS.convert_angle_from_base(2 * np.pi)} {suffix}"
 
     def onValueChanged(self, value: float):
+        print(f"{value = }")
         if self.param.point is None:
             self.param.set_value(value)
         else:
@@ -123,7 +124,9 @@ class ValueSpin(QDoubleSpinBox):
                 self.param.point.request_move(value, self.param.point.y().value())
             elif self.param is self.param.point.y():
                 self.param.point.request_move(self.param.point.x().value(), value)
+        print(f"Now, {value = }")
         self.setValue(self.param.value())
+        print(f"{self.value() = }")
 
 
 class NameValidator(QValidator):
@@ -708,9 +711,9 @@ class ParameterTree(QTreeWidget):
                 pymead_obj = button.pymead_obj
                 pymead_obj_type = type(pymead_obj)
 
-                if pymead_obj_type is Param:
+                if pymead_obj_type in [Param, LengthParam, AngleParam]:
                     promoteAction = menu.addAction("Promote to Design Variable")
-                elif pymead_obj_type is DesVar:
+                elif pymead_obj_type in [DesVar, LengthDesVar, AngleDesVar]:
                     demoteAction = menu.addAction("Demote to Parameter")
 
                 removeObjectAction = menu.addAction("Delete")

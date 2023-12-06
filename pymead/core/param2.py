@@ -117,6 +117,7 @@ class Param(PymeadObj):
             geo_con.enforce("tool")
 
         for dim in self.dims:
+            print("Updating from param!")
             dim.update_points_from_param()
 
     def lower(self):
@@ -219,11 +220,13 @@ class Param(PymeadObj):
 
 class LengthParam(Param):
     def __init__(self, value: float, name: str, lower: float or None = None, upper: float or None = None,
+                 sub_container: str = "params",
                  setting_from_geo_col: bool = False, point=None):
         self._unit = None
         self.set_unit(UNITS.current_length_unit())
         name = "Length-1" if name is None else name
-        super().__init__(value=value, name=name, lower=lower, upper=upper, setting_from_geo_col=setting_from_geo_col,
+        super().__init__(value=value, name=name, lower=lower, upper=upper, sub_container=sub_container,
+                         setting_from_geo_col=setting_from_geo_col,
                          point=point)
 
     def unit(self):
@@ -269,11 +272,13 @@ class LengthParam(Param):
 
 class AngleParam(Param):
     def __init__(self, value: float, name: str, lower: float or None = None, upper: float or None = None,
+                 sub_container: str = "params",
                  setting_from_geo_col: bool = False):
         self._unit = None
         self.set_unit(UNITS.current_angle_unit())
         name = "Angle-1" if name is None else name
-        super().__init__(value=value, name=name, lower=lower, upper=upper, setting_from_geo_col=setting_from_geo_col)
+        super().__init__(value=value, name=name, lower=lower, upper=upper, sub_container=sub_container,
+                         setting_from_geo_col=setting_from_geo_col)
 
     def unit(self):
         return self._unit
@@ -385,7 +390,7 @@ class DesVar(Param):
     Design variable class; subclasses the base-level Param. Adds lower and upper bound default behavior.
     """
     def __init__(self, value: float, name: str, lower: float or None = None, upper: float or None = None,
-                 setting_from_geo_col: bool = False):
+                 sub_container: str = "desvar", setting_from_geo_col: bool = False):
         """
         Parameters
         ==========
@@ -413,7 +418,7 @@ class DesVar(Param):
         if upper is None:
             upper = default_upper(value)
 
-        super().__init__(value=value, name=name, lower=lower, upper=upper, sub_container="desvar",
+        super().__init__(value=value, name=name, lower=lower, upper=upper, sub_container=sub_container,
                          setting_from_geo_col=setting_from_geo_col)
 
 
@@ -451,7 +456,8 @@ class LengthDesVar(LengthParam):
         if upper is None:
             upper = default_upper(value)
 
-        super().__init__(value=value, name=name, lower=lower, upper=upper, setting_from_geo_col=setting_from_geo_col)
+        super().__init__(value=value, name=name, lower=lower, upper=upper, setting_from_geo_col=setting_from_geo_col,
+                         sub_container="desvar")
 
 
 class AngleDesVar(AngleParam):
@@ -488,4 +494,5 @@ class AngleDesVar(AngleParam):
         if upper is None:
             upper = default_upper(value)
 
-        super().__init__(value=value, name=name, lower=lower, upper=upper, setting_from_geo_col=setting_from_geo_col)
+        super().__init__(value=value, name=name, lower=lower, upper=upper, sub_container="desvar",
+                         setting_from_geo_col=setting_from_geo_col)

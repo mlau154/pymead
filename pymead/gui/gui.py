@@ -578,7 +578,7 @@ class GUI(QMainWindow):
         self.param_tree_instance.plot_change_recursive(
             self.param_tree_instance.p.param('Airfoil Parameters').child('Custom').children())
 
-    def import_parameter_list(self):
+    def import_design_variable_values(self):
         """This function imports a list of parameters normalized by their bounds"""
         file_filter = "DAT Files (*.dat)"
         dialog = LoadDialog(self, settings_var="parameter_list_default_open_location", file_filter=file_filter)
@@ -586,7 +586,9 @@ class GUI(QMainWindow):
             file_name = dialog.selectedFiles()[0]
             q_settings.setValue(dialog.settings_var, os.path.dirname(file_name))
             param_vec = np.loadtxt(file_name).tolist()
-            self.update_airfoil_parameters_from_vector(param_vec)
+            if isinstance(param_vec, float):
+                param_vec = [param_vec]
+            self.geo_col.assign_design_variable_values(param_vec, bounds_normalized=True)
 
     def import_algorithm_pkl_file(self):
         dialog = LoadAirfoilAlgFile(self)
@@ -637,13 +639,13 @@ class GUI(QMainWindow):
 
             self.update_airfoil_parameters_from_vector(x)
 
-    def export_parameter_list(self):
+    def export_design_variable_values(self):
         """This function imports a list of parameters normalized by their bounds"""
         file_filter = "DAT Files (*.dat)"
         dialog = SaveAsDialog(self, file_filter=file_filter)
         if dialog.exec_():
             file_name = dialog.selectedFiles()[0]
-            parameter_list, _ = self.mea.extract_parameters()
+            parameter_list = self.geo_col.extract_design_variable_values(bounds_normalized=True)
             np.savetxt(file_name, np.array(parameter_list))
 
     def plot_geometry(self):

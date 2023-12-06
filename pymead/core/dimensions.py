@@ -98,6 +98,7 @@ class LengthDimension(Dimension):
 
     def update_points_from_param(self):
         target_angle = self.tool().measure_angle(self.target())
+        print(f"Updating here from param! {self.tool() = }, {self.param().value() = }, {target_angle = }")
         self.target().request_move(self.tool().x().value() + self.param().value() * np.cos(target_angle),
                                    self.tool().y().value() + self.param().value() * np.sin(target_angle),
                                    requestor=self)

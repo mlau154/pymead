@@ -204,7 +204,6 @@ class AirfoilCanvas(pg.PlotWidget):
             return
         constraint = self.geo_col.add_curvature_constraint(curve_joint=self.selected_points[0].point)
         constraint.enforce(constraint.target().points()[1])
-        constraint.enforce(constraint.target().points()[0])
 
     def addPointToCurve(self, curve_item: HoverableCurve):
         self.adding_point_to_curve = curve_item

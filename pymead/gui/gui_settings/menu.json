@@ -5,14 +5,14 @@
     "Save As": "save_as_mea",
     "Save": ["save_mea", "Ctrl+S"],
     "Import": {
-      "Parameter List": "import_parameter_list",
+      "Design Variable Values": "import_design_variable_values",
       "Optimized Airfoil": "import_algorithm_pkl_file"
     },
     "Export": {
       "Airfoil Coordinates": "export_coordinates",
       "Control Points": "export_control_points",
       "NXOpen Macro": "export_nx_macro",
-      "Parameter List": "export_parameter_list",
+      "Design Variable Values": "export_design_variable_values",
       "IGES": "export_IGES"
     }
   },

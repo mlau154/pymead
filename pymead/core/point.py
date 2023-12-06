@@ -108,11 +108,8 @@ class Point(PymeadObj):
             # Enforce the constraint
             geo_con.enforce(**kwargs)
 
-        print(f"{requestor = }")
         for dim in self.dims:
-            print(f"{dim = }")
-            if requestor is not None:
-                print(f"{requestor.associated_dims = }")
+            print(f"{dim = }, {requestor = }")
             if requestor is not None and dim is requestor:
                 continue
             if requestor is not None and dim in requestor.associated_dims:
