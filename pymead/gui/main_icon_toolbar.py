@@ -59,19 +59,12 @@ class MainIconToolbar(QToolBar):
 
     def on_grid_button_pressed(self):
         # import pyqtgraph as pg
-        print(f"{q_settings.value('dark_theme_checked') = }")
-        if hasattr(self.parent.dockable_tab_window, "current_dock_widget"):
-            dw = self.parent.dockable_tab_window.current_dock_widget
+        if hasattr(self.parent, "current_dock_widget"):
+            dw = self.parent.current_dock_widget
         else:
-            dw = self.parent.dockable_tab_window.first_dock_widget
+            dw = self.parent.first_dock_widget
         if dw is None:
-            v = self.parent.v
-            x_state = v.ctrl.xGridCheck.checkState()
-            y_state = v.ctrl.yGridCheck.checkState()
-            if x_state or y_state:
-                v.showGrid(x=False, y=False)
-            else:
-                v.showGrid(x=True, y=True)
+            self.parent.airfoil_canvas.toggleGrid()
         else:
             if isinstance(dw.widget(), pg.GraphicsLayoutWidget):
                 v = dw.widget().getItem(0, 0)

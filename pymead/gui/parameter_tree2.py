@@ -116,7 +116,6 @@ class ValueSpin(QDoubleSpinBox):
     #         return f"{UNITS.convert_angle_from_base(2 * np.pi)} {suffix}"
 
     def onValueChanged(self, value: float):
-        print(f"{value = }")
         if self.param.point is None:
             self.param.set_value(value)
         else:
@@ -124,9 +123,7 @@ class ValueSpin(QDoubleSpinBox):
                 self.param.point.request_move(value, self.param.point.y().value())
             elif self.param is self.param.point.y():
                 self.param.point.request_move(self.param.point.x().value(), value)
-        print(f"Now, {value = }")
         self.setValue(self.param.value())
-        print(f"{self.value() = }")
 
 
 class NameValidator(QValidator):
@@ -638,6 +635,9 @@ class ParameterTree(QTreeWidget):
         # self.header().resizeSection(0, 320)
         self.setMinimumWidth(200)
         self.header().setSectionResizeMode(0, QHeaderView.Stretch)
+
+        # Set the tree to be expanded by default
+        self.expandAll()
 
     def addPymeadTreeItem(self, pymead_obj: PymeadObj):
         top_level_item = self.items[self.topLevelDict[pymead_obj.sub_container]]

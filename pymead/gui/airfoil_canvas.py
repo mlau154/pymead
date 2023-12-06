@@ -43,6 +43,15 @@ class AirfoilCanvas(pg.PlotWidget):
         self.point_text_item = None
         self.geo_col = geo_col
         self.geo_col.canvas = self
+        self.plot = self.getPlotItem()
+
+    def toggleGrid(self):
+        x_state = self.plot.ctrl.xGridCheck.checkState()
+        y_state = self.plot.ctrl.yGridCheck.checkState()
+        if x_state or y_state:
+            self.plot.showGrid(x=False, y=False)
+        else:
+            self.plot.showGrid(x=True, y=True)
 
     def drawPoint(self, x, y):
         self.geo_col.add_point(x[0], y[0])
