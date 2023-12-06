@@ -425,7 +425,7 @@ class ADDoubleSpinBox(QDoubleSpinBox):
         super().__init__(parent=parent)
         self.equation_edit = None
         self.AD_tab = AD_tab
-        design_tree_widget.sigSelChanged.connect(self.set_value_from_param_tree)
+        # design_tree_widget.sigSelChanged.connect(self.set_value_from_param_tree)
 
     def contextMenuEvent(self, event: QContextMenuEvent) -> None:
         menu = QMenu(self)

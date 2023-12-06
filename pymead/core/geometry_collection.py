@@ -27,6 +27,7 @@ class GeometryCollection(DualRep):
         }
         self.canvas = None
         self.tree = None
+        self.selected_points = []
         self.single_step = 0.01
 
     def container(self):
@@ -190,6 +191,56 @@ class GeometryCollection(DualRep):
 
         return self.add_pymead_obj_by_ref(param)
 
+    def select_point(self, point: Point):
+        if self.tree is not None:
+            self.tree.setItemStyle(point.tree_item, "default")
+            point.tree_item.hoverable = False
+            point.tree_item.setSelected(True)
+
+        if self.canvas is not None:
+            self.canvas.setItemStyle(point.canvas_item, "selected")
+            point.canvas_item.hoverable = False
+
+        if point not in self.selected_points:
+            self.selected_points.append(point)
+
+    def deselect_point(self, point: Point):
+        if self.tree is not None:
+            if point.tree_item is not None:
+                point.tree_item.hoverable = True
+                point.tree_item.setSelected(False)
+
+        if self.canvas is not None:
+            point.canvas_item.hoverable = True
+            self.canvas.setItemStyle(point.canvas_item, "default")
+
+        if point in self.selected_points:
+            self.selected_points.remove(point)
+
+    def clear_selected_points(self):
+        for point in self.selected_points[::-1]:
+            self.deselect_point(point)
+
+    def remove_selected_points(self):
+        if len(self.selected_points) > 0:
+            for pt in self.selected_points:
+                self.remove_pymead_obj(pt)
+        self.clear_selected_points()
+
+    def hover_enter_obj(self, pymead_obj: PymeadObj):
+        if self.tree is not None:
+            self.tree.setItemStyle(pymead_obj.tree_item, "hovered")
+
+        if self.canvas is not None:
+            self.canvas.setItemStyle(pymead_obj.canvas_item, "hovered")
+
+    def hover_leave_obj(self, pymead_obj: PymeadObj):
+        if self.tree is not None:
+            self.tree.setItemStyle(pymead_obj.tree_item, "default")
+
+        if self.canvas is not None:
+            self.canvas.setItemStyle(pymead_obj.canvas_item, "default")
+
     def add_pymead_obj_by_ref(self, pymead_obj: PymeadObj):
         """
         This method adds a pymead object by passing it directly to the geometry collection. If the
@@ -212,9 +263,6 @@ class GeometryCollection(DualRep):
         pymead_obj.geo_col = self
 
         self.add_to_subcontainer(pymead_obj)
-
-        print(f"{pymead_obj = }")
-        print(f"{self.container()[pymead_obj.sub_container] = }")
 
         if self.tree is not None:
             self.tree.addPymeadTreeItem(pymead_obj=pymead_obj)

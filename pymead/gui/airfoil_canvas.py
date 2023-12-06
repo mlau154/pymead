@@ -34,7 +34,6 @@ class AirfoilCanvas(pg.PlotWidget):
         self.setAspectLocked(True)
         self.disableAutoRange()
         self.points = []
-        self.selected_points = None
         self.drawing_object = None
         self.creating_collinear_constraint = None
         self.adding_point_to_curve = None
@@ -122,7 +121,7 @@ class AirfoilCanvas(pg.PlotWidget):
                 self.sigEnterPressed.connect(loop.quit)
                 self.sigEscapePressed.connect(loop.quit)
                 loop.exec()
-                if self.selected_points is not None:
+                if len(self.geo_col.selected_points) > 0:
                     action(self, *args, **kwargs)
                     self.clearSelectedPoints()
                 self.drawing_object = None
@@ -132,36 +131,36 @@ class AirfoilCanvas(pg.PlotWidget):
 
     @runSelectionEventLoop(drawing_object="Bezier", starting_message="Select the first Bezier control point")
     def drawBezier(self):
-        if len(self.selected_points) < 2:
+        if len(self.geo_col.selected_points) < 2:
             msg = f"Choose at least 2 points to define a curve"
             self.sigStatusBarUpdate.emit(msg, 2000)
             return
 
-        point_sequence = PointSequence([pt.point for pt in self.selected_points])
+        point_sequence = PointSequence([pt for pt in self.geo_col.selected_points])
         self.geo_col.add_bezier(point_sequence=point_sequence)
 
     @runSelectionEventLoop(drawing_object="LineSegment", starting_message="Select the first line endpoint")
     def drawLineSegment(self):
-        if len(self.selected_points) < 2:
+        if len(self.geo_col.selected_points) < 2:
             msg = f"Choose at least 2 points to define a curve"
             self.sigStatusBarUpdate.emit(msg, 2000)
             return
 
-        point_sequence = PointSequence([pt.point for pt in self.selected_points])
+        point_sequence = PointSequence([pt for pt in self.geo_col.selected_points])
         self.geo_col.add_line(point_sequence=point_sequence)
 
     @runSelectionEventLoop(drawing_object="Airfoil", starting_message="Select the leading edge point")
     def generateAirfoil(self):
-        if len(self.selected_points) not in [2, 4]:
+        if len(self.geo_col.selected_points) not in [2, 4]:
             self.sigStatusBarUpdate.emit(
                 "Choose either 2 points (sharp trailing edge) or 4 points (blunt trailing edge)"
                 " to generate an airfoil", 4000)
 
-        le = self.selected_points[0].point
-        te = self.selected_points[1].point
-        if len(self.selected_points) > 2:
-            upper_surf_end = self.selected_points[2].point
-            lower_surf_end = self.selected_points[3].point
+        le = self.geo_col.selected_points[0]
+        te = self.geo_col.selected_points[1]
+        if len(self.geo_col.selected_points) > 2:
+            upper_surf_end = self.geo_col.selected_points[2]
+            lower_surf_end = self.geo_col.selected_points[3]
         else:
             upper_surf_end = te
             lower_surf_end = te
@@ -171,47 +170,47 @@ class AirfoilCanvas(pg.PlotWidget):
 
     @runSelectionEventLoop(drawing_object="LengthDimension", starting_message="Select the tool point")
     def addLengthDimension(self):
-        if len(self.selected_points) not in [2, 3]:
+        if len(self.geo_col.selected_points) not in [2, 3]:
             self.sigStatusBarUpdate.emit("Choose either 2 points (no length parameter) or 3 points "
                                          "(specified length parameter)"
                                          " to add a length dimension", 4000)
 
-        tool_point = self.selected_points[0].point
-        target_point = self.selected_points[1].point
-        length_param = None if len(self.selected_points) <= 2 else self.selected_points[2].point
+        tool_point = self.geo_col.selected_points[0]
+        target_point = self.geo_col.selected_points[1]
+        length_param = None if len(self.geo_col.selected_points) <= 2 else self.geo_col.selected_points[2]
 
         self.geo_col.add_length_dimension(tool_point=tool_point, target_point=target_point, length_param=length_param)
 
     @runSelectionEventLoop(drawing_object="AngleDimension", starting_message="Select the tool point")
     def addAngleDimension(self):
-        if len(self.selected_points) not in [2, 3]:
+        if len(self.geo_col.selected_points) not in [2, 3]:
             self.sigStatusBarUpdate.emit("Choose either 2 points (no angle parameter) or 3 points "
                                          "(specified angle parameter)"
                                          " to add an angle dimension", 4000)
-        tool_point = self.selected_points[0].point
-        target_point = self.selected_points[1].point
-        angle_param = None if len(self.selected_points) <= 2 else self.selected_points[2].point
+        tool_point = self.geo_col.selected_points[0]
+        target_point = self.geo_col.selected_points[1]
+        angle_param = None if len(self.geo_col.selected_points) <= 2 else self.geo_col.selected_points[2]
 
         self.geo_col.add_angle_dimension(tool_point=tool_point, target_point=target_point, angle_param=angle_param)
 
     @runSelectionEventLoop(drawing_object="CollinearConstraint", starting_message="Select the start point")
     def addCollinearConstraint(self):
-        if len(self.selected_points) != 3:
+        if len(self.geo_col.selected_points) != 3:
             msg = f"Choose exactly 3 points for a collinear constraint"
             self.sigStatusBarUpdate.emit(msg, 2000)
             return
-        constraint = self.geo_col.add_collinear_constraint(start_point=self.selected_points[0].point,
-                                                           middle_point=self.selected_points[1].point,
-                                                           end_point=self.selected_points[2].point)
+        constraint = self.geo_col.add_collinear_constraint(start_point=self.geo_col.selected_points[0],
+                                                           middle_point=self.geo_col.selected_points[1],
+                                                           end_point=self.geo_col.selected_points[2])
         constraint.enforce("start")
 
     @runSelectionEventLoop(drawing_object="CurvatureConstraint", starting_message="Select the curve joint")
     def addCurvatureConstraint(self):
-        if len(self.selected_points) != 1:
+        if len(self.geo_col.selected_points) != 1:
             msg = f"Choose only one point (the curve joint) for a curvature constraint"
             self.sigStatusBarUpdate.emit(msg, 2000)
             return
-        constraint = self.geo_col.add_curvature_constraint(curve_joint=self.selected_points[0].point)
+        constraint = self.geo_col.add_curvature_constraint(curve_joint=self.geo_col.selected_points[0])
         constraint.enforce(constraint.target().points()[1])
 
     def addPointToCurve(self, curve_item: HoverableCurve):
@@ -220,8 +219,8 @@ class AirfoilCanvas(pg.PlotWidget):
         loop = QEventLoop()
         self.sigEnterPressed.connect(loop.quit)
         loop.exec()
-        point_to_add = self.selected_points[0]
-        preceding_point = self.selected_points[1]
+        point_to_add = self.geo_col.selected_points[0]
+        preceding_point = self.geo_col.selected_points[1]
         prev_item_index = curve_item.point_items.index(preceding_point)
         curve_item.point_items.insert(prev_item_index + 1, point_to_add)
         point_to_add.curveOwners.append(curve_item)
@@ -230,84 +229,84 @@ class AirfoilCanvas(pg.PlotWidget):
         self.adding_point_to_curve = None
 
     def appendSelectedPoint(self, plot_data_item: pg.PlotDataItem):
-        self.selected_points.append(plot_data_item)
+        self.geo_col.selected_points.append(plot_data_item.point)
 
     def pointClicked(self, scatter_item, spot, ev, point_item):
-        if self.selected_points is None:
-            self.selected_points = []
-        if point_item in self.selected_points:
+        if point_item in self.geo_col.selected_points:
             return
         if self.point_text_item is not None:
             self.removeItem(self.point_text_item)
             self.point_text_item = None
-        point_item.hoverable = False
-        point_item.setScatterStyle("selected")
+        # point_item.hoverable = False
+        # point_item.setScatterStyle("selected")
+        # point_item.point.tree_item.setSelected(True)
+
         if self.drawing_object == "Bezier":
-            self.appendSelectedPoint(point_item)
-            n_ctrl_pts = len(self.selected_points)
+            self.geo_col.select_point(point_item.point)
+            n_ctrl_pts = len(self.geo_col.selected_points)
             degree = n_ctrl_pts - 1
-            msg = (f"Added control point to curve. Number of control points: {len(self.selected_points)} "
+            msg = (f"Added control point to curve. Number of control points: {len(self.geo_col.selected_points)} "
                    f"(degree: {degree}). Press 'Enter' to generate the curve.")
             self.sigStatusBarUpdate.emit(msg, 0)
         elif self.drawing_object == "LineSegment":
-            if len(self.selected_points) < 2:
-                self.appendSelectedPoint(point_item)
-            if len(self.selected_points) == 2:
+            if len(self.geo_col.selected_points) < 2:
+                self.geo_col.select_point(point_item.point)
+            if len(self.geo_col.selected_points) == 2:
                 self.sigEnterPressed.emit()  # Complete the line after selecting the second point
         elif self.adding_point_to_curve is not None:
-            if len(self.selected_points) < 2:
-                self.appendSelectedPoint(point_item)
-            if len(self.selected_points) == 1:
+            if len(self.geo_col.selected_points) < 2:
+                self.geo_col.select_point(point_item.point)
+            if len(self.geo_col.selected_points) == 1:
                 self.sigStatusBarUpdate.emit("Now, choose the preceding point in the sequence", 0)
-            if len(self.selected_points) == 2:
+            if len(self.geo_col.selected_points) == 2:
                 self.sigEnterPressed.emit()
         elif self.drawing_object == "Airfoil":
-            self.appendSelectedPoint(point_item)
-            if len(self.selected_points) == 1:
+            self.geo_col.select_point(point_item.point)
+            if len(self.geo_col.selected_points) == 1:
                 self.sigStatusBarUpdate.emit("Now, select the trailing edge point. For a blunt trailing edge, the "
                                              "point must have two associated lines (connecting to the upper and lower"
                                              " surface end points).", 0)
-            elif len(self.selected_points) == 2:
+            elif len(self.geo_col.selected_points) == 2:
                 self.sigStatusBarUpdate.emit("Now, select the upper surface endpoint. For a sharp trailing edge, "
                                              "press the enter key to finish generating the airfoil.", 0)
-            elif len(self.selected_points) == 3:
+            elif len(self.geo_col.selected_points) == 3:
                 self.sigStatusBarUpdate.emit("Now, select the lower surface endpoint.", 0)
-            elif len(self.selected_points) == 4:
+            elif len(self.geo_col.selected_points) == 4:
                 self.sigEnterPressed.emit()
         elif self.drawing_object == "LengthDimension":
-            self.appendSelectedPoint(point_item)
-            if len(self.selected_points) == 1:
+            self.geo_col.select_point(point_item.point)
+            if len(self.geo_col.selected_points) == 1:
                 self.sigStatusBarUpdate.emit("Now, choose the target point.", 0)
-            elif len(self.selected_points) == 2:
+            elif len(self.geo_col.selected_points) == 2:
                 # TODO: implement the ability to select a parameter from the tree here
                 self.sigEnterPressed.emit()
-            elif len(self.selected_points) == 3:
+            elif len(self.geo_col.selected_points) == 3:
                 # TODO: this currently will not be called until the above TODO is implemented
                 self.sigEnterPressed.emit()
         elif self.drawing_object == "AngleDimension":
-            self.appendSelectedPoint(point_item)
-            if len(self.selected_points) == 1:
+            self.geo_col.select_point(point_item.point)
+            if len(self.geo_col.selected_points) == 1:
                 self.sigStatusBarUpdate.emit("Now, choose the target point.", 0)
-            elif len(self.selected_points) == 2:
+            elif len(self.geo_col.selected_points) == 2:
                 # TODO: implement the ability to select a parameter from the tree here
                 self.sigEnterPressed.emit()
-            elif len(self.selected_points) == 3:
+            elif len(self.geo_col.selected_points) == 3:
                 # TODO: this currently will not be called until the above TODO is implemented
                 self.sigEnterPressed.emit()
         elif self.drawing_object == "CollinearConstraint":
-            self.appendSelectedPoint(point_item)
-            if len(self.selected_points) == 1:
+            self.geo_col.select_point(point_item.point)
+            if len(self.geo_col.selected_points) == 1:
                 self.sigStatusBarUpdate.emit("Now, choose the middle point", 0)
-            elif len(self.selected_points) == 2:
+            elif len(self.geo_col.selected_points) == 2:
                 self.sigStatusBarUpdate.emit("Finally, choose the end point", 0)
-            elif len(self.selected_points) == 3:
+            elif len(self.geo_col.selected_points) == 3:
                 self.sigEnterPressed.emit()
         elif self.drawing_object == "CurvatureConstraint":
-            self.appendSelectedPoint(point_item)
-            if len(self.selected_points) == 1:
+            self.geo_col.select_point(point_item.point)
+            if len(self.geo_col.selected_points) == 1:
                 self.sigEnterPressed.emit()
         else:
-            self.appendSelectedPoint(point_item)
+            self.geo_col.select_point(point_item.point)
 
     def pointMoved(self, point: DraggablePoint):
         if self.point_text_item is not None:
@@ -316,31 +315,65 @@ class AirfoilCanvas(pg.PlotWidget):
         for curve in point.curveOwners:
             curve.updateCurveItem()
 
+    def setItemStyle(self, item, style: str):
+        valid_styles = ["default", "hovered", "selected"]
+        if style not in valid_styles:
+            raise ValueError(f"Style found ({style}) is not a valid style. Must be one of {valid_styles}.")
+
+        if style == "hovered":
+            # Point
+            if isinstance(item, DraggablePoint):
+                self.point_hovered_item = item
+                point = self.point_hovered_item
+                if self.point_text_item is None:
+                    self.point_text_item = pg.TextItem(
+                        f"{point.point.name()}\nx: {point.point.x().value():.6f}\ny: {point.point.y().value():.6f}",
+                        anchor=(0, 1))
+                    self.addItem(self.point_text_item)
+                    self.point_text_item.setPos(point.point.x().value(), point.point.y().value())
+                item.setScatterStyle(mode="hovered")
+            # Curve
+            elif isinstance(item, HoverableCurve):
+                self.curve_hovered_item = item
+                item.setCurveStyle("hovered")
+
+        elif style == "default":
+            # Point
+            if isinstance(item, DraggablePoint):
+                self.point_hovered_item = None
+                self.removeItem(self.point_text_item)
+                self.point_text_item = None
+                item.setScatterStyle(mode="default")
+            # Curve
+            elif isinstance(item, HoverableCurve):
+                self.curve_hovered_item = None
+                item.setCurveStyle("default")
+
+        elif style == "selected":
+            # Point
+            if isinstance(item, DraggablePoint):
+                self.point_hovered_item = None
+                self.removeItem(self.point_text_item)
+                self.point_text_item = None
+                item.setScatterStyle(mode="selected")
+            # Curve
+            # elif isinstance(item, HoverableCurve):
+            #     self.curve_hovered_item = None
+            #     item.setCurveStyle("default")
+
     def pointHovered(self, scatter_item, spot, ev, point_item):
         if point_item.dragPoint is not None:
             return
-        self.point_hovered_item = point_item
-        point = self.point_hovered_item.point
-        if self.point_text_item is None:
-            self.point_text_item = pg.TextItem(
-                f"{point.name()}\nx: {point.x().value():.6f}\ny: {point.y().value():.6f}", anchor=(0, 1))
-            self.addItem(self.point_text_item)
-            self.point_text_item.setPos(point.x().value(), point.y().value())
-        point_item.setScatterStyle(mode="hovered")
+        self.geo_col.hover_enter_obj(point_item.point)
 
     def pointLeaveHovered(self, scatter_item, spot, ev, point_item):
-        self.point_hovered_item = None
-        self.removeItem(self.point_text_item)
-        self.point_text_item = None
-        point_item.setScatterStyle(mode="default")
+        self.geo_col.hover_leave_obj(point_item.point)
 
     def curveHovered(self, item):
-        self.curve_hovered_item = item
-        item.setCurveStyle("hovered")
+        self.geo_col.hover_enter_obj(item.parametric_curve)
 
     def curveLeaveHovered(self, item):
-        self.curve_hovered_item = None
-        item.setCurveStyle("default")
+        self.geo_col.hover_leave_obj(item.parametric_curve)
 
     def removeCurve(self, item):
         self.geo_col.remove_pymead_obj(item.parametric_curve)
@@ -354,7 +387,7 @@ class AirfoilCanvas(pg.PlotWidget):
         self.clearSelectedPoints()
 
     def deepcopy_point(self):
-        point = self.selected_points[0].point
+        point = self.geo_col.selected_points[0]
         new_point = deepcopy(point)
         print(f"{point.tree_item = }, {new_point.tree_item = }, {point.canvas_item = }, {new_point.canvas_item = }")
 
@@ -406,18 +439,10 @@ class AirfoilCanvas(pg.PlotWidget):
             self.selectPointsToDeepcopy()
 
     def removeSelectedPoints(self):
-        if self.selected_points is not None:
-            for pt in self.selected_points:
-                self.geo_col.remove_pymead_obj(pt.point)
-            self.clearSelectedPoints()
+        self.geo_col.remove_selected_points()
 
     def clearSelectedPoints(self):
-        if self.selected_points is None:
-            return
-        for pt in self.selected_points:
-            pt.setScatterStyle("default")
-            pt.hoverable = True
-        self.selected_points = None
+        self.geo_col.clear_selected_points()
 
     def onLineItemAdded(self, line_item):
         line_item.sigCurveHovered.connect(self.curveHovered)
@@ -426,29 +451,29 @@ class AirfoilCanvas(pg.PlotWidget):
     def arrowKeyPointMove(self, key, mods):
         step = 10 * self.geo_col.single_step if mods == Qt.ShiftModifier else self.geo_col.single_step
         if key == Qt.Key_Left:
-            for point in self.selected_points:
-                point.point.request_move(point.point.x().value() - step, point.point.y().value())
+            for point in self.geo_col.selected_points:
+                point.request_move(point.x().value() - step, point.y().value())
         elif key == Qt.Key_Right:
-            for point in self.selected_points:
-                point.point.request_move(point.point.x().value() + step, point.point.y().value())
+            for point in self.geo_col.selected_points:
+                point.request_move(point.x().value() + step, point.y().value())
         elif key == Qt.Key_Up:
-            for point in self.selected_points:
-                point.point.request_move(point.point.x().value(), point.point.y().value() + step)
+            for point in self.geo_col.selected_points:
+                point.request_move(point.x().value(), point.y().value() + step)
         elif key == Qt.Key_Down:
-            for point in self.selected_points:
-                point.point.request_move(point.point.x().value(), point.point.y().value() - step)
+            for point in self.geo_col.selected_points:
+                point.request_move(point.x().value(), point.y().value() - step)
 
     def keyPressEvent(self, ev):
         mods = QApplication.keyboardModifiers()
         if ev.key() == Qt.Key_Return:
             self.sigEnterPressed.emit()
         elif ev.key() == Qt.Key_Delete:
-            self.removeSelectedPoints()
+            self.geo_col.remove_selected_points()
         elif ev.key() == Qt.Key_Escape:
-            self.clearSelectedPoints()
+            self.geo_col.clear_selected_points()
             self.sigStatusBarUpdate.emit("", 0)
             self.sigEscapePressed.emit()
-        elif ev.key() in (Qt.Key_Left, Qt.Key_Right, Qt.Key_Down, Qt.Key_Up) and self.selected_points is not None:
+        elif ev.key() in (Qt.Key_Left, Qt.Key_Right, Qt.Key_Down, Qt.Key_Up) and len(self.geo_col.selected_points) > 0:
             self.arrowKeyPointMove(ev.key(), mods)
 
 

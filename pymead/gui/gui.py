@@ -1057,7 +1057,7 @@ class GUI(QMainWindow):
             return
 
         self.dialog = MultiAirfoilDialog(parent=self, settings_override=self.multi_airfoil_analysis_settings,
-                                         design_tree_widget=self.design_tree_widget)
+                                         design_tree_widget=self.parameter_tree)
         self.dialog.show()
         self.dialog.accepted.connect(self.multi_airfoil_analysis_accepted)
         self.dialog.rejected.connect(self.multi_airfoil_analysis_rejected)

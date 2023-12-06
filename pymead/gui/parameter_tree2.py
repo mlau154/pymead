@@ -1,10 +1,12 @@
 import sys
+import typing
 from abc import abstractmethod
 
 import numpy as np
-from PyQt5.QtGui import QValidator
+from PyQt5 import QtGui
+from PyQt5.QtGui import QValidator, QFont, QBrush, QColor
 from PyQt5.QtWidgets import QTreeWidget, QTreeWidgetItem, QPushButton, QHBoxLayout, QHeaderView, QDialog, QGridLayout, \
-    QDoubleSpinBox, QLineEdit, QLabel, QDialogButtonBox, QMenu
+    QDoubleSpinBox, QLineEdit, QLabel, QDialogButtonBox, QMenu, QAbstractItemView
 from PyQt5.QtCore import Qt, pyqtSignal, pyqtSlot, QRegularExpression
 
 from pymead.core.airfoil2 import Airfoil
@@ -203,8 +205,10 @@ class UpperSpin(QDoubleSpinBox):
 class TreeButton(QPushButton):
     sigNameChanged = pyqtSignal(str, object)
 
-    def __init__(self, pymead_obj: PymeadObj, tree):
-        super().__init__(pymead_obj.name())
+    def __init__(self, pymead_obj: PymeadObj, tree, top_level: bool = False):
+        label = "Edit" if top_level else pymead_obj.name()
+        self.top_level = top_level
+        super().__init__(label)
         self.setMaximumWidth(100)
         self.pymead_obj = pymead_obj
         self.tree = tree
@@ -220,7 +224,10 @@ class TreeButton(QPushButton):
     def onNameChange(self, name: str):
         if self.dialog is not None:
             self.dialog.setWindowTitle(f"{name}")
-        self.setText(name)
+        if self.top_level:
+            self.pymead_obj.tree_item.setText(0, name)
+        else:
+            self.setText(name)
         self.sigNameChanged.emit(name, self.pymead_obj)
 
     def createDialog(self):
@@ -247,8 +254,8 @@ class TreeButton(QPushButton):
 class ParamButton(TreeButton):
     sigValueChanged = pyqtSignal(float)  # value
 
-    def __init__(self, param: Param, tree, name_editable: bool = True):
-        super().__init__(pymead_obj=param, tree=tree)
+    def __init__(self, param: Param, tree, name_editable: bool = True, top_level: bool = False):
+        super().__init__(pymead_obj=param, tree=tree, top_level=top_level)
         self.name_editable = name_editable
         self.param = param
 
@@ -293,8 +300,8 @@ class AngleParamButton(ParamButton):
 class DesVarButton(TreeButton):
     sigValueChanged = pyqtSignal(float)  # value
 
-    def __init__(self, desvar: DesVar, tree, name_editable: bool = True):
-        super().__init__(pymead_obj=desvar, tree=tree)
+    def __init__(self, desvar: DesVar, tree, name_editable: bool = True, top_level: bool = False):
+        super().__init__(pymead_obj=desvar, tree=tree, top_level=top_level)
         self.name_editable = name_editable
         self.desvar = desvar
 
@@ -336,8 +343,8 @@ class AngleDesVarButton(DesVarButton):
 
 class PointButton(TreeButton):
 
-    def __init__(self, point: Point, tree):
-        super().__init__(pymead_obj=point, tree=tree)
+    def __init__(self, point: Point, tree, top_level: bool = False):
+        super().__init__(pymead_obj=point, tree=tree, top_level=top_level)
         self.point = point
         self.x_button = None
         self.y_button = None
@@ -371,16 +378,22 @@ class PointButton(TreeButton):
         super().onNameChange(name=name)
 
     def enterEvent(self, a0):
-        self.point.canvas_item.setScatterStyle("hovered")
+        if self.top_level:
+            return
+        if self.pymead_obj.tree_item.hoverable:
+            self.tree.geo_col.hover_enter_obj(self.pymead_obj)
 
     def leaveEvent(self, a0):
-        self.point.canvas_item.setScatterStyle("default")
+        if self.top_level:
+            return
+        if self.pymead_obj.tree_item.hoverable:
+            self.tree.geo_col.hover_leave_obj(self.pymead_obj)
 
 
 class BezierButton(TreeButton):
 
-    def __init__(self, bezier: Bezier, tree):
-        super().__init__(pymead_obj=bezier, tree=tree)
+    def __init__(self, bezier: Bezier, tree, top_level: bool = False):
+        super().__init__(pymead_obj=bezier, tree=tree, top_level=top_level)
         self.bezier = bezier
 
     def modifyDialogInternals(self, dialog: QDialog, layout: QGridLayout) -> None:
@@ -407,8 +420,8 @@ class BezierButton(TreeButton):
 
 class LineSegmentButton(TreeButton):
 
-    def __init__(self, line: LineSegment, tree):
-        super().__init__(pymead_obj=line, tree=tree)
+    def __init__(self, line: LineSegment, tree, top_level: bool = False):
+        super().__init__(pymead_obj=line, tree=tree, top_level=top_level)
         self.line = line
 
     def modifyDialogInternals(self, dialog: QDialog, layout: QGridLayout) -> None:
@@ -434,8 +447,8 @@ class LineSegmentButton(TreeButton):
 
 
 class AirfoilButton(TreeButton):
-    def __init__(self, airfoil: Airfoil, tree):
-        super().__init__(pymead_obj=airfoil, tree=tree)
+    def __init__(self, airfoil: Airfoil, tree, top_level: bool = False):
+        super().__init__(pymead_obj=airfoil, tree=tree, top_level=top_level)
         self.airfoil = airfoil
 
     def modifyDialogInternals(self, dialog: QDialog, layout: QGridLayout) -> None:
@@ -462,8 +475,8 @@ class AirfoilButton(TreeButton):
 
 
 class MEAButton(TreeButton):
-    def __init__(self, mea: MEA, tree):
-        super().__init__(pymead_obj=mea, tree=tree)
+    def __init__(self, mea: MEA, tree, top_level: bool = False):
+        super().__init__(pymead_obj=mea, tree=tree, top_level=top_level)
         self.mea = mea
 
     def modifyDialogInternals(self, dialog: QDialog, layout: QGridLayout) -> None:
@@ -485,8 +498,8 @@ class MEAButton(TreeButton):
 
 class LengthDimensionButton(TreeButton):
 
-    def __init__(self, length_dim: LengthDimension, tree):
-        super().__init__(pymead_obj=length_dim, tree=tree)
+    def __init__(self, length_dim: LengthDimension, tree, top_level: bool = False):
+        super().__init__(pymead_obj=length_dim, tree=tree, top_level=top_level)
         self.length_dimension = length_dim
 
     def modifyDialogInternals(self, dialog: QDialog, layout: QGridLayout) -> None:
@@ -515,8 +528,8 @@ class LengthDimensionButton(TreeButton):
 
 class AngleDimensionButton(TreeButton):
 
-    def __init__(self, angle_dim: AngleDimension, tree):
-        super().__init__(pymead_obj=angle_dim, tree=tree)
+    def __init__(self, angle_dim: AngleDimension, tree, top_level: bool = False):
+        super().__init__(pymead_obj=angle_dim, tree=tree, top_level=top_level)
         self.angle_dimension = angle_dim
 
     def modifyDialogInternals(self, dialog: QDialog, layout: QGridLayout) -> None:
@@ -545,8 +558,8 @@ class AngleDimensionButton(TreeButton):
 
 class CollinearConstraintButton(TreeButton):
 
-    def __init__(self, collinear_constraint: CollinearConstraint, tree):
-        super().__init__(pymead_obj=collinear_constraint, tree=tree)
+    def __init__(self, collinear_constraint: CollinearConstraint, tree, top_level: bool = False):
+        super().__init__(pymead_obj=collinear_constraint, tree=tree, top_level=top_level)
         self.collinear_constraint = collinear_constraint
 
     def modifyDialogInternals(self, dialog: QDialog, layout: QGridLayout) -> None:
@@ -573,8 +586,8 @@ class CollinearConstraintButton(TreeButton):
 
 class CurvatureConstraintButton(TreeButton):
 
-    def __init__(self, curvature_constraint: CurvatureConstraint, tree):
-        super().__init__(pymead_obj=curvature_constraint, tree=tree)
+    def __init__(self, curvature_constraint: CurvatureConstraint, tree, top_level: bool = False):
+        super().__init__(pymead_obj=curvature_constraint, tree=tree, top_level=top_level)
         self.curvature_constraint = curvature_constraint
 
     def modifyDialogInternals(self, dialog: QDialog, layout: QGridLayout) -> None:
@@ -600,15 +613,24 @@ class CurvatureConstraintButton(TreeButton):
             self.tree.itemWidget(point.tree_item, 0).setText(name)
 
 
+class PymeadTreeWidgetItem(QTreeWidgetItem):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.hoverable = True
+
+
 class ParameterTree(QTreeWidget):
     def __init__(self, geo_col: GeometryCollection, parent):
         super().__init__(parent)
 
+        # Exchange references with the geometry collection
         self.geo_col = geo_col
         self.geo_col.tree = self
 
-        self.setColumnCount(1)
+        # Single column for the tree
+        self.setColumnCount(2)
 
+        # Aliases (suitable for display) for the sub-containers
         self.container_titles = {
             "desvar": "Design Variables",
             "params": "Parameters",
@@ -621,7 +643,9 @@ class ParameterTree(QTreeWidget):
             "dims": "Dimensions"
         }
 
-        self.items = [QTreeWidgetItem(None, [f"{self.container_titles[k]}"]) for k in self.geo_col.container().keys()]
+        # Set the top-level items (sub_containers)
+        self.items = [PymeadTreeWidgetItem(
+            None, [f"{self.container_titles[k]}"]) for k in self.geo_col.container().keys()]
         self.topLevelDict = {k: i for i, k in enumerate(self.geo_col.container().keys())}
         self.insertTopLevelItems(0, self.items)
 
@@ -632,16 +656,98 @@ class ParameterTree(QTreeWidget):
         self.headerRow.sigCollapsePressed.connect(self.onCollapsePressed)
         self.setHeader(self.headerRow)
 
-        # self.header().resizeSection(0, 320)
+        # Set the tree widget geometry
         self.setMinimumWidth(200)
         self.header().setSectionResizeMode(0, QHeaderView.Stretch)
 
         # Set the tree to be expanded by default
         self.expandAll()
 
+        # Set the selection mode to extended. This allows the user to perform the usual operations of Shift-Click,
+        # Ctrl-Click, or drag to select multiple tree items at once
+        self.setSelectionMode(QAbstractItemView.ExtendedSelection)
+
+        # Item selection changed connection
+        self.previous_items = None
+        self.itemSelectionChanged.connect(self.onItemSelectionChanged)
+
+        # Allow mouse tracking so we can implement a hover method
+        self.setMouseTracking(True)
+
+        # Previous item hovered
+        self.previous_item_hovered = None
+
+        # Sort the items in ascending order (A to Z)
+        self.sortItems(0, Qt.SortOrder.AscendingOrder)
+
+    def onItemSelectionChanged(self):
+        if self.previous_items is not None:
+            for item in self.previous_items:
+                if item.parent() is not None and item.parent().text(0) == "Points" and item not in self.selectedItems():
+                    button = self.itemWidget(item, 1)
+                    if button is not None:
+                        point = button.point
+                        self.geo_col.deselect_point(point)
+
+        for item in self.selectedItems():
+            if item.parent() is not None and item.parent().text(0) == "Points":
+                button = self.itemWidget(item, 1)
+                if button is not None:
+                    point = button.point
+                    self.geo_col.select_point(point)
+
+        self.previous_items = self.selectedItems()
+
+    def mouseMoveEvent(self, event):
+        """
+        Since the QTreeWidget does not emit a Hover signal, we effectively create one here by tracking the position
+        of the mouse when it is inside the Parameter Tree and check whether there is a PymeadTreeWidgetItem under
+        the mouse.
+        """
+        # Tracks the tree widget for a hover event, since a hover signal is not implemented in QTreeWidget
+        tree_item = self.itemAt(event.x(), event.y())
+
+        # Hover leave
+        if (self.previous_item_hovered is not None and tree_item is not self.previous_item_hovered and
+                self.previous_item_hovered.hoverable):
+            button = self.itemWidget(self.previous_item_hovered, 1)
+            if button is not None:
+                self.geo_col.hover_leave_obj(button.pymead_obj)
+            else:
+                self.setItemStyle(self.previous_item_hovered, "default")
+
+        if not isinstance(tree_item, PymeadTreeWidgetItem):
+            self.previous_item_hovered = tree_item
+            return
+
+        if tree_item.hoverable:
+            # Hover enter
+            if tree_item is not None:
+                button = self.itemWidget(tree_item, 1)
+                if button is not None:
+                    self.geo_col.hover_enter_obj(button.pymead_obj)
+                else:
+                    self.setItemStyle(tree_item, "hovered")
+
+        # Assign the current tree widget item to the previous item hovered
+        self.previous_item_hovered = tree_item
+
+    def leaveEvent(self, a0):
+        """
+        Reimplement the leave event to handle the case where the mouse exits directly sideways through the "Edit"
+        button. In this case, the mouseMoveEvent will not catch the hover leave, so we need to put that logic here.
+        """
+        if self.previous_item_hovered is not None and self.previous_item_hovered.hoverable:
+            button = self.itemWidget(self.previous_item_hovered, 1)
+            if button is not None:
+                self.geo_col.hover_leave_obj(button.pymead_obj)
+            else:
+                self.setItemStyle(self.previous_item_hovered, "default")
+            self.previous_item_hovered = None
+
     def addPymeadTreeItem(self, pymead_obj: PymeadObj):
         top_level_item = self.items[self.topLevelDict[pymead_obj.sub_container]]
-        child_item = QTreeWidgetItem([""])
+        child_item = PymeadTreeWidgetItem([pymead_obj.name()])
         top_level_item.addChild(child_item)
         pymead_obj.tree_item = child_item
 
@@ -662,9 +768,9 @@ class ParameterTree(QTreeWidget):
                            "CollinearConstraint": "CollinearConstraintButton",
                            "CurvatureConstraint": "CurvatureConstraintButton",
                            }
-        button = getattr(sys.modules[__name__], button_mappings[type(pymead_obj).__name__])(*button_args)
+        button = getattr(sys.modules[__name__], button_mappings[type(pymead_obj).__name__])(*button_args, top_level=True)
 
-        self.setItemWidget(child_item, 0, button)
+        self.setItemWidget(child_item, 1, button)
 
     def removePymeadTreeItem(self, pymead_obj: PymeadObj):
         top_level_item = self.items[self.topLevelDict[pymead_obj.sub_container]]
@@ -677,51 +783,92 @@ class ParameterTree(QTreeWidget):
     def onCollapsePressed(self):
         self.collapseAll()
 
+    def setItemStyle(self, item: PymeadTreeWidgetItem, style: str):
+        valid_styles = ["default", "hovered"]
+        if style not in ["default", "hovered"]:
+            raise ValueError(f"Style found ({style}) is not a valid style. Must be one of {valid_styles}.")
+
+        background_color = self.palette().color(self.backgroundRole())
+        if style == "default":
+            item.setBackground(0, background_color)
+            item.setBackground(1, background_color)
+        elif style == "hovered" and item.hoverable:
+            gradient = QtGui.QLinearGradient(0, 0, 150, 0)
+            gradient.setColorAt(0, QColor("#2678c9aa"))
+            gradient.setColorAt(1, self.palette().color(self.backgroundRole()))
+            item.setBackground(0, gradient)
+            item.setBackground(1, self.palette().color(self.backgroundRole()))
+
     def contextMenuEvent(self, a0):
-        item = self.itemAt(a0.x(), a0.y())
-        if item is None:
+        # item = self.itemAt(a0.x(), a0.y())
+        # if item is None:
+        #     return
+
+        items = self.selectedItems()
+        if len(items) == 0:
             return
 
-        item_text = item.text(0)
-
-        if item_text == "Design Variables":
+        if len(items) == 1 and items[0].text(0) == "Design Variables":
             menu = QMenu(self)
             addDesVarAction = menu.addAction("Add Design Variable")
             res = menu.exec_(a0.globalPos())
 
-            if res == addDesVarAction:
+            if res is None:
+                return
+
+            if res is addDesVarAction:
                 self.geo_col.add_desvar(0.0, "dv")
 
-        elif item_text == "Parameters":
+        elif len(items) == 1 and items[0].text(0) == "Parameters":
             menu = QMenu(self)
             addParameterAction = menu.addAction("Add Parameter")
             res = menu.exec_(a0.globalPos())
 
-            if res == addParameterAction:
+            if res is None:
+                return
+
+            if res is addParameterAction:
                 self.geo_col.add_param(0.0, "param")
 
-        elif item_text == "":
-            button = self.itemWidget(item, 0)
-            if isinstance(button, TreeButton):
+        elif all([item.parent() is not None for item in items]) and all(
+                [item.parent() is items[0].parent() for item in items]):
+            # button = self.itemWidget(item, 1)
+            pymead_objs = [self.itemWidget(item, 1).pymead_obj for item in items]
+
+            promoteAction = None
+            demoteAction = None
+
+            pymead_obj_type = type(pymead_objs[0])
+
+            if pymead_obj_type in [Param, LengthParam, AngleParam]:
                 menu = QMenu(self)
-
-                promoteAction = None
-                demoteAction = None
-
-                pymead_obj = button.pymead_obj
-                pymead_obj_type = type(pymead_obj)
-
-                if pymead_obj_type in [Param, LengthParam, AngleParam]:
-                    promoteAction = menu.addAction("Promote to Design Variable")
-                elif pymead_obj_type in [DesVar, LengthDesVar, AngleDesVar]:
-                    demoteAction = menu.addAction("Demote to Parameter")
-
+                promoteAction = menu.addAction("Promote to Design Variable")
                 removeObjectAction = menu.addAction("Delete")
-                res = menu.exec_(a0.globalPos())
+            elif pymead_obj_type in [DesVar, LengthDesVar, AngleDesVar]:
+                menu = QMenu(self)
+                demoteAction = menu.addAction("Demote to Parameter")
+                removeObjectAction = menu.addAction("Delete")
+            else:
+                menu = QMenu(self)
+                removeObjectAction = menu.addAction("Delete")
 
-                if res == removeObjectAction:
-                    self.geo_col.remove_pymead_obj(button.pymead_obj)
-                elif res == promoteAction:
+            res = menu.exec_(a0.globalPos())
+
+            if res is None:
+                return
+
+            if res is removeObjectAction:
+                for pymead_obj in pymead_objs:
+                    # If the object is a Point, set the style to default first so that the text item gets removed
+                    # if isinstance(pymead_obj, Point):
+                    #     self.geo_col.canvas.setItemStyle(pymead_obj.canvas_item, "default")
+                    self.geo_col.remove_pymead_obj(pymead_obj)
+            elif res is promoteAction:
+                for pymead_obj in pymead_objs:
                     self.geo_col.promote_param_to_desvar(pymead_obj)
-                elif res == demoteAction:
+            elif res is demoteAction:
+                for pymead_obj in pymead_objs:
                     self.geo_col.demote_desvar_to_param(pymead_obj)
+
+            self.geo_col.clear_selected_points()
+            # TODO: extend this logic to be more general (e.g., clear_selected_objs())
