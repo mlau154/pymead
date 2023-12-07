@@ -1,3 +1,5 @@
+import typing
+
 import numpy as np
 
 from pymead.core import UNITS
@@ -86,7 +88,8 @@ class Param(PymeadObj):
         else:
             return self._value
 
-    def set_value(self, value: float, bounds_normalized: bool = False):
+    def set_value(self, value: float, bounds_normalized: bool = False,
+                  requestor_list: typing.List[PymeadObj] or None = None):
         """
         Sets the design variable value, adjusting the value to fit inside the bounds if necessary.
 
@@ -99,6 +102,9 @@ class Param(PymeadObj):
             Whether the specified value is normalized by the bounds (e.g., 0 if the value is equal to the lower bound,
             1 if the value is equal to the upper bound, or a float between 0.0 and 1.0 if the value is somewhere
             between the bounds). Default: ``False``
+
+        requestor_list: typing.List[PymeadObj]
+            List of objects used to track the recursion depth of dimensions and constraints
         """
         if bounds_normalized:
             if self.lower() is None or self.upper() is None:
@@ -120,15 +126,17 @@ class Param(PymeadObj):
         if self.at_boundary:
             return
 
+        requestor_list = [] if requestor_list is None else requestor_list
+
+        print(f"in set_value, {requestor_list = }")
+
         for dim in self.dims:
             print("Updating from param!")
-            dim.update_points_from_param()
+            dim.update_points_from_param(requestor_list=requestor_list)
 
         for geo_con in self.geo_cons:
             print(f"{geo_con = }")
-            geo_con.enforce("tool")
-
-        print(f"{self.at_boundary = }")
+            geo_con.enforce("tool", requestor_list=requestor_list)
 
     def lower(self):
         """
@@ -270,14 +278,15 @@ class LengthParam(Param):
     def set_upper(self, upper: float):
         return super().set_upper(UNITS.convert_length_to_base(upper, self.unit()))
 
-    def set_value(self, value: float, bounds_normalized: bool = False):
+    def set_value(self, value: float, bounds_normalized: bool = False,
+                  requestor_list: typing.List[PymeadObj] or None = None):
 
         # Negative lengths are prohibited unless this represents a point
         if self.point is None and value < 0.0:
             return
 
         new_value = UNITS.convert_length_to_base(value, self.unit())
-        return super().set_value(new_value, bounds_normalized=bounds_normalized)
+        return super().set_value(new_value, bounds_normalized=bounds_normalized, requestor_list=requestor_list)
 
 
 class AngleParam(Param):
@@ -335,13 +344,14 @@ class AngleParam(Param):
 
         return super().set_upper(UNITS.convert_angle_to_base(upper, self.unit()))
 
-    def set_value(self, value: float, bounds_normalized: bool = False):
+    def set_value(self, value: float, bounds_normalized: bool = False,
+                  requestor_list: typing.List[PymeadObj] or None = None):
 
         new_value = UNITS.convert_angle_to_base(value, self.unit())
 
         zero_to_2pi_value = new_value % (2 * np.pi)
 
-        return super().set_value(zero_to_2pi_value, bounds_normalized=bounds_normalized)
+        return super().set_value(zero_to_2pi_value, bounds_normalized=bounds_normalized, requestor_list=requestor_list)
 
 
 # class ParamCollection:

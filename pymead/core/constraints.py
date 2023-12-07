@@ -1,3 +1,4 @@
+import typing
 from abc import abstractmethod
 from dataclasses import dataclass
 
@@ -115,7 +116,7 @@ class PositionConstraint(GeoCon):
     def validate(self):
         pass
 
-    def enforce(self, calling_point: Point or str):
+    def enforce(self, calling_point: Point or str, requestor_list: typing.List[PymeadObj] or None = None):
 
         if isinstance(calling_point, str):
             if calling_point == "tool":
@@ -296,7 +297,8 @@ class CurvatureConstraint(GeoCon):
                 if isinstance(geo_con, CurvatureConstraint):
                     raise ConstraintValidationError(msg)
 
-    def enforce(self, calling_point: Point, initial_x: float = None, initial_y: float = None,
+    def enforce(self, calling_point: Point, requestor_list: typing.List[PymeadObj] or None = None,
+                initial_x: float = None, initial_y: float = None,
                 initial_psi1: float = None, initial_psi2: float = None, initial_R: float = None):
 
         if calling_point is self.tool():  # If the middle point called the enforcement
@@ -336,8 +338,15 @@ class CurvatureConstraint(GeoCon):
                 theta2 = data.theta2  # Do not reverse
 
             # Move the other G2 point to match the curvature
-            self.target().points()[3].force_move(self.target().points()[2].x().value() + target_Lc2 * np.cos(theta2),
-                                                   self.target().points()[2].y().value() + target_Lc2 * np.sin(theta2))
+            new_x = self.target().points()[2].x().value() + target_Lc2 * np.cos(theta2)
+            new_y = self.target().points()[2].y().value() + target_Lc2 * np.sin(theta2)
+            print(f"In curvature constraint enforcement, {requestor_list = }")
+            if requestor_list is not None and self in requestor_list:
+                self.target().points()[3].force_move(new_x, new_y)
+            else:
+                requestor_list.append(self)
+                self.target().points()[3].request_move(new_x, new_y, requestor_list=requestor_list)
+                print(f"Now, {requestor_list = }")
 
         elif calling_point is self.target().points()[3]:  # Curve 2 g2 point modified -> update curve 1 g2 point
             # Calculate the new curvature control arm 1 length
@@ -355,8 +364,13 @@ class CurvatureConstraint(GeoCon):
                 theta1 = data.theta1  # Do not reverse
 
             # Move the other G2 point to match the curvature
-            self.target().points()[0].force_move(self.target().points()[1].x().value() + target_Lc1 * np.cos(theta1),
-                                                   self.target().points()[1].y().value() + target_Lc1 * np.sin(theta1))
+            new_x = self.target().points()[1].x().value() + target_Lc1 * np.cos(theta1)
+            new_y = self.target().points()[1].y().value() + target_Lc1 * np.sin(theta1)
+            if requestor_list is not None and self in requestor_list:
+                self.target().points()[0].force_move(new_x, new_y)
+            else:
+                requestor_list.append(self)
+                self.target().points()[0].request_move(new_x, new_y, requestor_list=requestor_list)
 
         elif calling_point is self.target().points()[1]:  # Curve 1 g1 point modified -> update curve 2 g1 point and g2 points
             if initial_psi1 is None or initial_psi2 is None or initial_R is None:
@@ -377,18 +391,21 @@ class CurvatureConstraint(GeoCon):
             target_theta2 = initial_psi2 + (data.phi1 + np.pi)
 
             # Move the other G2 points to preserve the radius of curvature and angles
-            self.target().points()[2].force_move(
-                self.curve_joint.x().value() + data.Lt2 * np.cos(data.phi1 + np.pi),
-                self.curve_joint.y().value() + data.Lt2 * np.sin(data.phi1 + np.pi)
-            )
-            self.target().points()[0].force_move(
-                self.target().points()[1].x().value() + target_Lc1 * np.cos(target_theta1),
-                self.target().points()[1].y().value() + target_Lc1 * np.sin(target_theta1)
-            )
-            self.target().points()[3].force_move(
-                self.target().points()[2].x().value() + target_Lc2 * np.cos(target_theta2),
-                self.target().points()[2].y().value() + target_Lc2 * np.sin(target_theta2)
-            )
+            new_x2 = self.curve_joint.x().value() + data.Lt2 * np.cos(data.phi1 + np.pi)
+            new_y2 = self.curve_joint.y().value() + data.Lt2 * np.sin(data.phi1 + np.pi)
+            new_x0 = self.target().points()[1].x().value() + target_Lc1 * np.cos(target_theta1)
+            new_y0 = self.target().points()[1].y().value() + target_Lc1 * np.sin(target_theta1)
+            new_x3 = self.target().points()[2].x().value() + target_Lc2 * np.cos(target_theta2)
+            new_y3 = self.target().points()[2].y().value() + target_Lc2 * np.sin(target_theta2)
+            if requestor_list is not None and self in requestor_list:
+                self.target().points()[2].force_move(new_x2, new_y2)
+                self.target().points()[0].force_move(new_x0, new_y0)
+                self.target().points()[3].force_move(new_x3, new_y3)
+            else:
+                requestor_list.append(self)
+                self.target().points()[2].request_move(new_x2, new_y2, requestor_list=requestor_list)
+                self.target().points()[0].request_move(new_x0, new_y0, requestor_list=requestor_list)
+                self.target().points()[3].request_move(new_x3, new_y3, requestor_list=requestor_list)
 
         elif calling_point is self.target().points()[2]:  # Curve 2 g1 point modified -> update curve 1 g1 point and g2 points
             if initial_psi1 is None or initial_psi2 is None or initial_R is None:
@@ -407,18 +424,23 @@ class CurvatureConstraint(GeoCon):
             target_theta2 = initial_psi2 + data.phi2
 
             # Move the other G2 points to preserve the radius of curvature and angles
-            self.target().points()[1].force_move(
-                self.curve_joint.x().value() + data.Lt1 * np.cos(data.phi2 + np.pi),
-                self.curve_joint.y().value() + data.Lt1 * np.sin(data.phi2 + np.pi)
-            )
-            self.target().points()[0].force_move(
-                self.target().points()[1].x().value() + target_Lc1 * np.cos(target_theta1),
-                self.target().points()[1].y().value() + target_Lc1 * np.sin(target_theta1)
-            )
-            self.target().points()[3].force_move(
-                self.target().points()[2].x().value() + target_Lc2 * np.cos(target_theta2),
-                self.target().points()[2].y().value() + target_Lc2 * np.sin(target_theta2)
-            )
+            new_x1 = self.curve_joint.x().value() + data.Lt1 * np.cos(data.phi2 + np.pi)
+            new_y1 = self.curve_joint.y().value() + data.Lt1 * np.sin(data.phi2 + np.pi)
+            new_x0 = self.target().points()[1].x().value() + target_Lc1 * np.cos(target_theta1)
+            new_y0 = self.target().points()[1].y().value() + target_Lc1 * np.sin(target_theta1)
+            new_x3 = self.target().points()[2].x().value() + target_Lc2 * np.cos(target_theta2)
+            new_y3 = self.target().points()[2].y().value() + target_Lc2 * np.sin(target_theta2)
+            if requestor_list is not None and self in requestor_list:
+                self.target().points()[1].force_move(new_x1, new_y1)
+                self.target().points()[0].force_move(new_x0, new_y0)
+                self.target().points()[3].force_move(new_x3, new_y3)
+            else:
+                requestor_list.append(self)
+                self.target().points()[1].request_move(new_x1, new_y1, requestor_list=requestor_list)
+                self.target().points()[0].request_move(new_x0, new_y0, requestor_list=requestor_list)
+                self.target().points()[3].request_move(new_x3, new_y3, requestor_list=requestor_list)
+
+            # TODO: check this logic. Might be causing a runaway radius of curvature on tangent point rotation
 
 
 class ConstraintValidationError(Exception):

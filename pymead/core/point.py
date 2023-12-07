@@ -67,7 +67,7 @@ class Point(PymeadObj):
     def measure_angle(self, other: "Point"):
         return np.arctan2(other.y().value() - self.y().value(), other.x().value() - self.x().value())
 
-    def request_move(self, xp: float, yp: float, requestor: PymeadObj or None = None):
+    def request_move(self, xp: float, yp: float, requestor_list: typing.List[PymeadObj] or None = None):
         # Initialize variables which may or may not be used
         initial_x = self.x().value()  # x-location of the current point before the movement
         initial_y = self.y().value()  # y-location of the current point before the movement
@@ -87,16 +87,16 @@ class Point(PymeadObj):
                     initial_R = data.R1
                     break
 
-        self.x().set_value(xp)
-        self.y().set_value(yp)
+        requestor_list = [] if requestor_list is None else requestor_list
+
+        print(f"{requestor_list = }")
+
+        self.x().set_value(xp, requestor_list=requestor_list)
+        self.y().set_value(yp, requestor_list=requestor_list)
 
         # enforce_constraints = False
         for dim in self.dims:
-            if requestor is not None and dim is requestor:
-                continue
-            if requestor is not None and dim in requestor.associated_dims:
-                continue
-            dim.update_param_from_points()
+            dim.update_param_from_points(requestor_list=requestor_list)
             if dim.param().at_boundary:
                 # self.x().set_value(initial_x)
                 # self.y().set_value(initial_y)
@@ -123,7 +123,7 @@ class Point(PymeadObj):
                                   initial_psi2=initial_psi2, initial_R=initial_R)
 
                 # Enforce the constraint
-                geo_con.enforce(**kwargs)
+                geo_con.enforce(**kwargs, requestor_list=requestor_list)
 
             for param in self.geo_col.container()["params"].values():
                 if param.at_boundary:
@@ -134,6 +134,8 @@ class Point(PymeadObj):
                     if dv.at_boundary:
                         self.force_move(initial_x, initial_y)
                         break
+
+        print(f"At the end, {requestor_list = }")
 
         # Update the GUI object, if there is one
         if self.canvas_item is not None:
