@@ -113,6 +113,7 @@ class LengthDimension(Dimension):
         else:
             param = self.param()
         param.set_value(self.tool().measure_distance(self.target()))
+        print(f"{param.value() = }, {param.lower() = }, {param.upper() = }")
         return param
 
 

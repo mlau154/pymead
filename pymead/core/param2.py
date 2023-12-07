@@ -32,6 +32,7 @@ class Param(PymeadObj):
         self._value = None
         self._lower = None
         self._upper = None
+        self.at_boundary = False
         self.point = point
         self.geo_objs = []
         self.geo_cons = []
@@ -107,18 +108,24 @@ class Param(PymeadObj):
         if self._lower is not None and value < self._lower:  # If below the lower bound,
             # set the value equal to the lower bound
             self._value = self._lower
+            self.at_boundary = True
         elif self._upper is not None and value > self._upper:  # If above the upper bound,
             # set the value equal to the upper bound
             self._value = self._upper
+            self.at_boundary = True
         else:  # Otherwise, use the default behavior for Param.
             self._value = value
-
-        for geo_con in self.geo_cons:
-            geo_con.enforce("tool")
+            self.at_boundary = False
 
         for dim in self.dims:
             print("Updating from param!")
             dim.update_points_from_param()
+
+        for geo_con in self.geo_cons:
+            print(f"{geo_con = }")
+            geo_con.enforce("tool")
+
+        print(f"{self.at_boundary = }")
 
     def lower(self):
         """

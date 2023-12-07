@@ -552,6 +552,7 @@ class GeometryCollection(DualRep):
 
         # Set the values
         for dv, dv_value in zip(self.container()["desvar"].values(), dv_values):
+            print(f"{dv = }, {dv_value = }")
             dv.set_value(dv_value, bounds_normalized=bounds_normalized)
 
     def alphabetical_sub_container_key_list(self, sub_container: str):

@@ -69,8 +69,8 @@ class Point(PymeadObj):
 
     def request_move(self, xp: float, yp: float, requestor: PymeadObj or None = None):
         # Initialize variables which may or may not be used
-        initial_x = None  # x-location of the current point before the movement
-        initial_y = None  # y-location of the current point before the movement
+        initial_x = self.x().value()  # x-location of the current point before the movement
+        initial_y = self.y().value()  # y-location of the current point before the movement
         initial_psi1 = None  # Curvature control arm 1 angle before the current point movement
         initial_psi2 = None  # Curvature control arm 2 angle before the current point movement
         initial_R = None  # Radius of curvature before the current point movement
@@ -78,9 +78,6 @@ class Point(PymeadObj):
         # Get the concrete class names of all the constraints associated with this point so that we calculate the
         # minimum required amount of information
         geo_con_classes = [str(geo_con.__class__.__name__) for geo_con in self.geo_cons]
-        if "CollinearConstraint" in geo_con_classes or "CurvatureConstraint" in geo_con_classes:
-            initial_x = self.x().value()
-            initial_y = self.y().value()
         if "CurvatureConstraint" in geo_con_classes:
             for idx, geo_con in enumerate(self.geo_cons):
                 if geo_con_classes[idx] == "CurvatureConstraint":
@@ -92,6 +89,25 @@ class Point(PymeadObj):
 
         self.x().set_value(xp)
         self.y().set_value(yp)
+
+        enforce_constraints = False
+        for dim in self.dims:
+            print(f"{dim = }, {requestor = }")
+            if requestor is not None and dim is requestor:
+                continue
+            if requestor is not None and dim in requestor.associated_dims:
+                continue
+            dim.update_param_from_points()
+            if dim.param().at_boundary:
+                self.x().set_value(initial_x)
+                self.y().set_value(initial_y)
+                return
+        else:
+            enforce_constraints = True
+
+        # TODO: fix this - no parameter or DV should ever be able to move outside of its boundaries. Might require
+        # a recursive function
+
         for geo_con in self.geo_cons:
             kwargs = {}
 
@@ -108,13 +124,17 @@ class Point(PymeadObj):
             # Enforce the constraint
             geo_con.enforce(**kwargs)
 
-        for dim in self.dims:
-            print(f"{dim = }, {requestor = }")
-            if requestor is not None and dim is requestor:
-                continue
-            if requestor is not None and dim in requestor.associated_dims:
-                continue
-            dim.update_param_from_points()
+        for param in self.geo_col.container()["params"].values():
+            if param.at_boundary:
+                print(f"param {param.at_boundary = }")
+                self.force_move(initial_x, initial_y)
+                break
+        else:
+            for dv in self.geo_col.container()["desvar"].values():
+                if dv.at_boundary:
+                    print(f"dv {dv.at_boundary = }")
+                    self.force_move(initial_x, initial_y)
+                    break
 
         # Update the GUI object, if there is one
         if self.canvas_item is not None:
