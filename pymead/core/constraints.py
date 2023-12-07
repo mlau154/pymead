@@ -337,7 +337,7 @@ class CurvatureConstraint(GeoCon):
 
             # Move the other G2 point to match the curvature
             self.target().points()[3].force_move(self.target().points()[2].x().value() + target_Lc2 * np.cos(theta2),
-                                                 self.target().points()[2].y().value() + target_Lc2 * np.sin(theta2))
+                                                   self.target().points()[2].y().value() + target_Lc2 * np.sin(theta2))
 
         elif calling_point is self.target().points()[3]:  # Curve 2 g2 point modified -> update curve 1 g2 point
             # Calculate the new curvature control arm 1 length
@@ -356,7 +356,7 @@ class CurvatureConstraint(GeoCon):
 
             # Move the other G2 point to match the curvature
             self.target().points()[0].force_move(self.target().points()[1].x().value() + target_Lc1 * np.cos(theta1),
-                                                 self.target().points()[1].y().value() + target_Lc1 * np.sin(theta1))
+                                                   self.target().points()[1].y().value() + target_Lc1 * np.sin(theta1))
 
         elif calling_point is self.target().points()[1]:  # Curve 1 g1 point modified -> update curve 2 g1 point and g2 points
             if initial_psi1 is None or initial_psi2 is None or initial_R is None:

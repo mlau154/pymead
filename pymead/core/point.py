@@ -90,17 +90,17 @@ class Point(PymeadObj):
         self.x().set_value(xp)
         self.y().set_value(yp)
 
-        enforce_constraints = False
+        # enforce_constraints = False
         for dim in self.dims:
-            print(f"{dim = }, {requestor = }")
             if requestor is not None and dim is requestor:
                 continue
             if requestor is not None and dim in requestor.associated_dims:
                 continue
             dim.update_param_from_points()
             if dim.param().at_boundary:
-                self.x().set_value(initial_x)
-                self.y().set_value(initial_y)
+                # self.x().set_value(initial_x)
+                # self.y().set_value(initial_y)
+                self.force_move(initial_x, initial_y)
                 return
         else:
             enforce_constraints = True
@@ -108,33 +108,32 @@ class Point(PymeadObj):
         # TODO: fix this - no parameter or DV should ever be able to move outside of its boundaries. Might require
         # a recursive function
 
-        for geo_con in self.geo_cons:
-            kwargs = {}
+        if enforce_constraints:
+            for geo_con in self.geo_cons:
+                kwargs = {}
 
-            # Get class by name to avoid circular import
-            class_name = str(geo_con.__class__)
-            if "PositionConstraint" in class_name:
-                kwargs = dict(calling_point=self)
-            elif "CollinearConstraint" in class_name:
-                kwargs = dict(calling_point=self, initial_x=initial_x, initial_y=initial_y)
-            elif "CurvatureConstraint" in class_name:
-                kwargs = dict(calling_point=self, initial_x=initial_x, initial_y=initial_y, initial_psi1=initial_psi1,
-                              initial_psi2=initial_psi2, initial_R=initial_R)
+                # Get class by name to avoid circular import
+                class_name = str(geo_con.__class__)
+                if "PositionConstraint" in class_name:
+                    kwargs = dict(calling_point=self)
+                elif "CollinearConstraint" in class_name:
+                    kwargs = dict(calling_point=self, initial_x=initial_x, initial_y=initial_y)
+                elif "CurvatureConstraint" in class_name:
+                    kwargs = dict(calling_point=self, initial_x=initial_x, initial_y=initial_y, initial_psi1=initial_psi1,
+                                  initial_psi2=initial_psi2, initial_R=initial_R)
 
-            # Enforce the constraint
-            geo_con.enforce(**kwargs)
+                # Enforce the constraint
+                geo_con.enforce(**kwargs)
 
-        for param in self.geo_col.container()["params"].values():
-            if param.at_boundary:
-                print(f"param {param.at_boundary = }")
-                self.force_move(initial_x, initial_y)
-                break
-        else:
-            for dv in self.geo_col.container()["desvar"].values():
-                if dv.at_boundary:
-                    print(f"dv {dv.at_boundary = }")
+            for param in self.geo_col.container()["params"].values():
+                if param.at_boundary:
                     self.force_move(initial_x, initial_y)
                     break
+            else:
+                for dv in self.geo_col.container()["desvar"].values():
+                    if dv.at_boundary:
+                        self.force_move(initial_x, initial_y)
+                        break
 
         # Update the GUI object, if there is one
         if self.canvas_item is not None:

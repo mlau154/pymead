@@ -117,6 +117,9 @@ class Param(PymeadObj):
             self._value = value
             self.at_boundary = False
 
+        if self.at_boundary:
+            return
+
         for dim in self.dims:
             print("Updating from param!")
             dim.update_points_from_param()
