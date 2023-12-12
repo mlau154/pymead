@@ -172,3 +172,6 @@ class Bezier(ParametricCurve):
             R = np.true_divide(1, k)
 
         return PCurveData(t=t, xy=xy, xpyp=xpyp, xppypp=xppypp, k=k, R=R)
+
+    def get_dict_rep(self):
+        return {"points": [pt.name() for pt in self.point_sequence().points()], "name": self.name()}

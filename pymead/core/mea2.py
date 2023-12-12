@@ -9,9 +9,14 @@ from pymead.core.pymead_obj import PymeadObj
 
 class MEA(PymeadObj):
 
-    def __init__(self, airfoils: typing.List[Airfoil]):
+    def __init__(self, airfoils: typing.List[Airfoil], name: str or None = None):
         super().__init__(sub_container="mea")
         self.airfoils = airfoils
+
+        # Name the MEA
+        name = "MEA-1" if name is None else name
+        self._name = None
+        self.set_name(name)
 
     def add_airfoil(self, airfoil: Airfoil):
         self.airfoils.append(airfoil)
@@ -61,3 +66,6 @@ class MEA(PymeadObj):
         np.savetxt(blade_file_path, mea_coords, header=header, comments="")
 
         return blade_file_path
+
+    def get_dict_rep(self):
+        return {"airfoils": [a.name() for a in self.airfoils], "name": self.name()}

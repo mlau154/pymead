@@ -75,10 +75,10 @@ class Dimension(PymeadObj):
 
     def set_param(self, param: Param or None = None):
         if param is None:
-            self._param = self.update_param_from_points([])
+            self._param = self.update_param_from_points()
         else:
             self._param = param
-            self.update_param_from_points([])
+            self.update_param_from_points()
         if self not in self._param.dims:
             self._param.dims.append(self)
 
@@ -97,19 +97,12 @@ class LengthDimension(Dimension):
         name = "LengthDim-1" if name is None else name
         super().__init__(tool=tool_point, target=target_point, param=length_param, name=name)
 
-    def update_points_from_param(self, requestor_list: typing.List[PymeadObj] = None):
+    def update_points_from_param(self):
         target_angle = self.tool().measure_angle(self.target())
-        if requestor_list is not None and self in requestor_list:
-            # TODO: add this logic to AngleDimension
-            self.target().force_move(self.tool().x().value() + self.param().value() * np.cos(target_angle),
-                                     self.tool().y().value() + self.param().value() * np.sin(target_angle))
-        else:
-            requestor_list.append(self)  # Might need to check if None first here
-            self.target().request_move(self.tool().x().value() + self.param().value() * np.cos(target_angle),
-                                       self.tool().y().value() + self.param().value() * np.sin(target_angle),
-                                       requestor_list=requestor_list)
+        self.target().request_move(self.tool().x().value() + self.param().value() * np.cos(target_angle),
+                                   self.tool().y().value() + self.param().value() * np.sin(target_angle))
 
-    def update_param_from_points(self, requestor_list: typing.List[PymeadObj] = None):
+    def update_param_from_points(self):
         length = self.tool().measure_distance(self.target())
         if self.param() is None:
             if self.geo_col is None:
@@ -119,13 +112,12 @@ class LengthDimension(Dimension):
         else:
             param = self.param()
 
-        print(f"In update_param_from_points, {requestor_list = }")
-
-        if requestor_list is None or self not in requestor_list:
-            # TODO: add this logic to AngleDimension
-            requestor_list.append(self)
-            param.set_value(self.tool().measure_distance(self.target()), requestor_list=requestor_list)
+        param.set_value(self.tool().measure_distance(self.target()))
         return param
+
+    def get_dict_rep(self):
+        return {"tool_point": self.tool().name(), "target_point": self.target().name(),
+                "length_param": self.param().name(), "name": self.name()}
 
 
 class AngleDimension(Dimension):
@@ -134,18 +126,13 @@ class AngleDimension(Dimension):
         name = "AngleDim-1" if name is None else name
         super().__init__(tool=tool_point, target=target_point, param=angle_param, name=name)
 
-    def update_points_from_param(self, requestor_list: typing.List[PymeadObj] = None):
+    def update_points_from_param(self):
         target_length = self.tool().measure_distance(self.target())
-        if requestor_list is not None and self in requestor_list:
-            self.target().force_move(self.tool().x().value() + target_length * np.cos(self.param().rad()),
-                                     self.tool().y().value() + target_length * np.sin(self.param().rad()))
-        else:
-            requestor_list.append(self)
-            self.target().request_move(self.tool().x().value() + target_length * np.cos(self.param().rad()),
-                                       self.tool().y().value() + target_length * np.sin(self.param().rad()),
-                                       requestor_list=requestor_list)
+        self.target().request_move(self.tool().x().value() + target_length * np.cos(self.param().rad()),
+                                   self.tool().y().value() + target_length * np.sin(self.param().rad()),
+                                   )
 
-    def update_param_from_points(self, requestor_list: typing.List[PymeadObj] = None):
+    def update_param_from_points(self):
         angle = self.tool().measure_angle(self.target())
         if self.param() is None:
             if self.geo_col is None:
@@ -155,9 +142,10 @@ class AngleDimension(Dimension):
         else:
             param = self.param()
 
-        if requestor_list is None or self not in requestor_list:
-
-            param.set_value(UNITS.convert_angle_from_base(self.tool().measure_angle(self.target()),
-                                                          unit=UNITS.current_angle_unit()))
-            requestor_list.append(self)
+        param.set_value(UNITS.convert_angle_from_base(self.tool().measure_angle(self.target()),
+                                                      unit=UNITS.current_angle_unit()))
         return param
+
+    def get_dict_rep(self):
+        return {"tool_point": self.tool().name(), "target_point": self.target().name(),
+                "angle_param": self.param().name(), "name": self.name()}

@@ -1,5 +1,5 @@
 from copy import deepcopy
-from abc import ABC, abstractmethod
+from abc import ABC, abstractmethod, abstractclassmethod
 
 
 class DualRep:
@@ -58,7 +58,7 @@ class PymeadObj(ABC, DualRep):
             The object name
         """
         if self.geo_col is not None:
-            # Rename the reference in the geometry collection
+            # Rename the reference in the geometry collection if necessary
             sub_container = self.geo_col.container()[self.sub_container]
 
             if self.name() in sub_container and sub_container[self.name()] is self:
@@ -66,3 +66,7 @@ class PymeadObj(ABC, DualRep):
                 sub_container.pop(self.name())
 
         self._name = name
+
+    @abstractmethod
+    def get_dict_rep(self):
+        pass

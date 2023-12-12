@@ -57,6 +57,7 @@ class GeometryCollection(DualRep):
         typing.List[str]
             List of names found in the sub-container
         """
+        print(f"{self.container() = }, {self = }")
         return [k for k in self.container()[sub_container].keys()]
 
     @staticmethod
@@ -130,8 +131,10 @@ class GeometryCollection(DualRep):
         """
         # Set the object's name to a unique name if necessary
         if assign_unique_name:
+            print(f"{pymead_obj.sub_container = }")
             name_list = self.get_name_list(sub_container=pymead_obj.sub_container)
             unique_name = self.unique_namer(pymead_obj.name(), name_list)
+            print(f"{name_list = }, {unique_name = }")
             if isinstance(pymead_obj, Param) and unique_name.split("-")[1] == "1":
                 pass
             else:
@@ -152,7 +155,7 @@ class GeometryCollection(DualRep):
         self.container()[pymead_obj.sub_container].pop(pymead_obj.name())
 
     def add_param(self, value: float, name: str or None = None, lower: float or None = None,
-                  upper: float or None = None, unit_type: str or None = None):
+                  upper: float or None = None, unit_type: str or None = None, assign_unique_name: bool = True):
         """
         Adds a parameter to the geometry collection sub-container ``"params"``, and modifies the name to make it
         unique if necessary.
@@ -189,7 +192,7 @@ class GeometryCollection(DualRep):
         else:
             raise ValueError(f"unit_type must be None, 'length', or 'angle'. Found type: {type(unit_type)}")
 
-        return self.add_pymead_obj_by_ref(param)
+        return self.add_pymead_obj_by_ref(param, assign_unique_name=assign_unique_name)
 
     def select_point(self, point: Point):
         if self.tree is not None:
@@ -241,7 +244,7 @@ class GeometryCollection(DualRep):
         if self.canvas is not None:
             self.canvas.setItemStyle(pymead_obj.canvas_item, "default")
 
-    def add_pymead_obj_by_ref(self, pymead_obj: PymeadObj):
+    def add_pymead_obj_by_ref(self, pymead_obj: PymeadObj, assign_unique_name: bool = True):
         """
         This method adds a pymead object by passing it directly to the geometry collection. If the
         object is already associated with a geometry collection, a ``ValueError`` is raised.
@@ -262,7 +265,7 @@ class GeometryCollection(DualRep):
 
         pymead_obj.geo_col = self
 
-        self.add_to_subcontainer(pymead_obj)
+        self.add_to_subcontainer(pymead_obj, assign_unique_name=assign_unique_name)
 
         if self.tree is not None:
             self.tree.addPymeadTreeItem(pymead_obj=pymead_obj)
@@ -319,7 +322,7 @@ class GeometryCollection(DualRep):
         if self.canvas is not None:
             self.canvas.removeItem(pymead_obj.canvas_item)
 
-    def add_point(self, x: float, y: float):
+    def add_point(self, x: float, y: float, name: str or None = None, assign_unique_name: bool = True):
         """
         Adds a point by value to the geometry collection
 
@@ -331,29 +334,33 @@ class GeometryCollection(DualRep):
         y: float
             :math:`y`-location of the point
 
+        name: str
+            Optional name for the point
+
         Returns
         =======
         Point
             Object reference
         """
-        point = Point(x=x, y=y, setting_from_geo_col=True)
+        point = Point(x=x, y=y, name=name)
         point.x().geo_col = self
         point.y().geo_col = self
 
-        return self.add_pymead_obj_by_ref(point)
+        return self.add_pymead_obj_by_ref(point, assign_unique_name=assign_unique_name)
 
-    def add_bezier(self, point_sequence: PointSequence):
-        bezier = Bezier(point_sequence=point_sequence)
+    def add_bezier(self, point_sequence: PointSequence, name: str or None = None, assign_unique_name: bool = True):
+        bezier = Bezier(point_sequence=point_sequence, name=name)
+        print(f"{bezier.name() = }")
 
-        return self.add_pymead_obj_by_ref(bezier)
+        return self.add_pymead_obj_by_ref(bezier, assign_unique_name=assign_unique_name)
 
-    def add_line(self, point_sequence: PointSequence):
-        line = LineSegment(point_sequence=point_sequence)
+    def add_line(self, point_sequence: PointSequence, name: str or None = None, assign_unique_name: bool = True):
+        line = LineSegment(point_sequence=point_sequence, name=name)
 
-        return self.add_pymead_obj_by_ref(line)
+        return self.add_pymead_obj_by_ref(line, assign_unique_name=assign_unique_name)
 
     def add_desvar(self, value: float, name: str, lower: float or None = None, upper: float or None = None,
-                   unit_type: str or None = None):
+                   unit_type: str or None = None, assign_unique_name: bool = True):
         """
         Directly adds a design variable value to the geometry collection.
 
@@ -399,7 +406,7 @@ class GeometryCollection(DualRep):
         #     self.tree.addPymeadTreeItem(desvar)
         #
         # return desvar
-        return self.add_pymead_obj_by_ref(desvar)
+        return self.add_pymead_obj_by_ref(desvar, assign_unique_name=assign_unique_name)
 
     @staticmethod
     def replace_geo_objs(tool: Param or DesVar, target: Param or DesVar):
@@ -617,44 +624,50 @@ class GeometryCollection(DualRep):
 
         return sorted_list
 
-    def add_airfoil(self, leading_edge: Point, trailing_edge: Point, upper_surf_end: Point, lower_surf_end: Point):
+    def add_airfoil(self, leading_edge: Point, trailing_edge: Point, upper_surf_end: Point, lower_surf_end: Point,
+                    name: str or None = None, assign_unique_name: bool = True):
         airfoil = Airfoil(leading_edge=leading_edge, trailing_edge=trailing_edge, upper_surf_end=upper_surf_end,
-                          lower_surf_end=lower_surf_end)
+                          lower_surf_end=lower_surf_end, name=name)
 
-        return self.add_pymead_obj_by_ref(airfoil)
+        return self.add_pymead_obj_by_ref(airfoil, assign_unique_name=assign_unique_name)
 
-    def add_mea(self, airfoils: typing.List[Airfoil]):
-        mea = MEA(airfoils=airfoils)
+    def add_mea(self, airfoils: typing.List[Airfoil], name: str or None = None, assign_unique_name: bool = True):
+        mea = MEA(airfoils=airfoils, name=name)
 
-        return self.add_pymead_obj_by_ref(mea)
+        return self.add_pymead_obj_by_ref(mea, assign_unique_name=assign_unique_name)
 
     def add_constraint(self):
         pass
 
-    def add_length_dimension(self, tool_point: Point, target_point: Point, length_param: LengthParam or None = None):
-        length_dim = LengthDimension(tool_point=tool_point, target_point=target_point, length_param=length_param)
+    def add_length_dimension(self, tool_point: Point, target_point: Point, length_param: LengthParam or None = None,
+                             name: str or None = None, assign_unique_name: bool = True):
+        length_dim = LengthDimension(tool_point=tool_point, target_point=target_point, length_param=length_param,
+                                     name=name)
 
         if length_dim.param().geo_col is None:
-            self.add_pymead_obj_by_ref(pymead_obj=length_dim.param())
+            self.add_pymead_obj_by_ref(pymead_obj=length_dim.param(), assign_unique_name=assign_unique_name)
 
-        return self.add_pymead_obj_by_ref(length_dim)
+        return self.add_pymead_obj_by_ref(length_dim, assign_unique_name=assign_unique_name)
 
-    def add_angle_dimension(self, tool_point: Point, target_point: Point, angle_param: AngleDimension or None = None):
-        angle_dim = AngleDimension(tool_point=tool_point, target_point=target_point, angle_param=angle_param)
+    def add_angle_dimension(self, tool_point: Point, target_point: Point, angle_param: AngleDimension or None = None,
+                            name: str or None = None, assign_unique_name: bool = True):
+        angle_dim = AngleDimension(tool_point=tool_point, target_point=target_point, angle_param=angle_param,
+                                   name=name)
 
         if angle_dim.param().geo_col is None:
-            self.add_pymead_obj_by_ref(pymead_obj=angle_dim.param())
+            self.add_pymead_obj_by_ref(pymead_obj=angle_dim.param(), assign_unique_name=assign_unique_name)
 
-        return self.add_pymead_obj_by_ref(angle_dim)
+        return self.add_pymead_obj_by_ref(angle_dim, assign_unique_name=assign_unique_name)
 
-    def add_collinear_constraint(self, start_point: Point, middle_point: Point, end_point: Point):
+    def add_collinear_constraint(self, start_point: Point, middle_point: Point, end_point: Point,
+                                 name: str or None = None, assign_unique_name: bool = True):
         collinear_constraint = CollinearConstraint(start_point=start_point, middle_point=middle_point,
-                                                   end_point=end_point)
+                                                   end_point=end_point, name=name)
 
-        return self.add_pymead_obj_by_ref(collinear_constraint)
+        return self.add_pymead_obj_by_ref(collinear_constraint, assign_unique_name=assign_unique_name)
 
-    def add_curvature_constraint(self, curve_joint: Point):
-        curvature_constraint = CurvatureConstraint(curve_joint=curve_joint)
+    def add_curvature_constraint(self, curve_joint: Point, name: str or None = None, assign_unique_name: bool = True):
+        curvature_constraint = CurvatureConstraint(curve_joint=curve_joint, name=name)
 
         # Remove any collinear constraints because the CurvatureConstraint behavior provides collinear constraint
         # behavior automatically
@@ -662,4 +675,70 @@ class GeometryCollection(DualRep):
             if isinstance(con, CollinearConstraint):
                 self.remove_pymead_obj(con)
 
-        return self.add_pymead_obj_by_ref(curvature_constraint)
+        return self.add_pymead_obj_by_ref(curvature_constraint, assign_unique_name=assign_unique_name)
+
+    def get_dict_rep(self):
+        dict_rep = {k_outer: {k: v.get_dict_rep() for k, v in self.container()[k_outer].items()}
+                    for k_outer in self.container().keys()}
+        return dict_rep
+
+    @classmethod
+    def set_from_dict_rep(cls, d: dict, canvas=None, tree=None):
+        geo_col = cls()
+        geo_col.canvas = canvas
+        geo_col.tree = tree
+        for desvar_dict in d["desvar"].values():
+            geo_col.add_desvar(**desvar_dict, assign_unique_name=False)
+        for param_dict in d["params"].values():
+            geo_col.add_param(**param_dict, assign_unique_name=False)
+        for point_dict in d["points"].values():
+            geo_col.add_point(**point_dict, assign_unique_name=False)
+        for line_dict in d["lines"].values():
+            geo_col.add_line(point_sequence=PointSequence(
+                points=[geo_col.container()["points"][k] for k in line_dict["points"]]),
+                name=line_dict["name"], assign_unique_name=False
+            )
+        for bezier_dict in d["bezier"].values():
+            geo_col.add_bezier(point_sequence=PointSequence(
+                points=[geo_col.container()["points"][k] for k in bezier_dict["points"]]),
+                name=bezier_dict["name"], assign_unique_name=False
+            )
+        for geocon_dict in d["geocon"].values():
+            constraint_type = geocon_dict["constraint_type"]
+            if constraint_type == "curvature":
+                geo_col.add_curvature_constraint(
+                    curve_joint=geo_col.container()["points"][geocon_dict["curve_joint"]],
+                    name=geocon_dict["name"], assign_unique_name=False
+                )
+            elif constraint_type == "collinear":
+                geo_col.add_collinear_constraint(
+                    start_point=geo_col.container()["points"][geocon_dict["start_point"]],
+                    middle_point=geo_col.container()["points"][geocon_dict["middle_point"]],
+                    end_point=geo_col.container()["points"][geocon_dict["end_point"]],
+                    name=geocon_dict["name"], assign_unique_name=False
+                )
+            else:
+                raise ValueError(f"Invalid constraint type: {constraint_type}")
+        for dim_dict in d["dims"].values():
+            if "length_param" in dim_dict.keys():
+                geo_col.add_length_dimension(tool_point=geo_col.container()["points"][dim_dict["tool_point"]],
+                                             target_point=geo_col.container()["points"][dim_dict["target_point"]],
+                                             length_param=geo_col.container()["points"][dim_dict["length_param"]],
+                                             name=dim_dict["name"])
+            elif "angle_param" in dim_dict.keys():
+                geo_col.add_angle_dimension(tool_point=geo_col.container()["points"][dim_dict["tool_point"]],
+                                            target_point=geo_col.container()["points"][dim_dict["target_point"]],
+                                            angle_param=geo_col.container()["points"][dim_dict["angle_param"]],
+                                            name=dim_dict["name"])
+        for airfoil_dict in d["airfoils"].values():
+            geo_col.add_airfoil(leading_edge=geo_col.container()["points"][airfoil_dict["leading_edge"]],
+                                trailing_edge=geo_col.container()["points"][airfoil_dict["trailing_edge"]],
+                                upper_surf_end=geo_col.container()["points"][airfoil_dict["upper_surf_end"]],
+                                lower_surf_end=geo_col.container()["points"][airfoil_dict["lower_surf_end"]],
+                                          name=airfoil_dict["name"], assign_unique_name=False)
+        for mea_dict in d["mea"].values():
+            geo_col.add_mea(airfoils=[geo_col.container()["airfoils"][k] for k in mea_dict["airfoils"]],
+                            name=mea_dict["name"], assign_unique_name=False)
+        return geo_col
+
+    # TODO: SAVING BROKEN

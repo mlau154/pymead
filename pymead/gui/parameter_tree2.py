@@ -644,10 +644,9 @@ class ParameterTree(QTreeWidget):
         }
 
         # Set the top-level items (sub_containers)
-        self.items = [PymeadTreeWidgetItem(
-            None, [f"{self.container_titles[k]}"]) for k in self.geo_col.container().keys()]
-        self.topLevelDict = {k: i for i, k in enumerate(self.geo_col.container().keys())}
-        self.insertTopLevelItems(0, self.items)
+        self.items = None
+        self.topLevelDict = None
+        self.addContainers()
 
         # Make the header
         self.setHeaderLabel("")
@@ -677,9 +676,6 @@ class ParameterTree(QTreeWidget):
         # Previous item hovered
         self.previous_item_hovered = None
 
-        # Sort the items in ascending order (A to Z)
-        self.sortItems(0, Qt.SortOrder.AscendingOrder)
-
     def onItemSelectionChanged(self):
         if self.previous_items is not None:
             for item in self.previous_items:
@@ -697,6 +693,15 @@ class ParameterTree(QTreeWidget):
                     self.geo_col.select_point(point)
 
         self.previous_items = self.selectedItems()
+
+    def addContainers(self):
+        self.items = [PymeadTreeWidgetItem(
+            None, [f"{self.container_titles[k]}"]) for k in self.geo_col.container().keys()]
+        self.topLevelDict = {k: i for i, k in enumerate(self.geo_col.container().keys())}
+        self.insertTopLevelItems(0, self.items)
+
+        # Sort the items in ascending order (A to Z)
+        self.sortItems(0, Qt.SortOrder.AscendingOrder)
 
     def mouseMoveEvent(self, event):
         """

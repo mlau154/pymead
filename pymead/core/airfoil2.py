@@ -318,6 +318,11 @@ class Airfoil(PymeadObj):
         line_string = LineString(list(map(tuple, points)))
         return airfoil_polygon.contains(line_string)
 
+    def get_dict_rep(self):
+        return {"leading_edge": self.leading_edge.name(), "trailing_edge": self.trailing_edge.name(),
+                "upper_surf_end": self.upper_surf_end.name(), "lower_surf_end": self.lower_surf_end.name(),
+                "name": self.name()}
+
 
 class BranchError(Exception):
     pass

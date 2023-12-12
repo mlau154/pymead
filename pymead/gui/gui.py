@@ -147,6 +147,8 @@ class GUI(QMainWindow):
         # self.setFont(QFont("DejaVu Serif"))
         self.setFont(QFont("DejaVu Sans"))
 
+        self.current_save_name = None
+
         # self.mea = MEA(airfoil_graphs_active=True)
         # self.w = pg.GraphicsLayoutWidget(show=True, size=(1000, 300))
         # self.w.setBackground('#2a2a2b')
@@ -449,12 +451,12 @@ class GUI(QMainWindow):
     def save_as_mea(self):
         dialog = SaveAsDialog(self)
         if dialog.exec_():
-            self.mea.file_name = dialog.selectedFiles()[0]
-            if self.mea.file_name[-5:] != '.jmea':
-                self.mea.file_name += '.jmea'
+            self.current_save_name = dialog.selectedFiles()[0]
+            if self.current_save_name[-5:] != '.jmea':
+                self.current_save_name += '.jmea'
             self.save_mea()
-            self.setWindowTitle(f"pymead - {os.path.split(self.mea.file_name)[-1]}")
-            self.disp_message_box(f"Multi-element airfoil saved as {self.mea.file_name}", message_mode='info')
+            self.setWindowTitle(f"pymead - {os.path.split(self.current_save_name)[-1]}")
+            self.disp_message_box(f"Multi-element airfoil saved as {self.current_save_name}", message_mode='info')
             return True
         else:
             if self.save_attempts > 0:
@@ -463,7 +465,8 @@ class GUI(QMainWindow):
             return False
 
     def save_mea(self):
-        if self.mea.file_name is None:
+        # if self.mea.file_name is None:
+        if self.current_save_name is None:
             if self.save_attempts < 1:
                 self.save_attempts += 1
                 return self.save_as_mea()
@@ -472,35 +475,37 @@ class GUI(QMainWindow):
                 self.disp_message_box('No file name specified. File not saved.', message_mode='warn')
                 return False
         else:
-            save_data(self.mea.copy_as_param_dict(), self.mea.file_name)
-            self.setWindowTitle(f"pymead - {os.path.split(self.mea.file_name)[-1]}")
+            save_data(self.geo_col.get_dict_rep(), self.current_save_name)
+            self.setWindowTitle(f"pymead - {os.path.split(self.current_save_name)[-1]}")
             self.save_attempts = 0
             return True
 
-    def copy_mea(self):
-        return self.mea.deepcopy()
+    def deepcopy_geo_col(self):
+        return deepcopy(self.geo_col)
 
     def copy_mea_dict(self, deactivate_airfoil_graphs: bool = False):
         return self.mea.copy_as_param_dict(deactivate_airfoil_graphs=deactivate_airfoil_graphs)
 
     def load_mea(self):
 
-        if self.mea_start_dict is not None:
-            if self.mea_start_dict != self.copy_mea_dict():
-                save_dialog = NewMEADialog(parent=self, message="Airfoil has changes. Save?")
-                exit_dialog = ExitDialog(parent=self, window_title="Load anyway?",
-                                         message="Airfoil not saved.\nAre you sure you want to load a new one?")
-                while True:
-                    if save_dialog.exec_():  # If "Yes" to "Save Changes,"
-                        if save_dialog.save_successful:  # If the changes were saved successfully, close the program.
-                            break
-                        else:
-                            if exit_dialog.exec_():  # Otherwise, If "Yes" to "Exit the Program Anyway," close the program.
-                                break
-                        if save_dialog.reject_changes:  # If "No" to "Save Changes," do not load an MEA.
-                            return
-                    else:  # If "Cancel" to "Save Changes," do not load an MEA
-                        return
+        # if self.mea_start_dict is not None:
+        #     if self.mea_start_dict != self.copy_mea_dict():
+        #         save_dialog = NewMEADialog(parent=self, message="Airfoil has changes. Save?")
+        #         exit_dialog = ExitDialog(parent=self, window_title="Load anyway?",
+        #                                  message="Airfoil not saved.\nAre you sure you want to load a new one?")
+        #         while True:
+        #             if save_dialog.exec_():  # If "Yes" to "Save Changes,"
+        #                 if save_dialog.save_successful:  # If the changes were saved successfully, close the program.
+        #                     break
+        #                 else:
+        #                     if exit_dialog.exec_():  # Otherwise, If "Yes" to "Exit the Program Anyway," close the program.
+        #                         break
+        #                 if save_dialog.reject_changes:  # If "No" to "Save Changes," do not load an MEA.
+        #                     return
+        #             else:  # If "Cancel" to "Save Changes," do not load an MEA
+        #                 return
+
+        # TODO: reimplement this logic
 
         dialog = LoadDialog(self, settings_var="jmea_default_open_location")
 
@@ -512,7 +517,7 @@ class GUI(QMainWindow):
             file_name = None
         if file_name is not None:
             self.load_mea_no_dialog(file_name)
-            self.setWindowTitle(f"pymead - {os.path.split(self.mea.file_name)[-1]}")
+            self.setWindowTitle(f"pymead - {os.path.split(file_name)[-1]}")
 
     def new_mea(self):
         dialog = NewMEADialog(self)
@@ -796,62 +801,57 @@ class GUI(QMainWindow):
         bar.sigLevelsChanged.connect(on_levels_changed)
 
     def load_mea_no_dialog(self, file_name):
-        self.progress_bar.setValue(0)
-        self.progress_bar.show()
+        self.permanent_widget.progress_bar.setValue(0)
+        self.permanent_widget.progress_bar.show()
         self.statusBar().showMessage("Loading MEA...")
         n_func_strs = count_func_strs(file_name)
-        jmea = load_data(file_name)
-        self.mea = MEA.generate_from_param_dict(jmea)
-        self.progress_bar.setValue(10)
-        self.mea.airfoil_graphs_active = True
+
+        self.airfoil_canvas.clear()
+        self.parameter_tree.clear()
+        self.parameter_tree.addContainers()
+
+        self.permanent_widget.progress_bar.setValue(10)
         self.statusBar().showMessage("Adding airfoils...")
-        for a in self.mea.airfoils.values():
-            a.update()
-        self.v.clear()
-        self.param_tree_instance.t.clear()
-        self.progress_bar.setValue(20)
-        for idx, airfoil in enumerate(self.mea.airfoils.values()):
-            self.mea.add_airfoil_graph_to_airfoil(airfoil, idx, None, w=self.w, v=self.v, gui_obj=self)
-        self.progress_bar.setValue(25)
+        # for a in self.mea.airfoils.values():
+        #     a.update()
+        # self.v.clear()
+        # self.param_tree_instance.t.clear()
+        geo_col_dict = load_data(file_name)
+        self.geo_col = GeometryCollection.set_from_dict_rep(geo_col_dict, canvas=self.airfoil_canvas,
+                                                            tree=self.parameter_tree)
+
+        self.permanent_widget.progress_bar.setValue(20)
+        # for idx, airfoil in enumerate(self.mea.airfoils.values()):
+        #     self.mea.add_airfoil_graph_to_airfoil(airfoil, idx, None, w=self.w, v=self.v, gui_obj=self)
+        self.permanent_widget.progress_bar.setValue(25)
         ProgressInfo = namedtuple("ProgressInfo", ("start", "end", "n"))
         progress_info = ProgressInfo(25, 85, n_func_strs)
-        self.param_tree_instance = MEAParamTree(self.mea, self.statusBar(), parent=self, progress_info=progress_info)
-        self.progress_bar.setValue(85)
-        for a in self.mea.airfoils.values():
-            a.airfoil_graph.param_tree = self.param_tree_instance
-            a.airfoil_graph.airfoil_parameters = a.airfoil_graph.param_tree.p.param('Airfoil Parameters')
-        dben = benedict.benedict(self.mea.param_dict)
-        self.progress_bar.setValue(90)
-        for k in dben.keypaths():
-            param = dben[k]
-            if isinstance(param, Param):
-                if param.mea is None:
-                    param.mea = self.mea
-                if param.mea.param_tree is None:
-                    param.mea.param_tree = self.param_tree_instance
-        self.mea.param_tree = self.param_tree_instance
-        self.design_tree_widget = self.param_tree_instance.t
-        widget0 = self.main_layout.itemAt(0).widget()
-        self.main_layout.replaceWidget(widget0, self.design_tree_widget)
-        widget0.deleteLater()
-        self.auto_range_geometry()
-        self.mea_start_dict = self.copy_mea_dict()
-        self.progress_bar.setValue(100)
+        # self.param_tree_instance = MEAParamTree(self.mea, self.statusBar(), parent=self, progress_info=progress_info)
+        self.permanent_widget.progress_bar.setValue(85)
+        # for a in self.mea.airfoils.values():
+        #     a.airfoil_graph.param_tree = self.param_tree_instance
+        #     a.airfoil_graph.airfoil_parameters = a.airfoil_graph.param_tree.p.param('Airfoil Parameters')
+        # dben = benedict.benedict(self.mea.param_dict)
+        # self.progress_bar.setValue(90)
+        # for k in dben.keypaths():
+        #     param = dben[k]
+        #     if isinstance(param, Param):
+        #         if param.mea is None:
+        #             param.mea = self.mea
+        #         if param.mea.param_tree is None:
+        #             param.mea.param_tree = self.param_tree_instance
+        # self.mea.param_tree = self.param_tree_instance
+        # self.design_tree_widget = self.param_tree_instance.t
+        # widget0 = self.main_layout.itemAt(0).widget()
+        # self.main_layout.replaceWidget(widget0, self.design_tree_widget)
+        # widget0.deleteLater()
+        # self.auto_range_geometry()
+        # self.mea_start_dict = self.copy_mea_dict()
+        self.permanent_widget.progress_bar.setValue(100)
         self.statusBar().showMessage("Airfoil system load complete.", 2000)
-        self.progress_bar.hide()
-
-    def add_airfoil(self, airfoil: Airfoil):
-        self.mea.te_thickness_edit_mode = self.te_thickness_edit_mode
-        self.mea.add_airfoil(airfoil, len(self.mea.airfoils), self.param_tree_instance,
-                             w=self.w, v=self.v, gui_obj=self)
-        self.airfoil_name_list = [k for k in self.mea.airfoils.keys()]
-        self.param_tree_instance.p.child("Analysis").child("Inviscid Cl Calc").setLimits([a.tag for a in self.mea.airfoils.values()])
-        self.param_tree_instance.params[-1].add_airfoil(airfoil)
-        for a in self.mea.airfoils.values():
-            if a.airfoil_graph.airfoil_parameters is None:
-                a.airfoil_graph.airfoil_parameters = self.param_tree_instance.p.param('Airfoil Parameters')
-        airfoil.airfoil_graph.scatter.sigPlotChanged.connect(partial(self.param_tree_instance.plot_changed,
-                                                                     f"A{len(self.mea.airfoils) - 1}"))
+        self.permanent_widget.progress_bar.hide()
+        self.geo_col.tree.geo_col = self.geo_col
+        self.geo_col.canvas.geo_col = self.geo_col
 
     def disp_message_box(self, message: str, message_mode: str = 'error', rich_text: bool = False):
         disp_message_box(message, self, message_mode=message_mode, rich_text=rich_text)
