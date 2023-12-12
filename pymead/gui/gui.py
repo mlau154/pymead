@@ -13,6 +13,7 @@ import os
 from collections import namedtuple
 import multiprocessing as mp
 
+import requests
 from pymoo.factory import get_decomposition
 
 from pymead.gui.rename_popup import RenamePopup
@@ -258,7 +259,12 @@ class GUI(QMainWindow):
         self.check_for_new_version()
 
     def check_for_new_version(self):
-        using_latest_res, latest_ver, current_ver = using_latest()
+        try:
+            using_latest_res, latest_ver, current_ver = using_latest()
+        except requests.ConnectionError:
+            self.disp_message_box("Could not connect to the internet to check for updates", message_mode="info")
+            return
+
         if not using_latest_res:
             self.disp_message_box(f"A newer version of pymead ({latest_ver}) is available for download at "
                                   f"<a href='https://github.com/mlau154/pymead/releases' style='color:#45C5E6;'>"

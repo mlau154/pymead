@@ -67,7 +67,8 @@ class Point(PymeadObj):
     def measure_angle(self, other: "Point"):
         return np.arctan2(other.y().value() - self.y().value(), other.x().value() - self.x().value())
 
-    def request_move(self, xp: float, yp: float, requestor_list: typing.List[PymeadObj] or None = None):
+    def request_move(self, xp: float, yp: float, requestor_list: typing.List[PymeadObj] or None = None,
+                     calling_point=None):
         # Initialize variables which may or may not be used
         initial_x = self.x().value()  # x-location of the current point before the movement
         initial_y = self.y().value()  # y-location of the current point before the movement
@@ -121,6 +122,8 @@ class Point(PymeadObj):
                 elif "CurvatureConstraint" in class_name:
                     kwargs = dict(calling_point=self, initial_x=initial_x, initial_y=initial_y, initial_psi1=initial_psi1,
                                   initial_psi2=initial_psi2, initial_R=initial_R)
+                    if calling_point is not None:
+                        kwargs["calling_point"] = calling_point
 
                 # Enforce the constraint
                 geo_con.enforce(**kwargs, requestor_list=requestor_list)

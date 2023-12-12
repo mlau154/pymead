@@ -134,13 +134,18 @@ class AngleDimension(Dimension):
         name = "AngleDim-1" if name is None else name
         super().__init__(tool=tool_point, target=target_point, param=angle_param, name=name)
 
-    def update_points_from_param(self):
+    def update_points_from_param(self, requestor_list: typing.List[PymeadObj] = None):
         target_length = self.tool().measure_distance(self.target())
-        self.target().request_move(self.tool().x().value() + target_length * np.cos(self.param().rad()),
-                                   self.tool().y().value() + target_length * np.sin(self.param().rad()),
-                                   requestor=self)
+        if requestor_list is not None and self in requestor_list:
+            self.target().force_move(self.tool().x().value() + target_length * np.cos(self.param().rad()),
+                                     self.tool().y().value() + target_length * np.sin(self.param().rad()))
+        else:
+            requestor_list.append(self)
+            self.target().request_move(self.tool().x().value() + target_length * np.cos(self.param().rad()),
+                                       self.tool().y().value() + target_length * np.sin(self.param().rad()),
+                                       requestor_list=requestor_list)
 
-    def update_param_from_points(self):
+    def update_param_from_points(self, requestor_list: typing.List[PymeadObj] = None):
         angle = self.tool().measure_angle(self.target())
         if self.param() is None:
             if self.geo_col is None:
@@ -149,6 +154,10 @@ class AngleDimension(Dimension):
                 param = self.geo_col.add_param(value=angle, name="Angle-1", unit_type="angle")
         else:
             param = self.param()
-        param.set_value(UNITS.convert_angle_from_base(self.tool().measure_angle(self.target()),
-                                                      unit=UNITS.current_angle_unit()))
+
+        if requestor_list is None or self not in requestor_list:
+
+            param.set_value(UNITS.convert_angle_from_base(self.tool().measure_angle(self.target()),
+                                                          unit=UNITS.current_angle_unit()))
+            requestor_list.append(self)
         return param

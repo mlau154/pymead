@@ -403,9 +403,13 @@ class CurvatureConstraint(GeoCon):
                 self.target().points()[3].force_move(new_x3, new_y3)
             else:
                 requestor_list.append(self)
-                self.target().points()[2].request_move(new_x2, new_y2, requestor_list=requestor_list)
-                self.target().points()[0].request_move(new_x0, new_y0, requestor_list=requestor_list)
-                self.target().points()[3].request_move(new_x3, new_y3, requestor_list=requestor_list)
+                print(f"Before, {self.calculate_curvature_data().R1 = }, {self.calculate_curvature_data().R2 = }")
+                self.target().points()[2].request_move(new_x2, new_y2, requestor_list=requestor_list, calling_point="hold")
+                print(f"After 2, {self.calculate_curvature_data().R1 = }, {self.calculate_curvature_data().R2 = }")
+                self.target().points()[0].request_move(new_x0, new_y0, requestor_list=requestor_list, calling_point="hold")
+                print(f"After 0, {self.calculate_curvature_data().R1 = }, {self.calculate_curvature_data().R2 = }")
+                self.target().points()[3].request_move(new_x3, new_y3, requestor_list=requestor_list, calling_point="hold")
+                print(f"After 3, {self.calculate_curvature_data().R1 = }, {self.calculate_curvature_data().R2 = }")
 
         elif calling_point is self.target().points()[2]:  # Curve 2 g1 point modified -> update curve 1 g1 point and g2 points
             if initial_psi1 is None or initial_psi2 is None or initial_R is None:
@@ -436,11 +440,14 @@ class CurvatureConstraint(GeoCon):
                 self.target().points()[3].force_move(new_x3, new_y3)
             else:
                 requestor_list.append(self)
-                self.target().points()[1].request_move(new_x1, new_y1, requestor_list=requestor_list)
-                self.target().points()[0].request_move(new_x0, new_y0, requestor_list=requestor_list)
-                self.target().points()[3].request_move(new_x3, new_y3, requestor_list=requestor_list)
+                self.target().points()[1].request_move(new_x1, new_y1, requestor_list=requestor_list, calling_point="hold")
+                self.target().points()[0].request_move(new_x0, new_y0, requestor_list=requestor_list, calling_point="hold")
+                self.target().points()[3].request_move(new_x3, new_y3, requestor_list=requestor_list, calling_point="hold")
 
             # TODO: check this logic. Might be causing a runaway radius of curvature on tangent point rotation
+
+        elif calling_point == "hold":
+            pass
 
 
 class ConstraintValidationError(Exception):

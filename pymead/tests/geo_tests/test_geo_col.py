@@ -341,18 +341,45 @@ class ConstraintTests(unittest.TestCase):
         self.assertAlmostEqual(b1_data.k[0], b2_data.k[0])
 
     def test_length_dimension(self):
+        geo_col = GeometryCollection()
         # First, test the case where a param is directly specified
-        param = LengthParam(0.25, "LengthDim")
-        start_point = Point(0.0, 0.0, "start_point", setting_from_geo_col=True)
-        end_point = Point(0.3, 0.4, "end_point", setting_from_geo_col=True)
-        LengthDimension(tool_point=start_point, target_point=end_point, length_param=param)
+        param = geo_col.add_param(0.25, "LengthParam")
+        start_point = geo_col.add_point(0.0, 0.0)
+        end_point = geo_col.add_point(0.3, 0.4)
+        geo_col.add_length_dimension(tool_point=start_point, target_point=end_point, length_param=param)
 
         # Make sure that the param length value gets changed to sqrt(0.3**2 + 0.4**2)
         self.assertAlmostEqual(0.5, param.value())
 
         # Now, test the case where a param is not directly specified
-        dimension = LengthDimension(tool_point=start_point, target_point=end_point)
-        end_point.request_move(8.0, 6.0)
+        dimension = geo_col.add_length_dimension(tool_point=start_point, target_point=end_point)
+        end_point.request_move(8.0, 6.0, requestor_list=[])
+
+        # Make sure that the param length value gets changed to sqrt(8**2 + 6**2)
+        self.assertAlmostEqual(10.0, dimension.param().value())
+
+        # Change the length parameter value and make sure that the point is set to the appropriate position
+        print("Setting value to 5.0")
+        param.set_value(5.0)
+        new_length = start_point.measure_distance(end_point)
+        self.assertAlmostEqual(5.0, new_length)
+        self.assertAlmostEqual(0.0, start_point.x().value())
+        self.assertAlmostEqual(0.0, start_point.y().value())
+
+    def test_chained_length_dimension(self):
+        geo_col = GeometryCollection()
+        # First, test the case where a param is directly specified
+        param = geo_col.add_param(0.25, "LengthParam")
+        start_point = geo_col.add_point(0.0, 0.0)
+        end_point = geo_col.add_point(0.3, 0.4)
+        geo_col.add_length_dimension(tool_point=start_point, target_point=end_point, length_param=param)
+
+        # Make sure that the param length value gets changed to sqrt(0.3**2 + 0.4**2)
+        self.assertAlmostEqual(0.5, param.value())
+
+        # Now, test the case where a param is not directly specified
+        dimension = geo_col.add_length_dimension(tool_point=start_point, target_point=end_point)
+        end_point.request_move(8.0, 6.0, requestor_list=[])
 
         # Make sure that the param length value gets changed to sqrt(8**2 + 6**2)
         self.assertAlmostEqual(10.0, dimension.param().value())
@@ -372,7 +399,7 @@ class ConstraintTests(unittest.TestCase):
 
         # Now, test the case where a param is not directly specified
         dimension = AngleDimension(tool_point=start_point, target_point=end_point)
-        end_point.request_move(-4.0, 4.0)
+        end_point.request_move(-4.0, 4.0, requestor_list=[])
 
         # Make sure that the param length value gets changed to sqrt(8**2 + 6**2)
         self.assertAlmostEqual(135.0, dimension.param().value())
