@@ -26,6 +26,7 @@ class ParametricCurve(PymeadObj, ABC):
         super().__init__(sub_container=sub_container)
         self.curve_type = self.__class__.__name__
         self.reference = reference
+        self.airfoil = None
 
     def update(self):
         p_curve_data = self.evaluate()

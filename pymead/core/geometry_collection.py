@@ -3,7 +3,7 @@ import typing
 
 from pymead.core.airfoil2 import Airfoil
 from pymead.core.bezier2 import Bezier
-from pymead.core.constraints import CollinearConstraint, CurvatureConstraint
+from pymead.core.constraints import CollinearConstraint, CurvatureConstraint, GeoCon
 from pymead.core.dimensions import LengthDimension, AngleDimension, Dimension
 from pymead.core.mea2 import MEA
 from pymead.core.pymead_obj import DualRep, PymeadObj
@@ -57,7 +57,6 @@ class GeometryCollection(DualRep):
         typing.List[str]
             List of names found in the sub-container
         """
-        print(f"{self.container() = }, {self = }")
         return [k for k in self.container()[sub_container].keys()]
 
     @staticmethod
@@ -131,10 +130,8 @@ class GeometryCollection(DualRep):
         """
         # Set the object's name to a unique name if necessary
         if assign_unique_name:
-            print(f"{pymead_obj.sub_container = }")
             name_list = self.get_name_list(sub_container=pymead_obj.sub_container)
             unique_name = self.unique_namer(pymead_obj.name(), name_list)
-            print(f"{name_list = }, {unique_name = }")
             if isinstance(pymead_obj, Param) and unique_name.split("-")[1] == "1":
                 pass
             else:
@@ -290,6 +287,12 @@ class GeometryCollection(DualRep):
             for pt in pymead_obj.point_sequence().points():
                 pt.curves.remove(pymead_obj)
 
+            if pymead_obj.airfoil is not None:
+                for curve in pymead_obj.airfoil.curves:
+                    if pymead_obj is not curve:
+                        curve.airfoil = None
+                self.remove_pymead_obj(pymead_obj.airfoil)
+
         if isinstance(pymead_obj, Point):
             # Loop through the curves associated with this point to see which ones need to be deleted if one point
             # is removed from their point sequence
@@ -307,9 +310,42 @@ class GeometryCollection(DualRep):
                 curve.remove_point(point=pymead_obj)
                 curve.update()
 
+            for dim in pymead_obj.dims:
+                self.remove_pymead_obj(dim)
+
+            for geo_con in pymead_obj.geo_cons:
+                self.remove_pymead_obj(geo_con)
+
         if isinstance(pymead_obj, Dimension):
+            # Remove the dimension references from the points
+            if isinstance(pymead_obj.target(), Point):
+                pymead_obj.target().dims.remove(pymead_obj)
+            elif isinstance(pymead_obj.target(), PointSequence):
+                for pt in pymead_obj.target().points():
+                    pt.dims.remove(pymead_obj)
+
+            if isinstance(pymead_obj.tool(), Point):
+                pymead_obj.tool().dims.remove(pymead_obj)
+            elif isinstance(pymead_obj.tool(), PointSequence):
+                for pt in pymead_obj.tool().points():
+                    pt.dims.remove(pymead_obj)
+
             # Remove the parameter associated with the dimension
             self.remove_pymead_obj(pymead_obj.param())
+
+        if isinstance(pymead_obj, GeoCon):
+            # Remove the constraint references from the points
+            if isinstance(pymead_obj.target(), Point):
+                pymead_obj.target().geo_cons.remove(pymead_obj)
+            elif isinstance(pymead_obj.target(), PointSequence):
+                for pt in pymead_obj.target().points():
+                    pt.geo_cons.remove(pymead_obj)
+
+            if isinstance(pymead_obj.tool(), Point):
+                pymead_obj.tool().geo_cons.remove(pymead_obj)
+            elif isinstance(pymead_obj.tool(), PointSequence):
+                for pt in pymead_obj.tool().points():
+                    pt.geo_cons.remove(pymead_obj)
 
         # Remove the item from the geometry collection subcontainer
         self.remove_from_subcontainer(pymead_obj)
@@ -350,7 +386,6 @@ class GeometryCollection(DualRep):
 
     def add_bezier(self, point_sequence: PointSequence, name: str or None = None, assign_unique_name: bool = True):
         bezier = Bezier(point_sequence=point_sequence, name=name)
-        print(f"{bezier.name() = }")
 
         return self.add_pymead_obj_by_ref(bezier, assign_unique_name=assign_unique_name)
 
@@ -559,7 +594,6 @@ class GeometryCollection(DualRep):
 
         # Set the values
         for dv, dv_value in zip(self.container()["desvar"].values(), dv_values):
-            print(f"{dv = }, {dv_value = }")
             dv.set_value(dv_value, bounds_normalized=bounds_normalized)
 
     def alphabetical_sub_container_key_list(self, sub_container: str):
@@ -721,15 +755,32 @@ class GeometryCollection(DualRep):
                 raise ValueError(f"Invalid constraint type: {constraint_type}")
         for dim_dict in d["dims"].values():
             if "length_param" in dim_dict.keys():
+                if dim_dict["length_param"] in geo_col.container()["desvar"].keys():
+                    param = geo_col.container()["desvar"][dim_dict["length_param"]]
+                elif dim_dict["length_param"] in geo_col.container()["params"].keys():
+                    param = geo_col.container()["params"][dim_dict["length_param"]]
+                else:
+                    raise ValueError(f"Could not find length_param named {dim_dict['length_param']} in either the "
+                                     f"desvar or params sub-containers")
                 geo_col.add_length_dimension(tool_point=geo_col.container()["points"][dim_dict["tool_point"]],
                                              target_point=geo_col.container()["points"][dim_dict["target_point"]],
-                                             length_param=geo_col.container()["points"][dim_dict["length_param"]],
+                                             length_param=param,
                                              name=dim_dict["name"])
             elif "angle_param" in dim_dict.keys():
+                if dim_dict["angle_param"] in geo_col.container()["desvar"].keys():
+                    param = geo_col.container()["desvar"][dim_dict["angle_param"]]
+                elif dim_dict["angle_param"] in geo_col.container()["params"].keys():
+                    param = geo_col.container()["params"][dim_dict["angle_param"]]
+                else:
+                    raise ValueError(f"Could not find angle_param named {dim_dict['angle_param']} in either the "
+                                     f"desvar or params sub-containers")
                 geo_col.add_angle_dimension(tool_point=geo_col.container()["points"][dim_dict["tool_point"]],
                                             target_point=geo_col.container()["points"][dim_dict["target_point"]],
-                                            angle_param=geo_col.container()["points"][dim_dict["angle_param"]],
+                                            angle_param=param,
                                             name=dim_dict["name"])
+            else:
+                raise ValueError("Current valid load/save dimensions are LengthDimension and AngleDimension. Could "
+                                 "not find either length_param or angle_param in saved dictionary.")
         for airfoil_dict in d["airfoils"].values():
             geo_col.add_airfoil(leading_edge=geo_col.container()["points"][airfoil_dict["leading_edge"]],
                                 trailing_edge=geo_col.container()["points"][airfoil_dict["trailing_edge"]],
@@ -740,5 +791,3 @@ class GeometryCollection(DualRep):
             geo_col.add_mea(airfoils=[geo_col.container()["airfoils"][k] for k in mea_dict["airfoils"]],
                             name=mea_dict["name"], assign_unique_name=False)
         return geo_col
-
-    # TODO: SAVING BROKEN

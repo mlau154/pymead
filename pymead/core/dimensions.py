@@ -99,8 +99,8 @@ class LengthDimension(Dimension):
 
     def update_points_from_param(self):
         target_angle = self.tool().measure_angle(self.target())
-        self.target().request_move(self.tool().x().value() + self.param().value() * np.cos(target_angle),
-                                   self.tool().y().value() + self.param().value() * np.sin(target_angle))
+        self.target().force_move(self.tool().x().value() + self.param().value() * np.cos(target_angle),
+                                 self.tool().y().value() + self.param().value() * np.sin(target_angle))
 
     def update_param_from_points(self):
         length = self.tool().measure_distance(self.target())
@@ -128,9 +128,9 @@ class AngleDimension(Dimension):
 
     def update_points_from_param(self):
         target_length = self.tool().measure_distance(self.target())
-        self.target().request_move(self.tool().x().value() + target_length * np.cos(self.param().rad()),
-                                   self.tool().y().value() + target_length * np.sin(self.param().rad()),
-                                   )
+        self.target().force_move(self.tool().x().value() + target_length * np.cos(self.param().rad()),
+                                 self.tool().y().value() + target_length * np.sin(self.param().rad()),
+                                 )
 
     def update_param_from_points(self):
         angle = self.tool().measure_angle(self.target())

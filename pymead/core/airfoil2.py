@@ -31,6 +31,10 @@ class Airfoil(PymeadObj):
         # Check if the curves in the curve list form a single closed loop
         self.check_closed()
 
+        # Add the airfoil reference to the curves
+        for curve in self.curves:
+            curve.airfoil = self
+
     def check_closed(self):
         # Get the trailing edge upper curve
         if self.trailing_edge is self.upper_surf_end:

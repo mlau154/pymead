@@ -123,7 +123,6 @@ class Param(PymeadObj):
             return
 
         for dim in self.dims:
-            print("Updating from param!")
             dim.update_points_from_param()
 
     def lower(self):
