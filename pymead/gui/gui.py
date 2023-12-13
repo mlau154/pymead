@@ -287,15 +287,16 @@ class GUI(QMainWindow):
             if len(self.dock_widgets) == 2:
                 self.addDockWidget(Qt.LeftDockWidgetArea, self.dock_widgets[-2])  # Left
                 self.addDockWidget(Qt.RightDockWidgetArea, dw)  # Right
-                # self.setCentralWidget(QWidget())
-                # self.tabifyDockWidget(self.dock_widgets[-2], self.dock_widgets[-1])
                 self.splitDockWidget(self.dock_widgets[-2], self.dock_widgets[-1], Qt.Horizontal)
             elif len(self.dock_widgets) == 3:
-                self.addDockWidget(Qt.RightDockWidgetArea, dw)  # Bottom
-                # self.tabifyDockWidget(self.dock_widgets[-2], self.dock_widgets[-1])
+                self.addDockWidget(Qt.RightDockWidgetArea, dw)
                 self.splitDockWidget(self.dock_widgets[-2], self.dock_widgets[-1], Qt.Vertical)
-            elif len(self.dock_widgets) > 3:
-                self.addDockWidget(Qt.RightDockWidgetArea, dw)  # Right
+            elif len(self.dock_widgets) == 4:
+                self.addDockWidget(Qt.RightDockWidgetArea, dw)
+                self.tabifyDockWidget(self.dock_widgets[-3], self.dock_widgets[-1])
+            elif len(self.dock_widgets) > 4:
+                self.addDockWidget(Qt.RightDockWidgetArea, dw)
+                self.tabifyDockWidget(self.dock_widgets[-2], self.dock_widgets[-1])
 
     def on_tab_closed(self, name: str, event: QCloseEvent):
         if name == "Analysis":
@@ -565,8 +566,8 @@ class GUI(QMainWindow):
                         p.child("Equation Definition").remove()
 
     def auto_range_geometry(self):
-        x_data_range, y_data_range = self.mea.get_curve_bounds()
-        self.v.getViewBox().setRange(xRange=x_data_range, yRange=y_data_range)
+        x_data_range, y_data_range = self.airfoil_canvas.getPointRange()
+        self.airfoil_canvas.plot.getViewBox().setRange(xRange=x_data_range, yRange=y_data_range)
 
     def update_airfoil_parameters_from_vector(self, param_vec: np.ndarray):
         for airfoil in self.mea.airfoils.values():
@@ -845,13 +846,13 @@ class GUI(QMainWindow):
         # widget0 = self.main_layout.itemAt(0).widget()
         # self.main_layout.replaceWidget(widget0, self.design_tree_widget)
         # widget0.deleteLater()
-        # self.auto_range_geometry()
         # self.mea_start_dict = self.copy_mea_dict()
         self.permanent_widget.progress_bar.setValue(100)
         self.statusBar().showMessage("Airfoil system load complete.", 2000)
         self.permanent_widget.progress_bar.hide()
         self.geo_col.tree.geo_col = self.geo_col
         self.geo_col.canvas.geo_col = self.geo_col
+        self.auto_range_geometry()
 
     def disp_message_box(self, message: str, message_mode: str = 'error', rich_text: bool = False):
         disp_message_box(message, self, message_mode=message_mode, rich_text=rich_text)

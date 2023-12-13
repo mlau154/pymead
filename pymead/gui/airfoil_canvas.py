@@ -8,9 +8,6 @@ from PyQt5 import QtWidgets
 from PyQt5.QtCore import pyqtSignal, QEventLoop, Qt
 from PyQt5.QtWidgets import QApplication
 
-from pymead.core.bezier2 import Bezier
-from pymead.core.line2 import LineSegment
-from pymead.core.constraints import CollinearConstraint
 from pymead.core.geometry_collection import GeometryCollection
 from pymead.core.parametric_curve2 import ParametricCurve
 from pymead.core.point import PointSequence, Point
@@ -18,6 +15,7 @@ from pymead.core.pymead_obj import PymeadObj
 from pymead.gui.hoverable_curve import HoverableCurve
 from pymead.gui.draggable_point import DraggablePoint
 from pymead.utils.read_write_files import load_data
+from pymead.core import UNITS
 from pymead import q_settings, GUI_SETTINGS_DIR
 
 q_settings_descriptions = load_data(os.path.join(GUI_SETTINGS_DIR, "q_settings_descriptions.json"))
@@ -43,6 +41,8 @@ class AirfoilCanvas(pg.PlotWidget):
         self.geo_col = geo_col
         self.geo_col.canvas = self
         self.plot = self.getPlotItem()
+        self.plot.setLabel(axis="bottom", text=f"x [{UNITS.current_length_unit()}]")
+        self.plot.setLabel(axis="left", text=f"y [{UNITS.current_length_unit()}]")
 
     def toggleGrid(self):
         x_state = self.plot.ctrl.xGridCheck.checkState()
@@ -52,7 +52,34 @@ class AirfoilCanvas(pg.PlotWidget):
         else:
             self.plot.showGrid(x=True, y=True)
 
+    def getPointRange(self):
+        """
+        Gets the minimum and maximum :math:`x` and :math:`y` values of all the points in the GeometryCollection.
+
+        Returns
+        typing.Tuple[list]
+            x-range and y-range of the points (two-element tuple of two-element lists)
+        """
+        point_seq = PointSequence(points=[pt for pt in self.geo_col.container()["points"].values()])
+        pseq_arr = point_seq.as_array()
+        min_x = pseq_arr[:, 0].min()
+        max_x = pseq_arr[:, 0].max()
+        min_y = pseq_arr[:, 1].min()
+        max_y = pseq_arr[:, 1].max()
+        return [min_x, max_x], [min_y, max_y]
+
     def drawPoint(self, x, y):
+        """
+        Draws a point on the airfoil canvas at a specified :math:`x`- and :math:`y`-location.
+
+        Parameters
+        ==========
+        x: list
+            One-element list where the element represents the :math:`x`-location
+
+        y: list
+            One-element list where the element represents the :math:`y`-location
+        """
         self.geo_col.add_point(x[0], y[0])
 
     def addPymeadCanvasItem(self, pymead_obj: PymeadObj):

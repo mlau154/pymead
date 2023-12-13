@@ -1,4 +1,4 @@
-from PyQt5.QtWidgets import QToolBar, QToolButton
+from PyQt5.QtWidgets import QToolBar, QToolButton, QApplication
 from PyQt5.QtGui import QIcon
 from PyQt5.QtCore import pyqtSlot
 import os
@@ -58,14 +58,8 @@ class MainIconToolbar(QToolBar):
         self.parent.stop_optimization()
 
     def on_grid_button_pressed(self):
-        # import pyqtgraph as pg
-        if hasattr(self.parent, "current_dock_widget"):
-            dw = self.parent.current_dock_widget
-        else:
-            dw = self.parent.first_dock_widget
-        if dw is None:
-            self.parent.airfoil_canvas.toggleGrid()
-        else:
+        self.parent.airfoil_canvas.toggleGrid()
+        for dw in self.parent.dock_widgets:
             if isinstance(dw.widget(), pg.GraphicsLayoutWidget):
                 v = dw.widget().getItem(0, 0)
                 x_state = v.ctrl.xGridCheck.checkState()
