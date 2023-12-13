@@ -981,6 +981,8 @@ class GUI(QMainWindow):
 
     def single_airfoil_viscous_analysis(self):
         self.dialog = XFOILDialog(parent=self)
+        current_airfoils = [k for k in self.geo_col.container()["airfoils"].keys()]
+        self.dialog.w.widget_dict["airfoil"]["widget"].addItems(current_airfoils)
         if self.dialog.exec():
             inputs = self.dialog.getInputs()
         else:
@@ -1006,8 +1008,10 @@ class GUI(QMainWindow):
 
             #TODO: insert downsampling step here
 
-            coords = tuple(self.mea.deepcopy().airfoils[xfoil_settings['airfoil']].get_coords(
-                body_fixed_csys=False, as_tuple=True))
+            # coords = tuple(self.mea.deepcopy().airfoils[xfoil_settings['airfoil']].get_coords(
+            #     body_fixed_csys=False, as_tuple=True))
+
+            coords = self.geo_col.container()["airfoils"][xfoil_settings["airfoil"]].get_coords_selig_format()
 
             aero_data, _ = calculate_aero_data(xfoil_settings['airfoil_analysis_dir'],
                                                xfoil_settings['airfoil_coord_file_name'],
@@ -1038,7 +1042,7 @@ class GUI(QMainWindow):
                 if self.analysis_graph is None:
                     # Need to set analysis_graph to None if analysis window is closed! Might also not want to allow geometry docking window to be closed
                     self.analysis_graph = AnalysisGraph(background_color=self.themes[self.current_theme]["graph-background-color"])
-                    self.dockable_tab_window.add_new_tab_widget(self.analysis_graph.w, "Analysis")
+                    self.add_new_tab_widget(self.analysis_graph.w, "Analysis")
                 pg_plot_handle = self.analysis_graph.v.plot(pen=pg.mkPen(color=self.pens[self.n_converged_analyses][0],
                                                                          style=self.pens[self.n_converged_analyses][1]),
                                                             name=str(self.n_analyses))

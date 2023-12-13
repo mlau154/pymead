@@ -195,7 +195,10 @@ def calculate_aero_data(airfoil_coord_dir: str, airfoil_name: str, coords: typin
                     aero_data[k].append(v)
 
         if save_aero_data:
-            save_data(aero_data, os.path.join(base_dir, airfoil_name, "aero_data.json"))
+            for k, v in aero_data["Cp"].items():
+                if isinstance(v, np.ndarray):
+                    aero_data["Cp"][k] = v.tolist()
+            save_data(aero_data, os.path.join(base_dir, "aero_data.json"))
 
         return aero_data, xfoil_log
 

@@ -786,7 +786,7 @@ class GeometryCollection(DualRep):
                                 trailing_edge=geo_col.container()["points"][airfoil_dict["trailing_edge"]],
                                 upper_surf_end=geo_col.container()["points"][airfoil_dict["upper_surf_end"]],
                                 lower_surf_end=geo_col.container()["points"][airfoil_dict["lower_surf_end"]],
-                                          name=airfoil_dict["name"], assign_unique_name=False)
+                                name=airfoil_dict["name"], assign_unique_name=False)
         for mea_dict in d["mea"].values():
             geo_col.add_mea(airfoils=[geo_col.container()["airfoils"][k] for k in mea_dict["airfoils"]],
                             name=mea_dict["name"], assign_unique_name=False)

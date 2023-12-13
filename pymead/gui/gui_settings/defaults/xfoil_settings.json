@@ -176,10 +176,6 @@
     "airfoil": {
         "label": "Airfoil to Analyze",
         "widget_type": "QComboBox",
-        "addItems": [
-            "A0"
-        ],
-        "setCurrentText": "A0",
         "column": 5,
         "label.column": 4
     },

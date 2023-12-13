@@ -1843,8 +1843,8 @@ class PymeadDialog(QDialog):
 
 class XFOILDialog(PymeadDialog):
     def __init__(self, parent: QWidget, settings_override: dict = None):
-        w = XFOILDialogWidget()
-        super().__init__(parent=parent, window_title="Single Airfoil Viscous Analysis", widget=w)
+        self.w = XFOILDialogWidget()
+        super().__init__(parent=parent, window_title="Single Airfoil Viscous Analysis", widget=self.w)
 
 
 class MultiAirfoilDialog(PymeadDialog):
