@@ -10,7 +10,7 @@ from matplotlib import pyplot as plt
 from scipy.interpolate import CloughTocher2DInterpolator
 from shapely.geometry import MultiPoint
 
-from mea2 import MEA
+from pymead.core.mea2 import MEA
 from pymead.analysis.read_aero_data import read_aero_data_from_xfoil, read_Cp_from_file_xfoil, read_bl_data_from_mses, \
     read_forces_from_mses, read_grid_stats_from_mses, read_field_from_mses, read_streamline_grid_from_mses, \
     flow_var_idx, convert_blade_file_to_3d_array, read_actuator_disk_data_mses, read_Mach_from_mses_file

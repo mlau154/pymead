@@ -11,7 +11,7 @@ from PyQt5.QtGui import QStandardItem, QStandardItemModel
 import tempfile
 from PyQt5.QtCore import pyqtSlot, pyqtSignal, QStandardPaths
 
-from geometry_collection import GeometryCollection
+from pymead.core.geometry_collection import GeometryCollection
 from pymead.core.mea import MEA
 from pymead.gui.sampling_visualization import SamplingVisualizationWidget
 from pymead.gui.infty_doublespinbox import InftyDoubleSpinBox

@@ -1104,14 +1104,19 @@ class GUI(QMainWindow):
 
         # coords_list = mea.get_coords_list()
 
-        aero_data, _ = calculate_aero_data(mset_settings['airfoil_analysis_dir'],
-                                           mset_settings['airfoil_coord_file_name'],
-                                           mea=mea,
-                                           tool="MSES",
-                                           export_Cp=True,
-                                           mset_settings=mset_settings,
-                                           mses_settings=mses_settings,
-                                           mplot_settings=mplot_settings)
+        try:
+            aero_data, _ = calculate_aero_data(mset_settings['airfoil_analysis_dir'],
+                                               mset_settings['airfoil_coord_file_name'],
+                                               mea=mea,
+                                               tool="MSES",
+                                               export_Cp=True,
+                                               mset_settings=mset_settings,
+                                               mses_settings=mses_settings,
+                                               mplot_settings=mplot_settings)
+        except OSError as os_error:
+            self.disp_message_box(str(os_error), message_mode="error")
+            return
+
         if not aero_data['converged'] or aero_data['errored_out'] or aero_data['timed_out']:
             self.disp_message_box("MSES Analysis Failed", message_mode='error')
             self.output_area_text(
