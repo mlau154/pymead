@@ -5,7 +5,7 @@ import typing
 
 def mset_settings_default(mea_keys: typing.List[str]):
     settings = {
-        'airfoil_order': {'label': 'Airfoil Order', 'widget_type': 'QLineEdit', 'text': ','.join(mea_keys),
+        'airfoils': {'label': 'Airfoil Order', 'widget_type': 'QLineEdit', 'text': ','.join(mea_keys),
                           },
         'grid_bounds': {'widget_type': 'GridBounds', 'values': [-5.0, 5.0, -5.0, 5.0]},
         'airfoil_side_points': {'label': 'Airfoil Side Points', 'widget_type': 'QSpinBox', 'value': 150,

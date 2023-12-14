@@ -10,6 +10,7 @@ from matplotlib import pyplot as plt
 from scipy.interpolate import CloughTocher2DInterpolator
 from shapely.geometry import MultiPoint
 
+from mea2 import MEA
 from pymead.analysis.read_aero_data import read_aero_data_from_xfoil, read_Cp_from_file_xfoil, read_bl_data_from_mses, \
     read_forces_from_mses, read_grid_stats_from_mses, read_field_from_mses, read_streamline_grid_from_mses, \
     flow_var_idx, convert_blade_file_to_3d_array, read_actuator_disk_data_mses, read_Mach_from_mses_file
@@ -88,7 +89,8 @@ def update_mses_settings_from_stencil(mses_settings: dict, stencil: typing.List[
     return mses_settings
 
 
-def calculate_aero_data(airfoil_coord_dir: str, airfoil_name: str, coords: typing.Tuple[tuple],
+def calculate_aero_data(airfoil_coord_dir: str, airfoil_name: str, coords: typing.Tuple[tuple] = None,
+                        mea: MEA = None,
                         tool: str = 'XFOIL', xfoil_settings: dict = None, mset_settings: dict = None,
                         mses_settings: dict = None, mplot_settings: dict = None, export_Cp: bool = True,
                         save_aero_data: bool = True):
@@ -215,7 +217,7 @@ def calculate_aero_data(airfoil_coord_dir: str, airfoil_name: str, coords: typin
 
         converged = False
         mses_log, mplot_log = None, None
-        mset_success, mset_log = run_mset(airfoil_name, airfoil_coord_dir, mset_settings, coords)
+        mset_success, mset_log = run_mset(airfoil_name, airfoil_coord_dir, mset_settings, coords=coords, mea=mea)
 
         # Set up single-point or multipoint settings
         mset_mplot_loop_iterations = 1
@@ -414,7 +416,7 @@ def run_xfoil(airfoil_name: str, base_dir: str, xfoil_settings: dict, coords: ty
     return aero_data, xfoil_log
 
 
-def run_mset(name: str, base_dir: str, mset_settings: dict, coords: typing.Tuple[tuple]):
+def run_mset(name: str, base_dir: str, mset_settings: dict, coords: typing.Tuple[tuple] = None, mea: MEA = None):
     r"""
     A Python API for MSET
 
@@ -440,7 +442,16 @@ def run_mset(name: str, base_dir: str, mset_settings: dict, coords: typing.Tuple
     bool, str
       A boolean describing whether the MSET call succeeded and a string containing the path to the MSET log file
     """
-    write_blade_file(name, base_dir, mset_settings['grid_bounds'], coords)
+    if coords is None and mea is None:
+        raise ValueError("Must specify either coords or mea")
+    if coords is not None and mea is not None:
+        raise ValueError("Cannot specify both coords and mea")
+
+    if coords is not None:
+        write_blade_file(name, base_dir, mset_settings['grid_bounds'], coords)
+    elif mea is not None:
+        mea.write_mses_blade_file(name, os.path.join(base_dir, name), grid_bounds=mset_settings["grid_bounds"])
+
     write_gridpar_file(name, base_dir, mset_settings)
     mset_input_name = 'mset_input.txt'
     mset_input_file = os.path.join(base_dir, name, mset_input_name)
@@ -720,11 +731,11 @@ def write_gridpar_file(name: str, base_folder: str, mset_settings: dict):
 
         multi_airfoil_grid = mset_settings['multi_airfoil_grid']
 
-        for a in mset_settings['airfoil_order']:
+        for a in mset_settings['airfoils']:
             f.write(f"{multi_airfoil_grid[a]['dsLE_dsAvg']} {multi_airfoil_grid[a]['dsTE_dsAvg']} "
                     f"{multi_airfoil_grid[a]['curvature_exp']}\n")
 
-        for a in mset_settings['airfoil_order']:
+        for a in mset_settings['airfoils']:
             f.write(f"{multi_airfoil_grid[a]['U_s_smax_min']} {multi_airfoil_grid[a]['U_s_smax_max']} "
                     f"{multi_airfoil_grid[a]['L_s_smax_min']} {multi_airfoil_grid[a]['L_s_smax_max']} "
                     f"{multi_airfoil_grid[a]['U_local_avg_spac_ratio']} {multi_airfoil_grid[a]['L_local_avg_spac_ratio']}\n")

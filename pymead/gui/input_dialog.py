@@ -11,6 +11,7 @@ from PyQt5.QtGui import QStandardItem, QStandardItemModel
 import tempfile
 from PyQt5.QtCore import pyqtSlot, pyqtSignal, QStandardPaths
 
+from geometry_collection import GeometryCollection
 from pymead.core.mea import MEA
 from pymead.gui.sampling_visualization import SamplingVisualizationWidget
 from pymead.gui.infty_doublespinbox import InftyDoubleSpinBox
@@ -87,9 +88,9 @@ def convert_dialog_to_mset_settings(dialog_input: dict):
     #         else:
     #             mset_settings[k].append(v)
     mset_settings = deepcopy(dialog_input)
-    mset_settings['multi_airfoil_grid'].pop('airfoil_order')
-    mset_settings['airfoil_order'] = dialog_input['airfoil_order'].split(',')
-    mset_settings['n_airfoils'] = len(mset_settings['airfoil_order'])
+    print(f"{mset_settings = }")
+    mset_settings["airfoils"] = [k for k in mset_settings["multi_airfoil_grid"].keys()]
+    mset_settings["n_airfoils"] = len(mset_settings["airfoils"])
     return mset_settings
 
 
@@ -124,7 +125,7 @@ def convert_dialog_to_mses_settings(dialog_input: dict):
         mses_settings['target'] = 'Cl'
 
     for idx, (airfoil_name, airfoil) in enumerate(dialog_input['xtrs'].items()):
-        if airfoil_name != 'airfoil_order':
+        if airfoil_name != 'airfoils':
             for k, v in airfoil.items():
                 if idx == 0:
                     mses_settings[k] = [v]
@@ -158,53 +159,42 @@ def convert_dialog_to_mplot_settings(dialog_input: dict):
     return mplot_settings
 
 
-def default_input_dict():
-    input_dict = {
-        'A0': {
-            'dsLE_dsAvg': 0.35,
-            'dsTE_dsAvg': 0.8,
-            'curvature_exp': 1.3,
-            'U_s_smax_min': 1,
-            'U_s_smax_max': 1,
-            'L_s_smax_min': 1,
-            'L_s_smax_max': 1,
-            'U_local_avg_spac_ratio': 0,
-            'L_local_avg_spac_ratio': 0,
-        },
-        'airfoil_order': ['A0'],
+def get_default_grid_settings_dict():
+    return {
+        'dsLE_dsAvg': 0.35,
+        'dsTE_dsAvg': 0.8,
+        'curvature_exp': 1.3,
+        'U_s_smax_min': 1,
+        'U_s_smax_max': 1,
+        'L_s_smax_min': 1,
+        'L_s_smax_max': 1,
+        'U_local_avg_spac_ratio': 0,
+        'L_local_avg_spac_ratio': 0,
     }
-    return input_dict
 
 
-def default_inputs_XTRS():
-    input_dict = {
-        'A0': {
-            'XTRSupper': 1.0,
-            'XTRSlower': 1.0,
-        },
-        'airfoil_order': ['A0'],
+def get_default_XTRS_settings_dict():
+    return {
+        'XTRSupper': 1.0,
+        'XTRSlower': 1.0,
     }
-    return input_dict
 
 
-def default_inputs_AD():
-    input_dict = {
-        '1': {
-            'ISDELH': 1,
-            'XCDELH': 0.1,
-            'PTRHIN': 1.1,
-            'ETAH': 0.95,
-            'from_geometry': {}
-        },
+def get_default_AD_settings_dict():
+    return {
+        'ISDELH': 1,
+        'XCDELH': 0.1,
+        'PTRHIN': 1.1,
+        'ETAH': 0.95,
+        'from_geometry': {}
     }
-    return input_dict
 
 
 class MSETMultiGridWidget(QTabWidget):
 
     multiGridChanged = pyqtSignal()
 
-    def __init__(self, parent):
+    def __init__(self, parent, initial_mea: MEA = None):
         super().__init__(parent=parent)
         self.labels = {
             'dsLE_dsAvg': 'dsLE/dsAvg',
@@ -217,8 +207,13 @@ class MSETMultiGridWidget(QTabWidget):
             'U_local_avg_spac_ratio': 'U Local Avg. Spac. Ratio',
             'L_local_avg_spac_ratio': 'L Local Avg. Spac. Ratio',
         }
-        self.input_dict = default_input_dict()
-        self.tab_names = self.input_dict['airfoil_order']
+        if initial_mea is None:
+            self.input_dict = {}
+            self.airfoils = []
+        else:
+            self.airfoils = [a.name() for a in initial_mea.airfoils]
+            self.input_dict = {a_name: get_default_grid_settings_dict() for a_name in self.airfoils}
+
         self.widget_dict = {}
         self.grid_widget = None
         self.grid_layout = None
@@ -227,20 +222,19 @@ class MSETMultiGridWidget(QTabWidget):
 
     def generateWidgets(self):
         for k1, v1 in self.input_dict.items():
-            if k1 != 'airfoil_order':
-                self.widget_dict[k1] = {}
-                for k2, v2 in v1.items():
-                    w = QDoubleSpinBox(self)
-                    w.setMinimum(0.0)
-                    w.setMaximum(np.inf)
-                    w.setValue(v2)
-                    w.setSingleStep(0.01)
-                    w.valueChanged.connect(partial(self.valueChanged, k1, k2))
-                    w_label = QLabel(self.labels[k2], self)
-                    self.widget_dict[k1][k2] = {
-                        'widget': w,
-                        'label': w_label,
-                    }
+            self.widget_dict[k1] = {}
+            for k2, v2 in v1.items():
+                w = QDoubleSpinBox(self)
+                w.setMinimum(0.0)
+                w.setMaximum(np.inf)
+                w.setValue(v2)
+                w.setSingleStep(0.01)
+                w.valueChanged.connect(partial(self.valueChanged, k1, k2))
+                w_label = QLabel(self.labels[k2], self)
+                self.widget_dict[k1][k2] = {
+                    'widget': w,
+                    'label': w_label,
+                }
 
     def regenerateWidgets(self):
         self.generateWidgets()
@@ -249,8 +243,8 @@ class MSETMultiGridWidget(QTabWidget):
     def onAirfoilAdded(self, new_airfoil_name_list: list):
         for airfoil_name in new_airfoil_name_list:
             if airfoil_name not in self.input_dict.keys():
-                self.input_dict[airfoil_name] = deepcopy(default_input_dict()['A0'])
-        self.tab_names = new_airfoil_name_list
+                self.input_dict[airfoil_name] = get_default_grid_settings_dict()
+        self.airfoils = new_airfoil_name_list
         self.regenerateWidgets()
 
     def onAirfoilRemoved(self, new_airfoil_name_list: list):
@@ -260,32 +254,32 @@ class MSETMultiGridWidget(QTabWidget):
                 names_to_remove.append(airfoil_name)
         for airfoil_name in names_to_remove:
             self.input_dict.pop(airfoil_name)
-        self.tab_names = new_airfoil_name_list
+        self.airfoils = new_airfoil_name_list
         self.regenerateWidgets()
 
     def onAirfoilListChanged(self, new_airfoil_name_list: list):
-        self.input_dict['airfoil_order'] = new_airfoil_name_list
-        if len(new_airfoil_name_list) > len(self.tab_names):
+        new_airfoil_name_list = [] if new_airfoil_name_list == [""] else new_airfoil_name_list
+        if len(new_airfoil_name_list) > len(self.airfoils):
             self.onAirfoilAdded(new_airfoil_name_list)
-        elif len(new_airfoil_name_list) < len(self.tab_names):
+        elif len(new_airfoil_name_list) < len(self.airfoils):
             self.onAirfoilRemoved(new_airfoil_name_list)
         else:
-            self.tab_names = new_airfoil_name_list
+            self.airfoils = new_airfoil_name_list
             self.regenerateWidgets()
         self.multiGridChanged.emit()
 
     def setTabs(self):
         self.clear()
-        for tab_name in self.tab_names:
-            self.add_tab(tab_name)
+        for airfoil in self.airfoils:
+            self.add_tab(airfoil)
             grid_row_counter = 0
-            for k, v in self.widget_dict[tab_name].items():
+            for k, v in self.widget_dict[airfoil].items():
                 self.grid_layout.addWidget(v['label'], grid_row_counter, 0)
                 self.grid_layout.addWidget(v['widget'], grid_row_counter, 1)
                 grid_row_counter += 1
 
     def updateTabNames(self, tab_name_list: list):
-        self.tab_names = tab_name_list
+        self.airfoils = tab_name_list
 
     def add_tab(self, name: str):
         self.grid_widget = QWidget()
@@ -293,18 +287,18 @@ class MSETMultiGridWidget(QTabWidget):
         self.grid_widget.setLayout(self.grid_layout)
         self.addTab(self.grid_widget, name)
 
-    def setValues(self, values: dict):
+    def setValue(self, values: dict):
         self.input_dict = deepcopy(values)
-        if self.input_dict['airfoil_order'] != self.tab_names:  # This only happens when re-loading the dialog
-            self.updateTabNames(self.input_dict['airfoil_order'])
-            self.regenerateWidgets()  # This function already sets the values, thus the else statement
-        else:
-            for k1, v1 in values.items():
-                if k1 != 'airfoil_order':
-                    for k2, v2 in v1.items():
-                        self.widget_dict[k1][k2]['widget'].setValue(v2)
+        # if self.input_dict['airfoil_order'] != self.tab_names:  # This only happens when re-loading the dialog
+        self.updateTabNames([k for k in self.input_dict.keys()])
+        self.regenerateWidgets()  # This function already sets the values, thus the else statement
+        # else:
+        # print(f"{values = }")
+        # for k1, v1 in values.items():
+        #     for k2, v2 in v1.items():
+        #         self.widget_dict[k1][k2]['widget'].setValue(v2)
 
-    def values(self):
+    def value(self):
         return self.input_dict
 
     def valueChanged(self, k1, k2, v2):
@@ -316,14 +310,20 @@ class XTRSWidget(QTabWidget):
 
     XTRSChanged = pyqtSignal()
 
-    def __init__(self, parent):
+    def __init__(self, parent, initial_mea: MEA = None):
         super().__init__(parent=parent)
         self.labels = {
             'XTRSupper': 'XTRSupper',
             'XTRSlower': 'XTRSlower',
         }
-        self.input_dict = default_inputs_XTRS()
-        self.tab_names = self.input_dict['airfoil_order']
+
+        if initial_mea is None:
+            self.input_dict = {}
+            self.airfoils = []
+        else:
+            self.airfoils = [a.name() for a in initial_mea.airfoils]
+            self.input_dict = {a_name: get_default_XTRS_settings_dict() for a_name in self.airfoils}
+
         self.widget_dict = {}
         self.grid_widget = None
         self.grid_layout = None
@@ -332,20 +332,19 @@ class XTRSWidget(QTabWidget):
 
     def generateWidgets(self):
         for k1, v1 in self.input_dict.items():
-            if k1 != 'airfoil_order':
-                self.widget_dict[k1] = {}
-                for k2, v2 in v1.items():
-                    w = QDoubleSpinBox(self)
-                    w.setMinimum(0.0)
-                    w.setMaximum(1.0)
-                    w.setValue(v2)
-                    w.setSingleStep(0.05)
-                    w.valueChanged.connect(partial(self.valueChanged, k1, k2))
-                    w_label = QLabel(self.labels[k2], self)
-                    self.widget_dict[k1][k2] = {
-                        'widget': w,
-                        'label': w_label,
-                    }
+            self.widget_dict[k1] = {}
+            for k2, v2 in v1.items():
+                w = QDoubleSpinBox(self)
+                w.setMinimum(0.0)
+                w.setMaximum(1.0)
+                w.setValue(v2)
+                w.setSingleStep(0.05)
+                w.valueChanged.connect(partial(self.valueChanged, k1, k2))
+                w_label = QLabel(self.labels[k2], self)
+                self.widget_dict[k1][k2] = {
+                    "widget": w,
+                    "label": w_label,
+                }
 
     def regenerateWidgets(self):
         self.generateWidgets()
@@ -354,8 +353,8 @@ class XTRSWidget(QTabWidget):
     def onAirfoilAdded(self, new_airfoil_name_list: list):
         for airfoil_name in new_airfoil_name_list:
             if airfoil_name not in self.input_dict.keys():
-                self.input_dict[airfoil_name] = deepcopy(default_inputs_XTRS()['A0'])
-        self.tab_names = new_airfoil_name_list
+                self.input_dict[airfoil_name] = get_default_XTRS_settings_dict()
+        self.airfoils = new_airfoil_name_list
         self.regenerateWidgets()
 
     def onAirfoilRemoved(self, new_airfoil_name_list: list):
@@ -365,32 +364,32 @@ class XTRSWidget(QTabWidget):
                 names_to_remove.append(airfoil_name)
         for airfoil_name in names_to_remove:
             self.input_dict.pop(airfoil_name)
-        self.tab_names = new_airfoil_name_list
+        self.airfoils = new_airfoil_name_list
         self.regenerateWidgets()
 
     def onAirfoilListChanged(self, new_airfoil_name_list: list):
-        self.input_dict['airfoil_order'] = new_airfoil_name_list
-        if len(new_airfoil_name_list) > len(self.tab_names):
+        new_airfoil_name_list = [] if new_airfoil_name_list == [""] else new_airfoil_name_list
+        if len(new_airfoil_name_list) > len(self.airfoils):
             self.onAirfoilAdded(new_airfoil_name_list)
-        elif len(new_airfoil_name_list) < len(self.tab_names):
+        elif len(new_airfoil_name_list) < len(self.airfoils):
             self.onAirfoilRemoved(new_airfoil_name_list)
         else:
-            self.tab_names = new_airfoil_name_list
+            self.airfoils = new_airfoil_name_list
             self.regenerateWidgets()
         self.XTRSChanged.emit()
 
     def setTabs(self):
         self.clear()
-        for tab_name in self.tab_names:
-            self.add_tab(tab_name)
+        for airfoil in self.airfoils:
+            self.add_tab(airfoil)
             grid_row_counter = 0
-            for k, v in self.widget_dict[tab_name].items():
+            for k, v in self.widget_dict[airfoil].items():
                 self.grid_layout.addWidget(v['label'], grid_row_counter, 0)
                 self.grid_layout.addWidget(v['widget'], grid_row_counter, 1)
                 grid_row_counter += 1
 
     def updateTabNames(self, tab_name_list: list):
-        self.tab_names = tab_name_list
+        self.airfoils = tab_name_list
 
     def add_tab(self, name: str):
         self.grid_widget = QWidget()
@@ -399,15 +398,16 @@ class XTRSWidget(QTabWidget):
         self.addTab(self.grid_widget, name)
 
     def setValues(self, values: dict):
+        print(f"{values = }")
         self.input_dict = deepcopy(values)
-        if self.input_dict['airfoil_order'] != self.tab_names:  # This only happens when re-loading the dialog
-            self.updateTabNames(self.input_dict['airfoil_order'])
-            self.regenerateWidgets()  # This function already sets the values, thus the else statement
-        else:
-            for k1, v1 in values.items():
-                if k1 != 'airfoil_order':
-                    for k2, v2 in v1.items():
-                        self.widget_dict[k1][k2]['widget'].setValue(v2)
+        # if self.input_dict['airfoil_order'] != self.airfoils:  # This only happens when re-loading the dialog
+        self.updateTabNames([k for k in self.input_dict.keys()])
+        self.regenerateWidgets()  # This function already sets the values, thus the else statement
+        # else:
+        #     for k1, v1 in values.items():
+        #         if k1 != 'airfoil_order':
+        #             for k2, v2 in v1.items():
+        #                 self.widget_dict[k1][k2]['widget'].setValue(v2)
 
     def values(self):
         return self.input_dict
@@ -464,11 +464,11 @@ class ADWidget(QTabWidget):
             'PTRHIN': 'AD Total Pres. Ratio',
             'ETAH': 'AD Thermal Efficiency'
         }
-        self.tab_names = ['1']
-        self.input_dict = default_inputs_AD()
+        self.tab_names = []
+        self.input_dict = {}
         self.widget_dict = {}
-        self.grid_widget = {'1': None}
-        self.grid_layout = {'1': None}
+        self.grid_widget = {}
+        self.grid_layout = {}
         self.design_tree_widget = design_tree_widget
         self.generateWidgets()
         self.setTabs()
@@ -525,7 +525,7 @@ class ADWidget(QTabWidget):
     def onADAdded(self, new_AD_list: list):
         for ad in new_AD_list:
             if ad not in self.input_dict.keys():
-                self.input_dict[ad] = deepcopy(default_inputs_AD()['1'])
+                self.input_dict[ad] = deepcopy(get_default_AD_settings_dict()['1'])
         self.tab_names = new_AD_list
         self.regenerateWidgets()
 
@@ -650,6 +650,9 @@ class PymeadDialogWidget(QWidget):
                 kwargs = {}
                 if w_dict['widget_type'] in ['ADWidget', 'OptConstraintsHTabWidget']:
                     kwargs = self.kwargs
+                    kwargs.pop("initial_mea")
+                elif w_dict["widget_type"] == "XTRSWidget":
+                    kwargs = {"initial_mea": self.kwargs.get("initial_mea")}
                 widget = getattr(sys.modules[__name__], w_dict['widget_type'])(parent=self, **kwargs)
             else:
                 raise ValueError(f"Widget type {w_dict['widget_type']} not found in PyQt5.QtWidgets or system modules")
@@ -706,7 +709,7 @@ class PymeadDialogWidget(QWidget):
                 getattr(widget, get_set_value_names[w_dict['widget_type']][2]).connect(
                     partial(self.dialogChanged, w_name=w_name))
 
-    def getInputs(self):
+    def valuesFromWidgets(self):
         """This method is used to extract the data from the Dialog"""
         output_dict = {w_name: None for w_name in self.widget_dict.keys()}
         for w_name, w in self.widget_dict.items():
@@ -725,7 +728,7 @@ class PymeadDialogWidget(QWidget):
     def activate_deactivate_from_checkbox(widget, state):
         widget.setReadOnly(not state)
 
-    def overrideInputs(self, new_values: dict):
+    def setWidgetValuesFromDict(self, new_values: dict):
         for k, v in new_values.items():
             if v is not None:
                 if self.widget_dict[k]['checkbox'] is not None:
@@ -735,12 +738,12 @@ class PymeadDialogWidget(QWidget):
                     getattr(self.widget_dict[k]['widget'], get_set_value_names[self.settings[k]['widget_type']][1])(v)
 
     def dialogChanged(self, *_, w_name: str):
-        new_inputs = self.getInputs()
+        new_inputs = self.valuesFromWidgets()
         self.updateDialog(new_inputs, w_name)
 
     @abstractmethod
     def updateDialog(self, new_inputs: dict, w_name: str):
-        """Required method which reacts to changes in the dialog inputs. Use the :code:`overrideInputs` method to
+        """Required method which reacts to changes in the dialog inputs. Use the :code:`setWidgetValuesFromDict` method to
         update the dialog at the end of this method if necessary."""
         pass
 
@@ -754,7 +757,7 @@ class PymeadDialogHTabWidget(QTabWidget):
         self.w_dict = widgets
         self.generateWidgets()
         if settings_override is not None:
-            self.overrideInputs(settings_override)
+            self.setWidgetValuesFromDict(settings_override)
 
     def generateWidgets(self):
         for k, v in self.w_dict.items():
@@ -765,115 +768,12 @@ class PymeadDialogHTabWidget(QTabWidget):
         self.generateWidgets()
         self.sigTabsChanged.emit([k for k in self.w_dict.keys()])
 
-    def overrideInputs(self, new_values: dict):
+    def setWidgetValuesFromDict(self, new_values: dict):
         for k, v in new_values.items():
-            self.w_dict[k].overrideInputs(new_values=v)
+            self.w_dict[k].setWidgetValuesFromDict(new_values=v)
 
-    def getInputs(self):
-        return {k: v.getInputs() for k, v in self.w_dict.items()}
-
-
-class FreePointInputDialog(QDialog):
-    def __init__(self, items: List[tuple], fp: dict, parent):
-        super().__init__(parent)
-        self.setWindowTitle('Insert FreePoint')
-        self.setFont(self.parent().font())
-        self.fp = fp
-        self.ap_list = [k for k in self.fp.keys()]
-        self.fp_list = ['None']
-        self.fp_list.extend([k for k in self.fp['te_1'].keys()])
-
-        buttonBox = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel, self)
-        layout = QFormLayout(self)
-
-        self.inputs = []
-        for item in items:
-            if item[1] == 'double':
-                self.inputs.append(QDoubleSpinBox(self))
-                self.inputs[-1].setMinimum(-np.inf)
-                self.inputs[-1].setMaximum(np.inf)
-                self.inputs[-1].setSingleStep(0.01)
-                self.inputs[-1].setDecimals(16)
-                self.inputs[-1].setValue(item[2])
-            elif item[1] == 'combo':
-                self.inputs.append(QComboBox(self))
-                if item[0] == "Previous Anchor Point":
-                    self.inputs[-1].addItems(self.ap_list)
-                if item[0] == "Previous Free Point":
-                    self.inputs[-1].addItems(self.fp_list)
-            layout.addRow(item[0], self.inputs[-1])
-
-        self.inputs[-2].currentTextChanged.connect(self.update_fp_items)
-
-        layout.addWidget(buttonBox)
-
-        buttonBox.accepted.connect(self.accept)
-        buttonBox.rejected.connect(self.reject)
-
-    def getInputs(self):
-        return tuple(val.value() if isinstance(val, QDoubleSpinBox) else val.currentText() for val in self.inputs)
-
-    def update_fp_items(self, text):
-        self.fp_list = ['None']
-        self.fp_list.extend([k for k in self.fp[text].keys()])
-        self.inputs[-1].clear()
-        self.inputs[-1].addItems(self.fp_list)
-
-    def update_fp_ap_tags(self):
-        self.ap_list = [k for k in self.fp.keys()]
-
-
-class AnchorPointInputDialog(QDialog):
-    def __init__(self, items: List[tuple], ap: dict, parent):
-        super().__init__(parent)
-        self.setWindowTitle('Insert AnchorPoint')
-        self.setFont(self.parent().font())
-        self.ap = ap
-        self.ap_list = [anchor_point.tag for anchor_point in self.ap]
-
-        buttonBox = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel, self)
-        layout = QFormLayout(self)
-
-        self.inputs = []
-        for item in items:
-            if item[1] == 'double':
-                self.inputs.append(QDoubleSpinBox(self))
-                self.inputs[-1].setMinimum(-np.inf)
-                self.inputs[-1].setMaximum(np.inf)
-                self.inputs[-1].setSingleStep(0.01)
-                self.inputs[-1].setDecimals(16)
-                self.inputs[-1].setValue(item[2])
-            elif item[1] == 'combo':
-                self.inputs.append(QComboBox(self))
-                if item[0] == "Previous Anchor Point":
-                    self.inputs[-1].addItems(self.ap_list)
-            elif item[1] == 'string':
-                self.inputs.append(QLineEdit(self))
-            else:
-                raise ValueError(f"AnchorPointInputDialog item types must be \'double\', \'combo\', or \'string\'")
-            layout.addRow(item[0], self.inputs[-1])
-
-        layout.addWidget(buttonBox)
-
-        buttonBox.accepted.connect(self.accept)
-        buttonBox.rejected.connect(self.reject)
-
-    def getInputs(self):
-        return_vals = []
-        for val in self.inputs:
-            if isinstance(val, QDoubleSpinBox):
-                return_vals.append(val.value())
-            elif isinstance(val, QLineEdit):
-                return_vals.append(val.text())
-            elif isinstance(val, QComboBox):
-                return_vals.append(val.currentText())
-            else:
-                raise TypeError(f'QFormLayout widget must be of type {type(QComboBox)}, {type(QDoubleSpinBox)}, '
-                                f'or {type(QLineEdit)}')
-        return tuple(return_vals)
-
-    def update_ap_tags(self):
-        self.ap_list = [anchor_point.tag for anchor_point in self.ap]
+    def valuesFromWidgets(self):
+        return {k: v.valuesFromWidgets() for k, v in self.w_dict.items()}
 
 
 class SingleAirfoilInviscidDialog(QDialog):
@@ -907,7 +807,7 @@ class SingleAirfoilInviscidDialog(QDialog):
         buttonBox.accepted.connect(self.accept)
         buttonBox.rejected.connect(self.reject)
 
-    def getInputs(self):
+    def valuesFromWidgets(self):
         return_vals = []
         for val in self.inputs:
             if isinstance(val, QDoubleSpinBox):
@@ -1145,7 +1045,7 @@ class SingleAirfoilViscousDialog(QDialog):
 
         self.change_prescribed_aero_parameter(self.inputs['prescribe']['current_text'])
 
-    def getInputs(self):
+    def valuesFromWidgets(self):
         return self.inputs
 
 
@@ -1203,33 +1103,44 @@ class DownsamplingPreviewDialog(QDialog):
 
 
 class MSETDialogWidget(PymeadDialogWidget):
-    airfoilOrderChanged = pyqtSignal(object)
+    airfoilsChanged = pyqtSignal(object)
 
-    def __init__(self):
+    def __init__(self, geo_col: GeometryCollection):
+        self.geo_col = geo_col
         super().__init__(settings_file=os.path.join(GUI_DEFAULTS_DIR, "mset_settings.json"))
-        self.widget_dict['airfoil_analysis_dir']['widget'].setText(tempfile.gettempdir())
+        self.widget_dict["airfoil_analysis_dir"]["widget"].setText(tempfile.gettempdir())
+        mea_names = [k for k in self.geo_col.container()["mea"].keys()]
+        self.widget_dict["mea"]["widget"].addItems(mea_names)
+        if len(mea_names) > 0:
+            self.widget_dict["mea"]["widget"].setCurrentText(mea_names[0])
 
-    def change_airfoil_order(self, _):
-        if not all([a in self.widget_dict['airfoil_order']['widget'].text().split(',') for a in get_parent(self, 4).mea.airfoils.keys()]):
-            current_airfoil_list = [a for a in get_parent(self, 4).mea.airfoils.keys()]
+    def change_airfoils(self, _):
+        print("Changing airfoils!")
+        if not all([a in self.widget_dict["mea"]["widget"].text().split(',') for a in get_parent(
+                self, 4).geo_col.container()["airfoils"].keys()]):
+            current_airfoil_list = [a for a in get_parent(self, 4).geo_col.container()["airfoils"].keys()]
         else:
-            current_airfoil_list = self.widget_dict['airfoil_order']['widget'].text().split(',')
+            current_airfoil_list = self.widget_dict["airfoils"]["widget"].text().split(",")
         dialog = AirfoilListDialog(self, current_airfoil_list=current_airfoil_list)
         if dialog.exec_():
-            airfoil_order = dialog.getData()
-            self.widget_dict['airfoil_order']['widget'].setText(','.join(airfoil_order))
-            self.airfoilOrderChanged.emit(','.join(airfoil_order))
+            airfoils = dialog.getData()
+            self.widget_dict["airfoils"]["widget"].setText(",".join(airfoils))
+            self.airfoilsChanged.emit(",".join(airfoils))
 
     def select_directory(self, line_edit: QLineEdit):
         select_directory(parent=self.parent(), line_edit=line_edit)
 
     def updateDialog(self, new_inputs: dict, w_name: str):
-        if w_name == 'airfoil_order':
-            self.widget_dict['multi_airfoil_grid']['widget'].onAirfoilListChanged(
-                new_inputs['airfoil_order'].split(','))
+        if w_name == "mea":
+            if self.widget_dict["mea"]["widget"].currentText() != "":
+                airfoil_names = [a.name() for a in self.geo_col.container()["mea"][
+                    self.widget_dict["mea"]["widget"].currentText()].airfoils]
+            else:
+                airfoil_names = []
+            self.widget_dict["multi_airfoil_grid"]["widget"].onAirfoilListChanged(airfoil_names)
 
     def saveas_mset_mses_mplot_settings(self):
-        all_inputs = get_parent(self, 2).getInputs()
+        all_inputs = get_parent(self, 2).valuesFromWidgets()
         mses_inputs = {k: v for k, v in all_inputs.items() if k in ["MSET", "MSES", "MPLOT"]}
         json_dialog = select_json_file(parent=self)
         if json_dialog.exec_():
@@ -1245,7 +1156,7 @@ class MSETDialogWidget(PymeadDialogWidget):
             # print(f"{get_parent(self, 3) = }")
 
     def load_mset_mses_mplot_settings(self):
-        override_inputs = get_parent(self, 2).getInputs()
+        override_inputs = get_parent(self, 2).valuesFromWidgets()
         load_dialog = select_existing_json_file(parent=self)
         if load_dialog.exec_():
             load_file = load_dialog.selectedFiles()[0]
@@ -1258,11 +1169,11 @@ class MSETDialogWidget(PymeadDialogWidget):
             # else:
             #     self.current_save_file = load_file
             get_parent(self, 3).setWindowTitle(f"Optimization Setup - {os.path.split(load_file)[-1]}")
-            get_parent(self, 2).overrideInputs(override_inputs)  # Overrides the inputs for the whole PymeadDialogVTabWidget
+            get_parent(self, 2).setWidgetValuesFromDict(override_inputs)  # Overrides the inputs for the whole PymeadDialogVTabWidget
             get_parent(self, 2).setStatusTip(f"Loaded {load_file}")
 
     def show_airfoil_coordinates_preview(self, _):
-        override_inputs = get_parent(self, 2).getInputs()
+        override_inputs = get_parent(self, 2).valuesFromWidgets()
         use_downsampling = bool(override_inputs["MSET"]["use_downsampling"])
         downsampling_max_pts = override_inputs["MSET"]["downsampling_max_pts"]
         downsampling_curve_exp = override_inputs["MSET"]["downsampling_curve_exp"]
@@ -1273,13 +1184,311 @@ class MSETDialogWidget(PymeadDialogWidget):
         preview_dialog.exec_()
 
 
-class MSESDialogWidget(PymeadDialogWidget):
-    def __init__(self, mset_dialog_widget: MSETDialogWidget, design_tree_widget):
-        super().__init__(settings_file=os.path.join(GUI_DEFAULTS_DIR, 'mses_settings.json'),
-                         design_tree_widget=design_tree_widget)
-        mset_dialog_widget.airfoilOrderChanged.connect(self.onAirfoilOrderChanged)
+class PymeadLabeledSpinBox(QWidget):
+    def __init__(self, parent=None, label: str = "", tool_tip: str = "", minimum: int = None, maximum: int = None,
+                 value: int = None):
+        super().__init__(parent=parent)
+        self.lay = QGridLayout()
+        self.setLayout(self.lay)
+        self.label = QLabel(label, self)
+        self.spin = QSpinBox(self)
+        self.label.setToolTip(tool_tip)
+        self.spin.setToolTip(tool_tip)
+        if minimum is not None:
+            self.spin.setMinimum(minimum)
+        if maximum is not None:
+            self.spin.setMaximum(maximum)
+        if value is not None:
+            self.spin.setValue(value)
+        self.lay.addWidget(self.label, 0, 0)
+        self.lay.addWidget(self.spin, 0, 1)
 
-    def onAirfoilOrderChanged(self, airfoil_list: str):
+    def setValue(self, value: int):
+        self.spin.setValue(value)
+
+    def value(self):
+        return self.spin.value()
+
+
+class PymeadLabeledDoubleSpinBox(QWidget):
+    def __init__(self, parent=None, label: str = "", tool_tip: str = "", minimum: float = None, maximum: float = None,
+                 value: float = None):
+        super().__init__(parent=parent)
+        self.lay = QGridLayout()
+        self.setLayout(self.lay)
+        self.label = QLabel(label, self)
+        self.spin = QDoubleSpinBox(self)
+        self.label.setToolTip(tool_tip)
+        self.spin.setToolTip(tool_tip)
+        if minimum is not None:
+            self.spin.setMinimum(minimum)
+        if maximum is not None:
+            self.spin.setMaximum(maximum)
+        if value is not None:
+            self.spin.setValue(value)
+        self.lay.addWidget(self.label, 0, 0)
+        self.lay.addWidget(self.spin, 0, 1)
+
+    def setValue(self, value: float):
+        self.spin.setValue(value)
+
+    def value(self):
+        return self.spin.value()
+
+
+class PymeadLabeledLineEdit(QWidget):
+
+    def __init__(self, parent=None, label: str = "", tool_tip: str = "", text: str = "", push_label: str = None):
+        super().__init__(parent=parent)
+        self.lay = QGridLayout()
+        self.setLayout(self.lay)
+        self.label = QLabel(label, self)
+        self.line = QLineEdit(text, self)
+        self.label.setToolTip(tool_tip)
+        self.line.setToolTip(tool_tip)
+        self.lay.addWidget(self.label, 0, 0)
+        self.lay.addWidget(self.line, 0, 1)
+        self.push = None
+
+        if push_label is not None:
+            self.push = QPushButton(push_label, self)
+            self.lay.addWidget(self.push, 0, 2)
+
+    def setValue(self, text: str):
+        self.line.setText(text)
+
+    def value(self):
+        return self.line.text()
+
+
+class PymeadLabeledComboBox(QWidget):
+
+    sigValueChanged = pyqtSignal(str)
+
+    def __init__(self, parent=None, label: str = "", tool_tip: str = "", items: typing.List[str] = None):
+        super().__init__(parent=parent)
+        self.lay = QGridLayout()
+        self.setLayout(self.lay)
+        self.label = QLabel(label, self)
+        self.combo = QComboBox(self)
+        self.label.setToolTip(tool_tip)
+        self.combo.setToolTip(tool_tip)
+
+        if items is not None:
+            self.combo.addItems(items)
+
+        self.lay.addWidget(self.label, 0, 0)
+        self.lay.addWidget(self.combo, 0, 1)
+
+    def setValue(self, text: str):
+        self.combo.setCurrentText(text)
+
+    def value(self):
+        return self.combo.currentText()
+
+
+class PymeadLabeledCheckbox(QWidget):
+
+    sigValueChanged = pyqtSignal(int)
+
+    def __init__(self, parent=None, label: str = "", tool_tip: str = "", initial_state: int = 0,
+                 push_label: str = None):
+        super().__init__(parent=parent)
+        self.lay = QGridLayout()
+        self.setLayout(self.lay)
+        self.label = QLabel(label, self)
+        self.check = QCheckBox(self)
+        self.check.setCheckState(initial_state)
+        self.label.setToolTip(tool_tip)
+        self.check.setToolTip(tool_tip)
+        self.push = None
+
+        self.lay.addWidget(self.label, 0, 0)
+        self.lay.addWidget(self.check, 0, 1)
+
+        if push_label is not None:
+            self.push = QPushButton(push_label, self)
+            self.lay.addWidget(self.push, 0, 2)
+
+    def setValue(self, state: int):
+        self.check.setCheckState(state)
+
+    def value(self):
+        return self.check.checkState()
+
+
+class PymeadLabeledPushButton(QWidget):
+
+    def __init__(self, parent=None, label: str = "", text: str = "", tool_tip: str = ""):
+        super().__init__(parent=parent)
+        self.lay = QGridLayout()
+        self.setLayout(self.lay)
+        self.label = QLabel(label, self)
+        self.push = QPushButton(text, self)
+        self.label.setToolTip(tool_tip)
+        self.push.setToolTip(tool_tip)
+
+        self.lay.addWidget(self.label, 0, 0)
+        self.lay.addWidget(self.push, 0, 1)
+
+    def setValue(self, _):
+        pass
+
+    @staticmethod
+    def value():
+        return None
+
+
+class PymeadDialogWidget2(QWidget):
+    def __init__(self, parent=None):
+        super().__init__(parent=parent)
+
+    @abstractmethod
+    def initializeWidgets(self, *args, **kwargs):
+        pass
+
+    @abstractmethod
+    def setWidgetValuesFromDict(self, *args, **kwargs):
+        pass
+
+    @abstractmethod
+    def valuesFromWidgets(self) -> dict:
+        pass
+
+
+class MSETDialogWidget2(PymeadDialogWidget2):
+
+    sigMEAChanged = pyqtSignal(str)
+
+    def __init__(self, geo_col: GeometryCollection, parent=None):
+        super().__init__(parent=parent)
+        self.geo_col = geo_col
+        self.widget_dict = None
+        self.lay = QGridLayout()
+        self.setLayout(self.lay)
+        self.initializeWidgets(label_column_split="x_spacing_param")
+
+    def initializeWidgets(self, label_column_split: str):
+        initial_mea_names = [k for k in self.geo_col.container()["mea"].keys()]
+        initial_mea = None if len(initial_mea_names) == 0 else self.geo_col.container()["mea"][initial_mea_names[0]]
+        self.widget_dict = {
+            "mea": PymeadLabeledComboBox(label="MEA", items=initial_mea_names),
+            "grid_bounds": GridBounds(self),
+            "airfoil_side_points": PymeadLabeledSpinBox(label="Airfoil Side Points",
+                                                        minimum=1, maximum=999999, value=150),
+            "exp_side_points": PymeadLabeledDoubleSpinBox(label="Side Points Exponent",
+                                                          minimum=0.0, maximum=np.inf, value=0.9),
+            "inlet_pts_left_stream": PymeadLabeledSpinBox(label="Inlet Points Left",
+                                                          minimum=1, maximum=999999, value=41),
+            "outlet_pts_right_stream": PymeadLabeledSpinBox(label="Outlet Points Right",
+                                                            minimum=1, maximum=999999, value=41),
+            "num_streams_top": PymeadLabeledSpinBox(label="Number Top Streamlines",
+                                                    minimum=1, maximum=999999, value=17),
+            "num_streams_bot": PymeadLabeledSpinBox(label="Number Bottom Streamlines",
+                                                    minimum=1, maximum=999999, value=23),
+            "max_streams_between": PymeadLabeledSpinBox(label="Max Streamlines Between",
+                                                        minimum=1, maximum=999999, value=15),
+            "elliptic_param": PymeadLabeledDoubleSpinBox(label="Elliptic Parameter",
+                                                         minimum=0.0, maximum=np.inf, value=1.3),
+            "stag_pt_aspect_ratio": PymeadLabeledDoubleSpinBox(label="Stag. Pt. Aspect Ratio",
+                                                               minimum=0.0, maximum=np.inf, value=2.5),
+            "x_spacing_param": PymeadLabeledDoubleSpinBox(label="X-Spacing Parameter",
+                                                          minimum=0.0, maximum=np.inf, value=0.85),
+            "alf0_stream_gen": PymeadLabeledDoubleSpinBox(label="Streamline Gen. Alpha",
+                                                          minimum=-np.inf, maximum=np.inf, value=0.0),
+            "timeout": PymeadLabeledDoubleSpinBox(label="MSET Timeout", minimum=0.0, maximum=np.inf,
+                                                  value=10.0),
+            "multi_airfoil_grid": MSETMultiGridWidget(self, initial_mea=initial_mea),
+            "airfoil_analysis_dir": PymeadLabeledLineEdit(label="Analysis Directory", push_label="Choose folder"),
+            "airfoil_coord_file_name": PymeadLabeledLineEdit(label="Airfoil Coord. Filename", text="default_airfoil"),
+            "save_as_mses_settings": PymeadLabeledPushButton(label="Save As", text="Save MSES Settings As..."),
+            "load_mses_settings": PymeadLabeledPushButton(label="Load", text="Load MSES Settings File"),
+            "use_downsampling": PymeadLabeledCheckbox(
+                label="Use downsampling?", push_label="Preview",
+                tool_tip="Downsample the airfoil coordinates based on the curvature"),
+            "downsampling_max_pts": PymeadLabeledSpinBox(
+                label="Max downsampling points", minimum=20, maximum=9999, value=200,
+                tool_tip="Maximum number of airfoil coordinates allowed per airfoil"),
+            "downsampling_curve_exp": PymeadLabeledDoubleSpinBox(
+                label="Downsammpling curvature exponent", minimum=0.0001, maximum=9999., value=2.0,
+                tool_tip="Importance of curvature in the downsampling scheme.\nValues close to 0 place high emphasis "
+                         "on curvature,\nwhile values close to positive infinity place no emphasis\non curvature and "
+                         "leave the parameter\nvector effectively uniformly spaced")
+        }
+
+        # Add all the widgets
+        row_count = 0
+        column = 0
+        for widget_name, widget in self.widget_dict.items():
+            if widget_name == label_column_split:
+                column = 1
+                row_count = 0
+            self.lay.addWidget(widget, row_count, column)
+            row_count += 1
+
+        # Connect the MEA combobox to the "MEA changed" signal
+        self.widget_dict["mea"].combo.currentTextChanged.connect(self.sigMEAChanged)
+        # Show a preview of the downsampling when the button is pushed
+        self.widget_dict["use_downsampling"].push.clicked.connect(self.showAirfoilCoordinatesPreview)
+        # Connect the airfoil analysis directory button to the choose directory function
+        self.widget_dict["airfoil_analysis_dir"].push.clicked.connect(
+            partial(select_directory, self, line_edit=self.widget_dict["airfoil_analysis_dir"].line))
+        # Connect the load and save settings buttons
+        self.widget_dict["load_mses_settings"].push.clicked.connect(self.loadMSESSuiteSettings)
+        self.widget_dict["save_as_mses_settings"].push.clicked.connect(self.saveasMSESSuiteSettings)
+
+    def setWidgetValuesFromDict(self, d: dict):
+        for d_name, d_value in d.items():
+            try:
+                self.widget_dict[d_name].setValue(d_value)
+            except KeyError:
+                pass
+
+    def valuesFromWidgets(self) -> dict:
+        return {k: v.value() for k, v in self.widget_dict.items()}
+
+    def saveasMSESSuiteSettings(self):
+        all_inputs = get_parent(self, 2).valuesFromWidgets()
+        mses_inputs = {k: v for k, v in all_inputs.items() if k in ["MSET", "MSES", "MPLOT"]}
+        json_dialog = select_json_file(parent=self)
+        if json_dialog.exec_():
+            input_filename = json_dialog.selectedFiles()[0]
+            if not os.path.splitext(input_filename)[-1] == '.json':
+                input_filename = input_filename + '.json'
+            save_data(mses_inputs, input_filename)
+            get_parent(self, 3).setStatusTip(f"Saved MSES settings to {input_filename}")
+
+    def loadMSESSuiteSettings(self):
+        override_inputs = get_parent(self, 2).valuesFromWidgets()
+        load_dialog = select_existing_json_file(parent=self)
+        if load_dialog.exec_():
+            load_file = load_dialog.selectedFiles()[0]
+            new_inputs = load_data(load_file)
+            for k, v in new_inputs.items():
+                override_inputs[k] = v
+            get_parent(self, 3).setWindowTitle(f"Optimization Setup - {os.path.split(load_file)[-1]}")
+            get_parent(self, 2).setWidgetValuesFromDict(override_inputs)  # Overrides the inputs for the whole PymeadDialogVTabWidget
+            get_parent(self, 2).setStatusTip(f"Loaded {load_file}")
+
+    def showAirfoilCoordinatesPreview(self):
+        mset_settings = self.valuesFromWidgets()
+        preview_dialog = DownsamplingPreviewDialog(
+            use_downsampling=bool(mset_settings["use_downsampling"]),
+            downsampling_max_pts=mset_settings["downsampling_max_pts"],
+            downsampling_curve_exp=mset_settings["downsampling_curve_exp"],
+            parent=self)
+        preview_dialog.exec_()
+
+
+class MSESDialogWidget(PymeadDialogWidget):
+    def __init__(self, geo_col: GeometryCollection):
+        initial_mea_names = [k for k in geo_col.container()["mea"].keys()]
+        initial_mea = None if len(initial_mea_names) == 0 else geo_col.container()["mea"][initial_mea_names[0]]
+        super().__init__(settings_file=os.path.join(GUI_DEFAULTS_DIR, 'mses_settings.json'),
+                         initial_mea=initial_mea)
+        self.geo_col = geo_col
+
+    def onAirfoilsChanged(self, airfoil_list: str):
         self.widget_dict['xtrs']['widget'].onAirfoilListChanged(airfoil_list.split(','))
 
     def deactivate_AD(self, read_only: bool):
@@ -1367,9 +1576,17 @@ class MSESDialogWidget(PymeadDialogWidget):
                 self.widget_dict['T']['widget'].setValue(new_inputs['P'] / new_inputs['R'] / new_inputs['rho'])
             elif self.widget_dict['rho']['widget'].isReadOnly():
                 self.widget_dict['rho']['widget'].setValue(new_inputs['P'] / new_inputs['R'] / new_inputs['T'])
-            new_inputs = self.getInputs()
+            new_inputs = self.valuesFromWidgets()
             if not (w_name == 'MACHIN' and new_inputs['spec_Re']):
                 self.calculate_and_set_Reynolds_number(new_inputs)
+
+
+class MPLOTDialogWidget(PymeadDialogWidget):
+    def __init__(self):
+        super().__init__(settings_file=os.path.join(GUI_DEFAULTS_DIR, "mplot_settings.json"))
+
+    def updateDialog(self, new_inputs: dict, w_name: str):
+        pass
 
 
 class OptConstraintsDialogWidget(PymeadDialogWidget):
@@ -1390,7 +1607,7 @@ class OptConstraintsHTabWidget(PymeadDialogHTabWidget):
     def __init__(self, parent, mset_dialog_widget: MSETDialogWidget = None):
         super().__init__(parent=parent,
                          widgets={'A0': OptConstraintsDialogWidget()})
-        mset_dialog_widget.airfoilOrderChanged.connect(self.onAirfoilListChanged)
+        mset_dialog_widget.airfoilsChanged.connect(self.onAirfoilListChanged)
 
     def reorderRegenerateWidgets(self, new_airfoil_name_list: list):
         temp_dict = {}
@@ -1425,10 +1642,10 @@ class OptConstraintsHTabWidget(PymeadDialogHTabWidget):
 
     def setValues(self, values: dict):
         self.onAirfoilListChanged(new_airfoil_name_list_str=','.join([k for k in values.keys()]))
-        self.overrideInputs(new_values=values)
+        self.setWidgetValuesFromDict(new_values=values)
 
     def values(self):
-        return self.getInputs()
+        return self.valuesFromWidgets()
 
     def valueChanged(self, k1, k2, v2):
         self.OptConstraintsChanged.emit()
@@ -1513,7 +1730,7 @@ class XFOILDialogWidget(PymeadDialogWidget):
                 self.widget_dict['T']['widget'].setValue(new_inputs['P'] / new_inputs['R'] / new_inputs['rho'])
             elif self.widget_dict['rho']['widget'].isReadOnly():
                 self.widget_dict['rho']['widget'].setValue(new_inputs['P'] / new_inputs['R'] / new_inputs['T'])
-            new_inputs = self.getInputs()
+            new_inputs = self.valuesFromWidgets()
             if not (w_name == 'Ma' and new_inputs['spec_Re']):
                 self.calculate_and_set_Reynolds_number(new_inputs)
 
@@ -1542,7 +1759,7 @@ class GAGeneralSettingsDialogWidget(PymeadDialogWidget):
         if get_parent(self, 4) and get_parent(self, 4).current_settings_save_file is not None:
             opt_file = get_parent(self, 4).current_settings_save_file
         if opt_file is not None:
-            new_inputs = get_parent(self, 2).getInputs()  # Gets the inputs from the PymeadDialogVTabWidget
+            new_inputs = get_parent(self, 2).valuesFromWidgets()  # Gets the inputs from the PymeadDialogVTabWidget
             save_data(new_inputs, opt_file)
             get_parent(self, 2).setStatusTip(f"Settings saved ({opt_file})")
             # msg_box = PymeadMessageBox(parent=self, msg=f"Settings saved as {self.current_save_file}",
@@ -1563,11 +1780,11 @@ class GAGeneralSettingsDialogWidget(PymeadDialogWidget):
             else:
                 self.current_save_file = load_file
             get_parent(self, 3).setWindowTitle(f"Optimization Setup - {os.path.split(load_file)[-1]}")
-            get_parent(self, 2).overrideInputs(new_inputs)  # Overrides the inputs for the whole PymeadDialogVTabWidget
+            get_parent(self, 2).setWidgetValuesFromDict(new_inputs)  # Overrides the inputs for the whole PymeadDialogVTabWidget
             get_parent(self, 2).setStatusTip(f"Loaded {load_file}")
 
     def saveas_opt_settings(self):
-        inputs_to_save = get_parent(self, 2).getInputs()
+        inputs_to_save = get_parent(self, 2).valuesFromWidgets()
         json_dialog = select_json_file(parent=self)
         if json_dialog.exec_():
             input_filename = json_dialog.selectedFiles()[0]
@@ -1614,7 +1831,7 @@ class GASaveLoadDialogWidget(PymeadDialogWidget):
 
     def save_opt_settings(self):
         if self.current_save_file is not None:
-            new_inputs = self.parent().getInputs()  # Gets the inputs from the PymeadDialogVTabWidget
+            new_inputs = self.parent().valuesFromWidgets()  # Gets the inputs from the PymeadDialogVTabWidget
             save_data(new_inputs, self.current_save_file)
             msg_box = PymeadMessageBox(parent=self, msg=f"Settings saved as {self.current_save_file}",
                                        window_title='Save Notification', msg_mode='info')
@@ -1625,10 +1842,10 @@ class GASaveLoadDialogWidget(PymeadDialogWidget):
     def load_opt_settings(self):
         new_inputs = load_data(self.widget_dict['settings_load_dir']['widget'].text())
         self.current_save_file = new_inputs['Save/Load']['settings_save_dir']
-        self.parent().overrideInputs(new_inputs)  # Overrides the inputs for the whole PymeadDialogVTabWidget
+        self.parent().setWidgetValuesFromDict(new_inputs)  # Overrides the inputs for the whole PymeadDialogVTabWidget
 
     def saveas_opt_settings(self):
-        inputs_to_save = self.parent().getInputs()
+        inputs_to_save = self.parent().valuesFromWidgets()
         input_filename = os.path.join(self.widget_dict['settings_saveas_dir']['widget'].text(),
                                       self.widget_dict['settings_saveas_filename']['widget'].text())
         save_data(inputs_to_save, input_filename)
@@ -1662,23 +1879,23 @@ class GeneticAlgorithmDialogWidget(PymeadDialogWidget):
                                                                     self.widget_dict['G']['widget']))
         multi_point_active_widget = multi_point_dialog_widget.widget_dict['multi_point_active']['widget']
         self.multi_point = multi_point_active_widget.checkState()
-        tool = self.getInputs()['tool']
+        tool = self.valuesFromWidgets()['tool']
         self.cfd_template = tool
         if self.multi_point:
             self.cfd_template += '_MULTIPOINT'
         multi_point_active_widget.stateChanged.connect(self.multi_point_changed)
 
-    def overrideInputs(self, new_values: dict):
-        super().overrideInputs(new_values)
+    def setWidgetValuesFromDict(self, new_values: dict):
+        super().setWidgetValuesFromDict(new_values)
         self.update_objectives_and_constraints()
 
     def update_objectives_and_constraints(self):
-        inputs = self.getInputs()
+        inputs = self.valuesFromWidgets()
         self.objectives_changed(self.widget_dict['J']['widget'], inputs['J'])
         self.constraints_changed(self.widget_dict['G']['widget'], inputs['G'])
 
     def visualize_sampling(self, ws_widget, _):
-        general_settings = self.parent().findChild(GAGeneralSettingsDialogWidget).getInputs()
+        general_settings = self.parent().findChild(GAGeneralSettingsDialogWidget).valuesFromWidgets()
         starting_value = ws_widget.value()
         use_current_mea = bool(general_settings["use_current_mea"])
         mea_file = general_settings["mea_file"]
@@ -1709,7 +1926,7 @@ class GeneticAlgorithmDialogWidget(PymeadDialogWidget):
         objective_container = get_parent(self, depth=4)
         if objective_container is None:
             objective_container = get_parent(self, depth=1)
-        inputs = self.getInputs()
+        inputs = self.valuesFromWidgets()
         tool = inputs['tool']
         if self.multi_point:
             tool += '_MULTIPOINT'
@@ -1734,7 +1951,7 @@ class GeneticAlgorithmDialogWidget(PymeadDialogWidget):
         constraint_container = get_parent(self, depth=4)
         if constraint_container is None:
             constraint_container = get_parent(self, depth=1)
-        inputs = self.getInputs()
+        inputs = self.valuesFromWidgets()
         tool = inputs['tool']
         if self.multi_point:
             tool += '_MULTIPOINT'
@@ -1794,14 +2011,14 @@ class PymeadDialogVTabWidget(VerticalTabWidget):
         for k, v in self.w_dict.items():
             self.addTab(v, k)
         if settings_override is not None:
-            self.overrideInputs(settings_override)
+            self.setWidgetValuesFromDict(settings_override)
 
-    def overrideInputs(self, new_values: dict):
+    def setWidgetValuesFromDict(self, new_values: dict):
         for k, v in new_values.items():
-            self.w_dict[k].overrideInputs(new_values=v)
+            self.w_dict[k].setWidgetValuesFromDict(v)
 
-    def getInputs(self):
-        return {k: v.getInputs() for k, v in self.w_dict.items()}
+    def valuesFromWidgets(self):
+        return {k: v.valuesFromWidgets() for k, v in self.w_dict.items()}
 
 
 class PymeadDialog(QDialog):
@@ -1822,11 +2039,11 @@ class PymeadDialog(QDialog):
     # def setInputs(self):
     #     self.w.setInputs()
 
-    def overrideInputs(self, new_inputs):
-        self.w.overrideInputs(new_values=new_inputs)
+    def setWidgetValuesFromDict(self, new_inputs):
+        self.w.setWidgetValuesFromDict(new_values=new_inputs)
 
-    def getInputs(self):
-        return self.w.getInputs()
+    def valuesFromWidgets(self):
+        return self.w.valuesFromWidgets()
 
     def create_button_box(self):
         """Creates a ButtonBox to add to the Layout. Can be overridden to add additional functionality.
@@ -1848,14 +2065,21 @@ class XFOILDialog(PymeadDialog):
 
 
 class MultiAirfoilDialog(PymeadDialog):
-    def __init__(self, parent: QWidget, design_tree_widget, settings_override: dict = None):
-        w3 = PymeadDialogWidget(os.path.join(GUI_DEFAULTS_DIR, 'mplot_settings.json'))
-        w2 = MSETDialogWidget()
-        # w2.airfoilOrderChanged.connect(self.airfoil_order_changed)
-        w4 = MSESDialogWidget(mset_dialog_widget=w2, design_tree_widget=design_tree_widget)
-        w = PymeadDialogVTabWidget(parent=None, widgets={'MSET': w2, 'MSES': w4, 'MPLOT': w3},
-                                   settings_override=settings_override)
-        super().__init__(parent=parent, window_title="Multi-Element-Airfoil Analysis", widget=w)
+    def __init__(self, parent: QWidget, geo_col: GeometryCollection, settings_override: dict = None):
+        mset_dialog_widget = MSETDialogWidget2(geo_col=geo_col)
+        mset_dialog_widget.sigMEAChanged.connect(self.onMEAChanged)
+        mses_dialog_widget = MSESDialogWidget(geo_col=geo_col)
+        mplot_dialog_widget = MPLOTDialogWidget()
+
+        # Make a connection such that when the MEA is changed, this is reflected in both the MSET and MSES settings
+        # mset_dialog_widget.airfoilsChanged.connect(mses_dialog_widget.onAirfoilsChanged)
+
+        tab_widgets = {"MSET": mset_dialog_widget, "MSES": mses_dialog_widget, "MPLOT": mplot_dialog_widget}
+        widget = PymeadDialogVTabWidget(parent=None, widgets=tab_widgets, settings_override=settings_override)
+        super().__init__(parent=parent, window_title="Multi-Element-Airfoil Analysis", widget=widget)
+
+    def onMEAChanged(self, new_mea_name: str):
+        print(f"{new_mea_name = }")
 
 
 class SettingsDialog(QDialog):
@@ -1925,7 +2149,7 @@ class ScreenshotDialog(QDialog):
                 self.grid_layout.addWidget(widget, w_dict["grid"][0], w_dict["grid"][1], w_dict["grid"][2],
                                            w_dict["grid"][3])
 
-    def getInputs(self):
+    def valuesFromWidgets(self):
         inputs = {
             "image_file": self.grid_widget["choose_image_file"]["line"].text(),
             "window": self.grid_widget["window"]["combobox"].currentText()
@@ -1988,7 +2212,7 @@ class BoundsDialog(QDialog):
         buttonBox.accepted.connect(self.accept)
         buttonBox.rejected.connect(self.reject)
 
-    def getInputs(self):
+    def valuesFromWidgets(self):
         if self.pos_param:
             return [[self.lower_bound.value(), self.upper_bound.value()],
                     [self.lower_bound2.value(), self.upper_bound2.value()]]
@@ -2058,7 +2282,7 @@ class LoadAirfoilAlgFileWidget(QWidget):
 
         self.setLayout(layout)
 
-        inputs = self.getInputs()
+        inputs = self.valuesFromWidgets()
         for setting_var in ("pkl_file", "pkl_use_index", "pkl_use_weights", "pkl_index", "pkl_weights"):
             if q_settings.contains(setting_var):
                 inputs[setting_var] = q_settings.value(setting_var)
@@ -2106,7 +2330,7 @@ class LoadAirfoilAlgFileWidget(QWidget):
 
         return weights
 
-    def getInputs(self):
+    def valuesFromWidgets(self):
         inputs = {
             "pkl_file": self.pkl_line.text(),
             "pkl_use_index": int(self.index_button.isChecked()),
@@ -2157,8 +2381,8 @@ class LoadAirfoilAlgFile(QDialog):
         buttonBox.accepted.connect(self.accept)
         buttonBox.rejected.connect(self.reject)
 
-    def getInputs(self):
-        return self.load_airfoil_alg_file_widget.getInputs()
+    def valuesFromWidgets(self):
+        return self.load_airfoil_alg_file_widget.valuesFromWidgets()
 
 
 class SaveAsDialog(QFileDialog):
@@ -2313,7 +2537,7 @@ class SymmetryDialog(QDialog):
     def switch_row(self, row: int):
         self.current_form_idx = row
 
-    def getInputs(self):
+    def valuesFromWidgets(self):
         return {'target': self.inputs[1][1].text(),
                 'tool': self.inputs[3][1].text(),
                 'x1': self.inputs[5][1].text(),
@@ -2372,7 +2596,7 @@ class ExportCoordinatesDialog(QDialog):
                 self.grid_layout.addWidget(widget, w_dict["grid"][0], w_dict["grid"][1], w_dict["grid"][2],
                                            w_dict["grid"][3])
 
-    def getInputs(self):
+    def valuesFromWidgets(self):
         inputs = {}
         for k, v in self.grid_widget.items():
             if "line" in v.keys():
@@ -2447,7 +2671,7 @@ class ExportControlPointsDialog(QDialog):
                 self.grid_layout.addWidget(widget, w_dict["grid"][0], w_dict["grid"][1], w_dict["grid"][2],
                                            w_dict["grid"][3])
 
-    def getInputs(self):
+    def valuesFromWidgets(self):
         inputs = {k: v["line"].text() if "line" in v.keys() else None for k, v in self.grid_widget.items()}
 
         # Make sure any newline characters are not double-escaped:
@@ -2511,7 +2735,7 @@ class ExportIGESDialog(QDialog):
                 self.grid_layout.addWidget(widget, w_dict["grid"][0], w_dict["grid"][1], w_dict["grid"][2],
                                            w_dict["grid"][3])
 
-    def getInputs(self):
+    def valuesFromWidgets(self):
         inputs = {
             "dir": self.grid_widget["choose_dir"]["line"].text(),
             "file_name": self.grid_widget["file_name"]["line"].text(),
@@ -2533,80 +2757,6 @@ class ExportIGESDialog(QDialog):
                                                         QFileDialog.ShowDirsOnly)
         if selected_dir:
             line_edit.setText(selected_dir)
-
-
-class PosConstraintDialog(QDialog):
-    def __init__(self, parent):
-        super().__init__(parent)
-        self.setWindowTitle("Set Relative Positions")
-        self.setFont(self.parent().font())
-        self.current_param_path = None
-        self.current_form_idx = 1
-
-        buttonBox = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel, self)
-        self.layout = QFormLayout(self)
-
-        self.inputs = self.setInputs()
-        for i in self.inputs:
-            self.layout.addRow(i[0], i[1])
-
-        for idx, input_row in enumerate(self.inputs):
-            if isinstance(input_row[1], QPushButton):
-                input_row[1].clicked.connect(partial(self.switch_row, idx + 1))
-
-        self.layout.addWidget(buttonBox)
-
-        buttonBox.accepted.connect(self.accept)
-        buttonBox.rejected.connect(self.reject)
-
-    def setInputs(self):
-        r0 = ["Target", QPushButton("Select Parameter", self)]
-        r1 = ["Selected target", QLineEdit(self)]
-        r2 = ["Tool", QPushButton("Select Parameter", self)]
-        r3 = ["Selected tool", QLineEdit(self)]
-        r4 = ["Mode", QComboBox(self)]
-        r4[1].addItems(["distance, angle", "dx, dy"])
-        r4[1].currentTextChanged.connect(self.switchMode)
-        r5 = ["Distance", QPushButton("Select Parameter", self)]
-        r6 = ["Selected distance", QLineEdit(self)]
-        r7 = ["Angle", QPushButton("Select Parameter", self)]
-        r8 = ["Selected angle", QLineEdit(self)]
-        return [r0, r1, r2, r3, r4, r5, r6, r7, r8]
-
-    def switchMode(self, mode: str):
-        for idx in reversed(range(5, 9)):
-            self.layout.removeRow(idx)
-        if 'dx' in mode:
-            r5 = ["dx", QPushButton("Select Parameter", self)]
-            r6 = ["Selected dx", QLineEdit(self)]
-            r7 = ["dy", QPushButton("Select Parameter", self)]
-            r8 = ["Selected dy", QLineEdit(self)]
-        else:
-            r5 = ["Distance", QPushButton("Select Parameter", self)]
-            r6 = ["Selected distance", QLineEdit(self)]
-            r7 = ["Angle", QPushButton("Select Parameter", self)]
-            r8 = ["Selected angle", QLineEdit(self)]
-        for idx, r in enumerate([r5, r6, r7, r8]):
-            self.inputs[idx + 5] = r
-            if isinstance(r[1], QPushButton):
-                r[1].clicked.connect(partial(self.switch_row, idx + 6))
-            self.layout.insertRow(idx + 5, r[0], r[1])
-
-    @pyqtSlot(int)
-    def switch_row(self, row: int):
-        self.current_form_idx = row
-
-    def getInputs(self):
-        if 'dx' in self.inputs[4][1].currentText():
-            return {'target': self.inputs[1][1].text(),
-                    'tool': self.inputs[3][1].text(),
-                    'dx': self.inputs[6][1].text(),
-                    'dy': self.inputs[8][1].text()}
-        else:
-            return {'target': self.inputs[1][1].text(),
-                    'tool': self.inputs[3][1].text(),
-                    'dist': self.inputs[6][1].text(),
-                    'angle': self.inputs[8][1].text()}
 
 
 class AirfoilMatchingDialog(QDialog):
@@ -2632,7 +2782,7 @@ class AirfoilMatchingDialog(QDialog):
         r0[1].setText('n0012-il')
         return [r0]
 
-    def getInputs(self):
+    def valuesFromWidgets(self):
         return self.inputs[0][1].text()
 
 
@@ -2659,7 +2809,7 @@ class AirfoilPlotDialog(QDialog):
         r0[1].setText('n0012-il')
         return [r0]
 
-    def getInputs(self):
+    def valuesFromWidgets(self):
         return self.inputs[0][1].text()
 
 
@@ -2787,7 +2937,7 @@ class GridBounds(QWidget):
         for w in self.widgets.values():
             w.valueChanged.connect(self.valueChanged)
 
-    def setValues(self, value_list: list):
+    def setValue(self, value_list: list):
         if len(value_list) != 4:
             raise ValueError('Length of input value list must be 4')
         self.widgets['Left'].setValue(value_list[0])
@@ -2795,7 +2945,7 @@ class GridBounds(QWidget):
         self.widgets['Top'].setValue(value_list[2])
         self.widgets['Bottom'].setValue(value_list[3])
 
-    def values(self):
+    def value(self):
         return [self.widgets['Left'].value(), self.widgets['Right'].value(), self.widgets['Top'].value(),
                 self.widgets['Bottom'].value()]
 

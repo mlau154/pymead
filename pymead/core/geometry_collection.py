@@ -28,6 +28,7 @@ class GeometryCollection(DualRep):
         self.canvas = None
         self.tree = None
         self.selected_points = []
+        self.selected_airfoils = []
         self.single_step = 0.01
 
     def container(self):
@@ -41,6 +42,7 @@ class GeometryCollection(DualRep):
         dict
             Dictionary of geometry items
         """
+        print(f"{self._container['mea'] = }")
         return self._container
 
     def get_name_list(self, sub_container: str):
@@ -191,41 +193,67 @@ class GeometryCollection(DualRep):
 
         return self.add_pymead_obj_by_ref(param, assign_unique_name=assign_unique_name)
 
-    def select_point(self, point: Point):
+    def select_object(self, pymead_obj: PymeadObj):
         if self.tree is not None:
-            self.tree.setItemStyle(point.tree_item, "default")
-            point.tree_item.hoverable = False
-            point.tree_item.setSelected(True)
+            self.tree.setItemStyle(pymead_obj.tree_item, "default")
+            pymead_obj.tree_item.hoverable = False
+            pymead_obj.tree_item.setSelected(True)
 
         if self.canvas is not None:
-            self.canvas.setItemStyle(point.canvas_item, "selected")
-            point.canvas_item.hoverable = False
+            if isinstance(pymead_obj, Point):
+                self.canvas.setItemStyle(pymead_obj.canvas_item, "selected")
+                pymead_obj.canvas_item.hoverable = False
+            elif isinstance(pymead_obj, Airfoil):
+                for curve in pymead_obj.curves:
+                    self.canvas.setItemStyle(curve.canvas_item, "hovered")
+                    curve.canvas_item.hoverable = False
 
-        if point not in self.selected_points:
-            self.selected_points.append(point)
+        if isinstance(pymead_obj, Point):
+            if pymead_obj not in self.selected_points:
+                self.selected_points.append(pymead_obj)
+        elif isinstance(pymead_obj, Airfoil):
+            if pymead_obj not in self.selected_airfoils:
+                self.selected_airfoils.append(pymead_obj)
 
-    def deselect_point(self, point: Point):
+    def deselect_object(self, pymead_obj: PymeadObj):
         if self.tree is not None:
-            if point.tree_item is not None:
-                point.tree_item.hoverable = True
-                point.tree_item.setSelected(False)
+            if pymead_obj.tree_item is not None:
+                pymead_obj.tree_item.hoverable = True
+                pymead_obj.tree_item.setSelected(False)
 
         if self.canvas is not None:
-            point.canvas_item.hoverable = True
-            self.canvas.setItemStyle(point.canvas_item, "default")
+            if isinstance(pymead_obj, Point):
+                pymead_obj.canvas_item.hoverable = True
+                self.canvas.setItemStyle(pymead_obj.canvas_item, "default")
+            elif isinstance(pymead_obj, Airfoil):
+                for curve in pymead_obj.curves:
+                    curve.canvas_item.hoverable = True
+                    self.canvas.setItemStyle(curve.canvas_item, "default")
 
-        if point in self.selected_points:
-            self.selected_points.remove(point)
+        print(f"Deselected object {pymead_obj}. {pymead_obj.name() = }")
+        print(f"{self.container()['mea'] = }")
+        if len(self.container()['mea']) > 0:
+            print(f"{self.container()['mea']['MEA-1'].airfoils = }")
 
-    def clear_selected_points(self):
+        if isinstance(pymead_obj, Point):
+            if pymead_obj in self.selected_points:
+                self.selected_points.remove(pymead_obj)
+        elif isinstance(pymead_obj, Airfoil):
+            if pymead_obj in self.selected_airfoils:
+                self.selected_airfoils.remove(pymead_obj)
+
+    def clear_selected_objects(self):
         for point in self.selected_points[::-1]:
-            self.deselect_point(point)
+            self.deselect_object(point)
+        for airfoil in self.selected_airfoils[::-1]:
+            self.deselect_object(airfoil)
 
     def remove_selected_points(self):
-        if len(self.selected_points) > 0:
-            for pt in self.selected_points:
-                self.remove_pymead_obj(pt)
-        self.clear_selected_points()
+        for pt in self.selected_points:
+            self.remove_pymead_obj(pt)
+        for airfoil in self.selected_airfoils:
+            self.remove_pymead_obj(airfoil)
+        self.clear_selected_objects()
 
     def hover_enter_obj(self, pymead_obj: PymeadObj):
         if self.tree is not None:
@@ -269,6 +297,10 @@ class GeometryCollection(DualRep):
 
         if self.canvas is not None:
             self.canvas.addPymeadCanvasItem(pymead_obj=pymead_obj)
+
+        if isinstance(pymead_obj, MEA):
+            print(f"after adding by ref, {pymead_obj.airfoils = }")
+            print(f"{self.container()['mea'] = }")
 
         return pymead_obj
 
@@ -667,6 +699,7 @@ class GeometryCollection(DualRep):
 
     def add_mea(self, airfoils: typing.List[Airfoil], name: str or None = None, assign_unique_name: bool = True):
         mea = MEA(airfoils=airfoils, name=name)
+        print(f"Adding mea. {airfoils = }, {mea.airfoils = }")
 
         return self.add_pymead_obj_by_ref(mea, assign_unique_name=assign_unique_name)
 

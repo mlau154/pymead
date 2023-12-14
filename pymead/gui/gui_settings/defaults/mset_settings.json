@@ -1,11 +1,7 @@
 {
-    "airfoil_order": {
-        "label": "Airfoil Order",
-        "widget_type": "QLineEdit",
-        "setText": "A0",
-        "setReadOnly": true,
-        "push_button": "Modify",
-        "push_button_action": "change_airfoil_order"
+    "mea": {
+        "label": "MEA",
+        "widget_type": "QComboBox"
     },
     "grid_bounds": {
         "widget_type": "GridBounds",
@@ -114,20 +110,6 @@
     },
     "multi_airfoil_grid": {
         "widget_type": "MSETMultiGridWidget",
-        "setValues": {
-            "A0": {
-                "dsLE_dsAvg": 0.35,
-                "dsTE_dsAvg": 0.8,
-                "curvature_exp": 1.3,
-                "U_s_smax_min": 1,
-                "U_s_smax_max": 1,
-                "L_s_smax_min": 1,
-                "L_s_smax_max": 1,
-                "U_local_avg_spac_ratio": 0,
-                "L_local_avg_spac_ratio": 0
-            },
-            "airfoil_order": ["A0"]
-        },
         "column": 4,
         "rowSpan": 7,
         "columnSpan": 4

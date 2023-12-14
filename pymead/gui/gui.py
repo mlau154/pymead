@@ -227,6 +227,7 @@ class GUI(QMainWindow):
         # self.output_area_text(f"<font color='#1fbbcc' size='5'>pymead</font> <font size='5'>version</font> "
         #                       f"<font color='#44e37e' size='5'>{__version__}</font>",
         #                       mode='html')
+        # self.output_area_text(f"<font color='#1fbbcc' size='5'> </font>", mode="html")
         # self.output_area_text(
         #     f"<head><style>body {{font-family: DejaVu Sans Mono;}}</style></head><body><p><font size='4'>&#8203;</font></p></body>",
         #     mode="html")
@@ -1026,7 +1027,7 @@ class GUI(QMainWindow):
                 self.output_area_text(
                     f"[{str(self.n_analyses).zfill(2)}] XFOIL Converged = {aero_data['converged']} | Errored out = "
                     f"{aero_data['errored_out']} | Timed out = {aero_data['timed_out']}")
-                self.output_area_text('\n')
+                self.output_area_text("\n")
             else:
                 self.output_area_text(
                     f"[{str(self.n_analyses).zfill(2)}] XFOIL ({xfoil_settings['airfoil']}, "
@@ -1034,7 +1035,7 @@ class GUI(QMainWindow):
                     f"Ma = {xfoil_settings['Ma']:.3f}): "
                     f"Cl = {aero_data['Cl']:+7.4f} | Cd = {aero_data['Cd']:+.5f} | Cm = {aero_data['Cm']:+7.4f} "
                     f"| L/D = {aero_data['L/D']:+8.4f}".replace("-", "\u2212"))
-                self.output_area_text('\n')
+                self.output_area_text("\n")
             bar = self.text_area.verticalScrollBar()
             sb = bar
             sb.setValue(sb.maximum())
@@ -1067,15 +1068,16 @@ class GUI(QMainWindow):
             self.disp_message_box('MPLOT suite executable \'mplot\' not found on system path')
             return
 
-        self.dialog = MultiAirfoilDialog(parent=self, settings_override=self.multi_airfoil_analysis_settings,
-                                         design_tree_widget=self.parameter_tree)
+        self.dialog = MultiAirfoilDialog(
+            parent=self, geo_col=self.geo_col, settings_override=self.multi_airfoil_analysis_settings
+        )
         self.dialog.show()
         self.dialog.accepted.connect(self.multi_airfoil_analysis_accepted)
         self.dialog.rejected.connect(self.multi_airfoil_analysis_rejected)
 
     def multi_airfoil_analysis_accepted(self):
 
-        inputs = self.dialog.getInputs()
+        inputs = self.dialog.valuesFromWidgets()
         self.multi_airfoil_analysis_settings = inputs
 
         if inputs is not None:
@@ -1086,21 +1088,26 @@ class GUI(QMainWindow):
             self.multi_airfoil_analysis(mset_settings, mses_settings, mplot_settings)
 
     def multi_airfoil_analysis_rejected(self):
-        self.multi_airfoil_analysis_settings = self.dialog.getInputs()
+        self.multi_airfoil_analysis_settings = self.dialog.valuesFromWidgets()
 
     def multi_airfoil_analysis(self, mset_settings: dict, mses_settings: dict,
                                mplot_settings: dict):
         # print(f"{mplot_settings = }")
-        mea = self.mea.deepcopy() if mset_settings["use_downsampling"] else self.mea
+        # mea = self.mea.deepcopy() if mset_settings["use_downsampling"] else self.mea
 
-        coords = tuple([mea.airfoils[k].get_coords(
-            body_fixed_csys=False, as_tuple=True, downsample=mset_settings["use_downsampling"],
-            ds_max_points=mset_settings["downsampling_max_pts"],
-            ds_curve_exp=mset_settings["downsampling_curve_exp"]) for k in mset_settings['airfoil_order']])
+        mea = self.geo_col.container()["mea"][mset_settings["mea"]]
+
+        # coords = tuple([mea.airfoils[k].get_coords(
+        #     body_fixed_csys=False, as_tuple=True, downsample=mset_settings["use_downsampling"],
+        #     ds_max_points=mset_settings["downsampling_max_pts"],
+        #     ds_curve_exp=mset_settings["downsampling_curve_exp"]) for k in mset_settings['airfoils']])
+
+        # coords_list = mea.get_coords_list()
+
         aero_data, _ = calculate_aero_data(mset_settings['airfoil_analysis_dir'],
                                            mset_settings['airfoil_coord_file_name'],
-                                           coords=coords,
-                                           tool='MSES',
+                                           mea=mea,
+                                           tool="MSES",
                                            export_Cp=True,
                                            mset_settings=mset_settings,
                                            mses_settings=mses_settings,
@@ -1129,7 +1136,7 @@ class GUI(QMainWindow):
                 # Need to set analysis_graph to None if analysis window is closed! Might also not want to allow
                 # geometry docking window to be closed
                 self.analysis_graph = AnalysisGraph(background_color=self.themes[self.current_theme]["graph-background-color"])
-                self.dockable_tab_window.add_new_tab_widget(self.analysis_graph.w, "Analysis")
+                self.add_new_tab_widget(self.analysis_graph.w, "Analysis")
             pen_idx = self.n_converged_analyses % len(self.pens)
             x_max = self.mea.calculate_max_x_extent()
             for side in aero_data['BL']:
@@ -1171,10 +1178,10 @@ class GUI(QMainWindow):
                         max_tab_name_search = 1000
                         for idx in range(max_tab_name_search):
                             name = f"{svg_plot}_{start_counter}"
-                            if name in self.dockable_tab_window.names:
+                            if name in self.dock_widget_names:
                                 start_counter += 1
                             else:
-                                self.dockable_tab_window.add_new_tab_widget(Mach_contour_widget, name)
+                                self.add_new_tab_widget(Mach_contour_widget, name)
                                 break
         else:
             self.n_analyses += 1
@@ -1221,7 +1228,7 @@ class GUI(QMainWindow):
         mea_list = None
         files = None
         while not exit_the_dialog and not early_return:
-            self.opt_settings = self.dialog.getInputs()
+            self.opt_settings = self.dialog.valuesFromWidgets()
 
             loop_through_settings = False
 
@@ -1417,7 +1424,7 @@ class GUI(QMainWindow):
         if not early_return:
             for (opt_settings, param_dict, mea) in zip(opt_settings_list, param_dict_list, mea_list):
                 # The next line is just to make sure any calls to the GUI are performed before the optimization
-                self.dialog.overrideInputs(new_inputs=opt_settings)
+                self.dialog.setWidgetValuesFromDict(new_inputs=opt_settings)
 
                 # Need to regenerate the objectives and constraints here since they contain references to
                 # (non-serializable) modules which must be passed through a multiprocessing.Pipe
@@ -1431,7 +1438,7 @@ class GUI(QMainWindow):
                                             )
 
     def optimization_rejected(self):
-        self.opt_settings = self.dialog.getInputs()
+        self.opt_settings = self.dialog.valuesFromWidgets()
         return
 
     @pyqtSlot(str, object)

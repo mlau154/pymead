@@ -8,7 +8,7 @@ from pymead.core.base_airfoil_params import BaseAirfoilParams
 from pymead.core.param import Param
 from pymead.core.pos_param import PosParam
 from pymead.utils.read_write_files import load_data
-from pymead.gui.input_dialog import SymmetryDialog, PosConstraintDialog
+from pymead.gui.input_dialog import SymmetryDialog
 # from pymead.core.symmetry import symmetry
 from pymead import ICON_DIR, GUI_SETTINGS_DIR, q_settings
 # from functools import partial
@@ -160,7 +160,7 @@ class MainIconToolbar(QToolBar):
                 param.airfoil_param.linked = True
 
         airfoil_param_tree = self.parent.param_tree_instance.p.child('Airfoil Parameters')
-        out = self.symmetry_dialog.getInputs()
+        out = self.symmetry_dialog.valuesFromWidgets()
         target = out['target'].replace('$', '')
         target_list = target.split('.')
         tool = out['tool'].replace('$', '')
@@ -205,7 +205,7 @@ class MainIconToolbar(QToolBar):
                 return current_param
 
         airfoil_param_tree = self.parent.param_tree_instance.p.child('Airfoil Parameters')
-        out = self.pos_constraint_dialog.getInputs()
+        out = self.pos_constraint_dialog.valuesFromWidgets()
         target = out['target'].replace('$', '')
         target_list = target.split('.')
         tool = out['tool'].replace('$', '')

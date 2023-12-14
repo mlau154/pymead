@@ -12,7 +12,7 @@ from pymead.core.anchor_point import AnchorPoint
 from pymead.gui.autocomplete import AutoStrParameterItem
 from pymead.gui.selectable_header import SelectableHeaderParameterItem
 from pymead.gui.airfoil_pos_parameter import AirfoilPositionParameterItem
-from pymead.gui.input_dialog import FreePointInputDialog, AnchorPointInputDialog, BoundsDialog
+from pymead.gui.input_dialog import BoundsDialog
 from pymead.gui.custom_context_menu_event import custom_context_menu_event
 from pymead.analysis.single_element_inviscid import single_element_inviscid
 from pymead.core.airfoil import Airfoil
@@ -746,7 +746,7 @@ class MEAParamTree:
                                                   ("Previous Free Point", "combo")],
                                            fp=self.mea.airfoils[a_tag].free_points, parent=self.parent)
         if self.dialog.exec():
-            inputs = self.dialog.getInputs()
+            inputs = self.dialog.valuesFromWidgets()
         else:
             inputs = None
         if inputs:
@@ -803,7 +803,7 @@ class MEAParamTree:
                                              ap=self.mea.airfoils[a_tag].anchor_points, parent=self.parent)
 
         if self.dialog.exec():
-            inputs = self.dialog.getInputs()
+            inputs = self.dialog.valuesFromWidgets()
         else:
             inputs = None
 

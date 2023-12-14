@@ -210,13 +210,6 @@
     },
     "xtrs": {
         "widget_type": "XTRSWidget",
-        "setValues": {
-            "A0": {
-                "XTRSupper": 1.0,
-                "XTRSlower": 1.0
-            },
-            "airfoil_order": ["A0"]
-        },
         "column": 4,
         "rowSpan": 3,
         "columnSpan": 3
@@ -249,15 +242,6 @@
     },
     "AD": {
         "widget_type": "ADWidget",
-        "setValues": {
-            "1": {
-                "ISDELH": 1,
-                "XCDELH": 0.1,
-                "PTRHIN": 1.1,
-                "ETAH": 0.95,
-                "from_geometry": {}
-            }
-        },
         "setReadOnly": true,
         "setToolTip": "'Actuator disks active' must be checked\nto enable modification of the AD tabs",
         "column": 4,

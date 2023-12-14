@@ -683,14 +683,24 @@ class ParameterTree(QTreeWidget):
                     button = self.itemWidget(item, 1)
                     if button is not None:
                         point = button.point
-                        self.geo_col.deselect_point(point)
+                        self.geo_col.deselect_object(point)
+                elif item.parent() is not None and item.parent().text(0) == "Airfoils" and item not in self.selectedItems():
+                    button = self.itemWidget(item, 1)
+                    if button is not None:
+                        airfoil = button.airfoil
+                        self.geo_col.deselect_object(airfoil)
 
         for item in self.selectedItems():
             if item.parent() is not None and item.parent().text(0) == "Points":
                 button = self.itemWidget(item, 1)
                 if button is not None:
                     point = button.point
-                    self.geo_col.select_point(point)
+                    self.geo_col.select_object(point)
+            elif item.parent() is not None and item.parent().text(0) == "Airfoils":
+                button = self.itemWidget(item, 1)
+                if button is not None:
+                    airfoil = button.airfoil
+                    self.geo_col.select_object(airfoil)
 
         self.previous_items = self.selectedItems()
 
@@ -875,5 +885,5 @@ class ParameterTree(QTreeWidget):
                 for pymead_obj in pymead_objs:
                     self.geo_col.demote_desvar_to_param(pymead_obj)
 
-            self.geo_col.clear_selected_points()
+            self.geo_col.clear_selected_objects()
             # TODO: extend this logic to be more general (e.g., clear_selected_objs())
