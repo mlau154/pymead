@@ -1138,7 +1138,7 @@ class GUI(QMainWindow):
                 self.analysis_graph = AnalysisGraph(background_color=self.themes[self.current_theme]["graph-background-color"])
                 self.add_new_tab_widget(self.analysis_graph.w, "Analysis")
             pen_idx = self.n_converged_analyses % len(self.pens)
-            x_max = self.mea.calculate_max_x_extent()
+            # x_max = self.mea.calculate_max_x_extent()
             for side in aero_data['BL']:
                 pg_plot_handle = self.analysis_graph.v.plot(pen=pg.mkPen(color=self.pens[pen_idx][0],
                                                                          style=self.pens[pen_idx][1]),
@@ -1149,7 +1149,8 @@ class GUI(QMainWindow):
                     x = np.array(x)
                 if not isinstance(Cp, np.ndarray):
                     Cp = np.array(Cp)
-                pg_plot_handle.setData(x[np.where(x <= x_max)[0]], Cp[np.where(x <= x_max)[0]])
+                # pg_plot_handle.setData(x[np.where(x <= x_max)[0]], Cp[np.where(x <= x_max)[0]])
+                pg_plot_handle.setData(x, Cp)
             # pg_plot_handle = self.analysis_graph.v.plot(pen=pg.mkPen(color=self.pens[pen_idx][0],
             #                                                          style=self.pens[pen_idx][1]),
             #                                             name=str(self.n_analyses))

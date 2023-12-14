@@ -1375,7 +1375,7 @@ class MSETDialogWidget2(PymeadDialogWidget2):
             "mea": PymeadLabeledComboBox(label="MEA", items=initial_mea_names),
             "grid_bounds": GridBounds(self),
             "airfoil_side_points": PymeadLabeledSpinBox(label="Airfoil Side Points",
-                                                        minimum=1, maximum=999999, value=150),
+                                                        minimum=1, maximum=999999, value=180),
             "exp_side_points": PymeadLabeledDoubleSpinBox(label="Side Points Exponent",
                                                           minimum=0.0, maximum=np.inf, value=0.9),
             "inlet_pts_left_stream": PymeadLabeledSpinBox(label="Inlet Points Left",
