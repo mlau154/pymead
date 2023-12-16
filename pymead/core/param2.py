@@ -88,7 +88,7 @@ class Param(PymeadObj):
         else:
             return self._value
 
-    def set_value(self, value: float, bounds_normalized: bool = False):
+    def set_value(self, value: float, updated_objs: typing.List[PymeadObj] = None, bounds_normalized: bool = False):
         """
         Sets the design variable value, adjusting the value to fit inside the bounds if necessary.
 
@@ -122,8 +122,14 @@ class Param(PymeadObj):
         if self.at_boundary:
             return
 
-        for dim in self.dims:
-            dim.update_points_from_param()
+        updated_objs = [] if updated_objs is None else updated_objs
+
+        if self in updated_objs:
+            return
+        else:
+            updated_objs.append(self)
+            for dim in self.dims:
+                dim.update_points_from_param(updated_objs=updated_objs)
 
     def lower(self):
         """
@@ -217,11 +223,11 @@ class Param(PymeadObj):
     def __pow__(self, power, modulo=None):
         return self.__class__(value=self.value() ** power, name="power_result")
 
-    def __eq__(self, other):
-        return self.value() == other.value()
-
-    def __ne__(self, other):
-        return self.value() != other.value()
+    # def __eq__(self, other):
+    #     return self.value() == other.value()
+    #
+    # def __ne__(self, other):
+    #     return self.value() != other.value()
 
 
 class LengthParam(Param):
@@ -266,14 +272,14 @@ class LengthParam(Param):
     def set_upper(self, upper: float):
         return super().set_upper(UNITS.convert_length_to_base(upper, self.unit()))
 
-    def set_value(self, value: float, bounds_normalized: bool = False):
+    def set_value(self, value: float, updated_objs: typing.List[PymeadObj] = None, bounds_normalized: bool = False):
 
         # Negative lengths are prohibited unless this represents a point
         if self.point is None and value < 0.0:
             return
 
         new_value = UNITS.convert_length_to_base(value, self.unit())
-        return super().set_value(new_value, bounds_normalized=bounds_normalized)
+        return super().set_value(new_value, updated_objs=updated_objs, bounds_normalized=bounds_normalized)
 
 
 class AngleParam(Param):
@@ -331,13 +337,13 @@ class AngleParam(Param):
 
         return super().set_upper(UNITS.convert_angle_to_base(upper, self.unit()))
 
-    def set_value(self, value: float, bounds_normalized: bool = False):
+    def set_value(self, value: float, updated_objs: typing.List[PymeadObj] = None, bounds_normalized: bool = False):
 
         new_value = UNITS.convert_angle_to_base(value, self.unit())
 
         zero_to_2pi_value = new_value % (2 * np.pi)
 
-        return super().set_value(zero_to_2pi_value, bounds_normalized=bounds_normalized)
+        return super().set_value(zero_to_2pi_value, updated_objs=updated_objs, bounds_normalized=bounds_normalized)
 
 
 # class ParamCollection:

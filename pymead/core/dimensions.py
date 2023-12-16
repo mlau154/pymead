@@ -97,12 +97,21 @@ class LengthDimension(Dimension):
         name = "LengthDim-1" if name is None else name
         super().__init__(tool=tool_point, target=target_point, param=length_param, name=name)
 
-    def update_points_from_param(self):
-        target_angle = self.tool().measure_angle(self.target())
-        self.target().force_move(self.tool().x().value() + self.param().value() * np.cos(target_angle),
-                                 self.tool().y().value() + self.param().value() * np.sin(target_angle))
+    def update_points_from_param(self, updated_objs: typing.List[PymeadObj] = None):
+        updated_objs = [] if updated_objs is None else updated_objs
 
-    def update_param_from_points(self):
+        target_angle = self.tool().measure_angle(self.target())
+        new_x = self.tool().x().value() + self.param().value() * np.cos(target_angle)
+        new_y = self.tool().y().value() + self.param().value() * np.sin(target_angle)
+        if self in updated_objs:
+            self.target().force_move(new_x, new_y)
+        else:
+            updated_objs.append(self)
+            self.target().request_move(new_x, new_y, updated_objs=updated_objs)
+
+    def update_param_from_points(self, updated_objs: typing.List[PymeadObj] = None):
+        updated_objs = [] if updated_objs is None else updated_objs
+
         length = self.tool().measure_distance(self.target())
         if self.param() is None:
             if self.geo_col is None:
@@ -112,7 +121,11 @@ class LengthDimension(Dimension):
         else:
             param = self.param()
 
-        param.set_value(self.tool().measure_distance(self.target()))
+        if self in updated_objs:
+            param.set_value(length, updated_objs=updated_objs)
+        else:
+            updated_objs.append(self)
+            param.set_value(length, updated_objs=updated_objs)
         return param
 
     def get_dict_rep(self):

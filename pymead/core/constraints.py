@@ -304,9 +304,11 @@ class CurvatureConstraint(GeoCon):
                 if isinstance(geo_con, CurvatureConstraint):
                     raise ConstraintValidationError(msg)
 
-    def enforce(self, calling_point: Point,
+    def enforce(self, calling_point: Point, updated_objs: typing.List[PymeadObj] = None,
                 initial_x: float = None, initial_y: float = None,
                 initial_psi1: float = None, initial_psi2: float = None, initial_R: float = None):
+
+        updated_objs = [] if updated_objs is None else updated_objs
 
         if calling_point is self.tool():  # If the middle point called the enforcement
             if initial_x is None:
@@ -327,7 +329,11 @@ class CurvatureConstraint(GeoCon):
             points_to_move = [self.target().points()[0], self.target().points()[3]] \
                 if collinear_constraint_found else self.target().points()
             for point in points_to_move:
-                point.force_move(point.x().value() + dx, point.y().value() + dy)
+                if self in updated_objs:
+                    point.force_move(point.x().value() + dx, point.y().value() + dy)
+                else:
+                    updated_objs.append(self)
+                    point.request_move(point.x().value() + dx, point.y().value() + dy, updated_objs=updated_objs)
 
         elif calling_point is self.target().points()[0]:  # Curve 1 g2 point modified -> update curve 2 g2 point
             # Calculate the new curvature control arm 2 length
@@ -347,10 +353,12 @@ class CurvatureConstraint(GeoCon):
             # Move the other G2 point to match the curvature
             new_x = self.target().points()[2].x().value() + target_Lc2 * np.cos(theta2)
             new_y = self.target().points()[2].y().value() + target_Lc2 * np.sin(theta2)
-            self.target().points()[3].force_move(new_x, new_y)
 
-            data = self.calculate_curvature_data()
-            # print(f"{data.psi1 = }, {data.psi2 = }, {data.R1 = }, {data.R2 = }")
+            if self in updated_objs:
+                self.target().points()[3].force_move(new_x, new_y)
+            else:
+                updated_objs.append(self)
+                self.target().points()[3].request_move(new_x, new_y, updated_objs=updated_objs)
 
         elif calling_point is self.target().points()[3]:  # Curve 2 g2 point modified -> update curve 1 g2 point
             # Calculate the new curvature control arm 1 length
@@ -370,7 +378,11 @@ class CurvatureConstraint(GeoCon):
             # Move the other G2 point to match the curvature
             new_x = self.target().points()[1].x().value() + target_Lc1 * np.cos(theta1)
             new_y = self.target().points()[1].y().value() + target_Lc1 * np.sin(theta1)
-            self.target().points()[0].force_move(new_x, new_y)
+
+            if self in updated_objs:
+                self.target().points()[0].force_move(new_x, new_y)
+            else:
+                self.target().points()[0].request_move(new_x, new_y, updated_objs=updated_objs)
 
         elif calling_point is self.target().points()[1]:  # Curve 1 g1 point modified -> update curve 2 g1 point and g2 points
             if initial_psi1 is None or initial_psi2 is None or initial_R is None:
@@ -399,13 +411,15 @@ class CurvatureConstraint(GeoCon):
             new_y0 = self.target().points()[1].y().value() + target_Lc1 * np.sin(target_theta1)
             new_x3 = new_x2 + target_Lc2 * np.cos(target_theta2)
             new_y3 = new_y2 + target_Lc2 * np.sin(target_theta2)
-            # print(f"Before, {self.calculate_curvature_data().R1 = }, {self.calculate_curvature_data().R2 = }, {self.calculate_curvature_data().psi1 = }, {self.calculate_curvature_data().psi2 = }")
-            self.target().points()[2].force_move(new_x2, new_y2)
-            # print(f"After 2, {self.calculate_curvature_data().R1 = }, {self.calculate_curvature_data().R2 = }, {self.calculate_curvature_data().psi1 = }, {self.calculate_curvature_data().psi2 = }")
-            self.target().points()[0].force_move(new_x0, new_y0)
-            # print(f"After 0, {self.calculate_curvature_data().R1 = }, {self.calculate_curvature_data().R2 = }, {self.calculate_curvature_data().psi1 = }, {self.calculate_curvature_data().psi2 = }")
-            self.target().points()[3].force_move(new_x3, new_y3)
-            # print(f"After 3, {self.calculate_curvature_data().R1 = }, {self.calculate_curvature_data().R2 = }, {self.calculate_curvature_data().psi1 = }, {self.calculate_curvature_data().psi2 = }")
+
+            if self in updated_objs:
+                self.target().points()[2].force_move(new_x2, new_y2)
+            else:
+                updated_objs.append(self)
+                self.target().points()[2].request_move(new_x2, new_y2, updated_objs=updated_objs)
+
+            self.target().points()[0].request_move(new_x0, new_y0, updated_objs=updated_objs)
+            self.target().points()[3].request_move(new_x3, new_y3, updated_objs=updated_objs)
 
         elif calling_point is self.target().points()[2]:  # Curve 2 g1 point modified -> update curve 1 g1 point and g2 points
             if initial_psi1 is None or initial_psi2 is None or initial_R is None:
@@ -430,9 +444,15 @@ class CurvatureConstraint(GeoCon):
             new_y0 = new_y1 + target_Lc1 * np.sin(target_theta1)
             new_x3 = self.target().points()[2].x().value() + target_Lc2 * np.cos(target_theta2)
             new_y3 = self.target().points()[2].y().value() + target_Lc2 * np.sin(target_theta2)
-            self.target().points()[1].force_move(new_x1, new_y1)
-            self.target().points()[0].force_move(new_x0, new_y0)
-            self.target().points()[3].force_move(new_x3, new_y3)
+
+            if self in updated_objs:
+                self.target().points()[1].force_move(new_x1, new_y1)
+            else:
+                updated_objs.append(self)
+                self.target().points()[1].request_move(new_x1, new_y1, updated_objs=updated_objs)
+
+            self.target().points()[0].request_move(new_x0, new_y0, updated_objs=updated_objs)
+            self.target().points()[3].request_move(new_x3, new_y3, updated_objs=updated_objs)
 
             # TODO: check this logic. Might be causing a runaway radius of curvature on tangent point rotation
 

@@ -67,7 +67,7 @@ class Point(PymeadObj):
     def measure_angle(self, other: "Point"):
         return np.arctan2(other.y().value() - self.y().value(), other.x().value() - self.x().value())
 
-    def request_move(self, xp: float, yp: float, calling_point=None):
+    def request_move(self, xp: float, yp: float, updated_objs: typing.List[PymeadObj] = None):
         # Initialize variables which may or may not be used
         initial_x = self.x().value()  # x-location of the current point before the movement
         initial_y = self.y().value()  # y-location of the current point before the movement
@@ -87,51 +87,43 @@ class Point(PymeadObj):
                     initial_R = data.R1
                     break
 
-        self.x().set_value(xp)
-        self.y().set_value(yp)
+        self.x().set_value(xp, updated_objs=updated_objs)
+        self.y().set_value(yp, updated_objs=updated_objs)
 
-        # enforce_constraints = False
+        updated_objs = [] if updated_objs is None else updated_objs
+
         for dim in self.dims:
-            dim.update_param_from_points()
-            if dim.param().at_boundary:
-                # self.x().set_value(initial_x)
-                # self.y().set_value(initial_y)
-                self.force_move(initial_x, initial_y)
-                return
-        else:
-            enforce_constraints = True
+            dim.update_param_from_points(updated_objs=updated_objs)
 
-        # TODO: fix this - no parameter or DV should ever be able to move outside of its boundaries. Might require
-        # a recursive function
+        for geo_con in self.geo_cons:
+            kwargs = {}
 
-        if enforce_constraints:
-            for geo_con in self.geo_cons:
-                kwargs = {}
+            # Get class by name to avoid circular import
+            class_name = str(geo_con.__class__)
+            if "PositionConstraint" in class_name:
+                kwargs = dict(calling_point=self, updated_objs=updated_objs)
+            elif "CollinearConstraint" in class_name:
+                kwargs = dict(calling_point=self, updated_objs=updated_objs, initial_x=initial_x,
+                              initial_y=initial_y)
+            elif "CurvatureConstraint" in class_name:
+                kwargs = dict(calling_point=self, updated_objs=updated_objs, initial_x=initial_x,
+                              initial_y=initial_y, initial_psi1=initial_psi1,
+                              initial_psi2=initial_psi2, initial_R=initial_R)
+                # if calling_point is not None:
+                #     kwargs["calling_point"] = calling_point
 
-                # Get class by name to avoid circular import
-                class_name = str(geo_con.__class__)
-                if "PositionConstraint" in class_name:
-                    kwargs = dict(calling_point=self)
-                elif "CollinearConstraint" in class_name:
-                    kwargs = dict(calling_point=self, initial_x=initial_x, initial_y=initial_y)
-                elif "CurvatureConstraint" in class_name:
-                    kwargs = dict(calling_point=self, initial_x=initial_x, initial_y=initial_y, initial_psi1=initial_psi1,
-                                  initial_psi2=initial_psi2, initial_R=initial_R)
-                    # if calling_point is not None:
-                    #     kwargs["calling_point"] = calling_point
+            # Enforce the constraint
+            geo_con.enforce(**kwargs)
 
-                # Enforce the constraint
-                geo_con.enforce(**kwargs)
-
-            for param in self.geo_col.container()["params"].values():
-                if param.at_boundary:
-                    self.force_move(initial_x, initial_y)
-                    break
-            else:
-                for dv in self.geo_col.container()["desvar"].values():
-                    if dv.at_boundary:
-                        self.force_move(initial_x, initial_y)
-                        break
+            # for param in self.geo_col.container()["params"].values():
+            #     if param.at_boundary:
+            #         self.force_move(initial_x, initial_y)
+            #         break
+            # else:
+            #     for dv in self.geo_col.container()["desvar"].values():
+            #         if dv.at_boundary:
+            #             self.force_move(initial_x, initial_y)
+            #             break
 
         # Update the GUI object, if there is one
         if self.canvas_item is not None:

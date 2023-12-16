@@ -1242,7 +1242,7 @@ class GUI(QMainWindow):
                 else:
                     raise AttributeError("Did not have x or X to update airfoil parameter dictionary")
                 # print(f"{update_params = }")
-                self.mea.update_parameters(update_params)
+                self.geo_col.assign_design_variable_values(update_params, bounds_normalized=True)
                 msg_mode = 'info'
             self.disp_message_box(message=res.message, message_mode=msg_mode)
 
