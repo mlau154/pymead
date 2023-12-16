@@ -12,6 +12,7 @@ import sys
 import os
 from collections import namedtuple
 import multiprocessing as mp
+from cmcrameri import cm
 
 import requests
 from pymoo.factory import get_decomposition
@@ -700,11 +701,11 @@ class GUI(QMainWindow):
         self.geometry_plot_handles[name].setPen(qpen)
 
     def clear_field(self):
-        for child in self.v.allChildItems():
+        for child in self.airfoil_canvas.plot.allChildItems():
             if isinstance(child, pg.PColorMeshItem) or isinstance(child, PymeadPColorMeshItem):
-                self.v.getViewBox().removeItem(child)
+                self.airfoil_canvas.plot.getViewBox().removeItem(child)
         if self.cbar is not None:
-            self.w.removeItem(self.cbar)
+            self.airfoil_canvas.plot.getViewBox().removeItem(self.cbar)
             self.cbar = None
             self.cbar_label_attrs = None
 
@@ -712,18 +713,18 @@ class GUI(QMainWindow):
 
         dlg = MSESFieldPlotDialog(parent=self, default_field_dir=self.default_field_dir)
         if dlg.exec_():
-            inputs = dlg.getInputs()
+            inputs = dlg.valuesFromWidgets()
         else:
             return
 
         self.clear_field()
 
-        for child in self.v.allChildItems():
+        for child in self.airfoil_canvas.plot.allChildItems():
             if hasattr(child, 'setZValue'):
                 child.setZValue(1.0)
 
         analysis_dir = inputs['analysis_dir']
-        vBox = self.v.getViewBox()
+        vBox = self.airfoil_canvas.plot.getViewBox()
         field_file = os.path.join(analysis_dir, f'field.{os.path.split(analysis_dir)[-1]}')
         grid_stats_file = os.path.join(analysis_dir, 'mplot_grid_stats.log')
         grid_file = os.path.join(analysis_dir, f'grid.{os.path.split(analysis_dir)[-1]}')
@@ -767,40 +768,77 @@ class GUI(QMainWindow):
                 start_idx = end_idx
                 end_idx += x_grid[flow_section_idx + 1].shape[1] - 1
 
-        for child in self.v.allChildItems():
+        for child in self.airfoil_canvas.plot.allChildItems():
             if hasattr(child, 'setZValue') and not isinstance(child, pg.PColorMeshItem) \
                     and not isinstance(child, PymeadPColorMeshItem):
                 child.setZValue(5)
 
         all_levels = np.array([list(pcmi.getLevels()) for pcmi in pcmi_list])
         levels = (np.min(all_levels[:, 0]), np.max(all_levels[:, 1]))
-        bar = pg.ColorBarItem(
-            values=levels,
-            colorMap='CET-R1',
-            rounding=0.001,
-            limits=levels,
-            orientation='v',
-            pen='#8888FF', hoverPen='#EEEEFF', hoverBrush='#EEEEFF80'
-        )
-        bar.setImageItem(pcmi_list)
+        # bar = pg.ColorBarItem(
+        #     values=levels,
+        #     colorMap='CET-R1',
+        #     rounding=0.001,
+        #     limits=levels,
+        #     orientation='v',
+        #     pen='#8888FF', hoverPen='#EEEEFF', hoverBrush='#EEEEFF80'
+        # )
+        # bar.setImageItem(pcmi_list)
         self.cbar_label_attrs = {
             'axis': 'right',
             'text': flow_var_label[inputs['flow_variable']],
             'font-size': '12pt',
         }
+        # bar.setLabel(**self.cbar_label_attrs)
+        # self.cbar = bar
+        if self.current_theme == "dark":
+            col_data = cm.berlin.colors
+            name = "berlin"
+        elif self.current_theme == "light":
+            col_data = cm.vik.colors
+            name = "vik"
+        else:
+            raise ValueError("Could not find color map for the current theme")
+
+        if inputs["flow_variable"] == "M":
+            Mach_stop = (1.0 - levels[0]) / (levels[1] - levels[0])
+            pos = np.linspace(0.0, Mach_stop, col_data.shape[0] // 2 + 1)
+            pos = pos[:-1]
+            pos2 = np.linspace(Mach_stop, 1.0, col_data.shape[0] // 2)
+            for p in pos2:
+                pos = np.append(pos, p)
+        elif inputs["flow_variable"] == "Cp":
+            Cp_stop = (0.0 - levels[0]) / (levels[1] - levels[0])
+            pos = np.linspace(0.0, Cp_stop, col_data.shape[0] // 2 + 1)
+            pos = pos[:-1]
+            pos2 = np.linspace(Cp_stop, 1.0, col_data.shape[0] // 2)
+            for p in pos2:
+                pos = np.append(pos, p)
+        else:
+            stop = (1.0 - levels[0]) / (levels[1] - levels[0])
+            pos = np.linspace(0.0, stop, col_data.shape[0] // 2 + 1)
+            pos = pos[:-1]
+            pos2 = np.linspace(stop, 1.0, col_data.shape[0] // 2)
+            for p in pos2:
+                pos = np.append(pos, p)
+
+        crameri_cmap = pg.ColorMap(name=name, pos=pos, color=255*col_data[:, :3]+0.5)
+
+        self.cbar = self.airfoil_canvas.plot.addColorBar(pcmi_list, colorMap=crameri_cmap)
         if self.current_theme == "dark":
             self.cbar_label_attrs['color'] = '#dce1e6'
         elif self.current_theme == "light":
             self.cbar_label_attrs['color'] = '#000000'
-        bar.setLabel(**self.cbar_label_attrs)
-        self.cbar = bar
-        self.w.addItem(bar)
 
-        def on_levels_changed(cbar):
-            for pcm in pcmi_list:
-                pcm.setLevels(cbar.levels())
+        self.cbar.setLabel(**self.cbar_label_attrs)
+        print(f"{levels = }")
+        self.cbar.setLevels(values=levels)
 
-        bar.sigLevelsChanged.connect(on_levels_changed)
+        # def on_levels_changed(cbar):
+        #     for pcm in pcmi_list:
+        #         pcm.setLevels(cbar.levels())
+        #
+        # bar.sigLevelsChanged.connect(on_levels_changed)
 
     def load_mea_no_dialog(self, file_name):
         self.permanent_widget.progress_bar.setValue(0)

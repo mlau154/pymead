@@ -289,14 +289,8 @@ class MSETMultiGridWidget(QTabWidget):
 
     def setValue(self, values: dict):
         self.input_dict = deepcopy(values)
-        # if self.input_dict['airfoil_order'] != self.tab_names:  # This only happens when re-loading the dialog
         self.updateTabNames([k for k in self.input_dict.keys()])
         self.regenerateWidgets()  # This function already sets the values, thus the else statement
-        # else:
-        # print(f"{values = }")
-        # for k1, v1 in values.items():
-        #     for k2, v2 in v1.items():
-        #         self.widget_dict[k1][k2]['widget'].setValue(v2)
 
     def value(self):
         return self.input_dict
@@ -1184,152 +1178,121 @@ class MSETDialogWidget(PymeadDialogWidget):
         preview_dialog.exec_()
 
 
-class PymeadLabeledSpinBox(QWidget):
-    def __init__(self, parent=None, label: str = "", tool_tip: str = "", minimum: int = None, maximum: int = None,
+class PymeadLabeledSpinBox:
+    def __init__(self, label: str = "", tool_tip: str = "", minimum: int = None, maximum: int = None,
                  value: int = None):
-        super().__init__(parent=parent)
-        self.lay = QGridLayout()
-        self.setLayout(self.lay)
-        self.label = QLabel(label, self)
-        self.spin = QSpinBox(self)
+        self.label = QLabel(label)
+        self.widget = QSpinBox()
         self.label.setToolTip(tool_tip)
-        self.spin.setToolTip(tool_tip)
+        self.widget.setToolTip(tool_tip)
         if minimum is not None:
-            self.spin.setMinimum(minimum)
+            self.widget.setMinimum(minimum)
         if maximum is not None:
-            self.spin.setMaximum(maximum)
+            self.widget.setMaximum(maximum)
         if value is not None:
-            self.spin.setValue(value)
-        self.lay.addWidget(self.label, 0, 0)
-        self.lay.addWidget(self.spin, 0, 1)
+            self.widget.setValue(value)
+        self.push = None
 
     def setValue(self, value: int):
-        self.spin.setValue(value)
+        self.widget.setValue(value)
 
     def value(self):
-        return self.spin.value()
+        return self.widget.value()
 
 
-class PymeadLabeledDoubleSpinBox(QWidget):
-    def __init__(self, parent=None, label: str = "", tool_tip: str = "", minimum: float = None, maximum: float = None,
+class PymeadLabeledDoubleSpinBox:
+    def __init__(self, label: str = "", tool_tip: str = "", minimum: float = None, maximum: float = None,
                  value: float = None):
-        super().__init__(parent=parent)
-        self.lay = QGridLayout()
-        self.setLayout(self.lay)
-        self.label = QLabel(label, self)
-        self.spin = QDoubleSpinBox(self)
+        self.label = QLabel(label)
+        self.widget = QDoubleSpinBox()
         self.label.setToolTip(tool_tip)
-        self.spin.setToolTip(tool_tip)
+        self.widget.setToolTip(tool_tip)
         if minimum is not None:
-            self.spin.setMinimum(minimum)
+            self.widget.setMinimum(minimum)
         if maximum is not None:
-            self.spin.setMaximum(maximum)
+            self.widget.setMaximum(maximum)
         if value is not None:
-            self.spin.setValue(value)
-        self.lay.addWidget(self.label, 0, 0)
-        self.lay.addWidget(self.spin, 0, 1)
+            self.widget.setValue(value)
+        self.push = None
 
     def setValue(self, value: float):
-        self.spin.setValue(value)
+        self.widget.setValue(value)
 
     def value(self):
-        return self.spin.value()
+        return self.widget.value()
 
 
-class PymeadLabeledLineEdit(QWidget):
+class PymeadLabeledLineEdit:
 
-    def __init__(self, parent=None, label: str = "", tool_tip: str = "", text: str = "", push_label: str = None):
-        super().__init__(parent=parent)
-        self.lay = QGridLayout()
-        self.setLayout(self.lay)
-        self.label = QLabel(label, self)
-        self.line = QLineEdit(text, self)
+    def __init__(self, label: str = "", tool_tip: str = "", text: str = "", push_label: str = None):
+        self.label = QLabel(label)
+        self.widget = QLineEdit(text)
         self.label.setToolTip(tool_tip)
-        self.line.setToolTip(tool_tip)
-        self.lay.addWidget(self.label, 0, 0)
-        self.lay.addWidget(self.line, 0, 1)
+        self.widget.setToolTip(tool_tip)
         self.push = None
 
         if push_label is not None:
-            self.push = QPushButton(push_label, self)
-            self.lay.addWidget(self.push, 0, 2)
+            self.push = QPushButton(push_label)
 
     def setValue(self, text: str):
-        self.line.setText(text)
+        self.widget.setText(text)
 
     def value(self):
-        return self.line.text()
+        return self.widget.text()
 
 
-class PymeadLabeledComboBox(QWidget):
+class PymeadLabeledComboBox:
 
     sigValueChanged = pyqtSignal(str)
 
-    def __init__(self, parent=None, label: str = "", tool_tip: str = "", items: typing.List[str] = None):
-        super().__init__(parent=parent)
-        self.lay = QGridLayout()
-        self.setLayout(self.lay)
-        self.label = QLabel(label, self)
-        self.combo = QComboBox(self)
+    def __init__(self, label: str = "", tool_tip: str = "", items: typing.List[str] = None):
+        self.label = QLabel(label)
+        self.widget = QComboBox()
         self.label.setToolTip(tool_tip)
-        self.combo.setToolTip(tool_tip)
+        self.widget.setToolTip(tool_tip)
+        self.push = None
 
         if items is not None:
-            self.combo.addItems(items)
-
-        self.lay.addWidget(self.label, 0, 0)
-        self.lay.addWidget(self.combo, 0, 1)
+            self.widget.addItems(items)
 
     def setValue(self, text: str):
-        self.combo.setCurrentText(text)
+        self.widget.setCurrentText(text)
 
     def value(self):
-        return self.combo.currentText()
+        return self.widget.currentText()
 
 
-class PymeadLabeledCheckbox(QWidget):
+class PymeadLabeledCheckbox:
 
     sigValueChanged = pyqtSignal(int)
 
-    def __init__(self, parent=None, label: str = "", tool_tip: str = "", initial_state: int = 0,
+    def __init__(self, label: str = "", tool_tip: str = "", initial_state: int = 0,
                  push_label: str = None):
-        super().__init__(parent=parent)
-        self.lay = QGridLayout()
-        self.setLayout(self.lay)
-        self.label = QLabel(label, self)
-        self.check = QCheckBox(self)
-        self.check.setCheckState(initial_state)
+        self.label = QLabel(label)
+        self.widget = QCheckBox()
+        self.widget.setCheckState(initial_state)
         self.label.setToolTip(tool_tip)
-        self.check.setToolTip(tool_tip)
+        self.widget.setToolTip(tool_tip)
         self.push = None
 
-        self.lay.addWidget(self.label, 0, 0)
-        self.lay.addWidget(self.check, 0, 1)
-
         if push_label is not None:
-            self.push = QPushButton(push_label, self)
-            self.lay.addWidget(self.push, 0, 2)
+            self.push = QPushButton(push_label)
 
     def setValue(self, state: int):
-        self.check.setCheckState(state)
+        self.widget.setCheckState(state)
 
     def value(self):
-        return self.check.checkState()
+        return self.widget.checkState()
 
 
-class PymeadLabeledPushButton(QWidget):
+class PymeadLabeledPushButton:
 
-    def __init__(self, parent=None, label: str = "", text: str = "", tool_tip: str = ""):
-        super().__init__(parent=parent)
-        self.lay = QGridLayout()
-        self.setLayout(self.lay)
-        self.label = QLabel(label, self)
-        self.push = QPushButton(text, self)
+    def __init__(self, label: str = "", text: str = "", tool_tip: str = ""):
+        self.label = QLabel(label)
+        self.widget = QPushButton(text)
         self.label.setToolTip(tool_tip)
-        self.push.setToolTip(tool_tip)
-
-        self.lay.addWidget(self.label, 0, 0)
-        self.lay.addWidget(self.push, 0, 1)
+        self.widget.setToolTip(tool_tip)
+        self.push = None
 
     def setValue(self, _):
         pass
@@ -1366,7 +1329,7 @@ class MSETDialogWidget2(PymeadDialogWidget2):
         self.widget_dict = None
         self.lay = QGridLayout()
         self.setLayout(self.lay)
-        self.initializeWidgets(label_column_split="x_spacing_param")
+        self.initializeWidgets(label_column_split="timeout")
 
     def initializeWidgets(self, label_column_split: str):
         initial_mea_names = [k for k in self.geo_col.container()["mea"].keys()]
@@ -1421,21 +1384,39 @@ class MSETDialogWidget2(PymeadDialogWidget2):
         column = 0
         for widget_name, widget in self.widget_dict.items():
             if widget_name == label_column_split:
-                column = 1
+                column = 4
                 row_count = 0
-            self.lay.addWidget(widget, row_count, column)
-            row_count += 1
+            if widget_name == "multi_airfoil_grid":
+                row_span = 7
+                col_span = 3
+            elif widget_name == "grid_bounds":
+                row_span = 3
+                col_span = 4
+            else:
+                row_span = 1
+                col_span = 2 if widget.push is None else 1
+
+            if widget_name in ["multi_airfoil_grid", "grid_bounds"]:
+                self.lay.addWidget(widget, row_count, column, row_span, col_span)
+            else:
+                self.lay.addWidget(widget.label, row_count, column, 1, 1)
+                self.lay.addWidget(widget.widget, row_count, column + 1, row_span, col_span)
+
+                if widget.push is not None:
+                    self.lay.addWidget(widget.push, row_count, column + 2, row_span, col_span)
+
+            row_count += row_span
 
         # Connect the MEA combobox to the "MEA changed" signal
-        self.widget_dict["mea"].combo.currentTextChanged.connect(self.sigMEAChanged)
+        self.widget_dict["mea"].widget.currentTextChanged.connect(self.sigMEAChanged)
         # Show a preview of the downsampling when the button is pushed
         self.widget_dict["use_downsampling"].push.clicked.connect(self.showAirfoilCoordinatesPreview)
         # Connect the airfoil analysis directory button to the choose directory function
         self.widget_dict["airfoil_analysis_dir"].push.clicked.connect(
-            partial(select_directory, self, line_edit=self.widget_dict["airfoil_analysis_dir"].line))
+            partial(select_directory, self, line_edit=self.widget_dict["airfoil_analysis_dir"].widget))
         # Connect the load and save settings buttons
-        self.widget_dict["load_mses_settings"].push.clicked.connect(self.loadMSESSuiteSettings)
-        self.widget_dict["save_as_mses_settings"].push.clicked.connect(self.saveasMSESSuiteSettings)
+        self.widget_dict["load_mses_settings"].widget.clicked.connect(self.loadMSESSuiteSettings)
+        self.widget_dict["save_as_mses_settings"].widget.clicked.connect(self.saveasMSESSuiteSettings)
 
     def setWidgetValuesFromDict(self, d: dict):
         for d_name, d_value in d.items():
@@ -2917,8 +2898,8 @@ class GridBounds(QWidget):
         defaults = {
             'Left': [-5.0, 1, 1],
             'Right': [5.0, 1, 3],
-            'Bottom': [5.0, 2, 1],
-            'Top': [-5.0, 2, 3],
+            'Bottom': [-5.0, 2, 1],
+            'Top': [5.0, 2, 3],
         }
         for k, v in defaults.items():
             self.widgets[k].setMinimum(-np.inf)
@@ -2942,12 +2923,12 @@ class GridBounds(QWidget):
             raise ValueError('Length of input value list must be 4')
         self.widgets['Left'].setValue(value_list[0])
         self.widgets['Right'].setValue(value_list[1])
-        self.widgets['Top'].setValue(value_list[2])
-        self.widgets['Bottom'].setValue(value_list[3])
+        self.widgets['Bottom'].setValue(value_list[2])
+        self.widgets['Top'].setValue(value_list[3])
 
     def value(self):
-        return [self.widgets['Left'].value(), self.widgets['Right'].value(), self.widgets['Top'].value(),
-                self.widgets['Bottom'].value()]
+        return [self.widgets['Left'].value(), self.widgets['Right'].value(), self.widgets['Bottom'].value(),
+                self.widgets['Top'].value()]
 
     def valueChanged(self, _):
         self.boundsChanged.emit()
