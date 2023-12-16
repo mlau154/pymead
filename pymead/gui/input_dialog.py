@@ -11,6 +11,7 @@ from PyQt5.QtGui import QStandardItem, QStandardItemModel
 import tempfile
 from PyQt5.QtCore import pyqtSlot, pyqtSignal, QStandardPaths
 
+from pymead.core.airfoil2 import Airfoil
 from pymead.core.geometry_collection import GeometryCollection
 from pymead.core.mea import MEA
 from pymead.gui.sampling_visualization import SamplingVisualizationWidget
@@ -2742,10 +2743,12 @@ class ExportIGESDialog(QDialog):
 
 
 class AirfoilMatchingDialog(QDialog):
-    def __init__(self, parent):
+    def __init__(self, parent, airfoil_names: typing.List[str]):
         super().__init__(parent)
         self.setWindowTitle("Choose Airfoil to Match")
         self.setFont(self.parent().font())
+
+        self.airfoil_names = airfoil_names
 
         buttonBox = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel, self)
         self.layout = QFormLayout(self)
@@ -2760,12 +2763,14 @@ class AirfoilMatchingDialog(QDialog):
         buttonBox.rejected.connect(self.reject)
 
     def setInputs(self):
-        r0 = ["Airfoil to Match", QLineEdit(self)]
-        r0[1].setText('n0012-il')
-        return [r0]
+        r0 = ["Tool Airfoil", QComboBox(self)]
+        r0[1].addItems(self.airfoil_names)
+        r1 = ["Target Airfoil", QLineEdit(self)]
+        r1[1].setText('n0012-il')
+        return [r0, r1]
 
     def valuesFromWidgets(self):
-        return self.inputs[0][1].text()
+        return {"tool_airfoil": self.inputs[0][1].currentText(), "target_airfoil": self.inputs[1][1].text()}
 
 
 class AirfoilPlotDialog(QDialog):

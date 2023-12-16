@@ -1146,15 +1146,20 @@ class GUI(QMainWindow):
             return
 
         if not aero_data['converged'] or aero_data['errored_out'] or aero_data['timed_out']:
+            # Throw a GUI error
             self.disp_message_box("MSES Analysis Failed", message_mode='error')
+
+            # Output failed MSES analysis info to console
             self.output_area_text(
                 f"[{str(self.n_analyses).zfill(2)}] MSES Converged = {aero_data['converged']} | Errored out = "
                 f"{aero_data['errored_out']} | Timed out = {aero_data['timed_out']}")
             self.output_area_text('\n')
         else:
-            # self.output_area_text('\n')
+            # Calculate L/D if necessary
             if "L/D" not in aero_data.keys():
                 aero_data["L/D"] = np.true_divide(aero_data["Cl"], aero_data["Cd"])
+
+            # Output successful MSES analysis data to console
             self.output_area_text(
                 f"[{str(self.n_analyses).zfill(2)}] ")
             self.output_area_text(f"<a href='file:///{os.path.join(mset_settings['airfoil_analysis_dir'], mset_settings['airfoil_coord_file_name'])}'><font family='DejaVu Sans Mono' size='5'>MSES</font></a>", mode="html")
@@ -1162,10 +1167,7 @@ class GUI(QMainWindow):
                 f"Ma = {mses_settings['MACHIN']:.3f}): "
                 f"Cl = {aero_data['Cl']:+7.4f} | Cd = {aero_data['Cd']:+.5f} | "
                 f"Cm = {aero_data['Cm']:+7.4f} | L/D = {aero_data['L/D']:+8.4f}".replace("-", "\u2212"))
-            # self.output_area_text(f"<br><a href='file:///{os.path.join(mset_settings['airfoil_analysis_dir'], mset_settings['airfoil_coord_file_name'])}'>Open Analysis Folder</a></br>", mode="html")
             self.output_area_text("\n")
-        sb = self.text_area.verticalScrollBar()
-        sb.setValue(sb.maximum())
 
         if aero_data['converged'] and not aero_data['errored_out'] and not aero_data['timed_out']:
             if self.analysis_graph is None:
@@ -1224,12 +1226,13 @@ class GUI(QMainWindow):
             self.n_analyses += 1
 
     def match_airfoil(self):
-        target_airfoil = 'A0'
-        dialog = AirfoilMatchingDialog(self)
+        airfoil_names = [a for a in self.geo_col.container()["airfoils"].keys()]
+        dialog = AirfoilMatchingDialog(self, airfoil_names=airfoil_names)
         if dialog.exec_():
-            airfoil_name = dialog.getInputs()
+            airfoil_match_settings = dialog.valuesFromWidgets()
             # res = match_airfoil_ga(self.mea, target_airfoil, airfoil_name)
-            res = match_airfoil(self.mea, target_airfoil, airfoil_name)
+            res = match_airfoil(self.geo_col.container()["airfoils"], airfoil_match_settings["tool_airfoil"],
+                                airfoil_match_settings["target_airfoil"])
             msg_mode = 'error'
             if hasattr(res, 'success') and res.success or hasattr(res, 'F') and res.F is not None:
                 if hasattr(res, 'x'):
@@ -1246,9 +1249,9 @@ class GUI(QMainWindow):
     def plot_airfoil_from_airfoiltools(self):
         dialog = AirfoilPlotDialog(self)
         if dialog.exec_():
-            airfoil_name = dialog.getInputs()
+            airfoil_name = dialog.valuesFromWidgets()
             airfoil = extract_data_from_airfoiltools(airfoil_name)
-            self.v.plot(airfoil[:, 0], airfoil[:, 1], pen=pg.mkPen(color='orange', width=1))
+            self.airfoil_canvas.plot.plot(airfoil[:, 0], airfoil[:, 1], pen=pg.mkPen(color='orange', width=1))
 
     def setup_optimization(self):
         self.dialog = OptimizationSetupDialog(self, settings_override=self.opt_settings,
