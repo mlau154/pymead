@@ -4,9 +4,7 @@ from threading import Thread
 import pyqtgraph as pg
 import numpy as np
 from copy import deepcopy
-from functools import partial
 import itertools
-import benedict
 import shutil
 import sys
 import os
@@ -20,8 +18,8 @@ from pymoo.factory import get_decomposition
 from pymead.gui.rename_popup import RenamePopup
 from pymead.gui.main_icon_toolbar import MainIconToolbar
 
-from PyQt5.QtWidgets import QMainWindow, QApplication, QVBoxLayout, QHBoxLayout, \
-    QWidget, QMenu, QStatusBar, QAction, QGraphicsScene, QGridLayout, QProgressBar, QSizePolicy, QDockWidget
+from PyQt5.QtWidgets import QMainWindow, QApplication, \
+    QWidget, QMenu, QStatusBar, QAction, QGraphicsScene, QGridLayout, QDockWidget
 from PyQt5.QtGui import QIcon, QFont, QFontDatabase, QPainter, QCloseEvent, QTextCursor
 from PyQt5.QtCore import QEvent, QObject, Qt, QThreadPool
 from PyQt5.QtSvg import QSvgWidget
@@ -31,8 +29,6 @@ from pymead.gui.airfoil_canvas import AirfoilCanvas
 from pymead.core.geometry_collection import GeometryCollection
 from pymead.version import __version__
 from pymead.utils.version_check import using_latest
-from pymead.core.airfoil import Airfoil
-from pymead.core.base_airfoil_params import BaseAirfoilParams
 from pymead.core.transformation import Transformation3D
 from pymead.gui.concurrency import CPUBoundProcess
 from pymead.gui.permanent_widget import PermanentWidget
@@ -44,7 +40,6 @@ from pymead.gui.input_dialog import LoadDialog, SaveAsDialog, OptimizationSetupD
     ExitDialog, ScreenshotDialog, LoadAirfoilAlgFile
 from pymead.gui.pymeadPColorMeshItem import PymeadPColorMeshItem
 from pymead.gui.analysis_graph import AnalysisGraph
-from pymead.gui.parameter_tree import MEAParamTree
 from pymead.gui.parameter_tree2 import ParameterTree
 from pymead.plugins.IGES.curves import BezierIGES
 from pymead.plugins.IGES.iges_generator import IGESGenerator
@@ -52,7 +47,7 @@ from pymead.utils.airfoil_matching import match_airfoil
 from pymead.optimization.opt_setup import read_stencil_from_array, convert_opt_settings_to_param_dict
 from pymead.analysis.single_element_inviscid import single_element_inviscid
 from pymead.gui.text_area import ConsoleTextArea
-from pymead.gui.dockable_tab_widget import DockableTabWidget, PymeadDockWidget
+from pymead.gui.dockable_tab_widget import PymeadDockWidget
 from pymead.core.mea import MEA
 from pymead.analysis.calc_aero_data import calculate_aero_data
 from pymead.utils.read_write_files import load_data, save_data
@@ -72,7 +67,6 @@ from pymead.gui.input_dialog import convert_dialog_to_mset_settings, convert_dia
 from pymead.gui.airfoil_statistics import AirfoilStatisticsDialog, AirfoilStatistics
 from pymead.gui.custom_graphics_view import CustomGraphicsView
 from pymead.gui.help_browser import HelpBrowserWindow
-from pymead.core.param import Param
 from pymead import ICON_DIR, GUI_SETTINGS_DIR, GUI_THEMES_DIR, GUI_DEFAULT_AIRFOIL_DIR, q_settings
 from pymead.analysis.calc_aero_data import SVG_PLOTS, SVG_SETTINGS_TR
 from pyqtgraph.exporters import CSVExporter, SVGExporter
@@ -1024,7 +1018,7 @@ class GUI(QMainWindow):
         current_airfoils = [k for k in self.geo_col.container()["airfoils"].keys()]
         self.dialog.w.widget_dict["airfoil"]["widget"].addItems(current_airfoils)
         if self.dialog.exec():
-            inputs = self.dialog.getInputs()
+            inputs = self.dialog.valuesFromWidgets()
         else:
             inputs = None
 
@@ -1068,7 +1062,10 @@ class GUI(QMainWindow):
                 self.output_area_text("\n")
             else:
                 self.output_area_text(
-                    f"[{str(self.n_analyses).zfill(2)}] XFOIL ({xfoil_settings['airfoil']}, "
+                    f"[{str(self.n_analyses).zfill(2)}] ")
+                self.output_area_text(
+                    f"<a href='file:///{os.path.join(xfoil_settings['airfoil_analysis_dir'], xfoil_settings['airfoil_coord_file_name'])}'><font family='DejaVu Sans Mono' size='5'>XFOIL</font></a>", mode="html")
+                self.output_area_text(f" ({xfoil_settings['airfoil']}, "
                     f"\u03b1 = {aero_data['alf']:.3f}, Re = {xfoil_settings['Re']:.3E}, "
                     f"Ma = {xfoil_settings['Ma']:.3f}): "
                     f"Cl = {aero_data['Cl']:+7.4f} | Cd = {aero_data['Cd']:+.5f} | Cm = {aero_data['Cm']:+7.4f} "
@@ -1135,13 +1132,6 @@ class GUI(QMainWindow):
 
         mea = self.geo_col.container()["mea"][mset_settings["mea"]]
 
-        # coords = tuple([mea.airfoils[k].get_coords(
-        #     body_fixed_csys=False, as_tuple=True, downsample=mset_settings["use_downsampling"],
-        #     ds_max_points=mset_settings["downsampling_max_pts"],
-        #     ds_curve_exp=mset_settings["downsampling_curve_exp"]) for k in mset_settings['airfoils']])
-
-        # coords_list = mea.get_coords_list()
-
         try:
             aero_data, _ = calculate_aero_data(mset_settings['airfoil_analysis_dir'],
                                                mset_settings['airfoil_coord_file_name'],
@@ -1166,11 +1156,14 @@ class GUI(QMainWindow):
             if "L/D" not in aero_data.keys():
                 aero_data["L/D"] = np.true_divide(aero_data["Cl"], aero_data["Cd"])
             self.output_area_text(
-                f"[{str(self.n_analyses).zfill(2)}] MSES  (    \u03b1 = {aero_data['alf']:.3f}, Re = {mses_settings['REYNIN']:.3E}, "
+                f"[{str(self.n_analyses).zfill(2)}] ")
+            self.output_area_text(f"<a href='file:///{os.path.join(mset_settings['airfoil_analysis_dir'], mset_settings['airfoil_coord_file_name'])}'><font family='DejaVu Sans Mono' size='5'>MSES</font></a>", mode="html")
+            self.output_area_text(f" ({mset_settings['mea']}, \u03b1 = {aero_data['alf']:.3f}, Re = {mses_settings['REYNIN']:.3E}, "
                 f"Ma = {mses_settings['MACHIN']:.3f}): "
                 f"Cl = {aero_data['Cl']:+7.4f} | Cd = {aero_data['Cd']:+.5f} | "
                 f"Cm = {aero_data['Cm']:+7.4f} | L/D = {aero_data['L/D']:+8.4f}".replace("-", "\u2212"))
-            self.output_area_text('\n')
+            # self.output_area_text(f"<br><a href='file:///{os.path.join(mset_settings['airfoil_analysis_dir'], mset_settings['airfoil_coord_file_name'])}'>Open Analysis Folder</a></br>", mode="html")
+            self.output_area_text("\n")
         sb = self.text_area.verticalScrollBar()
         sb.setValue(sb.maximum())
 
