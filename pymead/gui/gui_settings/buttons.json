@@ -41,8 +41,7 @@
   "draw-point": {
     "icon": "point.png",
     "status_tip": "Draw points",
-    "checkable": true,
-    "checked-by-default": false,
+    "checkable": false,
     "function": "on_draw_points_pressed"
   },
   "stop-optimization": {

@@ -139,8 +139,9 @@ class GUI(QMainWindow):
                      ('gold', Qt.DashLine),
                      ('limegreen', Qt.DashLine), ('cyan', Qt.DashLine), ('mediumpurple', Qt.DashLine),
                      ('deeppink', Qt.DashLine)]
-        # self.setFont(QFont("DejaVu Serif"))
-        self.setFont(QFont("DejaVu Sans"))
+        # self.setFont(QFont("DejaVu Sans"))
+        # self.setFont(QFont("Times New Roman"))
+        # self.setStyleSheet('QWidget {font: "DejaVu Sans"}')
 
         self.current_save_name = None
 
@@ -349,13 +350,12 @@ class GUI(QMainWindow):
     def set_theme(self, theme_name: str):
         self.current_theme = theme_name
         theme = self.themes[theme_name]
-        self.setStyleSheet(f"""background-color: {theme['background-color']}; 
-                           color: {theme['main-color']};
-                           font-family: {theme['font-family']}; font-size: {theme['font-size']};
+        self.setStyleSheet(f"""background-color: {theme['background-color']};
+                           color: {theme['main-color']}; font: 10pt DejaVu Sans;
                            """
                            )
         self.menuBar().setStyleSheet(f"""
-                           QMenuBar {{ background-color: {theme['menu-background-color']}; 
+                           QMenuBar {{ background-color: {theme['menu-background-color']}; font-family: "DejaVu Sans" 
                             }}
                             QMenuBar::item:selected {{ background: {theme['menu-item-selected-color']} }}
                            QMenu {{ background-color: {theme['menu-background-color']}; 

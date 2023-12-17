@@ -279,6 +279,10 @@ class AirfoilCanvas(pg.PlotWidget):
     def pointClicked(self, scatter_item, spot, ev, point_item):
         if point_item in self.geo_col.selected_objects["points"]:
             return
+
+        if self.drawing_object == "Points":
+            return
+
         if self.point_text_item is not None:
             self.removeItem(self.point_text_item)
             self.point_text_item = None
@@ -511,6 +515,9 @@ class AirfoilCanvas(pg.PlotWidget):
                 point.request_move(point.x().value(), point.y().value() - step)
 
     def mousePressEvent(self, ev):
+
+        super().mousePressEvent(ev)
+
         if not self.drawing_object == "Points":
             return
 
@@ -521,14 +528,17 @@ class AirfoilCanvas(pg.PlotWidget):
         mods = QApplication.keyboardModifiers()
         if ev.key() == Qt.Key_Return:
             self.sigEnterPressed.emit()
-        if ev.key() == Qt.Key_Escape:
+        elif ev.key() == Qt.Key_Escape:
+            self.sigEscapePressed.emit()
             self.geo_col.clear_selected_objects()
             self.sigStatusBarUpdate.emit("", 0)
-        if ev.key() == Qt.Key_Delete:
+        elif ev.key() == Qt.Key_Delete:
             self.geo_col.remove_selected_objects()
             self.sigStatusBarUpdate.emit("", 0)
         elif ev.key() in (Qt.Key_Left, Qt.Key_Right, Qt.Key_Down, Qt.Key_Up) and len(self.geo_col.selected_objects["points"]) > 0:
             self.arrowKeyPointMove(ev.key(), mods)
+        elif ev.key() == Qt.Key_P:
+            self.drawPoints()
 
 
 if __name__ == '__main__':
