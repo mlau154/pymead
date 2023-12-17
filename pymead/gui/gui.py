@@ -1647,19 +1647,13 @@ class GUI(QMainWindow):
         if not self.isMaximized():
             self.showMaximized()
 
-    def eventFilter(self, source: QObject, event: QEvent) -> bool:
-        if event.type() == QEvent.ContextMenu and source is self.design_tree:
-            menu = QMenu()
-            menu.addAction('Rename')
-
-            if menu.exec_(event.globalPos()):
-                item = source.itemAt(event.pos())
-                if item.text(0) not in ['Airfoils', 'Curves']:
-                    rename_popup = RenamePopup(item.text(0), item)
-                    rename_popup.exec()
-            return True
-
-        return super().eventFilter(source, event)
+    def keyPressEvent(self, a0):
+        if a0.key() == Qt.Key_Escape:
+            self.geo_col.clear_selected_objects()
+            self.status_bar.clearMessage()
+        if a0.key() == Qt.Key_Delete:
+            self.geo_col.remove_selected_objects()
+            self.status_bar.clearMessage()
 
 
 # Adjustments for variable monitor resolution (from https://stackoverflow.com/a/47723454)
