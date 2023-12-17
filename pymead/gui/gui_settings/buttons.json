@@ -38,6 +38,13 @@
     "checked-by-default": false,
     "function": "on_pos_constraint_pressed"
   },
+  "draw-point": {
+    "icon": "point.png",
+    "status_tip": "Draw points",
+    "checkable": true,
+    "checked-by-default": false,
+    "function": "on_draw_points_pressed"
+  },
   "stop-optimization": {
     "icon": "stop.png",
     "status_tip": "Terminate optimization",

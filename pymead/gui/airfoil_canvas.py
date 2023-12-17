@@ -148,16 +148,21 @@ class AirfoilCanvas(pg.PlotWidget):
                 self.sigEnterPressed.connect(loop.quit)
                 self.sigEscapePressed.connect(loop.quit)
                 loop.exec()
-                if len(self.geo_col.selected_objects["points"]) > 0:
-                    action(self, *args, **kwargs)
-                    self.clearSelectedObjects()
-                elif len(self.geo_col.selected_objects["airfoils"]) > 0:
-                    action(self, *args, **kwargs)
-                    self.clearSelectedObjects()
+                # if len(self.geo_col.selected_objects["points"]) > 0:
+                action(self, *args, **kwargs)
+                self.clearSelectedObjects()
+                # elif len(self.geo_col.selected_objects["airfoils"]) > 0:
+                #     action(self, *args, **kwargs)
+                #     self.clearSelectedObjects()
                 self.drawing_object = None
                 self.sigStatusBarUpdate.emit("", 0)
             return wrapped
         return decorator
+
+    @runSelectionEventLoop(drawing_object="Points", starting_message="Left click on the canvas to draw a point. "
+                                                                     "Press Escape to stop drawing points.")
+    def drawPoints(self):
+        pass
 
     @runSelectionEventLoop(drawing_object="Bezier", starting_message="Select the first Bezier control point")
     def drawBezier(self):
@@ -280,7 +285,6 @@ class AirfoilCanvas(pg.PlotWidget):
         # point_item.hoverable = False
         # point_item.setScatterStyle("selected")
         # point_item.point.tree_item.setSelected(True)
-
         if self.drawing_object == "Bezier":
             self.geo_col.select_object(point_item.point)
             n_ctrl_pts = len(self.geo_col.selected_objects["points"])
@@ -505,6 +509,13 @@ class AirfoilCanvas(pg.PlotWidget):
         elif key == Qt.Key_Down:
             for point in self.geo_col.selected_objects["points"]:
                 point.request_move(point.x().value(), point.y().value() - step)
+
+    def mousePressEvent(self, ev):
+        if not self.drawing_object == "Points":
+            return
+
+        view_pos = self.getPlotItem().getViewBox().mapSceneToView(ev.pos())
+        self.geo_col.add_point(view_pos.x(), view_pos.y())
 
     def keyPressEvent(self, ev):
         mods = QApplication.keyboardModifiers()

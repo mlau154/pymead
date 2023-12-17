@@ -217,7 +217,7 @@ class GeometryCollection(DualRep):
         if pymead_obj not in self.selected_objects[pymead_obj.sub_container]:
             self.selected_objects[pymead_obj.sub_container].append(pymead_obj)
 
-        print(f"Selecting object {pymead_obj}. {self.selected_objects = }")
+        # print(f"Selecting object {pymead_obj}. {self.selected_objects = }")
 
     def deselect_object(self, pymead_obj: PymeadObj):
         if self.tree is not None:

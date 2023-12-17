@@ -229,5 +229,8 @@ class MainIconToolbar(QToolBar):
         self.parent.param_tree_instance.flush_changes(eq)
         self.parent.param_tree_instance.update_equation(eq, eq_string)
 
+    def on_draw_points_pressed(self):
+        self.parent.airfoil_canvas.drawPoints()
+
     def on_help_button_pressed(self):
         self.parent.show_help()
