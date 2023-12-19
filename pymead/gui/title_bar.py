@@ -1,10 +1,37 @@
 import os
 
 from PyQt5.QtCore import Qt, QSize, QUrl, pyqtSignal
-from PyQt5.QtGui import QIcon, QDesktopServices
+from PyQt5.QtGui import QIcon, QDesktopServices, QPalette, QLinearGradient, QGradient, QBrush
 from PyQt5.QtWidgets import QWidget, QHBoxLayout, QLabel, QToolButton, QStyle
 
 from pymead import ICON_DIR
+
+
+class TitleBarButton(QToolButton):
+    def __init__(self, parent, operation: str):
+        super().__init__(parent)
+
+        if operation not in ("minimize", "maximize", "normal", "close"):
+            raise ValueError("Invalid operation")
+
+        self.operation = operation
+
+    def hoverColor(self) -> str:
+        return self.parent().parent().themes[self.parent().parent().current_theme][f"{self.operation}-hover-color"]
+
+    def setColorDefault(self):
+        self.setStyleSheet(f"""QToolButton {{ border: none }}""")
+
+    def setColorHover(self):
+        self.setStyleSheet(f"""QToolButton {{ background-color: {self.hoverColor()} }}""")
+
+    def enterEvent(self, a0):
+        self.setColorHover()
+        super().enterEvent(a0)
+
+    def leaveEvent(self, a0):
+        self.setColorDefault()
+        super().leaveEvent(a0)
 
 
 class TitleBar(QWidget):
@@ -17,6 +44,8 @@ class TitleBar(QWidget):
 
         self.guiWindowMaximized = False
 
+        theme = self.parent().themes[self.parent().current_theme]
+
         self.setAutoFillBackground(True)
 
         self.lay = QHBoxLayout(self)
@@ -24,11 +53,13 @@ class TitleBar(QWidget):
 
         self.title = QLabel("Custom Title Bar", self)
         self.title.setAlignment(Qt.AlignCenter)
+        self.title.setFixedHeight(30)
+        self.title.setAutoFillBackground(True)
 
-        style = self.style()
-        ref_size = self.fontMetrics().height()
-        ref_size += style.pixelMetric(style.PM_ButtonMargin) * 2
-        self.setMaximumHeight(ref_size + 2)
+        # style = self.style()
+        # ref_size = self.fontMetrics().height()
+        # ref_size += style.pixelMetric(style.PM_ButtonMargin) * 2
+        # self.setMaximumHeight(ref_size + 2)
 
         # Add the pymead logo as a button that, when clicked, opens the pymead GitHub page in the machine's default
         # browser
@@ -48,30 +79,29 @@ class TitleBar(QWidget):
 
         # self.lay.addStretch()
 
-        self.minButton = None
+        self.minimizeButton = None
         self.normalButton = None
-        self.maxButton = None
+        self.maximizeButton = None
         self.closeButton = None
 
-        btn_size = QSize(ref_size, ref_size)
-        for target in ('min', 'normal', 'max', 'close'):
-            btn = QToolButton(self)
+        btn_size = QSize(30, 30)
+        for target, picture, hover_color, tool_tip in zip(
+                ('minimize', 'normal', 'maximize', 'close'),
+                ("minimize-dark-mode.svg", "normal-dark-mode.svg", "maximize-dark-mode.svg", "close-dark-mode.svg"),
+                (theme["minimize-hover-color"], theme["maximize-hover-color"],
+                 theme["maximize-hover-color"], theme["close-hover-color"]),
+                ("Minimize", "Normal", "Maximize", "Close")
+        ):
+            btn = TitleBarButton(self, operation=target)
             btn.setFocusPolicy(Qt.NoFocus)
             self.lay.addWidget(btn)
             btn.setFixedSize(btn_size)
+            # btn.setIconSize(btn_size)
 
-            iconType = getattr(style,
-                               'SP_TitleBar{}Button'.format(target.capitalize()))
-            btn.setIcon(style.standardIcon(iconType))
+            btn.setIcon(QIcon(os.path.join(ICON_DIR, picture)))
+            btn.setToolTip(tool_tip)
 
-            colorNormal = 'palette(mid)'
-            colorHover = 'palette(light)'
-            btn.setStyleSheet('''
-                        QToolButton {{ border: none }}
-                        QToolButton:hover {{
-                            background-color: {}
-                        }}
-                    '''.format(colorNormal, colorHover))
+            btn.setStyleSheet('''QToolButton { border: none }''')
 
             signal = getattr(self, target + 'Clicked')
             btn.clicked.connect(signal)
@@ -99,7 +129,7 @@ class TitleBar(QWidget):
 
     def windowStateChanged(self, state):
         self.normalButton.setVisible(state == Qt.WindowMaximized)
-        self.maxButton.setVisible(state != Qt.WindowMaximized)
+        self.maximizeButton.setVisible(state != Qt.WindowMaximized)
         self.guiWindowMaximized = state == Qt.WindowMaximized
 
     def mousePressEvent(self, event):
@@ -122,13 +152,15 @@ class TitleBar(QWidget):
     def closeClicked(self):
         self.window().close()
 
-    def maxClicked(self):
+    def maximizeClicked(self):
         self.window().showMaximized()
+        self.maximizeButton.setColorDefault()
 
     def normalClicked(self):
         self.window().showNormal()
+        self.normalButton.setColorDefault()
 
-    def minClicked(self):
+    def minimizeClicked(self):
         self.window().showMinimized()
 
     def openGitHubPage(self):

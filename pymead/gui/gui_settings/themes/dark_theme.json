@@ -20,5 +20,10 @@
   "menu-main-color": "white",
   "menu-item-background-color": "#3e3f40",
   "menu-item-main-color": "#0f0e06",
-  "menu-item-selected-color": "#3944bcdd"
+  "menu-item-selected-color": "#3944bcdd",
+  "minimize-hover-color": "#ffbd44",
+  "normal-hover-color": "#00ca4e",
+  "maximize-hover-color": "#00ca4e",
+  "close-hover-color": "#ff605c",
+  "title-gradient-color": "#2d2d2e"
 }

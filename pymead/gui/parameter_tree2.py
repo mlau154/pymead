@@ -1,4 +1,5 @@
 import sys
+import time
 import typing
 from abc import abstractmethod
 
@@ -6,7 +7,7 @@ import numpy as np
 from PyQt5 import QtGui
 from PyQt5.QtGui import QValidator, QFont, QBrush, QColor
 from PyQt5.QtWidgets import QTreeWidget, QTreeWidgetItem, QPushButton, QHBoxLayout, QHeaderView, QDialog, QGridLayout, \
-    QDoubleSpinBox, QLineEdit, QLabel, QDialogButtonBox, QMenu, QAbstractItemView
+    QDoubleSpinBox, QLineEdit, QLabel, QDialogButtonBox, QMenu, QAbstractItemView, QTreeWidgetItemIterator
 from PyQt5.QtCore import Qt, pyqtSignal, pyqtSlot, QRegularExpression
 
 from pymead.core.airfoil2 import Airfoil
@@ -805,14 +806,24 @@ class ParameterTree(QTreeWidget):
 
         background_color = self.palette().color(self.backgroundRole())
         if style == "default":
-            item.setBackground(0, background_color)
-            item.setBackground(1, background_color)
+            # item.setBackground(0, background_color)
+            # item.setBackground(1, background_color)
+            brush = QBrush(QColor(self.parent().parent().themes[self.parent().parent().current_theme]['main-color']))
+            item.setForeground(0, brush)
         elif style == "hovered" and item.hoverable:
-            gradient = QtGui.QLinearGradient(0, 0, 150, 0)
-            gradient.setColorAt(0, QColor("#2678c9aa"))
-            gradient.setColorAt(1, self.palette().color(self.backgroundRole()))
-            item.setBackground(0, gradient)
-            item.setBackground(1, self.palette().color(self.backgroundRole()))
+            # gradient = QtGui.QLinearGradient(0, 0, 150, 0)
+            # gradient.setColorAt(0, QColor("#2678c9aa"))
+            # gradient.setColorAt(1, self.palette().color(self.backgroundRole()))
+            # item.setBackground(0, gradient)
+            # item.setBackground(1, self.palette().color(self.backgroundRole()))
+            brush = QBrush(QColor("#edb126"))
+            item.setForeground(0, brush)
+
+    def setForegroundColorAllItems(self, color: str):
+        it = QTreeWidgetItemIterator(self)
+        while it.value():
+            it.value().setForeground(0, QBrush(QColor(color)))
+            it += 1
 
     def contextMenuEvent(self, a0):
         # item = self.itemAt(a0.x(), a0.y())

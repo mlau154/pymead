@@ -6,6 +6,7 @@ import numpy as np
 import pyqtgraph as pg
 from PyQt5 import QtWidgets
 from PyQt5.QtCore import pyqtSignal, QEventLoop, Qt
+from PyQt5.QtGui import QFont, QBrush, QColor
 from PyQt5.QtWidgets import QApplication
 
 from pymead.core.geometry_collection import GeometryCollection
@@ -26,8 +27,8 @@ class AirfoilCanvas(pg.PlotWidget):
     sigEscapePressed = pyqtSignal()
     sigStatusBarUpdate = pyqtSignal(str, int)
 
-    def __init__(self, geo_col: GeometryCollection):
-        super().__init__()
+    def __init__(self, parent, geo_col: GeometryCollection, theme: dict):
+        super().__init__(parent)
         self.setMenuEnabled(False)
         self.setAspectLocked(True)
         self.disableAutoRange()
@@ -41,8 +42,18 @@ class AirfoilCanvas(pg.PlotWidget):
         self.geo_col = geo_col
         self.geo_col.canvas = self
         self.plot = self.getPlotItem()
-        self.plot.setLabel(axis="bottom", text=f"x [{UNITS.current_length_unit()}]")
-        self.plot.setLabel(axis="left", text=f"y [{UNITS.current_length_unit()}]")
+        self.setMinimumWidth(500)
+        self.setMinimumHeight(300)
+
+    def setAxisLabels(self, theme: dict):
+        self.plot.setLabel(axis="bottom", text=f"x [{UNITS.current_length_unit()}]", font="10pt DejaVu Sans",
+                           color=theme["main-color"])
+        self.plot.setLabel(axis="left", text=f"y [{UNITS.current_length_unit()}]", font="10pt DejaVu Sans",
+                           color=theme["main-color"])
+        self.plot.getAxis("bottom").setTickFont(QFont("DejaVu Sans", 8))
+        self.plot.getAxis("left").setTickFont(QFont("DejaVu Sans", 8))
+        self.plot.getAxis("bottom").setTextPen(theme["main-color"])
+        self.plot.getAxis("left").setTextPen(theme["main-color"])
 
     def toggleGrid(self):
         x_state = self.plot.ctrl.xGridCheck.checkState()

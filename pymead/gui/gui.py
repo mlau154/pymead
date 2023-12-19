@@ -206,7 +206,7 @@ class GUI(QMainWindow):
         # self.dockable_tab_window.tab_closed.connect(self.on_tab_closed)
         self.geo_col = GeometryCollection()
 
-        self.airfoil_canvas = AirfoilCanvas(geo_col=self.geo_col)
+        self.airfoil_canvas = AirfoilCanvas(self, geo_col=self.geo_col, theme=self.themes[self.current_theme])
         self.airfoil_canvas.sigStatusBarUpdate.connect(self.setStatusBarText)
 
         # self.temp_text = ConsoleTextArea(self)
@@ -270,6 +270,8 @@ class GUI(QMainWindow):
         # self.progress_bar.hide()
         self.permanent_widget = PermanentWidget(self)
         self.statusBar().addPermanentWidget(self.permanent_widget)
+
+        self.resize(800, self.title_bar.height() + 600)
 
         # self.showMaximized()
         # for dw in self.dock_widgets:
@@ -457,6 +459,11 @@ class GUI(QMainWindow):
                            )
         self.text_area.setStyleSheet(f"""background-color: {theme['console-background-color']};""")
         self.title_bar.setStyleSheet(f"QLabel {{ color: {theme['main-color']}; }}")
+        self.title_bar.title.setStyleSheet(
+            f"""background-color: qlineargradient(x1: 0.0, y1: 0.5, x2: 1.0, y2: 0.5, 
+            stop: 0 {theme['background-color']}, 
+            stop: 0.5 {theme['title-gradient-color']}, 
+            stop: 1 {theme['background-color']})""")
         self.menuBar().setStyleSheet(f"""
                            QMenuBar {{ background-color: {theme['menu-background-color']}; font-family: "DejaVu Sans" 
                             }}
@@ -465,6 +472,15 @@ class GUI(QMainWindow):
                            color: {theme['menu-main-color']};}} 
                            QMenu::item:selected {{ background-color: {theme['menu-item-selected-color']}; }}
                     """)
+        self.parameter_tree.setAutoFillBackground(True)
+        self.parameter_tree.setStyleSheet(
+            f"""QTreeWidget::item {{ background-color: {theme['background-color']}; }} 
+                QTreeWidget::item:selected {{ background-color: {theme['menu-item-selected-color']}; color: {theme['main-color']} }}
+                QTreeWidget::item:hover {{ color: #edb126 }}
+             """)
+        self.parameter_tree.setForegroundColorAllItems(theme['main-color'])
+        self.airfoil_canvas.setAxisLabels(theme)
+
         for dock_widget in self.dock_widgets:
             if hasattr(dock_widget.widget(), 'setBackground'):
                 dock_widget.widget().setBackground(theme["dock-widget-background-color"])
