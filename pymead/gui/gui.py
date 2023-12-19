@@ -19,14 +19,16 @@ from pymead.gui.rename_popup import RenamePopup
 from pymead.gui.main_icon_toolbar import MainIconToolbar
 
 from PyQt5.QtWidgets import QMainWindow, QApplication, \
-    QWidget, QMenu, QStatusBar, QAction, QGraphicsScene, QGridLayout, QDockWidget
+    QWidget, QMenu, QStatusBar, QAction, QGraphicsScene, QGridLayout, QDockWidget, QVBoxLayout, QLabel, QSizeGrip, \
+    QMenuBar, QSizePolicy
 from PyQt5.QtGui import QIcon, QFont, QFontDatabase, QPainter, QCloseEvent, QTextCursor
-from PyQt5.QtCore import QEvent, QObject, Qt, QThreadPool
+from PyQt5.QtCore import QEvent, QObject, Qt, QThreadPool, QSize, QRect
 from PyQt5.QtSvg import QSvgWidget
 from PyQt5.QtCore import pyqtSlot
 
 from pymead.gui.airfoil_canvas import AirfoilCanvas
 from pymead.core.geometry_collection import GeometryCollection
+from pymead.gui.title_bar import TitleBar
 from pymead.version import __version__
 from pymead.utils.version_check import using_latest
 from pymead.core.transformation import Transformation3D
@@ -41,6 +43,7 @@ from pymead.gui.input_dialog import LoadDialog, SaveAsDialog, OptimizationSetupD
 from pymead.gui.pymeadPColorMeshItem import PymeadPColorMeshItem
 from pymead.gui.analysis_graph import AnalysisGraph
 from pymead.gui.parameter_tree2 import ParameterTree
+from pymead.gui.side_grip import SideGrip
 from pymead.plugins.IGES.curves import BezierIGES
 from pymead.plugins.IGES.iges_generator import IGESGenerator
 from pymead.utils.airfoil_matching import match_airfoil
@@ -73,10 +76,14 @@ from pyqtgraph.exporters import CSVExporter, SVGExporter
 
 
 class GUI(QMainWindow):
+
+    _gripSize = 5
+
     def __init__(self, path=None, parent=None):
         # super().__init__(flags=Qt.FramelessWindowHint)
         super().__init__(parent=parent)
-        # self.setWindowFlags(Qt.CustomizeWindowHint)
+        self.setWindowFlags(self.windowFlags() | Qt.FramelessWindowHint)
+        self.windowMaximized = False
         # print(f"Running GUI with {os.getpid() = }")
         self.pool = None
         self.current_opt_folder = None
@@ -144,6 +151,26 @@ class GUI(QMainWindow):
         # self.setStyleSheet('QWidget {font: "DejaVu Sans"}')
 
         self.current_save_name = None
+
+        # mandatory for cursor updates
+        self.setMouseTracking(True)
+
+        self.title_bar = TitleBar(self)
+        self.title_bar.sigMessage.connect(self.disp_message_box)
+
+        self.sideGrips = [
+            SideGrip(self, Qt.LeftEdge),
+            SideGrip(self, Qt.TopEdge),
+            SideGrip(self, Qt.RightEdge),
+            SideGrip(self, Qt.BottomEdge),
+        ]
+        # corner grips should be "on top" of everything, otherwise the side grips
+        # will take precedence on mouse events, so we are adding them *after*;
+        # alternatively, widget.raise_() can be used
+        self.cornerGrips = [QSizeGrip(self) for i in range(4)]
+
+        # self.setContentsMargins(0, -200, 0, 0)
+        # self.resize(800, self.title_bar.height() + 600)
 
         # self.mea = MEA(airfoil_graphs_active=True)
         # self.w = pg.GraphicsLayoutWidget(show=True, size=(1000, 300))
@@ -243,6 +270,7 @@ class GUI(QMainWindow):
         # self.progress_bar.hide()
         self.permanent_widget = PermanentWidget(self)
         self.statusBar().addPermanentWidget(self.permanent_widget)
+
         # self.showMaximized()
         # for dw in self.dock_widgets:
         #     dw.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.MinimumExpanding)
@@ -343,6 +371,79 @@ class GUI(QMainWindow):
                     a0.ignore()
                     return
 
+    def changeEvent(self, a0):
+        if a0.type() == QEvent.Type.WindowStateChange:
+            self.title_bar.windowStateChanged(self.windowState())
+            self.windowMaximized = self.windowState() == Qt.WindowMaximized
+
+            # Disable the resize grips when the window is maximized and enable them otherwise
+            if self.windowMaximized:
+                for grip in self.sideGrips:
+                    grip.setDisabled(True)
+            else:
+                for grip in self.sideGrips:
+                    grip.setEnabled(True)
+
+            super().changeEvent(a0)
+            a0.accept()
+    #
+    # def resizeEvent(self, a0):
+    #     self.title_bar.resize(self.width(), self.title_bar.height())
+    #     super().resizeEvent(a0)
+    #     a0.accept()
+
+    @property
+    def gripSize(self):
+        return self._gripSize
+
+    def setGripSize(self, size):
+        if size == self._gripSize:
+            return
+        self._gripSize = max(2, size)
+        self.updateGrips()
+
+    def updateGrips(self):
+        self.setContentsMargins(self.gripSize, self.gripSize + self.title_bar.height(), self.gripSize, self.gripSize)
+
+        outRect = self.rect()
+        # an "inner" rect used for reference to set the geometries of size grips
+        inRect = outRect.adjusted(self.gripSize, self.gripSize,
+                                  -self.gripSize, -self.gripSize)
+
+        # top left
+        self.cornerGrips[0].setGeometry(
+            QRect(outRect.topLeft(), inRect.topLeft()))
+        # top right
+        self.cornerGrips[1].setGeometry(
+            QRect(outRect.topRight(), inRect.topRight()).normalized())
+        # bottom right
+        self.cornerGrips[2].setGeometry(
+            QRect(inRect.bottomRight(), outRect.bottomRight()))
+        # bottom left
+        self.cornerGrips[3].setGeometry(
+            QRect(outRect.bottomLeft(), inRect.bottomLeft()).normalized())
+
+
+        # left edge
+        self.sideGrips[0].setGeometry(
+            0, inRect.top(), self.gripSize, inRect.height())
+        # top edge
+        self.sideGrips[1].setGeometry(
+            inRect.left(), 0, inRect.width(), self.gripSize)
+        # right edge
+        self.sideGrips[2].setGeometry(
+            inRect.left() + inRect.width(),
+            inRect.top(), self.gripSize, inRect.height())
+        # bottom edge
+        self.sideGrips[3].setGeometry(
+            self.gripSize, inRect.top() + inRect.height(),
+            inRect.width(), self.gripSize)
+
+    def resizeEvent(self, event):
+        self.title_bar.resize(self.width(), self.title_bar.height())
+        super().resizeEvent(event)
+        self.updateGrips()
+
     @pyqtSlot(str, int)
     def setStatusBarText(self, message: str, msecs: int):
         self.statusBar().showMessage(message, msecs)
@@ -354,6 +455,8 @@ class GUI(QMainWindow):
                            color: {theme['main-color']}; font: 10pt DejaVu Sans;
                            """
                            )
+        self.text_area.setStyleSheet(f"""background-color: {theme['console-background-color']};""")
+        self.title_bar.setStyleSheet(f"QLabel {{ color: {theme['main-color']}; }}")
         self.menuBar().setStyleSheet(f"""
                            QMenuBar {{ background-color: {theme['menu-background-color']}; font-family: "DejaVu Sans" 
                             }}
@@ -890,15 +993,17 @@ class GUI(QMainWindow):
     def disp_message_box(self, message: str, message_mode: str = 'error', rich_text: bool = False):
         disp_message_box(message, self, message_mode=message_mode, rich_text=rich_text)
 
-    def output_area_text(self, text: str, mode: str = 'plain', mono: bool = True):
-        prepend_html = f"<head><style>body {{font-family: DejaVu Sans Mono;}}</style>" \
-                       f"</head><body><p><font size='4'>&#8203;</font></p></body>"
+    def output_area_text(self, text: str, mode: str = 'plain', mono: bool = True, line_break: bool = False):
+        # prepend_html = f"<head><style>body {{font-family: DejaVu Sans Mono;}}</style>" \
+        #                f"</head><body><p><font size='20pt'>&#8203;</font></p></body>"
         previous_cursor = self.text_area.textCursor()
         self.text_area.moveCursor(QTextCursor.End)
         if mode == 'plain':
-            if mode == "plain" and mono:
-                self.text_area.insertHtml(prepend_html)
-            self.text_area.insertPlainText(text)
+            # if mode == "plain" and mono:
+            #     self.text_area.insertHtml(prepend_html)
+            # self.text_area.insertPlainText(text)
+            line_break = "<br>" if line_break else ""
+            self.text_area.insertHtml(f'<body><p>{text}{line_break}</p></body>')
         elif mode == 'html':
             self.text_area.insertHtml(text)
         else:
@@ -906,6 +1011,12 @@ class GUI(QMainWindow):
         self.text_area.setTextCursor(previous_cursor)
         sb = self.text_area.verticalScrollBar()
         sb.setValue(sb.maximum())
+
+    def output_link_text(self, text: str, link: str, line_break: bool = False):
+        previous_cursor = self.text_area.textCursor()
+        self.text_area.moveCursor(QTextCursor.End)
+        line_break = "<br>" if line_break else ""
+        self.text_area.insertHtml(f'<head><style> ')
 
     def display_airfoil_statistics(self):
         airfoil_stats = AirfoilStatistics(mea=self.mea)
@@ -1162,11 +1273,11 @@ class GUI(QMainWindow):
             # Output successful MSES analysis data to console
             self.output_area_text(
                 f"[{str(self.n_analyses).zfill(2)}] ")
-            self.output_area_text(f"<a href='file:///{os.path.join(mset_settings['airfoil_analysis_dir'], mset_settings['airfoil_coord_file_name'])}'><font family='DejaVu Sans Mono' size='5'>MSES</font></a>", mode="html")
-            self.output_area_text(f" ({mset_settings['mea']}, \u03b1 = {aero_data['alf']:.3f}, Re = {mses_settings['REYNIN']:.3E}, "
+            self.output_area_text(f"<a href='{os.path.abspath(os.path.join(mset_settings['airfoil_analysis_dir'], mset_settings['airfoil_coord_file_name'], ''))}'>MSES</a>", mode="html")
+            self.output_area_text(f" ({mset_settings['mea']}, \u03b1 = {aero_data['alf']:.3f}\u00b0, Re = {mses_settings['REYNIN']:.3E}, "
                 f"Ma = {mses_settings['MACHIN']:.3f}): "
                 f"Cl = {aero_data['Cl']:+7.4f} | Cd = {aero_data['Cd']:+.5f} | "
-                f"Cm = {aero_data['Cm']:+7.4f} | L/D = {aero_data['L/D']:+8.4f}".replace("-", "\u2212"))
+                f"Cm = {aero_data['Cm']:+7.4f} | L/D = {aero_data['L/D']:+8.4f}".replace("-", "\u2212"), line_break=True)
             self.output_area_text("\n")
 
         if aero_data['converged'] and not aero_data['errored_out'] and not aero_data['timed_out']:
@@ -1570,7 +1681,7 @@ class GUI(QMainWindow):
     @staticmethod
     def generate_output_folder_link_text(folder: str):
         return f"<a href='{folder}' style='font-family:DejaVu Sans Mono; " \
-               f"color: #1FBBCC; font-size: 14px;'>Open output folder</a>\n"
+               f"color: #1FBBCC; font-size: 10pt;'>Open output folder</a>\n"
 
     def set_pool(self, pool_obj: object):
         print(f"Setting pool! {pool_obj = }")

@@ -8,6 +8,7 @@
   "progress-border-color": "#8e9091",
   "progress-color": "#6495e3",
   "graph-background-color": "#faf9f6",
+  "console-background-color": "#faf9f6",
   "tree-background-color": "#ffffff",
   "tree-alternate-color": "#ffffff",
   "tree-selection-color": "#ffffff",
