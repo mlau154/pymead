@@ -174,7 +174,10 @@ class CollinearConstraint(GeoCon):
                 if isinstance(geo_con, CollinearConstraint):
                     raise ValueError(msg)
 
-    def enforce(self, calling_point: Point or str, initial_x: float or None = None, initial_y: float or None = None):
+    def enforce(self, calling_point: Point or str, updated_objs: typing.List[PymeadObj] = None,
+                initial_x: float or None = None, initial_y: float or None = None):
+
+        updated_objs = [] if updated_objs is None else updated_objs
 
         if isinstance(calling_point, str):
             if calling_point == "middle":
@@ -197,7 +200,11 @@ class CollinearConstraint(GeoCon):
             dx = self.tool().x().value() - initial_x
             dy = self.tool().y().value() - initial_y
             for point in self.target().points():
-                point.force_move(point.x().value() + dx, point.y().value() + dy)
+                if self in updated_objs:
+                    point.force_move(point.x().value() + dx, point.y().value() + dy)
+                else:
+                    updated_objs.append(self)
+                    point.request_move(point.x().value() + dx, point.y().value() + dy, updated_objs=updated_objs)
         elif calling_point is self.target().points()[0]:
             start_point = self.target().points()[0]
             middle_point = self.tool()
@@ -207,7 +214,12 @@ class CollinearConstraint(GeoCon):
             length = middle_point.measure_distance(end_point)
             new_x = middle_point.x().value() + length * np.cos(target_angle)
             new_y = middle_point.y().value() + length * np.sin(target_angle)
-            end_point.force_move(new_x, new_y)
+
+            if self in updated_objs:
+                end_point.force_move(new_x, new_y)
+            else:
+                updated_objs.append(self)
+                end_point.request_move(new_x, new_y, updated_objs=updated_objs)
         elif calling_point is self.target().points()[1]:
             start_point = self.target().points()[0]
             middle_point = self.tool()
@@ -217,7 +229,12 @@ class CollinearConstraint(GeoCon):
             length = middle_point.measure_distance(start_point)
             new_x = middle_point.x().value() + length * np.cos(target_angle)
             new_y = middle_point.y().value() + length * np.sin(target_angle)
-            start_point.force_move(new_x, new_y)
+
+            if self in updated_objs:
+                start_point.force_move(new_x, new_y)
+            else:
+                updated_objs.append(self)
+                start_point.request_move(new_x, new_y, updated_objs=updated_objs)
             # TODO: if a collinear constraint already exists on a point and another collinear constraint is attempted,
             #  just add the selected points to the existing constraint
 
