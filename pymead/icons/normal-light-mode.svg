@@ -7,7 +7,7 @@
    stroke-linecap="square"
    stroke-miterlimit="10"
    id="svg6"
-   sodipodi:docname="normal-dark-mode.svg"
+   sodipodi:docname="normal-light-mode.svg"
    inkscape:version="1.3.1 (9b9bdc1480, 2023-11-25, custom)"
    xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
    xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
@@ -25,7 +25,7 @@
      inkscape:pagecheckerboard="0"
      inkscape:deskcolor="#d1d1d1"
      inkscape:zoom="0.96166522"
-     inkscape:cx="137.78184"
+     inkscape:cx="138.8217"
      inkscape:cy="277.6434"
      inkscape:window-width="1850"
      inkscape:window-height="1016"
@@ -42,10 +42,10 @@
   </clipPath>
   <path
      id="rect1-5"
-     style="fill:none;stroke:#dce1e6;stroke-width:13.5441;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+     style="fill:none;stroke:#000000;stroke-width:13.5441;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
      d="m 197.31783,122.87869 c -7.98086,0 -14.40625,6.42539 -14.40625,14.40625 v 45.64258 h 220.85547 c 7.98087,0 14.4043,6.42538 14.4043,14.40625 v 212 h 36.79102 c 7.98086,0 14.40624,-6.42344 14.40624,-14.4043 V 137.28494 c 0,-7.98086 -6.42538,-14.40625 -14.40624,-14.40625 z" />
   <rect
-     style="fill:none;stroke:#dce1e6;stroke-width:13.5441;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+     style="fill:none;stroke:#000000;stroke-width:13.5441;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
      id="rect1-1"
      width="286.4559"
      height="286.4559"

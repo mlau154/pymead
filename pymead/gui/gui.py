@@ -464,6 +464,14 @@ class GUI(QMainWindow):
             stop: 0 {theme['background-color']}, 
             stop: 0.5 {theme['title-gradient-color']}, 
             stop: 1 {theme['background-color']})""")
+
+        # Set title bar buttons
+        self.title_bar.normalButton.setIcon(QIcon(os.path.join(ICON_DIR, f"normal-{theme_name}-mode.svg")))
+        self.title_bar.minimizeButton.setIcon(QIcon(os.path.join(ICON_DIR, f"minimize-{theme_name}-mode.svg")))
+        self.title_bar.maximizeButton.setIcon(QIcon(os.path.join(ICON_DIR, f"maximize-{theme_name}-mode.svg")))
+        self.title_bar.closeButton.setIcon(QIcon(os.path.join(ICON_DIR, f"close-{theme_name}-mode.svg")))
+
+        # Set menu bar sheet
         self.menuBar().setStyleSheet(f"""
                            QMenuBar {{ background-color: {theme['menu-background-color']}; font-family: "DejaVu Sans" 
                             }}
@@ -1773,6 +1781,8 @@ class GUI(QMainWindow):
     def toggle_full_screen(self):
         if not self.isMaximized():
             self.showMaximized()
+        else:
+            self.showNormal()
 
     def keyPressEvent(self, a0):
         if a0.key() == Qt.Key_Escape:

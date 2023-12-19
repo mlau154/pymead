@@ -20,9 +20,12 @@ class TitleBarButton(QToolButton):
         return self.parent().parent().themes[self.parent().parent().current_theme][f"{self.operation}-hover-color"]
 
     def setColorDefault(self):
+        self.setIcon(QIcon(os.path.join(ICON_DIR, f"{self.operation}-{self.parent().parent().current_theme}-mode.svg")))
         self.setStyleSheet(f"""QToolButton {{ border: none }}""")
 
     def setColorHover(self):
+        if self.parent().parent().current_theme == "dark":
+            self.setIcon(QIcon(os.path.join(ICON_DIR, f"{self.operation}-light-mode.svg")))
         self.setStyleSheet(f"""QToolButton {{ background-color: {self.hoverColor()} }}""")
 
     def enterEvent(self, a0):
