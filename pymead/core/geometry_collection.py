@@ -3,7 +3,8 @@ import typing
 
 from pymead.core.airfoil2 import Airfoil
 from pymead.core.bezier2 import Bezier
-from pymead.core.constraints import CollinearConstraint, CurvatureConstraint, GeoCon
+from pymead.core.constraints import CollinearConstraint, CurvatureConstraint, GeoCon, RelAngleConstraint, \
+    PerpendicularConstraint, ParallelConstraint
 from pymead.core.dimensions import LengthDimension, AngleDimension, Dimension
 from pymead.core.mea2 import MEA
 from pymead.core.pymead_obj import DualRep, PymeadObj
@@ -759,6 +760,24 @@ class GeometryCollection(DualRep):
 
         return self.add_pymead_obj_by_ref(curvature_constraint, assign_unique_name=assign_unique_name)
 
+    def add_rel_angle_constraint(self, tool: PointSequence, target: PointSequence, angle_param: AngleParam = None,
+                                 name: str or None = None, assign_unique_name: bool = True):
+        rel_angle_constraint = RelAngleConstraint(tool=tool, target=target, angle_param=angle_param, name=name)
+
+        return self.add_pymead_obj_by_ref(rel_angle_constraint, assign_unique_name=assign_unique_name)
+
+    def add_perpendicular_constraint(self, tool: PointSequence, target: PointSequence,
+                                     name: str or None = None, assign_unique_name: bool = True):
+        perpendicular_constraint = PerpendicularConstraint(tool=tool, target=target, name=name)
+
+        return self.add_pymead_obj_by_ref(perpendicular_constraint, assign_unique_name=assign_unique_name)
+
+    def add_parallel_constraint(self, tool: PointSequence, target: PointSequence,
+                                name: str or None = None, assign_unique_name: bool = True):
+        parallel_constraint = ParallelConstraint(tool=tool, target=target, name=name)
+
+        return self.add_pymead_obj_by_ref(parallel_constraint, assign_unique_name=assign_unique_name)
+
     def get_dict_rep(self):
         dict_rep = {k_outer: {k: v.get_dict_rep() for k, v in self.container()[k_outer].items()}
                     for k_outer in self.container().keys()}
@@ -797,6 +816,33 @@ class GeometryCollection(DualRep):
                     start_point=geo_col.container()["points"][geocon_dict["start_point"]],
                     middle_point=geo_col.container()["points"][geocon_dict["middle_point"]],
                     end_point=geo_col.container()["points"][geocon_dict["end_point"]],
+                    name=geocon_dict["name"], assign_unique_name=False
+                )
+            elif constraint_type == "rel-angle":
+                if geocon_dict["angle_param"] in geo_col.container()["desvar"].keys():
+                    param = geo_col.container()["desvar"][geocon_dict["length_param"]]
+                elif geocon_dict["angle_param"] in geo_col.container()["params"].keys():
+                    param = geo_col.container()["params"][geocon_dict["length_param"]]
+                else:
+                    raise ValueError(f"Could not find angle_param named {geocon_dict['angle_param']} in either the "
+                                     f"desvar or params sub-containers")
+
+                geo_col.add_rel_angle_constraint(
+                    tool=PointSequence(points=[geo_col.container()["points"][k] for k in geocon_dict["tool"]]),
+                    target=PointSequence(points=[geo_col.container()["points"][k] for k in geocon_dict["target"]]),
+                    angle_param=param,
+                    name=geocon_dict["name"], assign_unique_name=False
+                )
+            elif constraint_type == "perpendicular":
+                geo_col.add_perpendicular_constraint(
+                    tool=PointSequence(points=[geo_col.container()["points"][k] for k in geocon_dict["tool"]]),
+                    target=PointSequence(points=[geo_col.container()["points"][k] for k in geocon_dict["target"]]),
+                    name=geocon_dict["name"], assign_unique_name=False
+                )
+            elif constraint_type == "parallel":
+                geo_col.add_parallel_constraint(
+                    tool=PointSequence(points=[geo_col.container()["points"][k] for k in geocon_dict["tool"]]),
+                    target=PointSequence(points=[geo_col.container()["points"][k] for k in geocon_dict["target"]]),
                     name=geocon_dict["name"], assign_unique_name=False
                 )
             else:

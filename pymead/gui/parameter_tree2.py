@@ -11,7 +11,8 @@ from PyQt5.QtWidgets import QTreeWidget, QTreeWidgetItem, QPushButton, QHBoxLayo
 from PyQt5.QtCore import Qt, pyqtSignal, pyqtSlot, QRegularExpression
 
 from pymead.core.airfoil2 import Airfoil
-from pymead.core.constraints import GeoCon, CollinearConstraint, CurvatureConstraint
+from pymead.core.constraints import GeoCon, CollinearConstraint, CurvatureConstraint, RelAngleConstraint, \
+    PerpendicularConstraint, ParallelConstraint
 from pymead.core import UNITS
 from pymead.core.dimensions import LengthDimension, AngleDimension
 from pymead.core.mea2 import MEA
@@ -585,6 +586,97 @@ class CollinearConstraintButton(TreeButton):
             self.tree.itemWidget(point.tree_item, 0).setText(name)
 
 
+class RelAngleConstraintButton(TreeButton):
+
+    def __init__(self, rel_angle_constraint: RelAngleConstraint, tree, top_level: bool = False):
+        super().__init__(pymead_obj=rel_angle_constraint, tree=tree, top_level=top_level)
+        self.rel_angle_constraint = rel_angle_constraint
+
+    def modifyDialogInternals(self, dialog: QDialog, layout: QGridLayout) -> None:
+        name_label = QLabel("Name", self)
+        name_edit = NameEdit(self, self.rel_angle_constraint, self.tree)
+        name_edit.textChanged.connect(self.onNameChange)
+        layout.addWidget(name_label, 1, 0)
+        layout.addWidget(name_edit, 1, 1)
+
+        row_count = layout.rowCount()
+        layout.addWidget(QLabel("Angle Param", self), row_count, 0)
+        layout.addWidget(AngleParamButton(self.rel_angle_constraint.param(), self.tree), row_count, 1)
+
+        labels = ["Tool Start", "Tool End", "Target Start", "Target End"]
+        points = [self.rel_angle_constraint.tool().points()[0], self.rel_angle_constraint.tool().points()[1],
+                  self.rel_angle_constraint.target().points()[0], self.rel_angle_constraint.target().points()[1]]
+        for label, point in zip(labels, points):
+            point_button = PointButton(point, self.tree)
+            point_button.sigNameChanged.connect(self.onPointNameChange)
+            q_label = QLabel(label, self)
+            row_count = layout.rowCount()
+            layout.addWidget(q_label, row_count, 0)
+            layout.addWidget(point_button, row_count, 1)
+
+    def onPointNameChange(self, name: str, point: Point):
+        if point.tree_item is not None:
+            self.tree.itemWidget(point.tree_item, 0).setText(name)
+
+
+class PerpendicularConstraintButton(TreeButton):
+
+    def __init__(self, perpendicular_constraint: PerpendicularConstraint, tree, top_level: bool = False):
+        super().__init__(pymead_obj=perpendicular_constraint, tree=tree, top_level=top_level)
+        self.perpendicular_constraint = perpendicular_constraint
+
+    def modifyDialogInternals(self, dialog: QDialog, layout: QGridLayout) -> None:
+        name_label = QLabel("Name", self)
+        name_edit = NameEdit(self, self.perpendicular_constraint, self.tree)
+        name_edit.textChanged.connect(self.onNameChange)
+        layout.addWidget(name_label, 1, 0)
+        layout.addWidget(name_edit, 1, 1)
+
+        labels = ["Tool Start", "Tool End", "Target Start", "Target End"]
+        points = [self.perpendicular_constraint.tool().points()[0], self.perpendicular_constraint.tool().points()[1],
+                  self.perpendicular_constraint.target().points()[0], self.perpendicular_constraint.target().points()[1]]
+        for label, point in zip(labels, points):
+            point_button = PointButton(point, self.tree)
+            point_button.sigNameChanged.connect(self.onPointNameChange)
+            q_label = QLabel(label, self)
+            row_count = layout.rowCount()
+            layout.addWidget(q_label, row_count, 0)
+            layout.addWidget(point_button, row_count, 1)
+
+    def onPointNameChange(self, name: str, point: Point):
+        if point.tree_item is not None:
+            self.tree.itemWidget(point.tree_item, 0).setText(name)
+
+
+class ParallelConstraintButton(TreeButton):
+
+    def __init__(self, parallel_constraint: ParallelConstraint, tree, top_level: bool = False):
+        super().__init__(pymead_obj=parallel_constraint, tree=tree, top_level=top_level)
+        self.parallel_constraint = parallel_constraint
+
+    def modifyDialogInternals(self, dialog: QDialog, layout: QGridLayout) -> None:
+        name_label = QLabel("Name", self)
+        name_edit = NameEdit(self, self.parallel_constraint, self.tree)
+        name_edit.textChanged.connect(self.onNameChange)
+        layout.addWidget(name_label, 1, 0)
+        layout.addWidget(name_edit, 1, 1)
+
+        labels = ["Tool Start", "Tool End", "Target Start", "Target End"]
+        points = [self.parallel_constraint.tool().points()[0], self.parallel_constraint.tool().points()[1],
+                  self.parallel_constraint.target().points()[0], self.parallel_constraint.target().points()[1]]
+        for label, point in zip(labels, points):
+            point_button = PointButton(point, self.tree)
+            point_button.sigNameChanged.connect(self.onPointNameChange)
+            q_label = QLabel(label, self)
+            row_count = layout.rowCount()
+            layout.addWidget(q_label, row_count, 0)
+            layout.addWidget(point_button, row_count, 1)
+
+    def onPointNameChange(self, name: str, point: Point):
+        if point.tree_item is not None:
+            self.tree.itemWidget(point.tree_item, 0).setText(name)
+
+
 class CurvatureConstraintButton(TreeButton):
 
     def __init__(self, curvature_constraint: CurvatureConstraint, tree, top_level: bool = False):
@@ -782,6 +874,9 @@ class ParameterTree(QTreeWidget):
                            "LengthDimension": "LengthDimensionButton",
                            "AngleDimension": "AngleDimensionButton",
                            "CollinearConstraint": "CollinearConstraintButton",
+                           "RelAngleConstraint": "RelAngleConstraintButton",
+                           "ParallelConstraint": "ParallelConstraintButton",
+                           "PerpendicularConstraint": "PerpendicularConstraintButton",
                            "CurvatureConstraint": "CurvatureConstraintButton",
                            }
         button = getattr(sys.modules[__name__], button_mappings[type(pymead_obj).__name__])(*button_args, top_level=True)

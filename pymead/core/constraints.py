@@ -4,7 +4,8 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from pymead.core.param2 import Param
+from pymead.core import UNITS
+from pymead.core.param2 import Param, AngleParam
 from pymead.core.point import PointSequence, Point
 from pymead.core.pymead_obj import PymeadObj
 
@@ -47,58 +48,6 @@ class GeoCon(PymeadObj):
     @abstractmethod
     def enforce(self, *args, **kwargs):
         pass
-
-
-class Parallel(GeoCon):
-    def __init__(self, tool: PointSequence, target: PointSequence, name: str or None = None):
-        name = "ParallelCon-1" if name is None else name
-        super().__init__(tool=tool, target=target, name=name)
-        self._solution = 0
-        self._min_solution = 0
-        self._max_solution = 1
-
-    def solution(self):
-        return self._solution
-
-    def cycle_solution(self):
-        if self._solution == self._max_solution:
-            self._solution = self._min_solution
-        else:
-            self._solution += 1
-        self.enforce()
-
-    def validate(self):
-        if len(self.tool()) != 2:
-            raise ConstraintValidationError(f"Must choose a PointSequence of exactly two points for the parallel"
-                                            f"constraint tool. Points chosen: {len(self.tool())}")
-        if len(self.target()) != 2:
-            raise ConstraintValidationError(f"Must choose a PointSequence of exactly two points for the parallel"
-                                            f"constraint target. Points chosen: {len(self.target())}")
-
-    def enforce(self):
-        tool_seq = self.tool()
-        target_seq = self.target()
-        tool_p1 = tool_seq.points()[0]
-        tool_p2 = tool_seq.points()[1]
-        target_p1 = target_seq.points()[0]
-        target_p2 = target_seq.points()[1]
-        tool_ang = np.arctan2(tool_p2.y().value() - tool_p1.y().value(), tool_p2.x().value() - tool_p1.y().value())
-        target_centroid = 0.5 * (target_p1.as_array() + target_p2.as_array())
-        target_length = np.hypot(target_p2.x().value() - target_p1.x().value(),
-                                 target_p2.y().value() - target_p1.y().value()
-                                 )
-        if self.solution() == 0:
-            multiplier1 = 1
-            multiplier2 = -1
-        else:
-            multiplier1 = -1
-            multiplier2 = 1
-        new_p1 = target_centroid + multiplier1 * 0.5 * target_length * np.array([np.cos(tool_ang), np.sin(tool_ang)])
-        new_p2 = target_centroid + multiplier2 * 0.5 * target_length * np.array([np.cos(tool_ang), np.sin(tool_ang)])
-        target_p1.x().set_value(new_p1[0])
-        target_p1.y().set_value(new_p1[1])
-        target_p2.x().set_value(new_p2[0])
-        target_p2.y().set_value(new_p2[1])
 
 
 class PositionConstraint(GeoCon):
@@ -151,6 +100,202 @@ class PositionConstraint(GeoCon):
                 raise ValueError("Calling point for the positional constraint was neither tool nor target")
 
 
+class RelAngleConstraint(GeoCon):
+    def __init__(self, tool: PointSequence, target: PointSequence, angle_param: AngleParam or None = None,
+                 name: str or None = None):
+        name = "RelAngleCon-1" if name is None else name
+        super().__init__(tool=tool, target=target, name=name)
+        self._param = None
+        self.set_param(angle_param)
+        for point in self.tool().points():
+            point.geo_cons.append(self)
+        for point in self.target().points():
+            point.geo_cons.append(self)
+        self.param().geo_cons.append(self)
+
+    def param(self):
+        return self._param
+
+    def validate(self):
+        if len(self.tool()) != 2:
+            raise ConstraintValidationError("RelAngleConstraint tool must contain exactly two points")
+        if len(self.target()) != 2:
+            raise ConstraintValidationError("RelAngleConstraint target must contain exactly two points")
+
+    def set_param(self, param: Param or None = None):
+        if param is None:
+            self._param = self.update_param_from_points()
+        else:
+            self._param = param
+            self.update_param_from_points()
+        if self not in self._param.dims:
+            self._param.dims.append(self)
+
+    def update_points_from_param(self, updated_objs: typing.List[PymeadObj] = None):
+        updated_objs = [] if updated_objs is None else updated_objs
+
+        target_length = self.measure_target_length()
+        target_angle = self.measure_tool_angle() + self.param().rad()
+        new_x = self.tool().x().value() + target_length * np.cos(target_angle)
+        new_y = self.tool().y().value() + target_length * np.sin(target_angle)
+
+        if self in updated_objs:
+            self.target().force_move(new_x, new_y)
+        else:
+            updated_objs.append(self)
+            self.target().request_move(new_x, new_y, updated_objs=updated_objs)
+
+    def update_param_from_points(self, updated_objs: typing.List[PymeadObj] = None):
+        updated_objs = [] if updated_objs is None else updated_objs
+
+        angle = self.measure_target_angle() - self.measure_tool_angle()
+        if self.param() is None:
+            if self.geo_col is None:
+                param = AngleParam(value=angle, name="Angle-1")
+            else:
+                param = self.geo_col.add_param(value=angle, name="Angle-1", unit_type="angle")
+        else:
+            param = self.param()
+
+        new_value = UNITS.convert_angle_from_base(angle, unit=UNITS.current_angle_unit())
+
+        if self not in updated_objs:
+            updated_objs.append(self)
+
+        param.set_value(new_value, updated_objs=updated_objs)
+
+        return param
+
+    def measure_tool_angle(self) -> float:
+        return self.tool().points()[0].measure_angle(self.tool().points()[1])
+
+    def measure_target_angle(self) -> float:
+        return self.target().points()[0].measure_angle(self.target().points()[1])
+
+    def measure_target_length(self) -> float:
+        return self.target().points()[0].measure_distance(self.target().points()[1])
+
+    def enforce(self, calling_point: Point, updated_objs: typing.List[PymeadObj] = None,
+                initial_x: float = None, initial_y: float = None):
+
+        updated_objs = [] if updated_objs is None else updated_objs
+
+        if calling_point in [*self.tool().points(), *self.target().points()]:
+            tool_angle = self.measure_tool_angle()
+            target_angle = tool_angle + self.param().rad()
+            target_length = self.measure_target_length()
+            new_x = self.target().points()[0].x().value() + target_length * np.cos(target_angle)
+            new_y = self.target().points()[0].y().value() + target_length * np.sin(target_angle)
+
+            if self in updated_objs:
+                self.target().points()[1].force_move(new_x, new_y)
+            else:
+                updated_objs.append(self)
+                self.target().points()[1].request_move(new_x, new_y, updated_objs=updated_objs)
+
+    def get_dict_rep(self):
+        return {"tool": [pt.name() for pt in self.tool().points()],
+                "target": [pt.name() for pt in self.target().points()],
+                "angle_param": self.param(),
+                "constraint_type": "rel-angle"}
+
+
+class PerpendicularConstraint(GeoCon):
+    def __init__(self, tool: PointSequence, target: PointSequence, name: str or None = None):
+        name = "PerpendicularCon-1" if name is None else name
+        super().__init__(tool=tool, target=target, name=name)
+        for point in self.tool().points():
+            point.geo_cons.append(self)
+        for point in self.target().points():
+            point.geo_cons.append(self)
+
+    def validate(self):
+        if len(self.tool()) != 2:
+            raise ConstraintValidationError("PerpendicularConstraint tool must contain exactly two points")
+        if len(self.target()) != 2:
+            raise ConstraintValidationError("RPerpendicularConstraint target must contain exactly two points")
+
+    def measure_tool_angle(self) -> float:
+        return self.tool().points()[0].measure_angle(self.tool().points()[1])
+
+    def measure_target_angle(self) -> float:
+        return self.target().points()[0].measure_angle(self.target().points()[1])
+
+    def measure_target_length(self) -> float:
+        return self.target().points()[0].measure_distance(self.target().points()[1])
+
+    def enforce(self, calling_point: Point, updated_objs: typing.List[PymeadObj] = None,
+                initial_x: float = None, initial_y: float = None):
+
+        updated_objs = [] if updated_objs is None else updated_objs
+
+        if calling_point in [*self.tool().points(), *self.target().points()]:
+            tool_angle = self.measure_tool_angle()
+            target_angle = tool_angle + np.pi / 2
+            target_length = self.measure_target_length()
+            new_x = self.target().points()[0].x().value() + target_length * np.cos(target_angle)
+            new_y = self.target().points()[0].y().value() + target_length * np.sin(target_angle)
+
+            if self in updated_objs:
+                self.target().points()[1].force_move(new_x, new_y)
+            else:
+                updated_objs.append(self)
+                self.target().points()[1].request_move(new_x, new_y, updated_objs=updated_objs)
+
+    def get_dict_rep(self):
+        return {"tool": [pt.name() for pt in self.tool().points()],
+                "target": [pt.name() for pt in self.target().points()],
+                "constraint_type": "perpendicular"}
+
+
+class ParallelConstraint(GeoCon):
+    def __init__(self, tool: PointSequence, target: PointSequence, name: str or None = None):
+        name = "ParallelCon-1" if name is None else name
+        super().__init__(tool=tool, target=target, name=name)
+        for point in self.tool().points():
+            point.geo_cons.append(self)
+        for point in self.target().points():
+            point.geo_cons.append(self)
+
+    def validate(self):
+        if len(self.tool()) != 2:
+            raise ConstraintValidationError("ParallelConstraint tool must contain exactly two points")
+        if len(self.target()) != 2:
+            raise ConstraintValidationError("ParallelConstraint target must contain exactly two points")
+
+    def measure_tool_angle(self) -> float:
+        return self.tool().points()[0].measure_angle(self.tool().points()[1])
+
+    def measure_target_angle(self) -> float:
+        return self.target().points()[0].measure_angle(self.target().points()[1])
+
+    def measure_target_length(self) -> float:
+        return self.target().points()[0].measure_distance(self.target().points()[1])
+
+    def enforce(self, calling_point: Point, updated_objs: typing.List[PymeadObj] = None,
+                initial_x: float = None, initial_y: float = None):
+
+        updated_objs = [] if updated_objs is None else updated_objs
+
+        if calling_point in [*self.tool().points(), *self.target().points()]:
+            tool_angle = self.measure_tool_angle()
+            target_angle = tool_angle + np.pi
+            target_length = self.measure_target_length()
+            new_x = self.target().points()[0].x().value() + target_length * np.cos(target_angle)
+            new_y = self.target().points()[0].y().value() + target_length * np.sin(target_angle)
+
+            if self in updated_objs:
+                self.target().points()[1].force_move(new_x, new_y)
+            else:
+                updated_objs.append(self)
+                self.target().points()[1].request_move(new_x, new_y, updated_objs=updated_objs)
+
+    def get_dict_rep(self):
+        return {"tool": [pt.name() for pt in self.tool().points()],
+                "target": [pt.name() for pt in self.target().points()],
+                "constraint_type": "parallel"}
+
+
 class CollinearConstraint(GeoCon):
     def __init__(self, start_point: Point, middle_point: Point, end_point: Point, name: str or None = None):
         start_end_seq = PointSequence(points=[start_point, end_point])
@@ -169,10 +314,10 @@ class CollinearConstraint(GeoCon):
         for geo_con in self.tool().geo_cons:
             if isinstance(geo_con, CollinearConstraint):
                 raise ValueError(msg)
-        for point in self.target().points():
-            for geo_con in point.geo_cons:
-                if isinstance(geo_con, CollinearConstraint):
-                    raise ValueError(msg)
+        # for point in self.target().points():
+        #     for geo_con in point.geo_cons:
+        #         if isinstance(geo_con, CollinearConstraint):
+        #             raise ValueError(msg)
 
     def enforce(self, calling_point: Point or str, updated_objs: typing.List[PymeadObj] = None,
                 initial_x: float or None = None, initial_y: float or None = None):
@@ -199,12 +344,21 @@ class CollinearConstraint(GeoCon):
                                  "middle point")
             dx = self.tool().x().value() - initial_x
             dy = self.tool().y().value() - initial_y
-            for point in self.target().points():
-                if self in updated_objs:
+
+            if self in updated_objs:
+                for point in self.target().points():
                     point.force_move(point.x().value() + dx, point.y().value() + dy)
-                else:
-                    updated_objs.append(self)
-                    point.request_move(point.x().value() + dx, point.y().value() + dy, updated_objs=updated_objs)
+            else:
+                updated_objs.append(self)
+
+                # First, force the points to the correct location
+                for point in self.target().points():
+                    point.force_move(point.x().value() + dx, point.y().value() + dy)
+
+                # Then, call a request move in-place to update the child dimensions/constraints
+                for point in self.target().points():
+                    point.request_move(point.x().value(), point.y().value(), updated_objs=updated_objs)
+
         elif calling_point is self.target().points()[0]:
             start_point = self.target().points()[0]
             middle_point = self.tool()
@@ -337,20 +491,27 @@ class CurvatureConstraint(GeoCon):
             dx = self.tool().x().value() - initial_x
             dy = self.tool().y().value() - initial_y
 
-            collinear_constraint_found = False
-            for geo_con in self.tool().geo_cons:
-                if isinstance(geo_con, CollinearConstraint):
-                    collinear_constraint_found = True
-                    break
+            # collinear_constraint_found = False
+            # for geo_con in self.tool().geo_cons:
+            #     if isinstance(geo_con, CollinearConstraint):
+            #         collinear_constraint_found = True
+            #         break
+            #
+            # points_to_move = [self.target().points()[0], self.target().points()[3]] \
+            #     if collinear_constraint_found else self.target().points()
 
-            points_to_move = [self.target().points()[0], self.target().points()[3]] \
-                if collinear_constraint_found else self.target().points()
-            for point in points_to_move:
-                if self in updated_objs:
+            if self in updated_objs:
+                for point in self.target().points():
                     point.force_move(point.x().value() + dx, point.y().value() + dy)
-                else:
-                    updated_objs.append(self)
-                    point.request_move(point.x().value() + dx, point.y().value() + dy, updated_objs=updated_objs)
+            else:
+                updated_objs.append(self)
+                # First, force the points to the correct location
+                for point in self.target().points():
+                    point.force_move(point.x().value() + dx, point.y().value() + dy)
+
+                # Then, call a request move in-place to update the child dimensions/constraints
+                for point in self.target().points():
+                    point.request_move(point.x().value(), point.y().value(), updated_objs=updated_objs)
 
         elif calling_point is self.target().points()[0]:  # Curve 1 g2 point modified -> update curve 2 g2 point
             # Calculate the new curvature control arm 2 length

@@ -109,6 +109,15 @@ class Point(PymeadObj):
                 kwargs = dict(calling_point=self, updated_objs=updated_objs, initial_x=initial_x,
                               initial_y=initial_y, initial_psi1=initial_psi1,
                               initial_psi2=initial_psi2, initial_R=initial_R)
+            elif "RelAngleConstraint" in class_name:
+                kwargs = dict(calling_point=self, updated_objs=updated_objs, initial_x=initial_x,
+                              initial_y=initial_y)
+            elif "ParallelConstraint" in class_name:
+                kwargs = dict(calling_point=self, updated_objs=updated_objs, initial_x=initial_x,
+                              initial_y=initial_y)
+            elif "Perpendicular" in class_name:
+                kwargs = dict(calling_point=self, updated_objs=updated_objs, initial_x=initial_x,
+                              initial_y=initial_y)
                 # if calling_point is not None:
                 #     kwargs["calling_point"] = calling_point
 

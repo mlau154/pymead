@@ -121,11 +121,11 @@ class LengthDimension(Dimension):
         else:
             param = self.param()
 
-        if self in updated_objs:
-            param.set_value(length, updated_objs=updated_objs)
-        else:
+        if self not in updated_objs:
             updated_objs.append(self)
-            param.set_value(length, updated_objs=updated_objs)
+
+        param.set_value(length, updated_objs=updated_objs)
+
         return param
 
     def get_dict_rep(self):
@@ -139,13 +139,18 @@ class AngleDimension(Dimension):
         name = "AngleDim-1" if name is None else name
         super().__init__(tool=tool_point, target=target_point, param=angle_param, name=name)
 
-    def update_points_from_param(self):
+    def update_points_from_param(self, updated_objs: typing.List[PymeadObj] = None):
         target_length = self.tool().measure_distance(self.target())
-        self.target().force_move(self.tool().x().value() + target_length * np.cos(self.param().rad()),
-                                 self.tool().y().value() + target_length * np.sin(self.param().rad()),
-                                 )
+        new_x = self.tool().x().value() + target_length * np.cos(self.param().rad())
+        new_y = self.tool().y().value() + target_length * np.sin(self.param().rad())
 
-    def update_param_from_points(self):
+        if self in updated_objs:
+            self.target().force_move(new_x, new_y)
+        else:
+            updated_objs.append(self)
+            self.target().request_move(new_x, new_y, updated_objs=updated_objs)
+
+    def update_param_from_points(self, updated_objs: typing.List[PymeadObj] = None):
         angle = self.tool().measure_angle(self.target())
         if self.param() is None:
             if self.geo_col is None:
@@ -155,8 +160,14 @@ class AngleDimension(Dimension):
         else:
             param = self.param()
 
-        param.set_value(UNITS.convert_angle_from_base(self.tool().measure_angle(self.target()),
-                                                      unit=UNITS.current_angle_unit()))
+        new_value = UNITS.convert_angle_from_base(self.tool().measure_angle(self.target()),
+                                                  unit=UNITS.current_angle_unit())
+
+        if self not in updated_objs:
+            updated_objs.append(self)
+
+        param.set_value(new_value, updated_objs=updated_objs)
+
         return param
 
     def get_dict_rep(self):
