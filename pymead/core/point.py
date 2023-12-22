@@ -96,19 +96,20 @@ class Point(PymeadObj):
             dim.update_param_from_points(updated_objs=updated_objs)
 
         for geo_con in self.geo_cons:
+
             kwargs = {}
 
             # Get class by name to avoid circular import
             class_name = str(geo_con.__class__)
+
+            if "CurvatureConstraint" in class_name:
+                continue
+
             if "PositionConstraint" in class_name:
                 kwargs = dict(calling_point=self, updated_objs=updated_objs)
             elif "CollinearConstraint" in class_name:
                 kwargs = dict(calling_point=self, updated_objs=updated_objs, initial_x=initial_x,
                               initial_y=initial_y)
-            elif "CurvatureConstraint" in class_name:
-                kwargs = dict(calling_point=self, updated_objs=updated_objs, initial_x=initial_x,
-                              initial_y=initial_y, initial_psi1=initial_psi1,
-                              initial_psi2=initial_psi2, initial_R=initial_R)
             elif "RelAngleConstraint" in class_name:
                 kwargs = dict(calling_point=self, updated_objs=updated_objs, initial_x=initial_x,
                               initial_y=initial_y)
@@ -122,6 +123,19 @@ class Point(PymeadObj):
                 #     kwargs["calling_point"] = calling_point
 
             # Enforce the constraint
+            geo_con.enforce(**kwargs)
+
+        for geo_con in self.geo_cons:
+
+            class_name = str(geo_con.__class__)
+
+            if "CurvatureConstraint" not in class_name:
+                continue
+
+            kwargs = dict(calling_point=self, updated_objs=updated_objs, initial_x=initial_x,
+                          initial_y=initial_y, initial_psi1=initial_psi1,
+                          initial_psi2=initial_psi2, initial_R=initial_R)
+
             geo_con.enforce(**kwargs)
 
             # for param in self.geo_col.container()["params"].values():
@@ -165,6 +179,29 @@ class PointSequence:
         self._points = None
         self.set_points(points)
 
+    def __getitem__(self, idx):
+        if isinstance(idx, slice):
+            return self.generate_from_slice(self, idx)
+        else:
+            return self.points()[idx]
+
+    def __setitem__(self, idx, val):
+        self.points()[idx] = val
+
+    def __len__(self):
+        return len(self.points())
+
+    @classmethod
+    def generate_from_slice(cls, original_point_seq, s):
+        return cls(points=original_point_seq.points()[s].copy())
+
+    @classmethod
+    def generate_from_array(cls, arr: np.ndarray):
+        if arr.shape[1] != 2:
+            raise ValueError(f"Array must have two columns, x and y. Found {arr.shape[1]} columns.")
+        return cls(points=[Point(x=x, y=y, name=f"PointFromArray-Index{idx}")
+                           for idx, (x, y) in enumerate(zip(arr[:, 0], arr[:, 1]))])
+
     def points(self):
         return self._points
 
@@ -180,21 +217,14 @@ class PointSequence:
     def insert_point(self, idx: int, point: Point):
         self._points.insert(idx, point)
 
+    def append_point(self, point: Point):
+        self._points.append(point)
+
     def remove_point(self, idx: int):
         self._points.pop(idx)
 
     def as_array(self):
         return np.array([[p.x().value(), p.y().value()] for p in self.points()])
-
-    @classmethod
-    def generate_from_array(cls, arr: np.ndarray):
-        if arr.shape[1] != 2:
-            raise ValueError(f"Array must have two columns, x and y. Found {arr.shape[1]} columns.")
-        return cls(points=[Point(x=x, y=y, name=f"PointFromArray-Index{idx}")
-                           for idx, (x, y) in enumerate(zip(arr[:, 0], arr[:, 1]))])
-
-    def __len__(self):
-        return len(self.points())
 
     def extract_subsequence(self, indices: list):
         return PointSequence(points=[self.points()[idx] for idx in indices])

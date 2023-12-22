@@ -140,6 +140,8 @@ class AngleDimension(Dimension):
         super().__init__(tool=tool_point, target=target_point, param=angle_param, name=name)
 
     def update_points_from_param(self, updated_objs: typing.List[PymeadObj] = None):
+        updated_objs = [] if updated_objs is None else updated_objs
+
         target_length = self.tool().measure_distance(self.target())
         new_x = self.tool().x().value() + target_length * np.cos(self.param().rad())
         new_y = self.tool().y().value() + target_length * np.sin(self.param().rad())
@@ -151,6 +153,8 @@ class AngleDimension(Dimension):
             self.target().request_move(new_x, new_y, updated_objs=updated_objs)
 
     def update_param_from_points(self, updated_objs: typing.List[PymeadObj] = None):
+        updated_objs = [] if updated_objs is None else updated_objs
+
         angle = self.tool().measure_angle(self.target())
         if self.param() is None:
             if self.geo_col is None:

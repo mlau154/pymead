@@ -1,13 +1,167 @@
 import typing
 from abc import abstractmethod
 from dataclasses import dataclass
+from functools import partial
+from collections import namedtuple
 
 import numpy as np
+from scipy.optimize import root
+from jax import jit, jacfwd
+from jax import numpy as jnp
 
 from pymead.core import UNITS
 from pymead.core.param2 import Param, AngleParam
 from pymead.core.point import PointSequence, Point
 from pymead.core.pymead_obj import PymeadObj
+
+
+@jit
+def measure_distance(x1: float, y1: float, x2: float, y2: float):
+    return jnp.hypot(x1 - x2, y1 - y2)
+
+
+@jit
+def measure_abs_angle(x1: float, y1: float, x2: float, y2: float):
+    return jnp.arctan2(y2 - y1, x2 - x1)
+
+
+@jit
+def measure_radius_of_curvature_bezier(Lt: float, Lc: float, n: int, psi: float):
+    return jnp.abs(jnp.true_divide(Lt ** 2, Lc * (1 - 1 / n) * jnp.sin(psi)))
+
+
+@jit
+def measure_curvature_bezier(Lt: float, Lc: float, n: int, psi: float):
+    return jnp.abs(jnp.true_divide(Lc * (1 - 1 / n) * jnp.sin(psi), Lt ** 2))
+
+
+@jit
+def measure_data_bezier_curve_joint(xy: np.ndarray, n: np.ndarray):
+    phi1 = measure_abs_angle(xy[2, 0], xy[2, 1], xy[1, 0], xy[1, 1])
+    phi2 = measure_abs_angle(xy[2, 0], xy[2, 1], xy[3, 0], xy[3, 1])
+    theta1 = measure_abs_angle(xy[1, 0], xy[1, 1], xy[0, 0], xy[0, 1])
+    theta2 = measure_abs_angle(xy[3, 0], xy[3, 1], xy[4, 0], xy[4, 1])
+    psi1 = theta1 - phi1
+    psi2 = theta2 - phi2
+    phi_rel = (phi1 - phi2) % (2 * jnp.pi)
+    Lt1 = measure_distance(xy[1, 0], xy[1, 1], xy[2, 0], xy[2, 1])
+    Lt2 = measure_distance(xy[2, 0], xy[2, 1], xy[3, 0], xy[3, 1])
+    Lc1 = measure_distance(xy[0, 0], xy[0, 1], xy[1, 0], xy[1, 1])
+    Lc2 = measure_distance(xy[3, 0], xy[3, 1], xy[4, 0], xy[4, 1])
+    kappa1 = measure_curvature_bezier(Lt1, Lc1, n[0], psi1)
+    kappa2 = measure_curvature_bezier(Lt2, Lc2, n[1], psi2)
+    R1 = jnp.true_divide(1, kappa1)
+    R2 = jnp.true_divide(1, kappa2)
+    n1 = n[0]
+    n2 = n[1]
+    field_names = ["phi1", "phi2", "theta1", "theta2", "psi1", "psi2", "phi_rel", "Lt1", "Lt2", "Lc1", "Lc2",
+                   "kappa1", "kappa2", "R1", "R2", "n1", "n2"]
+    BezierCurveJointData = namedtuple("BezierCurveJointData", field_names=field_names)
+    data = BezierCurveJointData(phi1=phi1, phi2=phi2, theta1=theta1, theta2=theta2, psi1=psi1, psi2=psi2,
+                                phi_rel=phi_rel, Lt1=Lt1, Lt2=Lt2, Lc1=Lc1, Lc2=Lc2, kappa1=kappa1, kappa2=kappa2,
+                                R1=R1, R2=R2, n1=n1, n2=n2)
+    return data
+
+
+@jit
+def distance_constraint(x1: float, y1: float, x2: float, y2: float, dist: float):
+    return measure_distance(x1, y1, x2, y2) - dist
+
+
+class DistCon:
+
+    def __init__(self, p1: Point, p2: Point, dist: Param):
+        self.p1 = p1
+        self.p2 = p2
+        self.dist = dist
+
+
+class GCS:
+
+    # Unconstrained = 0
+    # UnderConstrained = 1
+    # FullyConstrained = 2
+    # OverConstrained = 3
+
+    def __init__(self, parent: Point or Param):
+        self.parent = parent
+        self.constraint_types = []
+        self.equations = []
+        self.variables = []
+        self.params = []
+        self.sub_pos = []
+        self.original_data = []
+
+    # def check_constraint_state(self):
+    #     if len(self.variables) == 0:
+    #         return self.Unconstrained
+    #     elif len(self.variables)
+
+    @partial(jit, static_argnums=(0,))
+    def equation_set(self, x: np.ndarray, param_vec: np.ndarray, pos: np.ndarray):
+
+        # Override the parameters at the specified position for this particular iteration
+        for idx, p in enumerate(pos):
+            param_vec = param_vec.at[p].set(x[idx])
+
+        # Evaluate the functions using the updated parameter vector
+        f = [eq(*param_vec[sub_pos]) for eq, sub_pos in zip(self.equations, self.sub_pos)]
+
+        return jnp.array(f)
+
+    @partial(jit, static_argnums=(0,))
+    def jacobian(self, *args):
+        """
+        Calculates the Jacobian matrix for the non-linear system of equations describing the full set of
+        constraints for this point or parameter. According to the Jax docs, forward automatic differentiation
+        may have a slight advantage over reverse automatic differentiation for calculating a square Jacobian, so
+        ``jacfwd`` is used here.
+
+        Parameters
+        ----------
+        args
+
+        Returns
+        -------
+        np.ndarray
+            The evaluated (square) Jacobian matrix
+
+        """
+        return jacfwd(self.equation_set)(*args)
+
+    def solve(self):
+        param_vec = np.array([p.value() for p in self.params])
+        pos = np.array([self.params.index(v) for v in self.variables])
+        return root(self.equation_set, x0=np.array([v.value() for v in self.variables]), jac=self.jacobian,
+                    args=(param_vec, pos))
+
+    def update(self):
+        """
+        Updates the variable points and parameters in the constraint system
+
+        Returns
+        -------
+
+        """
+        pass
+
+    def append_params(self, params: typing.List[Param]):
+        sub_pos = []
+        for param in params:
+            if param in self.params:
+                sub_pos.append(self.params.index(param))
+            else:
+                sub_pos.append(len(self.params))
+                self.params.append(param)
+
+        self.sub_pos.append(np.array(sub_pos))
+
+    def add_distance_constraint(self, p1: Point, p2: Point, dist: Param):
+        self.equations.append(distance_constraint)
+        self.append_params([p1.x(), p1.y(), p2.x(), p2.y(), dist])
+        self.constraint_types.append("Distance")
+        self.variables.append(p1.x())
+        # TODO: also add p1.y() after the initial enforcement is complete
 
 
 class GeoCon(PymeadObj):
@@ -592,12 +746,20 @@ class CurvatureConstraint(GeoCon):
 
             if self in updated_objs:
                 self.target().points()[2].force_move(new_x2, new_y2)
+                self.target().points()[0].force_move(new_x0, new_y0)
+                self.target().points()[3].force_move(new_x3, new_y3)
             else:
                 updated_objs.append(self)
-                self.target().points()[2].request_move(new_x2, new_y2, updated_objs=updated_objs)
+                self.target().points()[2].force_move(new_x2, new_y2)
+                self.target().points()[0].force_move(new_x0, new_y0)
+                self.target().points()[3].force_move(new_x3, new_y3)
 
-            self.target().points()[0].request_move(new_x0, new_y0, updated_objs=updated_objs)
-            self.target().points()[3].request_move(new_x3, new_y3, updated_objs=updated_objs)
+                self.target().points()[2].request_move(self.target().points()[2].x().value(),
+                                                       self.target().points()[2].y().value(), updated_objs=updated_objs)
+                self.target().points()[0].request_move(self.target().points()[0].x().value(),
+                                                       self.target().points()[0].y().value(), updated_objs=updated_objs)
+                self.target().points()[3].request_move(self.target().points()[3].x().value(),
+                                                       self.target().points()[3].y().value(), updated_objs=updated_objs)
 
         elif calling_point is self.target().points()[2]:  # Curve 2 g1 point modified -> update curve 1 g1 point and g2 points
             if initial_psi1 is None or initial_psi2 is None or initial_R is None:
@@ -625,12 +787,20 @@ class CurvatureConstraint(GeoCon):
 
             if self in updated_objs:
                 self.target().points()[1].force_move(new_x1, new_y1)
+                self.target().points()[0].force_move(new_x0, new_y0)
+                self.target().points()[3].force_move(new_x3, new_y3)
             else:
                 updated_objs.append(self)
-                self.target().points()[1].request_move(new_x1, new_y1, updated_objs=updated_objs)
+                self.target().points()[1].force_move(new_x1, new_y1)
+                self.target().points()[0].force_move(new_x0, new_y0)
+                self.target().points()[3].force_move(new_x3, new_y3)
 
-            self.target().points()[0].request_move(new_x0, new_y0, updated_objs=updated_objs)
-            self.target().points()[3].request_move(new_x3, new_y3, updated_objs=updated_objs)
+                self.target().points()[1].request_move(self.target().points()[1].x().value(),
+                                                       self.target().points()[1].y().value(), updated_objs=updated_objs)
+                self.target().points()[0].request_move(self.target().points()[0].x().value(),
+                                                       self.target().points()[0].y().value(), updated_objs=updated_objs)
+                self.target().points()[3].request_move(self.target().points()[3].x().value(),
+                                                       self.target().points()[3].y().value(), updated_objs=updated_objs)
 
             # TODO: check this logic. Might be causing a runaway radius of curvature on tangent point rotation
 
