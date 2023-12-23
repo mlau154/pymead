@@ -12,6 +12,7 @@ class Point(PymeadObj):
         super().__init__(sub_container="points")
         self._x = None
         self._y = None
+        self.gcs = None
         self.geo_cons = []
         self.dims = []
         self.curves = []
@@ -67,95 +68,32 @@ class Point(PymeadObj):
     def measure_angle(self, other: "Point"):
         return np.arctan2(other.y().value() - self.y().value(), other.x().value() - self.x().value())
 
-    def request_move(self, xp: float, yp: float, updated_objs: typing.List[PymeadObj] = None):
-        # Initialize variables which may or may not be used
-        initial_x = self.x().value()  # x-location of the current point before the movement
-        initial_y = self.y().value()  # y-location of the current point before the movement
-        initial_psi1 = None  # Curvature control arm 1 angle before the current point movement
-        initial_psi2 = None  # Curvature control arm 2 angle before the current point movement
-        initial_R = None  # Radius of curvature before the current point movement
+    def request_move(self, xp: float, yp: float):
 
-        # Get the concrete class names of all the constraints associated with this point so that we calculate the
-        # minimum required amount of information
-        geo_con_classes = [str(geo_con.__class__.__name__) for geo_con in self.geo_cons]
-        if "CurvatureConstraint" in geo_con_classes:
-            for idx, geo_con in enumerate(self.geo_cons):
-                if geo_con_classes[idx] == "CurvatureConstraint":
-                    data = geo_con.calculate_curvature_data()
-                    initial_psi1 = data.psi1
-                    initial_psi2 = data.psi2
-                    initial_R = data.R1
-                    break
+        if self.gcs is None:
 
-        self.x().set_value(xp, updated_objs=updated_objs)
-        self.y().set_value(yp, updated_objs=updated_objs)
+            self.x().set_value(xp)
+            self.y().set_value(yp)
 
-        updated_objs = [] if updated_objs is None else updated_objs
+            # Update the GUI object, if there is one
+            if self.canvas_item is not None:
+                self.canvas_item.updateCanvasItem(self.x().value(), self.y().value())
 
-        for dim in self.dims:
-            dim.update_param_from_points(updated_objs=updated_objs)
+            # TODO: add tree object update here as well
 
-        for geo_con in self.geo_cons:
+            for curve in self.curves:
+                curve.update()
+        else:
+            start_param_vec = np.array([p.value() for p in self.gcs.params])
 
-            kwargs = {}
+            self.x().set_value(xp)
+            self.y().set_value(yp)
 
-            # Get class by name to avoid circular import
-            class_name = str(geo_con.__class__)
+            intermediate_param_vec = np.array([p.value() for p in self.gcs.params])
 
-            if "CurvatureConstraint" in class_name:
-                continue
+            res = self.gcs.solve2(start_param_vec, intermediate_param_vec)
 
-            if "PositionConstraint" in class_name:
-                kwargs = dict(calling_point=self, updated_objs=updated_objs)
-            elif "CollinearConstraint" in class_name:
-                kwargs = dict(calling_point=self, updated_objs=updated_objs, initial_x=initial_x,
-                              initial_y=initial_y)
-            elif "RelAngleConstraint" in class_name:
-                kwargs = dict(calling_point=self, updated_objs=updated_objs, initial_x=initial_x,
-                              initial_y=initial_y)
-            elif "ParallelConstraint" in class_name:
-                kwargs = dict(calling_point=self, updated_objs=updated_objs, initial_x=initial_x,
-                              initial_y=initial_y)
-            elif "Perpendicular" in class_name:
-                kwargs = dict(calling_point=self, updated_objs=updated_objs, initial_x=initial_x,
-                              initial_y=initial_y)
-                # if calling_point is not None:
-                #     kwargs["calling_point"] = calling_point
-
-            # Enforce the constraint
-            geo_con.enforce(**kwargs)
-
-        for geo_con in self.geo_cons:
-
-            class_name = str(geo_con.__class__)
-
-            if "CurvatureConstraint" not in class_name:
-                continue
-
-            kwargs = dict(calling_point=self, updated_objs=updated_objs, initial_x=initial_x,
-                          initial_y=initial_y, initial_psi1=initial_psi1,
-                          initial_psi2=initial_psi2, initial_R=initial_R)
-
-            geo_con.enforce(**kwargs)
-
-            # for param in self.geo_col.container()["params"].values():
-            #     if param.at_boundary:
-            #         self.force_move(initial_x, initial_y)
-            #         break
-            # else:
-            #     for dv in self.geo_col.container()["desvar"].values():
-            #         if dv.at_boundary:
-            #             self.force_move(initial_x, initial_y)
-            #             break
-
-        # Update the GUI object, if there is one
-        if self.canvas_item is not None:
-            self.canvas_item.updateCanvasItem(self.x().value(), self.y().value())
-
-        # TODO: add tree object update here as well
-
-        for curve in self.curves:
-            curve.update()
+            self.gcs.update(res.x)
 
     def force_move(self, xp: float, yp: float):
         self.x().set_value(xp)

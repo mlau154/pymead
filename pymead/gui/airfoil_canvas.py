@@ -9,7 +9,9 @@ from PyQt5.QtCore import pyqtSignal, QEventLoop, Qt
 from PyQt5.QtGui import QFont, QBrush, QColor
 from PyQt5.QtWidgets import QApplication
 
+from pymead.core.constraints import GCS
 from pymead.core.geometry_collection import GeometryCollection
+from pymead.core.param2 import LengthParam
 from pymead.core.parametric_curve2 import ParametricCurve
 from pymead.core.point import PointSequence, Point
 from pymead.core.pymead_obj import PymeadObj
@@ -236,6 +238,18 @@ class AirfoilCanvas(pg.PlotWidget):
 
         self.geo_col.add_length_dimension(tool_point=tool_point, target_point=target_point, length_param=length_param)
 
+    @runSelectionEventLoop(drawing_object="DistanceConstraint", starting_message="Select the first point")
+    def addDistanceConstraint(self):
+        if len(self.geo_col.selected_objects["points"]) != 2:
+            self.sigStatusBarUpdate.emit("Choose exactly two points to define a distance constraint")
+
+        p1 = self.geo_col.selected_objects["points"][0]
+        p2 = self.geo_col.selected_objects["points"][1]
+        length_param = LengthParam(0.8, "LengthBOI")
+
+        gcs = GCS(parent=p2)
+        gcs.add_distance_constraint(p1, p2, length_param)
+
     @runSelectionEventLoop(drawing_object="AngleDimension", starting_message="Select the tool point")
     def addAngleDimension(self):
         if len(self.geo_col.selected_objects["points"]) not in [2, 3]:
@@ -394,6 +408,12 @@ class AirfoilCanvas(pg.PlotWidget):
             elif len(self.geo_col.selected_objects["points"]) == 3:
                 # TODO: this currently will not be called until the above TODO is implemented
                 self.sigEnterPressed.emit()
+        elif self.drawing_object == "DistanceConstraint":
+            self.geo_col.select_object(point_item.point)
+            if len(self.geo_col.selected_objects["points"]) == 1:
+                self.sigStatusBarUpdate.emit("Now, choose the last point", 0)
+            elif len(self.geo_col.selected_objects["points"]) == 2:
+                self.sigEnterPressed.emit()
         elif self.drawing_object == "CollinearConstraint":
             self.geo_col.select_object(point_item.point)
             if len(self.geo_col.selected_objects["points"]) == 1:
@@ -527,6 +547,7 @@ class AirfoilCanvas(pg.PlotWidget):
         addCurvatureConstraintAction = menu.addAction("Add Curvature Constraint")
         addLengthDimensionAction = menu.addAction("Add Length Dimension")
         addAngleDimensionAction = menu.addAction("Add Angle Dimension")
+        addDistanceConstraintAction = menu.addAction("Add Distance Constraint")
         deepcopyPointsAction = menu.addAction("Deepcopy point")
         view_pos = self.getPlotItem().getViewBox().mapSceneToView(event.pos())
         res = menu.exec_(event.globalPos())
@@ -554,6 +575,8 @@ class AirfoilCanvas(pg.PlotWidget):
             self.addLengthDimension()
         elif res == addAngleDimensionAction:
             self.addAngleDimension()
+        elif res == addDistanceConstraintAction:
+            self.addDistanceConstraint()
         elif res == removeCurveAction and curve_item is not None:
             self.removeCurve(curve_item)
         elif res == insertCurvePointAction and curve_item is not None:
