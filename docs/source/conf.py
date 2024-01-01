@@ -4,7 +4,7 @@ sys.path.insert(0, os.path.abspath('../..'))
 # Project Information
 
 project = 'pymead'
-copyright = '2022-2023, Matthew G. Lauer'
+copyright = '2022-2024, Matthew G. Lauer'
 author = 'Matthew G. Lauer'
 
 release = '2.0'
