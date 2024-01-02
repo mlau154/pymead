@@ -7,8 +7,9 @@ from collections import namedtuple
 
 import numpy as np
 from scipy.optimize import root
-from jax import jit, jacfwd, debug
+from jax import jit, jacfwd
 from jax import numpy as jnp
+import jaxopt
 
 from pymead.core import UNITS
 from pymead.core.param2 import Param, AngleParam, LengthParam
@@ -157,6 +158,80 @@ def parallel4_constraint(x1: float, y1: float, x2: float, y2: float, x3: float, 
     return measure_rel_angle4(x1, y1, x2, y2, x3, y3, x4, y4) - jnp.pi
 
 
+@jit
+def equation_set(x: np.ndarray, start_param_vec: np.ndarray, intermediate_param_vec: np.ndarray,
+                 strong_constraints: typing.List[int], sub_pos: list,
+                 weak_constraints: typing.List[int], weak_arg_indices: list):
+    # strong_equations = {
+    #     0: fixed_param_constraint,
+    #     1: fixed_x_constraint,
+    #     2: fixed_y_constraint,
+    #     3: distance_constraint,
+    #     4: abs_angle_constraint,
+    # }
+
+    strong_equations = [fixed_param_constraint, fixed_x_constraint, fixed_y_constraint, distance_constraint,
+                        abs_angle_constraint]
+
+    # weak_equations = {
+    #     0: fixed_param_constraint_weak,
+    #     1: fixed_x_constraint_weak,
+    #     2: fixed_y_constraint_weak,
+    #     3: abs_angle_constraint_weak
+    # }
+
+    weak_equations = [fixed_param_constraint_weak, fixed_x_constraint_weak, fixed_y_constraint_weak,
+                      abs_angle_constraint_weak]
+
+    # Evaluate the strong constraints using the updated parameter vector
+    constraints = [strong_equations[cnstr](*x[sp]) for cnstr, sp in zip(strong_constraints, sub_pos)]
+
+    # Evaluate the weak constraints (functions that are simply used to keep the system fully constrained according
+    # to a set of rules and can be overridden by strong constraints)
+    weak_constraints = [weak_equations[cnstr](*[start_param_vec[w[0]] if w[1] == 0
+                                                else intermediate_param_vec[w[0]] if w[1] == 1
+    else x[w[0]] for w in weak_args])
+                        for cnstr, weak_args in zip(weak_constraints, weak_arg_indices)]
+
+    # Combine the lists of strong and weak constraints
+    constraints.extend(weak_constraints)
+
+    return jnp.array(constraints)
+
+
+# @jit
+def jacobian(*args):
+    """
+    Calculates the Jacobian matrix for the non-linear system of equations describing the full set of
+    constraints for this point or parameter. According to the Jax docs, forward automatic differentiation
+    may have a slight advantage over reverse automatic differentiation for calculating a square Jacobian, so
+    ``jacfwd`` is used here.
+
+    Parameters
+    ----------
+    args
+
+    Returns
+    -------
+    np.ndarray
+        The evaluated (square) Jacobian matrix
+
+    """
+    return jacfwd(equation_set)(*args)
+
+
+class PymeadRootFinder(jaxopt.ScipyRootFinding):
+    def __init__(self, equation_system: typing.Callable):
+        super().__init__(
+            method="hybr",
+            jit=True,
+            has_aux=False,
+            optimality_fun=equation_system,
+            tol=1e-6,
+            use_jacrev=False,  # Use the forward Jacobian calculation since the matrix is square
+        )
+
+
 class DistCon:
 
     def __init__(self, p1: Point, p2: Point, dist: Param):
@@ -175,14 +250,15 @@ class GCS:
     def __init__(self, parent: Point or Param):
         self.parent = parent
         self.parent.gcs = self
+        self.root_finder = None
         self.constraint_types = []
-        self.equations = []
-        self.weak_equations = []
-        self.variables = []
+        self.strong_constraints = []
+        self.weak_constraints = []
+        self.sub_pos = []
         self.weak_arg_indices = []
         self.points = []
         self.params = []
-        self.sub_pos = []
+        self.variables = []
         self.original_data = []
 
     # def check_constraint_state(self):
@@ -190,89 +266,31 @@ class GCS:
     #         return self.Unconstrained
     #     elif len(self.variables)
 
-    @partial(jit, static_argnums=(0,))
-    def equation_set(self, x: np.ndarray, start_param_vec: np.ndarray, intermediate_param_vec: np.ndarray):
+    def compile_equation_set(self):
 
-        # Evaluate the strong constraints using the updated parameter vector
-        constraints = [eq(*x[sub_pos]) for eq, sub_pos in zip(self.equations, self.sub_pos)]
+        def equation_system(x: np.ndarray, start_param_vec: np.ndarray, intermediate_param_vec: np.ndarray):
+            # Evaluate the strong constraints using the updated parameter vector
+            constraints = [cnstr(*x[sp]) for cnstr, sp in zip(self.strong_constraints, self.sub_pos)]
 
-        # Evaluate the weak constraints (functions that are simply used to keep the system fully constrained according
-        # to a set of rules and can be overridden by strong constraints)
-        weak_constraints = [eq(*[start_param_vec[w[0]] if w[1] == 0
-                                 else intermediate_param_vec[w[0]] if w[1] == 1
-                                 else x[w[0]] for w in weak_args])
-                            for eq, weak_args in zip(self.weak_equations, self.weak_arg_indices)]
+            # Evaluate the weak constraints (functions that are simply used to keep the system fully constrained
+            # according to a set of rules and can be overridden by strong constraints)
+            weak_constraints = [cnstr(*[start_param_vec[w[0]] if w[1] == 0
+                                        else intermediate_param_vec[w[0]] if w[1] == 1
+                                        else x[w[0]] for w in weak_args])
+                                for cnstr, weak_args in zip(self.weak_constraints, self.weak_arg_indices)]
 
-        # Combine the lists of strong and weak constraints
-        constraints.extend(weak_constraints)
+            # Combine the lists of strong and weak constraints
+            constraints.extend(weak_constraints)
 
-        return jnp.array(constraints)
+            return jnp.array(constraints)
 
-    @partial(jit, static_argnums=(0,))
-    def equation_set2(self, x: np.ndarray, start_param_vec: np.ndarray, intermediate_param_vec: np.ndarray):
-
-        # Evaluate the strong constraints using the updated parameter vector
-        constraints = [eq(*x[sub_pos]) for eq, sub_pos in zip(self.equations, self.sub_pos)]
-
-        # Evaluate the weak constraints (functions that are simply used to keep the system fully constrained according
-        # to a set of rules and can be overridden by strong constraints)
-        weak_constraints = [eq(*[start_param_vec[w[0]] if w[1] == 0
-                                 else intermediate_param_vec[w[0]] if w[1] == 1
-                                 else x[w[0]] for w in weak_args])
-                            for eq, weak_args in zip(self.weak_equations, self.weak_arg_indices)]
-
-        # Combine the lists of strong and weak constraints
-        constraints.extend(weak_constraints)
-
-        return jnp.array(constraints)
-
-    @partial(jit, static_argnums=(0,))
-    def jacobian(self, *args):
-        """
-        Calculates the Jacobian matrix for the non-linear system of equations describing the full set of
-        constraints for this point or parameter. According to the Jax docs, forward automatic differentiation
-        may have a slight advantage over reverse automatic differentiation for calculating a square Jacobian, so
-        ``jacfwd`` is used here.
-
-        Parameters
-        ----------
-        args
-
-        Returns
-        -------
-        np.ndarray
-            The evaluated (square) Jacobian matrix
-
-        """
-        return jacfwd(self.equation_set)(*args)
-
-    @partial(jit, static_argnums=(0,))
-    def jacobian2(self, *args):
-        """
-        Calculates the Jacobian matrix for the non-linear system of equations describing the full set of
-        constraints for this point or parameter. According to the Jax docs, forward automatic differentiation
-        may have a slight advantage over reverse automatic differentiation for calculating a square Jacobian, so
-        ``jacfwd`` is used here.
-
-        Parameters
-        ----------
-        args
-
-        Returns
-        -------
-        np.ndarray
-            The evaluated (square) Jacobian matrix
-
-        """
-        return jacfwd(self.equation_set)(*args)
+        self.root_finder = PymeadRootFinder(jit(equation_system))
 
     def solve(self, start_param_vec: np.ndarray, intermediate_param_vec: np.ndarray):
-        return root(self.equation_set, x0=intermediate_param_vec, jac=self.jacobian,
-                    args=(start_param_vec, intermediate_param_vec), tol=1e-6)
-
-    def solve2(self, start_param_vec: np.ndarray, intermediate_param_vec: np.ndarray):
-        return root(self.equation_set2, x0=intermediate_param_vec, jac=self.jacobian2,
-                    args=(start_param_vec, intermediate_param_vec), tol=1e-6)
+        return self.root_finder.run(intermediate_param_vec, start_param_vec, intermediate_param_vec)
+        # return root(equation_set, x0=intermediate_param_vec, jac=jacobian,
+        #             args=(start_param_vec, intermediate_param_vec, self.equations, self.sub_pos,
+        #                   self.weak_equations, self.weak_arg_indices), tol=1e-6)
 
     def update(self, new_x: np.ndarray):
         """
@@ -331,7 +349,7 @@ class GCS:
             raise NoSolutionError("Over-constrained or no solution")
 
     def add_fixed_x_constraint(self, p: Point, x: LengthParam):
-        self.equations.append(fixed_x_constraint)
+        self.strong_constraints.append(fixed_x_constraint)
         self.append_points([p])
         self.append_params([p.x(), x])
         self.constraint_types.append("FixedX")
@@ -339,7 +357,7 @@ class GCS:
         # self.append_variables([p.x()])
 
     def add_fixed_y_constraint(self, p: Point, y: LengthParam):
-        self.equations.append(fixed_y_constraint)
+        self.strong_constraints.append(fixed_y_constraint)
         self.append_points([p])
         self.append_params([p.y(), y])
         self.constraint_types.append("FixedY")
@@ -347,25 +365,27 @@ class GCS:
         self.append_variables([p.y()])
 
     def add_distance_constraint(self, p1: Point, p2: Point, dist: LengthParam):
-        self.equations.append(distance_constraint)
+        self.strong_constraints.append(distance_constraint)
         self.append_points([p1, p2])
         self.append_params([p1.x(), p1.y(), p2.x(), p2.y(), dist])
         self.constraint_types.append("Distance")
 
         if self.parent is p1:
-            self.weak_equations.append(fixed_x_constraint_weak)
-            self.weak_equations.append(fixed_y_constraint_weak)
-            self.weak_equations.append(fixed_param_constraint_weak)
+            self.weak_constraints.append(fixed_x_constraint_weak)
+            self.weak_constraints.append(fixed_y_constraint_weak)
+            self.weak_constraints.append(fixed_param_constraint_weak)
 
             self.weak_arg_indices.append([[self.params.index(p2.x()), 1], [self.params.index(p2.x()), 0]])
             self.weak_arg_indices.append([[self.params.index(p2.y()), 1], [self.params.index(p2.y()), 0]])
             self.weak_arg_indices.append([[self.params.index(dist), 1], [self.params.index(dist), 0]])
 
+            self.compile_equation_set()
+
         elif self.parent in [p2, dist]:
-            self.weak_equations.append(fixed_x_constraint_weak)
-            self.weak_equations.append(fixed_y_constraint_weak)
-            self.weak_equations.append(fixed_param_constraint_weak)
-            self.weak_equations.append(abs_angle_constraint_weak)
+            self.weak_constraints.append(fixed_x_constraint_weak)
+            self.weak_constraints.append(fixed_y_constraint_weak)
+            self.weak_constraints.append(fixed_param_constraint_weak)
+            self.weak_constraints.append(abs_angle_constraint_weak)
 
             self.weak_arg_indices.append([[self.params.index(p1.x()), 2], [self.params.index(p1.x()), 0]])
             self.weak_arg_indices.append([[self.params.index(p1.y()), 2], [self.params.index(p1.y()), 0]])
@@ -382,15 +402,12 @@ class GCS:
             start_param_vec = np.array([p.value() for p in [p1.x(), p1.y(), p2.x(), p2.y(), dist]])
             intermediate_param_vec = deepcopy(start_param_vec)
 
-            x = deepcopy(start_param_vec)
-            weak_constraints = [eq(*[start_param_vec[w[0]] if w[1] == 0
-                                     else intermediate_param_vec[w[0]] if w[1] == 1
-                                     else x[w[0]] for w in weak_args])
-                                for eq, weak_args in zip(self.weak_equations, self.weak_arg_indices)]
+            self.compile_equation_set()
 
-            res = self.solve(start_param_vec, intermediate_param_vec)
+            # Initial solve of the system equations to place the points in the correct starting location
+            params, info = self.solve(start_param_vec, intermediate_param_vec)
 
-            self.update(res.x)
+            self.update(params)
 
             self.weak_arg_indices.pop()
 
@@ -401,6 +418,8 @@ class GCS:
                     fixed_angle_indices.append([p_index, old_new_idx])
 
             self.weak_arg_indices.append(fixed_angle_indices)
+
+            self.compile_equation_set()
 
         #
         # # Try to initialize the constraint by setting point 2 at distance "dist" from point 1
@@ -414,7 +433,7 @@ class GCS:
         #     self.append_variables([p2.x(), p2.y(), p1.x(), p1.y()])
 
     def add_abs_angle_constraint(self, p1: Point, p2: Point, angle: AngleParam):
-        self.equations.append(abs_angle_constraint)
+        self.strong_constraints.append(abs_angle_constraint)
         self.append_points([p1, p2])
         self.append_params([p1.x(), p1.y(), p2.x(), p2.y(), angle])
         self.constraint_types.append("AbsAngle")
@@ -424,7 +443,7 @@ class GCS:
             self.append_variables([p2.x(), p2.y(), p1.x(), p1.y()])
 
     def add_rel_angle3_constraint(self, p1: Point, p2: Point, p3: Point, angle: AngleParam):
-        self.equations.append(rel_angle3_constraint)
+        self.strong_constraints.append(rel_angle3_constraint)
         self.append_points([p1, p2, p3])
         self.append_params([p1.x(), p1.y(), p2.x(), p2.y(), p3.x(), p3.y(), angle])
         self.constraint_types.append("RelAngle3")
@@ -957,11 +976,11 @@ class CurvatureConstraint(GeoCon):
             data = self.calculate_curvature_data()
             target_Lc2 = (data.Lt2 * data.Lt2) / (data.Lt1 * data.Lt1) * (
                     (1 - 1 / data.n1) * data.Lc1 * np.abs(np.sin(data.psi1))) / (
-                    (1 - 1 / data.n2) * np.abs(np.sin(data.psi2)))
+                                 (1 - 1 / data.n2) * np.abs(np.sin(data.psi2)))
 
             # Calculate if the radius of curvature needs to be reversed for this step
             if (0 <= data.psi1 % (2 * np.pi) < np.pi and 0 <= data.psi2 % (2 * np.pi) < np.pi) or (
-                np.pi <= data.psi1 % (2 * np.pi) < 2 * np.pi and np.pi <= data.psi2 % (2 * np.pi) < 2 * np.pi
+                    np.pi <= data.psi1 % (2 * np.pi) < 2 * np.pi and np.pi <= data.psi2 % (2 * np.pi) < 2 * np.pi
             ):
                 theta2 = data.phi2 - data.psi2  # Reverse
             else:
@@ -982,7 +1001,7 @@ class CurvatureConstraint(GeoCon):
             data = self.calculate_curvature_data()
             target_Lc1 = (data.Lt1 * data.Lt1) / (data.Lt2 * data.Lt2) * (
                     (1 - 1 / data.n2) * data.Lc2 * np.abs(np.sin(data.psi2))) / (
-                    (1 - 1 / data.n1) * np.abs(np.sin(data.psi1)))
+                                 (1 - 1 / data.n1) * np.abs(np.sin(data.psi1)))
 
             # Calculate if the radius of curvature needs to be reversed for this step
             if (0 <= data.psi1 % (2 * np.pi) < np.pi and 0 <= data.psi2 % (2 * np.pi) < np.pi) or (
@@ -1001,7 +1020,8 @@ class CurvatureConstraint(GeoCon):
             else:
                 self.target().points()[0].request_move(new_x, new_y, updated_objs=updated_objs)
 
-        elif calling_point is self.target().points()[1]:  # Curve 1 g1 point modified -> update curve 2 g1 point and g2 points
+        elif calling_point is self.target().points()[
+            1]:  # Curve 1 g1 point modified -> update curve 2 g1 point and g2 points
             if initial_psi1 is None or initial_psi2 is None or initial_R is None:
                 data = self.calculate_curvature_data()
                 initial_psi1 = data.psi1
@@ -1046,7 +1066,8 @@ class CurvatureConstraint(GeoCon):
                 self.target().points()[3].request_move(self.target().points()[3].x().value(),
                                                        self.target().points()[3].y().value(), updated_objs=updated_objs)
 
-        elif calling_point is self.target().points()[2]:  # Curve 2 g1 point modified -> update curve 1 g1 point and g2 points
+        elif calling_point is self.target().points()[
+            2]:  # Curve 2 g1 point modified -> update curve 1 g1 point and g2 points
             if initial_psi1 is None or initial_psi2 is None or initial_R is None:
                 raise ValueError("Must specify initial_psi1, initial_psi2, and initial_R when enforcing the "
                                  "curvature constraint from a G1 point")

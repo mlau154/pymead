@@ -91,9 +91,9 @@ class Point(PymeadObj):
 
             intermediate_param_vec = np.array([p.value() for p in self.gcs.params])
 
-            res = self.gcs.solve2(start_param_vec, intermediate_param_vec)
+            params, info = self.gcs.solve(start_param_vec, intermediate_param_vec)
 
-            self.gcs.update(res.x)
+            self.gcs.update(params)
 
     def force_move(self, xp: float, yp: float):
         self.x().set_value(xp)
