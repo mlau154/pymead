@@ -245,12 +245,8 @@ class AirfoilCanvas(pg.PlotWidget):
 
         p1 = self.geo_col.selected_objects["points"][0]
         p2 = self.geo_col.selected_objects["points"][1]
-        length_param = LengthParam(0.8, "LengthBOI")
 
-        gcs1 = GCS(parent=p1)
-        gcs1.add_distance_constraint(p2, p1, length_param)
-        gcs2 = GCS(parent=p2)
-        gcs2.add_distance_constraint(p1, p2, length_param)
+        self.geo_col.add_distance_constraint(p1, p2)
 
     @runSelectionEventLoop(drawing_object="AngleDimension", starting_message="Select the tool point")
     def addAngleDimension(self):

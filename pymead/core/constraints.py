@@ -158,68 +158,6 @@ def parallel4_constraint(x1: float, y1: float, x2: float, y2: float, x3: float, 
     return measure_rel_angle4(x1, y1, x2, y2, x3, y3, x4, y4) - jnp.pi
 
 
-@jit
-def equation_set(x: np.ndarray, start_param_vec: np.ndarray, intermediate_param_vec: np.ndarray,
-                 strong_constraints: typing.List[int], sub_pos: list,
-                 weak_constraints: typing.List[int], weak_arg_indices: list):
-    # strong_equations = {
-    #     0: fixed_param_constraint,
-    #     1: fixed_x_constraint,
-    #     2: fixed_y_constraint,
-    #     3: distance_constraint,
-    #     4: abs_angle_constraint,
-    # }
-
-    strong_equations = [fixed_param_constraint, fixed_x_constraint, fixed_y_constraint, distance_constraint,
-                        abs_angle_constraint]
-
-    # weak_equations = {
-    #     0: fixed_param_constraint_weak,
-    #     1: fixed_x_constraint_weak,
-    #     2: fixed_y_constraint_weak,
-    #     3: abs_angle_constraint_weak
-    # }
-
-    weak_equations = [fixed_param_constraint_weak, fixed_x_constraint_weak, fixed_y_constraint_weak,
-                      abs_angle_constraint_weak]
-
-    # Evaluate the strong constraints using the updated parameter vector
-    constraints = [strong_equations[cnstr](*x[sp]) for cnstr, sp in zip(strong_constraints, sub_pos)]
-
-    # Evaluate the weak constraints (functions that are simply used to keep the system fully constrained according
-    # to a set of rules and can be overridden by strong constraints)
-    weak_constraints = [weak_equations[cnstr](*[start_param_vec[w[0]] if w[1] == 0
-                                                else intermediate_param_vec[w[0]] if w[1] == 1
-    else x[w[0]] for w in weak_args])
-                        for cnstr, weak_args in zip(weak_constraints, weak_arg_indices)]
-
-    # Combine the lists of strong and weak constraints
-    constraints.extend(weak_constraints)
-
-    return jnp.array(constraints)
-
-
-# @jit
-def jacobian(*args):
-    """
-    Calculates the Jacobian matrix for the non-linear system of equations describing the full set of
-    constraints for this point or parameter. According to the Jax docs, forward automatic differentiation
-    may have a slight advantage over reverse automatic differentiation for calculating a square Jacobian, so
-    ``jacfwd`` is used here.
-
-    Parameters
-    ----------
-    args
-
-    Returns
-    -------
-    np.ndarray
-        The evaluated (square) Jacobian matrix
-
-    """
-    return jacfwd(equation_set)(*args)
-
-
 class PymeadRootFinder(jaxopt.ScipyRootFinding):
     def __init__(self, equation_system: typing.Callable):
         super().__init__(
@@ -232,12 +170,26 @@ class PymeadRootFinder(jaxopt.ScipyRootFinding):
         )
 
 
-class DistCon:
+class ConstraintCollection:
+    def __init__(self):
+        self.points = []
+        self.params = []
 
-    def __init__(self, p1: Point, p2: Point, dist: Param):
-        self.p1 = p1
-        self.p2 = p2
-        self.dist = dist
+    def append_points(self, points: typing.List[Point]):
+        for point in points:
+            if point not in self.points:
+                self.points.append(point)
+
+    def append_params(self, params: typing.List[Param]):
+        sub_pos = []
+        for param in params:
+            if param in self.params:
+                sub_pos.append(self.params.index(param))
+            else:
+                sub_pos.append(len(self.params))
+                self.params.append(param)
+
+        self.sub_pos.append(np.array(sub_pos))
 
 
 class GCS:
@@ -258,13 +210,18 @@ class GCS:
         self.weak_arg_indices = []
         self.points = []
         self.params = []
-        self.variables = []
         self.original_data = []
 
     # def check_constraint_state(self):
     #     if len(self.variables) == 0:
     #         return self.Unconstrained
     #     elif len(self.variables)
+
+    def get_dof(self):
+        return len(self.params) - len(self.strong_constraints)
+
+    def get_strong_weak_dof(self):
+        return len(self.params) - len(self.strong_constraints) - len(self.weak_constraints)
 
     def compile_equation_set(self):
 
@@ -287,10 +244,24 @@ class GCS:
         self.root_finder = PymeadRootFinder(jit(equation_system))
 
     def solve(self, start_param_vec: np.ndarray, intermediate_param_vec: np.ndarray):
+        """
+        Solves the compiled non-linear system of equations for this ``Point`` using Jax's wrapper for
+        ``scipy.optimize.root``.
+
+        Parameters
+        ----------
+        start_param_vec: np.ndarray
+            The parameter vector
+
+        intermediate_param_vec: np.ndarray
+            The parameter vector
+
+        Returns
+        -------
+        np.ndarray, dict
+            A two-element tuple containing the new parameter vector and information about the solution state
+        """
         return self.root_finder.run(intermediate_param_vec, start_param_vec, intermediate_param_vec)
-        # return root(equation_set, x0=intermediate_param_vec, jac=jacobian,
-        #             args=(start_param_vec, intermediate_param_vec, self.equations, self.sub_pos,
-        #                   self.weak_equations, self.weak_arg_indices), tol=1e-6)
 
     def update(self, new_x: np.ndarray):
         """
@@ -331,38 +302,23 @@ class GCS:
 
         self.sub_pos.append(np.array(sub_pos))
 
-    def append_variables(self, variables: typing.List[Param]):
-        no_solution = True
-        for v in variables:
-            if v not in self.variables:
-                self.variables.append(v)
-
-                res = self.solve()
-                if res.success:
-                    no_solution = False
-                    self.update(res.x)
-                    break
-                else:
-                    self.variables.remove(v)
-
-        if no_solution:
-            raise NoSolutionError("Over-constrained or no solution")
-
     def add_fixed_x_constraint(self, p: Point, x: LengthParam):
         self.strong_constraints.append(fixed_x_constraint)
         self.append_points([p])
         self.append_params([p.x(), x])
         self.constraint_types.append("FixedX")
 
-        # self.append_variables([p.x()])
+    def add_fixed_x_constraint_weak(self, p: Point, x: LengthParam):
+        self.weak_constraints.append(fixed_x_constraint_weak)
+        self.append_points([p])
+        self.append_params([p.x(), x])
+        self.constraint_types.append("FixedXWeak")
 
     def add_fixed_y_constraint(self, p: Point, y: LengthParam):
         self.strong_constraints.append(fixed_y_constraint)
         self.append_points([p])
         self.append_params([p.y(), y])
         self.constraint_types.append("FixedY")
-
-        self.append_variables([p.y()])
 
     def add_distance_constraint(self, p1: Point, p2: Point, dist: LengthParam):
         self.strong_constraints.append(distance_constraint)
@@ -371,24 +327,40 @@ class GCS:
         self.constraint_types.append("Distance")
 
         if self.parent is p1:
-            self.weak_constraints.append(fixed_x_constraint_weak)
-            self.weak_constraints.append(fixed_y_constraint_weak)
+            use_fixed_x = False
+            if self.get_strong_weak_dof() >= 3:
+                self.weak_constraints.append(fixed_x_constraint_weak)
+                use_fixed_x = True
+            use_fixed_y = False
+            if (use_fixed_x and self.get_strong_weak_dof() >= 2) or self.get_strong_weak_dof() >= 3:
+                self.weak_constraints.append(fixed_y_constraint_weak)
+                use_fixed_y = True
             self.weak_constraints.append(fixed_param_constraint_weak)
 
-            self.weak_arg_indices.append([[self.params.index(p2.x()), 1], [self.params.index(p2.x()), 0]])
-            self.weak_arg_indices.append([[self.params.index(p2.y()), 1], [self.params.index(p2.y()), 0]])
+            if use_fixed_x:
+                self.weak_arg_indices.append([[self.params.index(p2.x()), 1], [self.params.index(p2.x()), 0]])
+            if use_fixed_y:
+                self.weak_arg_indices.append([[self.params.index(p2.y()), 1], [self.params.index(p2.y()), 0]])
             self.weak_arg_indices.append([[self.params.index(dist), 1], [self.params.index(dist), 0]])
 
             self.compile_equation_set()
 
         elif self.parent in [p2, dist]:
-            self.weak_constraints.append(fixed_x_constraint_weak)
-            self.weak_constraints.append(fixed_y_constraint_weak)
+            use_fixed_x = False
+            if self.get_strong_weak_dof() >= 3:
+                self.weak_constraints.append(fixed_x_constraint_weak)
+                use_fixed_x = True
+            use_fixed_y = False
+            if (use_fixed_x and self.get_strong_weak_dof() >= 2) or self.get_strong_weak_dof() >= 3:
+                self.weak_constraints.append(fixed_y_constraint_weak)
+                use_fixed_y = True
             self.weak_constraints.append(fixed_param_constraint_weak)
             self.weak_constraints.append(abs_angle_constraint_weak)
 
-            self.weak_arg_indices.append([[self.params.index(p1.x()), 2], [self.params.index(p1.x()), 0]])
-            self.weak_arg_indices.append([[self.params.index(p1.y()), 2], [self.params.index(p1.y()), 0]])
+            if use_fixed_x:
+                self.weak_arg_indices.append([[self.params.index(p1.x()), 2], [self.params.index(p1.x()), 0]])
+            if use_fixed_y:
+                self.weak_arg_indices.append([[self.params.index(p1.y()), 2], [self.params.index(p1.y()), 0]])
             self.weak_arg_indices.append([[self.params.index(dist), 2], [self.params.index(dist), 0]])
 
             fixed_angle_indices = []
@@ -399,7 +371,7 @@ class GCS:
 
             self.weak_arg_indices.append(fixed_angle_indices)
 
-            start_param_vec = np.array([p.value() for p in [p1.x(), p1.y(), p2.x(), p2.y(), dist]])
+            start_param_vec = np.array([p.value() for p in self.params])
             intermediate_param_vec = deepcopy(start_param_vec)
 
             self.compile_equation_set()
@@ -421,26 +393,11 @@ class GCS:
 
             self.compile_equation_set()
 
-        #
-        # # Try to initialize the constraint by setting point 2 at distance "dist" from point 1
-        # # at the original absolute angle
-        # if self.parent is p1:
-        #     self.equations.append(fixed_x_constraint)
-        #
-        # if self.parent is p1:
-        #     self.append_variables([p1.x(), p1.y(), p2.x(), p2.y()])
-        # else:
-        #     self.append_variables([p2.x(), p2.y(), p1.x(), p1.y()])
-
     def add_abs_angle_constraint(self, p1: Point, p2: Point, angle: AngleParam):
         self.strong_constraints.append(abs_angle_constraint)
         self.append_points([p1, p2])
         self.append_params([p1.x(), p1.y(), p2.x(), p2.y(), angle])
         self.constraint_types.append("AbsAngle")
-        if self.parent is p1:
-            self.append_variables([p1.x(), p1.y(), p2.x(), p2.y()])
-        else:
-            self.append_variables([p2.x(), p2.y(), p1.x(), p1.y()])
 
     def add_rel_angle3_constraint(self, p1: Point, p2: Point, p3: Point, angle: AngleParam):
         self.strong_constraints.append(rel_angle3_constraint)
@@ -448,38 +405,16 @@ class GCS:
         self.append_params([p1.x(), p1.y(), p2.x(), p2.y(), p3.x(), p3.y(), angle])
         self.constraint_types.append("RelAngle3")
 
-        # Try to initialize the constraint by setting point 1 at relative angle "angle"
-        # and retaining the original distance between point 1 and point 2
-        target_dist = p1.measure_distance(p2)
-        abs_angle_p2p3 = p2.measure_angle(p3)
-        if self.parent is p2:
-            p1.x().set_value(p2.x().value() + target_dist * np.cos(abs_angle_p2p3 + angle.rad()))
-            p1.y().set_value(p2.y().value() + target_dist * np.sin(abs_angle_p2p3 + angle.rad()))
-
-        ang = measure_rel_angle3(p1.x().value(), p1.y().value(), p2.x().value(), p2.y().value(),
-                                 p3.x().value(), p3.y().value())
-
-        if self.parent is p1:
-            self.append_variables([p1.x(), p1.y(), p3.x(), p3.y(), p2.x(), p2.y()])
-        elif self.parent is p2:
-            self.append_variables([p2.x(), p2.y(), p1.x(), p1.y(), p3.x(), p3.y()])
-        elif self.parent is p3:
-            self.append_variables([p3.x(), p3.y(), p1.x(), p1.y(), p2.x(), p2.y()])
-        # TODO: revisit. Do we need to p2 here?
-
 
 class GeoCon(PymeadObj):
-    def __init__(self, tool: PointSequence or Point, target: PointSequence or Point, bidirectional: bool = False,
+    def __init__(self, tool: PointSequence or Point, target: PointSequence or Point,
                  name: str or None = None):
         self._tool = None
         self._target = None
-        self._bidirectional = None
         super().__init__(sub_container="geocon")
         self.set_name(name)
         self.set_tool(tool)
         self.set_target(target)
-        self.set_bidirectional(bidirectional)
-        self.validate()
 
     def tool(self):
         return self._tool
@@ -487,24 +422,14 @@ class GeoCon(PymeadObj):
     def target(self):
         return self._target
 
-    def bidirectional(self):
-        return self._bidirectional
-
     def set_tool(self, tool: PointSequence or Point):
         self._tool = tool
 
     def set_target(self, target: PointSequence or Point):
         self._target = target
 
-    def set_bidirectional(self, bidirectional: bool):
-        self._bidirectional = bidirectional
-
     @abstractmethod
-    def validate(self):
-        pass
-
-    @abstractmethod
-    def enforce(self, *args, **kwargs):
+    def add_constraint_to_gcs(self):
         pass
 
 
@@ -752,6 +677,37 @@ class ParallelConstraint(GeoCon):
         return {"tool": [pt.name() for pt in self.tool().points()],
                 "target": [pt.name() for pt in self.target().points()],
                 "constraint_type": "parallel"}
+
+
+class DistanceConstraint(GeoCon):
+    def __init__(self, start_point: Point, end_point: Point, length_param: LengthParam or None = None,
+                 name: str or None = None):
+        name = "DistanceCon-1" if name is None else name
+        self.start_point = start_point
+        self.end_point = end_point
+
+        super().__init__(tool=start_point, target=end_point, name=name)
+
+        if length_param is None:
+            distance = self.tool().measure_distance(self.target())
+            if self.geo_col is None:
+                self.length_param = LengthParam(value=distance, name="Length-1")
+            else:
+                self.length_param = self.geo_col.add_param(value=distance, name="Length-1", unit_type="length")
+        else:
+            self.length_param = length_param
+
+        self.add_constraint_to_gcs()
+
+    def add_constraint_to_gcs(self):
+        gcs1 = GCS(parent=self.start_point) if self.start_point.gcs is None else self.start_point.gcs
+        gcs2 = GCS(parent=self.end_point) if self.end_point.gcs is None else self.end_point.gcs
+        gcs1.add_distance_constraint(self.end_point, self.start_point, self.length_param)
+        gcs2.add_distance_constraint(self.start_point, self.end_point, self.length_param)
+
+    def get_dict_rep(self):
+        return {"tool": self.start_point.name(), "target": self.end_point.name(),
+                "length_param": self.length_param.name(), "name": self.name(), "constraint_type": "Distance"}
 
 
 class CollinearConstraint(GeoCon):

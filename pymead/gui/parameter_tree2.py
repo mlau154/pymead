@@ -12,7 +12,7 @@ from PyQt5.QtCore import Qt, pyqtSignal, pyqtSlot, QRegularExpression
 
 from pymead.core.airfoil2 import Airfoil
 from pymead.core.constraints import GeoCon, CollinearConstraint, CurvatureConstraint, RelAngleConstraint, \
-    PerpendicularConstraint, ParallelConstraint
+    PerpendicularConstraint, ParallelConstraint, DistanceConstraint
 from pymead.core import UNITS
 from pymead.core.dimensions import LengthDimension, AngleDimension
 from pymead.core.mea2 import MEA
@@ -528,6 +528,36 @@ class LengthDimensionButton(TreeButton):
             self.tree.itemWidget(point.tree_item, 0).setText(name)
 
 
+class DistanceConstraintButton(TreeButton):
+
+    def __init__(self, distance_constraint: DistanceConstraint, tree, top_level: bool = False):
+        super().__init__(pymead_obj=distance_constraint, tree=tree, top_level=top_level)
+        self.distance_constraint = distance_constraint
+
+    def modifyDialogInternals(self, dialog: QDialog, layout: QGridLayout) -> None:
+        name_label = QLabel("Name", self)
+        name_edit = NameEdit(self, self.distance_constraint, self.tree)
+        name_edit.textChanged.connect(self.onNameChange)
+        layout.addWidget(name_label, 1, 0)
+        layout.addWidget(name_edit, 1, 1)
+        labels = ["Start Point", "End Point"]
+        points = [self.distance_constraint.start_point, self.distance_constraint.end_point]
+        for label, point in zip(labels, points):
+            point_button = PointButton(point, self.tree)
+            point_button.sigNameChanged.connect(self.onPointNameChange)
+            q_label = QLabel(label, self)
+            row_count = layout.rowCount()
+            layout.addWidget(q_label, row_count, 0)
+            layout.addWidget(point_button, row_count, 1)
+        row_count = layout.rowCount()
+        layout.addWidget(QLabel("Length Param", self), row_count, 0)
+        layout.addWidget(LengthParamButton(self.distance_constraint.length_param, self.tree), row_count, 1)
+
+    def onPointNameChange(self, name: str, point: Point):
+        if point.tree_item is not None:
+            self.tree.itemWidget(point.tree_item, 0).setText(name)
+
+
 class AngleDimensionButton(TreeButton):
 
     def __init__(self, angle_dim: AngleDimension, tree, top_level: bool = False):
@@ -878,6 +908,7 @@ class ParameterTree(QTreeWidget):
                            "ParallelConstraint": "ParallelConstraintButton",
                            "PerpendicularConstraint": "PerpendicularConstraintButton",
                            "CurvatureConstraint": "CurvatureConstraintButton",
+                           "DistanceConstraint": "DistanceConstraintButton",
                            }
         button = getattr(sys.modules[__name__], button_mappings[type(pymead_obj).__name__])(*button_args, top_level=True)
 

@@ -4,7 +4,7 @@ import typing
 from pymead.core.airfoil2 import Airfoil
 from pymead.core.bezier2 import Bezier
 from pymead.core.constraints import CollinearConstraint, CurvatureConstraint, GeoCon, RelAngleConstraint, \
-    PerpendicularConstraint, ParallelConstraint
+    PerpendicularConstraint, ParallelConstraint, DistanceConstraint
 from pymead.core.dimensions import LengthDimension, AngleDimension, Dimension
 from pymead.core.mea2 import MEA
 from pymead.core.pymead_obj import DualRep, PymeadObj
@@ -741,6 +741,17 @@ class GeometryCollection(DualRep):
             self.add_pymead_obj_by_ref(pymead_obj=angle_dim.param(), assign_unique_name=assign_unique_name)
 
         return self.add_pymead_obj_by_ref(angle_dim, assign_unique_name=assign_unique_name)
+
+    def add_distance_constraint(self, start_point: Point, end_point: Point, length_param: LengthParam or None = None,
+                                name: str or None = None, assign_unique_name: bool = True):
+        distance_constraint = DistanceConstraint(start_point=start_point, end_point=end_point,
+                                                 length_param=length_param, name=name)
+
+        if distance_constraint.length_param.geo_col is None:
+            self.add_pymead_obj_by_ref(pymead_obj=distance_constraint.length_param,
+                                       assign_unique_name=assign_unique_name)
+
+        return self.add_pymead_obj_by_ref(distance_constraint, assign_unique_name=assign_unique_name)
 
     def add_collinear_constraint(self, start_point: Point, middle_point: Point, end_point: Point,
                                  name: str or None = None, assign_unique_name: bool = True):

@@ -3,6 +3,7 @@ from unittest import TestCase
 import numpy as np
 
 from pymead.core.constraints import GCS
+from pymead.core.geometry_collection import GeometryCollection
 from pymead.core.point import Point
 from pymead.core.param2 import LengthParam, AngleParam
 
@@ -106,6 +107,41 @@ class GCSTests(TestCase):
 
         self.assertAlmostEqual(p1.measure_distance(p2), target_distance_value, places=6)
         self.assertAlmostEqual(p1.measure_angle(p2), new_angle, places=6)
+
+    def test_two_distance_constraints(self):
+        geo_col = GeometryCollection()
+
+        target_distance_value = 0.6
+        length_param = geo_col.add_param(target_distance_value, name="dist", unit_type="length")
+
+        p1 = Point(0.0, 0.0)
+        p2 = Point(0.5, 0.8)
+        p3 = Point(-0.3, -0.4)
+        starting_angle_12 = p1.measure_angle(p2)
+        starting_angle_13 = p1.measure_angle(p3)
+
+        # Add the first distance constraint
+        geo_col.add_distance_constraint(p1, p2, length_param)
+
+        # Add the second distance constraint
+        geo_col.add_distance_constraint(p3, p2, length_param)
+
+        self.assertAlmostEqual(p1.measure_distance(p2), target_distance_value, places=6)
+        self.assertAlmostEqual(p1.measure_distance(p3), target_distance_value, places=6)
+        self.assertAlmostEqual(p1.measure_angle(p2), starting_angle_12, places=6)
+        self.assertAlmostEqual(p1.measure_angle(p3), starting_angle_13, places=6)
+
+        p1.request_move(-0.1, -0.1)
+        self.assertAlmostEqual(p1.measure_distance(p2), target_distance_value, places=6)
+        self.assertAlmostEqual(p1.measure_distance(p3), target_distance_value, places=6)
+
+        p2.request_move(0.3, 0.6)
+        self.assertAlmostEqual(p1.measure_distance(p2), target_distance_value, places=6)
+        self.assertAlmostEqual(p1.measure_distance(p3), target_distance_value, places=6)
+
+        p3.request_move(-0.4, 1.0)
+        self.assertAlmostEqual(p1.measure_distance(p2), target_distance_value, places=6)
+        self.assertAlmostEqual(p1.measure_distance(p3), target_distance_value, places=6)
 
     def test_abs_angle_constraint(self):
         target_angle_value = 0.8
