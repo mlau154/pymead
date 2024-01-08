@@ -2,7 +2,7 @@ from unittest import TestCase
 
 import numpy as np
 
-from pymead.core.constraints import GCS
+from pymead.core.constraints import *
 from pymead.core.geometry_collection import GeometryCollection
 from pymead.core.point import Point
 from pymead.core.param2 import LengthParam, AngleParam
@@ -88,19 +88,25 @@ class GCSTests(TestCase):
         self.assertAlmostEqual(p.y().value(), 0.4, places=6)
 
     def test_distance_constraint(self):
+
+        geo_col = GeometryCollection()
+
         target_distance_value = 0.6
 
-        p1 = Point(0.0, 0.0)
-        p2 = Point(0.5, 0.2)
+        p1 = geo_col.add_point(0.0, 0.0)
+        p2 = geo_col.add_point(0.5, 0.2)
         starting_angle = p1.measure_angle(p2)
 
-        dist = LengthParam(target_distance_value, "dist")
-        gcs = GCS(parent=p2)
-        gcs.add_distance_constraint(p1, p2, dist)
+        dist = geo_col.add_param(target_distance_value, unit_type="length")
+
+        cnstr = geo_col.add_distance_constraint(p1, p2, dist)
+
+        cnstr.add_constraint_to_gcs()
 
         self.assertAlmostEqual(p1.measure_distance(p2), target_distance_value, places=6)
         self.assertAlmostEqual(p1.measure_angle(p2), starting_angle, places=6)
 
+        print("Moving the target point to 0.7, 0.6")
         p2.request_move(0.7, 0.6)
         p_test = Point(0.7, 0.6)
         new_angle = p1.measure_angle(p_test)
@@ -108,7 +114,53 @@ class GCSTests(TestCase):
         self.assertAlmostEqual(p1.measure_distance(p2), target_distance_value, places=6)
         self.assertAlmostEqual(p1.measure_angle(p2), new_angle, places=6)
 
-    def test_two_distance_constraints(self):
+    def test_two_distance_constraints_different_distance(self):
+        geo_col = GeometryCollection()
+
+        target_distance_value_1 = 0.6
+        length_param_1 = geo_col.add_param(target_distance_value_1, name="dist1", unit_type="length")
+
+        target_distance_value_2 = 0.75
+        length_param_2 = geo_col.add_param(target_distance_value_2, name="dist2", unit_type="length")
+
+        p1 = Point(0.0, 0.0)
+        p2 = Point(0.5, 0.8)
+        p3 = Point(-0.3, -0.4)
+        starting_angle_12 = p1.measure_angle(p2)
+        starting_angle_23 = p2.measure_angle(p3)
+
+        print(f"{length_param_1.value() = }, {length_param_2.value() = }")
+
+        # Add the first distance constraint
+        cnstr1 = geo_col.add_distance_constraint(p1, p2, length_param_1)
+        cnstr1.add_constraint_to_gcs()
+
+        print(f"{length_param_1.value() = }, {length_param_2.value() = }")
+
+        # Add the second distance constraint
+        cnstr2 = geo_col.add_distance_constraint(p2, p3, length_param_2)
+        cnstr2.add_constraint_to_gcs()
+
+        print(f"{length_param_1.value() = }, {length_param_2.value() = }")
+
+        self.assertAlmostEqual(p1.measure_distance(p2), target_distance_value_1, places=6)
+        self.assertAlmostEqual(p2.measure_distance(p3), target_distance_value_2, places=6)
+        self.assertAlmostEqual(p1.measure_angle(p2), starting_angle_12, places=6)
+        self.assertAlmostEqual(p2.measure_angle(p3), starting_angle_23, places=6)
+
+        p1.request_move(-0.1, -0.1)
+        self.assertAlmostEqual(p1.measure_distance(p2), target_distance_value_1, places=6)
+        self.assertAlmostEqual(p2.measure_distance(p3), target_distance_value_2, places=6)
+
+        p2.request_move(0.3, 0.6)
+        self.assertAlmostEqual(p1.measure_distance(p2), target_distance_value_1, places=6)
+        self.assertAlmostEqual(p2.measure_distance(p3), target_distance_value_2, places=6)
+
+        p3.request_move(-0.4, 1.0)
+        self.assertAlmostEqual(p1.measure_distance(p2), target_distance_value_1, places=6)
+        self.assertAlmostEqual(p2.measure_distance(p3), target_distance_value_2, places=6)
+
+    def test_two_distance_constraints_same_distance(self):
         geo_col = GeometryCollection()
 
         target_distance_value = 0.6
@@ -121,10 +173,12 @@ class GCSTests(TestCase):
         starting_angle_13 = p1.measure_angle(p3)
 
         # Add the first distance constraint
-        geo_col.add_distance_constraint(p1, p2, length_param)
+        cnstr1 = geo_col.add_distance_constraint(p1, p2, length_param)
+        cnstr1.add_constraint_to_gcs()
 
         # Add the second distance constraint
-        geo_col.add_distance_constraint(p3, p2, length_param)
+        cnstr2 = geo_col.add_distance_constraint(p2, p3, length_param)
+        cnstr2.add_constraint_to_gcs()
 
         self.assertAlmostEqual(p1.measure_distance(p2), target_distance_value, places=6)
         self.assertAlmostEqual(p1.measure_distance(p3), target_distance_value, places=6)

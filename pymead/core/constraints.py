@@ -2,160 +2,17 @@ import typing
 from abc import abstractmethod
 from copy import deepcopy
 from dataclasses import dataclass
-from functools import partial
-from collections import namedtuple
 
 import numpy as np
-from scipy.optimize import root
-from jax import jit, jacfwd
+from jax import jit
 from jax import numpy as jnp
 import jaxopt
 
 from pymead.core import UNITS
+from pymead.core import constraint_equations as ceq
 from pymead.core.param2 import Param, AngleParam, LengthParam
 from pymead.core.point import PointSequence, Point
 from pymead.core.pymead_obj import PymeadObj
-
-
-@jit
-def measure_distance(x1: float, y1: float, x2: float, y2: float):
-    return jnp.hypot(x1 - x2, y1 - y2)
-
-
-@jit
-def measure_abs_angle(x1: float, y1: float, x2: float, y2: float):
-    return (jnp.arctan2(y2 - y1, x2 - x1)) % (2 * jnp.pi)
-
-
-@jit
-def measure_rel_angle3(x1: float, y1: float, x2: float, y2: float, x3: float, y3: float):
-    return (jnp.arctan2(y1 - y2, x1 - x2) - jnp.arctan2(y3 - y2, x3 - x2)) % (2 * jnp.pi)
-
-
-@jit
-def measure_rel_angle4(x1: float, y1: float, x2: float, y2: float, x3: float, y3: float, x4: float, y4: float):
-    return (jnp.arctan2(y4 - y3, x4 - x3) - jnp.arctan2(y2 - y1, x2 - x1)) % (2 * jnp.pi)
-
-
-@jit
-def measure_radius_of_curvature_bezier(Lt: float, Lc: float, n: int, psi: float):
-    return jnp.abs(jnp.true_divide(Lt ** 2, Lc * (1 - 1 / n) * jnp.sin(psi)))
-
-
-@jit
-def measure_curvature_bezier(Lt: float, Lc: float, n: int, psi: float):
-    return jnp.abs(jnp.true_divide(Lc * (1 - 1 / n) * jnp.sin(psi), Lt ** 2))
-
-
-@jit
-def measure_data_bezier_curve_joint(xy: np.ndarray, n: np.ndarray):
-    phi1 = measure_abs_angle(xy[2, 0], xy[2, 1], xy[1, 0], xy[1, 1])
-    phi2 = measure_abs_angle(xy[2, 0], xy[2, 1], xy[3, 0], xy[3, 1])
-    theta1 = measure_abs_angle(xy[1, 0], xy[1, 1], xy[0, 0], xy[0, 1])
-    theta2 = measure_abs_angle(xy[3, 0], xy[3, 1], xy[4, 0], xy[4, 1])
-    psi1 = theta1 - phi1
-    psi2 = theta2 - phi2
-    phi_rel = (phi1 - phi2) % (2 * jnp.pi)
-    Lt1 = measure_distance(xy[1, 0], xy[1, 1], xy[2, 0], xy[2, 1])
-    Lt2 = measure_distance(xy[2, 0], xy[2, 1], xy[3, 0], xy[3, 1])
-    Lc1 = measure_distance(xy[0, 0], xy[0, 1], xy[1, 0], xy[1, 1])
-    Lc2 = measure_distance(xy[3, 0], xy[3, 1], xy[4, 0], xy[4, 1])
-    kappa1 = measure_curvature_bezier(Lt1, Lc1, n[0], psi1)
-    kappa2 = measure_curvature_bezier(Lt2, Lc2, n[1], psi2)
-    R1 = jnp.true_divide(1, kappa1)
-    R2 = jnp.true_divide(1, kappa2)
-    n1 = n[0]
-    n2 = n[1]
-    field_names = ["phi1", "phi2", "theta1", "theta2", "psi1", "psi2", "phi_rel", "Lt1", "Lt2", "Lc1", "Lc2",
-                   "kappa1", "kappa2", "R1", "R2", "n1", "n2"]
-    BezierCurveJointData = namedtuple("BezierCurveJointData", field_names=field_names)
-    data = BezierCurveJointData(phi1=phi1, phi2=phi2, theta1=theta1, theta2=theta2, psi1=psi1, psi2=psi2,
-                                phi_rel=phi_rel, Lt1=Lt1, Lt2=Lt2, Lc1=Lc1, Lc2=Lc2, kappa1=kappa1, kappa2=kappa2,
-                                R1=R1, R2=R2, n1=n1, n2=n2)
-    return data
-
-
-@jit
-def empty_constraint_weak():
-    return 0.0
-
-
-@jit
-def fixed_param_constraint(p_val: float, val: float):
-    return p_val - val
-
-
-@jit
-def fixed_param_constraint_weak(new_val: float, old_val: float):
-    return new_val - old_val
-
-
-@jit
-def fixed_x_constraint(x: float, val: float):
-    return x - val
-
-
-@jit
-def fixed_x_constraint_weak(x_new: float, x_old: float):
-    return x_new - x_old
-
-
-@jit
-def fixed_y_constraint(y: float, val: float):
-    return y - val
-
-
-@jit
-def fixed_y_constraint_weak(y_new: float, y_old: float):
-    return y_new - y_old
-
-
-@jit
-def distance_constraint(x1: float, y1: float, x2: float, y2: float, dist: float):
-    return measure_distance(x1, y1, x2, y2) - dist
-
-
-@jit
-def abs_angle_constraint(x1: float, y1: float, x2: float, y2: float, angle: float):
-    return measure_abs_angle(x1, y1, x2, y2) - angle
-
-
-@jit
-def abs_angle_constraint_weak(x1_new: float, y1_new: float, x2_new: float, y2_new: float,
-                              x1_old: float, y1_old: float, x2_old: float, y2_old: float):
-    return (measure_abs_angle(x1_new, y1_new, x2_new, y2_new) -
-            measure_abs_angle(x1_old, y1_old, x2_old, y2_old))
-
-
-@jit
-def rel_angle3_constraint(x1: float, y1: float, x2: float, y2: float, x3: float, y3: float, angle: float):
-    return measure_rel_angle3(x1, y1, x2, y2, x3, y3) - angle
-
-
-@jit
-def rel_angle4_constraint(x1: float, y1: float, x2: float, y2: float, x3: float, y3: float, x4: float, y4: float,
-                          angle: float):
-    return measure_rel_angle4(x1, y1, x2, y2, x3, y3, x4, y4) - angle
-
-
-@jit
-def perp3_constraint(x1: float, y1: float, x2: float, y2: float, x3: float, y3: float):
-    return measure_rel_angle3(x1, y1, x2, y2, x3, y3) - (jnp.pi / 2)
-
-
-@jit
-def perp4_constraint(x1: float, y1: float, x2: float, y2: float, x3: float, y3: float, x4: float, y4: float):
-    return measure_rel_angle4(x1, y1, x2, y2, x3, y3, x4, y4) - (jnp.pi / 2)
-
-
-@jit
-def parallel3_constraint(x1: float, y1: float, x2: float, y2: float, x3: float, y3: float):
-    return measure_rel_angle3(x1, y1, x2, y2, x3, y3) - jnp.pi
-
-
-@jit
-def parallel4_constraint(x1: float, y1: float, x2: float, y2: float, x3: float, y3: float, x4: float, y4: float):
-    return measure_rel_angle4(x1, y1, x2, y2, x3, y3, x4, y4) - jnp.pi
 
 
 class PymeadRootFinder(jaxopt.ScipyRootFinding):
@@ -169,27 +26,98 @@ class PymeadRootFinder(jaxopt.ScipyRootFinding):
             use_jacrev=False,  # Use the forward Jacobian calculation since the matrix is square
         )
 
+    def solve(self, x0: np.ndarray, start_param_vec: np.ndarray, intermediate_param_vec: np.ndarray):
+        """
+        Solves the compiled non-linear system of equations for this ``Point`` using Jax's wrapper for
+        ``scipy.optimize.root``.
 
-class ConstraintCollection:
-    def __init__(self):
-        self.points = []
-        self.params = []
+        Parameters
+        ----------
+        x0: np.ndarray
+            Initial guess for the solution to the system of equations
 
-    def append_points(self, points: typing.List[Point]):
-        for point in points:
-            if point not in self.points:
-                self.points.append(point)
+        start_param_vec: np.ndarray
+            The parameter vector
 
-    def append_params(self, params: typing.List[Param]):
-        sub_pos = []
-        for param in params:
-            if param in self.params:
-                sub_pos.append(self.params.index(param))
-            else:
-                sub_pos.append(len(self.params))
-                self.params.append(param)
+        intermediate_param_vec: np.ndarray
+            The parameter vector
 
-        self.sub_pos.append(np.array(sub_pos))
+        Returns
+        -------
+        np.ndarray, dict
+            A two-element tuple containing the new parameter vector and information about the solution state
+        """
+        return self.run(x0, start_param_vec, intermediate_param_vec)
+
+
+class GeoCon(PymeadObj):
+
+    constraint_equation = None
+
+    def __init__(self, tool: PointSequence or Point or None, target: PointSequence or Point or None,
+                 name: str or None = None, weak: bool = False):
+        self._tool = None
+        self._target = None
+        self.weak = weak
+        sub_container = "geocon_weak" if weak else "geocon"
+        super().__init__(sub_container=sub_container)
+        self.set_name(name)
+        self.set_tool(tool)
+        self.set_target(target)
+        self.points = None
+        self.params = None
+        self.gcs_list = None
+        self.possible_weak_constraints = None
+
+    def tool(self):
+        return self._tool
+
+    def target(self):
+        return self._target
+
+    def set_tool(self, tool: PointSequence or Point or None):
+        self._tool = tool
+
+    def set_target(self, target: PointSequence or Point or None):
+        self._target = target
+
+    def get_unique_point_list(self) -> typing.List[Point]:
+        unique_point_list = []
+
+        if self.tool() is not None:
+            # Add the tool point(s) to the list
+            if isinstance(self.tool(), Point):
+                unique_point_list.append(self.tool())
+            elif isinstance(self.tool(), PointSequence):
+                unique_point_list.extend(self.tool().points())
+
+        if self.target() is not None:
+            # Add the target point(s) to the list
+            if isinstance(self.target(), Point):
+                unique_point_list.append(self.target())
+            elif isinstance(self.target(), PointSequence):
+                unique_point_list.extend(self.target().points())
+
+        return unique_point_list
+
+    def compare_point_set(self, other: "GeoCon"):
+        return set(self.get_unique_point_list()) == set(other.get_unique_point_list())
+
+    @abstractmethod
+    def add_constraint_to_gcs(self):
+        pass
+
+    @abstractmethod
+    def precompile(self):
+        pass
+
+    @abstractmethod
+    def solve_and_update(self):
+        pass
+
+    @abstractmethod
+    def recompile(self):
+        pass
 
 
 class GCS:
@@ -203,11 +131,15 @@ class GCS:
         self.parent = parent
         self.parent.gcs = self
         self.root_finder = None
-        self.constraint_types = []
+        self.strong_constraint_types = []
+        self.weak_constraint_types = []
         self.strong_constraints = []
         self.weak_constraints = []
+        self.strong_constraint_equations = []
+        self.weak_constraint_equations = []
         self.sub_pos = []
         self.weak_arg_indices = []
+        self.weak_constraint_generators = []
         self.points = []
         self.params = []
         self.original_data = []
@@ -218,23 +150,23 @@ class GCS:
     #     elif len(self.variables)
 
     def get_dof(self):
-        return len(self.params) - len(self.strong_constraints)
+        return len(self.params) - len(self.strong_constraint_equations)
 
     def get_strong_weak_dof(self):
-        return len(self.params) - len(self.strong_constraints) - len(self.weak_constraints)
+        return len(self.params) - len(self.strong_constraint_equations) - len(self.weak_constraint_equations)
 
     def compile_equation_set(self):
 
         def equation_system(x: np.ndarray, start_param_vec: np.ndarray, intermediate_param_vec: np.ndarray):
             # Evaluate the strong constraints using the updated parameter vector
-            constraints = [cnstr(*x[sp]) for cnstr, sp in zip(self.strong_constraints, self.sub_pos)]
+            constraints = [cnstr(*x[sp]) for cnstr, sp in zip(self.strong_constraint_equations, self.sub_pos)]
 
             # Evaluate the weak constraints (functions that are simply used to keep the system fully constrained
             # according to a set of rules and can be overridden by strong constraints)
             weak_constraints = [cnstr(*[start_param_vec[w[0]] if w[1] == 0
                                         else intermediate_param_vec[w[0]] if w[1] == 1
                                         else x[w[0]] for w in weak_args])
-                                for cnstr, weak_args in zip(self.weak_constraints, self.weak_arg_indices)]
+                                for cnstr, weak_args in zip(self.weak_constraint_equations, self.weak_arg_indices)]
 
             # Combine the lists of strong and weak constraints
             constraints.extend(weak_constraints)
@@ -302,26 +234,148 @@ class GCS:
 
         self.sub_pos.append(np.array(sub_pos))
 
-    def add_fixed_x_constraint(self, p: Point, x: LengthParam):
-        self.strong_constraints.append(fixed_x_constraint)
-        self.append_points([p])
-        self.append_params([p.x(), x])
-        self.constraint_types.append("FixedX")
+    # def add_fixed_x_constraint(self, p: Point, x: LengthParam):
+    #     self.strong_constraint_equations.append(ceq.fixed_x_constraint)
+    #     self.append_points([p])
+    #     self.append_params([p.x(), x])
+    #     self.constraint_types.append("FixedX")
+    #
+    # def add_fixed_x_constraint_weak(self, p: Point, x: LengthParam):
+    #     self.weak_constraint_equations.append(ceq.fixed_x_constraint_weak)
+    #     self.append_points([p])
+    #     self.append_params([p.x(), x])
+    #     self.constraint_types.append("FixedXWeak")
+    #
+    # def add_fixed_y_constraint(self, p: Point, y: LengthParam):
+    #     self.strong_constraint_equations.append(ceq.fixed_y_constraint)
+    #     self.append_points([p])
+    #     self.append_params([p.y(), y])
+    #     self.constraint_types.append("FixedY")
 
-    def add_fixed_x_constraint_weak(self, p: Point, x: LengthParam):
-        self.weak_constraints.append(fixed_x_constraint_weak)
-        self.append_points([p])
-        self.append_params([p.x(), x])
-        self.constraint_types.append("FixedXWeak")
+    def _add_strong_constraint(self, geo_con: GeoCon):
 
-    def add_fixed_y_constraint(self, p: Point, y: LengthParam):
-        self.strong_constraints.append(fixed_y_constraint)
-        self.append_points([p])
-        self.append_params([p.y(), y])
-        self.constraint_types.append("FixedY")
+        if geo_con.weak:
+            raise ValueError("Tried to add a weak constraint using _add_strong_constraint()")
+
+        # Check if there is already a constraint of the same type present in this GCS that also contains the
+        # same point set as the constraint we are trying to add. If so, raise an error.
+        for cnstr in self.strong_constraints:
+            if geo_con.compare_point_set(cnstr):
+                raise DuplicateConstraintError(f"Duplicate constraint detected. Current constraint {geo_con.name()} "
+                                               f"has the same point set as an existing constraint ({cnstr.name()}).")
+
+        self.strong_constraints.append(geo_con)
+        self.strong_constraint_equations.append(geo_con.constraint_equation)
+        self.append_points(geo_con.points)
+        self.append_params(geo_con.params)
+        self.strong_constraint_types.append(geo_con.__class__.__name__)
+
+    def _remove_strong_constraint(self, geo_con: GeoCon):
+
+        if geo_con.weak:
+            raise ValueError("Attempted to remove a weak constraint using _remove_strong_constraint()")
+
+        removal_index = self.strong_constraints.index(geo_con)
+        self.strong_constraints.pop(removal_index)
+        self.strong_constraint_equations.pop(removal_index)
+
+        # TODO: need logic for removing associated params and points if necessary, as well as the appropriate
+        #  weak constraints
+
+        self.strong_constraint_types.pop(removal_index)
+
+    def _add_weak_constraint(self, geo_con: GeoCon):
+        if not geo_con.weak:
+            raise ValueError("Tried to add a strong constraint using _add_weak_constraint()")
+
+        self.weak_constraints.append(geo_con)
+        self.weak_constraint_equations.append(geo_con.constraint_equation)
+        self.weak_constraint_types.append(geo_con.__class__.__name__)
+
+    def _remove_weak_constraint(self, geo_con: GeoCon):
+
+        if not geo_con.weak:
+            raise ValueError("Attempted to remove a strong constraint using _remove_weak_constraint()")
+
+        removal_index = self.weak_constraints.index(geo_con)
+        self.weak_constraints.pop(removal_index)
+        self.weak_constraint_equations.pop(removal_index)
+        self.weak_constraint_types.pop(removal_index)
+
+    def _add_or_remove_weak_constraints(self, geo_con_strong: GeoCon):
+
+        weak_constraint_counter = 0
+        while self.get_strong_weak_dof() != 0 and weak_constraint_counter < 1000:
+
+            weak_constraint_counter += 1
+
+            if self.get_strong_weak_dof() < 0:
+
+                if weak_constraint_counter == 1:
+                    priority_constraint_removed = False
+                    priority_for_removal = None
+                    if "distance" in self.strong_constraint_types[-1].lower():
+                        priority_for_removal = "distance"
+                    if "angle" in self.strong_constraint_types[-1].lower():
+                        priority_for_removal = "angle"
+
+                    if priority_for_removal is not None:
+                        for idx, cnstr in enumerate(self.weak_constraints):
+                            if (priority_for_removal in self.weak_constraint_types[idx] and
+                                    geo_con_strong.compare_point_set(cnstr)):
+                                self._remove_weak_constraint(cnstr)
+                                priority_constraint_removed = True
+                                break
+
+                    if priority_constraint_removed:
+                        continue
+
+                    for cnstr in self.weak_constraints[::-1]:
+                        if cnstr in geo_con_strong.possible_weak_constraints:
+                            self._remove_weak_constraint(cnstr)
+                            break
+                else:
+                    for cnstr in self.weak_constraints[::-1]:
+                        if cnstr in geo_con_strong.possible_weak_constraints:
+                            self._remove_weak_constraint(cnstr)
+                            break
+
+            elif self.get_strong_weak_dof() > 0:
+                for cnstr in geo_con_strong.possible_weak_constraints:
+                    if cnstr not in self.weak_constraints:
+                        # TODO: also need to add a check to see if the fixed param constraint params are the same
+                        self._add_weak_constraint(cnstr)
+                        break
+
+        if self.get_strong_weak_dof() != 0:
+            raise MaxWeakConstraintAttemptsError("Reached maximum number of attempts to add or remove weak constraints "
+                                                 "to achieve 0 degrees of freedom")
+
+    def add_constraint(self, geo_con: GeoCon):
+
+        # First, attempt to add the strong constraint to the GCS (early termination is possible here)
+        self._add_strong_constraint(geo_con)
+
+        # Then, add or remove weak constraints in a logical order until the sum of strong constraint equations
+        # and weak constraint equations is exactly equal to the number of parameters (variables)
+        self._add_or_remove_weak_constraints(geo_con)
+
+    @staticmethod
+    def compile_constraint(geo_con: GeoCon):
+
+        # Pre-compile each GCS created by the constraint
+        print(f"Pre-compiling...")
+        geo_con.precompile()
+
+        # Solve the GCS for the constraint and update the points
+        print(f"Solving and updating...")
+        geo_con.solve_and_update()
+
+        # Re-compile each GCS created by the constraint according to a different set of rules than the initial solve
+        geo_con.recompile()
 
     def add_distance_constraint(self, p1: Point, p2: Point, dist: LengthParam):
-        self.strong_constraints.append(distance_constraint)
+        self.strong_constraint_equations.append(ceq.distance_constraint)
         self.append_points([p1, p2])
         self.append_params([p1.x(), p1.y(), p2.x(), p2.y(), dist])
         self.constraint_types.append("Distance")
@@ -329,13 +383,13 @@ class GCS:
         if self.parent is p1:
             use_fixed_x = False
             if self.get_strong_weak_dof() >= 3:
-                self.weak_constraints.append(fixed_x_constraint_weak)
+                self.weak_constraint_equations.append(ceq.fixed_x_constraint_weak)
                 use_fixed_x = True
             use_fixed_y = False
             if (use_fixed_x and self.get_strong_weak_dof() >= 2) or self.get_strong_weak_dof() >= 3:
-                self.weak_constraints.append(fixed_y_constraint_weak)
+                self.weak_constraint_equations.append(ceq.fixed_y_constraint_weak)
                 use_fixed_y = True
-            self.weak_constraints.append(fixed_param_constraint_weak)
+            self.weak_constraint_equations.append(ceq.fixed_param_constraint_weak)
 
             if use_fixed_x:
                 self.weak_arg_indices.append([[self.params.index(p2.x()), 1], [self.params.index(p2.x()), 0]])
@@ -348,14 +402,14 @@ class GCS:
         elif self.parent in [p2, dist]:
             use_fixed_x = False
             if self.get_strong_weak_dof() >= 3:
-                self.weak_constraints.append(fixed_x_constraint_weak)
+                self.weak_constraint_equations.append(ceq.fixed_x_constraint_weak)
                 use_fixed_x = True
             use_fixed_y = False
             if (use_fixed_x and self.get_strong_weak_dof() >= 2) or self.get_strong_weak_dof() >= 3:
-                self.weak_constraints.append(fixed_y_constraint_weak)
+                self.weak_constraint_equations.append(ceq.fixed_y_constraint_weak)
                 use_fixed_y = True
-            self.weak_constraints.append(fixed_param_constraint_weak)
-            self.weak_constraints.append(abs_angle_constraint_weak)
+            self.weak_constraint_equations.append(ceq.fixed_param_constraint_weak)
+            self.weak_constraint_equations.append(ceq.abs_angle_constraint_weak)
 
             if use_fixed_x:
                 self.weak_arg_indices.append([[self.params.index(p1.x()), 2], [self.params.index(p1.x()), 0]])
@@ -394,43 +448,16 @@ class GCS:
             self.compile_equation_set()
 
     def add_abs_angle_constraint(self, p1: Point, p2: Point, angle: AngleParam):
-        self.strong_constraints.append(abs_angle_constraint)
+        self.strong_constraint_equations.append(ceq.abs_angle_constraint)
         self.append_points([p1, p2])
         self.append_params([p1.x(), p1.y(), p2.x(), p2.y(), angle])
         self.constraint_types.append("AbsAngle")
 
     def add_rel_angle3_constraint(self, p1: Point, p2: Point, p3: Point, angle: AngleParam):
-        self.strong_constraints.append(rel_angle3_constraint)
+        self.strong_constraint_equations.append(ceq.rel_angle3_constraint)
         self.append_points([p1, p2, p3])
         self.append_params([p1.x(), p1.y(), p2.x(), p2.y(), p3.x(), p3.y(), angle])
         self.constraint_types.append("RelAngle3")
-
-
-class GeoCon(PymeadObj):
-    def __init__(self, tool: PointSequence or Point, target: PointSequence or Point,
-                 name: str or None = None):
-        self._tool = None
-        self._target = None
-        super().__init__(sub_container="geocon")
-        self.set_name(name)
-        self.set_tool(tool)
-        self.set_target(target)
-
-    def tool(self):
-        return self._tool
-
-    def target(self):
-        return self._target
-
-    def set_tool(self, tool: PointSequence or Point):
-        self._tool = tool
-
-    def set_target(self, target: PointSequence or Point):
-        self._target = target
-
-    @abstractmethod
-    def add_constraint_to_gcs(self):
-        pass
 
 
 class PositionConstraint(GeoCon):
@@ -583,52 +610,30 @@ class RelAngleConstraint(GeoCon):
                 "constraint_type": "rel-angle"}
 
 
-class PerpendicularConstraint(GeoCon):
-    def __init__(self, tool: PointSequence, target: PointSequence, name: str or None = None):
-        name = "PerpendicularCon-1" if name is None else name
-        super().__init__(tool=tool, target=target, name=name)
-        for point in self.tool().points():
-            point.geo_cons.append(self)
-        for point in self.target().points():
-            point.geo_cons.append(self)
-
-    def validate(self):
-        if len(self.tool()) != 2:
-            raise ConstraintValidationError("PerpendicularConstraint tool must contain exactly two points")
-        if len(self.target()) != 2:
-            raise ConstraintValidationError("RPerpendicularConstraint target must contain exactly two points")
-
-    def measure_tool_angle(self) -> float:
-        return self.tool().points()[0].measure_angle(self.tool().points()[1])
-
-    def measure_target_angle(self) -> float:
-        return self.target().points()[0].measure_angle(self.target().points()[1])
-
-    def measure_target_length(self) -> float:
-        return self.target().points()[0].measure_distance(self.target().points()[1])
-
-    def enforce(self, calling_point: Point, updated_objs: typing.List[PymeadObj] = None,
-                initial_x: float = None, initial_y: float = None):
-
-        updated_objs = [] if updated_objs is None else updated_objs
-
-        if calling_point in [*self.tool().points(), *self.target().points()]:
-            tool_angle = self.measure_tool_angle()
-            target_angle = tool_angle + np.pi / 2
-            target_length = self.measure_target_length()
-            new_x = self.target().points()[0].x().value() + target_length * np.cos(target_angle)
-            new_y = self.target().points()[0].y().value() + target_length * np.sin(target_angle)
-
-            if self in updated_objs:
-                self.target().points()[1].force_move(new_x, new_y)
-            else:
-                updated_objs.append(self)
-                self.target().points()[1].request_move(new_x, new_y, updated_objs=updated_objs)
-
-    def get_dict_rep(self):
-        return {"tool": [pt.name() for pt in self.tool().points()],
-                "target": [pt.name() for pt in self.target().points()],
-                "constraint_type": "perpendicular"}
+# class Perp3Constraint(GeoCon):
+#
+#     constraint_equation = staticmethod(ceq.perp3_constraint)
+#
+#     def __init__(self, start_point: Point, vertex: Point, end_point: Point, name: str or None = None):
+#         name = "PerpendicularCon-1" if name is None else name
+#         super().__init__(tool=tool, target=target, name=name)
+#
+#     def add_constraint_to_gcs(self):
+#         pass
+#
+#     def precompile(self):
+#         pass
+#
+#     def solve_and_update(self):
+#         pass
+#
+#     def recompile(self):
+#         pass
+#
+#     def get_dict_rep(self):
+#         return {"tool": [pt.name() for pt in self.tool().points()],
+#                 "target": [pt.name() for pt in self.target().points()],
+#                 "constraint_type": "perpendicular"}
 
 
 class ParallelConstraint(GeoCon):
@@ -679,7 +684,243 @@ class ParallelConstraint(GeoCon):
                 "constraint_type": "parallel"}
 
 
+class FixedParamConstraintWeak(GeoCon):
+
+    constraint_equation = staticmethod(ceq.fixed_param_constraint_weak)
+
+    def __init__(self, param: Param, name: str or None = None):
+        name = "FixedParamConWeak-1" if name is None else name
+        self.param = param
+
+        super().__init__(tool=None, target=None, name=name, weak=True)
+
+        self.points = []
+        self.params = [param]
+
+    def add_constraint_to_gcs(self):
+        pass
+
+    def precompile(self):
+        pass
+
+    def solve_and_update(self):
+        pass
+
+    def recompile(self):
+        pass
+
+    def get_dict_rep(self):
+        return {"param": self.param, "name": self.name(), "constraint_type": self.__class__.__name__}
+
+
+class FixedXConstraint(GeoCon):
+
+    constraint_equation = staticmethod(ceq.fixed_x_constraint)
+
+    def __init__(self, point: Point, name: str or None = None):
+        name = "FixedXCon-1" if name is None else name
+        self.point = point
+
+        super().__init__(tool=point, target=None, name=name)
+
+        self.points = [point]
+        self.params = [point.x(), point.y()]
+        self.possible_weak_constraints = [FixedYConstraintWeak(point=self.point)]
+
+    def add_constraint_to_gcs(self):
+        pass
+
+    def precompile(self):
+        pass
+
+    def solve_and_update(self):
+        pass
+
+    def recompile(self):
+        pass
+
+    def get_dict_rep(self):
+        return {"tool": self.point.name(), "name": self.name(),
+                "constraint_type": self.__class__.__name__}
+
+
+class FixedXConstraintWeak(GeoCon):
+
+    constraint_equation = staticmethod(ceq.fixed_x_constraint_weak)
+
+    def __init__(self, point: Point, name: str or None = None):
+        name = "FixedXConWeak-1" if name is None else name
+        self.point = point
+
+        super().__init__(tool=point, target=None, name=name, weak=True)
+
+        self.points = [point]
+        self.params = [point.x(), point.y()]
+
+    def add_constraint_to_gcs(self):
+        pass
+
+    def precompile(self):
+        pass
+
+    def solve_and_update(self):
+        pass
+
+    def recompile(self):
+        pass
+
+    def get_dict_rep(self):
+        return {"tool": self.point.name(), "name": self.name(),
+                "constraint_type": self.__class__.__name__}
+
+
+class FixedYConstraint(GeoCon):
+
+    constraint_equation = staticmethod(ceq.fixed_y_constraint)
+
+    def __init__(self, point: Point, name: str or None = None):
+        name = "FixedYCon-1" if name is None else name
+        self.point = point
+
+        super().__init__(tool=point, target=None, name=name)
+
+        self.points = [point]
+        self.params = [point.x(), point.y()]
+        self.possible_weak_constraints = [FixedXConstraintWeak(point=self.point)]
+
+    def add_constraint_to_gcs(self):
+        pass
+
+    def precompile(self):
+        pass
+
+    def solve_and_update(self):
+        pass
+
+    def recompile(self):
+        pass
+
+    def get_dict_rep(self):
+        return {"tool": self.point.name(), "name": self.name(),
+                "constraint_type": self.__class__.__name__}
+
+
+class FixedYConstraintWeak(GeoCon):
+
+    constraint_equation = staticmethod(ceq.fixed_y_constraint_weak)
+
+    def __init__(self, point: Point, name: str or None = None):
+        name = "FixedYConWeak-1" if name is None else name
+        self.point = point
+
+        super().__init__(tool=point, target=None, name=name, weak=True)
+
+        self.points = [point]
+        self.params = [point.x(), point.y()]
+
+    def add_constraint_to_gcs(self):
+        pass
+
+    def precompile(self):
+        pass
+
+    def solve_and_update(self):
+        pass
+
+    def recompile(self):
+        pass
+
+    def get_dict_rep(self):
+        return {"tool": self.point.name(), "name": self.name(),
+                "constraint_type": self.__class__.__name__}
+
+
+class AbsAngleConstraint(GeoCon):
+
+    constraint_equation = staticmethod(ceq.abs_angle_constraint)
+
+    def __init__(self, start_point: Point, end_point: Point, angle_param: AngleParam or None = None,
+                 name: str or None = None):
+        name = "AbsAngleCon-1" if name is None else name
+        self.start_point = start_point
+        self.end_point = end_point
+
+        super().__init__(tool=start_point, target=end_point, name=name)
+
+        if angle_param is None:
+            angle = self.tool().measure_angle(self.target())
+            if self.geo_col is None:
+                self.angle_param = AngleParam(value=angle, name="AbsAngle-1")
+            else:
+                self.angle_param = self.geo_col.add_param(value=angle, name="AbsAngle-1", unit_type="angle")
+        else:
+            self.angle_param = angle_param
+
+        self.points = [start_point, end_point]
+        self.params = [start_point.x(), start_point.y(), end_point.x(), end_point.y(), self.angle_param]
+        self.possible_weak_constraints = [
+            FixedParamConstraintWeak(self.angle_param),
+            AbsAngleConstraintWeak(self.tool(), self.target()),
+            FixedXConstraintWeak(self.tool()),
+            FixedYConstraintWeak(self.tool()),
+        ]
+
+    def add_constraint_to_gcs(self):
+        gcs1 = GCS(parent=self.start_point) if self.start_point.gcs is None else self.start_point.gcs
+        gcs2 = GCS(parent=self.end_point) if self.end_point.gcs is None else self.end_point.gcs
+        for gcs in (gcs1, gcs2):
+            gcs.add_constraint(self)
+
+    def precompile(self):
+        pass
+
+    def solve_and_update(self):
+        pass
+
+    def recompile(self):
+        pass
+
+    def get_dict_rep(self):
+        return {"tool": self.start_point.name(), "target": self.end_point.name(),
+                "angle_param": self.angle_param.name(), "name": self.name(),
+                "constraint_type": self.__class__.__name__}
+
+
+class AbsAngleConstraintWeak(GeoCon):
+
+    constraint_equation = staticmethod(ceq.abs_angle_constraint_weak)
+
+    def __init__(self, start_point: Point, end_point: Point, name: str or None = None):
+        name = "AbsAngleConWeak-1" if name is None else name
+        self.start_point = start_point
+        self.end_point = end_point
+
+        super().__init__(tool=start_point, target=end_point, name=name, weak=True)
+
+        self.points = [start_point, end_point]
+        self.params = [start_point.x(), start_point.y(), end_point.x(), end_point.y()]
+
+    def add_constraint_to_gcs(self):
+        pass
+
+    def precompile(self):
+        pass
+
+    def solve_and_update(self):
+        pass
+
+    def recompile(self):
+        pass
+
+    def get_dict_rep(self):
+        return {"tool": self.start_point.name(), "target": self.end_point.name(), "name": self.name(),
+                "constraint_type": self.__class__.__name__}
+
+
 class DistanceConstraint(GeoCon):
+
+    constraint_equation = staticmethod(ceq.distance_constraint)
+
     def __init__(self, start_point: Point, end_point: Point, length_param: LengthParam or None = None,
                  name: str or None = None):
         name = "DistanceCon-1" if name is None else name
@@ -697,17 +938,120 @@ class DistanceConstraint(GeoCon):
         else:
             self.length_param = length_param
 
-        self.add_constraint_to_gcs()
+        self.points = [start_point, end_point]
+        self.params = [start_point.x(), start_point.y(), end_point.x(), end_point.y(), self.length_param]
+        self.possible_weak_constraints = [
+            FixedParamConstraintWeak(self.length_param),
+            AbsAngleConstraintWeak(self.tool(), self.target()),
+            FixedXConstraintWeak(self.tool()),
+            FixedYConstraintWeak(self.tool()),
+        ]
 
     def add_constraint_to_gcs(self):
         gcs1 = GCS(parent=self.start_point) if self.start_point.gcs is None else self.start_point.gcs
         gcs2 = GCS(parent=self.end_point) if self.end_point.gcs is None else self.end_point.gcs
-        gcs1.add_distance_constraint(self.end_point, self.start_point, self.length_param)
-        gcs2.add_distance_constraint(self.start_point, self.end_point, self.length_param)
+        self.gcs_list = [gcs1, gcs2]
+        for gcs in self.gcs_list:
+            gcs.add_constraint(self)
+        for gcs in self.gcs_list:
+            gcs.compile_constraint(self)
+
+    def precompile(self):
+
+        for gcs in self.gcs_list:
+
+            if self.possible_weak_constraints[0] in gcs.weak_constraints[-4:]:
+                gcs.weak_arg_indices.append([[gcs.params.index(self.length_param), 2],
+                                             [gcs.params.index(self.length_param), 0]])
+
+            if self.possible_weak_constraints[1] in gcs.weak_constraints[-3:]:
+                fixed_angle_indices = []
+                for old_new_idx in [2, 0]:
+                    for p in [self.target().x(), self.target().y(), self.tool().x(), self.tool().y()]:
+                        p_index = gcs.params.index(p)
+                        fixed_angle_indices.append([p_index, old_new_idx])
+                gcs.weak_arg_indices.append(fixed_angle_indices)
+
+            if self.possible_weak_constraints[2] in gcs.weak_constraints[-2:]:
+                gcs.weak_arg_indices.append([[gcs.params.index(self.tool().x()), 2],
+                                             [gcs.params.index(self.tool().x()), 0]])
+
+            if self.possible_weak_constraints[3] in gcs.weak_constraints[-1:]:
+                gcs.weak_arg_indices.append([[gcs.params.index(self.tool().y()), 2],
+                                             [gcs.params.index(self.tool().y()), 0]])
+
+            gcs.compile_equation_set()
+
+    def solve_and_update(self):
+        # This time use only the GCS for the target, since we only need solve the constraint problem once
+        #gcs = self.target().gcs
+
+        for gcs in self.gcs_list:
+
+            start_param_vec = np.array([p.value() for p in gcs.params])
+            intermediate_param_vec = deepcopy(start_param_vec)
+
+            # Initial solve of the system equations to place the points in the correct starting location
+            params, info = gcs.solve(start_param_vec, intermediate_param_vec)
+
+            print(f"{info = }")
+
+            gcs.update(params)
+
+    def recompile(self):
+
+        for gcs in self.gcs_list:
+
+            if self.possible_weak_constraints[1] in gcs.weak_constraints[-3:]:
+
+                abs_angle_index = gcs.weak_constraints.index(self.possible_weak_constraints[1])
+
+                gcs.weak_arg_indices.pop(abs_angle_index)
+
+                fixed_angle_indices = []
+                for old_new_idx in [2, 1]:
+                    for p in [self.tool().x(), self.tool().y(), self.target().x(), self.target().y()]:
+                        p_index = gcs.params.index(p)
+                        fixed_angle_indices.append([p_index, old_new_idx])
+                gcs.weak_arg_indices.insert(abs_angle_index, fixed_angle_indices)
+
+                gcs.compile_equation_set()
 
     def get_dict_rep(self):
         return {"tool": self.start_point.name(), "target": self.end_point.name(),
-                "length_param": self.length_param.name(), "name": self.name(), "constraint_type": "Distance"}
+                "length_param": self.length_param.name(), "name": self.name(),
+                "constraint_type": self.__class__.__name__}
+
+
+class DistanceConstraintWeak(GeoCon):
+
+    constraint_equation = staticmethod(ceq.distance_constraint_weak)
+
+    def __init__(self, start_point: Point, end_point: Point, name: str or None = None):
+        name = "DistanceConWeak-1" if name is None else name
+        self.start_point = start_point
+        self.end_point = end_point
+
+        super().__init__(tool=start_point, target=end_point, name=name, weak=True)
+
+        self.points = [start_point, end_point]
+        self.params = [start_point.x(), start_point.y(), end_point.x(), end_point.y()]
+
+    def add_constraint_to_gcs(self):
+        pass
+
+    def precompile(self):
+        pass
+
+    def solve_and_update(self):
+        pass
+
+    def recompile(self):
+        pass
+
+    def get_dict_rep(self):
+        return {"tool": self.start_point.name(), "target": self.end_point.name(), "name": self.name(),
+                "constraint_type": self.__class__.__name__}
 
 
 class CollinearConstraint(GeoCon):
@@ -718,93 +1062,6 @@ class CollinearConstraint(GeoCon):
         self.start_point = start_point
         self.middle_point = middle_point
         self.end_point = end_point
-        self.tool().geo_cons.append(self)
-        for point in self.target().points():
-            point.geo_cons.append(self)
-
-    def validate(self):
-        msg = ("A point in the CollinearConstraint was found to already have an existing CollinearConstraint. To make "
-               "these additional points collinear, modify the original collinear constraint.")
-        for geo_con in self.tool().geo_cons:
-            if isinstance(geo_con, CollinearConstraint):
-                raise ValueError(msg)
-        # for point in self.target().points():
-        #     for geo_con in point.geo_cons:
-        #         if isinstance(geo_con, CollinearConstraint):
-        #             raise ValueError(msg)
-
-    def enforce(self, calling_point: Point or str, updated_objs: typing.List[PymeadObj] = None,
-                initial_x: float or None = None, initial_y: float or None = None):
-
-        updated_objs = [] if updated_objs is None else updated_objs
-
-        if isinstance(calling_point, str):
-            if calling_point == "middle":
-                calling_point = self.tool()
-            elif calling_point == "start":
-                calling_point = self.target().points()[0]
-            elif calling_point == "end":
-                calling_point = self.target().points()[1]
-            else:
-                raise ValueError(f"If calling_point is a str, it must be either 'start', 'middle', or 'end'. "
-                                 f"Specified value: {calling_point}")
-
-        if calling_point is self.tool():  # If the middle point called the enforcement
-            if initial_x is None:
-                raise ValueError("Must set initial_x if calling enforcement of collinear constraint from the "
-                                 "middle point")
-            if initial_y is None:
-                raise ValueError("Must set initial_y if calling enforcement of collinear constraint from the "
-                                 "middle point")
-            dx = self.tool().x().value() - initial_x
-            dy = self.tool().y().value() - initial_y
-
-            if self in updated_objs:
-                for point in self.target().points():
-                    point.force_move(point.x().value() + dx, point.y().value() + dy)
-            else:
-                updated_objs.append(self)
-
-                # First, force the points to the correct location
-                for point in self.target().points():
-                    point.force_move(point.x().value() + dx, point.y().value() + dy)
-
-                # Then, call a request move in-place to update the child dimensions/constraints
-                for point in self.target().points():
-                    point.request_move(point.x().value(), point.y().value(), updated_objs=updated_objs)
-
-        elif calling_point is self.target().points()[0]:
-            start_point = self.target().points()[0]
-            middle_point = self.tool()
-            end_point = self.target().points()[1]
-            target_angle_minus_pi = middle_point.measure_angle(start_point)
-            target_angle = target_angle_minus_pi + np.pi
-            length = middle_point.measure_distance(end_point)
-            new_x = middle_point.x().value() + length * np.cos(target_angle)
-            new_y = middle_point.y().value() + length * np.sin(target_angle)
-
-            if self in updated_objs:
-                end_point.force_move(new_x, new_y)
-            else:
-                updated_objs.append(self)
-                end_point.request_move(new_x, new_y, updated_objs=updated_objs)
-        elif calling_point is self.target().points()[1]:
-            start_point = self.target().points()[0]
-            middle_point = self.tool()
-            end_point = self.target().points()[1]
-            target_angle_minus_pi = middle_point.measure_angle(end_point)
-            target_angle = target_angle_minus_pi + np.pi
-            length = middle_point.measure_distance(start_point)
-            new_x = middle_point.x().value() + length * np.cos(target_angle)
-            new_y = middle_point.y().value() + length * np.sin(target_angle)
-
-            if self in updated_objs:
-                start_point.force_move(new_x, new_y)
-            else:
-                updated_objs.append(self)
-                start_point.request_move(new_x, new_y, updated_objs=updated_objs)
-            # TODO: if a collinear constraint already exists on a point and another collinear constraint is attempted,
-            #  just add the selected points to the existing constraint
 
     def get_dict_rep(self):
         return {"start_point": self.start_point.name(), "middle_point": self.middle_point.name(),
@@ -879,197 +1136,6 @@ class CurvatureConstraint(GeoCon):
                                        phi1=phi1, phi2=phi2, psi1=psi1, psi2=psi2, R1=R1, R2=R2)
         return data
 
-    def validate(self):
-        msg = "A point in the CurvatureConstraint was found to already have an existing CurvatureConstraint"
-        for geo_con in self.tool().geo_cons:
-            if isinstance(geo_con, CurvatureConstraint):
-                raise ConstraintValidationError(msg)
-        for point in self.target().points():
-            for geo_con in point.geo_cons:
-                if isinstance(geo_con, CurvatureConstraint):
-                    raise ConstraintValidationError(msg)
-
-    def enforce(self, calling_point: Point, updated_objs: typing.List[PymeadObj] = None,
-                initial_x: float = None, initial_y: float = None,
-                initial_psi1: float = None, initial_psi2: float = None, initial_R: float = None):
-
-        updated_objs = [] if updated_objs is None else updated_objs
-
-        if calling_point is self.tool():  # If the middle point called the enforcement
-            if initial_x is None:
-                raise ValueError("Must set initial_x if calling enforcement of collinear constraint from the "
-                                 "middle point")
-            if initial_y is None:
-                raise ValueError("Must set initial_y if calling enforcement of collinear constraint from the "
-                                 "middle point")
-            dx = self.tool().x().value() - initial_x
-            dy = self.tool().y().value() - initial_y
-
-            # collinear_constraint_found = False
-            # for geo_con in self.tool().geo_cons:
-            #     if isinstance(geo_con, CollinearConstraint):
-            #         collinear_constraint_found = True
-            #         break
-            #
-            # points_to_move = [self.target().points()[0], self.target().points()[3]] \
-            #     if collinear_constraint_found else self.target().points()
-
-            if self in updated_objs:
-                for point in self.target().points():
-                    point.force_move(point.x().value() + dx, point.y().value() + dy)
-            else:
-                updated_objs.append(self)
-                # First, force the points to the correct location
-                for point in self.target().points():
-                    point.force_move(point.x().value() + dx, point.y().value() + dy)
-
-                # Then, call a request move in-place to update the child dimensions/constraints
-                for point in self.target().points():
-                    point.request_move(point.x().value(), point.y().value(), updated_objs=updated_objs)
-
-        elif calling_point is self.target().points()[0]:  # Curve 1 g2 point modified -> update curve 2 g2 point
-            # Calculate the new curvature control arm 2 length
-            data = self.calculate_curvature_data()
-            target_Lc2 = (data.Lt2 * data.Lt2) / (data.Lt1 * data.Lt1) * (
-                    (1 - 1 / data.n1) * data.Lc1 * np.abs(np.sin(data.psi1))) / (
-                                 (1 - 1 / data.n2) * np.abs(np.sin(data.psi2)))
-
-            # Calculate if the radius of curvature needs to be reversed for this step
-            if (0 <= data.psi1 % (2 * np.pi) < np.pi and 0 <= data.psi2 % (2 * np.pi) < np.pi) or (
-                    np.pi <= data.psi1 % (2 * np.pi) < 2 * np.pi and np.pi <= data.psi2 % (2 * np.pi) < 2 * np.pi
-            ):
-                theta2 = data.phi2 - data.psi2  # Reverse
-            else:
-                theta2 = data.theta2  # Do not reverse
-
-            # Move the other G2 point to match the curvature
-            new_x = self.target().points()[2].x().value() + target_Lc2 * np.cos(theta2)
-            new_y = self.target().points()[2].y().value() + target_Lc2 * np.sin(theta2)
-
-            if self in updated_objs:
-                self.target().points()[3].force_move(new_x, new_y)
-            else:
-                updated_objs.append(self)
-                self.target().points()[3].request_move(new_x, new_y, updated_objs=updated_objs)
-
-        elif calling_point is self.target().points()[3]:  # Curve 2 g2 point modified -> update curve 1 g2 point
-            # Calculate the new curvature control arm 1 length
-            data = self.calculate_curvature_data()
-            target_Lc1 = (data.Lt1 * data.Lt1) / (data.Lt2 * data.Lt2) * (
-                    (1 - 1 / data.n2) * data.Lc2 * np.abs(np.sin(data.psi2))) / (
-                                 (1 - 1 / data.n1) * np.abs(np.sin(data.psi1)))
-
-            # Calculate if the radius of curvature needs to be reversed for this step
-            if (0 <= data.psi1 % (2 * np.pi) < np.pi and 0 <= data.psi2 % (2 * np.pi) < np.pi) or (
-                    np.pi <= data.psi1 % (2 * np.pi) < 2 * np.pi and np.pi <= data.psi2 % (2 * np.pi) < 2 * np.pi
-            ):
-                theta1 = data.phi1 - data.psi1  # Reverse
-            else:
-                theta1 = data.theta1  # Do not reverse
-
-            # Move the other G2 point to match the curvature
-            new_x = self.target().points()[1].x().value() + target_Lc1 * np.cos(theta1)
-            new_y = self.target().points()[1].y().value() + target_Lc1 * np.sin(theta1)
-
-            if self in updated_objs:
-                self.target().points()[0].force_move(new_x, new_y)
-            else:
-                self.target().points()[0].request_move(new_x, new_y, updated_objs=updated_objs)
-
-        elif calling_point is self.target().points()[
-            1]:  # Curve 1 g1 point modified -> update curve 2 g1 point and g2 points
-            if initial_psi1 is None or initial_psi2 is None or initial_R is None:
-                data = self.calculate_curvature_data()
-                initial_psi1 = data.psi1
-                initial_psi2 = data.psi2
-                initial_R = np.abs(data.R1)
-
-            # Calculate the new curvature control arm lengths and absolute angles
-            data = self.calculate_curvature_data()
-            # print(f"{data.Lt1 = }, {data.Lt2 = }, {initial_R = }, {data.phi1 = }, {initial_psi1 = }, {initial_psi2 = },"
-            #       f"{data.R1 = }, {data.R2 = }")
-
-            target_Lc1 = (data.Lt1 * data.Lt1) / (
-                    initial_R * (1 - 1 / data.n1) * np.abs(np.sin(initial_psi1)))
-            target_theta1 = initial_psi1 + data.phi1
-
-            target_Lc2 = (data.Lt2 * data.Lt2) / (
-                    initial_R * (1 - 1 / data.n2) * np.abs(np.sin(initial_psi2)))
-            target_theta2 = initial_psi2 + (data.phi1 + np.pi)
-
-            # Move the other G2 points to preserve the radius of curvature and angles
-            new_x2 = self.curve_joint.x().value() + data.Lt2 * np.cos(data.phi1 + np.pi)
-            new_y2 = self.curve_joint.y().value() + data.Lt2 * np.sin(data.phi1 + np.pi)
-            new_x0 = self.target().points()[1].x().value() + target_Lc1 * np.cos(target_theta1)
-            new_y0 = self.target().points()[1].y().value() + target_Lc1 * np.sin(target_theta1)
-            new_x3 = new_x2 + target_Lc2 * np.cos(target_theta2)
-            new_y3 = new_y2 + target_Lc2 * np.sin(target_theta2)
-
-            if self in updated_objs:
-                self.target().points()[2].force_move(new_x2, new_y2)
-                self.target().points()[0].force_move(new_x0, new_y0)
-                self.target().points()[3].force_move(new_x3, new_y3)
-            else:
-                updated_objs.append(self)
-                self.target().points()[2].force_move(new_x2, new_y2)
-                self.target().points()[0].force_move(new_x0, new_y0)
-                self.target().points()[3].force_move(new_x3, new_y3)
-
-                self.target().points()[2].request_move(self.target().points()[2].x().value(),
-                                                       self.target().points()[2].y().value(), updated_objs=updated_objs)
-                self.target().points()[0].request_move(self.target().points()[0].x().value(),
-                                                       self.target().points()[0].y().value(), updated_objs=updated_objs)
-                self.target().points()[3].request_move(self.target().points()[3].x().value(),
-                                                       self.target().points()[3].y().value(), updated_objs=updated_objs)
-
-        elif calling_point is self.target().points()[
-            2]:  # Curve 2 g1 point modified -> update curve 1 g1 point and g2 points
-            if initial_psi1 is None or initial_psi2 is None or initial_R is None:
-                raise ValueError("Must specify initial_psi1, initial_psi2, and initial_R when enforcing the "
-                                 "curvature constraint from a G1 point")
-
-            # Calculate the new curvature control arm lengths and absolute angles
-            data = self.calculate_curvature_data()
-
-            target_Lc1 = (data.Lt1 * data.Lt1) / (
-                    initial_R * (1 - 1 / data.n1) * np.abs(np.sin(initial_psi1)))
-            target_theta1 = initial_psi1 + (data.phi2 + np.pi)
-
-            target_Lc2 = (data.Lt2 * data.Lt2) / (
-                    initial_R * (1 - 1 / data.n2) * np.abs(np.sin(initial_psi2)))
-            target_theta2 = initial_psi2 + data.phi2
-
-            # Move the other G2 points to preserve the radius of curvature and angles
-            new_x1 = self.curve_joint.x().value() + data.Lt1 * np.cos(data.phi2 + np.pi)
-            new_y1 = self.curve_joint.y().value() + data.Lt1 * np.sin(data.phi2 + np.pi)
-            new_x0 = new_x1 + target_Lc1 * np.cos(target_theta1)
-            new_y0 = new_y1 + target_Lc1 * np.sin(target_theta1)
-            new_x3 = self.target().points()[2].x().value() + target_Lc2 * np.cos(target_theta2)
-            new_y3 = self.target().points()[2].y().value() + target_Lc2 * np.sin(target_theta2)
-
-            if self in updated_objs:
-                self.target().points()[1].force_move(new_x1, new_y1)
-                self.target().points()[0].force_move(new_x0, new_y0)
-                self.target().points()[3].force_move(new_x3, new_y3)
-            else:
-                updated_objs.append(self)
-                self.target().points()[1].force_move(new_x1, new_y1)
-                self.target().points()[0].force_move(new_x0, new_y0)
-                self.target().points()[3].force_move(new_x3, new_y3)
-
-                self.target().points()[1].request_move(self.target().points()[1].x().value(),
-                                                       self.target().points()[1].y().value(), updated_objs=updated_objs)
-                self.target().points()[0].request_move(self.target().points()[0].x().value(),
-                                                       self.target().points()[0].y().value(), updated_objs=updated_objs)
-                self.target().points()[3].request_move(self.target().points()[3].x().value(),
-                                                       self.target().points()[3].y().value(), updated_objs=updated_objs)
-
-            # TODO: check this logic. Might be causing a runaway radius of curvature on tangent point rotation
-
-        # elif calling_point == "hold":
-        #     print(f"Calling point hold!")
-        #     pass
-
     def get_dict_rep(self):
         return {"curve_joint": self.curve_joint.name(), "name": self.name(), "constraint_type": "curvature"}
 
@@ -1079,4 +1145,12 @@ class ConstraintValidationError(Exception):
 
 
 class NoSolutionError(Exception):
+    pass
+
+
+class DuplicateConstraintError(Exception):
+    pass
+
+
+class MaxWeakConstraintAttemptsError(Exception):
     pass
