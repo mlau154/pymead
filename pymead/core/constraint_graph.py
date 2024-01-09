@@ -6,6 +6,7 @@ import jax
 import numpy as np
 from jax import jit
 from jax import numpy as jnp
+import networkx
 
 from pymead.core import constraint_equations as ceq
 from pymead.core.constraints import PymeadRootFinder
@@ -128,7 +129,7 @@ class AbsAngleConstraintWeak(ConstraintWeak):
         return f"AbsAngleConstraintWeak {self.name}"
 
 
-class ConstraintGraph:
+class ConstraintGraph(networkx.Graph):
     def __init__(self, gdict: dict = None, cdict: dict = None):
         self.gdict = gdict if gdict is not None else {}
         self.cdict = cdict if cdict is not None else {}
@@ -137,9 +138,7 @@ class ConstraintGraph:
         self.equations = {}
         self.arg_idx_arrays = {}
         self.variable_pos = {}
-
-    def edges(self):
-        return self._find_edges()
+        super().__init__()
 
     def edge_names(self):
         return self._find_edge_names()
@@ -184,7 +183,6 @@ class ConstraintGraph:
     def verify_and_update_entity_or_constraint(self, entity_or_constraint: Entity or Constraint, x: np.ndarray,
                                                info):
         if np.any(info.fun_val > 1e-6):
-            print(f"{x = }, {info = }")
             raise ValueError("Could not solve the constraint problem within tolerance after constraint addition")
 
         self.update_from_entity_or_constraint(entity_or_constraint, x)
@@ -366,6 +364,7 @@ class ConstraintGraph:
                     if neighbor not in visited_nodes:
                         visited_nodes.append(neighbor)
                         visited_edges.append({next_point.name, neighbor.name})
+                        print(f"{starting_node = }, {visited_edges = }")
                         queue.append(neighbor)
 
                         # Add the strong constraint equations
@@ -397,6 +396,7 @@ class ConstraintGraph:
                                 dof += 1
 
                                 # Add the strong constraint associated with this loop closure edge
+                                print(f"{next_point = }, {neighbor = }")
                                 constraints = self.cdict[next_point][neighbor]
                                 if len(constraints) != 1:
                                     raise ValueError("Overconstrained")
@@ -426,8 +426,6 @@ class ConstraintGraph:
         def equation_system(x: np.ndarray,
                             start_param_vec: np.ndarray, intermediate_param_vec: np.ndarray):
 
-            jax.debug.print(" {x} ", x=x)
-
             final_param_vec = jnp.array([v for v in intermediate_param_vec])
             for idx, pos in enumerate(self.variable_pos[entity_or_constraint]):
                 final_param_vec = final_param_vec.at[pos].set(x[idx])
@@ -438,8 +436,6 @@ class ConstraintGraph:
                                       for cnstr, arg_idx_array in zip(self.equations[entity_or_constraint],
                                                                       self.arg_idx_arrays[entity_or_constraint])
                                       ])
-
-            jax.debug.print(" {func_outputs} ", func_outputs=func_outputs)
 
             return func_outputs
 
@@ -487,6 +483,7 @@ def main():
     original_x = [p.x.value() for p in points]
     original_y = [p.y.value() for p in points]
     plt.plot(original_x, original_y, ls="none", marker="o", color="indianred")
+    plt.gca().set_aspect("equal")
 
     cnstr1 = DistanceConstraint(p1, p2, 1.0, "d1")
     cnstr2 = DistanceConstraint(p2, p3, 0.8, "d2")
@@ -507,7 +504,12 @@ def main():
 
     print(f"{p2 = }")
 
-    graph.move_point(p2, 0.65, 0.8)
+    new_x = [p.x.value() for p in points]
+    new_y = [p.y.value() for p in points]
+    plt.plot(new_x, new_y, ls="none", marker="s", color="mediumaquamarine", mfc="#aaaaaa88")
+    plt.show()
+
+    graph.move_point(p2, 0.8, 0.6)
 
     print(f"{np.hypot(p1.x.value() - p2.x.value(), p1.y.value() - p2.y.value())}")
     print(f"{np.hypot(p3.x.value() - p2.x.value(), p3.y.value() - p2.y.value())}")
@@ -515,8 +517,8 @@ def main():
 
     new_x = [p.x.value() for p in points]
     new_y = [p.y.value() for p in points]
+    plt.plot(original_x, original_y, ls="none", marker="o", color="indianred")
     plt.plot(new_x, new_y, ls="none", marker="s", color="steelblue", mfc="#aaaaaa88")
-    plt.gca().set_aspect("equal")
     plt.show()
 
     pass
