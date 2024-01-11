@@ -26,6 +26,42 @@ def measure_rel_angle4(x1: float, y1: float, x2: float, y2: float, x3: float, y3
 
 
 @jit
+def measure_point_line_distance_signed(x1: float, y1: float, x2: float, y2: float, x3: float, y3: float):
+    """
+    Measures the signed distance from a point :math:`(x_3, y_3)` to a line defined by
+    two points: :math:`(x_1, y_1)` and :math:`(x_2, y_2)`. This signed version is used in the point-line
+    symmetry constraint because a perpendicular constraint does not necessarily prevent the GCS from moving
+    the symmetric point to the same side of the line as the target point.
+
+    Parameters
+    ----------
+    x1: float
+        x-coordinate of the line's start point
+    y1: float
+        y-coordinate of the line's start point
+    x2: float
+        x-coordinate of the line's end point
+    y2: float
+        y-coordinate of the line's end point
+    x3: float
+        x-coordinate of the target point
+    y3: float
+        y-coordinate of the target point
+
+    Returns
+    -------
+    float
+        Distance from the target point to the line
+    """
+    return (x2 - x1) * (y1 - y3) - (x1 - x3) * (y2 - y3) / measure_distance(x1, y1, x2, y2)
+
+
+@jit
+def measure_point_line_distance_unsigned(x1: float, y1: float, x2: float, y2: float, x3: float, y3: float):
+    return jnp.abs(measure_point_line_distance_signed(x1, y1, x2, y2, x3, y3))
+
+
+@jit
 def measure_radius_of_curvature_bezier(Lt: float, Lc: float, n: int, psi: float):
     return jnp.abs(jnp.true_divide(Lt ** 2, Lc * (1 - 1 / n) * jnp.sin(psi)))
 
@@ -144,10 +180,39 @@ def perp4_constraint(x1: float, y1: float, x2: float, y2: float, x3: float, y3: 
 
 
 @jit
-def parallel3_constraint(x1: float, y1: float, x2: float, y2: float, x3: float, y3: float):
+def antiparallel3_constraint(x1: float, y1: float, x2: float, y2: float, x3: float, y3: float):
     return measure_rel_angle3(x1, y1, x2, y2, x3, y3) - jnp.pi
 
 
 @jit
-def parallel4_constraint(x1: float, y1: float, x2: float, y2: float, x3: float, y3: float, x4: float, y4: float):
+def antiparallel4_constraint(x1: float, y1: float, x2: float, y2: float, x3: float, y3: float, x4: float, y4: float):
     return measure_rel_angle4(x1, y1, x2, y2, x3, y3, x4, y4) - jnp.pi
+
+
+@jit
+def parallel3_constraint(x1: float, y1: float, x2: float, y2: float, x3: float, y3: float):
+    return measure_rel_angle3(x1, y1, x2, y2, x3, y3)
+
+
+@jit
+def parallel4_constraint(x1: float, y1: float, x2: float, y2: float, x3: float, y3: float, x4: float, y4: float):
+    return measure_rel_angle4(x1, y1, x2, y2, x3, y3, x4, y4)
+
+
+@jit
+def point_on_line_constraint(x1: float, y1: float, x2: float, y2: float, x3: float, y3: float):
+    return (y1 - y2) * (x3 - x1) - (y3 - y1) * (x1 - x2)
+
+
+@jit
+def points_equidistant_from_line_constraint_unsigned(x1: float, y1: float, x2: float, y2: float, x3: float, y3: float,
+                                                     x4: float, y4: float):
+    return (measure_point_line_distance_unsigned(x1, y1, x2, y2, x3, y3) -
+            measure_point_line_distance_unsigned(x1, y1, x2, y2, x4, y4))
+
+
+@jit
+def points_equidistant_from_line_constraint_signed(x1: float, y1: float, x2: float, y2: float, x3: float, y3: float,
+                                                   x4: float, y4: float):
+    return (measure_point_line_distance_signed(x1, y1, x2, y2, x3, y3) +
+            measure_point_line_distance_signed(x1, y1, x2, y2, x4, y4))

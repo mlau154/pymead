@@ -16,14 +16,14 @@ from pymead.core.pymead_obj import PymeadObj
 
 
 class PymeadRootFinder(jaxopt.ScipyRootFinding):
-    def __init__(self, equation_system: typing.Callable):
+    def __init__(self, equation_system: typing.Callable, method: str = "lm"):
         super().__init__(
-            method="hybr",
+            method=method,
             jit=True,
             has_aux=False,
             optimality_fun=equation_system,
-            tol=1e-6,
-            use_jacrev=False,  # Use the forward Jacobian calculation since the matrix is square
+            tol=1e-10,
+            use_jacrev=True,  # Use the forward Jacobian calculation since the matrix is square
         )
 
     def solve(self, x0: np.ndarray, start_param_vec: np.ndarray, intermediate_param_vec: np.ndarray):
