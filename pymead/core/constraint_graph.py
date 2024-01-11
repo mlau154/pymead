@@ -457,7 +457,6 @@ class ConstraintGraph(networkx.Graph):
 
         constraint.data.clear()
         params = self.get_params(source_node=constraint)
-        print(f"{len(params) = }")
         points = self.get_points(source_node=constraint)
         points_to_fix = self.get_points_to_fix(source=constraint)
         fixed_points = self.fix_points(points_to_fix)
@@ -493,6 +492,12 @@ class ConstraintGraph(networkx.Graph):
             if not any(["a" in cnstr.kind for cnstr in self.adj[node]]):
                 if node not in points_may_need_angle:
                     points_may_need_angle.append(node)
+
+        print(f"{points_may_need_distance = }, {points_may_need_angle = }, {dof = }, {len(params) = }")
+
+        # Possible algorithm:
+        # 1. Any point without any distance constraint probably needs a DistanceConstraintWeak
+        # 2. For each dof > 0, add a point constraint in subsequent combinations of 3 points ([:3], [1:4], etc.)
 
         # Determine the absolute angle constraint to add to eliminate the rotational degree of freedom, if necessary
         if len(abs_angle_constraints) == 0 and len(fixed_points) == 1:
@@ -530,7 +535,6 @@ class ConstraintGraph(networkx.Graph):
             constraint.data.equations.append(eq)
 
         for cnstr in weak_constraints:
-            print(f"{cnstr.p1 = }, {cnstr.p2 = }, {cnstr = }, yeet")
             constraint.data.arg_idx_array.extend(cnstr.get_arg_idx_array(params))
             constraint.data.constraints.append(cnstr)
 
@@ -1026,4 +1030,4 @@ def main4():
 
 
 if __name__ == "__main__":
-    main4()
+    main2()
