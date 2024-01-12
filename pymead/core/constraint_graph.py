@@ -127,6 +127,30 @@ class DistanceConstraint(Constraint):
         return f"DistanceConstraint {self.name}<v={self.param.value()}>"
 
 
+class DistanceConstraintWeak(ConstraintWeak):
+    equations = [staticmethod(ceq.distance_constraint_weak)]
+
+    def __init__(self, p1: Point, p2: Point, name: str):
+        self.p1 = p1
+        self.p2 = p2
+        super().__init__(name=name)
+
+    def get_arg_idx_array(self, param_list: typing.List[Param], use_intermediate: bool = False) -> list:
+        return [[
+            [param_list.index(self.p1.x), 2],
+            [param_list.index(self.p1.y), 2],
+            [param_list.index(self.p2.x), 2],
+            [param_list.index(self.p2.y), 2],
+            [param_list.index(self.p1.x), int(use_intermediate)],
+            [param_list.index(self.p1.y), int(use_intermediate)],
+            [param_list.index(self.p2.x), int(use_intermediate)],
+            [param_list.index(self.p2.y), int(use_intermediate)],
+        ]]
+
+    def __repr__(self):
+        return f"DistanceConstraintWeak {self.name}"
+
+
 class AbsAngleConstraint(Constraint):
     equations = [staticmethod(ceq.abs_angle_constraint)]
 
@@ -330,6 +354,58 @@ class Perp3Constraint(Constraint):
         return f"Perp3Constraint {self.name}"
 
 
+class RelAngle3Constraint(Constraint):
+    equations = [staticmethod(ceq.rel_angle3_constraint)]
+
+    def __init__(self, start_point: Point, vertex: Point, end_point: Point, value: float, name: str):
+        self.start_point = start_point
+        self.vertex = vertex
+        self.end_point = end_point
+        super().__init__(value=value, name=name, child_nodes=[self.start_point, self.vertex, self.end_point], kind="a3")
+
+    def get_arg_idx_array(self, param_list: typing.List[Param]) -> list:
+        return [[
+            [param_list.index(self.start_point.x), 2],
+            [param_list.index(self.start_point.y), 2],
+            [param_list.index(self.vertex.x), 2],
+            [param_list.index(self.vertex.y), 2],
+            [param_list.index(self.end_point.x), 2],
+            [param_list.index(self.end_point.y), 2]
+        ]]
+
+    def __repr__(self):
+        return f"RelAngle3Constraint {self.name}<v={self.param.value()}>"
+
+
+class RelAngle3ConstraintWeak(ConstraintWeak):
+    equations = [staticmethod(ceq.rel_angle3_constraint_weak)]
+
+    def __init__(self, start_point: Point, vertex: Point, end_point: Point, name: str):
+        self.start_point = start_point
+        self.vertex = vertex
+        self.end_point = end_point
+        super().__init__(name=name)
+
+    def get_arg_idx_array(self, param_list: typing.List[Param], use_intermediate: bool = False) -> list:
+        return [[
+            [param_list.index(self.start_point.x), 2],
+            [param_list.index(self.start_point.y), 2],
+            [param_list.index(self.vertex.x), 2],
+            [param_list.index(self.vertex.y), 2],
+            [param_list.index(self.end_point.x), 2],
+            [param_list.index(self.end_point.y), 2],
+            [param_list.index(self.start_point.x), int(use_intermediate)],
+            [param_list.index(self.start_point.y), int(use_intermediate)],
+            [param_list.index(self.vertex.x), int(use_intermediate)],
+            [param_list.index(self.vertex.y), int(use_intermediate)],
+            [param_list.index(self.end_point.x), int(use_intermediate)],
+            [param_list.index(self.end_point.y), int(use_intermediate)]
+        ]]
+
+    def __repr__(self):
+        return f"RelAngle3Constraint {self.name}"
+
+
 class PointOnLineConstraint(Constraint):
     equations = [staticmethod(ceq.point_on_line_constraint)]
 
@@ -498,16 +574,21 @@ class ConstraintGraph(networkx.Graph):
         # Possible algorithm:
         # 1. Any point without any distance constraint probably needs a DistanceConstraintWeak
         # 2. For each dof > 0, add a point constraint in subsequent combinations of 3 points ([:3], [1:4], etc.)
+        for point in points_may_need_distance:
+            if dof == 0:
+                break
+
+            # If this was the last point added, use the second-to-last point as p2. Otherwise, use the next point.
+            if self.points.index(point) == len(self.points) - 1:
+                p2 = self.points[-2]
+            else:
+                p2 = self.points[self.points.index(point) + 1]
+
+            dist_constraint_weak = DistanceConstraintWeak(point, p2, "dcw1")
+            weak_constraints.append(dist_constraint_weak)
 
         # Determine the absolute angle constraint to add to eliminate the rotational degree of freedom, if necessary
         if len(abs_angle_constraints) == 0 and len(fixed_points) == 1:
-            # descendants = networkx.descendants_at_distance(self, source=fixed_points[0], distance=2)
-            # for descendant in descendants:
-            #     # TODO: need to generalize this, possibly using a different technique than descendants_at_distance
-            #     end_point = points[1]
-            #     abs_angle_constraint = AbsAngleConstraintWeak(fixed_points[0], end_point, "aa1")
-            #     weak_constraints.append(abs_angle_constraint)
-            #     break
             start_point = fixed_points[0]
             if self.points[0] == start_point:
                 end_point = self.points[1]
@@ -527,7 +608,6 @@ class ConstraintGraph(networkx.Graph):
             constraint.data.equations.append(eq)
 
         for cnstr in strong_constraints:
-            # TODO: this means that we need to make the arg_idx_array for each constraint 3-D instead of 2-D
             constraint.data.arg_idx_array.extend(cnstr.get_arg_idx_array(params))
             constraint.data.constraints.append(cnstr)
 

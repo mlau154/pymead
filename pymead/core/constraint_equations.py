@@ -164,6 +164,14 @@ def rel_angle3_constraint(x1: float, y1: float, x2: float, y2: float, x3: float,
 
 
 @jit
+def rel_angle3_constraint_weak(x1_new: float, y1_new: float, x2_new: float, y2_new: float, x3_new: float, y3_new: float,
+                               x1_old: float, y1_old: float, x2_old: float, y2_old: float, x3_old: float,
+                               y3_old: float):
+    return (measure_rel_angle3(x1_new, y1_new, x2_new, y2_new, x3_new, y3_new) -
+            measure_rel_angle3(x1_old, y1_old, x2_old, y2_old, x3_old, y3_old))
+
+
+@jit
 def rel_angle4_constraint(x1: float, y1: float, x2: float, y2: float, x3: float, y3: float, x4: float, y4: float,
                           angle: float):
     return measure_rel_angle4(x1, y1, x2, y2, x3, y3, x4, y4) - angle
