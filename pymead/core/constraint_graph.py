@@ -403,7 +403,7 @@ class RelAngle3ConstraintWeak(ConstraintWeak):
         ]]
 
     def __repr__(self):
-        return f"RelAngle3Constraint {self.name}"
+        return f"{self.__class__.__name__} {self.name}"
 
 
 class PointOnLineConstraint(Constraint):
@@ -431,14 +431,14 @@ class PointOnLineConstraint(Constraint):
 
 class EquationData:
     def __init__(self):
-        self.root_finder = None
+        self.root_finders = {}
         self.constraints = []
         self.equations = []
         self.arg_idx_array = []
         self.variable_pos = []
 
     def clear(self):
-        self.root_finder = None
+        self.root_finders.clear()
         self.constraints.clear()
         self.equations.clear()
         self.arg_idx_array.clear()
@@ -446,23 +446,41 @@ class EquationData:
 
 
 class ConstraintGraph(networkx.Graph):
-    def __init__(self, gdict: dict = None, cdict: dict = None):
-        self.gdict = gdict if gdict is not None else {}
-        self.cdict = cdict if cdict is not None else {}
-        self.root_finders = {}
-        self.constraints = {}
-        self.equations = {}
-        self.arg_idx_arrays = {}
-        self.variable_pos = {}
-        self.subgraphs = []
+    def __init__(self):
         self.points = []
         super().__init__()
 
     def add_point(self, point: Point):
+        """
+        Adds a ``Point`` as a new (unconnected) node in the graph, and to the graph instance's list of points.
+
+        Parameters
+        ----------
+        point: Point
+            Point to add to the graph
+
+        Returns
+        -------
+
+        """
         self.add_node(point)
         self.points.append(point)
 
     def add_constraint(self, constraint: Constraint):
+        """
+        Adds the specified constraint to the graph, then analyzes the entire graph of connected points and constraints
+        and adds any weak constraints needed to make the problem well-constrained. The non-linear system of equations
+        representing the constraints is then solved to tolerance, and all points updated.
+
+        Parameters
+        ----------
+        constraint: Constraint
+            Constraint to add to the graph
+
+        Returns
+        -------
+
+        """
         self.add_node(constraint)
         for child_node in constraint.child_nodes:
             self.add_edge(constraint, child_node)
@@ -477,12 +495,18 @@ class ConstraintGraph(networkx.Graph):
 
         print(f"Adding {constraint}...")
 
+        # Analyze the constraint to add the strong constraints and any weak constraints necessary to make the problem
+        # well-constrained
         self.analyze(constraint)
 
-        # self.get_equation_set_for_entity_or_constraint(point, for_initial_solve=True)
-        # self.compile_equation_for_entity_or_constraint(point)
-        # x, info = self.initial_solve_for_entity_or_constraint(point)
-        # self.verify_and_update_entity_or_constraint(point, x, info)
+        # Compile two separate root finders: one using Levenberg-Marquardt damped non-linear least squares algorithm,
+        # another using MINPACK's hybrd/hybrj routines
+        self.compile_equation_for_entity_or_constraint(constraint, method="lm")
+        self.compile_equation_for_entity_or_constraint(constraint, method="hybr")
+
+        # Solve using first the least-squares method and then MINPACK if necessary. Update the points if the solution
+        # falls within the tolerance specified in the PymeadRootFinder class
+        self.multisolve_and_update(constraint)
 
     def get_points_to_fix(self, source: Constraint) -> typing.List[Point]:
 
@@ -556,25 +580,27 @@ class ConstraintGraph(networkx.Graph):
 
         points_may_need_distance = []
         points_may_need_angle = []
+        a4_constraints = []
 
         for node in networkx.dfs_preorder_nodes(self, source=constraint):
-            if not isinstance(node, Point):
-                continue
 
-            if not any(["d" in cnstr.kind for cnstr in self.adj[node]]):
+            if isinstance(node, Point) and not any(["d" in cnstr.kind for cnstr in self.adj[node]]):
                 if node not in points_may_need_distance:
                     points_may_need_distance.append(node)
 
-            if not any(["a" in cnstr.kind for cnstr in self.adj[node]]):
+            if isinstance(node, Point) and not any(["a" in cnstr.kind for cnstr in self.adj[node]]):
                 if node not in points_may_need_angle:
                     points_may_need_angle.append(node)
 
+            if isinstance(node, Constraint) and node.kind == "a4":
+                a4_constraints.append(node)
+
         print(f"{points_may_need_distance = }, {points_may_need_angle = }, {dof = }, {len(params) = }")
 
-        # Possible algorithm:
-        # 1. Any point without any distance constraint probably needs a DistanceConstraintWeak
-        # 2. For each dof > 0, add a point constraint in subsequent combinations of 3 points ([:3], [1:4], etc.)
         for point in points_may_need_distance:
+
+            # Weak distance constraint algorithm
+
             if dof == 0:
                 break
 
@@ -584,8 +610,134 @@ class ConstraintGraph(networkx.Graph):
             else:
                 p2 = self.points[self.points.index(point) + 1]
 
+            # Add a weak distance constraint between this point and the next candidate point, chosen somewhat
+            # arbitrarily for now
             dist_constraint_weak = DistanceConstraintWeak(point, p2, "dcw1")
             weak_constraints.append(dist_constraint_weak)
+            dof -= 1
+
+        for cnstr in a4_constraints:
+
+            # A4 constraint algorithm
+
+            if dof == 0:
+                break
+
+            # 2. For each "a4," check that each of the subsets {{1,2},{3,4}} and {{2,3},{1,4}} is constrained w/ "a3"
+            # a3_constrained_points = []
+            # for point in [cnstr.p1, cnstr.p2, cnstr.p3, cnstr.p4]:
+            #     if any([c.kind == "a3" for c in point.constraints]):
+            #         a3_constrained_points.append(point)
+
+            add_a3 = True
+            analyze_angle_loop = True
+
+            # 2 (cont). If less than 3 points in the a4 constraint have an a3 constraint, then we know for sure that an
+            # a3 constraint connecting two adjacent sides of the a4 constraint will be required
+            # if len(a3_constrained_points) < 3:
+            #     analyze_angle_loop = False
+
+            point_pairs = {
+                0: [cnstr.p1, cnstr.p2],
+                1: [cnstr.p3, cnstr.p4],
+                2: [cnstr.p2, cnstr.p3],
+                3: [cnstr.p1, cnstr.p4]
+            }
+
+            common_neighbors = []
+
+            for idx, pair in point_pairs.items():
+                common_neighbors.append(
+                    [n for n in networkx.common_neighbors(self, pair[0], pair[1]) if n.kind == "a3"]
+                )
+
+            print(f"{common_neighbors = }")
+
+            point_pair_n_constraints = {idx: len(neighbors) for idx, neighbors in enumerate(common_neighbors)}
+
+            print(f"{point_pair_n_constraints = }")
+
+            pair_combos = [[0, 2], [0, 3], [1, 2], [1, 3]]
+            found_combo = False
+
+            for pair_combo in pair_combos:
+                if point_pair_n_constraints[pair_combo[0]] > 0 and point_pair_n_constraints[pair_combo[1]] > 0:
+                    if len(set(common_neighbors[pair_combo[0]]).intersection(common_neighbors[pair_combo[1]])) > 0:
+                        add_a3 = False
+                        break
+                    found_combo = True
+
+            if not found_combo:
+                analyze_angle_loop = False
+
+            # This next block should all go inside the next if statement
+            cycles = [cycle for cycle in networkx.simple_cycles(self) if all([isinstance(node, Point) or (
+                    isinstance(node, Constraint) and node.kind in ["a3", "a4"]) for node in cycle])]
+            for cycle in cycles:
+                print(f"{cycle = }")
+
+            # 4. Angle loop closure
+            if add_a3 and analyze_angle_loop:
+                visited_nodes = []
+
+            if not add_a3:
+                continue
+
+            # Add the weak a3 constraint
+            candidate_point_lists = [[cnstr.p2, cnstr.p1, cnstr.p3], [cnstr.p4, cnstr.p2, cnstr.p1]]
+            check_dist_point_lists = [[cnstr.p1, cnstr.p3], [cnstr.p2, cnstr.p4]]
+            for candidate_point_list, check_dist_point_list in zip(candidate_point_lists, check_dist_point_lists):
+                common_dist_neighbors = (
+                    [n for n in networkx.common_neighbors(
+                        self, check_dist_point_list[0], check_dist_point_list[1]) if "d" in n.kind]
+                )
+                if len(common_dist_neighbors) == 0:
+                    continue
+
+                weak_a3_constraint = RelAngle3ConstraintWeak(*candidate_point_list, name="ra3w")
+                weak_constraints.append(weak_a3_constraint)
+                print(f"{weak_a3_constraint = }, {weak_a3_constraint.start_point = }, {weak_a3_constraint.vertex = }, {weak_a3_constraint.end_point = }")
+                break
+
+        for point in points_may_need_angle:
+
+            # Weak relative angle constraint algorithm
+
+            if dof == 0:
+                break
+
+            for cnstr in point.constraints:
+                if isinstance(cnstr, DistanceConstraint) or isinstance(cnstr, DistanceConstraintWeak):
+                    start_point = point
+                    vertex = cnstr.p2 if cnstr.p2 is not point else cnstr.p1
+                    end_point = None
+
+                    for sub_cnstr in vertex.constraints:
+                        if sub_cnstr is cnstr:
+                            continue
+                        if isinstance(sub_cnstr, RelAngle3Constraint) or isinstance(sub_cnstr, RelAngle3ConstraintWeak):
+                            end_point = sub_cnstr.start_point
+                        elif (isinstance(sub_cnstr, Perp3Constraint) or isinstance(sub_cnstr, Parallel3Constraint) or
+                              isinstance(sub_cnstr, AntiParallel3Constraint)):
+                            end_point = sub_cnstr.p1
+                    if end_point is not None:
+                        rel_angle3_constraint_weak = RelAngle3ConstraintWeak(start_point, vertex, end_point, "ra3")
+                        weak_constraints.append(rel_angle3_constraint_weak)
+                        dof -= 1
+                        break
+
+                    for sub_cnstr in vertex.constraints:
+                        if sub_cnstr is cnstr:
+                            continue
+
+                        if isinstance(sub_cnstr, DistanceConstraint) or isinstance(sub_cnstr, DistanceConstraintWeak):
+                            end_point = sub_cnstr.p1 if sub_cnstr.p1 not in [start_point, vertex] else sub_cnstr.p2
+
+                    if end_point is not None:
+                        rel_angle3_constraint_weak = RelAngle3ConstraintWeak(start_point, vertex, end_point, "ra3")
+                        weak_constraints.append(rel_angle3_constraint_weak)
+                        dof -= 1
+                        break
 
         # Determine the absolute angle constraint to add to eliminate the rotational degree of freedom, if necessary
         if len(abs_angle_constraints) == 0 and len(fixed_points) == 1:
@@ -618,44 +770,45 @@ class ConstraintGraph(networkx.Graph):
             constraint.data.arg_idx_array.extend(cnstr.get_arg_idx_array(params))
             constraint.data.constraints.append(cnstr)
 
+        print(f"{strong_constraints = }")
+        print(f"{weak_constraints = }")
+
         pass
 
-    def verify_and_update_entity_or_constraint(self, entity_or_constraint: Entity or Constraint, x: np.ndarray,
-                                               info):
+    @staticmethod
+    def verify_constraint_addition(info):
         if np.any(info.fun_val > 1e-6):
             raise ValueError("Could not solve the constraint problem within tolerance after constraint addition")
 
-        self.update_points(entity_or_constraint, x)
+    # def _add_constraint(self, vertex_pair: typing.Iterable[Entity], constraint: Constraint):
+    #     # self._add_edge(vertex_pair)
+    #
+    #     # Now, analyze the graph to form the equation set, solve the equation set, and update the points
+    #     # point = constraint.pick_starting_point()
+    #     # self.get_equation_set_for_entity_or_constraint(point, for_initial_solve=True)
+    #     # self.compile_equation_for_entity_or_constraint(point)
+    #     # x, info = self.initial_solve_for_entity_or_constraint(point)
+    #     # self.verify_and_update_entity_or_constraint(point, x, info)
+    #
+    #     # TODO: Note - might be able to avoid using jit on the initial compile for time savings
+    #
+    #     # If the update was successful, compile all the equation sets for point movement
+    #     for point in self.cdict:
+    #         self.get_equation_set_for_constraint(point, for_initial_solve=False)
+    #         self.compile_equation_for_entity_or_constraint(point)
 
-    def _add_constraint(self, vertex_pair: typing.Iterable[Entity], constraint: Constraint):
-        # self._add_edge(vertex_pair)
-
-        # Now, analyze the graph to form the equation set, solve the equation set, and update the points
-        # point = constraint.pick_starting_point()
-        # self.get_equation_set_for_entity_or_constraint(point, for_initial_solve=True)
-        # self.compile_equation_for_entity_or_constraint(point)
-        # x, info = self.initial_solve_for_entity_or_constraint(point)
-        # self.verify_and_update_entity_or_constraint(point, x, info)
-
-        # TODO: Note - might be able to avoid using jit on the initial compile for time savings
-
-        # If the update was successful, compile all the equation sets for point movement
-        for point in self.cdict:
-            self.get_equation_set_for_constraint(point, for_initial_solve=False)
-            self.compile_equation_for_entity_or_constraint(point)
-
-    def move_point(self, point: Point, new_x: float, new_y: float):
-
-        start_param_vec = self.get_param_values()
-
-        point.x.set_value(new_x)
-        point.y.set_value(new_y)
-
-        intermediate_param_vec = self.get_param_values()
-
-        x, info = self.final_solve_for_entity_or_constraint(point, start_param_vec, intermediate_param_vec)
-
-        self.verify_and_update_entity_or_constraint(point, x, info)
+    # def move_point(self, point: Point, new_x: float, new_y: float):
+    #
+    #     start_param_vec = self.get_param_values()
+    #
+    #     point.x.set_value(new_x)
+    #     point.y.set_value(new_y)
+    #
+    #     intermediate_param_vec = self.get_param_values()
+    #
+    #     x, info = self.final_solve_for_entity_or_constraint(point, start_param_vec, intermediate_param_vec)
+    #
+    #     self.verify_and_update_entity_or_constraint(point, x, info)
 
     def get_strong_constraints(self, source_node: Point or Constraint):
 
@@ -723,124 +876,124 @@ class ConstraintGraph(networkx.Graph):
         for param in param_list:
             self.add_variable(equation_data, param, params)
 
-    def get_equation_set_for_constraint(self, constraint: Constraint,
-                                        params: typing.List[Param] = None,
-                                        strong_constraints: typing.List[Constraint] = None,
-                                        for_initial_solve: bool = True):
-
-        params = self.get_params(strong_constraints) if params is None else params
-
-        # Clear the equation data
-        constraint.data.clear()
-
-        def add_var(start: Point, param: Param, dof: int):
-            self.add_variable(start, param, params)
-            return dof + 1
-
-        def add_vars(start: Point, param_list: typing.List[Param], dof: int):
-
-            for param in param_list:
-                dof = add_var(start, param, dof)
-
-            return dof
-
-        def add_strong_cnstr(cnstr: Constraint, dof: int, strong_added: int):
-            constraint.data.constraints.append(cnstr)
-            constraint.data.equations.append(cnstr.equations)
-            constraint.data.arg_idx_array.append(cnstr.get_arg_idx_array(params))
-            return dof - 1, strong_added + 1
-
-        def add_strong_cnstrs(cnstrs: typing.List[Constraint], dof: int, strong_added: int):
-
-            for cnstr in cnstrs:
-                dof, strong_added = add_strong_cnstr(cnstr, dof, strong_added)
-
-            return dof, strong_added
-
-        def add_weak_cnstr(cnstr: ConstraintWeak, start: Point, dof: int, use_intermediate: bool = False):
-            self.constraints[start].append(cnstr)
-            self.equations[start].append(cnstr.equations)
-            self.arg_idx_arrays[start].append(cnstr.get_arg_idx_array(params, use_intermediate=use_intermediate))
-            return dof - 1
-
-        visited_nodes, visited_edges, queue = [], [], []
-
-        def bfs(starting_node):  # breadth-first search: time complexity O(V+E)
-            visited_nodes.append(starting_node)
-            queue.append(starting_node)
-
-            dof = 0
-            strong_equations_added = 0
-            starting_point_added = False
-
-            while queue:  # Creating loop to visit each node
-                next_point = queue.pop(0)
-
-                # Add the starting point variables if they have not yet been added
-                if not starting_point_added:
-                    dof = add_vars(starting_node, [next_point.x, next_point.y], dof)
-                    starting_point_added = True
-
-                # Loop through each node adjacent to the current queue node being analyzed
-                for neighbor in self.cdict[next_point]:
-                    if neighbor not in visited_nodes:
-                        visited_nodes.append(neighbor)
-                        visited_edges.append({next_point.name, neighbor.name})
-                        queue.append(neighbor)
-
-                        # Add the strong constraint equations
-                        constraints = self.cdict[next_point][neighbor]
-                        dof, strong_equations_added = add_strong_cnstrs(
-                            constraints, starting_node, dof, strong_equations_added
-                        )
-
-                        if len(visited_nodes) == 2:  # For only the second node analyzed in the entire graph,
-                            if len(constraints) == 1 and isinstance(constraints[0], DistanceConstraint):
-                                cnstr = AbsAngleConstraintWeak(next_point, neighbor, "a1")
-                                dof = add_weak_cnstr(cnstr, starting_node, dof, use_intermediate=not for_initial_solve)
-
-                        elif len(visited_nodes) > 2:  # For all nodes other than the first two,
-                            if len(constraints) == 1 and isinstance(constraints[0], DistanceConstraint):
-                                cnstr = AbsAngleConstraintWeak(next_point, neighbor, f"a{len(visited_nodes) - 1}")
-                                dof = add_weak_cnstr(cnstr, starting_node, dof)
-                                dof = add_vars(starting_node, [neighbor.x, neighbor.y], dof)
-                    else:  # Even if this node has already been visited, check to see if it forms a cycle
-                        if {next_point.name, neighbor.name} not in visited_edges:  # (cycle detected)
-
-                            # TODO: this code currently only works for triangle. Will need to extend this to cycle
-                            #  backward along the closed loop for the general polygon case
-                            if isinstance(self.constraints[starting_node][-1], ConstraintWeak):
-                                # Delete the previous weak constraint
-                                self.constraints[starting_node].pop()
-                                self.equations[starting_node].pop()
-                                self.arg_idx_arrays[starting_node].pop()
-                                dof += 1
-
-                                # Add the strong constraint associated with this loop closure edge
-                                print(f"{next_point = }, {neighbor = }")
-                                constraints = self.cdict[next_point][neighbor]
-                                if len(constraints) != 1:
-                                    raise ValueError("Overconstrained")
-                                dof, strong_equations_added = add_strong_cnstrs(
-                                    constraints, starting_node, dof, strong_equations_added
-                                )
-                            else:
-                                raise ValueError("Overconstrained!")
-                            visited_edges.append({next_point.name, neighbor.name})
-
-                    if dof == 0 and strong_equations_added == len(self.get_strong_equations()):
-
-                        if (set((frozenset(edge) for edge in visited_edges)) !=
-                                set((frozenset(edge) for edge in self.edge_names()))):
-                            raise ValueError("Traversed the graph without visiting all the edges")
-
-                        return
-
-            if dof != 0:
-                raise ValueError("Traversed the entire graph, but there are still a non-zero number of "
-                                 "degrees of freedom")
-
-        # bfs(point)
+    # def get_equation_set_for_constraint(self, constraint: Constraint,
+    #                                     params: typing.List[Param] = None,
+    #                                     strong_constraints: typing.List[Constraint] = None,
+    #                                     for_initial_solve: bool = True):
+    #
+    #     params = self.get_params(strong_constraints) if params is None else params
+    #
+    #     # Clear the equation data
+    #     constraint.data.clear()
+    #
+    #     def add_var(start: Point, param: Param, dof: int):
+    #         self.add_variable(start, param, params)
+    #         return dof + 1
+    #
+    #     def add_vars(start: Point, param_list: typing.List[Param], dof: int):
+    #
+    #         for param in param_list:
+    #             dof = add_var(start, param, dof)
+    #
+    #         return dof
+    #
+    #     def add_strong_cnstr(cnstr: Constraint, dof: int, strong_added: int):
+    #         constraint.data.constraints.append(cnstr)
+    #         constraint.data.equations.append(cnstr.equations)
+    #         constraint.data.arg_idx_array.append(cnstr.get_arg_idx_array(params))
+    #         return dof - 1, strong_added + 1
+    #
+    #     def add_strong_cnstrs(cnstrs: typing.List[Constraint], dof: int, strong_added: int):
+    #
+    #         for cnstr in cnstrs:
+    #             dof, strong_added = add_strong_cnstr(cnstr, dof, strong_added)
+    #
+    #         return dof, strong_added
+    #
+    #     def add_weak_cnstr(cnstr: ConstraintWeak, start: Point, dof: int, use_intermediate: bool = False):
+    #         self.constraints[start].append(cnstr)
+    #         self.equations[start].append(cnstr.equations)
+    #         self.arg_idx_arrays[start].append(cnstr.get_arg_idx_array(params, use_intermediate=use_intermediate))
+    #         return dof - 1
+    #
+    #     visited_nodes, visited_edges, queue = [], [], []
+    #
+    #     def bfs(starting_node):  # breadth-first search: time complexity O(V+E)
+    #         visited_nodes.append(starting_node)
+    #         queue.append(starting_node)
+    #
+    #         dof = 0
+    #         strong_equations_added = 0
+    #         starting_point_added = False
+    #
+    #         while queue:  # Creating loop to visit each node
+    #             next_point = queue.pop(0)
+    #
+    #             # Add the starting point variables if they have not yet been added
+    #             if not starting_point_added:
+    #                 dof = add_vars(starting_node, [next_point.x, next_point.y], dof)
+    #                 starting_point_added = True
+    #
+    #             # Loop through each node adjacent to the current queue node being analyzed
+    #             for neighbor in self.cdict[next_point]:
+    #                 if neighbor not in visited_nodes:
+    #                     visited_nodes.append(neighbor)
+    #                     visited_edges.append({next_point.name, neighbor.name})
+    #                     queue.append(neighbor)
+    #
+    #                     # Add the strong constraint equations
+    #                     constraints = self.cdict[next_point][neighbor]
+    #                     dof, strong_equations_added = add_strong_cnstrs(
+    #                         constraints, starting_node, dof, strong_equations_added
+    #                     )
+    #
+    #                     if len(visited_nodes) == 2:  # For only the second node analyzed in the entire graph,
+    #                         if len(constraints) == 1 and isinstance(constraints[0], DistanceConstraint):
+    #                             cnstr = AbsAngleConstraintWeak(next_point, neighbor, "a1")
+    #                             dof = add_weak_cnstr(cnstr, starting_node, dof, use_intermediate=not for_initial_solve)
+    #
+    #                     elif len(visited_nodes) > 2:  # For all nodes other than the first two,
+    #                         if len(constraints) == 1 and isinstance(constraints[0], DistanceConstraint):
+    #                             cnstr = AbsAngleConstraintWeak(next_point, neighbor, f"a{len(visited_nodes) - 1}")
+    #                             dof = add_weak_cnstr(cnstr, starting_node, dof)
+    #                             dof = add_vars(starting_node, [neighbor.x, neighbor.y], dof)
+    #                 else:  # Even if this node has already been visited, check to see if it forms a cycle
+    #                     if {next_point.name, neighbor.name} not in visited_edges:  # (cycle detected)
+    #
+    #                         # TODO: this code currently only works for triangle. Will need to extend this to cycle
+    #                         #  backward along the closed loop for the general polygon case
+    #                         if isinstance(self.constraints[starting_node][-1], ConstraintWeak):
+    #                             # Delete the previous weak constraint
+    #                             self.constraints[starting_node].pop()
+    #                             self.equations[starting_node].pop()
+    #                             self.arg_idx_arrays[starting_node].pop()
+    #                             dof += 1
+    #
+    #                             # Add the strong constraint associated with this loop closure edge
+    #                             print(f"{next_point = }, {neighbor = }")
+    #                             constraints = self.cdict[next_point][neighbor]
+    #                             if len(constraints) != 1:
+    #                                 raise ValueError("Overconstrained")
+    #                             dof, strong_equations_added = add_strong_cnstrs(
+    #                                 constraints, starting_node, dof, strong_equations_added
+    #                             )
+    #                         else:
+    #                             raise ValueError("Overconstrained!")
+    #                         visited_edges.append({next_point.name, neighbor.name})
+    #
+    #                 if dof == 0 and strong_equations_added == len(self.get_strong_equations()):
+    #
+    #                     if (set((frozenset(edge) for edge in visited_edges)) !=
+    #                             set((frozenset(edge) for edge in self.edge_names()))):
+    #                         raise ValueError("Traversed the graph without visiting all the edges")
+    #
+    #                     return
+    #
+    #         if dof != 0:
+    #             raise ValueError("Traversed the entire graph, but there are still a non-zero number of "
+    #                              "degrees of freedom")
+    #
+    #     # bfs(point)
 
     @staticmethod
     def compile_equation_for_entity_or_constraint(constraint: Constraint, method: str = "lm"):
@@ -860,23 +1013,39 @@ class ConstraintGraph(networkx.Graph):
 
             return func_outputs
 
-        constraint.data.root_finder = PymeadRootFinder(jit(equation_system), method=method)
+        constraint.data.root_finders[method] = PymeadRootFinder(jit(equation_system), method=method)
 
-    def initial_solve(self, constraint: Constraint):
+    def solve(self, constraint: Constraint, method: str):
         params = self.get_params(constraint)
         x0 = np.array([params[x_pos].value() for x_pos in constraint.data.variable_pos])
         v = np.array([p.value() for p in params])
         w = deepcopy(v)
-        x, info = constraint.data.root_finder.solve(x0, v, w)
+        x, info = constraint.data.root_finders[method].solve(x0, v, w)
         return x, info
 
-    def final_solve_for_entity_or_constraint(self, entity_or_constraint: Entity or Constraint,
-                                             start_param_vec: np.ndarray, intermediate_param_vec: np.ndarray):
-        params = self.get_params()
-        x0 = np.array([params[x_pos].value() for x_pos in self.variable_pos[entity_or_constraint]])
-        print(f"{[params[x_pos] for x_pos in self.variable_pos[entity_or_constraint]] = }")
-        x, info = self.root_finders[entity_or_constraint].solve(x0, start_param_vec, intermediate_param_vec)
-        return x, info
+    def multisolve_and_update(self, constraint: Constraint):
+        x, info = self.solve(constraint, method="lm")
+
+        try:
+            self.verify_constraint_addition(info)
+        except ValueError:
+            # Update the points anyway and try to solve using the other root-finding method
+            self.update_points(constraint, new_x=x)
+            x, info = self.solve(constraint, method="hybr")
+            try:
+                self.verify_constraint_addition(info)
+            except ValueError:
+                raise ValueError("Could not converge the solution within tolerance using both root-finding methods")
+
+        self.update_points(constraint, new_x=x)
+
+    # def final_solve_for_entity_or_constraint(self, entity_or_constraint: Entity or Constraint,
+    #                                          start_param_vec: np.ndarray, intermediate_param_vec: np.ndarray):
+    #     params = self.get_params()
+    #     x0 = np.array([params[x_pos].value() for x_pos in self.variable_pos[entity_or_constraint]])
+    #     print(f"{[params[x_pos] for x_pos in self.variable_pos[entity_or_constraint]] = }")
+    #     x, info = self.root_finders[entity_or_constraint].solve(x0, start_param_vec, intermediate_param_vec)
+    #     return x, info
 
     def update_points(self, constraint: Constraint, new_x: np.ndarray):
         """
@@ -977,21 +1146,20 @@ def main2():
     constraints = [d1, d2, d3, d4, perp3, parl, aparl3]
     for constraint in constraints:
         g.add_constraint(constraint)
+        plt.plot([p.x.value() for p in points], [p.y.value() for p in points], ls="none", marker="o", mec="indianred",
+                 mfc="indianred", fillstyle="left", markersize=10)
+        plt.show()
 
-    g.compile_equation_for_entity_or_constraint(aparl3)
-    x, info = g.initial_solve(aparl3)
-    print(f"{info = }")
-    g.update_points(aparl3, new_x=x)
-
+    # TODO: on param set_value, automatically solve
     d4.param.set_value(4.0)
     # g.compile_equation_for_entity_or_constraint(aparl3)
-    x, info = g.initial_solve(aparl3)
+    x, info = g.solve(aparl3, method="hybr")
     print(f"{info = }")
     g.update_points(aparl3, new_x=x)
 
     d4.param.set_value(5.0)
     # g.compile_equation_for_entity_or_constraint(aparl3)
-    x, info = g.initial_solve(aparl3)
+    x, info = g.solve(aparl3, method="hybr")
     print(f"{info = }")
     g.update_points(aparl3, new_x=x)
 
@@ -1044,17 +1212,6 @@ def main3():
     for constraint in constraints:
         g.add_constraint(constraint)
 
-    g.compile_equation_for_entity_or_constraint(d3)
-    x, info = g.initial_solve(d3)
-    print(f"{info = }")
-    g.update_points(d3, new_x=x)
-
-    # d4.param.set_value(2.0)
-    # # g.compile_equation_for_entity_or_constraint(aparl3)
-    # x, info = g.initial_solve(d3)
-    # print(f"{info = }")
-    # g.update_points(aparl3, new_x=x)
-
     plt.plot([p.x.value() for p in points], [p.y.value() for p in points], ls="none", marker="o", mfc="steelblue", mec="steelblue", fillstyle="right", markersize=10)
     for p in points:
         plt.text(p.x.value() + 0.02, p.y.value() + 0.02, p.name)
@@ -1071,7 +1228,7 @@ def main4():
     # Add the points
     p1 = Point(0.0, 0.0, "p1")
     p2 = Point(1.0, 0.0, "p2")
-    p3 = Point(0.25, 0.05, "p3")
+    p3 = Point(-0.05, 0.05, "p3")
     # p4 = Point(0.5, 0.03, "p4")
     points = [p1, p2, p3]
     for point in points:
@@ -1089,11 +1246,6 @@ def main4():
     for constraint in constraints:
         g.add_constraint(constraint)
 
-    g.compile_equation_for_entity_or_constraint(pol)
-    x, info = g.initial_solve(pol)
-    print(f"{info = }")
-    g.update_points(pol, new_x=x)
-
     # d4.param.set_value(2.0)
     # # g.compile_equation_for_entity_or_constraint(aparl3)
     # x, info = g.initial_solve(d3)
@@ -1110,4 +1262,4 @@ def main4():
 
 
 if __name__ == "__main__":
-    main2()
+    main4()
