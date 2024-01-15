@@ -143,9 +143,10 @@ class ConstraintGraph(networkx.Graph):
         self.remove_node(constraint)
 
         for point in adj_points:
+            point.geo_cons.remove(constraint)
             connected_components = networkx.node_connected_component(self, point)
-            print(f"{point = }")
-            print(f"{connected_components = }")
+            # TODO: need to re-compile the equations for potentially all the points that were originally a member
+            #  of this constraint
 
     def get_points_to_fix(self, source: GeoCon) -> typing.List[Point]:
 
@@ -398,9 +399,11 @@ class ConstraintGraph(networkx.Graph):
         for eq in strong_equations:
             constraint.data.equations.append(eq)
 
+        print(f"{constraint.name() = }")
         for cnstr in strong_constraints:
             constraint.data.arg_idx_array.extend(cnstr.get_arg_idx_array(params))
             constraint.data.geo_cons.append(cnstr)
+            print(f"{cnstr.get_arg_idx_array(params) = }")
 
         for eq in weak_equations:
             constraint.data.equations.append(eq)
@@ -408,9 +411,6 @@ class ConstraintGraph(networkx.Graph):
         for cnstr in weak_constraints:
             constraint.data.arg_idx_array.extend(cnstr.get_arg_idx_array(params))
             constraint.data.geo_cons.append(cnstr)
-
-        print(f"{strong_constraints = }")
-        print(f"{weak_constraints = }")
 
         pass
 

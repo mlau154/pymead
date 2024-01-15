@@ -130,8 +130,6 @@ def run():
         else:
             raise ValueError("iss setup install command failed")
 
-        print(f"Install complete. Output is in {install_dir}")
-
     elif system == "Linux":
         print("Compressing app...")
         tarball_name = f"pymead-{__version__}.tar.gz"
@@ -144,6 +142,8 @@ def run():
 
         print("Moving tarball to install directory...")
         shutil.move(os.path.join(dist_dir, tarball_name), install_dir)
+
+    print(f"Install complete. Output is in {install_dir}")
 
 
 if __name__ == "__main__":

@@ -285,7 +285,23 @@ class AirfoilCanvas(pg.PlotWidget):
         constraint.enforce(constraint.target().points()[1])
         constraint.enforce(constraint.target().points()[0])
 
-    @runSelectionEventLoop(drawing_object="RelAngleConstraint", starting_message="Select the first of two points "
+    @runSelectionEventLoop(drawing_object="RelAngle3Constraint", starting_message="Select any point other than "
+                                                                                  "the vertex")
+    def addRelAngle3Constraint(self):
+        if len(self.geo_col.selected_objects["points"]) != 3:
+            msg = (f"Choose exactly three points (start, vertex, and end) for a "
+                   f"relative angle 3 constraint")
+            self.sigStatusBarUpdate.emit(msg, 4000)
+            return
+        # TODO: also allow for 0 params, and make a new param on creation
+        # if len(self.geo_col.selected_objects["params"]) != 1:
+        #     msg = f"Choose a param"
+        #     self.sigStatusBarUpdate.emit(msg, 4000)
+        #     return
+        constraint = RelAngle3Constraint(*self.geo_col.selected_objects["points"], value=0.8)
+        self.geo_col.add_constraint(constraint)
+
+    @runSelectionEventLoop(drawing_object="RelAngle4Constraint", starting_message="Select the first of two points "
                                                                                  "on the tool line")
     def addRelAngle4Constraint(self):
         if len(self.geo_col.selected_objects["points"]) != 4:
@@ -321,11 +337,9 @@ class AirfoilCanvas(pg.PlotWidget):
                    f"parallel constraint")
             self.sigStatusBarUpdate.emit(msg, 4000)
             return
-        constraint = self.geo_col.add_parallel_constraint(
-            tool=PointSequence(points=self.geo_col.selected_objects["points"][:2]),
-            target=PointSequence(points=self.geo_col.selected_objects["points"][2:])
-        )
-        constraint.enforce(calling_point=constraint.tool().points()[1])
+
+        constraint = Parallel4Constraint(*self.geo_col.selected_objects["points"])
+        self.geo_col.add_constraint(constraint)
 
     def addPointToCurve(self, curve_item: HoverableCurve):
         self.adding_point_to_curve = curve_item
@@ -424,7 +438,15 @@ class AirfoilCanvas(pg.PlotWidget):
                 self.sigStatusBarUpdate.emit("Finally, choose the end point", 0)
             elif len(self.geo_col.selected_objects["points"]) == 3:
                 self.sigEnterPressed.emit()
-        elif self.drawing_object in ["RelAngleConstraint", "ParallelConstraint", "PerpendicularConstraint"]:
+        elif self.drawing_object == "RelAngle3Constraint":
+            self.geo_col.select_object(point_item.point)
+            if len(self.geo_col.selected_objects["points"]) == 1:
+                self.sigStatusBarUpdate.emit("Now, choose the vertex", 0)
+            elif len(self.geo_col.selected_objects["points"]) == 2:
+                self.sigStatusBarUpdate.emit("Finally, choose the end point", 0)
+            elif len(self.geo_col.selected_objects["points"]) == 3:
+                self.sigEnterPressed.emit()
+        elif self.drawing_object in ["RelAngle4Constraint", "ParallelConstraint", "PerpendicularConstraint"]:
             self.geo_col.select_object(point_item.point)
             if len(self.geo_col.selected_objects["points"]) == 1:
                 self.sigStatusBarUpdate.emit("Now, choose the end point of the tool line", 0)
@@ -543,7 +565,8 @@ class AirfoilCanvas(pg.PlotWidget):
         generateAirfoilAction = menu.addAction("Generate Airfoil")
         generateMEAAction = menu.addAction("Generate MEA")
         makePointsCollinearAction = menu.addAction("Add Collinear Constraint")
-        addRelAngleConstraintAction = menu.addAction("Add Relative Angle Constraint")
+        addRelAngle3ConstraintAction = menu.addAction("Add Relative Angle 3 Constraint")
+        addRelAngle4ConstraintAction = menu.addAction("Add Relative Angle 4 Constraint")
         addPerpendicularConstraintAction = menu.addAction("Add Perpendicular Constraint")
         addParallelConstraintAction = menu.addAction("Add Parallel Constraint")
         addCurvatureConstraintAction = menu.addAction("Add Curvature Constraint")
@@ -565,7 +588,9 @@ class AirfoilCanvas(pg.PlotWidget):
             self.generateMEA()
         elif res == makePointsCollinearAction:
             self.addCollinearConstraint()
-        elif res == addRelAngleConstraintAction:
+        elif res == addRelAngle3ConstraintAction:
+            self.addRelAngle3Constraint()
+        elif res == addRelAngle4ConstraintAction:
             self.addRelAngle4Constraint()
         elif res == addPerpendicularConstraintAction:
             self.addPerp4Constraint()

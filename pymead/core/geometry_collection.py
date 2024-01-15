@@ -391,17 +391,7 @@ class GeometryCollection(DualRep):
 
         if isinstance(pymead_obj, GeoCon):
             # Remove the constraint references from the points
-            if isinstance(pymead_obj.target(), Point):
-                pymead_obj.target().geo_cons.remove(pymead_obj)
-            elif isinstance(pymead_obj.target(), PointSequence):
-                for pt in pymead_obj.target().points():
-                    pt.geo_cons.remove(pymead_obj)
-
-            if isinstance(pymead_obj.tool(), Point):
-                pymead_obj.tool().geo_cons.remove(pymead_obj)
-            elif isinstance(pymead_obj.tool(), PointSequence):
-                for pt in pymead_obj.tool().points():
-                    pt.geo_cons.remove(pymead_obj)
+            self.gcs.remove_constraint(pymead_obj)
 
         # Remove the item from the geometry collection subcontainer
         self.remove_from_subcontainer(pymead_obj)

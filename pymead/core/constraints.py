@@ -93,9 +93,6 @@ class DistanceConstraint(GeoCon):
             [param_list.index(self.param()), 2]
         ]]
 
-    def pick_starting_point(self) -> Point:
-        return self.p2
-
     def __repr__(self):
         return f"{self.__class__.__name__} {self.name()}<v={self.param().value()}>"
 
@@ -435,7 +432,8 @@ class RelAngle3Constraint(GeoCon):
             [param_list.index(self.vertex.x()), 2],
             [param_list.index(self.vertex.y()), 2],
             [param_list.index(self.end_point.x()), 2],
-            [param_list.index(self.end_point.y()), 2]
+            [param_list.index(self.end_point.y()), 2],
+            [param_list.index(self.param()), 2]
         ]]
 
     def __repr__(self):

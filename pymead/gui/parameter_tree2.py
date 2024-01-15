@@ -616,7 +616,40 @@ class CollinearConstraintButton(TreeButton):
             self.tree.itemWidget(point.tree_item, 0).setText(name)
 
 
-class RelAngleConstraintButton(TreeButton):
+class RelAngle3ConstraintButton(TreeButton):
+
+    def __init__(self, rel_angle_constraint: RelAngle3Constraint, tree, top_level: bool = False):
+        super().__init__(pymead_obj=rel_angle_constraint, tree=tree, top_level=top_level)
+        self.rel_angle_constraint = rel_angle_constraint
+
+    def modifyDialogInternals(self, dialog: QDialog, layout: QGridLayout) -> None:
+        name_label = QLabel("Name", self)
+        name_edit = NameEdit(self, self.rel_angle_constraint, self.tree)
+        name_edit.textChanged.connect(self.onNameChange)
+        layout.addWidget(name_label, 1, 0)
+        layout.addWidget(name_edit, 1, 1)
+
+        row_count = layout.rowCount()
+        layout.addWidget(QLabel("Angle Param", self), row_count, 0)
+        layout.addWidget(AngleParamButton(self.rel_angle_constraint.param(), self.tree), row_count, 1)
+
+        labels = ["Start", "Vertex", "End"]
+        points = [self.rel_angle_constraint.start_point, self.rel_angle_constraint.vertex,
+                  self.rel_angle_constraint.end_point]
+        for label, point in zip(labels, points):
+            point_button = PointButton(point, self.tree)
+            point_button.sigNameChanged.connect(self.onPointNameChange)
+            q_label = QLabel(label, self)
+            row_count = layout.rowCount()
+            layout.addWidget(q_label, row_count, 0)
+            layout.addWidget(point_button, row_count, 1)
+
+    def onPointNameChange(self, name: str, point: Point):
+        if point.tree_item is not None:
+            self.tree.itemWidget(point.tree_item, 0).setText(name)
+
+
+class RelAngle4ConstraintButton(TreeButton):
 
     def __init__(self, rel_angle_constraint: RelAngle4Constraint, tree, top_level: bool = False):
         super().__init__(pymead_obj=rel_angle_constraint, tree=tree, top_level=top_level)
@@ -678,7 +711,7 @@ class PerpendicularConstraintButton(TreeButton):
             self.tree.itemWidget(point.tree_item, 0).setText(name)
 
 
-class ParallelConstraintButton(TreeButton):
+class Parallel4ConstraintButton(TreeButton):
 
     def __init__(self, parallel_constraint: Parallel4Constraint, tree, top_level: bool = False):
         super().__init__(pymead_obj=parallel_constraint, tree=tree, top_level=top_level)
@@ -691,9 +724,9 @@ class ParallelConstraintButton(TreeButton):
         layout.addWidget(name_label, 1, 0)
         layout.addWidget(name_edit, 1, 1)
 
-        labels = ["Tool Start", "Tool End", "Target Start", "Target End"]
-        points = [self.parallel_constraint.tool().points()[0], self.parallel_constraint.tool().points()[1],
-                  self.parallel_constraint.target().points()[0], self.parallel_constraint.target().points()[1]]
+        labels = ["Line 1 Start", "Line 1 End", "Line 2 Start", "Line 2 End"]
+        points = [self.parallel_constraint.p1, self.parallel_constraint.p2,
+                  self.parallel_constraint.p3, self.parallel_constraint.p4]
         for label, point in zip(labels, points):
             point_button = PointButton(point, self.tree)
             point_button.sigNameChanged.connect(self.onPointNameChange)
@@ -890,27 +923,7 @@ class ParameterTree(QTreeWidget):
         pymead_obj.tree_item = child_item
 
         button_args = (pymead_obj, self)
-        button_mappings = {"Param": "ParamButton",
-                           "LengthParam": "LengthParamButton",
-                           "AngleParam": "AngleParamButton",
-                           "DesVar": "DesVarButton",
-                           "LengthDesVar": "LengthDesVarButton",
-                           "AngleDesVar": "AngleDesVarButton",
-                           "Point": "PointButton",
-                           "Bezier": "BezierButton",
-                           "LineSegment": "LineSegmentButton",
-                           "Airfoil": "AirfoilButton",
-                           "MEA": "MEAButton",
-                           "LengthDimension": "LengthDimensionButton",
-                           "AngleDimension": "AngleDimensionButton",
-                           "CollinearConstraint": "CollinearConstraintButton",
-                           "RelAngleConstraint": "RelAngleConstraintButton",
-                           "ParallelConstraint": "ParallelConstraintButton",
-                           "PerpendicularConstraint": "PerpendicularConstraintButton",
-                           "CurvatureConstraint": "CurvatureConstraintButton",
-                           "DistanceConstraint": "DistanceConstraintButton",
-                           }
-        button = getattr(sys.modules[__name__], button_mappings[type(pymead_obj).__name__])(*button_args, top_level=True)
+        button = getattr(sys.modules[__name__], f"{type(pymead_obj).__name__}Button")(*button_args, top_level=True)
 
         self.setItemWidget(child_item, 1, button)
 
