@@ -11,8 +11,7 @@ from PyQt5.QtWidgets import QTreeWidget, QTreeWidgetItem, QPushButton, QHBoxLayo
 from PyQt5.QtCore import Qt, pyqtSignal, pyqtSlot, QRegularExpression
 
 from pymead.core.airfoil2 import Airfoil
-from pymead.core.constraints import GeoCon, CollinearConstraint, CurvatureConstraint, RelAngleConstraint, \
-    PerpendicularConstraint, ParallelConstraint, DistanceConstraint
+from pymead.core.constraints import *
 from pymead.core import UNITS
 from pymead.core.dimensions import LengthDimension, AngleDimension
 from pymead.core.mea2 import MEA
@@ -541,7 +540,7 @@ class DistanceConstraintButton(TreeButton):
         layout.addWidget(name_label, 1, 0)
         layout.addWidget(name_edit, 1, 1)
         labels = ["Start Point", "End Point"]
-        points = [self.distance_constraint.start_point, self.distance_constraint.end_point]
+        points = [self.distance_constraint.p1, self.distance_constraint.p2]
         for label, point in zip(labels, points):
             point_button = PointButton(point, self.tree)
             point_button.sigNameChanged.connect(self.onPointNameChange)
@@ -551,7 +550,7 @@ class DistanceConstraintButton(TreeButton):
             layout.addWidget(point_button, row_count, 1)
         row_count = layout.rowCount()
         layout.addWidget(QLabel("Length Param", self), row_count, 0)
-        layout.addWidget(LengthParamButton(self.distance_constraint.length_param, self.tree), row_count, 1)
+        layout.addWidget(LengthParamButton(self.distance_constraint.param(), self.tree), row_count, 1)
 
     def onPointNameChange(self, name: str, point: Point):
         if point.tree_item is not None:
@@ -590,7 +589,8 @@ class AngleDimensionButton(TreeButton):
 
 class CollinearConstraintButton(TreeButton):
 
-    def __init__(self, collinear_constraint: CollinearConstraint, tree, top_level: bool = False):
+    def __init__(self, collinear_constraint: AntiParallel3Constraint, tree, top_level: bool = False):
+        # TODO: either remove this constraint or create it (Collinear instead of AntiParallel3)
         super().__init__(pymead_obj=collinear_constraint, tree=tree, top_level=top_level)
         self.collinear_constraint = collinear_constraint
 
@@ -618,7 +618,7 @@ class CollinearConstraintButton(TreeButton):
 
 class RelAngleConstraintButton(TreeButton):
 
-    def __init__(self, rel_angle_constraint: RelAngleConstraint, tree, top_level: bool = False):
+    def __init__(self, rel_angle_constraint: RelAngle4Constraint, tree, top_level: bool = False):
         super().__init__(pymead_obj=rel_angle_constraint, tree=tree, top_level=top_level)
         self.rel_angle_constraint = rel_angle_constraint
 
@@ -651,7 +651,7 @@ class RelAngleConstraintButton(TreeButton):
 
 class PerpendicularConstraintButton(TreeButton):
 
-    def __init__(self, perpendicular_constraint: PerpendicularConstraint, tree, top_level: bool = False):
+    def __init__(self, perpendicular_constraint: Perp4Constraint, tree, top_level: bool = False):
         super().__init__(pymead_obj=perpendicular_constraint, tree=tree, top_level=top_level)
         self.perpendicular_constraint = perpendicular_constraint
 
@@ -680,7 +680,7 @@ class PerpendicularConstraintButton(TreeButton):
 
 class ParallelConstraintButton(TreeButton):
 
-    def __init__(self, parallel_constraint: ParallelConstraint, tree, top_level: bool = False):
+    def __init__(self, parallel_constraint: Parallel4Constraint, tree, top_level: bool = False):
         super().__init__(pymead_obj=parallel_constraint, tree=tree, top_level=top_level)
         self.parallel_constraint = parallel_constraint
 

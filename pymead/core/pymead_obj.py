@@ -1,5 +1,5 @@
 from copy import deepcopy
-from abc import ABC, abstractmethod, abstractclassmethod
+from abc import ABC, abstractmethod
 
 
 class DualRep:
@@ -34,6 +34,7 @@ class PymeadObj(ABC, DualRep):
         self.sub_container = sub_container
         self._name = None
         self.geo_col = None
+        self.gcs = None
         self.tree_item = None
         self.canvas_item = None
 
@@ -68,5 +69,5 @@ class PymeadObj(ABC, DualRep):
         self._name = name
 
     @abstractmethod
-    def get_dict_rep(self):
+    def get_dict_rep(self) -> dict:
         pass

@@ -9,7 +9,7 @@ from PyQt5.QtCore import pyqtSignal, QEventLoop, Qt
 from PyQt5.QtGui import QFont, QBrush, QColor
 from PyQt5.QtWidgets import QApplication
 
-from pymead.core.constraints import GCS
+from pymead.core.constraints import *
 from pymead.core.geometry_collection import GeometryCollection
 from pymead.core.param2 import LengthParam
 from pymead.core.parametric_curve2 import ParametricCurve
@@ -243,11 +243,14 @@ class AirfoilCanvas(pg.PlotWidget):
         if len(self.geo_col.selected_objects["points"]) != 2:
             self.sigStatusBarUpdate.emit("Choose exactly two points to define a distance constraint")
 
-        p1 = self.geo_col.selected_objects["points"][0]
-        p2 = self.geo_col.selected_objects["points"][1]
+        # p1 = self.geo_col.selected_objects["points"][0]
+        # p2 = self.geo_col.selected_objects["points"][1]
+        #
+        # cnstr = self.geo_col.add_distance_constraint(p1, p2)
+        # cnstr.add_constraint_to_gcs()
 
-        cnstr = self.geo_col.add_distance_constraint(p1, p2)
-        cnstr.add_constraint_to_gcs()
+        constraint = DistanceConstraint(*self.geo_col.selected_objects["points"], value=0.5)
+        self.geo_col.add_constraint(constraint)
 
     @runSelectionEventLoop(drawing_object="AngleDimension", starting_message="Select the tool point")
     def addAngleDimension(self):
@@ -284,31 +287,31 @@ class AirfoilCanvas(pg.PlotWidget):
 
     @runSelectionEventLoop(drawing_object="RelAngleConstraint", starting_message="Select the first of two points "
                                                                                  "on the tool line")
-    def addRelAngleConstraint(self):
+    def addRelAngle4Constraint(self):
         if len(self.geo_col.selected_objects["points"]) != 4:
             msg = (f"Choose exactly four points (the tool line start and end, and the target line start and end) for a "
                    f"relative angle constraint")
             self.sigStatusBarUpdate.emit(msg, 4000)
             return
-        constraint = self.geo_col.add_rel_angle_constraint(
-            tool=PointSequence(points=self.geo_col.selected_objects["points"][:2]),
-            target=PointSequence(points=self.geo_col.selected_objects["points"][2:])
-        )
-        constraint.enforce(calling_point=constraint.tool().points()[1])
+        # TODO: also allow for 0 params, and make a new param on creation
+        if len(self.geo_col.selected_objects["params"]) != 1:
+            msg = f"Choose a param"
+            self.sigStatusBarUpdate.emit(msg, 4000)
+            return
+        constraint = RelAngle4Constraint(*self.geo_col.selected_objects["points"],
+                                         self.geo_col.selected_objects["params"][0])
+        self.geo_col.add_constraint(constraint)
 
     @runSelectionEventLoop(drawing_object="PerpendicularConstraint", starting_message="Select the first of two points "
                                                                                       "on the tool line")
-    def addPerpendicularConstraint(self):
+    def addPerp4Constraint(self):
         if len(self.geo_col.selected_objects["points"]) != 4:
             msg = (f"Choose exactly four points (the tool line start and end, and the target line start and end) for a "
                    f"perpendicular constraint")
             self.sigStatusBarUpdate.emit(msg, 4000)
             return
-        constraint = self.geo_col.add_perpendicular_constraint(
-            tool=PointSequence(points=self.geo_col.selected_objects["points"][:2]),
-            target=PointSequence(points=self.geo_col.selected_objects["points"][2:])
-        )
-        constraint.enforce(calling_point=constraint.tool().points()[1])
+        constraint = Perp4Constraint(*self.geo_col.selected_objects["points"])
+        self.geo_col.add_constraint(constraint)
 
     @runSelectionEventLoop(drawing_object="ParallelConstraint", starting_message="Select the first of two points "
                                                                                       "on the tool line")
@@ -563,9 +566,9 @@ class AirfoilCanvas(pg.PlotWidget):
         elif res == makePointsCollinearAction:
             self.addCollinearConstraint()
         elif res == addRelAngleConstraintAction:
-            self.addRelAngleConstraint()
+            self.addRelAngle4Constraint()
         elif res == addPerpendicularConstraintAction:
-            self.addPerpendicularConstraint()
+            self.addPerp4Constraint()
         elif res == addParallelConstraintAction:
             self.addParallelConstraint()
         elif res == addCurvatureConstraintAction:

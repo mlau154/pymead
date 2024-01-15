@@ -19,7 +19,7 @@ setup(
     name="pymead",
     version=main_ns['__version__'],
     description="Python library for generation, aerodynamic analysis, and aerodynamic shape optimization of "
-                "Bézier-parametrized airfoils and airfoil systems",
+                "parametric airfoils and airfoil systems",
     long_description=README,
     long_description_content_type="text/markdown",
     url="https://github.com/mlau154/pymead",
@@ -39,10 +39,9 @@ setup(
               "pymead/post", "pymead/gui/scientificspinbox_master",
               "pymead/gui/pyqt_vertical_tab_widget/pyqt_vertical_tab_widget"],
     include_package_data=True,
-    install_requires=["scipy", "numpy", "shapely", "matplotlib", "requests", "PyQt5==5.15.7",
+    install_requires=["scipy", "numpy", "shapely", "matplotlib", "requests>=2.31", "PyQt5==5.15.7",
                       "pyqtgraph==0.13.1", "python-benedict", "pandas", "pymoo==0.5.0", "numba", "PyQtWebEngine",
-                      "cmcrameri"],
+                      "cmcrameri", "jax", "jaxopt", "networkx"],
 )
 
 # TODO: fix relative file-pathing (like "menu.json") when calling the GUI main directly from a Python interpreter after
-# importing

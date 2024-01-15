@@ -8,10 +8,12 @@ from pymead.core.pymead_obj import PymeadObj
 
 
 class Point(PymeadObj):
-    def __init__(self, x: float, y: float, name: str or None = None, setting_from_geo_col: bool = False):
+    def __init__(self, x: float, y: float, name: str or None = None, setting_from_geo_col: bool = False,
+                 fixed: bool = False):
         super().__init__(sub_container="points")
         self._x = None
         self._y = None
+        self._fixed = fixed
         self.gcs = None
         self.geo_cons = []
         self.dims = []
@@ -28,6 +30,9 @@ class Point(PymeadObj):
     def y(self):
         return self._y
 
+    def fixed(self):
+        return self._fixed
+
     def set_x(self, x: LengthParam or float):
         self._x = x if isinstance(x, LengthParam) else LengthParam(
             value=x, name=self.name() + ".x", setting_from_geo_col=self.setting_from_geo_col, point=self)
@@ -41,6 +46,9 @@ class Point(PymeadObj):
         if self not in self._y.geo_objs:
             self._y.geo_objs.append(self)
         self._y.point = self
+
+    def set_fixed(self, fixed: bool):
+        self._fixed = fixed
 
     def set_name(self, name: str):
         # Rename the x and y parameters of the Point
@@ -70,7 +78,7 @@ class Point(PymeadObj):
 
     def request_move(self, xp: float, yp: float):
 
-        if self.gcs is None:
+        if self.gcs is None or (self.gcs is not None and len(self.geo_cons) == 0):
 
             self.x().set_value(xp)
             self.y().set_value(yp)
@@ -83,17 +91,17 @@ class Point(PymeadObj):
 
             for curve in self.curves:
                 curve.update()
-        else:
-            start_param_vec = np.array([p.value() for p in self.gcs.params])
-
-            self.x().set_value(xp)
-            self.y().set_value(yp)
-
-            intermediate_param_vec = np.array([p.value() for p in self.gcs.params])
-
-            params, info = self.gcs.solve(start_param_vec, intermediate_param_vec)
-
-            self.gcs.update(params)
+        # else:
+        #     start_param_vec = np.array([p.value() for p in self.gcs.params])
+        #
+        #     self.x().set_value(xp)
+        #     self.y().set_value(yp)
+        #
+        #     intermediate_param_vec = np.array([p.value() for p in self.gcs.params])
+        #
+        #     params, info = self.gcs.solve(start_param_vec, intermediate_param_vec)
+        #
+        #     self.gcs.update(params)
 
     def force_move(self, xp: float, yp: float):
         self.x().set_value(xp)
@@ -108,8 +116,11 @@ class Point(PymeadObj):
         for curve in self.curves:
             curve.update()
 
+    def __repr__(self):
+        return f"Point {self.name()}<x={self.x().value()}, y={self.y().value()}>"
+
     def get_dict_rep(self):
-        return {"x": self.x().value(), "y": self.y().value(), "name": self.name()}
+        return {"x": self.x().value(), "y": self.y().value(), "name": self.name(), "fixed": self.fixed()}
 
 
 class PointSequence:

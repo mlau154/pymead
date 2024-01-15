@@ -3,8 +3,8 @@ import typing
 
 from pymead.core.airfoil2 import Airfoil
 from pymead.core.bezier2 import Bezier
-from pymead.core.constraints import CollinearConstraint, CurvatureConstraint, GeoCon, RelAngleConstraint, \
-    PerpendicularConstraint, ParallelConstraint, DistanceConstraint
+from pymead.core.constraints import *
+from pymead.core.constraint_graph import ConstraintGraph
 from pymead.core.dimensions import LengthDimension, AngleDimension, Dimension
 from pymead.core.mea2 import MEA
 from pymead.core.pymead_obj import DualRep, PymeadObj
@@ -26,6 +26,7 @@ class GeometryCollection(DualRep):
             "geocon": {},
             "dims": {},
         }
+        self.gcs = ConstraintGraph()
         self.canvas = None
         self.tree = None
         self.selected_objects = {k: [] for k in self._container.keys()}
@@ -138,6 +139,10 @@ class GeometryCollection(DualRep):
                 pass
             else:
                 pymead_obj.set_name(unique_name)
+
+            if isinstance(pymead_obj, GeoCon):
+                if pymead_obj.param() is not None:
+                    pymead_obj.param().set_name(f"{pymead_obj.name()}.par")
 
         # Add the object to the geometry collection sub-container
         self.container()[pymead_obj.sub_container][pymead_obj.name()] = pymead_obj
@@ -365,6 +370,8 @@ class GeometryCollection(DualRep):
             for geo_con in pymead_obj.geo_cons:
                 self.remove_pymead_obj(geo_con)
 
+            self.gcs.remove_point(pymead_obj)
+
         if isinstance(pymead_obj, Dimension):
             # Remove the dimension references from the points
             if isinstance(pymead_obj.target(), Point):
@@ -430,8 +437,10 @@ class GeometryCollection(DualRep):
         point = Point(x=x, y=y, name=name)
         point.x().geo_col = self
         point.y().geo_col = self
+        self.add_pymead_obj_by_ref(point, assign_unique_name=assign_unique_name)
+        self.gcs.add_point(point)
 
-        return self.add_pymead_obj_by_ref(point, assign_unique_name=assign_unique_name)
+        return point
 
     def add_bezier(self, point_sequence: PointSequence, name: str or None = None, assign_unique_name: bool = True):
         bezier = Bezier(point_sequence=point_sequence, name=name)
@@ -719,9 +728,6 @@ class GeometryCollection(DualRep):
 
         return self.add_pymead_obj_by_ref(mea, assign_unique_name=assign_unique_name)
 
-    def add_constraint(self):
-        pass
-
     def add_length_dimension(self, tool_point: Point, target_point: Point, length_param: LengthParam or None = None,
                              name: str or None = None, assign_unique_name: bool = True):
         length_dim = LengthDimension(tool_point=tool_point, target_point=target_point, length_param=length_param,
@@ -742,52 +748,57 @@ class GeometryCollection(DualRep):
 
         return self.add_pymead_obj_by_ref(angle_dim, assign_unique_name=assign_unique_name)
 
-    def add_distance_constraint(self, start_point: Point, end_point: Point, length_param: LengthParam or None = None,
-                                name: str or None = None, assign_unique_name: bool = True):
-        distance_constraint = DistanceConstraint(start_point=start_point, end_point=end_point,
-                                                 length_param=length_param, name=name)
+    def add_constraint(self, constraint: GeoCon, assign_unique_name: bool = True):
+        self.add_pymead_obj_by_ref(constraint, assign_unique_name=assign_unique_name)
+        self.gcs.add_constraint(constraint)
+        return constraint
 
-        if distance_constraint.length_param.geo_col is None:
-            self.add_pymead_obj_by_ref(pymead_obj=distance_constraint.length_param,
-                                       assign_unique_name=assign_unique_name)
-
-        return self.add_pymead_obj_by_ref(distance_constraint, assign_unique_name=assign_unique_name)
-
-    def add_collinear_constraint(self, start_point: Point, middle_point: Point, end_point: Point,
-                                 name: str or None = None, assign_unique_name: bool = True):
-        collinear_constraint = CollinearConstraint(start_point=start_point, middle_point=middle_point,
-                                                   end_point=end_point, name=name)
-
-        return self.add_pymead_obj_by_ref(collinear_constraint, assign_unique_name=assign_unique_name)
-
-    def add_curvature_constraint(self, curve_joint: Point, name: str or None = None, assign_unique_name: bool = True):
-        curvature_constraint = CurvatureConstraint(curve_joint=curve_joint, name=name)
-
-        # Remove any collinear constraints because the CurvatureConstraint behavior provides collinear constraint
-        # behavior automatically
-        for con in curvature_constraint.curve_joint.geo_cons:
-            if isinstance(con, CollinearConstraint):
-                self.remove_pymead_obj(con)
-
-        return self.add_pymead_obj_by_ref(curvature_constraint, assign_unique_name=assign_unique_name)
-
-    def add_rel_angle_constraint(self, tool: PointSequence, target: PointSequence, angle_param: AngleParam = None,
-                                 name: str or None = None, assign_unique_name: bool = True):
-        rel_angle_constraint = RelAngleConstraint(tool=tool, target=target, angle_param=angle_param, name=name)
-
-        return self.add_pymead_obj_by_ref(rel_angle_constraint, assign_unique_name=assign_unique_name)
-
-    def add_perpendicular_constraint(self, tool: PointSequence, target: PointSequence,
-                                     name: str or None = None, assign_unique_name: bool = True):
-        perpendicular_constraint = PerpendicularConstraint(tool=tool, target=target, name=name)
-
-        return self.add_pymead_obj_by_ref(perpendicular_constraint, assign_unique_name=assign_unique_name)
-
-    def add_parallel_constraint(self, tool: PointSequence, target: PointSequence,
-                                name: str or None = None, assign_unique_name: bool = True):
-        parallel_constraint = ParallelConstraint(tool=tool, target=target, name=name)
-
-        return self.add_pymead_obj_by_ref(parallel_constraint, assign_unique_name=assign_unique_name)
+    # def add_distance_constraint(self, start_point: Point, end_point: Point, length_param: LengthParam or None = None,
+    #                             name: str or None = None, assign_unique_name: bool = True):
+    #     distance_constraint = DistanceConstraint(start_point=start_point, end_point=end_point,
+    #                                              length_param=length_param, name=name)
+    #
+    #     if distance_constraint.length_param.geo_col is None:
+    #         self.add_pymead_obj_by_ref(pymead_obj=distance_constraint.length_param,
+    #                                    assign_unique_name=assign_unique_name)
+    #
+    #     return self.add_pymead_obj_by_ref(distance_constraint, assign_unique_name=assign_unique_name)
+    #
+    # def add_collinear_constraint(self, start_point: Point, middle_point: Point, end_point: Point,
+    #                              name: str or None = None, assign_unique_name: bool = True):
+    #     collinear_constraint = CollinearConstraint(start_point=start_point, middle_point=middle_point,
+    #                                                end_point=end_point, name=name)
+    #
+    #     return self.add_pymead_obj_by_ref(collinear_constraint, assign_unique_name=assign_unique_name)
+    #
+    # def add_curvature_constraint(self, curve_joint: Point, name: str or None = None, assign_unique_name: bool = True):
+    #     curvature_constraint = CurvatureConstraint(curve_joint=curve_joint, name=name)
+    #
+    #     # Remove any collinear constraints because the CurvatureConstraint behavior provides collinear constraint
+    #     # behavior automatically
+    #     for con in curvature_constraint.curve_joint.geo_cons:
+    #         if isinstance(con, CollinearConstraint):
+    #             self.remove_pymead_obj(con)
+    #
+    #     return self.add_pymead_obj_by_ref(curvature_constraint, assign_unique_name=assign_unique_name)
+    #
+    # def add_rel_angle4_constraint(self, tool: PointSequence, target: PointSequence, angle_param: AngleParam = None,
+    #                               name: str or None = None, assign_unique_name: bool = True):
+    #     rel_angle_constraint = RelAngle4Constraint(tool=tool, target=target, angle_param=angle_param, name=name)
+    #
+    #     return self.add_pymead_obj_by_ref(rel_angle_constraint, assign_unique_name=assign_unique_name)
+    #
+    # def add_perpendicular_constraint(self, tool: PointSequence, target: PointSequence,
+    #                                  name: str or None = None, assign_unique_name: bool = True):
+    #     perpendicular_constraint = PerpendicularConstraint(tool=tool, target=target, name=name)
+    #
+    #     return self.add_pymead_obj_by_ref(perpendicular_constraint, assign_unique_name=assign_unique_name)
+    #
+    # def add_parallel_constraint(self, tool: PointSequence, target: PointSequence,
+    #                             name: str or None = None, assign_unique_name: bool = True):
+    #     parallel_constraint = ParallelConstraint(tool=tool, target=target, name=name)
+    #
+    #     return self.add_pymead_obj_by_ref(parallel_constraint, assign_unique_name=assign_unique_name)
 
     def get_dict_rep(self):
         dict_rep = {k_outer: {k: v.get_dict_rep() for k, v in self.container()[k_outer].items()}
@@ -838,7 +849,7 @@ class GeometryCollection(DualRep):
                     raise ValueError(f"Could not find angle_param named {geocon_dict['angle_param']} in either the "
                                      f"desvar or params sub-containers")
 
-                geo_col.add_rel_angle_constraint(
+                geo_col.add_rel_angle4_constraint(
                     tool=PointSequence(points=[geo_col.container()["points"][k] for k in geocon_dict["tool"]]),
                     target=PointSequence(points=[geo_col.container()["points"][k] for k in geocon_dict["target"]]),
                     angle_param=param,

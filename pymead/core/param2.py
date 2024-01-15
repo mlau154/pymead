@@ -37,6 +37,7 @@ class Param(PymeadObj):
         self.at_boundary = False
         self.point = point
         self.geo_objs = []
+        self.gcs = None
         self.geo_cons = []
         self.dims = []
         self.setting_from_geo_col = setting_from_geo_col
@@ -131,6 +132,9 @@ class Param(PymeadObj):
             for dim in self.dims:
                 dim.update_points_from_param(updated_objs=updated_objs)
 
+        if self.gcs is not None:
+            self.gcs.multisolve_and_update(self.geo_cons[0])
+
     def lower(self):
         """
         Returns the lower bound for the design variable
@@ -192,6 +196,9 @@ class Param(PymeadObj):
         if "upper" not in d.keys():
             d["upper"] = None
         return cls(value=d["value"], name=d["name"], lower=d["lower"], upper=d["upper"])
+
+    def __repr__(self):
+        return f"{self.__class__.__name__} {self.name()}<v={self.value()}>"
 
     def __add__(self, other):
         return self.__class__(value=self.value() + other.value(), name="forward_add_result")

@@ -4,10 +4,13 @@ numpy
 scipy
 shapely
 matplotlib
-requests
+requests>=2.31
 PyQt5==5.15.7
 pyqtgraph==0.13.1
 python-benedict
 pandas
 PyQtWebEngine
 cmcrameri
+jax
+jaxopt
+networkx
