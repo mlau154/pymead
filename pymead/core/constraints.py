@@ -78,7 +78,7 @@ class DistanceConstraint(GeoCon):
     equations = [staticmethod(ceq.distance_constraint)]
     default_name = "DistCon-1"
 
-    def __init__(self, p1: Point, p2: Point, value: float or Param, name: str = None):
+    def __init__(self, p1: Point, p2: Point, value: float or LengthParam, name: str = None):
         self.p1 = p1
         self.p2 = p2
         param = value if isinstance(value, Param) else LengthParam(value=value, name="unnamed")
@@ -135,7 +135,7 @@ class AbsAngleConstraint(GeoCon):
     equations = [staticmethod(ceq.abs_angle_constraint)]
     default_name = "AbsAngleCon-1"
 
-    def __init__(self, p1: Point, p2: Point, value: float or Param, name: str = None):
+    def __init__(self, p1: Point, p2: Point, value: float or AngleParam, name: str = None):
         self.p1 = p1
         self.p2 = p2
         param = value if isinstance(value, Param) else AngleParam(value=value, name="unnamed")
@@ -418,7 +418,7 @@ class RelAngle3Constraint(GeoCon):
     equations = [staticmethod(ceq.rel_angle3_constraint)]
     default_name = "RelAng3Con-1"
 
-    def __init__(self, start_point: Point, vertex: Point, end_point: Point, value: float, name: str = None):
+    def __init__(self, start_point: Point, vertex: Point, end_point: Point, value: float or AngleParam, name: str = None):
         self.start_point = start_point
         self.vertex = vertex
         self.end_point = end_point

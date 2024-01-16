@@ -2,6 +2,7 @@ from unittest import TestCase
 
 import numpy as np
 
+from constraint_graph import ConstraintGraph
 from pymead.core.constraints import *
 from pymead.core.geometry_collection import GeometryCollection
 from pymead.core.point import Point
@@ -14,7 +15,7 @@ class GCSTests(TestCase):
         p = Point(0.5, 0.3)
         x = LengthParam(0.4, "L1")
 
-        gcs = GCS(parent=p)
+        gcs = ConstraintGraph()
         gcs.add_fixed_x_constraint(p, x)
 
         self.assertAlmostEqual(p.x().value(), 0.4, places=6)
@@ -39,7 +40,7 @@ class GCSTests(TestCase):
         p = Point(0.5, 0.3)
         y = LengthParam(0.4, "L1")
 
-        gcs = GCS(parent=p)
+        gcs = ConstraintGraph()
         gcs.add_fixed_y_constraint(p, y)
 
         self.assertAlmostEqual(p.x().value(), 0.5, places=6)
@@ -65,7 +66,7 @@ class GCSTests(TestCase):
         x = LengthParam(0.9, "x")
         y = LengthParam(0.4, "y")
 
-        gcs = GCS(parent=p)
+        gcs = ConstraintGraph()
         gcs.add_fixed_x_constraint(p, x)
         gcs.add_fixed_y_constraint(p, y)
 
@@ -118,47 +119,33 @@ class GCSTests(TestCase):
         geo_col = GeometryCollection()
 
         target_distance_value_1 = 0.6
-        length_param_1 = geo_col.add_param(target_distance_value_1, name="dist1", unit_type="length")
+        length_param_1 = geo_col.add_param(target_distance_value_1, unit_type="length")
 
         target_distance_value_2 = 0.75
-        length_param_2 = geo_col.add_param(target_distance_value_2, name="dist2", unit_type="length")
+        length_param_2 = geo_col.add_param(target_distance_value_2, unit_type="length")
 
-        p1 = Point(0.0, 0.0)
-        p2 = Point(0.5, 0.8)
-        p3 = Point(-0.3, -0.4)
-        starting_angle_12 = p1.measure_angle(p2)
-        starting_angle_23 = p2.measure_angle(p3)
-
-        print(f"{length_param_1.value() = }, {length_param_2.value() = }")
+        p1 = geo_col.add_point(0.0, 0.0)
+        p2 = geo_col.add_point(0.5, 0.8)
+        p3 = geo_col.add_point(-0.3, -0.4)
 
         # Add the first distance constraint
-        cnstr1 = geo_col.add_distance_constraint(p1, p2, length_param_1)
-        cnstr1.add_constraint_to_gcs()
-
-        print(f"{length_param_1.value() = }, {length_param_2.value() = }")
+        cnstr1 = DistanceConstraint(p1, p2, value=length_param_1)
+        geo_col.add_constraint(cnstr1)
 
         # Add the second distance constraint
-        cnstr2 = geo_col.add_distance_constraint(p2, p3, length_param_2)
-        cnstr2.add_constraint_to_gcs()
-
-        print(f"{length_param_1.value() = }, {length_param_2.value() = }")
+        cnstr2 = DistanceConstraint(p2, p3, value=length_param_2)
+        geo_col.add_constraint(cnstr2)
 
         self.assertAlmostEqual(p1.measure_distance(p2), target_distance_value_1, places=6)
         self.assertAlmostEqual(p2.measure_distance(p3), target_distance_value_2, places=6)
-        self.assertAlmostEqual(p1.measure_angle(p2), starting_angle_12, places=6)
-        self.assertAlmostEqual(p2.measure_angle(p3), starting_angle_23, places=6)
 
-        p1.request_move(-0.1, -0.1)
-        self.assertAlmostEqual(p1.measure_distance(p2), target_distance_value_1, places=6)
+        cnstr1.param().set_value(0.7)
+        self.assertAlmostEqual(p1.measure_distance(p2), 0.7, places=6)
         self.assertAlmostEqual(p2.measure_distance(p3), target_distance_value_2, places=6)
 
-        p2.request_move(0.3, 0.6)
-        self.assertAlmostEqual(p1.measure_distance(p2), target_distance_value_1, places=6)
-        self.assertAlmostEqual(p2.measure_distance(p3), target_distance_value_2, places=6)
-
-        p3.request_move(-0.4, 1.0)
-        self.assertAlmostEqual(p1.measure_distance(p2), target_distance_value_1, places=6)
-        self.assertAlmostEqual(p2.measure_distance(p3), target_distance_value_2, places=6)
+        cnstr2.param().set_value(0.8)
+        self.assertAlmostEqual(p1.measure_distance(p2), 0.7, places=6)
+        self.assertAlmostEqual(p2.measure_distance(p3), 0.8, places=6)
 
     def test_two_distance_constraints_same_distance(self):
         geo_col = GeometryCollection()
@@ -203,7 +190,7 @@ class GCSTests(TestCase):
         p1 = Point(0.1, 0.063)
         p2 = Point(0.5, 0.2)
         angle = AngleParam(target_angle_value, "angle")
-        gcs = GCS(parent=p1)
+        gcs = ConstraintGraph()
         gcs.add_abs_angle_constraint(p1, p2, angle)
         res = gcs.solve()
 
@@ -222,7 +209,7 @@ class GCSTests(TestCase):
         p2 = Point(0.5, 0.2)
         dist = LengthParam(target_length_value, "dist")
         angle = AngleParam(target_angle_value, "angle")
-        gcs = GCS(parent=p1)
+        gcs = ConstraintGraph()
         gcs.add_distance_constraint(p1, p2, dist)
         gcs.add_abs_angle_constraint(p1, p2, angle)
 
@@ -244,7 +231,7 @@ class GCSTests(TestCase):
         p2 = Point(0.0, 0.0)
         p3 = Point(1.0, 0.0)
         angle = AngleParam(target_angle_value, "angle")
-        gcs = GCS(parent=p1)
+        gcs = ConstraintGraph()
         gcs.add_rel_angle3_constraint(p1, p2, p3, angle)
 
         res = gcs.solve()
@@ -272,7 +259,7 @@ class GCSTests(TestCase):
             angle = AngleParam(target_angle_value, "angle")
             length1 = LengthParam(target_length1, "length1")
             length2 = LengthParam(target_length2, "length2")
-            gcs = GCS(parent=p2)
+            gcs = ConstraintGraph()
 
             gcs.add_rel_angle3_constraint(p1, p2, p3, angle)
             gcs.add_distance_constraint(p2, p1, length1)
@@ -312,3 +299,32 @@ class GCSTests(TestCase):
             print(f"{p1.as_array() = }, {p2.as_array() = }, {p3.as_array() = }")
 
             idx += 1
+
+    def test_symmetry_constraint(self):
+        import matplotlib.pyplot as plt
+        geo_col = GeometryCollection()
+
+        p1 = geo_col.add_point(0.0, 0.0)
+        p2 = geo_col.add_point(1.0, 0.05)
+        p3 = geo_col.add_point(0.3, 0.0)
+        p4 = geo_col.add_point(0.3, 0.15)
+        p5 = geo_col.add_point(0.3, -0.15)
+        points = [p1, p2, p3, p4, p5]
+
+        d1_par = geo_col.add_param(1.0, unit_type="length")
+        d1 = DistanceConstraint(p1, p2, value=d1_par)
+        d2_par = geo_col.add_param(0.35, unit_type="length")
+        d2 = DistanceConstraint(p1, p3, value=d2_par)
+        d3_par = geo_col.add_param(0.15, unit_type="length")
+        d3 = DistanceConstraint(p3, p4, value=d3_par)
+        perp3 = Perp3Constraint(p1, p3, p4)
+        pol = PointOnLineConstraint(p3, p1, p2)
+        sym = SymmetryConstraint(p1, p2, p5, p4)
+
+        constraints = [d1, d2, d3, perp3, pol, sym]
+        for constraint in constraints:
+            geo_col.add_constraint(constraint)
+
+        plt.plot([p.x().value() for p in points], [p.y().value() for p in points], ls="none", marker="o",
+                 mfc="indianred")
+        plt.show()

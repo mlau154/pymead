@@ -141,7 +141,7 @@ class GeometryCollection(DualRep):
                 pymead_obj.set_name(unique_name)
 
             if isinstance(pymead_obj, GeoCon):
-                if pymead_obj.param().name() == "unnamed":
+                if pymead_obj.param() is not None and pymead_obj.param().name() == "unnamed":
                     pymead_obj.param().set_name(f"{pymead_obj.name()}.par")
 
         # Add the object to the geometry collection sub-container

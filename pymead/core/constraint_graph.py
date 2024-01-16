@@ -64,6 +64,7 @@ class EquationData:
 class ConstraintGraph(networkx.Graph):
     def __init__(self):
         self.points = []
+        self.constraint_params = []
         super().__init__()
 
     def add_point(self, point: Point):
@@ -108,6 +109,8 @@ class ConstraintGraph(networkx.Graph):
         """
         if constraint.param() is not None:
             constraint.param().gcs = self
+            if constraint.param() not in self.constraint_params:
+                self.constraint_params.append(constraint.param())
 
         self.add_node(constraint)
         for child_node in constraint.child_nodes:
@@ -196,7 +199,7 @@ class ConstraintGraph(networkx.Graph):
     def analyze(self, constraint: GeoCon):
 
         constraint.data.clear()
-        params = self.get_params(source_node=constraint)
+        params = self.get_params()
         points = self.get_points(source_node=constraint)
         points_to_fix = self.get_points_to_fix(source=constraint)
         fixed_points = self.fix_points(points_to_fix)
@@ -234,8 +237,6 @@ class ConstraintGraph(networkx.Graph):
 
             if isinstance(node, GeoCon) and node.kind == "a4":
                 a4_constraints.append(node)
-
-        print(f"{points_may_need_distance = }, {points_may_need_angle = }, {dof = }, {len(params) = }")
 
         for point in points_may_need_distance:
 
@@ -291,11 +292,7 @@ class ConstraintGraph(networkx.Graph):
                     [n for n in networkx.common_neighbors(self, pair[0], pair[1]) if n.kind == "a3"]
                 )
 
-            print(f"{common_neighbors = }")
-
             point_pair_n_constraints = {idx: len(neighbors) for idx, neighbors in enumerate(common_neighbors)}
-
-            print(f"{point_pair_n_constraints = }")
 
             pair_combos = [[0, 2], [0, 3], [1, 2], [1, 3]]
             found_combo = False
@@ -336,7 +333,6 @@ class ConstraintGraph(networkx.Graph):
 
                 weak_a3_constraint = RelAngle3ConstraintWeak(*candidate_point_list, name="ra3w")
                 weak_constraints.append(weak_a3_constraint)
-                print(f"{weak_a3_constraint = }, {weak_a3_constraint.start_point = }, {weak_a3_constraint.vertex = }, {weak_a3_constraint.end_point = }")
                 break
 
         for point in points_may_need_angle:
@@ -387,7 +383,6 @@ class ConstraintGraph(networkx.Graph):
             else:
                 end_point = self.points[0]
             abs_angle_constraint = AbsAngleConstraintWeak(start_point, end_point, "aa1")
-            print(f"{abs_angle_constraint.p1 = }, {abs_angle_constraint.p2 = }")
             weak_constraints.append(abs_angle_constraint)
 
         weak_equations = []
@@ -400,30 +395,16 @@ class ConstraintGraph(networkx.Graph):
         for eq in strong_equations:
             constraint.data.equations.append(eq)
 
-        print(f"{constraint.name() = }")
         for cnstr in strong_constraints:
             constraint.data.arg_idx_array.extend(cnstr.get_arg_idx_array(params))
             constraint.data.geo_cons.append(cnstr)
-            arg_idx_array = cnstr.get_arg_idx_array(params)
-            print(f"{cnstr.get_arg_idx_array(params) = }")
-            if len(params) >= 7:
-                print(f"{params[6] = }")
-            if len(params) >= 8:
-                print(f"{params[7] = }")
 
         for eq in weak_equations:
             constraint.data.equations.append(eq)
 
         for cnstr in weak_constraints:
-            print(f"Weak constraint {cnstr}")
-            if isinstance(cnstr, RelAngle3ConstraintWeak):
-                print(f"{cnstr.start_point = }, {cnstr.vertex = }, {cnstr.end_point = }")
             constraint.data.arg_idx_array.extend(cnstr.get_arg_idx_array(params))
             constraint.data.geo_cons.append(cnstr)
-
-        for point in self.points:
-            if point.fixed():
-                print(f"Point {point} is fixed")
 
         pass
 
@@ -464,26 +445,27 @@ class ConstraintGraph(networkx.Graph):
 
         return points
 
-    def get_params(self, source_node: Point or GeoCon):
+    def get_params(self):
         params = []
 
         for point in self.points:
             params.extend([point.x(), point.y()])
 
-        for node in networkx.dfs_preorder_nodes(self, source=source_node):
-            # if isinstance(node, Point):
-            #     params.extend([node.x(), node.y()])
-            if isinstance(node, GeoCon):
-                if node.param() is None:
-                    continue
-                params.append(node.param())
+        # for node in networkx.dfs_preorder_nodes(self, source=source_node):
+        #     # if isinstance(node, Point):
+        #     #     params.extend([node.x(), node.y()])
+        #     if isinstance(node, GeoCon):
+        #         if node.param() is None:
+        #             continue
+        #         params.append(node.param())
 
-        print(f"{params = }")
+        for constraint_param in self.constraint_params:
+            params.append(constraint_param)
 
         return params
 
-    def get_param_values(self, source_node: Point or GeoCon):
-        return np.array([p.value() for p in self.get_params(source_node)])
+    def get_param_values(self):
+        return np.array([p.value() for p in self.get_params()])
 
     @staticmethod
     def add_variable(equation_data: EquationData, variable: Param,
@@ -524,7 +506,7 @@ class ConstraintGraph(networkx.Graph):
         constraint.data.root_finders[method] = PymeadRootFinder(jit(equation_system), method=method)
 
     def solve(self, constraint: GeoCon, method: str):
-        params = self.get_params(constraint)
+        params = self.get_params()
         x0 = np.array([params[x_pos].value() for x_pos in constraint.data.variable_pos])
         v = np.array([p.value() for p in params])
         w = deepcopy(v)
@@ -555,7 +537,7 @@ class ConstraintGraph(networkx.Graph):
         -------
 
         """
-        params = self.get_params(constraint)
+        params = self.get_params()
         for idx, x in zip(constraint.data.variable_pos, new_x):
             params[idx].set_value(x)
 
@@ -662,18 +644,8 @@ def main2():
                  mec="indianred", mfc="indianred", fillstyle="left", markersize=10)
         plt.show()
 
-    # TODO: on param set_value, automatically solve
     d4.param().set_value(4.0)
-    # g.compile_equation_for_entity_or_constraint(aparl3)
-    x, info = g.solve(aparl3, method="hybr")
-    print(f"{info = }")
-    g.update_points(aparl3, new_x=x)
-
     d4.param().set_value(5.0)
-    # g.compile_equation_for_entity_or_constraint(aparl3)
-    x, info = g.solve(aparl3, method="hybr")
-    print(f"{info = }")
-    g.update_points(aparl3, new_x=x)
 
     plt.plot([p.x().value() for p in points], [p.y().value() for p in points], ls="none", marker="o",
              mfc="steelblue", mec="steelblue", fillstyle="right", markersize=10)
@@ -793,8 +765,6 @@ def main5():
     for constraint in [d1, d2, par]:
         g.add_constraint(constraint)
 
-    print(f"{[p.x().value() for p in points] = }, {[p.y().value() for p in points] = }")
-
     plt.plot([p.x().value() for p in points], [p.y().value() for p in points], ls="none", marker="o", mfc="indianred")
     plt.show()
 
@@ -802,4 +772,4 @@ def main5():
 
 
 if __name__ == "__main__":
-    main5()
+    main2()

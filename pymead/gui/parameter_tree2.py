@@ -740,6 +740,35 @@ class Parallel4ConstraintButton(TreeButton):
             self.tree.itemWidget(point.tree_item, 0).setText(name)
 
 
+class SymmetryConstraintButton(TreeButton):
+
+    def __init__(self, symmetry_constraint: SymmetryConstraint, tree, top_level: bool = False):
+        super().__init__(pymead_obj=symmetry_constraint, tree=tree, top_level=top_level)
+        self.symmetry_constraint = symmetry_constraint
+
+    def modifyDialogInternals(self, dialog: QDialog, layout: QGridLayout) -> None:
+        name_label = QLabel("Name", self)
+        name_edit = NameEdit(self, self.symmetry_constraint, self.tree)
+        name_edit.textChanged.connect(self.onNameChange)
+        layout.addWidget(name_label, 1, 0)
+        layout.addWidget(name_edit, 1, 1)
+
+        labels = ["Mirror Start", "Mirror End", "Tool Point", "Target Point"]
+        points = [self.symmetry_constraint.p1, self.symmetry_constraint.p2,
+                  self.symmetry_constraint.p3, self.symmetry_constraint.p4]
+        for label, point in zip(labels, points):
+            point_button = PointButton(point, self.tree)
+            point_button.sigNameChanged.connect(self.onPointNameChange)
+            q_label = QLabel(label, self)
+            row_count = layout.rowCount()
+            layout.addWidget(q_label, row_count, 0)
+            layout.addWidget(point_button, row_count, 1)
+
+    def onPointNameChange(self, name: str, point: Point):
+        if point.tree_item is not None:
+            self.tree.itemWidget(point.tree_item, 0).setText(name)
+
+
 class CurvatureConstraintButton(TreeButton):
 
     def __init__(self, curvature_constraint: CurvatureConstraint, tree, top_level: bool = False):

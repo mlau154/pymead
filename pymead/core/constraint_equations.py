@@ -53,7 +53,7 @@ def measure_point_line_distance_signed(x1: float, y1: float, x2: float, y2: floa
     float
         Distance from the target point to the line
     """
-    return (x2 - x1) * (y1 - y3) - (x1 - x3) * (y2 - y3) / measure_distance(x1, y1, x2, y2)
+    return (x2 - x1) * (y1 - y3) - (x1 - x3) * (y2 - y1) / measure_distance(x1, y1, x2, y2)
 
 
 @jit

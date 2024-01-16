@@ -299,7 +299,20 @@ class AirfoilCanvas(pg.PlotWidget):
         #     msg = f"Choose a param"
         #     self.sigStatusBarUpdate.emit(msg, 4000)
         #     return
-        constraint = RelAngle3Constraint(*self.geo_col.selected_objects["points"], value=0.8)
+        par = self.geo_col.add_param(1.0, unit_type="angle")
+        constraint = RelAngle3Constraint(*self.geo_col.selected_objects["points"], value=par)
+        self.geo_col.add_constraint(constraint)
+
+    @runSelectionEventLoop(drawing_object="SymmetryConstraint", starting_message="Select the start point of the "
+                                                                                 "mirror axis")
+    def addSymmetryConstraint(self):
+        if len(self.geo_col.selected_objects["points"]) != 4:
+            msg = (f"Choose exactly four points (mirror axis start, mirror axis end, tool point, and target point) "
+                   f"for a symmetry constraint")
+            self.sigStatusBarUpdate.emit(msg, 4000)
+            return
+
+        constraint = SymmetryConstraint(*self.geo_col.selected_objects["points"])
         self.geo_col.add_constraint(constraint)
 
     @runSelectionEventLoop(drawing_object="RelAngle4Constraint", starting_message="Select the first of two points "
@@ -447,6 +460,16 @@ class AirfoilCanvas(pg.PlotWidget):
                 self.sigStatusBarUpdate.emit("Finally, choose the end point", 0)
             elif len(self.geo_col.selected_objects["points"]) == 3:
                 self.sigEnterPressed.emit()
+        elif self.drawing_object == "SymmetryConstraint":
+            self.geo_col.select_object(point_item.point)
+            if len(self.geo_col.selected_objects["points"]) == 1:
+                self.sigStatusBarUpdate.emit("Now, choose the mirror axis end point", 0)
+            elif len(self.geo_col.selected_objects["points"]) == 2:
+                self.sigStatusBarUpdate.emit("Now, choose the tool point", 0)
+            elif len(self.geo_col.selected_objects["points"]) == 3:
+                self.sigStatusBarUpdate.emit("Finally, choose the target point", 0)
+            elif len(self.geo_col.selected_objects["points"]) == 4:
+                self.sigEnterPressed.emit()
         elif self.drawing_object in ["RelAngle4Constraint", "ParallelConstraint", "PerpendicularConstraint"]:
             self.geo_col.select_object(point_item.point)
             if len(self.geo_col.selected_objects["points"]) == 1:
@@ -570,6 +593,7 @@ class AirfoilCanvas(pg.PlotWidget):
         addRelAngle4ConstraintAction = menu.addAction("Add Relative Angle 4 Constraint")
         addPerpendicularConstraintAction = menu.addAction("Add Perpendicular Constraint")
         addParallelConstraintAction = menu.addAction("Add Parallel Constraint")
+        addSymmetryConstraintAction = menu.addAction("Add Symmetry Constraint")
         addCurvatureConstraintAction = menu.addAction("Add Curvature Constraint")
         addLengthDimensionAction = menu.addAction("Add Length Dimension")
         addAngleDimensionAction = menu.addAction("Add Angle Dimension")
@@ -597,6 +621,8 @@ class AirfoilCanvas(pg.PlotWidget):
             self.addPerp4Constraint()
         elif res == addParallelConstraintAction:
             self.addParallelConstraint()
+        elif res == addSymmetryConstraintAction:
+            self.addSymmetryConstraint()
         elif res == addCurvatureConstraintAction:
             self.addCurvatureConstraint()
         elif res == addLengthDimensionAction:
