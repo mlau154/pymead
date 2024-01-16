@@ -387,6 +387,7 @@ class ConstraintGraph(networkx.Graph):
             else:
                 end_point = self.points[0]
             abs_angle_constraint = AbsAngleConstraintWeak(start_point, end_point, "aa1")
+            print(f"{abs_angle_constraint.p1 = }, {abs_angle_constraint.p2 = }")
             weak_constraints.append(abs_angle_constraint)
 
         weak_equations = []
@@ -403,14 +404,26 @@ class ConstraintGraph(networkx.Graph):
         for cnstr in strong_constraints:
             constraint.data.arg_idx_array.extend(cnstr.get_arg_idx_array(params))
             constraint.data.geo_cons.append(cnstr)
+            arg_idx_array = cnstr.get_arg_idx_array(params)
             print(f"{cnstr.get_arg_idx_array(params) = }")
+            if len(params) >= 7:
+                print(f"{params[6] = }")
+            if len(params) >= 8:
+                print(f"{params[7] = }")
 
         for eq in weak_equations:
             constraint.data.equations.append(eq)
 
         for cnstr in weak_constraints:
+            print(f"Weak constraint {cnstr}")
+            if isinstance(cnstr, RelAngle3ConstraintWeak):
+                print(f"{cnstr.start_point = }, {cnstr.vertex = }, {cnstr.end_point = }")
             constraint.data.arg_idx_array.extend(cnstr.get_arg_idx_array(params))
             constraint.data.geo_cons.append(cnstr)
+
+        for point in self.points:
+            if point.fixed():
+                print(f"Point {point} is fixed")
 
         pass
 
