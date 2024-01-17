@@ -1,5 +1,6 @@
 import os
 import typing
+import sys
 from copy import deepcopy
 
 import numpy as np
@@ -15,6 +16,7 @@ from pymead.core.param2 import LengthParam
 from pymead.core.parametric_curve2 import ParametricCurve
 from pymead.core.point import PointSequence, Point
 from pymead.core.pymead_obj import PymeadObj
+from pymead.gui.constraint_items import *
 from pymead.gui.hoverable_curve import HoverableCurve
 from pymead.gui.draggable_point import DraggablePoint
 from pymead.utils.read_write_files import load_data
@@ -147,6 +149,13 @@ class AirfoilCanvas(pg.PlotWidget):
 
             # Add the curve to the plot
             self.addItem(curve_item)
+
+        elif isinstance(pymead_obj, GeoCon):
+
+            constraint_item = getattr(sys.modules[__name__], f"{type(pymead_obj).__name__}Item")(pymead_obj)
+            # raise NotImplementedError(f"Constraint {pymead_obj.__class__.__name__} does not yet have a canvas item")
+
+            constraint_item.addItems(self)
 
     @staticmethod
     def runSelectionEventLoop(drawing_object: str, starting_message: str):
@@ -691,8 +700,6 @@ class AirfoilCanvas(pg.PlotWidget):
 
 
 if __name__ == '__main__':
-    import sys
-
     app = QtWidgets.QApplication(sys.argv)
     _geo_col = GeometryCollection()
     plot = AirfoilCanvas(geo_col=_geo_col)

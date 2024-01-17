@@ -553,6 +553,11 @@ class ConstraintGraph(networkx.Graph):
         for curve in curves_to_update:
             curve.update()
 
+        for node in networkx.dfs_preorder_nodes(self, source=constraint):
+            if isinstance(node, GeoCon):
+                print(f"{node = }")
+                node.canvas_item.update()
+
 
 class OverConstrainedError(Exception):
     pass
