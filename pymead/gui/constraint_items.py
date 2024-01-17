@@ -2,7 +2,8 @@ import os
 
 import pyqtgraph as pg
 import numpy as np
-from PyQt5.QtGui import QFont, QImage
+from PyQt5.QtCore import Qt
+from PyQt5.QtGui import QFont, QImage, QTransform, QPainterPath, QBrush, QPen, QColor
 import PIL
 
 from pymead.core.constraints import *
@@ -39,6 +40,11 @@ class DistanceConstraintItem(ConstraintItem):
         ]
         super().__init__(constraint=constraint, canvas_items=canvas_items)
         self.canvas_items[2].setFont(QFont("DejaVu Sans Mono", 10))
+        for item in canvas_items:
+            if isinstance(item, pg.ArrowItem):
+                item.setZValue(-8)
+            else:
+                item.setZValue(-10)
         self.update()
 
     def update(self):
@@ -52,7 +58,7 @@ class DistanceConstraintItem(ConstraintItem):
         p2_arrow = (self.constraint.p2.x().value() + arrow_offset * np.cos(handle_angle),
                     self.constraint.p2.y().value() + arrow_offset * np.sin(handle_angle))
 
-        text_offset = 0.05
+        text_offset = 0.06
         text_angle = np.rad2deg((angle + np.pi / 2) % np.pi - np.pi / 2)
         text_pos = (self.constraint.p1.x().value() + text_offset * np.cos(handle_angle) + 0.5 * dist * np.cos(angle),
                     self.constraint.p1.y().value() + text_offset * np.sin(handle_angle) + 0.5 * dist * np.sin(angle))
@@ -87,10 +93,10 @@ class DistanceConstraintItem(ConstraintItem):
 
 class SymmetryConstraintItem(ConstraintItem):
     def __init__(self, constraint: SymmetryConstraint):
-        image = np.array(PIL.Image.open(os.path.join(ICON_DIR, "symmetry_constraint.drawio.png")))
         canvas_items = [
-            pg.ImageItem(image=image)
+            pg.TextItem("\u24c2")
         ]
+        canvas_items[0].setFont(QFont("DejaVu Sans", 10))
         super().__init__(constraint=constraint, canvas_items=canvas_items)
         self.update()
 
@@ -100,12 +106,82 @@ class SymmetryConstraintItem(ConstraintItem):
 
 class RelAngle3ConstraintItem(ConstraintItem):
     def __init__(self, constraint: RelAngle3Constraint):
-        image = np.array(PIL.Image.open(os.path.join(ICON_DIR, "symmetry_constraint.drawio.png")))
+        pen = pg.mkPen(color="#ffffff", width=1, style=Qt.DashLine)
         canvas_items = [
-            pg.ImageItem(image=image)
+            pg.PlotDataItem(color="#ffffff"),
+            pg.PlotDataItem(pen=pen),
+            pg.PlotDataItem(pen=pen),
+            pg.TextItem(anchor=(0, 0.5), color="#ffffff"),
         ]
+        canvas_items[3].setFont(QFont("DejaVu Sans Mono", 10))
         super().__init__(constraint=constraint, canvas_items=canvas_items)
+        for item in canvas_items:
+            item.setZValue(-10)
         self.update()
 
     def update(self):
-        self.canvas_items[0].setPos(self.constraint.vertex.x().value() + 0.01, self.constraint.vertex.y().value() - 0.01)
+        dist1 = self.constraint.vertex.measure_distance(self.constraint.start_point)
+        dist2 = self.constraint.vertex.measure_distance(self.constraint.end_point)
+        angle1 = self.constraint.vertex.measure_angle(self.constraint.start_point)
+        angle2 = angle1 - self.constraint.param().rad()
+        mean_angle = np.mean([angle1, angle2])
+        text_distance = 0.15 * np.mean([dist1, dist2])
+        text_x = self.constraint.vertex.x().value() + text_distance * np.cos(mean_angle)
+        text_y = self.constraint.vertex.y().value() + text_distance * np.sin(mean_angle)
+
+        theta = np.linspace(angle1, angle2, 30)
+        x = self.constraint.vertex.x().value() + np.mean([dist1, dist2]) * 0.1 * np.cos(theta)
+        y = self.constraint.vertex.y().value() + np.mean([dist1, dist2]) * 0.1 * np.sin(theta)
+
+        line1_x = [self.constraint.vertex.x().value(), self.constraint.start_point.x().value()]
+        line1_y = [self.constraint.vertex.y().value(), self.constraint.start_point.y().value()]
+
+        line2_x = [self.constraint.vertex.x().value(), self.constraint.end_point.x().value()]
+        line2_y = [self.constraint.vertex.y().value(), self.constraint.end_point.y().value()]
+
+        self.canvas_items[0].setData(x=x, y=y)
+        self.canvas_items[1].setData(x=line1_x, y=line1_y)
+        self.canvas_items[2].setData(x=line2_x, y=line2_y)
+        self.canvas_items[3].setPos(text_x, text_y)
+        self.canvas_items[3].setText(f"{np.rad2deg(self.constraint.param().rad()):.2f}\u00b0")
+
+
+class Perp3ConstraintItem(ConstraintItem):
+    def __init__(self, constraint: Perp3Constraint):
+        pen = pg.mkPen(color="#ffffff", width=1, style=Qt.DashLine)
+        canvas_items = [
+            pg.PlotDataItem(color="#ffffff"),
+            pg.PlotDataItem(color="#ffffff"),
+            pg.PlotDataItem(pen=pen),
+            pg.PlotDataItem(pen=pen)
+        ]
+        super().__init__(constraint=constraint, canvas_items=canvas_items)
+        for item in canvas_items:
+            item.setZValue(-10)
+        self.update()
+
+    def update(self):
+        angle1 = self.constraint.p2.measure_angle(self.constraint.p1)
+        angle2 = angle1 - np.pi / 2
+
+        square_side = 0.05
+
+        x1 = [self.constraint.p2.x().value() + square_side * np.cos(angle1),
+              self.constraint.p2.x().value() + square_side * np.cos(angle1) + square_side * np.cos(angle2)]
+        y1 = [self.constraint.p2.y().value() + square_side * np.sin(angle1),
+              self.constraint.p2.y().value() + square_side * np.sin(angle1) + square_side * np.sin(angle2)]
+        x2 = [self.constraint.p2.x().value() + square_side * np.cos(angle2),
+              self.constraint.p2.x().value() + square_side * np.cos(angle2) + square_side * np.cos(angle1)]
+        y2 = [self.constraint.p2.y().value() + square_side * np.sin(angle2),
+              self.constraint.p2.y().value() + square_side * np.sin(angle2) + square_side * np.sin(angle1)]
+
+        line1_x = [self.constraint.p2.x().value(), self.constraint.p1.x().value()]
+        line1_y = [self.constraint.p2.y().value(), self.constraint.p1.y().value()]
+
+        line2_x = [self.constraint.p2.x().value(), self.constraint.p3.x().value()]
+        line2_y = [self.constraint.p2.y().value(), self.constraint.p3.y().value()]
+
+        self.canvas_items[0].setData(x=x1, y=y1)
+        self.canvas_items[1].setData(x=x2, y=y2)
+        self.canvas_items[2].setData(x=line1_x, y=line1_y)
+        self.canvas_items[3].setData(x=line2_x, y=line2_y)
