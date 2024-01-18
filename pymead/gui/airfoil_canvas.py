@@ -11,6 +11,7 @@ from PyQt5.QtGui import QFont, QBrush, QColor
 from PyQt5.QtWidgets import QApplication
 
 from pymead.core.constraints import *
+from pymead.core.constraint_equations import *
 from pymead.core.geometry_collection import GeometryCollection
 from pymead.core.param2 import LengthParam
 from pymead.core.parametric_curve2 import ParametricCurve
@@ -250,7 +251,7 @@ class AirfoilCanvas(pg.PlotWidget):
     @runSelectionEventLoop(drawing_object="DistanceConstraint", starting_message="Select the first point")
     def addDistanceConstraint(self):
         if len(self.geo_col.selected_objects["points"]) != 2:
-            self.sigStatusBarUpdate.emit("Choose exactly two points to define a distance constraint")
+            self.sigStatusBarUpdate.emit("Choose exactly two points to define a distance constraint", 4000)
 
         # p1 = self.geo_col.selected_objects["points"][0]
         # p2 = self.geo_col.selected_objects["points"][1]
@@ -258,7 +259,9 @@ class AirfoilCanvas(pg.PlotWidget):
         # cnstr = self.geo_col.add_distance_constraint(p1, p2)
         # cnstr.add_constraint_to_gcs()
 
-        par = self.geo_col.add_param(value=0.5, unit_type="length", assign_unique_name=True)
+        distance = self.geo_col.selected_objects["points"][0].measure_distance(
+            self.geo_col.selected_objects["points"][1])
+        par = self.geo_col.add_param(value=distance, unit_type="length", assign_unique_name=True)
         constraint = DistanceConstraint(*self.geo_col.selected_objects["points"], value=par)
         self.geo_col.add_constraint(constraint)
 
@@ -308,7 +311,11 @@ class AirfoilCanvas(pg.PlotWidget):
         #     msg = f"Choose a param"
         #     self.sigStatusBarUpdate.emit(msg, 4000)
         #     return
-        par = self.geo_col.add_param(1.0, unit_type="angle")
+        args = []
+        for point in self.geo_col.selected_objects["points"]:
+            args.extend([point.x().value(), point.y().value()])
+        value = measure_rel_angle3(*args)
+        par = self.geo_col.add_param(value, unit_type="angle")
         constraint = RelAngle3Constraint(*self.geo_col.selected_objects["points"], value=par)
         self.geo_col.add_constraint(constraint)
 

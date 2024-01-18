@@ -1,10 +1,11 @@
 import re
 import typing
+from copy import deepcopy
 
 from pymead.core.airfoil2 import Airfoil
 from pymead.core.bezier2 import Bezier
 from pymead.core.constraints import *
-from pymead.core.constraint_graph import ConstraintGraph
+from pymead.core.constraint_graph import ConstraintGraph, EquationData
 from pymead.core.dimensions import LengthDimension, AngleDimension, Dimension
 from pymead.core.mea2 import MEA
 from pymead.core.pymead_obj import DualRep, PymeadObj
@@ -552,10 +553,18 @@ class GeometryCollection(DualRep):
 
         # Make a copy of the geometry object reference lists in the new design variable
         desvar.geo_objs = param.geo_objs.copy()
-        desvar.geo_cons = param.geo_cons.copy()
+
+        # Copy dimension information
         desvar.dims = param.dims.copy()
         for dim in desvar.dims:
             dim.set_param(desvar)
+
+        # Copy constraint information
+        desvar.geo_cons = param.geo_cons
+        desvar.gcs = self.gcs
+        for constraint in desvar.geo_cons:
+            constraint.set_param(desvar)
+        desvar.gcs.constraint_params[self.gcs.constraint_params.index(param)] = desvar
 
         # Remove the parameter
         if param.point is None:
@@ -592,10 +601,18 @@ class GeometryCollection(DualRep):
 
         # Make a copy of the geometry object reference list in the new parameter
         param.geo_objs = desvar.geo_objs.copy()
-        param.geo_cons = desvar.geo_cons.copy()
+
+        # Copy dimension information
         param.dims = desvar.dims.copy()
         for dim in param.dims:
             dim.set_param(param)
+
+        # Copy constraint information
+        param.geo_cons = desvar.geo_cons
+        param.gcs = self.gcs
+        for constraint in param.geo_cons:
+            constraint.set_param(param)
+        param.gcs.constraint_params[self.gcs.constraint_params.index(desvar)] = param
 
         # Remove the design variable
         self.remove_pymead_obj(desvar)

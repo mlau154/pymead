@@ -46,6 +46,7 @@ class PymeadRootFinder(jaxopt.ScipyRootFinding):
 
 
 class EquationData:
+
     def __init__(self):
         self.root_finders = {}
         self.geo_cons = []
@@ -135,6 +136,8 @@ class ConstraintGraph(networkx.Graph):
         self.compile_equation_for_entity_or_constraint(constraint, method="lm")
         self.compile_equation_for_entity_or_constraint(constraint, method="hybr")
 
+        print(f"{constraint.data.geo_cons = }")
+
         # Solve using first the least-squares method and then MINPACK if necessary. Update the points if the solution
         # falls within the tolerance specified in the PymeadRootFinder class
         self.multisolve_and_update(constraint)
@@ -200,6 +203,7 @@ class ConstraintGraph(networkx.Graph):
 
         constraint.data.clear()
         params = self.get_params()
+        print(f"{params = }")
         points = self.get_points(source_node=constraint)
         points_to_fix = self.get_points_to_fix(source=constraint)
         fixed_points = self.fix_points(points_to_fix)
