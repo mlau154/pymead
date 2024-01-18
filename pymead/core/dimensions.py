@@ -130,7 +130,7 @@ class LengthDimension(Dimension):
 
     def get_dict_rep(self):
         return {"tool_point": self.tool().name(), "target_point": self.target().name(),
-                "length_param": self.param().name(), "name": self.name()}
+                "length_param": self.param().name()}
 
 
 class AngleDimension(Dimension):
@@ -176,4 +176,4 @@ class AngleDimension(Dimension):
 
     def get_dict_rep(self):
         return {"tool_point": self.tool().name(), "target_point": self.target().name(),
-                "angle_param": self.param().name(), "name": self.name()}
+                "angle_param": self.param().name()}

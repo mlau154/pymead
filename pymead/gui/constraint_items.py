@@ -97,11 +97,46 @@ class SymmetryConstraintItem(ConstraintItem):
             pg.TextItem("\u24c2")
         ]
         canvas_items[0].setFont(QFont("DejaVu Sans", 10))
+        for item in canvas_items:
+            item.setZValue(-10)
         super().__init__(constraint=constraint, canvas_items=canvas_items)
         self.update()
 
     def update(self):
         self.canvas_items[0].setPos(self.constraint.p1.x().value() + 0.01, self.constraint.p1.y().value() - 0.01)
+
+
+class AntiParallel3ConstraintItem(ConstraintItem):
+    def __init__(self, constraint: AntiParallel3Constraint):
+        self.text_style = dict(anchor=(0.5, 0.5))
+        pen = pg.mkPen(color="#ffffff", width=1, style=Qt.DashLine)
+        canvas_items = [
+            pg.TextItem("\u2225", **self.text_style),
+            pg.TextItem("\u2225", **self.text_style),
+            pg.PlotDataItem(pen=pen),
+            pg.PlotDataItem(pen=pen)
+        ]
+        canvas_items[0].setFont(QFont("DejaVu Sans", 10))
+        canvas_items[1].setFont(QFont("DejaVu Sans", 10))
+        for item in canvas_items:
+            item.setZValue(-10)
+        super().__init__(constraint=constraint, canvas_items=canvas_items)
+        self.update()
+
+    def update(self):
+        midpoint1 = [np.mean([self.constraint.p1.x().value(), self.constraint.p2.x().value()]),
+                     np.mean([self.constraint.p1.y().value(), self.constraint.p2.y().value()])]
+        midpoint2 = [np.mean([self.constraint.p3.x().value(), self.constraint.p2.x().value()]),
+                     np.mean([self.constraint.p3.y().value(), self.constraint.p2.y().value()])]
+        line1_x = [self.constraint.p2.x().value(), self.constraint.p1.x().value()]
+        line1_y = [self.constraint.p2.y().value(), self.constraint.p1.y().value()]
+
+        line2_x = [self.constraint.p2.x().value(), self.constraint.p3.x().value()]
+        line2_y = [self.constraint.p2.y().value(), self.constraint.p3.y().value()]
+        self.canvas_items[0].setPos(*midpoint1)
+        self.canvas_items[1].setPos(*midpoint2)
+        self.canvas_items[2].setData(x=line1_x, y=line1_y)
+        self.canvas_items[3].setData(x=line2_x, y=line2_y)
 
 
 class RelAngle3ConstraintItem(ConstraintItem):

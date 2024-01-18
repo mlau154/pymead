@@ -70,4 +70,4 @@ class MEA(PymeadObj):
         return blade_file_path
 
     def get_dict_rep(self):
-        return {"airfoils": [a.name() for a in self.airfoils], "name": self.name()}
+        return {"airfoils": [a.name() for a in self.airfoils]}

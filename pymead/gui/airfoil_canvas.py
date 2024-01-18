@@ -319,6 +319,17 @@ class AirfoilCanvas(pg.PlotWidget):
         constraint = RelAngle3Constraint(*self.geo_col.selected_objects["points"], value=par)
         self.geo_col.add_constraint(constraint)
 
+    @runSelectionEventLoop(drawing_object="AntiParallel3Constraint", starting_message="Select any point other than "
+                                                                                      "the vertex")
+    def addAntiParallel3Constraint(self):
+        if len(self.geo_col.selected_objects["points"]) != 3:
+            msg = (f"Choose exactly three points (start, vertex, and end) for an "
+                   f"anti-parallel 3 constraint")
+            self.sigStatusBarUpdate.emit(msg, 4000)
+            return
+        constraint = AntiParallel3Constraint(*self.geo_col.selected_objects["points"])
+        self.geo_col.add_constraint(constraint)
+
     @runSelectionEventLoop(drawing_object="SymmetryConstraint", starting_message="Select the start point of the "
                                                                                  "mirror axis")
     def addSymmetryConstraint(self):
@@ -477,7 +488,7 @@ class AirfoilCanvas(pg.PlotWidget):
                 self.sigStatusBarUpdate.emit("Finally, choose the end point", 0)
             elif len(self.geo_col.selected_objects["points"]) == 3:
                 self.sigEnterPressed.emit()
-        elif self.drawing_object in ["RelAngle3Constraint", "Perp3Constraint"]:
+        elif self.drawing_object in ["RelAngle3Constraint", "Perp3Constraint", "AntiParallel3Constraint"]:
             self.geo_col.select_object(point_item.point)
             if len(self.geo_col.selected_objects["points"]) == 1:
                 self.sigStatusBarUpdate.emit("Now, choose the vertex", 0)
@@ -617,7 +628,8 @@ class AirfoilCanvas(pg.PlotWidget):
         addRelAngle3ConstraintAction = menu.addAction("Add Relative Angle 3 Constraint")
         addRelAngle4ConstraintAction = menu.addAction("Add Relative Angle 4 Constraint")
         addPerpendicularConstraintAction = menu.addAction("Add Perpendicular Constraint")
-        addPerp3ConstraintAction = menu.addAction("Add Perp3 constraint")
+        addPerp3ConstraintAction = menu.addAction("Add Perpendicular 3 constraint")
+        addAntiParallel3ConstraintAction = menu.addAction("Add Anti-Parallel 3 Constraint")
         addParallelConstraintAction = menu.addAction("Add Parallel Constraint")
         addSymmetryConstraintAction = menu.addAction("Add Symmetry Constraint")
         addCurvatureConstraintAction = menu.addAction("Add Curvature Constraint")
@@ -641,6 +653,8 @@ class AirfoilCanvas(pg.PlotWidget):
             self.addCollinearConstraint()
         elif res == addRelAngle3ConstraintAction:
             self.addRelAngle3Constraint()
+        elif res == addAntiParallel3ConstraintAction:
+            self.addAntiParallel3Constraint()
         elif res == addRelAngle4ConstraintAction:
             self.addRelAngle4Constraint()
         elif res == addPerpendicularConstraintAction:

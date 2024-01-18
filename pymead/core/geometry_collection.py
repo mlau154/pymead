@@ -1,4 +1,5 @@
 import re
+import sys
 import typing
 from copy import deepcopy
 
@@ -818,65 +819,39 @@ class GeometryCollection(DualRep):
         geo_col = cls()
         geo_col.canvas = canvas
         geo_col.tree = tree
-        for desvar_dict in d["desvar"].values():
-            geo_col.add_desvar(**desvar_dict, assign_unique_name=False)
-        for param_dict in d["params"].values():
-            geo_col.add_param(**param_dict, assign_unique_name=False)
-        for point_dict in d["points"].values():
-            geo_col.add_point(**point_dict, assign_unique_name=False)
-        for line_dict in d["lines"].values():
+        for name, desvar_dict in d["desvar"].items():
+            geo_col.add_desvar(**desvar_dict, name=name, assign_unique_name=False)
+        for name, param_dict in d["params"].items():
+            geo_col.add_param(**param_dict, name=name, assign_unique_name=False)
+        for name, point_dict in d["points"].items():
+            geo_col.add_point(**point_dict, name=name, assign_unique_name=False)
+        for name, line_dict in d["lines"].items():
             geo_col.add_line(point_sequence=PointSequence(
                 points=[geo_col.container()["points"][k] for k in line_dict["points"]]),
-                name=line_dict["name"], assign_unique_name=False
+                name=name, assign_unique_name=False
             )
-        for bezier_dict in d["bezier"].values():
+        for name, bezier_dict in d["bezier"].items():
             geo_col.add_bezier(point_sequence=PointSequence(
                 points=[geo_col.container()["points"][k] for k in bezier_dict["points"]]),
-                name=bezier_dict["name"], assign_unique_name=False
+                name=name, assign_unique_name=False
             )
-        for geocon_dict in d["geocon"].values():
-            constraint_type = geocon_dict["constraint_type"]
-            if constraint_type == "curvature":
-                geo_col.add_curvature_constraint(
-                    curve_joint=geo_col.container()["points"][geocon_dict["curve_joint"]],
-                    name=geocon_dict["name"], assign_unique_name=False
-                )
-            elif constraint_type == "collinear":
-                geo_col.add_collinear_constraint(
-                    start_point=geo_col.container()["points"][geocon_dict["start_point"]],
-                    middle_point=geo_col.container()["points"][geocon_dict["middle_point"]],
-                    end_point=geo_col.container()["points"][geocon_dict["end_point"]],
-                    name=geocon_dict["name"], assign_unique_name=False
-                )
-            elif constraint_type == "rel-angle":
-                if geocon_dict["angle_param"] in geo_col.container()["desvar"].keys():
-                    param = geo_col.container()["desvar"][geocon_dict["length_param"]]
-                elif geocon_dict["angle_param"] in geo_col.container()["params"].keys():
-                    param = geo_col.container()["params"][geocon_dict["length_param"]]
+        for name, geocon_dict in d["geocon"].items():
+            for k, v in geocon_dict.items():
+                if v in d["points"].keys():
+                    geocon_dict[k] = geo_col.container()["points"][v]
+                elif v in d["params"].keys():
+                    geocon_dict[k] = geo_col.container()["params"][v]
+                elif v in d["desvar"].keys():
+                    geocon_dict[k] = geo_col.container()["desvar"][v]
+                elif v in d["lines"].keys():
+                    geocon_dict[k] = geo_col.container()["lines"][v]
+                elif v in d["bezier"].keys():
+                    geocon_dict[k] = geo_col.container()["bezier"][v]
                 else:
-                    raise ValueError(f"Could not find angle_param named {geocon_dict['angle_param']} in either the "
-                                     f"desvar or params sub-containers")
-
-                geo_col.add_rel_angle4_constraint(
-                    tool=PointSequence(points=[geo_col.container()["points"][k] for k in geocon_dict["tool"]]),
-                    target=PointSequence(points=[geo_col.container()["points"][k] for k in geocon_dict["target"]]),
-                    angle_param=param,
-                    name=geocon_dict["name"], assign_unique_name=False
-                )
-            elif constraint_type == "perpendicular":
-                geo_col.add_perpendicular_constraint(
-                    tool=PointSequence(points=[geo_col.container()["points"][k] for k in geocon_dict["tool"]]),
-                    target=PointSequence(points=[geo_col.container()["points"][k] for k in geocon_dict["target"]]),
-                    name=geocon_dict["name"], assign_unique_name=False
-                )
-            elif constraint_type == "parallel":
-                geo_col.add_parallel_constraint(
-                    tool=PointSequence(points=[geo_col.container()["points"][k] for k in geocon_dict["tool"]]),
-                    target=PointSequence(points=[geo_col.container()["points"][k] for k in geocon_dict["target"]]),
-                    name=geocon_dict["name"], assign_unique_name=False
-                )
-            else:
-                raise ValueError(f"Invalid constraint type: {constraint_type}")
+                    pass
+            constraint_type = geocon_dict.pop("constraint_type")
+            constraint = getattr(sys.modules[__name__], constraint_type)(**geocon_dict, name=name)
+            geo_col.add_constraint(constraint=constraint, assign_unique_name=False)
         for dim_dict in d["dims"].values():
             if "length_param" in dim_dict.keys():
                 if dim_dict["length_param"] in geo_col.container()["desvar"].keys():

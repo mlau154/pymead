@@ -77,4 +77,4 @@ class LineSegment(ParametricCurve):
         return PCurveData(t=t, xy=xy, xpyp=xpyp, xppypp=xppypp, k=k, R=R)
 
     def get_dict_rep(self):
-        return {"points": [pt.name() for pt in self.point_sequence().points()], "name": self.name()}
+        return {"points": [pt.name() for pt in self.point_sequence().points()]}

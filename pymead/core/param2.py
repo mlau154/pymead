@@ -186,7 +186,7 @@ class Param(PymeadObj):
             self._value = self._upper
 
     def get_dict_rep(self):
-        return {"value": self.value(), "name": self.name(), "lower": self.lower(), "upper": self.upper(),
+        return {"value": float(self.value()), "lower": self.lower(), "upper": self.upper(),
                 "unit_type": None}
 
     @classmethod
@@ -288,6 +288,10 @@ class LengthParam(Param):
         new_value = UNITS.convert_length_to_base(value, self.unit())
         return super().set_value(new_value, updated_objs=updated_objs, bounds_normalized=bounds_normalized)
 
+    def get_dict_rep(self):
+        return {"value": float(self.value()), "lower": self.lower(), "upper": self.upper(),
+                "unit_type": "length"}
+
 
 class AngleParam(Param):
     def __init__(self, value: float, name: str, lower: float or None = None, upper: float or None = None,
@@ -351,6 +355,10 @@ class AngleParam(Param):
         zero_to_2pi_value = new_value % (2 * np.pi)
 
         return super().set_value(zero_to_2pi_value, updated_objs=updated_objs, bounds_normalized=bounds_normalized)
+
+    def get_dict_rep(self):
+        return {"value": float(self.value()), "lower": self.lower(), "upper": self.upper(),
+                "unit_type": "angle"}
 
 
 # class ParamCollection:
@@ -478,6 +486,10 @@ class LengthDesVar(LengthParam):
         super().__init__(value=value, name=name, lower=lower, upper=upper, setting_from_geo_col=setting_from_geo_col,
                          sub_container="desvar")
 
+    def get_dict_rep(self):
+        return {"value": float(self.value()), "lower": self.lower(), "upper": self.upper(),
+                "unit_type": "length"}
+
 
 class AngleDesVar(AngleParam):
     """
@@ -515,3 +527,7 @@ class AngleDesVar(AngleParam):
 
         super().__init__(value=value, name=name, lower=lower, upper=upper, sub_container="desvar",
                          setting_from_geo_col=setting_from_geo_col)
+
+    def get_dict_rep(self):
+        return {"value": float(self.value()), "lower": self.lower(), "upper": self.upper(),
+                "unit_type": "angle"}

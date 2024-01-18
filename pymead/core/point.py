@@ -120,7 +120,7 @@ class Point(PymeadObj):
         return f"Point {self.name()}<x={self.x().value()}, y={self.y().value()}>"
 
     def get_dict_rep(self):
-        return {"x": self.x().value(), "y": self.y().value(), "name": self.name(), "fixed": self.fixed()}
+        return {"x": float(self.x().value()), "y": float(self.y().value()), "fixed": self.fixed()}
 
 
 class PointSequence:

@@ -678,6 +678,35 @@ class Perp3ConstraintButton(TreeButton):
             self.tree.itemWidget(point.tree_item, 0).setText(name)
 
 
+class AntiParallel3ConstraintButton(TreeButton):
+
+    def __init__(self, antiparallel3_constraint: AntiParallel3Constraint, tree, top_level: bool = False):
+        super().__init__(pymead_obj=antiparallel3_constraint, tree=tree, top_level=top_level)
+        self.antiparallel3_constraint = antiparallel3_constraint
+
+    def modifyDialogInternals(self, dialog: QDialog, layout: QGridLayout) -> None:
+        name_label = QLabel("Name", self)
+        name_edit = NameEdit(self, self.antiparallel3_constraint, self.tree)
+        name_edit.textChanged.connect(self.onNameChange)
+        layout.addWidget(name_label, 1, 0)
+        layout.addWidget(name_edit, 1, 1)
+
+        labels = ["Start", "Vertex", "End"]
+        points = [self.antiparallel3_constraint.p1, self.antiparallel3_constraint.p2,
+                  self.antiparallel3_constraint.p3]
+        for label, point in zip(labels, points):
+            point_button = PointButton(point, self.tree)
+            point_button.sigNameChanged.connect(self.onPointNameChange)
+            q_label = QLabel(label, self)
+            row_count = layout.rowCount()
+            layout.addWidget(q_label, row_count, 0)
+            layout.addWidget(point_button, row_count, 1)
+
+    def onPointNameChange(self, name: str, point: Point):
+        if point.tree_item is not None:
+            self.tree.itemWidget(point.tree_item, 0).setText(name)
+
+
 class RelAngle4ConstraintButton(TreeButton):
 
     def __init__(self, rel_angle_constraint: RelAngle4Constraint, tree, top_level: bool = False):
