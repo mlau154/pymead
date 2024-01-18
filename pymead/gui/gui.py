@@ -1,4 +1,5 @@
 import typing
+from functools import partial
 from threading import Thread
 
 import pyqtgraph as pg
@@ -20,7 +21,7 @@ from pymead.gui.main_icon_toolbar import MainIconToolbar
 
 from PyQt5.QtWidgets import QMainWindow, QApplication, \
     QWidget, QMenu, QStatusBar, QAction, QGraphicsScene, QGridLayout, QDockWidget, QVBoxLayout, QLabel, QSizeGrip, \
-    QMenuBar, QSizePolicy
+    QMenuBar, QSizePolicy, QWidgetAction
 from PyQt5.QtGui import QIcon, QFont, QFontDatabase, QPainter, QCloseEvent, QTextCursor
 from PyQt5.QtCore import QEvent, QObject, Qt, QThreadPool, QSize, QRect
 from PyQt5.QtSvg import QSvgWidget
@@ -74,6 +75,8 @@ from pymead import ICON_DIR, GUI_SETTINGS_DIR, GUI_THEMES_DIR, GUI_DEFAULT_AIRFO
 from pymead.analysis.calc_aero_data import SVG_PLOTS, SVG_SETTINGS_TR
 from pyqtgraph.exporters import CSVExporter, SVGExporter
 
+from pymead.gui.show_hide import ShowHideDialog
+
 
 class GUI(QMainWindow):
 
@@ -82,6 +85,7 @@ class GUI(QMainWindow):
     def __init__(self, path=None, parent=None):
         # super().__init__(flags=Qt.FramelessWindowHint)
         super().__init__(parent=parent)
+        self.showHideState = None
         self.setWindowFlags(self.windowFlags() | Qt.FramelessWindowHint)
         self.windowMaximized = False
         # print(f"Running GUI with {os.getpid() = }")
@@ -512,7 +516,8 @@ class GUI(QMainWindow):
         def recursively_add_menus(menu: dict, menu_bar: QObject):
             for key, val in menu.items():
                 if isinstance(val, dict):
-                    menu_bar.addMenu(QMenu(key, parent=menu_bar))
+                    menu = QMenu(key, parent=menu_bar)
+                    menu_bar.addMenu(menu)
                     recursively_add_menus(val, menu_bar.children()[-1])
                 else:
                     action = QAction(key, parent=menu_bar)
@@ -522,8 +527,15 @@ class GUI(QMainWindow):
                     else:
                         raise ValueError('Attempted to add QAction to an object not of type QMenu')
                     if isinstance(val, list):
-                        action.triggered.connect(getattr(self, val[0]))
-                        action.setShortcut(val[1])
+                        if len(val) > 3 and val[3] is not None:
+                            action.triggered.connect(partial(getattr(self, val[0]), *val[3]))
+                        else:
+                            action.triggered.connect(getattr(self, val[0]))
+                        if val[1] is not None:
+                            action.setShortcut(val[1])
+                        if len(val) > 2 and val[2] is not None:
+                            action.setCheckable(True)
+                            action.setChecked(val[2])
                     else:
                         action.triggered.connect(getattr(self, val))
 
@@ -571,6 +583,24 @@ class GUI(QMainWindow):
             else:
                 self.disp_message_box(f"Directory {dir_name} for"
                                       f"file {file_name} not found")
+
+    def showHidePymeadObjs(self, sub_container: str, show: bool):
+        if show:
+            self.airfoil_canvas.showPymeadObjs(sub_container)
+        else:
+            self.airfoil_canvas.hidePymeadObjs(sub_container)
+
+    def openShowHidePymeadObjDialog(self):
+        if self.showHideState is None:
+            self.showAllPymeadObjs()
+        dialog = ShowHideDialog(self, state=self.showHideState)
+        dialog.exec_()
+
+    def showAllPymeadObjs(self):
+        self.showHideState = self.airfoil_canvas.showAllPymeadObjs()
+
+    def hideAllPymeadObjs(self):
+        self.showHideState = self.airfoil_canvas.hideAllPymeadObjs()
 
     def save_as_mea(self):
         dialog = SaveAsDialog(self)

@@ -21,7 +21,12 @@
   },
   "View": {
     "Fit": "auto_range_geometry",
-    "Toggle Full Screen": ["toggle_full_screen", "F11"]
+    "Toggle Full Screen": ["toggle_full_screen", "F11"],
+    "Show/Hide": {
+      "Show All": "showAllPymeadObjs",
+      "Hide All": "hideAllPymeadObjs",
+      "Customize...": "openShowHidePymeadObjDialog"
+    }
   },
   "Analysis": {
     "Single Airfoil": {

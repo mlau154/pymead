@@ -852,7 +852,7 @@ class GeometryCollection(DualRep):
             constraint_type = geocon_dict.pop("constraint_type")
             constraint = getattr(sys.modules[__name__], constraint_type)(**geocon_dict, name=name)
             geo_col.add_constraint(constraint=constraint, assign_unique_name=False)
-        for dim_dict in d["dims"].values():
+        for name, dim_dict in d["dims"].items():
             if "length_param" in dim_dict.keys():
                 if dim_dict["length_param"] in geo_col.container()["desvar"].keys():
                     param = geo_col.container()["desvar"][dim_dict["length_param"]]
@@ -864,7 +864,7 @@ class GeometryCollection(DualRep):
                 geo_col.add_length_dimension(tool_point=geo_col.container()["points"][dim_dict["tool_point"]],
                                              target_point=geo_col.container()["points"][dim_dict["target_point"]],
                                              length_param=param,
-                                             name=dim_dict["name"])
+                                             name=name)
             elif "angle_param" in dim_dict.keys():
                 if dim_dict["angle_param"] in geo_col.container()["desvar"].keys():
                     param = geo_col.container()["desvar"][dim_dict["angle_param"]]
@@ -876,17 +876,17 @@ class GeometryCollection(DualRep):
                 geo_col.add_angle_dimension(tool_point=geo_col.container()["points"][dim_dict["tool_point"]],
                                             target_point=geo_col.container()["points"][dim_dict["target_point"]],
                                             angle_param=param,
-                                            name=dim_dict["name"])
+                                            name=name)
             else:
                 raise ValueError("Current valid load/save dimensions are LengthDimension and AngleDimension. Could "
                                  "not find either length_param or angle_param in saved dictionary.")
-        for airfoil_dict in d["airfoils"].values():
+        for name, airfoil_dict in d["airfoils"].items():
             geo_col.add_airfoil(leading_edge=geo_col.container()["points"][airfoil_dict["leading_edge"]],
                                 trailing_edge=geo_col.container()["points"][airfoil_dict["trailing_edge"]],
                                 upper_surf_end=geo_col.container()["points"][airfoil_dict["upper_surf_end"]],
                                 lower_surf_end=geo_col.container()["points"][airfoil_dict["lower_surf_end"]],
-                                name=airfoil_dict["name"], assign_unique_name=False)
-        for mea_dict in d["mea"].values():
+                                name=name, assign_unique_name=False)
+        for name, mea_dict in d["mea"].items():
             geo_col.add_mea(airfoils=[geo_col.container()["airfoils"][k] for k in mea_dict["airfoils"]],
-                            name=mea_dict["name"], assign_unique_name=False)
+                            name=name, assign_unique_name=False)
         return geo_col

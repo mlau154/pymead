@@ -21,6 +21,14 @@ class ConstraintItem:
         for item in self.canvas_items:
             canvas.addItem(item)
 
+    def hide(self):
+        for canvas_item in self.canvas_items:
+            canvas_item.hide()
+
+    def show(self):
+        for canvas_item in self.canvas_items:
+            canvas_item.show()
+
     @abstractmethod
     def update(self):
         pass

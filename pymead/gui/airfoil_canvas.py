@@ -50,6 +50,30 @@ class AirfoilCanvas(pg.PlotWidget):
         self.setMinimumWidth(500)
         self.setMinimumHeight(300)
 
+    def showPymeadObjs(self, sub_container: str):
+        for pymead_obj in self.geo_col.container()[sub_container].values():
+            if pymead_obj.canvas_item is None:
+                continue
+            pymead_obj.canvas_item.show()
+
+    def hidePymeadObjs(self, sub_container: str):
+        for pymead_obj in self.geo_col.container()[sub_container].values():
+            if pymead_obj.canvas_item is None:
+                continue
+            pymead_obj.canvas_item.hide()
+
+    def showAllPymeadObjs(self):
+        sub_containers = ("points", "bezier", "lines", "geocon")
+        for sub_container in sub_containers:
+            self.showPymeadObjs(sub_container)
+        return {sub_container: True for sub_container in sub_containers}
+
+    def hideAllPymeadObjs(self):
+        sub_containers = ("points", "bezier", "lines", "geocon")
+        for sub_container in sub_containers:
+            self.hidePymeadObjs(sub_container)
+        return {sub_container: False for sub_container in sub_containers}
+
     def setAxisLabels(self, theme: dict):
         self.plot.setLabel(axis="bottom", text=f"x [{UNITS.current_length_unit()}]", font="10pt DejaVu Sans",
                            color=theme["main-color"])
