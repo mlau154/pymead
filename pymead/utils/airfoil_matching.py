@@ -10,7 +10,7 @@ import scipy
 from shapely.geometry import Polygon
 
 from pymead.utils.get_airfoil import extract_data_from_airfoiltools
-from pymead.core.mea import MEA
+from pymead.core.mea2 import MEA
 
 from copy import deepcopy
 

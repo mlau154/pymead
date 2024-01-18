@@ -12,32 +12,6 @@
     "checked-by-default": false,
     "function": "change_background_color_button_toggled"
   },
-  "add-airfoil": {
-    "icon": "Add-Icon3.png",
-    "status_tip": "Add airfoil (click on the graph to complete action)",
-    "checkable": false,
-    "function": "add_airfoil_button_toggled"
-  },
-  "te-thickness": {
-    "icon": "thickness_icon.png",
-    "status_tip": "Toggle trailing edge thickness edit mode",
-    "checkable": true,
-    "checked-by-default": false,
-    "function": "te_thickness_mode_toggled"
-  },
-  "symmetry": {
-    "icon": "symmetry.png",
-    "status_tip": "Make a pair of FreePoints or AnchorPoints symmetric about a specified line",
-    "checkable": false,
-    "function": "on_symmetry_button_pressed"
-  },
-  "pos-constraint": {
-    "icon": "target_icon.png",
-    "status_tip": "Constrain the relative position of two FreePoints or AnchorPoints",
-    "checkable": false,
-    "checked-by-default": false,
-    "function": "on_pos_constraint_pressed"
-  },
   "draw-point": {
     "icon": "point.png",
     "status_tip": "Draw points",

@@ -1,3 +1,5 @@
+from copy import deepcopy
+
 import numpy as np
 from shapely.geometry import Polygon, LineString
 
@@ -321,6 +323,79 @@ class Airfoil(PymeadObj):
         # polygon = Polygon(points_shapely)
         line_string = LineString(list(map(tuple, points)))
         return airfoil_polygon.contains(line_string)
+
+    def downsample(self, max_airfoil_points: int, curvature_exp: float = 2.0):
+        r"""
+        Downsamples the airfoil coordinates based on a curvature exponent. This method works by evaluating each
+        Bézier curve using a set number of points (150) and then calculating
+        :math:`\mathbf{R_e} = \mathbf{R}^{1/e_c}`, where :math:`\mathbf{R}` is the radius of curvature vector and
+        :math:`e_c` is the curvature exponent (an input to this method). Then, :math:`\mathbf{R_e}` is
+        normalized by its maximum value and concatenated to a single array for all curves in a given airfoil.
+        Finally, ``max_airfoil_points`` are chosen from this array to create a new set of parameter vectors
+        for the airfoil.
+
+        Parameters
+        ==========
+        max_airfoil_points: int
+            Maximum number of points in the airfoil (the actual number in the final airfoil may be slightly less)
+
+        curvature_exp: float
+            Curvature exponent used to scale the radius of curvature. Values close to 0 place high emphasis on
+            curvature, while values close to :math:`\infty` place low emphasis on curvature (creating nearly
+            uniform spacing)
+
+
+        Returns
+        =======
+        list[np.ndarray]
+            List of parameter vectors (one for each Bézier curve)
+        """
+
+        if max_airfoil_points > sum([len(curve.t) for curve in self.curves]):
+            for curve in self.curves:
+                curve.update(P=curve.P, nt=np.ceil(max_airfoil_points / len(self.curves)).astype(int))
+
+        new_param_vec_list = []
+        new_t_concat = np.array([])
+
+        for c_idx, curve in enumerate(self.curves):
+            temp_R = deepcopy(curve.R)
+            for r_idx, r in enumerate(temp_R):
+                if np.isinf(r) and r > 0:
+                    temp_R[r_idx] = 10000
+                elif np.isinf(r) and r < 0:
+                    temp_R[r_idx] = -10000
+
+            exp_R = np.abs(temp_R) ** (1 / curvature_exp)
+            new_t = np.zeros(exp_R.shape)
+            for i in range(1, new_t.shape[0]):
+                new_t[i] = new_t[i - 1] + (exp_R[i] + exp_R[i - 1]) / 2
+            new_t = new_t / np.max(new_t)
+            new_t_concat = np.concatenate((new_t_concat, new_t))
+
+        indices_to_select = np.linspace(0, new_t_concat.shape[0] - 1,
+                                        max_airfoil_points - 2 * len(self.curves)).astype(int)
+
+        t_old = 0.0
+        for selection_idx in indices_to_select:
+            t = new_t_concat[selection_idx]
+
+            if t == 0.0 and selection_idx == 0:
+                new_param_vec_list.append(np.array([0.0]))
+            elif t < t_old:
+                if t_old != 1.0:
+                    new_param_vec_list[-1] = np.append(new_param_vec_list[-1], 1.0)
+                if t == 0.0:
+                    new_param_vec_list.append(np.array([]))
+                else:
+                    new_param_vec_list.append(np.array([0.0]))
+                new_param_vec_list[-1] = np.append(new_param_vec_list[-1], t)
+                t_old = t
+            else:
+                new_param_vec_list[-1] = np.append(new_param_vec_list[-1], t)
+                t_old = t
+
+        return new_param_vec_list
 
     def get_dict_rep(self):
         return {"leading_edge": self.leading_edge.name(), "trailing_edge": self.trailing_edge.name(),

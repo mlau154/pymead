@@ -9,7 +9,7 @@ from copy import deepcopy
 import os
 import random
 
-from pymead.core.mea import MEA
+from pymead.core.mea2 import MEA
 from pymead.optimization.opt_setup import CustomDisplay, TPAIOPT
 from pymead.utils.read_write_files import load_data, save_data
 from pymead.optimization.pop_chrom import Chromosome, Population

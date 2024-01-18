@@ -1,7 +1,11 @@
+import itertools
 import typing
 import os
 
 import numpy as np
+from pymead.plugins.IGES.iges_generator import IGESGenerator
+
+from pymead.plugins.IGES.curves import BezierIGES
 
 from pymead.core.airfoil2 import Airfoil
 from pymead.core.pymead_obj import PymeadObj
@@ -68,6 +72,22 @@ class MEA(PymeadObj):
         np.savetxt(blade_file_path, mea_coords, header=header, comments="")
 
         return blade_file_path
+
+    def write_to_IGES(self, file_name: str):
+        """
+        Writes the airfoil system to file using the IGES file format.
+
+        Parameters
+        ==========
+        file_name: str
+            Path to IGES file
+        """
+        bez_IGES_entities = [
+            [BezierIGES(np.column_stack((c.P[:, 0], np.zeros(len(c.P)), c.P[:, 1]))) for c in a.curve_list]
+            for a in self.airfoils.values()]
+        entities_flattened = list(itertools.chain.from_iterable(bez_IGES_entities))
+        iges_generator = IGESGenerator(entities_flattened)
+        iges_generator.generate(file_name)
 
     def get_dict_rep(self):
         return {"airfoils": [a.name() for a in self.airfoils]}

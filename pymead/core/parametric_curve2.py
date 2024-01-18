@@ -20,6 +20,22 @@ class PCurveData:
     def plot(self, ax: plt.Axes, **kwargs):
         ax.plot(self.xy[:, 0], self.xy[:, 1], **kwargs)
 
+    def get_curvature_comb(self, max_k_normalized_scale_factor, interval: int = 1):
+        first_deriv_mag = np.hypot(self.xpyp[:, 0], self.xpyp[:, 1])
+        comb_heads_x = self.xy[:, 0] - self.xpyp[:, 1] / first_deriv_mag * self.k * max_k_normalized_scale_factor
+        comb_heads_y = self.xy[:, 1] + self.xpyp[:, 0] / first_deriv_mag * self.k * max_k_normalized_scale_factor
+        # Stack the x and y columns (except for the last x and y values) horizontally and keep only the rows by the
+        # specified interval:
+        comb_tails = np.column_stack((self.xy[:, 0], self.xy[:, 1]))[:-1:interval, :]
+        comb_heads = np.column_stack((comb_heads_x, comb_heads_y))[:-1:interval, :]
+        # Add the last x and y values onto the end (to make sure they do not get skipped with input interval)
+        comb_tails = np.row_stack((comb_tails, np.array([self.xy[-1, 0], self.xy[-1, 1]])))
+        comb_heads = np.row_stack((comb_heads, np.array([comb_heads_x[-1], comb_heads_y[-1]])))
+        return comb_tails, comb_heads
+
+    def approximate_arc_length(self):
+        return np.sum(np.hypot(self.xy[1:, 0] - self.xy[:-1, 0], self.xy[1:, 1] - self.xy[:-1, 1]))
+
 
 class ParametricCurve(PymeadObj, ABC):
     def __init__(self, sub_container: str, reference: bool = False):

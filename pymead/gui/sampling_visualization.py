@@ -5,7 +5,7 @@ import numpy as np
 from PyQt5.QtWidgets import QWidget, QDoubleSpinBox, QSpinBox, QLabel
 from PyQt5.QtWidgets import QGridLayout
 
-from pymead.core.mea import MEA
+# from pymead.core.mea import MEA
 from pymead.optimization.sampling import ConstrictedRandomSampling
 
 

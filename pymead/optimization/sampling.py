@@ -1,7 +1,7 @@
 from pymoo.operators.sampling.lhs import LatinHypercubeSampling
 from pymoo.core.problem import Problem
 from pymead.utils.read_write_files import load_data, save_data
-from pymead.core.mea import MEA
+# from pymead.core.mea import MEA
 from matplotlib import pyplot as plt
 from random import randint, random
 import numpy as np
