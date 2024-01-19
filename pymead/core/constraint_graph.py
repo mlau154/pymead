@@ -12,6 +12,21 @@ from pymead.core.constraints import *
 
 class PymeadRootFinder(jaxopt.ScipyRootFinding):
     def __init__(self, equation_system: typing.Callable, method: str = "lm"):
+        r"""
+        Parameters
+        ----------
+        equation_system: typing.Callable
+            The non-linear system of equations to be solved. This system of equations represents interdependencies
+            (constraints) between geometric points. For example, a distance constraint with a value of 0.5 between two
+            points, :math:`P_1 = (x_1, y_1)` and :math:`P_2 = (x_2, y_2)` is represented by the equation
+
+            .. math::
+                \sqrt{(x_1^2 - x_2^2) + (y_1^2 - y_2^2)} = 0.5
+
+        method: str
+            Root-finding technique to use. The available methods are the subset of methods available in
+            ``scipy.optimize.root`` that allow for a user-specified Jacobian rather than a
+        """
         super().__init__(
             method=method,
             jit=True,
@@ -164,32 +179,6 @@ class ConstraintGraph(networkx.Graph):
             connected_components = networkx.node_connected_component(self, point)
             # TODO: need to re-compile the equations for potentially all the points that were originally a member
             #  of this constraint
-
-    def compile_and_solve_first_constraint_of_all_clusters(self, constraint_list: typing.List[GeoCon]):
-        # Compile the first constraint
-        constraint = constraint_list[0]
-        self.compile_equation_for_entity_or_constraint(constraint, method="lm")
-        self.compile_equation_for_entity_or_constraint(constraint, method="hybr")
-        self.multisolve_and_update(constraint)
-
-        clusters = {constraint: networkx.algorithms.descendants(self, constraint)}
-
-        # Compile all other constraints
-        for constraint in constraint_list[1:]:
-
-            # Only compile this constraint if it is not a member of a compiled cluster
-            compile_this_constraint = True
-            for k in clusters.keys():
-                if constraint in clusters[k]:
-                    compile_this_constraint = False
-                    break
-            if not compile_this_constraint:
-                continue
-
-            self.compile_equation_for_entity_or_constraint(constraint, method="lm")
-            self.compile_equation_for_entity_or_constraint(constraint, method="hybr")
-            self.multisolve_and_update(constraint)
-            clusters[constraint] = networkx.algorithms.descendants(self, constraint)
 
     def get_points_to_fix(self, source: GeoCon) -> typing.List[Point]:
 
@@ -546,6 +535,10 @@ class ConstraintGraph(networkx.Graph):
 
         constraint.data.root_finders[method] = PymeadRootFinder(jit(equation_system), method=method)
 
+    def multicompile(self, constraint: GeoCon):
+        self.compile_equation_for_entity_or_constraint(constraint, method="lm")
+        self.compile_equation_for_entity_or_constraint(constraint, method="hybr")
+
     def solve(self, constraint: GeoCon, method: str):
         params = self.get_params()
         x0 = np.array([params[x_pos].value() for x_pos in constraint.data.variable_pos])
@@ -570,9 +563,55 @@ class ConstraintGraph(networkx.Graph):
 
         self.update_points(constraint, new_x=x)
 
+    def compile_and_solve_first_constraint_of_all_clusters(self, constraint_list: typing.List[GeoCon]):
+        """
+        Method used in the loading process of the GUI to compile only the first constraint (in order of addition to
+        the geometry collection) of each unconnected cluster in the ``ConstraintGraph``. Executing this method rather
+        than compiling/solving the non-linear system of equations for each constraint added during the load process
+        significantly decreases the load times for a ``GeometryCollection``. To be more precise, using this method
+        allows the load time to scale proportional to the number of unconnected clusters rather than the total number
+        of constraints. Compiling only once per cluster is possible during the loading process because the points
+        are already in the correct positions following the last equation solve prior to saving the ``.jmea`` file.
+
+        Parameters
+        ----------
+        constraint_list: typing.List[GeoCon]
+            List of constraints in the ``GeometryCollection`` in the order they were added
+        """
+        # Compile the first constraint
+        constraint = constraint_list[0]
+        self.multicompile(constraint)
+        self.multisolve_and_update(constraint)
+
+        clusters = {constraint: networkx.algorithms.descendants(self, constraint)}
+
+        # Compile all other constraints
+        for constraint in constraint_list[1:]:
+
+            # Only compile this constraint if it is not a member of a compiled cluster
+            compile_this_constraint = True
+            for k in clusters.keys():
+                if constraint in clusters[k]:
+                    compile_this_constraint = False
+                    break
+            if not compile_this_constraint:
+                continue
+
+            self.multicompile(constraint)
+            self.multisolve_and_update(constraint)
+            clusters[constraint] = networkx.algorithms.descendants(self, constraint)
+
     def update_points(self, constraint: GeoCon, new_x: np.ndarray):
         """
         Updates the variable points and parameters in the constraint system
+
+        Parameters
+        ----------
+        constraint: GeoCon
+            Normally, this is the constraint that had its parameter updated and therefore called the ``solve()`` method.
+
+        new_x: np.ndarray
+            Vector of updated parameter values
 
         Returns
         -------
