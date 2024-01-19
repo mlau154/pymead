@@ -9,6 +9,9 @@ from PyQt5 import QtWidgets
 from PyQt5.QtCore import pyqtSignal, QEventLoop, Qt
 from PyQt5.QtGui import QFont, QBrush, QColor
 from PyQt5.QtWidgets import QApplication
+from pymead.gui.polygon_item import PolygonItem
+
+from pymead.core.airfoil import Airfoil
 
 from pymead.core.constraints import *
 from pymead.core.constraint_equations import *
@@ -32,12 +35,13 @@ class AirfoilCanvas(pg.PlotWidget):
     sigEscapePressed = pyqtSignal()
     sigStatusBarUpdate = pyqtSignal(str, int)
 
-    def __init__(self, parent, geo_col: GeometryCollection, theme: dict):
+    def __init__(self, parent, geo_col: GeometryCollection, gui_obj):
         super().__init__(parent)
         self.setMenuEnabled(False)
         self.setAspectLocked(True)
         self.disableAutoRange()
         self.points = []
+        self.airfoil_text_items = {}
         self.drawing_object = None
         self.creating_collinear_constraint = None
         self.adding_point_to_curve = None
@@ -46,6 +50,7 @@ class AirfoilCanvas(pg.PlotWidget):
         self.point_text_item = None
         self.geo_col = geo_col
         self.geo_col.canvas = self
+        self.gui_obj = gui_obj
         self.plot = self.getPlotItem()
         self.setMinimumWidth(500)
         self.setMinimumHeight(300)
@@ -63,13 +68,13 @@ class AirfoilCanvas(pg.PlotWidget):
             pymead_obj.canvas_item.hide()
 
     def showAllPymeadObjs(self):
-        sub_containers = ("points", "bezier", "lines", "geocon")
+        sub_containers = ("points", "bezier", "lines", "airfoils", "geocon")
         for sub_container in sub_containers:
             self.showPymeadObjs(sub_container)
         return {sub_container: True for sub_container in sub_containers}
 
     def hideAllPymeadObjs(self):
-        sub_containers = ("points", "bezier", "lines", "geocon")
+        sub_containers = ("points", "bezier", "lines", "airfoils", "geocon")
         for sub_container in sub_containers:
             self.hidePymeadObjs(sub_container)
         return {sub_container: False for sub_container in sub_containers}
@@ -181,6 +186,15 @@ class AirfoilCanvas(pg.PlotWidget):
             # raise NotImplementedError(f"Constraint {pymead_obj.__class__.__name__} does not yet have a canvas item")
 
             constraint_item.addItems(self)
+
+        elif isinstance(pymead_obj, Airfoil):
+
+            pymead_obj.canvas_item = PolygonItem(data=pymead_obj.coords, airfoil=pymead_obj)
+            self.addItem(pymead_obj.canvas_item)
+
+            # Connect signals
+            pymead_obj.canvas_item.sigPolyEnter.connect(self.airfoil_hovered)
+            pymead_obj.canvas_item.sigPolyExit.connect(self.airfoil_exited)
 
     @staticmethod
     def runSelectionEventLoop(drawing_object: str, starting_message: str):
@@ -568,6 +582,7 @@ class AirfoilCanvas(pg.PlotWidget):
                     self.point_text_item = pg.TextItem(
                         f"{point.point.name()}\nx: {point.point.x().value():.6f}\ny: {point.point.y().value():.6f}",
                         anchor=(0, 1))
+                    self.point_text_item.setFont(QFont("DejaVu Sans", 8))
                     self.addItem(self.point_text_item)
                     self.point_text_item.setPos(point.point.x().value(), point.point.y().value())
                 item.setScatterStyle(mode="hovered")
@@ -613,6 +628,41 @@ class AirfoilCanvas(pg.PlotWidget):
 
     def curveLeaveHovered(self, item):
         self.geo_col.hover_leave_obj(item.parametric_curve)
+
+    def airfoil_hovered(self, airfoil: Airfoil, x_centroid: float, y_centroid: float):
+        """
+        Adds the name of the airfoil as a label to the airfoil's centroid when the airfoil shape is
+        hovered with the mouse
+
+        Parameters
+        ==========
+        airfoil_name: str
+            Name of the airfoil (A0, A1, etc.)
+
+        x_centroid: float
+            x-location of the airfoil's centroid
+
+        y_centroid: float
+            y-location of the airfoil's centroid
+        """
+
+        # Get the color for the text
+        # main_color = None if self.gui_obj is None else self.gui_obj.themes[self.gui_obj.current_theme]["main-color"]
+        main_color = self.gui_obj.themes[self.gui_obj.current_theme]["main-color"]
+
+        # Add the name of the airfoil as a pg.TextItem if not dragging
+        text_item = pg.TextItem(airfoil.name(), anchor=(0.5, 0.5), color=main_color)
+        text_item.setFont(QFont("DejaVu Sans", 10))
+        self.airfoil_text_items[airfoil] = text_item
+        self.airfoil_text_items[airfoil].setPos(x_centroid, y_centroid)
+        self.addItem(self.airfoil_text_items[airfoil])
+
+    def airfoil_exited(self, airfoil: Airfoil):
+        """
+        Remove the label from the airfoil centroid on mouse hover exit
+        """
+        if airfoil in self.airfoil_text_items.keys():
+            self.removeItem(self.airfoil_text_items[airfoil])
 
     def removeCurve(self, item):
         self.geo_col.remove_pymead_obj(item.parametric_curve)

@@ -9,10 +9,10 @@ from PyQt5.QtCore import QPointF, QRectF, pyqtSignal
 # The only required methods are paint() and boundingRect()
 # (see QGraphicsItem documentation)
 class PolygonItem(pg.GraphicsObject):
-    sigPolyEnter = pyqtSignal(str, float, float)
-    sigPolyExit = pyqtSignal()
+    sigPolyEnter = pyqtSignal(object, float, float)
+    sigPolyExit = pyqtSignal(object)
 
-    def __init__(self, data, airfoil_name: str, pen=None, brush=None):
+    def __init__(self, data, airfoil, pen=None, brush=None):
         pg.GraphicsObject.__init__(self)
         self.data = data
         self.pen = pen
@@ -23,7 +23,7 @@ class PolygonItem(pg.GraphicsObject):
         self.picture = None
         self.polygon = QPolygonF()
         self.generatePicture()
-        self.airfoil_name = airfoil_name
+        self.airfoil = airfoil
 
     def update_polygon(self):
         """
@@ -94,9 +94,9 @@ class PolygonItem(pg.GraphicsObject):
         """
         centroid = self.getCentroid()
         if ev.isExit():
-            self.sigPolyExit.emit()
+            self.sigPolyExit.emit(self.airfoil)
         elif ev.isEnter():
-            self.sigPolyEnter.emit(self.airfoil_name, centroid[0], centroid[1])
+            self.sigPolyEnter.emit(self.airfoil, centroid[0], centroid[1])
 
 
 if __name__ == '__main__':

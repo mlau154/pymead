@@ -554,12 +554,18 @@ class ConstraintGraph(networkx.Graph):
                 if curve not in curves_to_update:
                     curves_to_update.append(curve)
 
+        airfoils_to_update = []
         for curve in curves_to_update:
+            if curve.airfoil is not None and curve.airfoil not in airfoils_to_update:
+                airfoils_to_update.append(curve.airfoil)
             curve.update()
+
+        for airfoil in airfoils_to_update:
+            airfoil.update_coords()
+            airfoil.canvas_item.generatePicture()
 
         for node in networkx.dfs_preorder_nodes(self, source=constraint):
             if isinstance(node, GeoCon):
-                print(f"{node = }")
                 node.canvas_item.update()
 
 

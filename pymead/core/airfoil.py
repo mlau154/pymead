@@ -1,6 +1,7 @@
 from copy import deepcopy
 
 import numpy as np
+from pymead.gui.polygon_item import PolygonItem
 from shapely.geometry import Polygon, LineString
 
 from pymead.core.point import Point
@@ -36,6 +37,8 @@ class Airfoil(PymeadObj):
         # Add the airfoil reference to the curves
         for curve in self.curves:
             curve.airfoil = self
+
+        self.coords = self.get_coords_selig_format()
 
     def check_closed(self):
         # Get the trailing edge upper curve
@@ -118,6 +121,11 @@ class Airfoil(PymeadObj):
             else:
                 coords = np.row_stack((coords, arr[1:, :]))
         return coords
+
+    def update_coords(self):
+        self.coords = self.get_coords_selig_format()
+        if self.canvas_item is not None:
+            self.canvas_item.data = self.coords
 
     def save_coords_selig_format(self, file_name: str) -> None:
         """

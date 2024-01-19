@@ -87,10 +87,26 @@ class Point(PymeadObj):
             if self.canvas_item is not None:
                 self.canvas_item.updateCanvasItem(self.x().value(), self.y().value())
 
-            # TODO: add tree object update here as well
-
             for curve in self.curves:
                 curve.update()
+
+            curves_to_update = []
+            if self.canvas_item is not None:
+                self.canvas_item.updateCanvasItem(self.x().value(), self.y().value())
+
+            for curve in self.curves:
+                if curve not in curves_to_update:
+                    curves_to_update.append(curve)
+
+            airfoils_to_update = []
+            for curve in curves_to_update:
+                if curve.airfoil is not None and curve.airfoil not in airfoils_to_update:
+                    airfoils_to_update.append(curve.airfoil)
+                curve.update()
+
+            for airfoil in airfoils_to_update:
+                airfoil.update_coords()
+                airfoil.canvas_item.generatePicture()
         # else:
         #     start_param_vec = np.array([p.value() for p in self.gcs.params])
         #
@@ -110,8 +126,6 @@ class Point(PymeadObj):
         # Update the GUI object, if there is one
         if self.canvas_item is not None:
             self.canvas_item.updateCanvasItem(self.x().value(), self.y().value())
-
-        # TODO: add tree object update here as well
 
         for curve in self.curves:
             curve.update()

@@ -210,7 +210,7 @@ class GUI(QMainWindow):
         # self.dockable_tab_window.tab_closed.connect(self.on_tab_closed)
         self.geo_col = GeometryCollection()
 
-        self.airfoil_canvas = AirfoilCanvas(self, geo_col=self.geo_col, theme=self.themes[self.current_theme])
+        self.airfoil_canvas = AirfoilCanvas(self, geo_col=self.geo_col, gui_obj=self)
         self.airfoil_canvas.sigStatusBarUpdate.connect(self.setStatusBarText)
 
         # self.temp_text = ConsoleTextArea(self)

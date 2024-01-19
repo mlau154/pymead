@@ -14,7 +14,7 @@ class ShowHideDialog(QDialog):
         self.addRows()
         self.lay.setColumnMinimumWidth(1, 100)
         self.setWindowFlags(self.windowFlags() & ~Qt.WindowContextHelpButtonHint)
-        self.setFixedSize(150, 100)
+        self.setFixedSize(150, 120)
 
     def addRows(self):
 
@@ -22,6 +22,7 @@ class ShowHideDialog(QDialog):
             "points": "Points",
             "lines": "Lines",
             "bezier": "Bezier",
+            "airfoils": "Airfoils",
             "geocon": "Constraints"
         }
 
