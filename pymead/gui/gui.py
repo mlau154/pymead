@@ -43,7 +43,7 @@ from pymead.gui.input_dialog import LoadDialog, SaveAsDialog, OptimizationSetupD
     ExitDialog, ScreenshotDialog, LoadAirfoilAlgFile
 from pymead.gui.pymeadPColorMeshItem import PymeadPColorMeshItem
 from pymead.gui.analysis_graph import AnalysisGraph
-from pymead.gui.parameter_tree2 import ParameterTree
+from pymead.gui.parameter_tree import ParameterTree
 from pymead.gui.side_grip import SideGrip
 from pymead.plugins.IGES.curves import BezierIGES
 from pymead.plugins.IGES.iges_generator import IGESGenerator
@@ -275,7 +275,9 @@ class GUI(QMainWindow):
         self.permanent_widget = PermanentWidget(self)
         self.statusBar().addPermanentWidget(self.permanent_widget)
 
-        self.resize(800, self.title_bar.height() + 600)
+        self.parameter_tree.setMaximumWidth(300)
+        self.resize(1000, self.title_bar.height() + 600)
+        self.parameter_tree.setMaximumWidth(800)
 
         # self.showMaximized()
         # for dw in self.dock_widgets:
@@ -413,37 +415,25 @@ class GUI(QMainWindow):
 
         outRect = self.rect()
         # an "inner" rect used for reference to set the geometries of size grips
-        inRect = outRect.adjusted(self.gripSize, self.gripSize,
-                                  -self.gripSize, -self.gripSize)
+        inRect = outRect.adjusted(self.gripSize, self.gripSize, -self.gripSize, -self.gripSize)
 
         # top left
-        self.cornerGrips[0].setGeometry(
-            QRect(outRect.topLeft(), inRect.topLeft()))
+        self.cornerGrips[0].setGeometry(QRect(outRect.topLeft(), inRect.topLeft()))
         # top right
-        self.cornerGrips[1].setGeometry(
-            QRect(outRect.topRight(), inRect.topRight()).normalized())
+        self.cornerGrips[1].setGeometry(QRect(outRect.topRight(), inRect.topRight()).normalized())
         # bottom right
-        self.cornerGrips[2].setGeometry(
-            QRect(inRect.bottomRight(), outRect.bottomRight()))
+        self.cornerGrips[2].setGeometry(QRect(inRect.bottomRight(), outRect.bottomRight()))
         # bottom left
-        self.cornerGrips[3].setGeometry(
-            QRect(outRect.bottomLeft(), inRect.bottomLeft()).normalized())
-
+        self.cornerGrips[3].setGeometry(QRect(outRect.bottomLeft(), inRect.bottomLeft()).normalized())
 
         # left edge
-        self.sideGrips[0].setGeometry(
-            0, inRect.top(), self.gripSize, inRect.height())
+        self.sideGrips[0].setGeometry(0, inRect.top(), self.gripSize, inRect.height())
         # top edge
-        self.sideGrips[1].setGeometry(
-            inRect.left(), 0, inRect.width(), self.gripSize)
+        self.sideGrips[1].setGeometry(inRect.left(), 0, inRect.width(), self.gripSize)
         # right edge
-        self.sideGrips[2].setGeometry(
-            inRect.left() + inRect.width(),
-            inRect.top(), self.gripSize, inRect.height())
+        self.sideGrips[2].setGeometry(inRect.left() + inRect.width(), inRect.top(), self.gripSize, inRect.height())
         # bottom edge
-        self.sideGrips[3].setGeometry(
-            self.gripSize, inRect.top() + inRect.height(),
-            inRect.width(), self.gripSize)
+        self.sideGrips[3].setGeometry(self.gripSize, inRect.top() + inRect.height(), inRect.width(), self.gripSize)
 
     def resizeEvent(self, event):
         self.title_bar.resize(self.width(), self.title_bar.height())

@@ -1,1042 +1,1133 @@
-import os.path
+import sys
+import time
 import typing
+from abc import abstractmethod
 
-import pyqtgraph.parametertree.parameterTypes as pTypes
-from pyqtgraph.parametertree import Parameter, ParameterTree, registerParameterItemType, ParameterItem
-from pymead.core.mea import MEA
-import pyqtgraph as pg
-from pymead.core.param import Param
-from pymead.core.pos_param import PosParam
-from pymead.core.free_point import FreePoint
-from pymead.core.anchor_point import AnchorPoint
-from pymead.gui.autocomplete import AutoStrParameterItem
-from pymead.gui.selectable_header import SelectableHeaderParameterItem
-from pymead.gui.airfoil_pos_parameter import AirfoilPositionParameterItem
-from pymead.gui.input_dialog import BoundsDialog
-from pymead.gui.custom_context_menu_event import custom_context_menu_event
-from pymead.analysis.single_element_inviscid import single_element_inviscid
-from pymead.core.airfoil import Airfoil
-from PyQt5.QtWidgets import QWidget, QGridLayout, QLabel, QHeaderView
-from PyQt5.QtWidgets import QAbstractItemView
-from PyQt5.QtCore import pyqtSignal
-from pymead.utils.downsampling_schemes import fractal_downsampler2
-import pymead.core.symmetry  # DO NOT REMOVE
-from pymead.gui.autocomplete import Completer
-from functools import partial
-from pymead import INCLUDE_FILES
-import importlib.util
-# import importlib.machinery
 import numpy as np
-from time import time
+from PyQt5 import QtGui
+from PyQt5.QtGui import QValidator, QFont, QBrush, QColor
+from PyQt5.QtWidgets import QTreeWidget, QTreeWidgetItem, QPushButton, QHBoxLayout, QHeaderView, QDialog, QGridLayout, \
+    QDoubleSpinBox, QLineEdit, QLabel, QDialogButtonBox, QMenu, QAbstractItemView, QTreeWidgetItemIterator
+from PyQt5.QtCore import Qt, pyqtSignal, pyqtSlot, QRegularExpression
+
+from pymead.core.airfoil import Airfoil
+from pymead.core.constraints import *
+from pymead.core import UNITS
+from pymead.core.dimensions import LengthDimension, AngleDimension
+from pymead.core.mea import MEA
+from pymead.core.point import Point
+from pymead.core.bezier import Bezier
+from pymead.core.line import LineSegment
+from pymead.core.geometry_collection import GeometryCollection
+from pymead.core.param import Param, DesVar, LengthParam, AngleParam, LengthDesVar, AngleDesVar
+from pymead.core.pymead_obj import PymeadObj
 
 
-progress_idx = 0
-# pymead.core.symmetry.symmetry("r")
+class HeaderButtonRow(QHeaderView):
+    sigExpandPressed = pyqtSignal()
+    sigCollapsePressed = pyqtSignal()
+
+    def __init__(self, parent):
+        super().__init__(Qt.Horizontal, parent)
+        self.lay = QHBoxLayout(self)
+        self.expandButton = QPushButton("Expand All", self)
+        self.collapseButton = QPushButton("Collapse All", self)
+        self.expandButton.clicked.connect(self.expandButtonPressed)
+        self.collapseButton.clicked.connect(self.collapseButtonPressed)
+        self.lay.addWidget(self.expandButton)
+        self.lay.addWidget(self.collapseButton)
+        self.setLayout(self.lay)
+        self.setFixedHeight(40)
+
+    @pyqtSlot()
+    def expandButtonPressed(self):
+        self.sigExpandPressed.emit()
+
+    @pyqtSlot()
+    def collapseButtonPressed(self):
+        self.sigCollapsePressed.emit()
 
 
-class AirfoilParameterItem(pTypes.NumericParameterItem):
-    def __init__(self, param, depth):
-        self.airfoil_param = None
-        super().__init__(param, depth)
-
-    def contextMenuEvent(self, ev):
-        custom_context_menu_event(ev, self)
-
-    def makeWidget(self):
-        opts = self.param.opts
-        t = opts['type']
-        defs = {
-            'value': 0, 'min': None, 'max': None,
-            'step': 1.0, 'dec': False,
-            'siPrefix': False, 'suffix': '', 'decimals': 12,
-        }
-        if t == 'int':
-            defs['int'] = True
-            defs['minStep'] = 1.0
-        for k in defs:
-            if k in opts:
-                defs[k] = opts[k]
-        if 'limits' in opts:
-            defs['min'], defs['max'] = opts['limits']
-        w = pg.SpinBox()
-        w.setOpts(**defs)
-        w.sigChanged = w.sigValueChanged
-        w.sigChanging = w.sigValueChanging
-        return w
-
-
-class HeaderParameterItem(pTypes.GroupParameterItem):
-
-    def contextMenuEvent(self, ev):
-        custom_context_menu_event(ev, self)
-
-
-class CustomParameterItem(pTypes.NumericParameterItem):
-
-    def contextMenuEvent(self, ev):
-        custom_context_menu_event(ev, self)
-
-    def makeWidget(self):
-        opts = self.param.opts
-        t = opts['type']
-        defs = {
-            'value': 0, 'min': None, 'max': None,
-            'step': 1.0, 'dec': False,
-            'siPrefix': False, 'suffix': '', 'decimals': 12,
-        }
-        if t == 'int':
-            defs['int'] = True
-            defs['minStep'] = 1.0
-        for k in defs:
-            if k in opts:
-                defs[k] = opts[k]
-        if 'limits' in opts:
-            defs['min'], defs['max'] = opts['limits']
-        w = pg.SpinBox()
-        w.setOpts(**defs)
-        w.sigChanged = w.sigValueChanged
-        w.sigChanging = w.sigValueChanging
-        return w
-
-
-registerParameterItemType("airfoil_param", AirfoilParameterItem)
-registerParameterItemType("header_param", HeaderParameterItem)
-registerParameterItemType("custom_param", CustomParameterItem)
-
-
-class MEAParameters(pTypes.GroupParameter):
-    """Class for storage of all the Multi-Element Airfoil Parameters."""
-    def __init__(self, mea: MEA, status_bar, **opts):
-        registerParameterItemType('selectable_header', SelectableHeaderParameterItem, override=True)
-        registerParameterItemType('pos_parameter', AirfoilPositionParameterItem, override=True)
-        opts['type'] = 'bool'
-        opts['value'] = True
-        super().__init__(**opts)
-        self.mea = mea
-        self.status_bar = status_bar
-        self.airfoil_headers = {}
-        self.custom_header = self.addChild(CustomGroup(mea, name='Custom'))
-        for k, v in self.mea.param_dict['Custom'].items():
-            if isinstance(v.value, list):
-                pg_param = Parameter.create(name=k, type='pos_parameter', value=v.value,
-                                            removable=True,
-                                            renamable=True, context={'add_eq': 'Define by equation',
-                                                                     'deactivate': 'Deactivate parameter',
-                                                                     'activate': 'Activate parameter',
-                                                                     'setbounds': 'Set parameter bounds'})
-            else:
-                pg_param = Parameter.create(name=k, type='custom_param', value=v.value, removable=True,
-                                            renamable=True, context={'add_eq': 'Define by equation',
-                                                                     'deactivate': 'Deactivate parameter',
-                                                                     'activate': 'Activate parameter',
-                                                                     'setbounds': 'Set parameter bounds'})
-
-            self.custom_header.addChild(pg_param)
-            pg_param.airfoil_param = v
-            pg_param.airfoil_param.name = pg_param.name()
-
-        for idx, a in enumerate(self.mea.airfoils.values()):
-            self.add_airfoil(a)
-
-    def add_airfoil(self, airfoil: Airfoil):
-        """Adds an airfoil, along with its associated Parameters, into a Multi-Element Airfoil system using the GUI."""
-        self.airfoil_headers[airfoil.tag] = self.addChild(dict(name=airfoil.tag, type='selectable_header', value=True,
-                                                       context={"add_fp": "Add FreePoint",
-                                                                "add_ap": "Add AnchorPoint",
-                                                                "remove_airfoil": "Remove Airfoil"}))
-        header_params = ['Base', 'AnchorPoints', 'FreePoints']
-        for hp in header_params:
-            # print(f"children = {self.airfoil_headers[idx].children()}")
-            self.airfoil_headers[airfoil.tag].addChild(dict(name=hp, type='header_param', value=True))
-        for p_key, p_val in self.mea.param_dict[airfoil.tag]['Base'].items():
-            pg_param = Parameter.create(name=f"{airfoil.tag}.Base.{p_key}",
-                                        type='airfoil_param',
-                                        value=self.mea.param_dict[airfoil.tag]['Base'][
-                                            p_key].value,
-                                        context={'add_eq': 'Define by equation', 'deactivate': 'Deactivate parameter',
-                                                 'activate': 'Activate parameter', 'setbounds': 'Set parameter bounds'})
-            pg_param.airfoil_param = self.mea.param_dict[airfoil.tag]['Base'][p_key]
-            self.airfoil_headers[airfoil.tag].children()[0].addChild(pg_param)
-            pg_param.airfoil_param.name = pg_param.name()
-        # print(f"param_dict = {self.mea.param_dict}")
-        for ap_key, ap_val in self.mea.param_dict[airfoil.tag]['AnchorPoints'].items():
-            self.child(airfoil.tag).child('AnchorPoints').addChild(
-                dict(name=ap_key, type='header_param', value='true', context={'remove_ap': 'Remove AnchorPoint'}))
-            for p_key, p_val in self.mea.param_dict[airfoil.tag]['AnchorPoints'][ap_key].items():
-                if p_key != 'xy':
-                    pg_param = Parameter.create(name=f"{airfoil.tag}.AnchorPoints.{ap_key}.{p_key}", type='airfoil_param',
-                        value=self.mea.param_dict[airfoil.tag]['AnchorPoints'][ap_key][
-                            p_key].value,
-                        context={'add_eq': 'Define by equation', 'deactivate': 'Deactivate parameter',
-                                 'activate': 'Activate parameter', 'setbounds': 'Set parameter bounds'})
-                    pg_param.airfoil_param = self.mea.param_dict[airfoil.tag]['AnchorPoints'][ap_key][p_key]
-                    self.child(airfoil.tag).child('AnchorPoints').child(ap_key).addChild(pg_param)
-                else:
-                    airfoil_param = self.mea.param_dict[airfoil.tag]['AnchorPoints'][ap_key][p_key]
-                    pg_param = Parameter.create(name=f"{airfoil.tag}.AnchorPoints.{ap_key}.{p_key}",
-                                                type='pos_parameter',
-                                                value=[-999.0, -999.0],
-                                                context={'add_eq': 'Define by equation',
-                                                         'deactivate': 'Deactivate parameter',
-                                                         'activate': 'Activate parameter',
-                                                         'setbounds': 'Set parameter bounds'})
-                    pg_param.airfoil_param = airfoil_param
-                    airfoil_param.name = pg_param.name()
-                    self.child(airfoil.tag).child('AnchorPoints').child(
-                        ap_key).addChild(pg_param)
-                    pg_param.setValue([pg_param.airfoil_param.value[0], pg_param.airfoil_param.value[1]])
-        for ap_key, ap_val in self.mea.param_dict[airfoil.tag]['FreePoints'].items():
-            self.child(airfoil.tag).child('FreePoints').addChild(
-                dict(name=ap_key, type='header_param', value='true'))
-            for fp_key, fp_val in ap_val.items():
-                self.child(airfoil.tag).child('FreePoints').child(ap_key).addChild(
-                    dict(name=fp_key, type='header_param', value='true', context={'remove_fp': 'Remove FreePoint'}))
-                for p_key, p_val in fp_val.items():
-                    airfoil_param = self.mea.param_dict[airfoil.tag]['FreePoints'][ap_key][fp_key][p_key]
-                    pg_param = Parameter.create(name=f"{airfoil.tag}.FreePoints.{ap_key}.{fp_key}.{p_key}",
-                                                type='pos_parameter',
-                                                value=[-999.0, -999.0],
-                                                context={'add_eq': 'Define by equation',
-                                                         'deactivate': 'Deactivate parameter',
-                                                         'activate': 'Activate parameter',
-                                                         'setbounds': 'Set parameter bounds'})
-                    pg_param.airfoil_param = airfoil_param
-                    airfoil_param.name = pg_param.name()
-                    self.child(airfoil.tag).child('FreePoints').child(ap_key).child(
-                        fp_key).addChild(pg_param)
-                    pg_param.setValue([pg_param.airfoil_param.value[0], pg_param.airfoil_param.value[1]])
-                # print(f"{self.child(airfoil.tag).child('FreePoints').child(ap_key).child(fp_key).children() = }")
-
-
-# class AirfoilParameter(pTypes.SimpleParameter):
-#     """Subclass of SimpleParameter which adds the airfoil_param attribute (a `pymead.core.param.Param`)."""
-#     def __init__(self, airfoil_param: Param, **opts):
-#         self.airfoil_param = airfoil_param
-#         pTypes.SimpleParameter.__init__(self, **opts)
-#
-#
-# class HeaderParameter(pTypes.GroupParameter):
-#     """Simple class for containing Parameters with no value. HeaderParameter has a similar purpose to a key in a
-#     nested dictionary."""
-#     def __init__(self, **opts):
-#         pTypes.GroupParameter.__init__(self, **opts)
-
-
-class PlotGroup(pTypes.GroupParameter):
-    def __init__(self, **opts):
-        opts["type"] = "group"
-        super().__init__(**opts)
-
-    def add_plot_handle(self, name: str, color: str or tuple):
-        pg_param = Parameter.create(name=name, type="pen", color=color, width=1.4, removable=True,
-                                    renamable=True)
-        self.addChild(pg_param)
-
-
-class CustomGroup(pTypes.GroupParameter):
-    """Class for addition of Custom Parameters to the Multi-Element Airfoil system within the GUI"""
-    def __init__(self, mea: MEA, **opts):
-        opts['type'] = 'group'
-        opts['addText'] = 'Add'
-        opts['addList'] = ['Param', 'PosParam']
-        pTypes.GroupParameter.__init__(self, **opts)
-        self.mea = mea
-
-    def addNew(self, typ):
-        default_value = {'Param': 0.0, 'PosParam': [0.0, 0.0]}[typ]
-        default_name = f"CustomParam{(len(self.childs) + 1)}"
-        if typ == 'Param':
-            airfoil_param = Param(default_value)
-            pg_param = Parameter.create(name=default_name, type='custom_param', value=default_value, removable=True,
-                                        renamable=True, context={'add_eq': 'Define by equation',
-                                                                 'deactivate': 'Deactivate parameter',
-                                                                 'activate': 'Activate parameter',
-                                                                 'setbounds': 'Set parameter bounds'})
-        elif typ == 'PosParam':
-            airfoil_param = PosParam(default_value)
-            pg_param = Parameter.create(name=default_name, type='pos_parameter', value=default_value, removable=True,
-                                        renamable=True, context={'add_eq': 'Define by equation',
-                                                                 'deactivate': 'Deactivate parameter',
-                                                                 'activate': 'Activate parameter',
-                                                                 'setbounds': 'Set parameter bounds'})
+class ValueSpin(QDoubleSpinBox):
+    def __init__(self, parent, param: Param):
+        super().__init__(parent)
+        self.pymead_obj = param
+        self.setMaximumWidth(150)
+        self.setDecimals(6)
+        self.setSingleStep(0.01)
+        if isinstance(param, LengthParam) or isinstance(param, AngleParam):
+            self.setSuffix(f" {param.unit()}")
+        self.param = param
+        if self.param.lower() is not None:
+            self.setMinimum(self.param.lower())
         else:
-            raise ValueError("Current supported types of Custom Parameters are \'Param\' and \'PosParam\'")
-        self.addChild(pg_param)
-        pg_param.airfoil_param = airfoil_param
-        self.mea.param_dict['Custom'][default_name] = airfoil_param
+            # if isinstance(self.param, LengthParam) or isinstance(self.param, AngleParam):
+            #     self.setMinimum(0.0)
+            # else:
+            self.setMinimum(-1.0e9)
+        if self.param.upper() is not None:
+            self.setMaximum(self.param.upper())
+        else:
+            # if isinstance(self.param, AngleParam):
+            #     self.setMaximum(UNITS.convert_angle_to_base(2 * np.pi, self.param.unit()))
+            # else:
+            self.setMaximum(1.0e9)
+        self.setValue(self.param.value())
+        self.valueChanged.connect(self.onValueChanged)
 
-
-class MEAParamTree:
-    """Class for containment of all Multi-Element Airfoil Parameters in the GUI"""
-    def __init__(self, mea: MEA, status_bar, parent, progress_info: typing.NamedTuple = None):
-        global progress_idx
-        progress_idx = 0
-        self.user_mods = {}
-        for f in INCLUDE_FILES:
-            name = os.path.split(f)[-1]  # get the name of the file without the directory
-            name_no_ext = os.path.splitext(name)[-2]  # get the name of the file without the .py extension
-            spec = importlib.util.spec_from_file_location(name_no_ext, f)
-            self.user_mods[name_no_ext] = importlib.util.module_from_spec(spec)  # generate the module from the name
-            # print(f"{self.user_mods[name_no_ext] = }")
-            spec.loader.exec_module(self.user_mods[name_no_ext])  # compile and execute the module
-            # TODO: implement "add user module" functionality into GUI
-        self.dialog = None
-        self.parent = parent
-        self.params = [
-            # {'name': 'Save/Restore functionality', 'type': 'group', 'children': [
-            #     {'name': 'Save State', 'type': 'action'},
-            #     {'name': 'Restore State', 'type': 'action', 'children': [
-            #         {'name': 'Add missing items', 'type': 'bool', 'value': True},
-            #         {'name': 'Remove extra items', 'type': 'bool', 'value': True},
-            #     ]},
-            # ]},
-            {'name': 'Analysis', 'type': 'group', 'children': [
-                {'name': 'Inviscid Cl Calc', 'type': 'list', 'limits': [a.tag for a in mea.airfoils.values()]}]},
-            PlotGroup(name="Plot Handles"),
-            MEAParameters(mea, status_bar, name='Airfoil Parameters'),
-            # ScalableGroup(name="Expandable Parameter Group", tip='Click to add children', children=[
-            #     {'name': 'ScalableParam 1', 'type': 'str', 'value': "default param 1"},
-            #     {'name': 'ScalableParam 2', 'type': 'str', 'value': "default param 2"},
-            # ]),
-        ]
-
-        # Create tree of Parameter objects
-        self.p = Parameter.create(name='params', type='group', children=self.params)
-
-        self.equation_strings = {}
-
-        progress_values = None
-        if progress_info is not None:
-            progress_values = np.round(np.linspace(progress_info.start, progress_info.end, progress_info.n)).astype(int)
-
-        def add_equation_boxes_recursively(child_list):
-            """Adds equation boxes for each loaded Airfoil Param which already contains an equation."""
-            global progress_idx
-            for child in child_list:
-                if hasattr(child, 'airfoil_param'):
-                    func_str = child.airfoil_param.func_str
-                    if func_str is not None:
-                        # Here we set update_auto_completer to False because it is really slow. We update the auto
-                        # completer once afterward.
-                        self.add_equation_box(child, func_str, update_auto_completer=False)
-                        self.update_equation(child.child('Equation Definition'), func_str)
-                        if progress_values is not None:
-                            truncated_func_str = func_str if len(func_str) <= 50 else func_str[:50] + "..."
-                            self.parent.statusBar().showMessage(f"Adding equation {truncated_func_str}")
-                            self.parent.progress_bar.setValue(progress_values[progress_idx])
-                            progress_idx += 1
-                else:
-                    if child.hasChildren():
-                        add_equation_boxes_recursively(child.children())
-
-        def set_readonly_recursively(child_list):
-            """Sets the state to ReadOnly for each Airfoil Parameter which has an equation."""
-            for child in child_list:
-                if hasattr(child, 'airfoil_param'):
-                    if not isinstance(child.airfoil_param,
-                                      PosParam) and child.airfoil_param.linked or not child.airfoil_param.active:
-                        child.setReadonly(True)
-                else:
-                    if child.hasChildren():
-                        set_readonly_recursively(child.children())
-
-        self.mea = mea
-        self.mea.param_tree = self
-        # self.cl_label = pg.LabelItem(size="18pt")
-        # self.cl_label.setParentItem(self.mea.v)
-        # self.cl_label.anchor(itemPos=(1, 0), parentPos=(1, 0), offset=(-10, 10))
-        self.cl_label = None
-        #
-        self.cl_airfoil_tag = 'A0'
-
-        registerParameterItemType('auto_str', AutoStrParameterItem, override=True)
-
-        for a_name, a in self.mea.airfoils.items():
-            a.airfoil_graph.scatter.sigPlotChanged.connect(
-                partial(self.plot_changed, a_name))  # Needs to change with airfoil added or removed
-
-        # For any change in the tree:
-        def change(_, changes):
-            """This function gets called any time the state of the ParameterTree or any of its child Parameters is
-            changed."""
-
-            for param, change, data in changes:
-
-                # Removing an equation:
-                if change == 'childRemoved' and data.opts['name'] == 'Equation Definition':
-                    param.airfoil_param.remove_func()
-                    param.setReadonly(False)
-                    self.equation_strings.pop(param.name())
-
-                path = self.p.childPath(param)
-                if path is not None:
-                    # Defining an equation:
-                    if path[-1] == 'Equation Definition':
-                        if change == 'value':
-                            self.update_equation(param, data)
-
-                def block_changes(pg_param):
-                    pg_param.blockTreeChangeSignal()
-
-                def flush_changes(pg_param):
-                    pg_param.treeStateChanges = []
-                    pg_param.blockTreeChangeEmit = 1
-                    pg_param.unblockTreeChangeSignal()
-
-                # Value change for any parameter:
-                if hasattr(param, 'airfoil_param') and change == 'value':
-                    param_name = param.name().split('.')[-1]
-                    block_changes(param)
-                    param.airfoil_param.value = data
-                    Param.update_ap_fp(param.airfoil_param)
-                    param.airfoil_param.update()
-
-                    if param.airfoil_param.linked:
-                        param.setValue(param.airfoil_param.value)
-
-                    list_of_vals = []
-
-                    def get_list_of_vals_from_dict(d):
-                        for k, v in d.items():
-                            if isinstance(v, dict):
-                                get_list_of_vals_from_dict(v)
-                            else:
-                                list_of_vals.append(v)
-
-                    # IMPORTANT
-                    if mea.param_dict is not None:
-                        get_list_of_vals_from_dict(mea.param_dict)
-                        for val in list_of_vals:
-                            for v in val.depends_on.values():
-                                if param.airfoil_param is v:
-                                    val.update()
-
-                    self.plot_change_recursive(self.p.param('Airfoil Parameters').child('Custom').children())
-
-                    for a in mea.airfoils.values():
-                        for ap in a.anchor_points:
-                            if ap.tag not in ['te_1', 'le', 'te_2']:
-                                ap.set_ctrlpt_value()
-                        for fp_dict in a.free_points.values():
-                            for fp in fp_dict.values():
-                                fp.set_ctrlpt_value()
-                        a.update()
-                        a.airfoil_graph.data['pos'] = a.control_point_array
-                        a.airfoil_graph.updateGraph()
-
-                        # Run inviscid CL calculation after any geometry change
-                        # if a.tag == self.cl_airfoil_tag:
-                        #     a.get_coords(body_fixed_csys=True)
-                        #     # ds = fractal_downsampler2(a.coords, ratio_thresh=1.000005, abs_thresh=0.1)
-                        #     _, _, CL = single_element_inviscid(a, a.alf.value * 180 / np.pi)
-                        #     print(f"{CL = }")
-                        #     self.cl_label.setText(f"{self.cl_airfoil_tag} Inviscid CL = {CL:.3f}")
-
-                        self.plot_change_recursive(self.p.param('Airfoil Parameters').child(a.tag).children())
-
-                    flush_changes(param)
-
-                # Add equation child parameter if the change is the selection of the "equation" button in the
-                # contextMenu
-                if change == 'contextMenu' and data == 'add_eq':
-                    self.add_equation_box(param)
-
-                if change == 'contextMenu' and data == 'deactivate':
-                    for p in self.t.multi_select:
-                        if isinstance(p.param.airfoil_param, PosParam):
-                            p.param.airfoil_param.active = [False, False]
-                        else:
-                            p.param.airfoil_param.active = False
-                        p.param.setReadonly(True)
-
-                if change == 'contextMenu' and data == 'activate':
-                    for p in self.t.multi_select:
-                        if isinstance(p.param.airfoil_param, PosParam):
-                            p.param.airfoil_param.active = [True, True]
-                        else:
-                            p.param.airfoil_param.active = True
-                        p.param.setReadonly(False)
-
-                if change == 'contextMenu' and data == 'setbounds':
-                    pos_param = isinstance(param.airfoil_param, PosParam)
-                    self.dialog = BoundsDialog(param.airfoil_param.bounds, parent=self.t, pos_param=pos_param)
-                    if self.dialog.exec():
-                        inputs = self.dialog.getInputs()
-                    else:
-                        inputs = None
-                    if inputs:
-                        # param.airfoil_param.bounds = np.array([inputs[0], inputs[1]])
-                        param.airfoil_param.bounds = inputs
-
-                # Adding a FreePoint
-                if change == 'contextMenu' and data == 'add_fp':
-                    self.add_free_point(param)
-
-                # Adding an AnchorPoint
-                if change == 'contextMenu' and data == 'add_ap':
-                    self.add_anchor_point(param)
-
-                # Removing a FreePoint
-                if change == 'contextMenu' and data == 'remove_fp':
-                    self.remove_free_point(param)
-
-                # Removing an AnchorPoint
-                if change == 'contextMenu' and data == 'remove_ap':
-                    self.remove_anchor_point(param)
-
-                # Removing an Airfoil
-                if change == "contextMenu" and data == "remove_airfoil":
-                    self.mea.remove_airfoil(param.name())
-
-                # Removing a plot handle
-                if change == "childRemoved" and param.name() == "Plot Handles":
-                    self.parent.clear_geometry(data.name())
-                if change == 'name' and param.parent().name() == "Plot Handles":
-                    self.parent.change_geometry_name(data,
-                                                     [child_param.name() for child_param in param.parent().children()])
-                if change == "value" and param.parent().name() == "Plot Handles":
-                    self.parent.update_pen(param.name(), param.pen)
-
-                # Different value in QComboBox for the inviscid CL calculation is selected
-                if change == 'value' and param.name() == 'Inviscid Cl Calc':
-                    self.cl_airfoil_tag = data
-
-                if change == 'name' and param.parent().name() != "Plot Handles":
-                    new_name = param.name()
-                    key_to_change = ''
-                    for k, v in self.mea.param_dict['Custom'].items():
-                        if v is param.airfoil_param:
-                            key_to_change = k
-                            break
-                    if key_to_change == '':
-                        raise ValueError('This should not be possible...')
-                    self.mea.param_dict['Custom'][new_name] = self.mea.param_dict['Custom'].pop(key_to_change)
-                    self.mea.param_dict['Custom'][new_name].name = new_name
-                    # print(f"new param_dict = {self.mea.param_dict['Custom']}")
-
-                if change == 'childRemoved' and param.name() == 'Custom':
-                    self.mea.param_dict['Custom'].pop(data.name())
-
-                    def recursive_refactor(child_list):
-                        for child in child_list:
-                            if hasattr(child, 'airfoil_param') and child.airfoil_param.func_str is not None:
-                                # print(f"This one has a func_str!")
-                                if key_to_change in child.airfoil_param.func_str:
-                                    # print(f"Replacing {key_to_change} with {new_name}...")
-                                    child.airfoil_param.func_str = \
-                                        child.airfoil_param.func_str.replace(key_to_change, new_name)
-                                    # print(f"func_str now is {child.airfoil_param.func_str}")
-                                    child.child('Equation Definition').setValue(child.airfoil_param.func_str)
-                            else:
-                                recursive_refactor(child.children())
-
-                    recursive_refactor(self.p.param('Airfoil Parameters').children())
-
-        self.p.sigTreeStateChanged.connect(change)
-        self.t = CustomParameterTree(parent=parent)
-        self.t.setSelectionMode(QAbstractItemView.ExtendedSelection)
-        self.t.setParameters(self.p, showTop=False)
-        self.t.setWindowTitle('pymead ParameterTree')
-        self.t.header().setSectionResizeMode(0, QHeaderView.Interactive)
-        self.t.header().setSectionResizeMode(1, QHeaderView.Interactive)
-        self.t.setAlternatingRowColors(False)
-
-        # if self.t.parent().dark_mode:
-        #     self.set_dark_mode()
-        # else:
-        #     self.set_light_mode()
-        self.set_theme(self.t.parent().themes[self.t.parent().current_theme])
-
-        add_equation_boxes_recursively(self.p.param('Airfoil Parameters').children())
-        self.update_auto_complete()
-        set_readonly_recursively(self.p.param('Airfoil Parameters').children())
-
-        self.win = QWidget()
-        self.layout = QGridLayout()
-        self.win.setLayout(self.layout)
-        self.layout.addWidget(QLabel("These are two views of the same data. "
-                                     "They should always display the same values."), 0, 0, 1, 2)
-        self.layout.addWidget(self.t, 1, 0, 1, 1)
-
-    def set_theme(self, theme: dict):
-        """Sets the theme of the ParameterTree to dark by modifying the CSS"""
-        self.t.setStyleSheet(f'''QTreeWidget {{color: {theme["tree-background-color"]}; 
-                            alternate-background-color: {theme["tree-alternate-color"]};
-                            selection-background-color: {theme["tree-selection-color"]};}}
-                            QTreeView::item:hover {{background: {theme["tree-hover-color"]};}} 
-                            QTreeWidget::item {{border: 0px solid gray; color: {theme["tree-item-color"]}}}
-                            QTreeWidget::item:selected {{background-color: {theme["tree-item-selected-color"]}; 
-                            alternate-background-color: {theme["tree-item-alternate-color"]}}}
-                            QTreeView::branch:has-siblings:adjoins-item 
-                            {{border-image: url(../icons/branch-more.png) 0;}}
-                            QTreeView::branch:!has-children:!has-siblings:adjoins-item 
-                            {{border-image: url(../icons/branch-end.png) 0;}}
-                            QTreeView::branch:open:has-children:!has-siblings, 
-                            QTreeView::branch:open:has-children:has-siblings  {{
-                            border-image: none;
-                            image: url(../icons/opened-arrow.png);}}
-                            QTreeView::branch:has-siblings:!adjoins-item {{border-image: url(../icons/vline.png) 0;}} 
-                            QTreeView::branch:has-children:!has-siblings:closed,
-                            QTreeView::branch:closed:has-children:has-siblings 
-                            {{border-image: none; image: url(../icons/closed-arrow.png);}}'''
-                             )
-
-    # def set_dark_mode(self, theme: dict):
-    #     """Sets the theme of the ParameterTree to dark by modifying the CSS"""
-    #     self.t.setStyleSheet(f'''QTreeWidget {{color: %s; alternate-background-color: #3e3f40;
-    #                         selection-background-color: #3e3f40;}}
-    #                         QTreeView::item:hover {{background: #36bacfaa;}}
-    #                         QTreeWidget::item {{border: 0px solid gray; color: #dce1e6}}
-    #                         QTreeWidget::item:selected {{background-color: #36bacfaa;
-    #                         alternate-background-color: #36bacfaa}}
-    #                         QTreeView::branch:has-siblings:adjoins-item
-    #                         {{border-image: url(../icons/branch-more.png) 0;}}
-    #                         QTreeView::branch:!has-children:!has-siblings:adjoins-item
-    #                         {{border-image: url(../icons/branch-end.png) 0;}}
-    #                         QTreeView::branch:open:has-children:!has-siblings,
-    #                         QTreeView::branch:open:has-children:has-siblings  {{
-    #                         border-image: none;
-    #                         image: url(../icons/closed-arrow.png);}}
-    #                         QTreeView::branch:has-siblings:!adjoins-item {{border-image: url(../icons/vline.png) 0;}}
-    #                         QTreeView::branch:has-children:!has-siblings:closed,
-    #                         QTreeView::branch:closed:has-children:has-siblings
-    #                         {{border-image: none; image: url(../icons/opened-arrow.png);}}'''
-    #                          )
+    # def setValue(self, val):
     #
-    # def set_light_mode(self):
-    #     """Sets the theme of the ParameterTree to light by modifying the CSS"""
-    #     self.t.setStyleSheet('''QTreeWidget {color: white; alternate-background-color: white;
-    #                 selection-background-color: white;}
-    #                 QTreeView::item::hover {background: #36bacfaa;} QTreeView::item {border: 0px solid gray; color: black}
-    #                 QTreeWidget::item:selected {background-color: #36bacfaa; alternate-background-color: #36bacfaa}
-    #                 QTreeView::branch:has-siblings:adjoins-item {border-image: url(../icons/branch-more.png) 0;}
-    #                 QTreeView::branch:!has-children:!has-siblings:adjoins-item {border-image: url(../icons/branch-end.png) 0;}
-    #                 QTreeView::branch:open:has-children:!has-siblings, QTreeView::branch:open:has-children:has-siblings  {
-    #                 border-image: none;
-    #                 image: url(../icons/closed-arrow.png);}
-    #                 QTreeView::branch:has-siblings:!adjoins-item {border-image: url(../icons/vline.png) 0;}
-    #                 QTreeView::branch:has-children:!has-siblings:closed,
-    #                 QTreeView::branch:closed:has-children:has-siblings {border-image: none; image: url(../icons/opened-arrow.png);}''')
+    #     print(f"{val = }")
+    #
+    #     if isinstance(self.param, LengthParam) and self.param.point is None and val < 0.0:
+    #         return
+    #     elif isinstance(self.param, AngleParam):
+    #         val = val % (2 * np.pi)
+    #
+    #     super().setValue(val)
 
-    def add_equation_box(self, pg_param, equation: str = None, update_auto_completer: bool = True):
-        """Adds a QLineEdit to the ParameterTreeItem for equation editing"""
-        if equation is None:
-            value = ''
+    # def validate(self, inp, pos):
+    #     if not hasattr(self, "param"):
+    #         return QValidator.Acceptable
+    #     elif isinstance(self.param, LengthParam) or isinstance(self.param, AngleParam) and len(inp.split()) > 1:
+    #
+    #         print(f"{inp = }, {pos = }")
+    #         val = float(inp.split()[0])
+    #         print(f"{val = }")
+    #
+    #         if isinstance(self.param, LengthParam) and val > 0.0:
+    #             return QValidator.Acceptable
+    #
+    #         if isinstance(self.param, AngleParam) and 0.0 <= val < UNITS.convert_angle_to_base(2 * np.pi,
+    #                                                                                            self.param.unit()):
+    #             return QValidator.Acceptable
+    #
+    #         return QValidator.Intermediate
+    #     else:
+    #         return QValidator.Acceptable
+    #
+    # def fixup(self, s):
+    #     suffix = None
+    #     s_split = s.split()
+    #     number = float(s_split[0])
+    #     if len(s_split) > 1:
+    #         suffix = s_split[1]
+    #     print(f"{s = }")
+    #
+    #     if (isinstance(self.param, LengthParam) or isinstance(self.param, AngleParam)) and number < 0.0:
+    #         return f"0.0 {suffix}"
+    #
+    #     if isinstance(self.param, AngleParam) and number > UNITS.convert_angle_from_base(2 * np.pi, self.param.unit()):
+    #         return f"{UNITS.convert_angle_from_base(2 * np.pi)} {suffix}"
+
+    def onValueChanged(self, value: float):
+        if self.param.point is None:
+            self.param.set_value(value)
         else:
-            value = equation
-        if not pg_param.hasChildren():
-            pg_param.addChild(dict(name='Equation Definition', type='auto_str', value=value, removable=True))
-            self.equation_strings[pg_param.name()] = self.equation_widget(pg_param.child('Equation Definition'))
-            if update_auto_completer:
-                self.update_auto_complete()
+            if self.param is self.param.point.x():
+                self.param.point.request_move(value, self.param.point.y().value())
+            elif self.param is self.param.point.y():
+                self.param.point.request_move(self.param.point.x().value(), value)
+        self.setValue(self.param.value())
 
-    @staticmethod
-    def plot_changed(airfoil_name: str):
-        """This function gets called any time an Airfoil is added or removed
 
-        Parameters
-        ==========
-        airfoil_name: str
-          Name of the airfoil being added or removed
-        """
+class NameValidator(QValidator):
 
-        def block_changes(pg_param):
-            pg_param.blockTreeChangeSignal()
+    def __init__(self, parent, tree, sub_container: str):
+        super().__init__(parent)
+        self.geo_col = tree.geo_col
+        self.sub_container = sub_container
+        self.regex = QRegularExpression("^[a-z-A-Z_0-9]+$")
 
-        def flush_changes(pg_param):
-            pg_param.treeStateChanges = []
-            pg_param.blockTreeChangeEmit = 1
-            pg_param.unblockTreeChangeSignal()
+    def validate(self, a0, a1):
+        if a0 in self.geo_col.container()[self.sub_container].keys():
+            return QValidator.Invalid, a0, a1
 
-        def plot_change_recursive(child_list: list):
-            for idx, child in enumerate(child_list):
-                if hasattr(child, "airfoil_param"):
-                    if child.hasChildren():
-                        if child.children()[0].name() == 'Equation Definition':
-                            block_changes(child)
-                            child.setValue(child.airfoil_param.value)
-                            flush_changes(child)
-                        else:
-                            plot_change_recursive(child.children())
-                    else:
-                        block_changes(child)
-                        child.setValue(child.airfoil_param.value)
-                        flush_changes(child)
-                else:
-                    if child.hasChildren():
-                        plot_change_recursive(child.children())
+        if not self.regex.match(a0).hasMatch():
+            return QValidator.Invalid, a0, a1
 
+        return QValidator.Acceptable, a0, a1
+
+    def fixup(self, a0):
         pass
 
-    def update_auto_complete(self):
-        """Update the auto-completer for the equation text"""
-        for v in self.equation_strings.values():
-            v.setCompleter(Completer(self.mea.get_keys()))
 
-    def update_equation(self, pg_param: Parameter, equation_str: str, **func_dict_kwargs):
-        """Updates the parameter equation based on user input inside the GUI. The text is colored green if the equation
-        compiles successfully and the text is colored red otherwise.
+class NameEdit(QLineEdit):
+    def __init__(self, parent, pymead_obj: PymeadObj, tree):
+        super().__init__(parent)
+        self.pymead_obj = pymead_obj
+        self.tree = tree
 
-        Parameters
-        ==========
-        pg_param: Parameter
-          The pyqtgraph parameter representing the equation box
+        validator = NameValidator(self, tree, sub_container=pymead_obj.sub_container)
+        self.setValidator(validator)
+        self.setText(self.pymead_obj.name())
+        self.textChanged.connect(self.onTextChanged)
 
-        equation_str: str
-          The string to apply as an equation to pg_param's parent
+    def onTextChanged(self, name: str):
+        self.pymead_obj.set_name(name)
 
-        **func_dict_kwargs
-          Key-value pairs to merge into the airfoil parameter's function dictionary, useful for custom functions. For
-          example, to add a custom function named "foo" with required input "bar" (a str with value "h"), simply add
-          foo=foo and bar="h" as keyword arguments to update_equation.
-        """
-        pg_eq_parent = pg_param.parent()
-        airfoil_param = pg_eq_parent.airfoil_param
-        pg_eq_parent.setReadonly()
-        airfoil_param.mea = self.mea
-        temp_func_dict = {**func_dict_kwargs}
-        # INCLUDE_FILES.append('test2.py')
-        # for k, v in temp_func_dict.items():
-        #     if isinstance(v, str) and v[:2] == '$$':
 
-        # if 'name' not in airfoil_param.function_dict.keys():
-        if airfoil_param.name is None:
-            airfoil_param.name = pg_eq_parent.name()
-        airfoil_param.function_dict['name'] = airfoil_param.name.split('.')[-1]
-        airfoil_param.function_dict = {**airfoil_param.function_dict, **func_dict_kwargs}
-        airfoil_param.set_func_str(equation_str)
-        try:
-            airfoil_param.update(func_str_changed=True)
-        except (SyntaxError, NameError, AttributeError):
-            pg_eq_parent.setReadonly(False)
-            airfoil_param.remove_func()
-            self.equation_widget(pg_param).setStyleSheet('border: 0px; color: #fa4b4b;')  # make the equation red
-            self.parent.disp_message_box("Could not compile function")
+class LowerSpin(QDoubleSpinBox):
+    def __init__(self, parent, param: Param):
+        super().__init__(parent)
+        self.setDecimals(6)
+        self.setSingleStep(0.01)
+        self.param = param
+        if (isinstance(param, LengthParam) and self.param.point is None) or isinstance(param, AngleParam):
+            self.setMinimum(0.0)
+        else:
+            self.setMinimum(-1e9)
+
+        if isinstance(param, AngleParam):
+            self.setMaximum(UNITS.convert_angle_to_base(2 * np.pi, self.param.unit()))
+        else:
+            self.setMaximum(1e9)
+
+        self.setValue(self.param.lower())
+        self.valueChanged.connect(self.onValueChanged)
+
+    def onValueChanged(self, lower: float):
+        self.param.set_lower(lower)
+
+
+class UpperSpin(QDoubleSpinBox):
+    def __init__(self, parent, param: Param):
+        super().__init__(parent)
+        self.setDecimals(6)
+        self.setSingleStep(0.01)
+        self.param = param
+        self.setMinimum(-1e9)
+        self.setMaximum(1e9)
+        self.setValue(self.param.upper())
+        self.valueChanged.connect(self.onValueChanged)
+
+    def onValueChanged(self, upper: float):
+        self.param.set_upper(upper)
+
+
+class TreeButton(QPushButton):
+    sigNameChanged = pyqtSignal(str, object)
+
+    def __init__(self, pymead_obj: PymeadObj, tree, top_level: bool = False):
+        label = "Edit" if top_level else pymead_obj.name()
+        self.top_level = top_level
+        super().__init__(label)
+        self.setMaximumWidth(150)
+        self.pymead_obj = pymead_obj
+        self.tree = tree
+        self.dialog = None
+        self.clicked.connect(self.onClicked)
+
+    def onClicked(self):
+        self.dialog = self.createDialog()
+        if self.dialog.exec_():
+            pass
+        self.dialog = None
+
+    def onNameChange(self, name: str):
+        if self.dialog is not None:
+            self.dialog.setWindowTitle(f"{name}")
+        if self.top_level:
+            self.pymead_obj.tree_item.setText(0, name)
+        else:
+            self.setText(name)
+        self.sigNameChanged.emit(name, self.pymead_obj)
+
+    def createDialog(self):
+        dialog = QDialog(self)
+        dialog.setWindowTitle(f"{self.pymead_obj.name()}")
+        layout = QGridLayout()
+        dialog.setLayout(layout)
+        self.modifyDialogInternals(dialog, layout)
+        self.addButtonBoxToDialog(dialog, layout)
+        return dialog
+
+    @abstractmethod
+    def modifyDialogInternals(self, dialog: QDialog, layout: QGridLayout) -> None:
+        pass
+
+    def addButtonBoxToDialog(self, dialog: QDialog, layout: QGridLayout):
+        # Add the button box
+        buttonBox = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel, self)
+        layout.addWidget(buttonBox, layout.rowCount(), 1)
+        buttonBox.accepted.connect(dialog.accept)
+        buttonBox.rejected.connect(dialog.reject)
+
+
+class ParamButton(TreeButton):
+    sigValueChanged = pyqtSignal(float)  # value
+
+    def __init__(self, param: Param, tree, name_editable: bool = True, top_level: bool = False):
+        super().__init__(pymead_obj=param, tree=tree, top_level=top_level)
+        self.name_editable = name_editable
+        self.param = param
+
+    def modifyDialogInternals(self, dialog: QDialog, layout: QGridLayout) -> None:
+        value_label = QLabel("Value", self)
+        value_spin = ValueSpin(self, self.param)
+        value_spin.valueChanged.connect(self.onValueChange)
+        name_label = QLabel("Name", self)
+        name_edit = NameEdit(self, self.param, self.tree)
+        name_edit.textChanged.connect(self.onNameChange)
+        if not self.name_editable:
+            name_edit.setReadOnly(True)
+        layout.addWidget(value_label, 0, 0)
+        layout.addWidget(value_spin, 0, 1)
+        layout.addWidget(name_label, 1, 0)
+        layout.addWidget(name_edit, 1, 1)
+        if self.param.lower() is not None:
+            lower_label = QLabel("Lower Bound", self)
+            lower_spin = LowerSpin(self, self.param)
+            row_count = layout.rowCount()
+            layout.addWidget(lower_label, row_count, 0)
+            layout.addWidget(lower_spin, row_count, 1)
+        if self.param.upper() is not None:
+            upper_label = QLabel("Upper Bound", self)
+            upper_spin = UpperSpin(self, self.param)
+            row_count = layout.rowCount()
+            layout.addWidget(upper_label, row_count, 0)
+            layout.addWidget(upper_spin, row_count, 1)
+
+    def onValueChange(self, value: float):
+        self.sigValueChanged.emit(value)
+
+
+class LengthParamButton(ParamButton):
+    pass
+
+
+class AngleParamButton(ParamButton):
+    pass
+
+
+class DesVarButton(TreeButton):
+    sigValueChanged = pyqtSignal(float)  # value
+
+    def __init__(self, desvar: DesVar, tree, name_editable: bool = True, top_level: bool = False):
+        super().__init__(pymead_obj=desvar, tree=tree, top_level=top_level)
+        self.name_editable = name_editable
+        self.desvar = desvar
+
+    def modifyDialogInternals(self, dialog: QDialog, layout: QGridLayout) -> None:
+        value_label = QLabel("Value", self)
+        value_spin = ValueSpin(self, self.desvar)
+        value_spin.valueChanged.connect(self.onValueChange)
+        name_label = QLabel("Name", self)
+        name_edit = NameEdit(self, self.desvar, self.tree)
+        name_edit.textChanged.connect(self.onNameChange)
+        if not self.name_editable:
+            name_edit.setReadOnly(True)
+        layout.addWidget(value_label, 0, 0)
+        layout.addWidget(value_spin, 0, 1)
+        layout.addWidget(name_label, 1, 0)
+        layout.addWidget(name_edit, 1, 1)
+        lower_label = QLabel("Lower Bound", self)
+        lower_spin = LowerSpin(self, self.desvar)
+        row_count = layout.rowCount()
+        layout.addWidget(lower_label, row_count, 0)
+        layout.addWidget(lower_spin, row_count, 1)
+        upper_label = QLabel("Upper Bound", self)
+        upper_spin = UpperSpin(self, self.desvar)
+        row_count = layout.rowCount()
+        layout.addWidget(upper_label, row_count, 0)
+        layout.addWidget(upper_spin, row_count, 1)
+
+    def onValueChange(self, value: float):
+        self.sigValueChanged.emit(value)
+
+
+class LengthDesVarButton(DesVarButton):
+    pass
+
+
+class AngleDesVarButton(DesVarButton):
+    pass
+
+
+class PointButton(TreeButton):
+
+    def __init__(self, point: Point, tree, top_level: bool = False):
+        super().__init__(pymead_obj=point, tree=tree, top_level=top_level)
+        self.point = point
+        self.x_button = None
+        self.y_button = None
+
+    def modifyDialogInternals(self, dialog: QDialog, layout: QGridLayout) -> None:
+        name_label = QLabel("Name", self)
+        name_edit = NameEdit(self, self.point, self.tree)
+        name_edit.textChanged.connect(self.onNameChange)
+        x_label = QLabel("x", self)
+        self.x_button = ParamButton(self.point.x(), self.tree, name_editable=False)
+        self.x_button.sigValueChanged.connect(self.onXChanged)
+        y_label = QLabel("y", self)
+        self.y_button = ParamButton(self.point.y(), self.tree, name_editable=False)
+        self.y_button.sigValueChanged.connect(self.onYChanged)
+        layout.addWidget(name_label, 0, 0)
+        layout.addWidget(name_edit, 0, 1)
+        layout.addWidget(x_label, 1, 0)
+        layout.addWidget(self.x_button, 1, 1)
+        layout.addWidget(y_label, 2, 0)
+        layout.addWidget(self.y_button, 2, 1)
+
+    def onXChanged(self, x: float):
+        self.point.request_move(x, self.point.y().value())
+
+    def onYChanged(self, y: float):
+        self.point.request_move(self.point.x().value(), y)
+
+    def onNameChange(self, name: str):
+        self.x_button.setText(f"{name}.x")
+        self.y_button.setText(f"{name}.y")
+        super().onNameChange(name=name)
+
+    def enterEvent(self, a0):
+        if self.top_level:
             return
+        if self.pymead_obj.tree_item.hoverable:
+            self.tree.geo_col.hover_enter_obj(self.pymead_obj)
 
-        # Update the parameter's dependencies
-        if len(airfoil_param.depends_on) > 0:
-            for air_par in airfoil_param.depends_on.values():
-                air_par.update()
-            if airfoil_param.linked:
-                pg_eq_parent.setValue(airfoil_param.value)
-            self.equation_widget(pg_param).setStyleSheet('border: 0px; color: #a1fa9d;')  # make the equation green
-            Param.update_ap_fp(airfoil_param)
-        else:
-            pg_eq_parent.setReadonly(False)
-            self.equation_widget(pg_param).setStyleSheet('border: 0px; color: #fa4b4b;')  # make the equation red
-            self.parent.disp_message_box("Could not compile function")
+    def leaveEvent(self, a0):
+        if self.top_level:
+            return
+        if self.pymead_obj.tree_item.hoverable:
+            self.tree.geo_col.hover_leave_obj(self.pymead_obj)
 
-        for a in self.mea.airfoils.values():
-            a.update()
-            a.airfoil_graph.data['pos'] = a.control_point_array
-            a.airfoil_graph.updateGraph()
 
-    def add_free_point(self, pg_param: Parameter):
-        """Adds a FreePoint to the specified Airfoil and updates the graph.
+class BezierButton(TreeButton):
 
-        Parameters
-        ==========
-        pg_param: Parameter
-          HeaderParameter within the ParameterTree named with the FreePoint's Airfoil tag
+    def __init__(self, bezier: Bezier, tree, top_level: bool = False):
+        super().__init__(pymead_obj=bezier, tree=tree, top_level=top_level)
+        self.bezier = bezier
+
+    def modifyDialogInternals(self, dialog: QDialog, layout: QGridLayout) -> None:
+        name_label = QLabel("Name", self)
+        name_edit = NameEdit(self, self.bezier, self.tree)
+        name_edit.textChanged.connect(self.onNameChange)
+        layout.addWidget(name_label, 1, 0)
+        layout.addWidget(name_edit, 1, 1)
+        for point in self.bezier.point_sequence().points():
+            point_button = PointButton(point, self.tree)
+            point_button.sigNameChanged.connect(self.onPointNameChange)
+            layout.addWidget(point_button, layout.rowCount(), 0)
+
+    def onPointNameChange(self, name: str, point: Point):
+        if point.tree_item is not None:
+            self.tree.itemWidget(point.tree_item, 0).setText(name)
+
+    def enterEvent(self, a0):
+        self.bezier.canvas_item.setCurveStyle("hovered")
+
+    def leaveEvent(self, a0):
+        self.bezier.canvas_item.setCurveStyle("default")
+
+
+class LineSegmentButton(TreeButton):
+
+    def __init__(self, line: LineSegment, tree, top_level: bool = False):
+        super().__init__(pymead_obj=line, tree=tree, top_level=top_level)
+        self.line = line
+
+    def modifyDialogInternals(self, dialog: QDialog, layout: QGridLayout) -> None:
+        name_label = QLabel("Name", self)
+        name_edit = NameEdit(self, self.line, self.tree)
+        name_edit.textChanged.connect(self.onNameChange)
+        layout.addWidget(name_label, 1, 0)
+        layout.addWidget(name_edit, 1, 1)
+        for point in self.line.point_sequence().points():
+            point_button = PointButton(point, self.tree)
+            point_button.sigNameChanged.connect(self.onPointNameChange)
+            layout.addWidget(point_button, layout.rowCount(), 0)
+
+    def onPointNameChange(self, name: str, point: Point):
+        if point.tree_item is not None:
+            self.tree.itemWidget(point.tree_item, 0).setText(name)
+
+    def enterEvent(self, a0):
+        self.line.canvas_item.setCurveStyle("hovered")
+
+    def leaveEvent(self, a0):
+        self.line.canvas_item.setCurveStyle("default")
+
+
+class AirfoilButton(TreeButton):
+    def __init__(self, airfoil: Airfoil, tree, top_level: bool = False):
+        super().__init__(pymead_obj=airfoil, tree=tree, top_level=top_level)
+        self.airfoil = airfoil
+
+    def modifyDialogInternals(self, dialog: QDialog, layout: QGridLayout) -> None:
+        name_label = QLabel("Name", self)
+        name_edit = NameEdit(self, self.airfoil, self.tree)
+        name_edit.textChanged.connect(self.onNameChange)
+        layout.addWidget(name_label, 1, 0)
+        layout.addWidget(name_edit, 1, 1)
+        labels = ["Leading Edge", "Trailing Edge", "Upper Surface End", "Lower Surface End"]
+        points = [self.airfoil.leading_edge, self.airfoil.trailing_edge, self.airfoil.upper_surf_end,
+                  self.airfoil.lower_surf_end]
+
+        for label, point in zip(labels, points):
+            q_label = QLabel(label)
+            point_button = PointButton(point, self.tree)
+            point_button.sigNameChanged.connect(self.onPointNameChange)
+            row_count = layout.rowCount()
+            layout.addWidget(q_label, row_count, 0)
+            layout.addWidget(point_button, row_count, 1)
+
+    def onPointNameChange(self, name: str, point: Point):
+        if point.tree_item is not None:
+            self.tree.itemWidget(point.tree_item, 0).setText(name)
+
+
+class MEAButton(TreeButton):
+    def __init__(self, mea: MEA, tree, top_level: bool = False):
+        super().__init__(pymead_obj=mea, tree=tree, top_level=top_level)
+        self.mea = mea
+
+    def modifyDialogInternals(self, dialog: QDialog, layout: QGridLayout) -> None:
+        name_label = QLabel("Name", self)
+        name_edit = NameEdit(self, self.mea, self.tree)
+        name_edit.textChanged.connect(self.onNameChange)
+        layout.addWidget(name_label, 1, 0)
+        layout.addWidget(name_edit, 1, 1)
+
+        for airfoil in self.mea.airfoils:
+            airfoil_button = AirfoilButton(airfoil, self.tree)
+            airfoil_button.sigNameChanged.connect(self.onAirfoilNameChange)
+            layout.addWidget(airfoil_button, layout.rowCount(), 0)
+
+    def onAirfoilNameChange(self, name: str, airfoil: Airfoil):
+        if airfoil.tree_item is not None:
+            self.tree.itemWidget(airfoil.tree_item, 0).setText(name)
+
+
+class LengthDimensionButton(TreeButton):
+
+    def __init__(self, length_dim: LengthDimension, tree, top_level: bool = False):
+        super().__init__(pymead_obj=length_dim, tree=tree, top_level=top_level)
+        self.length_dimension = length_dim
+
+    def modifyDialogInternals(self, dialog: QDialog, layout: QGridLayout) -> None:
+        name_label = QLabel("Name", self)
+        name_edit = NameEdit(self, self.length_dimension, self.tree)
+        name_edit.textChanged.connect(self.onNameChange)
+        layout.addWidget(name_label, 1, 0)
+        layout.addWidget(name_edit, 1, 1)
+        labels = ["Tool Point", "Target Point"]
+        points = [self.length_dimension.tool(), self.length_dimension.target()]
+        for label, point in zip(labels, points):
+            point_button = PointButton(point, self.tree)
+            point_button.sigNameChanged.connect(self.onPointNameChange)
+            q_label = QLabel(label, self)
+            row_count = layout.rowCount()
+            layout.addWidget(q_label, row_count, 0)
+            layout.addWidget(point_button, row_count, 1)
+        row_count = layout.rowCount()
+        layout.addWidget(QLabel("Length Param", self), row_count, 0)
+        layout.addWidget(LengthParamButton(self.length_dimension.param(), self.tree), row_count, 1)
+
+    def onPointNameChange(self, name: str, point: Point):
+        if point.tree_item is not None:
+            self.tree.itemWidget(point.tree_item, 0).setText(name)
+
+
+class DistanceConstraintButton(TreeButton):
+
+    def __init__(self, distance_constraint: DistanceConstraint, tree, top_level: bool = False):
+        super().__init__(pymead_obj=distance_constraint, tree=tree, top_level=top_level)
+        self.distance_constraint = distance_constraint
+
+    def modifyDialogInternals(self, dialog: QDialog, layout: QGridLayout) -> None:
+        name_label = QLabel("Name", self)
+        name_edit = NameEdit(self, self.distance_constraint, self.tree)
+        name_edit.textChanged.connect(self.onNameChange)
+        layout.addWidget(name_label, 1, 0)
+        layout.addWidget(name_edit, 1, 1)
+        labels = ["Start Point", "End Point"]
+        points = [self.distance_constraint.p1, self.distance_constraint.p2]
+        for label, point in zip(labels, points):
+            point_button = PointButton(point, self.tree)
+            point_button.sigNameChanged.connect(self.onPointNameChange)
+            q_label = QLabel(label, self)
+            row_count = layout.rowCount()
+            layout.addWidget(q_label, row_count, 0)
+            layout.addWidget(point_button, row_count, 1)
+        row_count = layout.rowCount()
+        layout.addWidget(QLabel("Length Param", self), row_count, 0)
+        layout.addWidget(LengthParamButton(self.distance_constraint.param(), self.tree), row_count, 1)
+
+    def onPointNameChange(self, name: str, point: Point):
+        if point.tree_item is not None:
+            self.tree.itemWidget(point.tree_item, 0).setText(name)
+
+
+class AngleDimensionButton(TreeButton):
+
+    def __init__(self, angle_dim: AngleDimension, tree, top_level: bool = False):
+        super().__init__(pymead_obj=angle_dim, tree=tree, top_level=top_level)
+        self.angle_dimension = angle_dim
+
+    def modifyDialogInternals(self, dialog: QDialog, layout: QGridLayout) -> None:
+        name_label = QLabel("Name", self)
+        name_edit = NameEdit(self, self.angle_dimension, self.tree)
+        name_edit.textChanged.connect(self.onNameChange)
+        layout.addWidget(name_label, 1, 0)
+        layout.addWidget(name_edit, 1, 1)
+        labels = ["Tool Point", "Target Point"]
+        points = [self.angle_dimension.tool(), self.angle_dimension.target()]
+        for label, point in zip(labels, points):
+            point_button = PointButton(point, self.tree)
+            point_button.sigNameChanged.connect(self.onPointNameChange)
+            q_label = QLabel(label, self)
+            row_count = layout.rowCount()
+            layout.addWidget(q_label, row_count, 0)
+            layout.addWidget(point_button, row_count, 1)
+        row_count = layout.rowCount()
+        layout.addWidget(QLabel("Angle Param", self), row_count, 0)
+        layout.addWidget(LengthParamButton(self.angle_dimension.param(), self.tree), row_count, 1)
+
+    def onPointNameChange(self, name: str, point: Point):
+        if point.tree_item is not None:
+            self.tree.itemWidget(point.tree_item, 0).setText(name)
+
+
+class CollinearConstraintButton(TreeButton):
+
+    def __init__(self, collinear_constraint: AntiParallel3Constraint, tree, top_level: bool = False):
+        # TODO: either remove this constraint or create it (Collinear instead of AntiParallel3)
+        super().__init__(pymead_obj=collinear_constraint, tree=tree, top_level=top_level)
+        self.collinear_constraint = collinear_constraint
+
+    def modifyDialogInternals(self, dialog: QDialog, layout: QGridLayout) -> None:
+        name_label = QLabel("Name", self)
+        name_edit = NameEdit(self, self.collinear_constraint, self.tree)
+        name_edit.textChanged.connect(self.onNameChange)
+        layout.addWidget(name_label, 1, 0)
+        layout.addWidget(name_edit, 1, 1)
+        labels = ["Start Point", "Middle Point", "End Point"]
+        points = [self.collinear_constraint.target().points()[0], self.collinear_constraint.tool(),
+                  self.collinear_constraint.target().points()[1]]
+        for label, point in zip(labels, points):
+            point_button = PointButton(point, self.tree)
+            point_button.sigNameChanged.connect(self.onPointNameChange)
+            q_label = QLabel(label, self)
+            row_count = layout.rowCount()
+            layout.addWidget(q_label, row_count, 0)
+            layout.addWidget(point_button, row_count, 1)
+
+    def onPointNameChange(self, name: str, point: Point):
+        if point.tree_item is not None:
+            self.tree.itemWidget(point.tree_item, 0).setText(name)
+
+
+class RelAngle3ConstraintButton(TreeButton):
+
+    def __init__(self, rel_angle_constraint: RelAngle3Constraint, tree, top_level: bool = False):
+        super().__init__(pymead_obj=rel_angle_constraint, tree=tree, top_level=top_level)
+        self.rel_angle_constraint = rel_angle_constraint
+
+    def modifyDialogInternals(self, dialog: QDialog, layout: QGridLayout) -> None:
+        name_label = QLabel("Name", self)
+        name_edit = NameEdit(self, self.rel_angle_constraint, self.tree)
+        name_edit.textChanged.connect(self.onNameChange)
+        layout.addWidget(name_label, 1, 0)
+        layout.addWidget(name_edit, 1, 1)
+
+        row_count = layout.rowCount()
+        layout.addWidget(QLabel("Angle Param", self), row_count, 0)
+        layout.addWidget(AngleParamButton(self.rel_angle_constraint.param(), self.tree), row_count, 1)
+
+        labels = ["Start", "Vertex", "End"]
+        points = [self.rel_angle_constraint.start_point, self.rel_angle_constraint.vertex,
+                  self.rel_angle_constraint.end_point]
+        for label, point in zip(labels, points):
+            point_button = PointButton(point, self.tree)
+            point_button.sigNameChanged.connect(self.onPointNameChange)
+            q_label = QLabel(label, self)
+            row_count = layout.rowCount()
+            layout.addWidget(q_label, row_count, 0)
+            layout.addWidget(point_button, row_count, 1)
+
+    def onPointNameChange(self, name: str, point: Point):
+        if point.tree_item is not None:
+            self.tree.itemWidget(point.tree_item, 0).setText(name)
+
+
+class Perp3ConstraintButton(TreeButton):
+
+    def __init__(self, perp3_constraint: Perp3Constraint, tree, top_level: bool = False):
+        super().__init__(pymead_obj=perp3_constraint, tree=tree, top_level=top_level)
+        self.perp3_constraint = perp3_constraint
+
+    def modifyDialogInternals(self, dialog: QDialog, layout: QGridLayout) -> None:
+        name_label = QLabel("Name", self)
+        name_edit = NameEdit(self, self.perp3_constraint, self.tree)
+        name_edit.textChanged.connect(self.onNameChange)
+        layout.addWidget(name_label, 1, 0)
+        layout.addWidget(name_edit, 1, 1)
+
+        labels = ["Start", "Vertex", "End"]
+        points = [self.perp3_constraint.start_point, self.perp3_constraint.vertex,
+                  self.perp3_constraint.end_point]
+        for label, point in zip(labels, points):
+            point_button = PointButton(point, self.tree)
+            point_button.sigNameChanged.connect(self.onPointNameChange)
+            q_label = QLabel(label, self)
+            row_count = layout.rowCount()
+            layout.addWidget(q_label, row_count, 0)
+            layout.addWidget(point_button, row_count, 1)
+
+    def onPointNameChange(self, name: str, point: Point):
+        if point.tree_item is not None:
+            self.tree.itemWidget(point.tree_item, 0).setText(name)
+
+
+class AntiParallel3ConstraintButton(TreeButton):
+
+    def __init__(self, antiparallel3_constraint: AntiParallel3Constraint, tree, top_level: bool = False):
+        super().__init__(pymead_obj=antiparallel3_constraint, tree=tree, top_level=top_level)
+        self.antiparallel3_constraint = antiparallel3_constraint
+
+    def modifyDialogInternals(self, dialog: QDialog, layout: QGridLayout) -> None:
+        name_label = QLabel("Name", self)
+        name_edit = NameEdit(self, self.antiparallel3_constraint, self.tree)
+        name_edit.textChanged.connect(self.onNameChange)
+        layout.addWidget(name_label, 1, 0)
+        layout.addWidget(name_edit, 1, 1)
+
+        labels = ["Start", "Vertex", "End"]
+        points = [self.antiparallel3_constraint.p1, self.antiparallel3_constraint.p2,
+                  self.antiparallel3_constraint.p3]
+        for label, point in zip(labels, points):
+            point_button = PointButton(point, self.tree)
+            point_button.sigNameChanged.connect(self.onPointNameChange)
+            q_label = QLabel(label, self)
+            row_count = layout.rowCount()
+            layout.addWidget(q_label, row_count, 0)
+            layout.addWidget(point_button, row_count, 1)
+
+    def onPointNameChange(self, name: str, point: Point):
+        if point.tree_item is not None:
+            self.tree.itemWidget(point.tree_item, 0).setText(name)
+
+
+class RelAngle4ConstraintButton(TreeButton):
+
+    def __init__(self, rel_angle_constraint: RelAngle4Constraint, tree, top_level: bool = False):
+        super().__init__(pymead_obj=rel_angle_constraint, tree=tree, top_level=top_level)
+        self.rel_angle_constraint = rel_angle_constraint
+
+    def modifyDialogInternals(self, dialog: QDialog, layout: QGridLayout) -> None:
+        name_label = QLabel("Name", self)
+        name_edit = NameEdit(self, self.rel_angle_constraint, self.tree)
+        name_edit.textChanged.connect(self.onNameChange)
+        layout.addWidget(name_label, 1, 0)
+        layout.addWidget(name_edit, 1, 1)
+
+        row_count = layout.rowCount()
+        layout.addWidget(QLabel("Angle Param", self), row_count, 0)
+        layout.addWidget(AngleParamButton(self.rel_angle_constraint.param(), self.tree), row_count, 1)
+
+        labels = ["Tool Start", "Tool End", "Target Start", "Target End"]
+        points = [self.rel_angle_constraint.tool().points()[0], self.rel_angle_constraint.tool().points()[1],
+                  self.rel_angle_constraint.target().points()[0], self.rel_angle_constraint.target().points()[1]]
+        for label, point in zip(labels, points):
+            point_button = PointButton(point, self.tree)
+            point_button.sigNameChanged.connect(self.onPointNameChange)
+            q_label = QLabel(label, self)
+            row_count = layout.rowCount()
+            layout.addWidget(q_label, row_count, 0)
+            layout.addWidget(point_button, row_count, 1)
+
+    def onPointNameChange(self, name: str, point: Point):
+        if point.tree_item is not None:
+            self.tree.itemWidget(point.tree_item, 0).setText(name)
+
+
+class PerpendicularConstraintButton(TreeButton):
+
+    def __init__(self, perpendicular_constraint: Perp4Constraint, tree, top_level: bool = False):
+        super().__init__(pymead_obj=perpendicular_constraint, tree=tree, top_level=top_level)
+        self.perpendicular_constraint = perpendicular_constraint
+
+    def modifyDialogInternals(self, dialog: QDialog, layout: QGridLayout) -> None:
+        name_label = QLabel("Name", self)
+        name_edit = NameEdit(self, self.perpendicular_constraint, self.tree)
+        name_edit.textChanged.connect(self.onNameChange)
+        layout.addWidget(name_label, 1, 0)
+        layout.addWidget(name_edit, 1, 1)
+
+        labels = ["Tool Start", "Tool End", "Target Start", "Target End"]
+        points = [self.perpendicular_constraint.tool().points()[0], self.perpendicular_constraint.tool().points()[1],
+                  self.perpendicular_constraint.target().points()[0], self.perpendicular_constraint.target().points()[1]]
+        for label, point in zip(labels, points):
+            point_button = PointButton(point, self.tree)
+            point_button.sigNameChanged.connect(self.onPointNameChange)
+            q_label = QLabel(label, self)
+            row_count = layout.rowCount()
+            layout.addWidget(q_label, row_count, 0)
+            layout.addWidget(point_button, row_count, 1)
+
+    def onPointNameChange(self, name: str, point: Point):
+        if point.tree_item is not None:
+            self.tree.itemWidget(point.tree_item, 0).setText(name)
+
+
+class Parallel4ConstraintButton(TreeButton):
+
+    def __init__(self, parallel_constraint: Parallel4Constraint, tree, top_level: bool = False):
+        super().__init__(pymead_obj=parallel_constraint, tree=tree, top_level=top_level)
+        self.parallel_constraint = parallel_constraint
+
+    def modifyDialogInternals(self, dialog: QDialog, layout: QGridLayout) -> None:
+        name_label = QLabel("Name", self)
+        name_edit = NameEdit(self, self.parallel_constraint, self.tree)
+        name_edit.textChanged.connect(self.onNameChange)
+        layout.addWidget(name_label, 1, 0)
+        layout.addWidget(name_edit, 1, 1)
+
+        labels = ["Line 1 Start", "Line 1 End", "Line 2 Start", "Line 2 End"]
+        points = [self.parallel_constraint.p1, self.parallel_constraint.p2,
+                  self.parallel_constraint.p3, self.parallel_constraint.p4]
+        for label, point in zip(labels, points):
+            point_button = PointButton(point, self.tree)
+            point_button.sigNameChanged.connect(self.onPointNameChange)
+            q_label = QLabel(label, self)
+            row_count = layout.rowCount()
+            layout.addWidget(q_label, row_count, 0)
+            layout.addWidget(point_button, row_count, 1)
+
+    def onPointNameChange(self, name: str, point: Point):
+        if point.tree_item is not None:
+            self.tree.itemWidget(point.tree_item, 0).setText(name)
+
+
+class SymmetryConstraintButton(TreeButton):
+
+    def __init__(self, symmetry_constraint: SymmetryConstraint, tree, top_level: bool = False):
+        super().__init__(pymead_obj=symmetry_constraint, tree=tree, top_level=top_level)
+        self.symmetry_constraint = symmetry_constraint
+
+    def modifyDialogInternals(self, dialog: QDialog, layout: QGridLayout) -> None:
+        name_label = QLabel("Name", self)
+        name_edit = NameEdit(self, self.symmetry_constraint, self.tree)
+        name_edit.textChanged.connect(self.onNameChange)
+        layout.addWidget(name_label, 1, 0)
+        layout.addWidget(name_edit, 1, 1)
+
+        labels = ["Mirror Start", "Mirror End", "Tool Point", "Target Point"]
+        points = [self.symmetry_constraint.p1, self.symmetry_constraint.p2,
+                  self.symmetry_constraint.p3, self.symmetry_constraint.p4]
+        for label, point in zip(labels, points):
+            point_button = PointButton(point, self.tree)
+            point_button.sigNameChanged.connect(self.onPointNameChange)
+            q_label = QLabel(label, self)
+            row_count = layout.rowCount()
+            layout.addWidget(q_label, row_count, 0)
+            layout.addWidget(point_button, row_count, 1)
+
+    def onPointNameChange(self, name: str, point: Point):
+        if point.tree_item is not None:
+            self.tree.itemWidget(point.tree_item, 0).setText(name)
+
+
+class CurvatureConstraintButton(TreeButton):
+
+    def __init__(self, curvature_constraint: CurvatureConstraint, tree, top_level: bool = False):
+        super().__init__(pymead_obj=curvature_constraint, tree=tree, top_level=top_level)
+        self.curvature_constraint = curvature_constraint
+
+    def modifyDialogInternals(self, dialog: QDialog, layout: QGridLayout) -> None:
+        name_label = QLabel("Name", self)
+        name_edit = NameEdit(self, self.curvature_constraint, self.tree)
+        name_edit.textChanged.connect(self.onNameChange)
+        layout.addWidget(name_label, 1, 0)
+        layout.addWidget(name_edit, 1, 1)
+        labels = ["Curve 1 G2 Point", "Curve 1 G1 Point", "Curve Joint", "Curve 2 G1 Point", "Curve 2 G2 Point"]
+        points = [self.curvature_constraint.target().points()[0], self.curvature_constraint.target().points()[1],
+                  self.curvature_constraint.tool(),
+                  self.curvature_constraint.target().points()[2], self.curvature_constraint.target().points()[3]]
+        for label, point in zip(labels, points):
+            point_button = PointButton(point, self.tree)
+            point_button.sigNameChanged.connect(self.onPointNameChange)
+            q_label = QLabel(label, self)
+            row_count = layout.rowCount()
+            layout.addWidget(q_label, row_count, 0)
+            layout.addWidget(point_button, row_count, 1)
+
+    def onPointNameChange(self, name: str, point: Point):
+        if point.tree_item is not None:
+            self.tree.itemWidget(point.tree_item, 0).setText(name)
+
+
+class PymeadTreeWidgetItem(QTreeWidgetItem):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.hoverable = True
+
+
+class ParameterTree(QTreeWidget):
+    def __init__(self, geo_col: GeometryCollection, parent):
+        super().__init__(parent)
+
+        # Exchange references with the geometry collection
+        self.geo_col = geo_col
+        self.geo_col.tree = self
+
+        # Single column for the tree
+        self.setColumnCount(2)
+
+        # Aliases (suitable for display) for the sub-containers
+        self.container_titles = {
+            "desvar": "Design Variables",
+            "params": "Parameters",
+            "points": "Points",
+            "lines": "Lines",
+            "bezier": "Bézier Curves",
+            "airfoils": "Airfoils",
+            "mea": "Multi-Element Airfoils",
+            "geocon": "Geometric Constraints",
+            "dims": "Dimensions"
+        }
+
+        # Set the top-level items (sub_containers)
+        self.items = None
+        self.topLevelDict = None
+        self.addContainers()
+
+        # Make the header
+        self.setHeaderLabel("")
+        self.headerRow = HeaderButtonRow(self)
+        self.headerRow.sigExpandPressed.connect(self.onExpandPressed)
+        self.headerRow.sigCollapsePressed.connect(self.onCollapsePressed)
+        self.setHeader(self.headerRow)
+
+        # Set the tree widget geometry
+        self.setMinimumWidth(300)
+        self.header().setSectionResizeMode(0, QHeaderView.Stretch)
+        self.setColumnWidth(1, 120)
+
+        # Set the tree to be expanded by default
+        self.expandAll()
+
+        # Set the selection mode to extended. This allows the user to perform the usual operations of Shift-Click,
+        # Ctrl-Click, or drag to select multiple tree items at once
+        self.setSelectionMode(QAbstractItemView.ExtendedSelection)
+
+        # Item selection changed connection
+        self.previous_items = None
+        self.itemSelectionChanged.connect(self.onItemSelectionChanged)
+
+        # Allow mouse tracking so we can implement a hover method
+        self.setMouseTracking(True)
+
+        # Previous item hovered
+        self.previous_item_hovered = None
+
+    def onItemSelectionChanged(self):
+        if self.previous_items is not None:
+            for item in self.previous_items:
+                if item.parent() is not None and item.parent().text(0) == "Points" and item not in self.selectedItems():
+                    button = self.itemWidget(item, 1)
+                    if button is not None:
+                        point = button.point
+                        self.geo_col.deselect_object(point)
+                elif item.parent() is not None and item.parent().text(0) == "Airfoils" and item not in self.selectedItems():
+                    button = self.itemWidget(item, 1)
+                    if button is not None:
+                        airfoil = button.airfoil
+                        self.geo_col.deselect_object(airfoil)
+
+        for item in self.selectedItems():
+            if item.parent() is not None and item.parent().text(0) == "Points":
+                button = self.itemWidget(item, 1)
+                if button is not None:
+                    point = button.point
+                    self.geo_col.select_object(point)
+            elif item.parent() is not None and item.parent().text(0) == "Airfoils":
+                button = self.itemWidget(item, 1)
+                if button is not None:
+                    airfoil = button.airfoil
+                    self.geo_col.select_object(airfoil)
+
+        self.previous_items = self.selectedItems()
+
+    def addContainers(self):
+        self.items = [PymeadTreeWidgetItem(
+            None, [f"{self.container_titles[k]}"]) for k in self.geo_col.container().keys()]
+        self.topLevelDict = {k: i for i, k in enumerate(self.geo_col.container().keys())}
+        self.insertTopLevelItems(0, self.items)
+
+        # Sort the items in ascending order (A to Z)
+        self.sortItems(0, Qt.SortOrder.AscendingOrder)
+
+    def mouseMoveEvent(self, event):
         """
-        a_tag = pg_param.name()
-        self.dialog = FreePointInputDialog(items=[("x", "double", 0.5), ("y", "double", 0.1),
-                                                  ("Previous Anchor Point", "combo"),
-                                                  ("Previous Free Point", "combo")],
-                                           fp=self.mea.airfoils[a_tag].free_points, parent=self.parent)
-        if self.dialog.exec():
-            inputs = self.dialog.valuesFromWidgets()
-        else:
-            inputs = None
-        if inputs:
-            if inputs[3] == 'None':
-                pfp = None
+        Since the QTreeWidget does not emit a Hover signal, we effectively create one here by tracking the position
+        of the mouse when it is inside the Parameter Tree and check whether there is a PymeadTreeWidgetItem under
+        the mouse.
+        """
+        # Tracks the tree widget for a hover event, since a hover signal is not implemented in QTreeWidget
+        tree_item = self.itemAt(event.x(), event.y())
+
+        # Hover leave
+        if (self.previous_item_hovered is not None and tree_item is not self.previous_item_hovered and
+                self.previous_item_hovered.hoverable):
+            button = self.itemWidget(self.previous_item_hovered, 1)
+            if button is not None:
+                self.geo_col.hover_leave_obj(button.pymead_obj)
             else:
-                pfp = inputs[3]
-            fp = FreePoint(PosParam(value=(inputs[0], inputs[1])), airfoil_tag=a_tag,
-                           previous_anchor_point=inputs[2], previous_free_point=pfp)
-            self.mea.airfoils[a_tag].insert_free_point(fp)
-            self.mea.airfoils[a_tag].update()
-            self.mea.assign_names_to_params_in_param_dict()
-            self.dialog.update_fp_ap_tags()
-            pos, adj, symbols = self.mea.airfoils[a_tag].airfoil_graph.update_airfoil_data()
-            self.mea.airfoils[a_tag].airfoil_graph.setData(pos=pos, adj=adj, size=8, pxMode=True, symbol=symbols)
-            if fp.anchor_point_tag not in [p.name() for p in self.params[-1].child(a_tag).child('FreePoints')]:
-                self.params[-1].child(a_tag).child('FreePoints').addChild(
-                    dict(name=fp.anchor_point_tag, type='header_param', value='true'))
-            self.params[-1].child(a_tag).child('FreePoints').child(fp.anchor_point_tag).addChild(
-                dict(name=fp.tag, type='header_param', value='true', context={'remove_fp': 'Remove FreePoint'}))
-            for p_key, p_val in self.mea.param_dict[a_tag]['FreePoints'][fp.anchor_point_tag][fp.tag].items():
-                airfoil_param = self.mea.param_dict[a_tag]['FreePoints'][fp.anchor_point_tag][fp.tag][p_key]
-                pg_param = Parameter.create(name=f"{a_tag}.FreePoints.{fp.anchor_point_tag}.{fp.tag}.{p_key}",
-                                            type='pos_parameter',
-                                            value=[-999.0, -999.0],
-                                            context={'add_eq': 'Define by equation',
-                                                     'deactivate': 'Deactivate parameter',
-                                                     'activate': 'Activate parameter',
-                                                     'setbounds': 'Set parameter bounds'})
-                pg_param.airfoil_param = airfoil_param
-                self.params[-1].child(a_tag).child('FreePoints').child(fp.anchor_point_tag).child(
-                    fp.tag).addChild(pg_param)
-                pg_param.setValue([pg_param.airfoil_param.value[0], pg_param.airfoil_param.value[1]])
+                self.setItemStyle(self.previous_item_hovered, "default")
 
-    def add_anchor_point(self, pg_param: Parameter):
-        """Adds an AnchorPoint to the specified Airfoil and updates the graph.
-
-        Parameters
-        ==========
-        pg_param: Parameter
-          HeaderParameter within the ParameterTree named with the AnchorPoint's Airfoil tag
-        """
-        a_tag = pg_param.name()
-        self.dialog = AnchorPointInputDialog(items=[("x", "double", 0.5),
-                                                    ("y", "double", 0.1),
-                                                    ("L", "double", 0.1),
-                                                    ("R", "double", 2.0),
-                                                    ("r", "double", 0.5),
-                                                    ("phi", "double", 0.0),
-                                                    ("psi1", "double", 1.5),
-                                                    ("psi2", "double", 1.5),
-                                                    ("Previous Anchor Point", "combo"),
-                                                    ("Anchor Point Name", "string")],
-                                             ap=self.mea.airfoils[a_tag].anchor_points, parent=self.parent)
-
-        if self.dialog.exec():
-            inputs = self.dialog.valuesFromWidgets()
-        else:
-            inputs = None
-
-        if inputs:  # Continue only if the dialog was accepted:
-
-            # Stop execution if the AnchorPoint tag already exists for the airfoil
-            if inputs[9] in self.mea.airfoils[a_tag].anchor_point_order:
-                self.parent.disp_message_box(f"AnchorPoint tag {inputs[9]} already exists in Airfoil {a_tag}. "
-                                             f"Please choose a different name.")
-                return
-            elif inputs[9] == "":
-                self.parent.disp_message_box(f"AnchorPoint tag is empty. Please input a name for the AnchorPoint name.")
-                return
-
-            for curve in self.mea.airfoils[a_tag].curve_list:
-                curve.clear_curve_pg()
-            ap = AnchorPoint(xy=PosParam((inputs[0], inputs[1])), L=Param(inputs[2]), R=Param(inputs[3]),
-                             r=Param(inputs[4]), phi=Param(inputs[5]), psi1=Param(inputs[6]),
-                             psi2=Param(inputs[7]), previous_anchor_point=inputs[8], tag=inputs[9], airfoil_tag=a_tag)
-
-            # Insert the AnchorPoint and update the Airfoil
-            self.mea.airfoils[a_tag].insert_anchor_point(ap)
-            self.mea.airfoils[a_tag].update()
-
-            self.mea.assign_names_to_params_in_param_dict()
-            self.mea.airfoils[a_tag].init_airfoil_curve_pg(self.mea.airfoils[a_tag].airfoil_graph.v,
-                                                           pen=pg.mkPen(color='cornflowerblue', width=2))
-
-            self.dialog.update_ap_tags()
-            pos, adj, symbols = self.mea.airfoils[a_tag].airfoil_graph.update_airfoil_data()
-            self.mea.airfoils[a_tag].airfoil_graph.setData(pos=pos, adj=adj, size=8, pxMode=True,
-                                                           symbol=symbols)
-
-            # Add the appropriate Headers to the ParameterTree:
-            self.params[-1].child(a_tag).child('AnchorPoints').addChild(
-                dict(name=ap.tag, type='header_param', value='true', context={'remove_ap': 'Remove AnchorPoint'}))
-            self.params[-1].child(a_tag).child('FreePoints').addChild(
-                dict(name=ap.tag, type='header_param', value='true'))
-
-            # Add the appropriate Parameters to the ParameterTree:
-            for p_key, p_val in self.mea.param_dict[a_tag]['AnchorPoints'][ap.tag].items():
-                if p_key != 'xy':
-                    pg_param = Parameter.create(
-                        name=f"{a_tag}.AnchorPoints.{ap.tag}.{p_key}", type='airfoil_param',
-                        value=self.mea.param_dict[a_tag]['AnchorPoints'][ap.tag][
-                            p_key].value,
-                        context={'add_eq': 'Define by equation', 'deactivate': 'Deactivate parameter',
-                                 'activate': 'Activate parameter', 'setbounds': 'Set parameter bounds'}
-                    )
-                    pg_param.airfoil_param = self.mea.param_dict[a_tag]['AnchorPoints'][ap.tag][p_key]
-                    self.params[-1].child(a_tag).child('AnchorPoints').child(
-                        ap.tag).addChild(pg_param)
-                else:
-                    airfoil_param = self.mea.param_dict[a_tag]['AnchorPoints'][ap.tag][p_key]
-                    pg_param = Parameter.create(name=f"{a_tag}.AnchorPoints.{ap.tag}.{p_key}",
-                                                type='pos_parameter',
-                                                value=[-999.0, -999.0],
-                                                context={'add_eq': 'Define by equation',
-                                                         'deactivate': 'Deactivate parameter',
-                                                         'activate': 'Activate parameter',
-                                                         'setbounds': 'Set parameter bounds'})
-                    pg_param.airfoil_param = airfoil_param
-                    self.params[-1].child(a_tag).child('AnchorPoints').child(
-                        ap.tag).addChild(pg_param)
-                    pg_param.setValue([pg_param.airfoil_param.value[0], pg_param.airfoil_param.value[1]])
-
-    def remove_free_point(self, pg_param: Parameter):
-        """Removes a FreePoint from an Airfoil and updates the graph
-
-        Parameters
-        ==========
-        pg_param: Parameter
-          HeaderParameter within the ParameterTree named with the FreePoint's tag
-        """
-        # First, make sure that a FreePoint parameter was selected:
-        if not pg_param.parent() or not pg_param.parent().parent() or not pg_param.parent().parent().name() == 'FreePoints':
-            self.parent.disp_message_box('A FreePoint must be selected to remove; e.g., \'FP0\'')
+        if not isinstance(tree_item, PymeadTreeWidgetItem):
+            self.previous_item_hovered = tree_item
             return
 
-        # Get the Airfoil from which to remove the FreePoint:
-        airfoil_name = pg_param.parent().parent().parent().name()
-        ap_name = pg_param.parent().name()
-        fp_name = pg_param.name()
-        airfoil = self.mea.airfoils[airfoil_name]
-
-        # Delete the FreePoint from the Airfoil:
-        airfoil.delete_free_point(fp_name, ap_name)
-        airfoil.update()
-
-        # Delete the FreePoint from the parameter tree:
-        pg_param.clearChildren()
-        pg_param.remove()
-
-        # Update the Graph:
-        # self.dialog.update_fp_ap_tags()
-        pos, adj, symbols = self.mea.airfoils[airfoil_name].airfoil_graph.update_airfoil_data()
-        self.mea.airfoils[airfoil_name].airfoil_graph.setData(pos=pos, adj=adj, size=8, pxMode=True,
-                                                              symbol=symbols)
-
-    def remove_anchor_point(self, pg_param: Parameter):
-        """Removes an AnchorPoint from an Airfoil and updates the graph
-
-        Parameters
-        ==========
-        pg_param: Parameter
-          HeaderParameter within the ParameterTree named with the AnchorPoint's tag
-        """
-        # First, make sure that a FreePoint parameter was selected:
-        if not pg_param.parent() or not pg_param.parent().name() == 'AnchorPoints':
-            self.parent.disp_message_box('An AnchorPoint must be selected to remove; e.g., \'AP0\'')
-            return
-
-        # Get the Airfoil from which to remove the AnchorPoint:
-        airfoil_name = pg_param.parent().parent().name()
-        ap_name = pg_param.name()
-        airfoil = self.mea.airfoils[airfoil_name]
-
-        # Delete the AnchorPoint from the Airfoil:
-        airfoil.delete_anchor_point(ap_name)
-        airfoil.update()
-
-        # Delete the AnchorPoint and its children from the FreePoint header in the parameter tree:
-        fp_ap_param = pg_param.parent().parent().child('FreePoints').child(ap_name)
-        fp_ap_param.clearChildren()
-        fp_ap_param.remove()
-
-        # Delete the AnchorPoint from the parameter tree:
-        pg_param.clearChildren()
-        pg_param.remove()
-
-        # Update the Graph:
-        # self.dialog.update_ap_tags()
-        pos, adj, symbols = self.mea.airfoils[airfoil_name].airfoil_graph.update_airfoil_data()
-        self.mea.airfoils[airfoil_name].airfoil_graph.setData(pos=pos, adj=adj, size=8, pxMode=True,
-                                                              symbol=symbols)
-
-    def equation_widget(self, pg_param: Parameter):
-        """Acquires the equation's container QWidget"""
-        return next((p for p in self.t.listAllItems() if hasattr(p, 'param') and p.param is pg_param)).widget
-
-    @staticmethod
-    def block_changes(pg_param: Parameter):
-        """Blocks all changes to the specified parameter
-
-        Parameters
-        ==========
-        pg_param: Parameter
-          Parameter for which to block state changes
-        """
-        pg_param.blockTreeChangeSignal()
-
-    @staticmethod
-    def flush_changes(pg_param):
-        """Flushes all changes from the specified parameter
-
-        Parameters
-        ==========
-        pg_param: Parameter
-          Parameter from which to flush state changes
-        """
-        pg_param.treeStateChanges = []
-        pg_param.blockTreeChangeEmit = 1
-        pg_param.unblockTreeChangeSignal()
-
-    def plot_change_recursive(self, child_list: list):
-        """Moves through the pyqtgraph ParameterTree recursively, setting the value of each pyqtgraph Parameter to the
-        value of the contained pymead parameter value."""
-        for idx, child in enumerate(child_list):
-            if hasattr(child, "airfoil_param"):
-                if child.hasChildren():
-                    if child.children()[0].name() == 'Equation Definition':
-                        child.setValue(child.airfoil_param.value)
-                    else:
-                        self.plot_change_recursive(child.children())
+        if tree_item.hoverable:
+            # Hover enter
+            if tree_item is not None:
+                right_column_widget = self.itemWidget(tree_item, 1)
+                if right_column_widget is not None:
+                    self.geo_col.hover_enter_obj(right_column_widget.pymead_obj)
                 else:
-                    child.setValue(child.airfoil_param.value)
+                    self.setItemStyle(tree_item, "hovered")
+
+        # Assign the current tree widget item to the previous item hovered
+        self.previous_item_hovered = tree_item
+
+    def leaveEvent(self, a0):
+        """
+        Reimplement the leave event to handle the case where the mouse exits directly sideways through the "Edit"
+        button. In this case, the mouseMoveEvent will not catch the hover leave, so we need to put that logic here.
+        """
+        if self.previous_item_hovered is not None and self.previous_item_hovered.hoverable:
+            button = self.itemWidget(self.previous_item_hovered, 1)
+            if button is not None:
+                self.geo_col.hover_leave_obj(button.pymead_obj)
             else:
-                if child.hasChildren():
-                    self.plot_change_recursive(child.children())
+                self.setItemStyle(self.previous_item_hovered, "default")
+            self.previous_item_hovered = None
 
+    def addPymeadTreeItem(self, pymead_obj: PymeadObj):
+        top_level_item = self.items[self.topLevelDict[pymead_obj.sub_container]]
+        child_item = PymeadTreeWidgetItem([pymead_obj.name()])
+        top_level_item.addChild(child_item)
+        pymead_obj.tree_item = child_item
 
-class CustomParameterTree(ParameterTree):
-    """A custom version of pyqtgraph's ParameterTree (allows for multiple selection and custom signal emitting)"""
-    sigSymmetry = pyqtSignal(str)
-    sigPosConstraint = pyqtSignal(str)
-    sigSelChanged = pyqtSignal(tuple)
+        if isinstance(pymead_obj, Param):
+            right_column_widget = ValueSpin(self, pymead_obj)
+        else:
+            button_args = (pymead_obj, self)
+            right_column_widget = getattr(sys.modules[__name__],
+                                          f"{type(pymead_obj).__name__}Button")(*button_args, top_level=True)
 
-    def __init__(self, parent=None):
-        super().__init__(parent=parent)
-        self.multi_select = None
+        self.setItemWidget(child_item, 1, right_column_widget)
 
-    def selectionChanged(self, *args):
-        """Override method in pyqtgraph's ParameterTree and make some modifications"""
-        sel = self.selectedItems()
-        if sel and len(sel) > 0:
-            # Emit signals required for symmetry enforcement
-            param = sel[-1].param
-            parent = sel[-1].param.parent()
-            if (parent and isinstance(parent, CustomGroup)) or param.type() == "header_param":
-                self.sigSymmetry.emit(self.get_full_param_name_path(param))
-                self.sigPosConstraint.emit(self.get_full_param_name_path(param))
-                self.sigSelChanged.emit((self.get_full_param_name_path(param), param.value()))
-            elif param.type() == "airfoil_param":
-                self.sigSymmetry.emit(f"${param.name()}")
-                self.sigPosConstraint.emit(f"${param.name()}")
-                self.sigSelChanged.emit((f"${param.name()}", param.value()))
-        self.multi_select = sel
-        if len(sel) != 1:
-            sel = None
-        if self.lastSel is not None and isinstance(self.lastSel, ParameterItem):
-            self.lastSel.selected(False)
-        if sel is None:
-            self.lastSel = None
+    def removePymeadTreeItem(self, pymead_obj: PymeadObj):
+        top_level_item = self.items[self.topLevelDict[pymead_obj.sub_container]]
+        top_level_item.removeChild(pymead_obj.tree_item)
+        pymead_obj.tree_item = None
+
+    def onExpandPressed(self):
+        self.expandAll()
+
+    def onCollapsePressed(self):
+        self.collapseAll()
+
+    def setItemStyle(self, item: PymeadTreeWidgetItem, style: str):
+        valid_styles = ["default", "hovered"]
+        if style not in ["default", "hovered"]:
+            raise ValueError(f"Style found ({style}) is not a valid style. Must be one of {valid_styles}.")
+
+        background_color = self.palette().color(self.backgroundRole())
+        if style == "default":
+            # item.setBackground(0, background_color)
+            # item.setBackground(1, background_color)
+            brush = QBrush(QColor(self.parent().parent().themes[self.parent().parent().current_theme]['main-color']))
+            item.setForeground(0, brush)
+        elif style == "hovered" and item.hoverable:
+            # gradient = QtGui.QLinearGradient(0, 0, 150, 0)
+            # gradient.setColorAt(0, QColor("#2678c9aa"))
+            # gradient.setColorAt(1, self.palette().color(self.backgroundRole()))
+            # item.setBackground(0, gradient)
+            # item.setBackground(1, self.palette().color(self.backgroundRole()))
+            brush = QBrush(QColor("#edb126"))
+            item.setForeground(0, brush)
+
+    def setForegroundColorAllItems(self, color: str):
+        it = QTreeWidgetItemIterator(self)
+        while it.value():
+            it.value().setForeground(0, QBrush(QColor(color)))
+            it += 1
+
+    def contextMenuEvent(self, a0):
+        # item = self.itemAt(a0.x(), a0.y())
+        # if item is None:
+        #     return
+
+        items = self.selectedItems()
+        if len(items) == 0:
             return
-        self.lastSel = sel[0]
-        if hasattr(sel[0], 'selected'):
-            sel[0].selected(True)
-        for selection in self.multi_select:
-            if hasattr(selection, 'widget'):
-                selection.widget.setMinimumHeight(20)
-        return super().selectionChanged(*args)
 
-    @staticmethod
-    def get_full_param_name_path(param: Parameter):
-        """Get the full path of the parameter in the parameter tree (dot seperator, leading $)"""
-        path_list = []
-        for idx in range(5):
-            if not param.name() or param.name() == 'Airfoil Parameters':
-                break
-            path_list.append(param.name())
-            param = param.parent()
-        return f"${'.'.join(path_list[::-1])}"
+        if len(items) == 1 and items[0].text(0) == "Design Variables":
+            menu = QMenu(self)
+            addDesVarAction = menu.addAction("Add Design Variable")
+            res = menu.exec_(a0.globalPos())
 
+            if res is None:
+                return
 
-if __name__ == '__main__':
-    pg.exec()
+            if res is addDesVarAction:
+                self.geo_col.add_desvar(0.0, "dv")
+
+        elif len(items) == 1 and items[0].text(0) == "Parameters":
+            menu = QMenu(self)
+            addParameterAction = menu.addAction("Add Parameter")
+            res = menu.exec_(a0.globalPos())
+
+            if res is None:
+                return
+
+            if res is addParameterAction:
+                self.geo_col.add_param(0.0, "param")
+
+        elif all([item.parent() is not None for item in items]) and all(
+                [item.parent() is items[0].parent() for item in items]):
+            # button = self.itemWidget(item, 1)
+            pymead_objs = [self.itemWidget(item, 1).pymead_obj for item in items]
+
+            promoteAction = None
+            demoteAction = None
+
+            pymead_obj_type = type(pymead_objs[0])
+
+            if pymead_obj_type in [Param, LengthParam, AngleParam]:
+                menu = QMenu(self)
+                promoteAction = menu.addAction("Promote to Design Variable")
+                removeObjectAction = menu.addAction("Delete")
+            elif pymead_obj_type in [DesVar, LengthDesVar, AngleDesVar]:
+                menu = QMenu(self)
+                demoteAction = menu.addAction("Demote to Parameter")
+                removeObjectAction = menu.addAction("Delete")
+            else:
+                menu = QMenu(self)
+                removeObjectAction = menu.addAction("Delete")
+
+            res = menu.exec_(a0.globalPos())
+
+            if res is None:
+                return
+
+            if res is removeObjectAction:
+                for pymead_obj in pymead_objs:
+                    # If the object is a Point, set the style to default first so that the text item gets removed
+                    # if isinstance(pymead_obj, Point):
+                    #     self.geo_col.canvas.setItemStyle(pymead_obj.canvas_item, "default")
+                    self.geo_col.remove_pymead_obj(pymead_obj)
+            elif res is promoteAction:
+                for pymead_obj in pymead_objs:
+                    self.geo_col.promote_param_to_desvar(pymead_obj)
+            elif res is demoteAction:
+                for pymead_obj in pymead_objs:
+                    self.geo_col.demote_desvar_to_param(pymead_obj)
+
+            self.geo_col.clear_selected_objects()
+            # TODO: extend this logic to be more general (e.g., clear_selected_objs())
