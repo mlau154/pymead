@@ -102,16 +102,19 @@ class DistanceConstraintItem(ConstraintItem):
 class SymmetryConstraintItem(ConstraintItem):
     def __init__(self, constraint: SymmetryConstraint):
         canvas_items = [
+            pg.TextItem("\u24c2"),
             pg.TextItem("\u24c2")
         ]
         canvas_items[0].setFont(QFont("DejaVu Sans", 10))
+        canvas_items[1].setFont(QFont("DejaVu Sans", 10))
         for item in canvas_items:
             item.setZValue(-10)
         super().__init__(constraint=constraint, canvas_items=canvas_items)
         self.update()
 
     def update(self):
-        self.canvas_items[0].setPos(self.constraint.p1.x().value() + 0.01, self.constraint.p1.y().value() - 0.01)
+        self.canvas_items[0].setPos(self.constraint.p3.x().value() + 0.01, self.constraint.p3.y().value() - 0.01)
+        self.canvas_items[1].setPos(self.constraint.p4.x().value() + 0.01, self.constraint.p4.y().value() - 0.01)
 
 
 class AntiParallel3ConstraintItem(ConstraintItem):
