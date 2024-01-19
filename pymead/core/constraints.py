@@ -5,7 +5,7 @@ from dataclasses import dataclass
 import numpy as np
 
 from pymead.core import constraint_equations as ceq
-from pymead.core.param2 import Param, AngleParam, LengthParam
+from pymead.core.param import Param, AngleParam, LengthParam
 from pymead.core.point import PointSequence, Point
 from pymead.core.pymead_obj import PymeadObj
 

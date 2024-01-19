@@ -3,7 +3,7 @@ from abc import abstractmethod
 from PyQt5.QtCore import QObject
 from PyQt5.QtGui import QFontDatabase
 
-from pymead.core.mea2 import MEA
+from pymead.core.mea import MEA
 from pymead.gui.opt_airfoil_graph import OptAirfoilGraph
 from pymead.gui.parallel_coords_graph import ParallelCoordsGraph
 from pymead.gui.aero_forces_graphs import DragGraph, CpGraph

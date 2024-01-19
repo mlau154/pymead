@@ -7,7 +7,7 @@ from pymead.plugins.IGES.iges_generator import IGESGenerator
 
 from pymead.plugins.IGES.curves import BezierIGES
 
-from pymead.core.airfoil2 import Airfoil
+from pymead.core.airfoil import Airfoil
 from pymead.core.pymead_obj import PymeadObj
 
 

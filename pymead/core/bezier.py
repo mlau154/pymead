@@ -1,6 +1,6 @@
 import numpy as np
 
-from pymead.core.parametric_curve2 import ParametricCurve, PCurveData
+from pymead.core.parametric_curve import ParametricCurve, PCurveData
 from pymead.core.point import PointSequence, Point
 from pymead.utils.nchoosek import nchoosek
 

@@ -7,9 +7,9 @@ import numpy as np
 from scipy.optimize import root
 import matplotlib.pyplot as plt
 
-from pymead.core.param2 import Param
+from pymead.core.param import Param
 from pymead.core.point import Point, PointSequence
-from pymead.core.bezier2 import Bezier
+from pymead.core.bezier import Bezier
 
 
 @jit

@@ -3,15 +3,15 @@ import sys
 import typing
 from copy import deepcopy
 
-from pymead.core.airfoil2 import Airfoil
-from pymead.core.bezier2 import Bezier
+from pymead.core.airfoil import Airfoil
+from pymead.core.bezier import Bezier
 from pymead.core.constraints import *
 from pymead.core.constraint_graph import ConstraintGraph, EquationData
 from pymead.core.dimensions import LengthDimension, AngleDimension, Dimension
-from pymead.core.mea2 import MEA
+from pymead.core.mea import MEA
 from pymead.core.pymead_obj import DualRep, PymeadObj
-from pymead.core.line2 import LineSegment
-from pymead.core.param2 import Param, LengthParam, AngleParam, DesVar, LengthDesVar, AngleDesVar
+from pymead.core.line import LineSegment
+from pymead.core.param import Param, LengthParam, AngleParam, DesVar, LengthDesVar, AngleDesVar
 from pymead.core.point import Point, PointSequence
 
 

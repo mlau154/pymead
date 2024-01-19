@@ -5,15 +5,15 @@ import tempfile
 import numpy as np
 
 from pymead.core import UNITS
-from pymead.core.bezier2 import Bezier
+from pymead.core.bezier import Bezier
 from pymead.core.constraints import PositionConstraint, CollinearConstraint
 from pymead.core.dimensions import LengthDimension, AngleDimension
 from pymead.core.geometry_collection import GeometryCollection
-from pymead.core.line2 import LineSegment
-from pymead.core.mea2 import MEA
-from pymead.core.param2 import Param, DesVar, LengthParam, AngleParam
+from pymead.core.line import LineSegment
+from pymead.core.mea import MEA
+from pymead.core.param import Param, DesVar, LengthParam, AngleParam
 from pymead.core.point import Point, PointSequence
-from pymead.core.airfoil2 import Airfoil, ClosureError, BranchError
+from pymead.core.airfoil import Airfoil, ClosureError, BranchError
 
 
 temp_dir = tempfile.gettempdir()

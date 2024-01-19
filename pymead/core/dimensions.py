@@ -4,7 +4,7 @@ from abc import abstractmethod
 import numpy as np
 
 from pymead.core import UNITS
-from pymead.core.param2 import Param, LengthParam, AngleParam
+from pymead.core.param import Param, LengthParam, AngleParam
 from pymead.core.point import PointSequence, Point
 from pymead.core.pymead_obj import PymeadObj
 

@@ -9,7 +9,7 @@ import numpy as np
 from benedict import benedict
 from pymead.core.geometry_collection import GeometryCollection
 
-from pymead.core.mea2 import MEA
+from pymead.core.mea import MEA
 from pymead.analysis.calc_aero_data import calculate_aero_data
 
 class CustomGASettings:

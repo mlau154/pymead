@@ -11,10 +11,10 @@ from PyQt5.QtGui import QStandardItem, QStandardItemModel
 import tempfile
 from PyQt5.QtCore import pyqtSlot, pyqtSignal, QStandardPaths
 
-from pymead.core.airfoil2 import Airfoil
+from pymead.core.airfoil import Airfoil
 from pymead.core.geometry_collection import GeometryCollection
 # from pymead.core.mea import MEA
-from pymead.core.mea2 import MEA
+from pymead.core.mea import MEA
 from pymead.gui.sampling_visualization import SamplingVisualizationWidget
 from pymead.gui.infty_doublespinbox import InftyDoubleSpinBox
 from pymead.gui.pyqt_vertical_tab_widget.pyqt_vertical_tab_widget import VerticalTabWidget

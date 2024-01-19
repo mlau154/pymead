@@ -1,4 +1,4 @@
-from pymead.core.mea2 import MEA
+from pymead.core.mea import MEA
 import pandas as pd
 from PyQt5.QtWidgets import QTextEdit, QDialog, QVBoxLayout
 

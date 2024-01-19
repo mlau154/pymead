@@ -52,7 +52,7 @@ from pymead.optimization.opt_setup import read_stencil_from_array, convert_opt_s
 from pymead.analysis.single_element_inviscid import single_element_inviscid
 from pymead.gui.text_area import ConsoleTextArea
 from pymead.gui.dockable_tab_widget import PymeadDockWidget
-from pymead.core.mea2 import MEA
+from pymead.core.mea import MEA
 from pymead.analysis.calc_aero_data import calculate_aero_data
 from pymead.utils.read_write_files import load_data, save_data
 from pymead.utils.misc import count_func_strs

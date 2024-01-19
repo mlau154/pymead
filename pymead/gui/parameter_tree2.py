@@ -10,16 +10,16 @@ from PyQt5.QtWidgets import QTreeWidget, QTreeWidgetItem, QPushButton, QHBoxLayo
     QDoubleSpinBox, QLineEdit, QLabel, QDialogButtonBox, QMenu, QAbstractItemView, QTreeWidgetItemIterator
 from PyQt5.QtCore import Qt, pyqtSignal, pyqtSlot, QRegularExpression
 
-from pymead.core.airfoil2 import Airfoil
+from pymead.core.airfoil import Airfoil
 from pymead.core.constraints import *
 from pymead.core import UNITS
 from pymead.core.dimensions import LengthDimension, AngleDimension
-from pymead.core.mea2 import MEA
+from pymead.core.mea import MEA
 from pymead.core.point import Point
-from pymead.core.bezier2 import Bezier
-from pymead.core.line2 import LineSegment
+from pymead.core.bezier import Bezier
+from pymead.core.line import LineSegment
 from pymead.core.geometry_collection import GeometryCollection
-from pymead.core.param2 import Param, DesVar, LengthParam, AngleParam, LengthDesVar, AngleDesVar
+from pymead.core.param import Param, DesVar, LengthParam, AngleParam, LengthDesVar, AngleDesVar
 from pymead.core.pymead_obj import PymeadObj
 
 

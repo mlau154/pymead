@@ -6,7 +6,7 @@ from constraint_graph import ConstraintGraph
 from pymead.core.constraints import *
 from pymead.core.geometry_collection import GeometryCollection
 from pymead.core.point import Point
-from pymead.core.param2 import LengthParam, AngleParam
+from pymead.core.param import LengthParam, AngleParam
 
 
 class GCSTests(TestCase):

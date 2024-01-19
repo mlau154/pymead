@@ -13,8 +13,8 @@ from PyQt5.QtWidgets import QApplication
 from pymead.core.constraints import *
 from pymead.core.constraint_equations import *
 from pymead.core.geometry_collection import GeometryCollection
-from pymead.core.param2 import LengthParam
-from pymead.core.parametric_curve2 import ParametricCurve
+from pymead.core.param import LengthParam
+from pymead.core.parametric_curve import ParametricCurve
 from pymead.core.point import PointSequence, Point
 from pymead.core.pymead_obj import PymeadObj
 from pymead.gui.constraint_items import *

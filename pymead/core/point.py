@@ -3,7 +3,7 @@ import typing
 
 import numpy as np
 
-from pymead.core.param2 import LengthParam
+from pymead.core.param import LengthParam
 from pymead.core.pymead_obj import PymeadObj
 
 
