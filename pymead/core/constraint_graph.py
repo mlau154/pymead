@@ -93,7 +93,7 @@ class ConstraintGraph(networkx.Graph):
         for constraint in connected_constraints:
             self.remove_constraint(constraint)
 
-    def add_constraint(self, constraint: GeoCon):
+    def add_constraint(self, constraint: GeoCon, compile: bool = True, solve_and_update: bool = True):
         """
         Adds the specified constraint to the graph, then analyzes the entire graph of connected points and constraints
         and adds any weak constraints needed to make the problem well-constrained. The non-linear system of equations
@@ -103,6 +103,15 @@ class ConstraintGraph(networkx.Graph):
         ----------
         constraint: GeoCon
             GeoCon to add to the graph
+
+        compile: bool
+            Whether to compile the non-linear system of equations after adding this constraint. Normally left as
+            ``True`` except for most constraints when loading an airfoil into ``pymead``. Note that if this option
+            is set to ``False``, the "solve and update" step will not be performed. Default: ``True``
+
+        solve_and_update: bool
+            Whether to solve the system of equations and update the points. Normally left as ``True`` except
+            for most constraints when loading an airfoil into ``pymead``. Default: ``True``
 
         Returns
         -------
@@ -133,14 +142,16 @@ class ConstraintGraph(networkx.Graph):
 
         # Compile two separate root finders: one using Levenberg-Marquardt damped non-linear least squares algorithm,
         # another using MINPACK's hybrd/hybrj routines
-        self.compile_equation_for_entity_or_constraint(constraint, method="lm")
-        self.compile_equation_for_entity_or_constraint(constraint, method="hybr")
+        if compile:
+            self.compile_equation_for_entity_or_constraint(constraint, method="lm")
+            self.compile_equation_for_entity_or_constraint(constraint, method="hybr")
 
         print(f"{constraint.data.geo_cons = }")
 
         # Solve using first the least-squares method and then MINPACK if necessary. Update the points if the solution
         # falls within the tolerance specified in the PymeadRootFinder class
-        self.multisolve_and_update(constraint)
+        if compile and solve_and_update:
+            self.multisolve_and_update(constraint)
 
     def remove_constraint(self, constraint: GeoCon):
 
@@ -153,6 +164,32 @@ class ConstraintGraph(networkx.Graph):
             connected_components = networkx.node_connected_component(self, point)
             # TODO: need to re-compile the equations for potentially all the points that were originally a member
             #  of this constraint
+
+    def compile_and_solve_first_constraint_of_all_clusters(self, constraint_list: typing.List[GeoCon]):
+        # Compile the first constraint
+        constraint = constraint_list[0]
+        self.compile_equation_for_entity_or_constraint(constraint, method="lm")
+        self.compile_equation_for_entity_or_constraint(constraint, method="hybr")
+        self.multisolve_and_update(constraint)
+
+        clusters = {constraint: networkx.algorithms.descendants(self, constraint)}
+
+        # Compile all other constraints
+        for constraint in constraint_list[1:]:
+
+            # Only compile this constraint if it is not a member of a compiled cluster
+            compile_this_constraint = True
+            for k in clusters.keys():
+                if constraint in clusters[k]:
+                    compile_this_constraint = False
+                    break
+            if not compile_this_constraint:
+                continue
+
+            self.compile_equation_for_entity_or_constraint(constraint, method="lm")
+            self.compile_equation_for_entity_or_constraint(constraint, method="hybr")
+            self.multisolve_and_update(constraint)
+            clusters[constraint] = networkx.algorithms.descendants(self, constraint)
 
     def get_points_to_fix(self, source: GeoCon) -> typing.List[Point]:
 

@@ -757,9 +757,9 @@ class GeometryCollection(DualRep):
 
         return self.add_pymead_obj_by_ref(angle_dim, assign_unique_name=assign_unique_name)
 
-    def add_constraint(self, constraint: GeoCon, assign_unique_name: bool = True):
+    def add_constraint(self, constraint: GeoCon, assign_unique_name: bool = True, **constraint_kwargs):
         self.add_pymead_obj_by_ref(constraint, assign_unique_name=assign_unique_name)
-        self.gcs.add_constraint(constraint)
+        self.gcs.add_constraint(constraint, **constraint_kwargs)
         return constraint
 
     # def add_distance_constraint(self, start_point: Point, end_point: Point, length_param: LengthParam or None = None,
@@ -835,6 +835,8 @@ class GeometryCollection(DualRep):
                 points=[geo_col.container()["points"][k] for k in bezier_dict["points"]]),
                 name=name, assign_unique_name=False
             )
+
+        constraints_added = []
         for name, geocon_dict in d["geocon"].items():
             for k, v in geocon_dict.items():
                 if v in d["points"].keys():
@@ -851,7 +853,12 @@ class GeometryCollection(DualRep):
                     pass
             constraint_type = geocon_dict.pop("constraint_type")
             constraint = getattr(sys.modules[__name__], constraint_type)(**geocon_dict, name=name)
-            geo_col.add_constraint(constraint=constraint, assign_unique_name=False)
+            geo_col.add_constraint(constraint=constraint, assign_unique_name=False, compile=False,
+                                   solve_and_update=False)
+            constraints_added.append(constraint)
+
+        geo_col.gcs.compile_and_solve_first_constraint_of_all_clusters(constraint_list=constraints_added)
+
         for name, dim_dict in d["dims"].items():
             if "length_param" in dim_dict.keys():
                 if dim_dict["length_param"] in geo_col.container()["desvar"].keys():
