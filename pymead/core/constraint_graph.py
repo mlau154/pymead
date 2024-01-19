@@ -25,7 +25,13 @@ class PymeadRootFinder(jaxopt.ScipyRootFinding):
 
         method: str
             Root-finding technique to use. The available methods are the subset of methods available in
-            ``scipy.optimize.root`` that allow for a user-specified Jacobian rather than a
+            ``scipy.optimize.root`` that allow for a user-specified Jacobian rather than a finite difference
+            approximation. Available methods:
+
+            - ``"lm"``: Levenberg-Marquardt non-linear damped least-squares method
+              (`see here <https://docs.scipy.org/doc/scipy/reference/optimize.root-lm.html#optimize-root-lm>`_)
+            - ``"hybr"``: MINPACK's ``hybrd`` and ``hybrj`` routines
+              (`see here <https://docs.scipy.org/doc/scipy/reference/optimize.root-hybr.html#optimize-root-hybr>`_)
         """
         super().__init__(
             method=method,
