@@ -14,4 +14,5 @@ Refactoring
 
 Bug fixes
 ---------
-- Eliminate the use of modulo in constraint equations to make the variable space smooth
+- May need to eliminate the use of modulo in constraint equations to make the variable 
+  space smooth

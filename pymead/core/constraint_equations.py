@@ -1,5 +1,6 @@
 from collections import namedtuple
 
+import jax
 import numpy as np
 from jax import jit
 from jax import numpy as jnp
@@ -17,7 +18,6 @@ def measure_abs_angle(x1: float, y1: float, x2: float, y2: float):
 
 @jit
 def measure_rel_angle3(x1: float, y1: float, x2: float, y2: float, x3: float, y3: float):
-    # TODO: might need to get rid of the modulo here to avoid instabilities in the root-finding method near 0 rad
     return (jnp.arctan2(y1 - y2, x1 - x2) - jnp.arctan2(y3 - y2, x3 - x2)) % (2 * jnp.pi)
 
 
@@ -98,6 +98,15 @@ def measure_data_bezier_curve_joint(xy: np.ndarray, n: np.ndarray):
                                 phi_rel=phi_rel, Lt1=Lt1, Lt2=Lt2, Lc1=Lc1, Lc2=Lc2, kappa1=kappa1, kappa2=kappa2,
                                 R1=R1, R2=R2, n1=n1, n2=n2)
     return data
+
+
+@jit
+def radius_of_curvature_constraint(x1: float, y1: float, x2: float, y2: float, x3: float, y3: float, R: float, n: int):
+    Lt = measure_distance(x1, y1, x2, y2)
+    psi = measure_rel_angle3(x1, y1, x2, y2, x3, y3)
+    Lc = jnp.abs(jnp.true_divide(Lt ** 2, R * (1 - 1 / n) * jnp.sin(psi)))
+    jax.debug.print(" {Lc} ", Lc=Lc)
+    return distance_constraint(x2, y2, x3, y3, Lc)
 
 
 @jit

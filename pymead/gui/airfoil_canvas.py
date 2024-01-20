@@ -429,6 +429,21 @@ class AirfoilCanvas(pg.PlotWidget):
         constraint = Parallel4Constraint(*self.geo_col.selected_objects["points"])
         self.geo_col.add_constraint(constraint)
 
+    @runSelectionEventLoop(drawing_object="ROCurvatureConstraint", starting_message="Select the curve joint")
+    def addROCurvatureConstraint(self):
+        if len(self.geo_col.selected_objects["points"]) != 1:
+            msg = (f"Choose exactly one point (the curve joint) for a "
+                   f"radius of curvature constraint")
+            self.sigStatusBarUpdate.emit(msg, 4000)
+            return
+        curvature_data = ROCurvatureConstraint.calculate_curvature_data(self.geo_col.selected_objects["points"][0])
+        R = 0.5 * (curvature_data.R1 + curvature_data.R2)
+        # R = curvature_data.R1
+        print(f"{R = }")
+        R_param = self.geo_col.add_param(R, name="ROC-1", unit_type="length")
+        constraint = ROCurvatureConstraint(*self.geo_col.selected_objects["points"], value=R_param)
+        self.geo_col.add_constraint(constraint)
+
     def addPointToCurve(self, curve_item: HoverableCurve):
         self.adding_point_to_curve = curve_item
         self.sigStatusBarUpdate.emit("First, click the point to add to the curve", 0)
@@ -543,6 +558,10 @@ class AirfoilCanvas(pg.PlotWidget):
             elif len(self.geo_col.selected_objects["points"]) == 3:
                 self.sigStatusBarUpdate.emit("Finally, choose the target point", 0)
             elif len(self.geo_col.selected_objects["points"]) == 4:
+                self.sigEnterPressed.emit()
+        elif self.drawing_object == "ROCurvatureConstraint":
+            self.geo_col.select_object(point_item.point)
+            if len(self.geo_col.selected_objects["points"]) == 1:
                 self.sigEnterPressed.emit()
         elif self.drawing_object in ["RelAngle4Constraint", "ParallelConstraint", "PerpendicularConstraint"]:
             self.geo_col.select_object(point_item.point)
@@ -706,6 +725,7 @@ class AirfoilCanvas(pg.PlotWidget):
         addAntiParallel3ConstraintAction = menu.addAction("Add Anti-Parallel 3 Constraint")
         addParallelConstraintAction = menu.addAction("Add Parallel Constraint")
         addSymmetryConstraintAction = menu.addAction("Add Symmetry Constraint")
+        addROCurvatureConstraintAction = menu.addAction("Add Radius of Curvature Constraint")
         addCurvatureConstraintAction = menu.addAction("Add Curvature Constraint")
         addLengthDimensionAction = menu.addAction("Add Length Dimension")
         addAngleDimensionAction = menu.addAction("Add Angle Dimension")
@@ -739,6 +759,8 @@ class AirfoilCanvas(pg.PlotWidget):
             self.addParallelConstraint()
         elif res == addSymmetryConstraintAction:
             self.addSymmetryConstraint()
+        elif res == addROCurvatureConstraintAction:
+            self.addROCurvatureConstraint()
         elif res == addCurvatureConstraintAction:
             self.addCurvatureConstraint()
         elif res == addLengthDimensionAction:

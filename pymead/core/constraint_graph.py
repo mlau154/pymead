@@ -143,6 +143,11 @@ class ConstraintGraph(networkx.Graph):
             if constraint.param() not in self.constraint_params:
                 self.constraint_params.append(constraint.param())
 
+            if len(constraint.secondary_params) != 0:
+                for param in constraint.secondary_params:
+                    param.gcs = self
+                    self.constraint_params.append(param)
+
         self.add_node(constraint)
         for child_node in constraint.child_nodes:
             self.add_edge(constraint, child_node)
@@ -434,6 +439,8 @@ class ConstraintGraph(networkx.Graph):
         for cnstr in strong_constraints:
             constraint.data.arg_idx_array.extend(cnstr.get_arg_idx_array(params))
             constraint.data.geo_cons.append(cnstr)
+            print(f"For {cnstr = }, {cnstr.get_arg_idx_array(params) = }")
+            print(f"{params = }")
 
         for eq in weak_equations:
             constraint.data.equations.append(eq)

@@ -16,7 +16,7 @@ class GeoCon(PymeadObj):
     default_name: str = ""
 
     def __init__(self, param: Param or None, child_nodes: list, kind: str,
-                 name: str or None = None):
+                 name: str or None = None, secondary_params: typing.List[Param] = None):
         self._param = None
         self.set_param(param)
         sub_container = "geocon"
@@ -29,6 +29,7 @@ class GeoCon(PymeadObj):
                 self.param().set_name(f"{self.name()}.par")
         self.child_nodes = child_nodes
         self.kind = kind
+        self.secondary_params = [] if secondary_params is None else secondary_params
         self.data = None
         self.add_constraint_to_points()
 
@@ -560,8 +561,12 @@ class CurvatureConstraintData:
     R2: float
 
 
-class CurvatureConstraint(GeoCon):
-    def __init__(self, curve_joint: Point, name: str or None = None):
+class ROCurvatureConstraint(GeoCon):
+
+    equations = [staticmethod(ceq.radius_of_curvature_constraint), staticmethod(ceq.radius_of_curvature_constraint)]
+    default_name = "ROCCon-1"
+
+    def __init__(self, curve_joint: Point, value: float or LengthParam, name: str = None):
         if len(curve_joint.curves) != 2:
             raise ConstraintValidationError(f"There must be exactly two curves attached to the curve joint. Found "
                                             f"{len(curve_joint.curves)} curves")
@@ -582,26 +587,43 @@ class CurvatureConstraint(GeoCon):
         self.g1_point_curve_2 = self.curve_2.point_sequence().points()[self.g1_point_index_curve_2]
         self.g2_point_curve_1 = self.curve_1.point_sequence().points()[self.g2_point_index_curve_1]
         self.g2_point_curve_2 = self.curve_2.point_sequence().points()[self.g2_point_index_curve_2]
-        g1_g2_point_seq = PointSequence(points=[self.g2_point_curve_1, self.g1_point_curve_1,
-                                                self.g1_point_curve_2, self.g2_point_curve_2])
 
-        name = "CurvatureCon-1" if name is None else name
-        super().__init__(tool=curve_joint, target=g1_g2_point_seq, name=name)
-        self.tool().geo_cons.append(self)
-        for point in self.target().points():
-            point.geo_cons.append(self)
+        points = [self.g2_point_curve_1, self.g1_point_curve_1,
+                  self.curve_joint,
+                  self.g1_point_curve_2, self.g2_point_curve_2]
 
-    def calculate_curvature_data(self):
-        Lt1 = self.g1_point_curve_1.measure_distance(self.curve_joint)
-        Lt2 = self.g1_point_curve_2.measure_distance(self.curve_joint)
-        Lc1 = self.g1_point_curve_1.measure_distance(self.g2_point_curve_1)
-        Lc2 = self.g1_point_curve_2.measure_distance(self.g2_point_curve_2)
-        n1 = self.curve_1.degree
-        n2 = self.curve_2.degree
-        phi1 = self.curve_joint.measure_angle(self.g1_point_curve_1)
-        phi2 = self.curve_joint.measure_angle(self.g1_point_curve_2)
-        theta1 = self.g1_point_curve_1.measure_angle(self.g2_point_curve_1)
-        theta2 = self.g1_point_curve_2.measure_angle(self.g2_point_curve_2)
+        param = value if isinstance(value, Param) else LengthParam(value=value, name="ROC-1")
+
+        super().__init__(param=param, child_nodes=points, kind="d", name=name,
+                         secondary_params=[Param(self.curve_1.degree, "n"),
+                                           Param(self.curve_2.degree, "n")])
+
+    @staticmethod
+    def calculate_curvature_data(curve_joint):
+        curve_1 = curve_joint.curves[0]
+        curve_2 = curve_joint.curves[1]
+        curve_joint_index_curve_1 = curve_1.point_sequence().points().index(curve_joint)
+        curve_joint_index_curve_2 = curve_2.point_sequence().points().index(curve_joint)
+        curve_joint_index_curve_1 = -1 if curve_joint_index_curve_1 != 0 else 0
+        curve_joint_index_curve_2 = -1 if curve_joint_index_curve_2 != 0 else 0
+        g2_point_index_curve_1 = 2 if curve_joint_index_curve_1 == 0 else -3
+        g2_point_index_curve_2 = 2 if curve_joint_index_curve_2 == 0 else -3
+        g1_point_index_curve_1 = 1 if g2_point_index_curve_1 == 2 else -2
+        g1_point_index_curve_2 = 1 if g2_point_index_curve_2 == 2 else -2
+        g1_point_curve_1 = curve_1.point_sequence().points()[g1_point_index_curve_1]
+        g1_point_curve_2 = curve_2.point_sequence().points()[g1_point_index_curve_2]
+        g2_point_curve_1 = curve_1.point_sequence().points()[g2_point_index_curve_1]
+        g2_point_curve_2 = curve_2.point_sequence().points()[g2_point_index_curve_2]
+        Lt1 = g1_point_curve_1.measure_distance(curve_joint)
+        Lt2 = g1_point_curve_2.measure_distance(curve_joint)
+        Lc1 = g1_point_curve_1.measure_distance(g2_point_curve_1)
+        Lc2 = g1_point_curve_2.measure_distance(g2_point_curve_2)
+        n1 = curve_1.degree
+        n2 = curve_2.degree
+        phi1 = curve_joint.measure_angle(g1_point_curve_1)
+        phi2 = curve_joint.measure_angle(g1_point_curve_2)
+        theta1 = g1_point_curve_1.measure_angle(g2_point_curve_1)
+        theta2 = g1_point_curve_2.measure_angle(g2_point_curve_2)
         psi1 = theta1 - phi1
         psi2 = theta2 - phi2
         R1 = np.abs(np.true_divide((Lt1 * Lt1), (Lc1 * (1 - 1 / n1) * np.sin(psi1))))
@@ -610,8 +632,34 @@ class CurvatureConstraint(GeoCon):
                                        phi1=phi1, phi2=phi2, psi1=psi1, psi2=psi2, R1=R1, R2=R2)
         return data
 
+    def get_arg_idx_array(self, param_list: typing.List[Param]) -> list:
+        return [[
+            [param_list.index(self.curve_joint.x()), 2],
+            [param_list.index(self.curve_joint.y()), 2],
+            [param_list.index(self.g1_point_curve_1.x()), 2],
+            [param_list.index(self.g1_point_curve_1.y()), 2],
+            [param_list.index(self.g2_point_curve_1.x()), 2],
+            [param_list.index(self.g2_point_curve_1.y()), 2],
+            [param_list.index(self.param()), 2],
+            [param_list.index(self.secondary_params[0]), 2]
+        ],
+            [
+            [param_list.index(self.curve_joint.x()), 2],
+            [param_list.index(self.curve_joint.y()), 2],
+            [param_list.index(self.g1_point_curve_2.x()), 2],
+            [param_list.index(self.g1_point_curve_2.y()), 2],
+            [param_list.index(self.g2_point_curve_2.x()), 2],
+            [param_list.index(self.g2_point_curve_2.y()), 2],
+            [param_list.index(self.param()), 2],
+            [param_list.index(self.secondary_params[1]), 2]
+        ]]
+
+    def __repr__(self):
+        return f"{self.__class__.__name__} {self.name()} <C1={self.curve_1.name()}, C2={self.curve_2.name()}>"
+
     def get_dict_rep(self):
-        return {"curve_joint": self.curve_joint.name(), "name": self.name(), "constraint_type": "curvature"}
+        return {"curve_joint": self.curve_joint.name(), "value": self.param().name(),
+                "constraint_type": self.__class__.__name__}
 
 
 class ConstraintValidationError(Exception):

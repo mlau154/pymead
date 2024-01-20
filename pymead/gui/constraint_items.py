@@ -117,6 +117,22 @@ class SymmetryConstraintItem(ConstraintItem):
         self.canvas_items[1].setPos(self.constraint.p4.x().value() + 0.01, self.constraint.p4.y().value() - 0.01)
 
 
+class ROCurvatureConstraintItem(ConstraintItem):
+    def __init__(self, constraint: ROCurvatureConstraint):
+        canvas_items = [
+            pg.TextItem("\u24c7"),
+        ]
+        canvas_items[0].setFont(QFont("DejaVu Sans", 10))
+        for item in canvas_items:
+            item.setZValue(-10)
+        super().__init__(constraint=constraint, canvas_items=canvas_items)
+        self.update()
+
+    def update(self):
+        self.canvas_items[0].setPos(self.constraint.curve_joint.x().value() - 0.01,
+                                    self.constraint.curve_joint.y().value() - 0.01)
+
+
 class AntiParallel3ConstraintItem(ConstraintItem):
     def __init__(self, constraint: AntiParallel3Constraint):
         self.text_style = dict(anchor=(0.5, 0.5))

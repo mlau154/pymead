@@ -12,12 +12,12 @@ class Param(PymeadObj):
     getter/setter methods.
     """
 
-    def __init__(self, value: float, name: str, lower: float or None = None, upper: float or None = None,
+    def __init__(self, value: float or int, name: str, lower: float or None = None, upper: float or None = None,
                  sub_container: str = "params", setting_from_geo_col: bool = False, point=None):
         """
         Parameters
         ==========
-        value: float
+        value: float or int
             Starting value for the parameter.
 
         name: str
@@ -31,6 +31,7 @@ class Param(PymeadObj):
         """
         super().__init__(sub_container=sub_container)
 
+        self.dtype = type(value).__name__
         self._value = None
         self._lower = None
         self._upper = None
@@ -89,13 +90,13 @@ class Param(PymeadObj):
         else:
             return self._value
 
-    def set_value(self, value: float, updated_objs: typing.List[PymeadObj] = None, bounds_normalized: bool = False):
+    def set_value(self, value: float or int, updated_objs: typing.List[PymeadObj] = None, bounds_normalized: bool = False):
         """
         Sets the design variable value, adjusting the value to fit inside the bounds if necessary.
 
         Parameters
         ==========
-        value: float
+        value: float or int
             Design variable value
 
         bounds_normalized: bool
@@ -186,7 +187,8 @@ class Param(PymeadObj):
             self._value = self._upper
 
     def get_dict_rep(self):
-        return {"value": float(self.value()), "lower": self.lower(), "upper": self.upper(),
+        return {"value": float(self.value()) if self.dtype == "float" else int(self.value()),
+                "lower": self.lower(), "upper": self.upper(),
                 "unit_type": None}
 
     @classmethod

@@ -829,9 +829,9 @@ class SymmetryConstraintButton(TreeButton):
             self.tree.itemWidget(point.tree_item, 0).setText(name)
 
 
-class CurvatureConstraintButton(TreeButton):
+class ROCurvatureConstraintButton(TreeButton):
 
-    def __init__(self, curvature_constraint: CurvatureConstraint, tree, top_level: bool = False):
+    def __init__(self, curvature_constraint: ROCurvatureConstraint, tree, top_level: bool = False):
         super().__init__(pymead_obj=curvature_constraint, tree=tree, top_level=top_level)
         self.curvature_constraint = curvature_constraint
 
@@ -841,10 +841,15 @@ class CurvatureConstraintButton(TreeButton):
         name_edit.textChanged.connect(self.onNameChange)
         layout.addWidget(name_label, 1, 0)
         layout.addWidget(name_edit, 1, 1)
+
+        row_count = layout.rowCount()
+        layout.addWidget(QLabel("Radius of Curvature", self), row_count, 0)
+        layout.addWidget(LengthParamButton(self.curvature_constraint.param(), self.tree), row_count, 1)
+
         labels = ["Curve 1 G2 Point", "Curve 1 G1 Point", "Curve Joint", "Curve 2 G1 Point", "Curve 2 G2 Point"]
-        points = [self.curvature_constraint.target().points()[0], self.curvature_constraint.target().points()[1],
-                  self.curvature_constraint.tool(),
-                  self.curvature_constraint.target().points()[2], self.curvature_constraint.target().points()[3]]
+        points = [self.curvature_constraint.g2_point_curve_1, self.curvature_constraint.g1_point_curve_1,
+                  self.curvature_constraint.curve_joint,
+                  self.curvature_constraint.g1_point_curve_2, self.curvature_constraint.g2_point_curve_2]
         for label, point in zip(labels, points):
             point_button = PointButton(point, self.tree)
             point_button.sigNameChanged.connect(self.onPointNameChange)
