@@ -6,7 +6,7 @@ from copy import deepcopy
 from pymead.core.airfoil import Airfoil
 from pymead.core.bezier import Bezier
 from pymead.core.constraints import *
-from pymead.core.constraint_graph import ConstraintGraph, EquationData
+from pymead.core.constraint_graph import ConstraintGraph, EquationData, OverConstrainedError
 from pymead.core.dimensions import LengthDimension, AngleDimension, Dimension
 from pymead.core.mea import MEA
 from pymead.core.pymead_obj import DualRep, PymeadObj
@@ -338,7 +338,12 @@ class GeometryCollection(DualRep):
             Pymead object to remove
         """
         # Type-specific actions
-        if isinstance(pymead_obj, Bezier) or isinstance(pymead_obj, LineSegment):
+        if isinstance(pymead_obj, Param):
+            if len(pymead_obj.geo_cons) != 0:
+                raise ValueError(f"Please delete each constraint associated with this parameter ({pymead_obj.geo_cons})"
+                                 f" before deleting this parameter")
+
+        elif isinstance(pymead_obj, Bezier) or isinstance(pymead_obj, LineSegment):
             # Remove all the references to this curve in each of the curve's points
             for pt in pymead_obj.point_sequence().points():
                 pt.curves.remove(pymead_obj)
@@ -349,7 +354,12 @@ class GeometryCollection(DualRep):
                         curve.airfoil = None
                 self.remove_pymead_obj(pymead_obj.airfoil)
 
-        if isinstance(pymead_obj, Point):
+        elif isinstance(pymead_obj, Point):
+
+            if len(pymead_obj.geo_cons) != 0:
+                raise ValueError(f"Please delete each constraint associated with this point ({pymead_obj.geo_cons})"
+                                 f" before deleting this point")
+
             # Loop through the curves associated with this point to see which ones need to be deleted if one point
             # is removed from their point sequence
             curves_to_delete = []
@@ -369,12 +379,12 @@ class GeometryCollection(DualRep):
             for dim in pymead_obj.dims:
                 self.remove_pymead_obj(dim)
 
-            for geo_con in pymead_obj.geo_cons:
+            for geo_con in pymead_obj.geo_cons[::-1]:
                 self.remove_pymead_obj(geo_con)
 
             self.gcs.remove_point(pymead_obj)
 
-        if isinstance(pymead_obj, Dimension):
+        elif isinstance(pymead_obj, Dimension):
             # Remove the dimension references from the points
             if isinstance(pymead_obj.target(), Point):
                 pymead_obj.target().dims.remove(pymead_obj)
@@ -391,8 +401,15 @@ class GeometryCollection(DualRep):
             # Remove the parameter associated with the dimension
             self.remove_pymead_obj(pymead_obj.param())
 
-        if isinstance(pymead_obj, GeoCon):
-            # Remove the constraint references from the points
+        elif isinstance(pymead_obj, GeoCon):
+            # First, remove the parameter associated with the constraint if necessary (i.e., if that parameter is not
+            # tied to any other constraints
+            if pymead_obj.param() is not None:
+                pymead_obj.param().geo_cons.remove(pymead_obj)
+                if len(pymead_obj.param().geo_cons) == 0:
+                    self.remove_pymead_obj(pymead_obj.param())
+
+            # Remove the constraint from the ConstraintGraph
             self.gcs.remove_constraint(pymead_obj)
 
         # Remove the item from the geometry collection subcontainer
@@ -404,7 +421,11 @@ class GeometryCollection(DualRep):
 
         # Remove the canvas item if it exists
         if self.canvas is not None:
-            self.canvas.removeItem(pymead_obj.canvas_item)
+            if hasattr(pymead_obj.canvas_item, "canvas_items"):  # This is the case for GeoCons
+                for canvas_item in pymead_obj.canvas_item.canvas_items:
+                    self.canvas.removeItem(canvas_item)
+            else:
+                self.canvas.removeItem(pymead_obj.canvas_item)
 
     def add_point(self, x: float, y: float, name: str or None = None, fixed: bool = False,
                   assign_unique_name: bool = True):
@@ -759,7 +780,11 @@ class GeometryCollection(DualRep):
 
     def add_constraint(self, constraint: GeoCon, assign_unique_name: bool = True, **constraint_kwargs):
         self.add_pymead_obj_by_ref(constraint, assign_unique_name=assign_unique_name)
-        self.gcs.add_constraint(constraint, **constraint_kwargs)
+        try:
+            self.gcs.add_constraint(constraint, **constraint_kwargs)
+        except (OverConstrainedError, ValueError) as e:
+            self.remove_pymead_obj(constraint)
+            raise e
         return constraint
 
     # def add_distance_constraint(self, start_point: Point, end_point: Point, length_param: LengthParam or None = None,

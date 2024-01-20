@@ -14,6 +14,7 @@ class Point(PymeadObj):
         self._x = None
         self._y = None
         self._fixed = fixed
+        self._fixed_weak = False
         self.gcs = None
         self.geo_cons = []
         self.dims = []
@@ -33,6 +34,9 @@ class Point(PymeadObj):
     def fixed(self):
         return self._fixed
 
+    def fixed_weak(self):
+        return self._fixed_weak
+
     def set_x(self, x: LengthParam or float):
         self._x = x if isinstance(x, LengthParam) else LengthParam(
             value=x, name=self.name() + ".x", setting_from_geo_col=self.setting_from_geo_col, point=self)
@@ -49,6 +53,9 @@ class Point(PymeadObj):
 
     def set_fixed(self, fixed: bool):
         self._fixed = fixed
+
+    def set_fixed_weak(self, fixed_weak: bool):
+        self._fixed_weak = fixed_weak
 
     def set_name(self, name: str):
         # Rename the x and y parameters of the Point

@@ -160,8 +160,6 @@ class ConstraintGraph(networkx.Graph):
         else:  # If not, assign a new instance of the EquationData class to the "data" attr
             constraint.data = EquationData()
 
-        print(f"Adding {constraint}...")
-
         # Analyze the constraint to add the strong constraints and any weak constraints necessary to make the problem
         # well-constrained
         self.analyze(constraint)
@@ -172,24 +170,68 @@ class ConstraintGraph(networkx.Graph):
             self.compile_equation_for_entity_or_constraint(constraint, method="lm")
             self.compile_equation_for_entity_or_constraint(constraint, method="hybr")
 
-        print(f"{constraint.data.geo_cons = }")
-
         # Solve using first the least-squares method and then MINPACK if necessary. Update the points if the solution
         # falls within the tolerance specified in the PymeadRootFinder class
         if compile and solve_and_update:
             self.multisolve_and_update(constraint)
 
     def remove_constraint(self, constraint: GeoCon):
+        """
+        Removes a constraint from the ``ConstraintGraph``
 
-        adj_points = [nbr for nbr in self.adj[constraint]].copy()  # Retain a copy of the constraint's neighbors
+        Parameters
+        ----------
+        constraint: GeoCon
+            Geometric constraint to remove
 
+        Returns
+        -------
+
+        """
+
+        # Get a copy of the constraint's neighbors
+        adj_points = [nbr for nbr in self.adj[constraint]].copy()
+
+        # Remove the constraint from the constraint graph
         self.remove_node(constraint)
-
+        #
+        # For each point that was adjacent to the constraint,
         for point in adj_points:
+
+            # Remove the constraint references stored in the Point object
             point.geo_cons.remove(constraint)
-            connected_components = networkx.node_connected_component(self, point)
-            # TODO: need to re-compile the equations for potentially all the points that were originally a member
-            #  of this constraint
+
+        clusters = {}
+
+        # Compile all other constraints
+        for point in adj_points:
+
+            # Only compile this constraint if it is not a member of a compiled cluster
+            compile_point_constraint = True
+            for k in clusters.keys():
+                if point in clusters[k]:
+                    compile_point_constraint = False
+                    break
+            if not compile_point_constraint or len(point.geo_cons) == 0:
+                continue
+
+            # Create a new instance of EquationData to separate this point's first constraint's data reference from the
+            # disconnected clusters
+            point.geo_cons[0].data = EquationData()
+
+            # Get a list of all the nodes now connecting to this constraint
+            descendants = networkx.algorithms.descendants(self, point)
+            for descendant in descendants:
+                if isinstance(descendant, GeoCon) and descendant is not point.geo_cons[0]:
+                    descendant.data = point.geo_cons[0].data
+
+            # Compile, solve, update, and add this constraint to the list of cluster parents
+            constraint = point.geo_cons[0]
+            self.analyze(constraint)
+            self.multicompile(constraint)
+            self.multisolve_and_update(constraint)
+            clusters[constraint] = networkx.algorithms.descendants(self, constraint)
+            pass
 
     def get_points_to_fix(self, source: GeoCon) -> typing.List[Point]:
 
@@ -225,9 +267,12 @@ class ConstraintGraph(networkx.Graph):
         return points_to_fix
 
     @staticmethod
-    def fix_points(points_to_fix: typing.List[Point]):
+    def fix_points_weak(points_to_fix: typing.List[Point]):
         for point in points_to_fix:
-            point.set_fixed(True)
+            if point.fixed():
+                continue
+            else:
+                point.set_fixed_weak(True)
         return points_to_fix
 
     @staticmethod
@@ -240,10 +285,11 @@ class ConstraintGraph(networkx.Graph):
 
         constraint.data.clear()
         params = self.get_params()
-        print(f"{params = }")
         points = self.get_points(source_node=constraint)
+        for point in points:
+            point.set_fixed_weak(False)
         points_to_fix = self.get_points_to_fix(source=constraint)
-        fixed_points = self.fix_points(points_to_fix)
+        fixed_points = self.fix_points_weak(points_to_fix)
         strong_constraints = self.get_strong_constraints(source_node=constraint)
         strong_equations = self.get_strong_equations(strong_constraints, source_node=constraint)
         abs_angle_constraints = [cnstr for cnstr in strong_constraints if isinstance(cnstr, AbsAngleConstraint)]
@@ -258,6 +304,11 @@ class ConstraintGraph(networkx.Graph):
         # Only need to add an absolute angle constraint if one does not yet exist and if there is only one fixed point
         if len(abs_angle_constraints) == 0 and len(fixed_points) == 1:
             dof -= 1
+
+        for point in points:
+            if point.fixed_weak():
+                print(f"{point = } fixed weak")
+        print(f"{len(points) = }, {len(strong_equations) = }, {len(fixed_points) = }, {len(abs_angle_constraints) = }")
 
         if dof < 0:
             raise OverConstrainedError("System is over-constrained")
@@ -419,18 +470,25 @@ class ConstraintGraph(networkx.Graph):
         # Determine the absolute angle constraint to add to eliminate the rotational degree of freedom, if necessary
         if len(abs_angle_constraints) == 0 and len(fixed_points) == 1:
             start_point = fixed_points[0]
-            if self.points[0] == start_point:
-                end_point = self.points[1]
+
+            # Sort the points in the cluster by the order they were added
+            candidate_points = [pt for pt in self.points if pt in points]
+
+            # Choose the first point in the cluster by order added as the end point, unless the first point is the start
+            # point. In this case, choose the second point instead.
+            if candidate_points[0] == start_point:
+                end_point = candidate_points[1]
             else:
-                end_point = self.points[0]
+                end_point = candidate_points[0]
             abs_angle_constraint = AbsAngleConstraintWeak(start_point, end_point, "aa1")
             weak_constraints.append(abs_angle_constraint)
+            print(f"{abs_angle_constraint = }, {start_point = }, {end_point = }")
 
         weak_equations = []
         for cnstr in weak_constraints:
             weak_equations.extend(cnstr.equations)
 
-        points_to_vary = [point for point in points if not point.fixed()]
+        points_to_vary = [point for point in points if (not point.fixed() and not point.fixed_weak())]
         self.add_points_as_variables(constraint.data, points_to_vary, params=params)
 
         for eq in strong_equations:
@@ -439,8 +497,6 @@ class ConstraintGraph(networkx.Graph):
         for cnstr in strong_constraints:
             constraint.data.arg_idx_array.extend(cnstr.get_arg_idx_array(params))
             constraint.data.geo_cons.append(cnstr)
-            print(f"For {cnstr = }, {cnstr.get_arg_idx_array(params) = }")
-            print(f"{params = }")
 
         for eq in weak_equations:
             constraint.data.equations.append(eq)
@@ -610,6 +666,7 @@ class ConstraintGraph(networkx.Graph):
             if not compile_this_constraint:
                 continue
 
+            # Compile, solve, update, and add this constraint to the list of cluster parents
             self.multicompile(constraint)
             self.multisolve_and_update(constraint)
             clusters[constraint] = networkx.algorithms.descendants(self, constraint)
