@@ -43,19 +43,6 @@ To accomplish this, first clone the directory using
 
   git clone https://github.com/mlau154/pymead.git
 
-If installing the most recent version of pymead, the branch corresponding to that version must be checked out.
-For instance, to checkout version 2.0.0, use
-
-.. code-block::
-
-  git checkout v2.0.0
-
-To see all available branches, use
-
-.. code-block::
-
-  git branch -a
-
 To pull the latest changes from the repository at some point after installation, use
 
 .. code-block::
@@ -76,15 +63,9 @@ Python. To check that the installation succeeded, run the following lines of cod
 
 .. code-block:: python
 
-  from pymead.core.airfoil import Airfoil
-  import matplotlib.pyplot as plt
-  fig, ax = plt.subplots()
-  a = Airfoil()
-  a.plot_airfoil(ax)
-  ax.set_aspect("equal")
-  plt.show()
+  import pymead
 
-If the installation was successful, an airfoil will appear on the screen.
+If the installation was successful, no errors will be thrown.
 
 Dependencies
 ============
@@ -93,22 +74,30 @@ Required
 --------
 
 Each of the following dependencies are required to use pymead. All packages listed in this section are automatically
-installed when using ``pip install pymead``. Alternatively, if cloning from the
-`pymead GitHub repo <https://github.com/mlau154/pymead>`_, these requirements can be installed using the included
-``requirements.txt`` file.
+installed when using Methods 1, 2, or 3 above. If using Method 4, the line ``pip install .`` installs these
+dependencies.
 
 - `scipy <https://scipy.org/>`_: Used for airfoil matching
-- `numpy <https://numpy.org/>`_: Used for linear algebra and random numbers
+- `numpy <https://numpy.org/>`_: Used for math, vector, and matrix computations
 - `shapely <https://shapely.readthedocs.io/en/stable/>`_: Computational geometry
 - `matplotlib <https://matplotlib.org/>`_: Static plotting
 - `requests <https://requests.readthedocs.io/en/latest/>`_: Downloading airfoil coordinate sets
   from `Airfoil Tools <http://airfoiltools.com/>`_
 - `PyQt5 <https://pypi.org/project/PyQt5/>`_: Graphical User Interface (GUI)
-- `pyqtgraph <https://www.pyqtgraph.org/>`_: Interactive plotting and parameter trees
+- `pyqtgraph <https://www.pyqtgraph.org/>`_: Interactive plots
 - `python-benedict <https://pypi.org/project/python-benedict/>`_: Dictionary utilities
 - `pandas <https://pandas.pydata.org/>`_: Data structures
-- `pymoo <https://pymoo.org/>`_: Aerodynamic shape optimization
+- `pymoo <https://pymoo.org/>`_: Genetic algorithms used for aerodynamic shape optimization
 - `numba <https://numba.pydata.org/>`_: Speed-up of inviscid lift coefficient calculation
+- `PyQtWebEngine <https://pypi.org/project/PyQtWebEngine/>`_: Internal GUI web-based help browser
+- `cmcrameri <https://www.fabiocrameri.ch/colourmaps/>`_: Perceptually uniform, color-vision-deficiency friendly color
+  maps by Fabio Crameri (used for flow visualization)
+- `JAX <https://jax.readthedocs.io/en/latest/>`_: Just-in-time compilation and automatic differentiation of non-linear
+  systems of geometric constraint equations for dynamic constraint editing
+- `jaxopt <https://jaxopt.github.io/stable/>`_: Root finding of non-linear systems of geometric constraint equations
+  using JAX's methods for just-in-time compilation and computation of the Jacobian using automatic differentiation
+- `networkx <https://networkx.org/documentation/stable/>`_: Analysis of the undirected graph describing the geometric
+  constraint system
 
 Optional
 --------
