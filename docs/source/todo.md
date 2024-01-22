@@ -30,6 +30,7 @@ Refactoring
 -----------
 - Unify the implementation of API-GUI canvas elements
 - Simplify the `PymeadObj` button implementation
+- Remove print messages!
 
 Bug fixes
 ---------
