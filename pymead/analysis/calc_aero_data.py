@@ -197,9 +197,10 @@ def calculate_aero_data(airfoil_coord_dir: str, airfoil_name: str, coords: typin
                     aero_data[k].append(v)
 
         if save_aero_data:
-            for k, v in aero_data["Cp"].items():
-                if isinstance(v, np.ndarray):
-                    aero_data["Cp"][k] = v.tolist()
+            if aero_data["converged"]:
+                for k, v in aero_data["Cp"].items():
+                    if isinstance(v, np.ndarray):
+                        aero_data["Cp"][k] = v.tolist()
             save_data(aero_data, os.path.join(base_dir, "aero_data.json"))
 
         return aero_data, xfoil_log
@@ -395,6 +396,12 @@ def run_xfoil(airfoil_name: str, base_dir: str, xfoil_settings: dict, coords: ty
                 h.write(errs)
             aero_data['timed_out'] = False
             aero_data['converged'] = True
+            with open(xfoil_log, "r") as log_file:
+                for line in log_file:
+                    if "Convergence failed" in line:
+                        print(f"Convergence failed! {log_file = }")
+                        aero_data["converged"] = False
+                        break
         except subprocess.TimeoutExpired:
             process.kill()
             outs, errs = process.communicate()
@@ -406,7 +413,7 @@ def run_xfoil(airfoil_name: str, base_dir: str, xfoil_settings: dict, coords: ty
             aero_data['timed_out'] = True
             aero_data['converged'] = False
         finally:
-            if not aero_data['timed_out']:
+            if not aero_data['timed_out'] and aero_data["converged"]:
                 line1, line2 = read_aero_data_from_xfoil(xfoil_log, aero_data)
                 if line1 is not None:
                     convert_xfoil_string_to_aero_data(line1, line2, aero_data)
