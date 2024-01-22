@@ -113,7 +113,8 @@ class Point(PymeadObj):
 
             for airfoil in airfoils_to_update:
                 airfoil.update_coords()
-                airfoil.canvas_item.generatePicture()
+                if airfoil.canvas_item is not None:
+                    airfoil.canvas_item.generatePicture()
         # else:
         #     start_param_vec = np.array([p.value() for p in self.gcs.params])
         #

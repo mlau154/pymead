@@ -1169,7 +1169,7 @@ class GUI(QMainWindow):
             self.disp_message_box(f"Airfoil geometry saved to {f_}", message_mode="info")
 
     def single_airfoil_viscous_analysis(self):
-        self.dialog = XFOILDialog(parent=self)
+        self.dialog = XFOILDialog(parent=self, current_airfoils=[k for k in self.geo_col.container()["airfoils"]])
         current_airfoils = [k for k in self.geo_col.container()["airfoils"].keys()]
         self.dialog.w.widget_dict["airfoil"]["widget"].addItems(current_airfoils)
         if self.dialog.exec():
@@ -1410,7 +1410,7 @@ class GUI(QMainWindow):
 
     def setup_optimization(self):
         self.dialog = OptimizationSetupDialog(self, settings_override=self.opt_settings,
-                                              design_tree_widget=self.design_tree_widget)
+                                              geo_col=self.geo_col)
         self.dialog.show()
         self.dialog.accepted.connect(self.optimization_accepted)
         self.dialog.rejected.connect(self.optimization_rejected)
@@ -1420,7 +1420,7 @@ class GUI(QMainWindow):
         early_return = False
         opt_settings_list = None
         param_dict_list = None
-        mea_list = None
+        geo_col_dict_list = None
         files = None
         while not exit_the_dialog and not early_return:
             self.opt_settings = self.dialog.valuesFromWidgets()
@@ -1461,7 +1461,7 @@ class GUI(QMainWindow):
             if not loop_through_settings:
                 opt_settings_list = []
             param_dict_list = []
-            mea_list = []
+            geo_col_dict_list = []
 
             for settings_idx in range(n_settings):
 
@@ -1488,7 +1488,8 @@ class GUI(QMainWindow):
 
                 # print(f"{opt_settings['General Settings']['use_current_mea'] = }")
                 if opt_settings['General Settings']['use_current_mea']:
-                    mea_dict = self.mea.copy_as_param_dict(deactivate_airfoil_graphs=True)
+                    # mea_dict = self.mea.copy_as_param_dict(deactivate_airfoil_graphs=True)
+                    geo_col = self.geo_col.get_dict_rep()
                 else:
                     mea_file = opt_settings['General Settings']['mea_file']
                     if not os.path.exists(mea_file):
@@ -1497,20 +1498,22 @@ class GUI(QMainWindow):
                         early_return = True
                         continue
                     else:
-                        mea_dict = load_data(mea_file)
+                        # mea_dict = load_data(mea_file)
+                        geo_col = load_data(mea_file)
 
-                # Generate the multi-element airfoil from the dictionary
-                mea = MEA.generate_from_param_dict(mea_dict)
+                # # Generate the multi-element airfoil from the dictionary
+                # mea = MEA.generate_from_param_dict(mea_dict)
 
-                norm_val_list, _ = mea.extract_parameters()
-                if isinstance(norm_val_list, str):
-                    error_message = norm_val_list
-                    self.disp_message_box(error_message, message_mode='error')
-                    exit_the_dialog = True
-                    early_return = True
-                    continue
+                # TODO: reimplement this logic
+                # norm_val_list = geo_col.extract_design_variable_values(bounds_normalized=True)
+                # if isinstance(norm_val_list, str):
+                #     error_message = norm_val_list
+                #     self.disp_message_box(error_message, message_mode='error')
+                #     exit_the_dialog = True
+                #     early_return = True
+                #     continue
 
-                param_dict['n_var'] = len(norm_val_list)
+                param_dict['n_var'] = len([k for k in geo_col["desvar"]])
 
                 # CONSTRAINTS
                 for airfoil_name, constraint_set in param_dict['constraints'].items():
@@ -1586,9 +1589,9 @@ class GUI(QMainWindow):
                 name = [f"{name_base}_{i}" for i in range(opt_settings['Genetic Algorithm']['n_offspring'])]
                 param_dict['name'] = name
 
-                for airfoil in mea.airfoils.values():
-                    airfoil.airfoil_graphs_active = False
-                mea.airfoil_graphs_active = False
+                # for airfoil in mea.airfoils.values():
+                #     airfoil.airfoil_graphs_active = False
+                # mea.airfoil_graphs_active = False
                 base_folder = os.path.join(opt_settings['Genetic Algorithm']['root_dir'],
                                            opt_settings['Genetic Algorithm']['temp_analysis_dir_name'])
                 param_dict['base_folder'] = base_folder
@@ -1610,14 +1613,14 @@ class GUI(QMainWindow):
                 if not loop_through_settings:
                     opt_settings_list = [opt_settings]
                 param_dict_list.append(param_dict)
-                mea_list.append(mea)
+                geo_col_dict_list.append(geo_col)
                 exit_the_dialog = True
 
         if early_return:
             self.setup_optimization()
 
         if not early_return:
-            for (opt_settings, param_dict, mea) in zip(opt_settings_list, param_dict_list, mea_list):
+            for (opt_settings, param_dict, geo_col_dict) in zip(opt_settings_list, param_dict_list, geo_col_dict_list):
                 # The next line is just to make sure any calls to the GUI are performed before the optimization
                 self.dialog.setWidgetValuesFromDict(new_inputs=opt_settings)
 
@@ -1628,7 +1631,8 @@ class GUI(QMainWindow):
 
                 # Run the shape optimization in a worker thread
                 self.run_shape_optimization(param_dict, opt_settings,
-                                            mea.copy_as_param_dict(deactivate_airfoil_graphs=True),
+                                            # mea.copy_as_param_dict(deactivate_airfoil_graphs=True),
+                                            geo_col_dict,
                                             new_obj_list, new_constr_list,
                                             )
 
@@ -1640,7 +1644,7 @@ class GUI(QMainWindow):
     def progress_update(self, status: str, data: object):
         bcolor = self.themes[self.current_theme]["graph-background-color"]
         if status == "text" and isinstance(data, str):
-            self.output_area_text(data)
+            self.output_area_text(data, line_break=True)
         elif status == "message" and isinstance(data, str):
             self.message_callback_fn(data)
         elif status == "opt_progress" and isinstance(data, dict):
@@ -1689,14 +1693,15 @@ class GUI(QMainWindow):
                     handle = getattr(self.drag_graph, f"pg_plot_handle_{Cd_val}")
                     handle.clear()
 
-    def run_shape_optimization(self, param_dict: dict, opt_settings: dict, mea: dict, objectives, constraints):
+    def run_shape_optimization(self, param_dict: dict, opt_settings: dict, geo_col_dict: dict,
+                               objectives, constraints):
 
         self.clear_opt_plots()
 
         def run_cpu_bound_process():
             shape_opt_process = CPUBoundProcess(
                 shape_optimization_static,
-                args=(param_dict, opt_settings, mea, objectives, constraints)
+                args=(param_dict, opt_settings, geo_col_dict, objectives, constraints)
             )
             shape_opt_process.progress_emitter.signals.progress.connect(self.progress_update)
             shape_opt_process.progress_emitter.signals.finished.connect(self.shape_opt_finished_callback_fn)

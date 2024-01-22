@@ -23,18 +23,25 @@ def read_Cp_from_file_xfoil(fname: str):
     dict
       Dictionary containing 1-D *numpy* arrays for :math:`x`, :math:`y`, and :math:`C_p`
     """
+    y_in_header = False
+    header_line_idx = None
     with open(fname, "r") as f:
-        first_line = f.readline()
+        for idx, line in enumerate(f):
+            if "Cp" not in line:
+                continue
+            header_line_idx = idx
+            if "y" in line:
+                y_in_header = True
+            break
+        else:
+            raise ValueError("Could not detect the header line in the XFOIL Cp file")
 
     # Read in the Cp data for XFOIL versions 6.93 or 6.99 (other versions are untested)
-    if "y" in first_line:  # For XFOIL 6.99
-        df = pd.read_csv(fname, skiprows=3, names=['x', 'y', 'Cp'], sep='\s+', engine='python')
-        array_ = df.to_numpy()
-        return {'x': array_[:, 0], 'y': array_[:, 1], 'Cp': array_[:, 2]}
-    else:  # For XFOIL 6.93
-        df = pd.read_csv(fname, skiprows=1, names=['x', 'Cp'], sep='\s+', engine='python')
-        array_ = df.to_numpy()
-        return {'x': array_[:, 0], 'Cp': array_[:, 1]}
+    names = ["x", "y", "Cp"] if y_in_header else ["x", "Cp"]
+    cols = {"x": 0, "y": 1, "Cp": 2} if y_in_header else {"x": 0, "Cp": 1}
+    df = pd.read_csv(fname, skiprows=header_line_idx + 1, names=names, sep='\s+', engine='python')
+    array_ = df.to_numpy()
+    return {name: array_[:, cols[name]] for name in names}
 
 
 def read_aero_data_from_xfoil(fpath: str, aero_data: dict):

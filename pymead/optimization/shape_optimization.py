@@ -9,6 +9,7 @@ from copy import deepcopy
 import os
 import random
 
+from pymead.core.geometry_collection import GeometryCollection
 from pymead.core.mea import MEA
 from pymead.optimization.opt_setup import CustomDisplay, TPAIOPT
 from pymead.utils.read_write_files import load_data, save_data
@@ -28,7 +29,8 @@ from pymoo.factory import get_reference_directions, get_decomposition
 from pymoo.core.evaluator import set_cv
 
 
-def shape_optimization(conn: mp.connection.Connection or None, param_dict: dict, opt_settings: dict, mea: dict,
+def shape_optimization(conn: mp.connection.Connection or None, param_dict: dict, opt_settings: dict,
+                       geo_col_dict: dict,
                        objectives: typing.List[str], constraints: typing.List[str]):
 
     objectives = [Objective(func_str=func_str) for func_str in objectives]
@@ -74,8 +76,14 @@ def shape_optimization(conn: mp.connection.Connection or None, param_dict: dict,
     forces = []
     ref_dirs = get_reference_directions("energy", param_dict['n_obj'], param_dict['n_ref_dirs'],
                                         seed=param_dict['seed'])
-    mea_object = MEA.generate_from_param_dict(mea)
-    parameter_list, _ = mea_object.extract_parameters()
+    # mea_object = MEA.generate_from_param_dict(mea)
+    geo_col = GeometryCollection.set_from_dict_rep(deepcopy(geo_col_dict))
+    airfoil_name, mea_name = None, None
+    if param_dict["tool"] == "XFOIL":
+        airfoil_name = opt_settings["XFOIL"]["airfoil"]
+    elif param_dict["tool"] == "MSES":
+        mea_name = opt_settings["MSET"]["mea"]
+    parameter_list = geo_col.extract_design_variable_values(bounds_normalized=True)
     num_parameters = len(parameter_list)
 
     send_over_pipe(("text", f"Number of active and unlinked design variables: {num_parameters}\n"))
@@ -91,10 +99,11 @@ def shape_optimization(conn: mp.connection.Connection or None, param_dict: dict,
         sampling = ConstrictedRandomSampling(n_samples=param_dict['n_offsprings'], norm_param_list=parameter_list,
                                              max_sampling_width=param_dict['max_sampling_width'])
         X_list = sampling.sample()
-        parents = [Chromosome(param_dict=param_dict, generation=0, population_idx=idx, mea=mea, genes=individual)
+        parents = [Chromosome(geo_col_dict=geo_col_dict, param_dict=param_dict, generation=0,
+                              airfoil_name=airfoil_name, mea_name=mea_name, population_idx=idx, genes=individual)
                    for idx, individual in enumerate(X_list)]
         population = Population(param_dict=param_dict, generation=0, parents=parents,
-                                mea=mea, verbose=param_dict['verbose'])
+                                verbose=param_dict['verbose'])
 
         n_eval = population.eval_pop_fitness(sig=conn)
         print(f"Finished evaluating population fitness. Continuing...")
@@ -224,10 +233,11 @@ def shape_optimization(conn: mp.connection.Connection or None, param_dict: dict,
             J = None
             G = None
 
-            parents = [Chromosome(param_dict=param_dict, generation=n_generation, population_idx=idx, mea=mea,
-                                  genes=individual) for idx, individual in enumerate(X)]
+            parents = [Chromosome(param_dict=param_dict, generation=n_generation, population_idx=idx,
+                                  airfoil_name=airfoil_name, mea_name=mea_name,
+                                  geo_col_dict=geo_col_dict, genes=individual) for idx, individual in enumerate(X)]
             population = Population(problem.param_dict, generation=n_generation,
-                                    parents=parents, verbose=param_dict['verbose'], mea=mea)
+                                    parents=parents, verbose=param_dict['verbose'])
             n_eval = population.eval_pop_fitness(sig=conn)
 
             for chromosome in population.converged_chromosomes:
@@ -349,14 +359,19 @@ def shape_optimization(conn: mp.connection.Connection or None, param_dict: dict,
 
         write_force_dict_to_file(forces_dict, os.path.join(param_dict["opt_dir"], "force_history.json"))
 
-        mea_object.update_parameters(X.tolist())
-        coords = [a.get_coords(body_fixed_csys=False) for a in mea_object.airfoils.values()]
+        geo_col.assign_design_variable_values(X.tolist(), bounds_normalized=True)
+        mea = None if mea_name is None else geo_col.container()["mea"][mea_name]
+        airfoil = None if airfoil_name is None else geo_col.container()["airfoils"][airfoil_name]
+        if airfoil is not None:
+            coords = [airfoil.get_coords_selig_format()]
+        else:
+            coords = mea.get_coords_list()
 
         send_over_pipe(("airfoil_coords", coords))
 
-        norm_val_list, param_list = mea_object.extract_parameters()
+        norm_val_list = geo_col.extract_design_variable_values(bounds_normalized=True)
 
-        send_over_pipe(("parallel_coords", (norm_val_list, [param.name for param in param_list])))
+        send_over_pipe(("parallel_coords", (norm_val_list, [desvar for desvar in geo_col.container()["desvar"]])))
 
         if param_dict["tool"] == "XFOIL":
             Cp = forces_dict["Cp"][-1]

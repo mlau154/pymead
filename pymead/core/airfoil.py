@@ -145,6 +145,14 @@ class Airfoil(PymeadObj):
     def convert_coords_to_shapely_format(coords: np.ndarray):
         return list(map(tuple, coords))
 
+    @staticmethod
+    def create_line_string(coords_shapely_format: list):
+        return LineString(coords_shapely_format)
+
+    @staticmethod
+    def create_shapely_polygon(line_string: LineString):
+        return Polygon(line_string)
+
     def compute_area(self, airfoil_polygon: Polygon):
         """Computes the area of the airfoil as the area of a many-sided polygon enclosed by the airfoil coordinates
         using the `shapely <https://shapely.readthedocs.io/en/stable/manual.html>`_ library.
@@ -189,7 +197,7 @@ class Airfoil(PymeadObj):
 
         Returns
         =======
-        tuple or dict
+        dict
           The list of \(x\)-values used for the thickness distribution calculation, the thickness distribution, the
           maximum value of the thickness distribution, and, if :code:`return_max_thickness_location=True`,
           the :math:`x/c`-location of the maximum thickness value.

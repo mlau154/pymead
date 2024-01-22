@@ -70,6 +70,7 @@ class EquationData:
 
     def __init__(self):
         self.root_finders = {}
+        self.root_finders_uncompiled = {}
         self.geo_cons = []
         self.equations = []
         self.arg_idx_array = []
@@ -77,6 +78,7 @@ class EquationData:
 
     def clear(self):
         self.root_finders.clear()
+        self.root_finders_uncompiled.clear()
         self.geo_cons.clear()
         self.equations.clear()
         self.arg_idx_array.clear()
@@ -602,7 +604,7 @@ class ConstraintGraph(networkx.Graph):
 
             return func_outputs
 
-        constraint.data.root_finders[method] = PymeadRootFinder(jit(equation_system), method=method)
+        constraint.data.root_finders[method] = PymeadRootFinder(equation_system, method=method)
 
     def multicompile(self, constraint: GeoCon):
         self.compile_equation_for_entity_or_constraint(constraint, method="lm")
@@ -708,10 +710,11 @@ class ConstraintGraph(networkx.Graph):
 
         for airfoil in airfoils_to_update:
             airfoil.update_coords()
-            airfoil.canvas_item.generatePicture()
+            if airfoil.canvas_item is not None:
+                airfoil.canvas_item.generatePicture()
 
         for node in networkx.dfs_preorder_nodes(self, source=constraint):
-            if isinstance(node, GeoCon):
+            if isinstance(node, GeoCon) and node.canvas_item is not None:
                 node.canvas_item.update()
 
 

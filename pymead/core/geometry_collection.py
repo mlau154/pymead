@@ -328,7 +328,7 @@ class GeometryCollection(DualRep):
 
         return pymead_obj
 
-    def remove_pymead_obj(self, pymead_obj: PymeadObj):
+    def remove_pymead_obj(self, pymead_obj: PymeadObj, promotion_demotion: bool = False):
         """
         Removes a pymead object from the geometry collection.
 
@@ -336,10 +336,14 @@ class GeometryCollection(DualRep):
         ==========
         pymead_obj: PymeadObj
             Pymead object to remove
+
+        promotion_demotion: bool
+            When this flag is set to ``True``, the ``ValueError`` normally raised when directly deleting a ``Param``
+            associated with a ``GeoCon`` is ignored. Default: ``False``
         """
         # Type-specific actions
         if isinstance(pymead_obj, Param):
-            if len(pymead_obj.geo_cons) != 0:
+            if len(pymead_obj.geo_cons) != 0 and not promotion_demotion:
                 raise ValueError(f"Please delete each constraint associated with this parameter ({pymead_obj.geo_cons})"
                                  f" before deleting this parameter")
 
@@ -590,7 +594,7 @@ class GeometryCollection(DualRep):
 
         # Remove the parameter
         if param.point is None:
-            self.remove_pymead_obj(param)
+            self.remove_pymead_obj(param, promotion_demotion=True)
 
         return desvar
 
@@ -637,7 +641,7 @@ class GeometryCollection(DualRep):
         param.gcs.constraint_params[self.gcs.constraint_params.index(desvar)] = param
 
         # Remove the design variable
-        self.remove_pymead_obj(desvar)
+        self.remove_pymead_obj(desvar, promotion_demotion=True)
 
         return param
 

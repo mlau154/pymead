@@ -42,7 +42,7 @@ class TextCallback(OptCallback):
             if idx == len(self.widths) - 1:
                 t += "|"
         header_length = len(t)
-        return "="*header_length + "\n" + t + "\n" + "="*header_length
+        return ["="*header_length, t, "="*header_length]
 
     def stringify_text_list(self):
         t = ""
@@ -71,16 +71,17 @@ class TextCallback(OptCallback):
             # self.parent.text_area.setFont(font)
             # self.parent.output_area_text(f"<head><style>body {{font-family: DejaVu Sans Mono;}}</style></head><body><p><font size='4'>&#8203;</font></p></body>", mode="html")
             # self.parent.output_area_text("\n")
-            self.parent.output_area_text(f"{self.generate_header()}")
-            self.parent.output_area_text("\n")
+            for header_line in self.generate_header():
+                self.parent.output_area_text(header_line, line_break=True)
+            # self.parent.output_area_text("\n")
         t = f"{self.stringify_text_list()}"
-        self.parent.output_area_text(t)
-        self.parent.output_area_text("\n")
+        self.parent.output_area_text(t, line_break=True)
+        # self.parent.output_area_text("\n")
         self.parent.closer = self.generate_closer(len(t))
         if self.completed:
             print("Completed!")
-            self.parent.output_area_text(f"{self.generate_closer(len(t))}")
-            self.parent.output_area_text("\n")
+            self.parent.output_area_text(f"{self.generate_closer(len(t))}", line_break=True)
+            # self.parent.output_area_text("\n")
 
 
 class PlotAirfoilCallback(OptCallback):
@@ -94,8 +95,8 @@ class PlotAirfoilCallback(OptCallback):
         if self.parent.opt_airfoil_graph is None:
             self.parent.opt_airfoil_graph = OptAirfoilGraph(background_color=self.background_color)
         tab_name = "Opt. Airfoil"
-        if tab_name not in self.parent.dockable_tab_window.names:
-            self.parent.dockable_tab_window.add_new_tab_widget(self.parent.opt_airfoil_graph.w, tab_name)
+        if tab_name not in self.parent.dock_widget_names:
+            self.parent.add_new_tab_widget(self.parent.opt_airfoil_graph.w, tab_name)
         if len(self.parent.opt_airfoil_plot_handles) > 0:
             pen = pg.mkPen(color='limegreen', width=2)
         else:
@@ -126,8 +127,8 @@ class ParallelCoordsCallback(OptCallback):
         if self.parent.parallel_coords_graph is None:
             self.parent.parallel_coords_graph = ParallelCoordsGraph(background_color=self.background_color)
         tab_name = "Parallel Coordinates"
-        if tab_name not in self.parent.dockable_tab_window.names:
-            self.parent.dockable_tab_window.add_new_tab_widget(self.parent.parallel_coords_graph.w, tab_name)
+        if tab_name not in self.parent.dock_widget_names:
+            self.parent.add_new_tab_widget(self.parent.parallel_coords_graph.w, tab_name)
         if len(self.parent.parallel_coords_plot_handles) > 0:
             pen = pg.mkPen(color='limegreen', width=2)
         else:
@@ -158,8 +159,8 @@ class DragPlotCallbackXFOIL(OptCallback):
         if self.parent.drag_graph is None:
             self.parent.drag_graph = DragGraph(background_color=self.background_color)
         tab_name = "Drag"
-        if tab_name not in self.parent.dockable_tab_window.names:
-            self.parent.dockable_tab_window.add_new_tab_widget(self.parent.drag_graph.w, tab_name)
+        if tab_name not in self.parent.dock_widget_names:
+            self.parent.add_new_tab_widget(self.parent.drag_graph.w, tab_name)
         self.parent.drag_graph.pg_plot_handle_Cd.setData(1e4 * np.array(self.Cd))
         self.parent.drag_graph.pg_plot_handle_Cdp.setData(1e4 * np.array(self.Cdp))
         self.parent.drag_graph.pg_plot_handle_Cdf.setData(1e4 * np.array(self.Cdf))
@@ -180,8 +181,8 @@ class DragPlotCallbackMSES(OptCallback):
         if self.parent.drag_graph is None:
             self.parent.drag_graph = DragGraph(background_color=self.background_color)
         tab_name = "Drag"
-        if tab_name not in self.parent.dockable_tab_window.names:
-            self.parent.dockable_tab_window.add_new_tab_widget(self.parent.drag_graph.w, tab_name)
+        if tab_name not in self.parent.dock_widget_names:
+            self.parent.add_new_tab_widget(self.parent.drag_graph.w, tab_name)
         self.parent.drag_graph.pg_plot_handle_Cd.setData(1e4 * np.array(self.Cd))
         self.parent.drag_graph.pg_plot_handle_Cdp.setData(1e4 * np.array(self.Cdp))
         self.parent.drag_graph.pg_plot_handle_Cdf.setData(1e4 * np.array(self.Cdf))
@@ -200,8 +201,8 @@ class CpPlotCallbackXFOIL(OptCallback):
         if self.parent.Cp_graph is None:
             self.parent.Cp_graph = CpGraph(background_color=self.background_color)
         tab_name = "Cp"
-        if tab_name not in self.parent.dockable_tab_window.names:
-            self.parent.dockable_tab_window.add_new_tab_widget(self.parent.Cp_graph.w, tab_name)
+        if tab_name not in self.parent.dock_widget_names:
+            self.parent.add_new_tab_widget(self.parent.Cp_graph.w, tab_name)
         if len(self.parent.Cp_graph_plot_handles) > 0:
             pen = pg.mkPen(color='limegreen', width=2)
         else:
@@ -228,8 +229,8 @@ class CpPlotCallbackMSES(OptCallback):
         if self.parent.Cp_graph is None:
             self.parent.Cp_graph = CpGraph(background_color=self.background_color)
         tab_name = "Cp"
-        if tab_name not in self.parent.dockable_tab_window.names:
-            self.parent.dockable_tab_window.add_new_tab_widget(self.parent.Cp_graph.w, tab_name)
+        if tab_name not in self.parent.dock_widget_names:
+            self.parent.add_new_tab_widget(self.parent.Cp_graph.w, tab_name)
         if len(self.parent.Cp_graph_plot_handles) > 0:
             pen = pg.mkPen(color='limegreen', width=2)
         else:

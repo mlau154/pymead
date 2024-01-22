@@ -55,8 +55,8 @@ get_set_value_names = {'QSpinBox': ('value', 'setValue', 'valueChanged'),
                        'QComboBox': ('currentText', 'setCurrentText', 'currentTextChanged'),
                        'QCheckBox': ('checkState', 'setCheckState', 'stateChanged'),
                        'QPlainTextEdit': ('toPlainText', 'setPlainText', 'textChanged'),
-                       'GridBounds': ('values', 'setValues', 'boundsChanged'),
-                       'MSETMultiGridWidget': ('values', 'setValues', 'multiGridChanged'),
+                       'GridBounds': ('value', 'setValue', 'boundsChanged'),
+                       'MSETMultiGridWidget': ('value', 'setValue', 'multiGridChanged'),
                        'XTRSWidget': ('values', 'setValues', 'XTRSChanged'),
                        'ADWidget': ('values', 'setValues', 'ADChanged'),
                        'OptConstraintsHTabWidget': ('values', 'setValues', 'OptConstraintsChanged')}
@@ -417,7 +417,7 @@ class ADDoubleSpinBox(QDoubleSpinBox):
 
     sigEquationChanged = pyqtSignal(str)
 
-    def __init__(self, parent, AD_tab: str, design_tree_widget):
+    def __init__(self, parent, AD_tab: str):
         super().__init__(parent=parent)
         self.equation_edit = None
         self.AD_tab = AD_tab
@@ -452,7 +452,7 @@ class ADWidget(QTabWidget):
 
     ADChanged = pyqtSignal()
 
-    def __init__(self, parent, design_tree_widget=None):
+    def __init__(self, parent):
         super().__init__(parent=parent)
         self.labels = {
             'ISDELH': 'AD Side',
@@ -465,7 +465,6 @@ class ADWidget(QTabWidget):
         self.widget_dict = {}
         self.grid_widget = {}
         self.grid_layout = {}
-        self.design_tree_widget = design_tree_widget
         self.generateWidgets()
         self.setTabs()
 
@@ -477,7 +476,7 @@ class ADWidget(QTabWidget):
                     if k2 in ['PTRHIN', 'ETAH']:
                         w = QDoubleSpinBox(self)
                     elif k2 == 'XCDELH':
-                        w = ADDoubleSpinBox(self, k1, design_tree_widget=self.design_tree_widget)
+                        w = ADDoubleSpinBox(self, k1)
                     else:
                         w = QSpinBox(self)
                     if k2 in ['XCDELH', 'ETAH']:
@@ -646,9 +645,10 @@ class PymeadDialogWidget(QWidget):
                 kwargs = {}
                 if w_dict['widget_type'] in ['ADWidget', 'OptConstraintsHTabWidget']:
                     kwargs = self.kwargs
-                    kwargs.pop("initial_mea")
-                elif w_dict["widget_type"] == "XTRSWidget":
-                    kwargs = {"initial_mea": self.kwargs.get("initial_mea")}
+                    if "initial_mea" in kwargs:
+                        kwargs.pop("initial_mea")
+                # elif w_dict["widget_type"] == "XTRSWidget":
+                #     kwargs = {"initial_mea": self.kwargs.get("initial_mea")}
                 widget = getattr(sys.modules[__name__], w_dict['widget_type'])(parent=self, **kwargs)
             else:
                 raise ValueError(f"Widget type {w_dict['widget_type']} not found in PyQt5.QtWidgets or system modules")
@@ -1588,9 +1588,9 @@ class OptConstraintsHTabWidget(PymeadDialogHTabWidget):
 
     OptConstraintsChanged = pyqtSignal()
 
-    def __init__(self, parent, mset_dialog_widget: MSETDialogWidget = None):
+    def __init__(self, parent, geo_col: GeometryCollection, mset_dialog_widget: MSETDialogWidget = None):
         super().__init__(parent=parent,
-                         widgets={'A0': OptConstraintsDialogWidget()})
+                         widgets={k: OptConstraintsDialogWidget() for k in geo_col.container()["airfoils"]})
         mset_dialog_widget.airfoilsChanged.connect(self.onAirfoilListChanged)
 
     def reorderRegenerateWidgets(self, new_airfoil_name_list: list):
@@ -1616,6 +1616,7 @@ class OptConstraintsHTabWidget(PymeadDialogHTabWidget):
         self.reorderRegenerateWidgets(new_airfoil_name_list=new_airfoil_name_list)
 
     def onAirfoilListChanged(self, new_airfoil_name_list_str: str):
+        print(f"{new_airfoil_name_list_str = }")
         new_airfoil_name_list = new_airfoil_name_list_str.split(',')
         if len(new_airfoil_name_list) > len([k for k in self.w_dict.keys()]):
             self.onAirfoilAdded(new_airfoil_name_list)
@@ -1625,6 +1626,7 @@ class OptConstraintsHTabWidget(PymeadDialogHTabWidget):
             self.reorderRegenerateWidgets(new_airfoil_name_list=new_airfoil_name_list)
 
     def setValues(self, values: dict):
+        print(f"{values = }")
         self.onAirfoilListChanged(new_airfoil_name_list_str=','.join([k for k in values.keys()]))
         self.setWidgetValuesFromDict(new_values=values)
 
@@ -1636,9 +1638,10 @@ class OptConstraintsHTabWidget(PymeadDialogHTabWidget):
 
 
 class XFOILDialogWidget(PymeadDialogWidget):
-    def __init__(self):
+    def __init__(self, current_airfoils: typing.List[str]):
         super().__init__(settings_file=os.path.join(GUI_DEFAULTS_DIR, 'xfoil_settings.json'))
         self.widget_dict['airfoil_analysis_dir']['widget'].setText(tempfile.gettempdir())
+        self.widget_dict["airfoil"]["widget"].addItems(current_airfoils)
 
     def calculate_and_set_Reynolds_number(self, new_inputs: dict):
         Re_widget = self.widget_dict['Re']['widget']
@@ -1787,10 +1790,10 @@ class GAGeneralSettingsDialogWidget(PymeadDialogWidget):
 
 
 class GAConstraintsTerminationDialogWidget(PymeadDialogWidget):
-    def __init__(self, mset_dialog_widget: MSETDialogWidget = None):
+    def __init__(self, geo_col: GeometryCollection, mset_dialog_widget: MSETDialogWidget = None):
         self.mset_dialog_widget = mset_dialog_widget
         super().__init__(settings_file=os.path.join(GUI_DEFAULTS_DIR, 'ga_constraints_termination_settings.json'),
-                         mset_dialog_widget=mset_dialog_widget)
+                         geo_col=geo_col, mset_dialog_widget=mset_dialog_widget)
 
     def select_data_file(self, line_edit: QLineEdit):
         select_data_file(parent=self.parent(), line_edit=line_edit)
@@ -2043,15 +2046,15 @@ class PymeadDialog(QDialog):
 
 
 class XFOILDialog(PymeadDialog):
-    def __init__(self, parent: QWidget, settings_override: dict = None):
-        self.w = XFOILDialogWidget()
+    def __init__(self, parent: QWidget, current_airfoils: typing.List[str], settings_override: dict = None):
+        self.w = XFOILDialogWidget(current_airfoils=current_airfoils)
         super().__init__(parent=parent, window_title="Single Airfoil Viscous Analysis", widget=self.w)
 
 
 class MultiAirfoilDialog(PymeadDialog):
     def __init__(self, parent: QWidget, geo_col: GeometryCollection, settings_override: dict = None):
         mset_dialog_widget = MSETDialogWidget2(geo_col=geo_col)
-        mset_dialog_widget.sigMEAChanged.connect(self.onMEAChanged)
+        # mset_dialog_widget.sigMEAChanged.connect(self.onMEAChanged)
         mses_dialog_widget = MSESDialogWidget(geo_col=geo_col)
         mplot_dialog_widget = MPLOTDialogWidget()
 
@@ -2062,8 +2065,8 @@ class MultiAirfoilDialog(PymeadDialog):
         widget = PymeadDialogVTabWidget(parent=None, widgets=tab_widgets, settings_override=settings_override)
         super().__init__(parent=parent, window_title="Multi-Element-Airfoil Analysis", widget=widget)
 
-    def onMEAChanged(self, new_mea_name: str):
-        print(f"{new_mea_name = }")
+    # def onMEAChanged(self, new_mea_name: str):
+    #     print(f"{new_mea_name = }")
 
 
 class SettingsDialog(QDialog):
@@ -2458,13 +2461,13 @@ class OptimizationDialogVTabWidget(PymeadDialogVTabWidget):
 
 
 class OptimizationSetupDialog(PymeadDialog):
-    def __init__(self, parent, design_tree_widget, settings_override: dict = None):
+    def __init__(self, parent, geo_col: GeometryCollection, settings_override: dict = None):
         w0 = GAGeneralSettingsDialogWidget()
-        w3 = XFOILDialogWidget()
-        w4 = MSETDialogWidget()
-        w2 = GAConstraintsTerminationDialogWidget(mset_dialog_widget=w4)
+        w3 = XFOILDialogWidget(current_airfoils=[k for k in geo_col.container()["airfoils"]])
+        w4 = MSETDialogWidget(geo_col=geo_col)
+        w2 = GAConstraintsTerminationDialogWidget(geo_col=geo_col, mset_dialog_widget=w4)
         w7 = MultiPointOptDialogWidget()
-        w5 = MSESDialogWidget(mset_dialog_widget=w4, design_tree_widget=design_tree_widget)
+        w5 = MSESDialogWidget(geo_col=geo_col)
         w1 = GeneticAlgorithmDialogWidget(multi_point_dialog_widget=w7)
         w6 = PymeadDialogWidget(os.path.join(GUI_DEFAULTS_DIR, 'mplot_settings.json'))
         w = OptimizationDialogVTabWidget(parent=self, widgets={'General Settings': w0,

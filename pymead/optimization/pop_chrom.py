@@ -1,5 +1,4 @@
 import os
-import time
 import typing
 from multiprocessing import Pool
 from multiprocessing.connection import Connection
@@ -7,69 +6,41 @@ from copy import deepcopy
 
 import numpy as np
 from benedict import benedict
+
+from pymead.core.airfoil import Airfoil
 from pymead.core.geometry_collection import GeometryCollection
 
-from pymead.core.mea import MEA
 from pymead.analysis.calc_aero_data import calculate_aero_data
+
 
 class CustomGASettings:
     pass
-# class CustomGASettings:
-#     def __init__(self,
-#                  population_size: int = os.cpu_count() - 1,
-#                  mutation_bounds: list or typing.Tuple[list] = ([-0.01, 0.01], [-0.05, 0.05], [-0.1, 0.1]),
-#                  mutation_methods: str or typing.Tuple[str] or None = ('random-reset', 'random-perturb'),
-#                  max_genes_to_mutate: int = 1,
-#                  mutation_probability: float = 0.05,
-#                  max_mutation_attempts_per_chromosome: int = 500,
-#                  ):
-#
-#         if population_size >= 1:
-#             self.population_size = population_size
-#         else:
-#             raise ValueError('population_size must be a positive integer')
-#
-#         if type(mutation_bounds) == list:
-#             self.mutation_bounds = (mutation_bounds,)
-#         else:
-#             self.mutation_bounds = mutation_bounds
-#
-#         if mutation_methods is not None:
-#             if type(mutation_methods) == str:
-#                 self.mutation_methods = (mutation_methods,)
-#             else:
-#                 self.mutation_methods = mutation_methods
-#             mutation_method_list = ['random-reset', 'random-perturb']
-#             if any(mutation_method not in mutation_method_list for mutation_method in self.mutation_methods):
-#                 raise ValueError(f'mutation_methods must be one of {mutation_method_list}')
-#         else:
-#             self.mutation_methods = mutation_methods
-#
-#         if max_genes_to_mutate >= 0:
-#             self.max_genes_to_mutate = max_genes_to_mutate
-#         else:
-#             raise ValueError('max_genes_to_mutate must be a non-negative integer')
-#
-#         if 0 <= mutation_probability <= 1:
-#             self.mutation_probability = mutation_probability
-#         else:
-#             raise ValueError('mutation_probability must be a valid probability (between 0 and 1, inclusive)')
-#
-#         if max_mutation_attempts_per_chromosome >= 0:
-#             self.max_mutation_attempts_per_chromosome = max_mutation_attempts_per_chromosome
-#         else:
-#             raise ValueError('max_mutation_attempts_per_chromosome must be greater than or equal to 0')
 
 
 class Chromosome:
-    def __init__(self, geo_col_deepcopy: GeometryCollection, param_dict_deepcopy: dict, mea_name: str, generation: int,
-                 population_idx: int, genes: list or None = None, verbose: bool = True):
+    def __init__(self, geo_col_dict: dict, param_dict: dict, generation: int,
+                 population_idx: int, mea_name: str = None, airfoil_name: str = None,
+                 genes: list or None = None, verbose: bool = True):
         """
         Chromosome class constructor. Each Chromosome is the member of a particular Population.
         """
-        self.geo_col = geo_col_deepcopy
-        self.mea = self.geo_col.container()["mea"][mea_name]
-        self.param_dict = param_dict_deepcopy
+        # Keyword argument validation
+        if mea_name is None and airfoil_name is None:
+            raise ValueError("Must specify either mea_name (for MSES) or airfoil_name (for XFOIL) for the Chromosome")
+        elif mea_name is not None and airfoil_name is not None:
+            raise ValueError("Must specify only one of mea_name (for MSES) or airfoil_name (for XFOIL) for the "
+                             "Chromosome")
+
+        self.geo_col_dict = geo_col_dict
+        self.geo_col = None
+        print(f"{mea_name = }, {airfoil_name = }")
+        self.mea_name = mea_name
+        self.airfoil_name = airfoil_name
+        self.mea = None
+        self.airfoil = None
+        self.airfoil_list = None
+
+        self.param_dict = deepcopy(param_dict)
         self.genes = deepcopy(genes)
         self.generation = generation
         self.population_idx = population_idx
@@ -92,47 +63,60 @@ class Chromosome:
         :return:
         """
         print(f"Generating {self.population_idx} with {os.getpid() = } from param_dict...")
+        self.geo_col = GeometryCollection.set_from_dict_rep(self.geo_col_dict)
+        self.mea = None if self.mea_name is None else self.geo_col.container()["mea"][self.mea_name]
+        self.airfoil = None if self.airfoil_name is None else self.geo_col.container()["airfoils"][self.airfoil_name]
+        self.airfoil_list = [self.airfoil] if self.airfoil is not None else self.mea.airfoils
         # self.mea_object = MEA.generate_from_param_dict(self.mea)
         # if deactivate_airfoil_graphs:
         #     self.mea_object.remove_airfoil_graphs()
         if self.verbose:
             print(f'Generating chromosome idx = {self.population_idx}, gen = {self.generation}')
         self.generate_airfoil_sys_from_genes()
-        self.chk_self_intersection()
-        for airfoil_name in self.mea_object.airfoils.keys():
+        line_strings = self.get_airfoil_line_strings()
+        airfoil_polygons = self.get_airfoil_polygons(line_strings)
+        self.chk_self_intersection(line_strings)
+        for airfoil in self.airfoil_list:
+            airfoil_name = airfoil.name()
             if self.valid_geometry:
-                if self.param_set['constraints'][airfoil_name]['min_radius_curvature'][1]:
+                if self.param_dict['constraints'][airfoil_name]['min_radius_curvature'][1]:
                     self.chk_min_radius(airfoil_name=airfoil_name)
             if self.valid_geometry:
-                if self.param_set['constraints'][airfoil_name]['min_val_of_max_thickness'][1]:
-                    self.chk_max_thickness(airfoil_name=airfoil_name)
+                if self.param_dict['constraints'][airfoil_name]['min_val_of_max_thickness'][1]:
+                    self.chk_max_thickness(line_strings[airfoil_name], airfoil_name=airfoil_name)
             if self.valid_geometry:
-                if self.param_set['constraints'][airfoil_name]['thickness_at_points'] is not None:
-                    self.check_thickness_at_points(airfoil_name=airfoil_name)
+                if self.param_dict['constraints'][airfoil_name]['thickness_at_points'] is not None:
+                    self.check_thickness_at_points(line_strings[airfoil_name], airfoil_name=airfoil_name)
             if self.valid_geometry:
-                if self.param_set['constraints'][airfoil_name]['min_area'][1]:
+                if self.param_dict['constraints'][airfoil_name]['min_area'][1]:
                     self.check_min_area(airfoil_name=airfoil_name)
             if self.valid_geometry:
-                if self.param_set['constraints'][airfoil_name]['internal_geometry'] is not None:
-                    if self.param_set['constraints'][airfoil_name]['internal_geometry_timing'] == 'Before Aerodynamic Evaluation':
-                        self.check_contains_points(airfoil_name=airfoil_name)
+                if self.param_dict['constraints'][airfoil_name]['internal_geometry'] is not None:
+                    if self.param_dict['constraints'][airfoil_name]['internal_geometry_timing'] == 'Before Aerodynamic Evaluation':
+                        self.check_contains_points(airfoil_polygons[airfoil_name], airfoil_name=airfoil_name)
                     else:
                         raise ValueError('Internal geometry timing after aerodynamic evaluation not yet implemented')
             if self.valid_geometry:
-                if self.param_set['constraints'][airfoil_name]['external_geometry'] is not None:
-                    if self.param_set['constraints'][airfoil_name]['external_geometry_timing'] == 'Before Aerodynamic Evaluation':
+                if self.param_dict['constraints'][airfoil_name]['external_geometry'] is not None:
+                    if self.param_dict['constraints'][airfoil_name]['external_geometry_timing'] == 'Before Aerodynamic Evaluation':
                         self.check_if_inside_points(airfoil_name=airfoil_name)
                     else:
                         raise ValueError('External geometry timing after aerodynamic evaluation not yet implemented')
-        self.coords = tuple([self.mea_object.airfoils[k].get_coords(
-            body_fixed_csys=False, as_tuple=True, downsample=self.param_set['mset_settings']["use_downsampling"],
-            ds_max_points=self.param_set['mset_settings']["downsampling_max_pts"],
-            ds_curve_exp=self.param_set['mset_settings']["downsampling_curve_exp"]
-        ) for k in self.param_set['mset_settings']['airfoil_order']])
-        self.control_points = [[c.P.tolist() for c in self.mea_object.airfoils[k].curve_list]
-                               for k in self.mea_object.airfoils.keys()]
-        self.airfoil_state = {k: {p: getattr(a, p).value for p in ['c', 'alf', 'dx', 'dy']} for k, a in self.mea_object.airfoils.items()}
-        self.mea_object = None
+        # self.control_points = [[c.P.tolist() for c in self.mea_object.airfoils[k].curve_list]
+        #                        for k in self.mea_object.airfoils.keys()]
+        # self.airfoil_state = {k: {p: getattr(a, p).value for p in ['c', 'alf', 'dx', 'dy']} for k, a in self.mea_object.airfoils.items()}
+        # self.mea_object = None
+
+    def get_coords(self):
+        if self.airfoil is not None:
+            coords = self.airfoil.get_coords_selig_format()
+        else:
+            coords = self.mea.get_coords_list(
+                downsample=self.param_dict['mset_settings']["use_downsampling"],
+                ds_max_points=self.param_dict['mset_settings']["downsampling_max_pts"],
+                ds_curve_exp=self.param_dict['mset_settings']["downsampling_curve_exp"]
+            )
+        return coords
 
     def generate_airfoil_sys_from_genes(self) -> dict:
         """
@@ -140,31 +124,40 @@ class Chromosome:
         :return:
         """
         if self.genes is not None:
-            self.mea_object.update_parameters(self.genes)
+            self.geo_col.assign_design_variable_values(dv_values=self.genes, bounds_normalized=True)
             self.update_param_dict()  # updates the MSES settings from the geometry (just for XCDELH right now)
-        else:
-            self.coords = tuple([self.mea_object.airfoils[k].get_coords(
-                body_fixed_csys=False, as_tuple=True) for k in self.param_set['mset_settings']['airfoil_order']])
+        self.coords = self.get_coords()
         self.airfoil_sys_generated = True
-        return self.param_set
+        return self.param_dict
 
     def update_param_dict(self):
-        if self.param_set["tool"] != "MSES":
+        if self.param_dict["tool"] != "MSES":
             return
-        dben = benedict(self.mea_object.param_dict)
-        for idx, from_geometry in enumerate(self.param_set['mses_settings']['from_geometry']):
+        dben = benedict(self.param_dict)
+        for idx, from_geometry in enumerate(self.param_dict['mses_settings']['from_geometry']):
             for k, v in from_geometry.items():
-                self.param_set['mses_settings'][k][idx] = dben[v.replace('$', '')].value
+                self.param_dict['mses_settings'][k][idx] = dben[v.replace('$', '')].value
 
-    def chk_self_intersection(self) -> bool:
+    def get_airfoil_line_strings(self):
+        line_strings = {}
+        for airfoil in self.airfoil_list:
+            line_strings[airfoil.name()] = Airfoil.create_line_string(
+                Airfoil.convert_coords_to_shapely_format(airfoil.coords))
+        return line_strings
+
+    @staticmethod
+    def get_airfoil_polygons(line_strings: dict):
+        return {k: Airfoil.create_shapely_polygon(v) for k, v in line_strings.items()}
+
+    def chk_self_intersection(self, line_strings: dict) -> bool:
         """
         Checks if airfoil geometry is self-intersecting
         :return: Boolean flag
         """
         try:
             if self.airfoil_sys_generated:
-                for airfoil in self.mea_object.airfoils.values():  # For each airfoil,
-                    self_intersecting = airfoil.check_self_intersection()
+                for airfoil in self.airfoil_list:  # For each airfoil,
+                    self_intersecting = airfoil.check_self_intersection(line_strings[airfoil.name()])
                     if self_intersecting:  # If the intersection array is not empty (& thus there is a
                         # self-intersection somewhere),
                         self_intersection_flag = True  # Set self-intersection flag to True
@@ -184,17 +177,19 @@ class Chromosome:
 
     def chk_min_radius(self, airfoil_name: str) -> bool:
         if self.airfoil_sys_generated:
-            min_radius = self.mea_object.airfoils[airfoil_name].compute_min_radius()
-            min_radius_too_small = min_radius < self.param_set['constraints'][airfoil_name]['min_radius_curvature'][0]
+            min_radius = self.geo_col.container()["airfoils"][airfoil_name].compute_min_radius()
+            min_radius_too_small = min_radius < self.param_dict['constraints'][airfoil_name]['min_radius_curvature'][0]
             self.valid_geometry = not min_radius_too_small
             # if self.verbose:
             #     print(f'Min radius of curvature too small? {min_radius_too_small}. Min radius is {min_radius}')
             return min_radius_too_small
 
-    def chk_max_thickness(self, airfoil_name: str) -> bool:
+    def chk_max_thickness(self, line_string, airfoil_name: str) -> bool:
         if self.airfoil_sys_generated:
-            _, _, max_thickness = self.mea_object.airfoils[airfoil_name].compute_thickness()
-            if max_thickness < self.param_set['constraints'][airfoil_name]['min_val_of_max_thickness'][0]:
+            thickness_data = self.geo_col.container()["airfoils"][airfoil_name].compute_thickness(
+                line_string)
+            max_thickness = thickness_data["t/c_max"]
+            if max_thickness < self.param_dict['constraints'][airfoil_name]['min_val_of_max_thickness'][0]:
                 max_thickness_too_small = True
             else:
                 max_thickness_too_small = False
@@ -214,12 +209,13 @@ class Chromosome:
         else:
             raise Exception('Airfoil system has not yet been generated. Aborting self-intersection check.')
 
-    def check_thickness_at_points(self, airfoil_name: str):
+    def check_thickness_at_points(self, line_string, airfoil_name: str):
         if self.airfoil_sys_generated:
-            thickness_array = np.array(self.param_set['constraints'][airfoil_name]['thickness_at_points'])
+            thickness_array = np.array(self.param_dict['constraints'][airfoil_name]['thickness_at_points'])
             x_over_c_array = thickness_array[:, 0]
             t_over_c_array = thickness_array[:, 1]
-            thickness = self.mea_object.airfoils[airfoil_name].compute_thickness_at_points(x_over_c_array)
+            thickness = self.geo_col.container()["airfoils"][airfoil_name].compute_thickness_at_points(
+                line_string, x_over_c_array)
             if np.any(thickness < t_over_c_array):
                 if self.verbose:
                     print(f"Minimum required thickness condition not met at some point. Trying again")
@@ -231,24 +227,25 @@ class Chromosome:
         else:
             raise Exception('Airfoil system has not yet been generated. Aborting self-intersection check.')
 
-    def check_min_area(self, airfoil_name: str):
+    def check_min_area(self, airfoil_polygon, airfoil_name: str):
         if self.airfoil_sys_generated:
-            area = self.mea_object.airfoils[airfoil_name].compute_area()
-            if area < self.param_set['constraints'][airfoil_name]['min_area'][0]:
+            area = self.geo_col.container()["airfoils"][airfoil_name].compute_area(airfoil_polygon)
+            if area < self.param_dict['constraints'][airfoil_name]['min_area'][0]:
                 if self.verbose:
-                    print(f'Area is {area} < required min. area ({self.param_set["min_area"]}). Trying again...')
+                    print(f'Area is {area} < required min. area ({self.param_dict["min_area"]}). Trying again...')
                 self.valid_geometry = False
             else:
                 if self.verbose:
-                    print(f'Area is {area} >= minimum req. area ({self.param_set["min_area"]}) [success]. '
+                    print(f'Area is {area} >= minimum req. area ({self.param_dict["min_area"]}) [success]. '
                           f'Continuing...')
                 self.valid_geometry = True
         else:
             raise Exception('Airfoil system has not yet been generated. Aborting self-intersection check.')
 
-    def check_contains_points(self, airfoil_name: str) -> bool:
+    def check_contains_points(self, airfoil_polygon, airfoil_name: str) -> bool:
         if self.airfoil_sys_generated:
-            if not self.mea_object.airfoils[airfoil_name].contains_line_string(self.param_set['constraints'][airfoil_name]['internal_geometry']):
+            if not self.geo_col.container()["airfoils"][airfoil_name].contains_line_string(
+                    airfoil_polygon, self.param_dict['constraints'][airfoil_name]['internal_geometry']):
                 self.valid_geometry = False
                 return self.valid_geometry
         self.valid_geometry = True
@@ -256,9 +253,11 @@ class Chromosome:
 
     def check_if_inside_points(self, airfoil_name: str) -> bool:
         if self.airfoil_sys_generated:
-            if not self.mea_object.airfoils[airfoil_name].within_line_string_until_point(self.param_set['constraints'][airfoil_name]['external_geometry'],
-                                                                          self.param_set['cutoff_point'],
-                                                                          self.param_set['ext_transform_kwargs']):
+            if not self.geo_col.container()["airfoils"][airfoil_name].within_line_string_until_point(
+                    self.param_dict['constraints'][airfoil_name]['external_geometry'],
+                    self.param_dict['cutoff_point'],
+                    self.param_dict['ext_transform_kwargs']
+            ):
                 self.valid_geometry = False
                 return self.valid_geometry
         self.valid_geometry = True
@@ -267,18 +266,16 @@ class Chromosome:
 
 class Population:
     def __init__(self, param_dict: dict, generation: int,
-                 parents: typing.List[Chromosome] or None, mea: dict, verbose: bool = True,
+                 parents: typing.List[Chromosome] or None, verbose: bool = True,
                  skip_parent_assignment: bool = False):
-        self.param_set = deepcopy(param_dict)
-        self.mea = deepcopy(mea)
+        self.param_dict = deepcopy(param_dict)
         self.generation = generation
         self.verbose = verbose
         self.population = []
         self.parent_indices = []
         self.converged_chromosomes = []
-        self.parents = deepcopy(parents)
         if not skip_parent_assignment:
-            for population_idx, chromosome in enumerate(self.parents):
+            for population_idx, chromosome in enumerate(parents):
                 chromosome.population_idx = population_idx
                 self.population.append(chromosome)
                 # self.parents.append(chromosome)
@@ -302,25 +299,32 @@ class Population:
                 print(f'Chromosome {chromosome.population_idx + 1} '
                       f'(generation: {chromosome.generation}): Evaluating fitness...')
             xfoil_settings, mset_settings, mses_settings, mplot_settings = None, None, None, None
-            if chromosome.param_set['tool'] == 'XFOIL':
+            if chromosome.param_dict['tool'] == 'XFOIL':
                 tool = 'XFOIL'
-                xfoil_settings = chromosome.param_set['xfoil_settings']
-            elif chromosome.param_set['tool'] == 'MSES':
+                xfoil_settings = chromosome.param_dict['xfoil_settings']
+            elif chromosome.param_dict['tool'] == 'MSES':
                 tool = 'MSES'
-                mset_settings = chromosome.param_set['mset_settings']
-                mses_settings = chromosome.param_set['mses_settings']
-                mplot_settings = chromosome.param_set['mplot_settings']
+                mset_settings = chromosome.param_dict['mset_settings']
+                mses_settings = chromosome.param_dict['mses_settings']
+                mplot_settings = chromosome.param_dict['mplot_settings']
             else:
                 raise ValueError('Only XFOIL and MSES are supported as tools in the optimization framework')
 
-            chromosome.forces, _ = calculate_aero_data(chromosome.param_set['base_folder'],
-                                                       chromosome.param_set['name'][chromosome.population_idx],
+            chromosome.forces, _ = calculate_aero_data(chromosome.param_dict['base_folder'],
+                                                       chromosome.param_dict['name'][chromosome.population_idx],
                                                        coords=chromosome.coords, tool=tool,
                                                        xfoil_settings=xfoil_settings,
                                                        mset_settings=mset_settings,
                                                        mses_settings=mses_settings,
                                                        mplot_settings=mplot_settings,
                                                        export_Cp=True)
+
+            # Here, we remove the data attribute from the chromosome, since "data" includes a non-serializable
+            # JIT-compiled equation set. Without these two lines, an error is raised when trying to send data across
+            # the pipe
+            for cnstr in chromosome.geo_col.container()["geocon"].values():
+                cnstr.data = None
+
             if (xfoil_settings is not None and xfoil_settings["multi_point_stencil"] is None) or (
                     mses_settings is not None and mses_settings['multi_point_stencil'] is None):
                 if chromosome.forces['converged'] and not chromosome.forces['errored_out'] \
@@ -348,7 +352,7 @@ class Population:
 
     def generate_chromosomes_parallel(self):
         print("Generating chromosomes in parallel...")
-        with Pool(processes=self.param_set['num_processors']) as pool:
+        with Pool(processes=self.param_dict['num_processors']) as pool:
             result = pool.map(self.generate_chromosome, self.population)
         for chromosome in result:
             self.population = [chromosome if c.population_idx == chromosome.population_idx
@@ -359,11 +363,12 @@ class Population:
         Evaluates the fitness of the population using parallel processing
         """
         n_eval = 0
-        with Pool(processes=self.param_set['num_processors']) as pool:
+        with Pool(processes=self.param_dict['num_processors']) as pool:
             result = pool.imap_unordered(self.eval_chromosome_fitness, self.population)
             if self.verbose:
                 print(f'result = {result}')
             for chromosome in result:
+
                 if chromosome.fitness is not None:
                     self.converged_chromosomes.append(chromosome)
                 n_converged_chromosomes = len(self.converged_chromosomes)
@@ -371,8 +376,8 @@ class Population:
                 print(f"{n_converged_chromosomes = }")
 
                 gen = 1 if self.generation == 0 else self.generation
-                status_bar_message = f"Generation {gen} of {self.param_set['n_max_gen']}: Converged " \
-                                     f"{n_converged_chromosomes} of {self.param_set['population_size']} chromosomes. " \
+                status_bar_message = f"Generation {gen} of {self.param_dict['n_max_gen']}: Converged " \
+                                     f"{n_converged_chromosomes} of {self.param_dict['population_size']} chromosomes. " \
                                      f"Total evaluations: {n_eval}\n"
 
                 if sig is not None:
@@ -383,7 +388,7 @@ class Population:
                 else:
                     print(status_bar_message)
 
-                if n_converged_chromosomes >= self.param_set["population_size"]:
+                if n_converged_chromosomes >= self.param_dict["population_size"]:
                     break
 
         for chromosome in self.converged_chromosomes:

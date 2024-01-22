@@ -30,7 +30,8 @@ class MEA(PymeadObj):
     def remove_airfoil(self, airfoil: Airfoil):
         self.airfoils.remove(airfoil)
 
-    def get_coords_list(self):
+    def get_coords_list(self, downsample: bool = False, ds_max_points: int = 100, ds_curve_exp: float = 2.0):
+        # TODO: implement downsampling here
         return [airfoil.get_coords_selig_format() for airfoil in self.airfoils]
 
     def write_mses_blade_file(self,
@@ -84,7 +85,7 @@ class MEA(PymeadObj):
         """
         bez_IGES_entities = [
             [BezierIGES(np.column_stack((c.P[:, 0], np.zeros(len(c.P)), c.P[:, 1]))) for c in a.curve_list]
-            for a in self.airfoils.values()]
+            for a in self.airfoils]
         entities_flattened = list(itertools.chain.from_iterable(bez_IGES_entities))
         iges_generator = IGESGenerator(entities_flattened)
         iges_generator.generate(file_name)
