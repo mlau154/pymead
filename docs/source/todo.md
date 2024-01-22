@@ -40,6 +40,7 @@ Bug fixes
 - XFOIL cp not working?
 - Fix blank line in Objective/Constraint setup not reverting to background color after editing and erasing
 - Remove wave/viscous drag from XFOIL drag history plots (optimization)
+- Fix symmetry constraint having switched target/tool points (perhaps automatically create the mirror point?)
 
 Testing
 -------
