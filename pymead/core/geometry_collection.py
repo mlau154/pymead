@@ -1,22 +1,30 @@
+import os
 import re
 import sys
 import typing
-from copy import deepcopy
 
 from pymead.core.airfoil import Airfoil
 from pymead.core.bezier import Bezier
 from pymead.core.constraints import *
-from pymead.core.constraint_graph import ConstraintGraph, EquationData, OverConstrainedError
+from pymead.core.constraint_graph import ConstraintGraph, OverConstrainedError
 from pymead.core.dimensions import LengthDimension, AngleDimension, Dimension
 from pymead.core.mea import MEA
 from pymead.core.pymead_obj import DualRep, PymeadObj
 from pymead.core.line import LineSegment
 from pymead.core.param import Param, LengthParam, AngleParam, DesVar, LengthDesVar, AngleDesVar
 from pymead.core.point import Point, PointSequence
+from pymead.core.transformation import Transformation3D
+from pymead.plugins.IGES.curves import BezierIGES
+from pymead.plugins.IGES.iges_generator import IGESGenerator
 
 
 class GeometryCollection(DualRep):
     def __init__(self):
+        """
+        The geometry collection is the primary class in pymead for housing all the available fundamental geometry
+        types. Geometry, parameters, and constraints can be added using the nomenclature ``add_<object-name>()``.
+        For example, points can be added using ``geo_col.add_point(x=<x-value>, y=<y-value>)``.
+        """
         self._container = {
             "desvar": {},
             "params": {},
@@ -926,3 +934,65 @@ class GeometryCollection(DualRep):
             geo_col.add_mea(airfoils=[geo_col.container()["airfoils"][k] for k in mea_dict["airfoils"]],
                             name=name, assign_unique_name=False)
         return geo_col
+
+    def write_to_iges(self, base_dir: str, file_name: str, translation: typing.List[float] = None,
+                      scaling: typing.List[float] = None, rotation: typing.List[float] = None,
+                      transformation_order: str = None):
+        """
+        Writes all the Bézier curves in the geometry collection to an IGES file.
+
+        Parameters
+        ----------
+        base_dir: str
+            Directory where the IGES file will be stored
+
+        file_name: str
+            Name of the IGES file (should include the .igs extension)
+
+        translation: typing.List[float]
+            How to translate the curves from the X-Z plane (in the form [tx, ty, tz])
+
+        scaling: typing.List[float]
+            How to scale the curves from the X-Z plane (in the form [sx, sy, sz])
+
+        rotation: typing.List[float]
+            How to rotate the curves from the X-Z plane (in the form [rx, ry, rz])
+
+        transformation_order: str
+            Order in which the transformation takes place
+        """
+
+        # Create the full file path
+        full_file = os.path.join(base_dir, file_name)
+
+        # Grab the control points for each Bézier curve in the geometry collection
+        control_point_list = [curve.point_sequence().as_array() for curve in self.container()["bezier"].values()]
+
+        # Create the transformation object
+        translation = [0., 0., 0.] if translation is None else translation
+        scaling = [1., 1., 1.] if scaling is None else scaling
+        rotation = [0., 0., 0.] if rotation is None else rotation
+        transformation_order = "rx,ry,rz,s,t" if transformation_order is None else transformation_order
+        transform_3d = Transformation3D(tx=[translation[0]], ty=[translation[1]], tz=[translation[2]],
+                                        sx=[scaling[0]], sy=[scaling[1]], sz=[scaling[2]],
+                                        rx=[rotation[0]], ry=[rotation[1]], rz=[rotation[2]],
+                                        rotation_units="deg",
+                                        order=transformation_order)
+
+        # Add a third dimension by inserting a vector of zeros to the matrix
+        cp_list_3d = []
+        for cp in control_point_list:
+            cp = np.insert(cp, 1, 0, axis=1)
+            cp_list_3d.append(cp)
+
+        # Transform the points
+        transformed_cp_list = [transform_3d.transform(P) for P in cp_list_3d]
+
+        # Create the list of IGES Bezier objects
+        bez_IGES_list = [BezierIGES(P) for P in transformed_cp_list]
+
+        # Generate the IGES file
+        iges_generator = IGESGenerator(bez_IGES_list)
+        iges_generator.generate(full_file)
+
+        return full_file
