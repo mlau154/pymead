@@ -7,10 +7,9 @@ Documentation can be found [here](https://pymead.readthedocs.io/en/latest/).
 
 ## Welcome
 To the documentation page for `pymead`, an object-oriented Python 3 package for single- and multi-element
-Bézier-parametrized airfoil design. This Bézier parametrization framework is being presented at the 2022 AIAA Aviation
-Conference in Chicago, IL under the title "A Parametrization Framework for Multi-Element Airfoil Systems Using Bézier Curves."
-
-![Image](https://raw.githubusercontent.com/mlau154/pymead/master/docs/images/complex_1.png)
+parametric airfoil design. This Bézier parametrization framework was first presented at the 2022 AIAA Aviation
+Conference in Chicago, IL under the title 
+"A Parametrization Framework for Multi-Element Airfoil Systems Using Bézier Curves."
 
 ## Motivation
 
@@ -21,42 +20,34 @@ multi-element airfoil system is comprised of a main airfoil (either the fuselage
 airfoil (representing the cross-section of an axisymmetric hub), and a nacelle airfoil (representing the cross-section
 of an axisymmetric nacelle).
 
-![Image](https://raw.githubusercontent.com/mlau154/pymead/master/docs/pai.png)
+## How It Works
 
 By using a well-defined parametrization framework, this airfoil system can be morphed or deformed in a variety of
-ways simply by changing the value of any of the input parameters. These parameters are represented by
-`pyairpar.core.param.Param` objects in this framework. Defining the airfoil system in this way provides an
-intuitive I/O interface for shape optimization or parametric sweeps.
+using changes in high-level design variables. These design variables are represented by
+`pymead.core.param.DesVar` objects in this framework, which have modifiable lower and upper bounds for optimization. 
+This facilitates aerodynamic analysis, parametric sweeps, and even shape optimization.
 
-In `pyairpar`, airfoils are comprised of a set of connected, arbitrary-order Bézier curves. Because Bézier curves have
-the property that they always pass through their starting and ending control points, Bézier curve "joints" can be used
-to force the airfoil surface to pass through a particular point in space. `pyairpar` forces all Bézier curve joints
-within an airfoil to be G<sup>0</sup>, G<sup>1</sup>, and G<sup>2</sup> continuous, which is useful in general for surface
-smoothness and in particular for computational fluid dynamics (CFD) packages where a discontinuity in the curvature
-value at a point can cause undesired flow properties or even unconverged results.
+`pymead` has both an application programming interface (API) and a graphical user interface (GUI), either of which
+can be used to define airfoil geometries from basic geometries (like points, lines, and curves), implement
+geometric constraints, perform analysis using wrappers for XFOIL and MSES, and even execute aerodynamic or
+aero-propulsive shape optimization studies.
 
 ## Applications
 
-It is the hope of the author that `pyairpar` is sufficiently flexible to be used for airfoil applications of
+It is the hope of the author that `pymead` is sufficiently flexible to be used for airfoil applications of
 varying complexities, from simple, single-airfoil design to high-fidelity, multi-element airfoil shape optimization.
 Other common multi-element airfoil systems, such as the high-lift configuration on an aircraft, are also target
 applications for this software package.
 
-![Image](https://raw.githubusercontent.com/mlau154/pymead/master/docs/high_lift.png)
-
 One utility provided in this software package which may be useful in the start-up phase of airfoil design is
-`pyairpar.utils.airfoil_matching.match_airfoil()`. This modules allows the matching of a particular parametrization
+`pymead.utils.airfoil_matching.match_airfoil()`. This modules allows the matching of a particular parametrization
 to any public airfoil geometry at [airfoiltools.com](http://airfoiltools.com/) using the gradient-based "SLSQP"
 optimizer.
-
-![Image](https://raw.githubusercontent.com/mlau154/pymead/master/docs/sd7062_matching.png)
 
 ## Acknowledgments
 
 This work was supported by NASA under award number 80NSSC19M0125 as part of the Center for High-Efficiency Electrical
-Technologies for Aircraft (CHEETA). Logo courtesy of [NASA](https://www.nasa.gov/).
-
-![Image](https://raw.githubusercontent.com/mlau154/pymead/master/docs/nasa_cheeta_logo.png)
+Technologies for Aircraft (CHEETA).
 
 ## Contact Information
 
@@ -65,6 +56,10 @@ Technologies for Aircraft (CHEETA). Logo courtesy of [NASA](https://www.nasa.gov
 **Email**: mlauer2015@gmail.com
 
 ## Version Notes
+
+### 2.0.0-alpha.0+
+
+- Version notes have migrated to [pymead's GitHub releases page](https://github.com/mlau154/pymead/releases)
 
 ### 1.1.1
 
