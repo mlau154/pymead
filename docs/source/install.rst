@@ -7,8 +7,10 @@ Installation methods
 
 There are several easy ways to install pymead:
 
-Method 1: Windows Installer
----------------------------
+Method 1: Windows Installer/Linux Tarball (GUI Only)
+----------------------------------------------------
+
+**Windows**
 
 For users merely wishing to use pymead rather than develop pymead, this is the recommended install method.
 Go to the `release page on GitHub <https://github.com/mlau154/pymead/releases>`_ and download the ``.exe``
@@ -17,8 +19,21 @@ to install pymead. For this install method, neither Python nor any of the "requi
 necessary to run the pymead executable. Only the "optional_" dependencies are necessary to run
 some commands in pymead.
 
-Method 2: ``pip``
------------------
+To run pymead, double-click on the pymead program created in the selected install location. Alternatively,
+type *pymead* in the Windows search bar and press enter.
+
+**Linux**
+
+Follow similar steps to the procedure for Windows, except download the ``.tar.gz`` file instead of the
+``.exe`` file. Then, move the tarball to the desired location and extract it in that location using
+
+.. code-block::
+
+  tar -xvzf <pymead-tarball-name.tar.gz>
+
+
+Method 2: ``pip`` (GUI + API)
+-----------------------------
 Use ``pip`` to install the latest stable version of pymead into the environment from the Python Package Index (PyPi):
 
 .. code-block::
@@ -26,15 +41,39 @@ Use ``pip`` to install the latest stable version of pymead into the environment 
   pip install pymead
 
 This method automatically installs all required dependencies that are not yet installed. It also
-allows the user to easily update pymead if desired when a new version is available.
+allows the user to easily update pymead if desired when a new version is available. To update pymead, use
 
-Method 3: IDE
--------------
+.. code-block::
+
+  pip install pymead --upgrade
+
+The pymead GUI can be started from any directory where pymead is installed by running the following command in the
+terminal (use ``python3`` instead of ``py`` for Linux):
+
+.. code-block::
+
+  py -m pymead.gui.gui
+
+Most of the API elements are stored in ``pymead.core``. For example, to create a geometry collection (the main
+container in the pymead API), and add a point at :math:`x=0.5`, :math:`y=0.3`, run the following lines in a ``.py``
+script or in a Python console:
+
+.. code-block:: python
+
+  from pymead.core.geometry_collection import GeometryCollection
+  geo_col = GeometryCollection()
+  geo_col.add_point(0.5, 0.3)
+
+
+Method 3: IDE (GUI + API)
+-------------------------
 Some IDEs, like `PyCharm <https://www.jetbrains.com/pycharm/>`_, have a plugin for ``pip``. In PyCharm,
-simply search for and install "pymead" in the "Python Packages" tab.
+simply search for and install "pymead" in the "Python Packages" tab. Follow similar steps as Method 2 for
+accessing the GUI and the API. Alternatively, to start the GUI, it is possible to simply click on the
+file called ``gui.py`` inside ``pymead/gui``, right-click, and press run.
 
-Method 4: Local install
------------------------
+Method 4: Local Install (DEV: GUI+API)
+-----------------------------------------
 This method is recommended for those wishing to contribute to pymead in any capacity.
 The pymead package can be installed in a local location using `Git <https://gitforwindows.org/>`_.
 To accomplish this, first clone the directory using

@@ -88,7 +88,7 @@ def write_iss_file(iss_file: str, version: str, app_name: str, logo_path: str, o
         iss.write("\n".join(lines))
 
 
-def run():
+def run(create_installer: bool = True):
     # Check dependencies
     check_dependencies()
 
@@ -157,4 +157,4 @@ def run():
 
 
 if __name__ == "__main__":
-    run()
+    run(create_installer=True)

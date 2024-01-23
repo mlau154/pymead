@@ -10,7 +10,6 @@ a = Analysis(
     binaries=[],
     datas=[('gui_settings/defaults/*.json', 'pymead/gui/gui_settings/defaults/'),
     ('gui_settings/themes/*.json', 'pymead/gui/gui_settings/themes/'),
-    ('../core/symmetry.py', 'pymead/core/'),
     ('gui_settings/*.json', 'pymead/gui/gui_settings/'),
     ('default_airfoil/*.jmea', 'pymead/gui/default_airfoil/'),
     ('../icons/*.png', 'pymead/icons/'),
