@@ -40,6 +40,8 @@ Bug fixes
 - Fix blank line in Objective/Constraint setup not reverting to background color after editing and erasing
 - Remove wave/viscous drag from XFOIL drag history plots (optimization)
 - Fix symmetry constraint having switched target/tool points (perhaps automatically create the mirror point?)
+- Airfoil comboboxes not properly updating when an optimization settings file is loaded without a GeometryCollection
+  present
 
 Testing
 -------
