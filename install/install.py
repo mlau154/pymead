@@ -122,6 +122,9 @@ def run(create_installer: bool = True):
         print("Copying executable...")
         shutil.copy(os.path.join(exe_dir, exe_name), install_dir)
 
+        if not create_installer:
+            return
+
         # Run the installer compiler
         print("Writing ISS file...")
         write_iss_file(iss_file=iss_file,
