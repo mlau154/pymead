@@ -5,6 +5,7 @@ Use py -m build from the root directory to build
 Use twine check dist/* to check the distribution
 Use twine upload --repository testpypi dist/* to upload to TestPyPi
 Use twine upload dist/* to upload to PyPi
+Use pip install --extra-index-url https://test.pypi.org/simple/ pymead==2.0.0a23 to test the install
 """
 
 import os

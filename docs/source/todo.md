@@ -42,6 +42,7 @@ Bug fixes
 - Fix symmetry constraint having switched target/tool points (perhaps automatically create the mirror point?)
 - Airfoil comboboxes not properly updating when an optimization settings file is loaded without a GeometryCollection
   present
+- Toggle grid affects all the dock widgets
 
 Testing
 -------

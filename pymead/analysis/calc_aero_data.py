@@ -329,7 +329,20 @@ def run_xfoil(airfoil_name: str, base_dir: str, xfoil_settings: dict, coords: np
     if 'N' not in xfoil_settings.keys():
         xfoil_settings['N'] = 9.0
     f = os.path.join(base_dir, airfoil_name + ".dat")
-    np.savetxt(f, coords)
+
+    # Attempt to save the file
+    save_attempts = 0
+    max_save_attempts = 100
+    while True:
+        save_attempts += 1
+        if save_attempts > max_save_attempts:
+            raise ValueError("Exceeded the maximum number of allowed coordinate file save attempts")
+        try:
+            np.savetxt(f, coords)
+            break
+        except OSError:
+            time.sleep(0.01)
+
     xfoil_input_file = os.path.join(base_dir, 'xfoil_input.txt')
     xfoil_input_list = ['', 'oper', f'iter {xfoil_settings["iter"]}', 'visc', str(xfoil_settings['Re']),
                         f'M {xfoil_settings["Ma"]}',
