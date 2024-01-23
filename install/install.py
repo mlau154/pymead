@@ -1,3 +1,12 @@
+"""
+For uploading to TestPyPi:
+
+Use py -m build from the root directory to build
+Use twine check dist/* to check the distribution
+Use twine upload --repository testpypi dist/* to upload to TestPyPi
+Use twine upload dist/* to upload to PyPi
+"""
+
 import os
 import shutil
 import platform
