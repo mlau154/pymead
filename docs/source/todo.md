@@ -3,7 +3,6 @@ Developer To-Dos
 
 Installation upgrades
 ---------------------
-- Add pip install option
 - Add `apt` package in Linux
 - Add macOS support?
 

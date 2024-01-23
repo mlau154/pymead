@@ -960,6 +960,11 @@ class GeometryCollection(DualRep):
 
         transformation_order: str
             Order in which the transformation takes place
+
+        Returns
+        -------
+        str
+            The full file path to the created IGES file
         """
 
         # Create the full file path

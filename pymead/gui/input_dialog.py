@@ -37,6 +37,7 @@ from pymead import GUI_DEFAULTS_DIR, GUI_DIALOG_WIDGETS_DIR, q_settings
 import pyqtgraph as pg
 from PyQt5.QtWidgets import QMenu, QAction
 from PyQt5.QtGui import QContextMenuEvent
+from pymead import GUI_DIALOG_WIDGETS_DIR
 
 
 mses_settings_json = load_data(os.path.join(GUI_DEFAULTS_DIR, 'mses_settings.json'))
@@ -2697,7 +2698,7 @@ class ExportIGESDialog(QDialog):
         buttonBox.rejected.connect(self.reject)
 
     def setInputs(self):
-        widget_dict = load_data(os.path.join('dialog_widgets', 'export_IGES.json'))
+        widget_dict = load_data(os.path.join(GUI_DIALOG_WIDGETS_DIR, "export_IGES.json"))
         for row_name, row_dict in widget_dict.items():
             self.grid_widget[row_name] = {}
             for w_name, w_dict in row_dict.items():
