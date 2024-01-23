@@ -1047,7 +1047,9 @@ class GUI(QMainWindow):
             #     self.text_area.insertHtml(prepend_html)
             # self.text_area.insertPlainText(text)
             line_break = "<br>" if line_break else ""
-            self.text_area.insertHtml(f'<body><p>{text}{line_break}</p></body>')
+
+            # Note: the "pre" tag prevents whitespace collapse
+            self.text_area.insertHtml(f'<body><pre><p>{text}{line_break}</p></pre></body>')
         elif mode == 'html':
             self.text_area.insertHtml(text)
         else:

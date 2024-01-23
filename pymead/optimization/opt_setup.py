@@ -248,7 +248,7 @@ class CustomDisplay(Display):
             g_min = [G[:, i].min() for i in range(G.shape[1])]
             # cv_min = CV[:, 0].min()
             g_mean = [np.mean(G[:, i]) for i in range(G.shape[1])]
-        self.output.append("n_nds", n_nds, width=27)
+        self.output.append("n_nds", n_nds, width=7)
         self.term.do_continue(algorithm)
 
         max_from, eps = "-", "-"

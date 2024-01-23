@@ -79,7 +79,6 @@ class TextCallback(OptCallback):
         # self.parent.output_area_text("\n")
         self.parent.closer = self.generate_closer(len(t))
         if self.completed:
-            print("Completed!")
             self.parent.output_area_text(f"{self.generate_closer(len(t))}", line_break=True)
             # self.parent.output_area_text("\n")
 

@@ -320,7 +320,7 @@ def calculate_aero_data(airfoil_coord_dir: str, airfoil_name: str, coords: typin
         return aero_data, logs
 
 
-def run_xfoil(airfoil_name: str, base_dir: str, xfoil_settings: dict, coords: typing.Tuple[tuple],
+def run_xfoil(airfoil_name: str, base_dir: str, xfoil_settings: dict, coords: np.ndarray,
               export_Cp: bool = True):
     aero_data = {}
 
@@ -329,12 +329,7 @@ def run_xfoil(airfoil_name: str, base_dir: str, xfoil_settings: dict, coords: ty
     if 'N' not in xfoil_settings.keys():
         xfoil_settings['N'] = 9.0
     f = os.path.join(base_dir, airfoil_name + ".dat")
-    if np.ndim(coords) == 2:
-        write_tuple_tuple_to_file(f, coords)
-    elif np.ndim(coords) == 3:
-        write_tuple_tuple_to_file(f, coords[0])
-    else:
-        raise ValueError("Found coordinate set with dimension other than 2 or 3")
+    np.savetxt(f, coords)
     xfoil_input_file = os.path.join(base_dir, 'xfoil_input.txt')
     xfoil_input_list = ['', 'oper', f'iter {xfoil_settings["iter"]}', 'visc', str(xfoil_settings['Re']),
                         f'M {xfoil_settings["Ma"]}',

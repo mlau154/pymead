@@ -40,7 +40,7 @@ def shape_optimization(conn: mp.connection.Connection or None, param_dict: dict,
 
     def start_message(warm_start: bool):
         first_word = "Resuming" if warm_start else "Beginning"
-        return f"\n{first_word} aerodynamic shape optimization with {param_dict['num_processors']} processors...\n"
+        return f"\n{first_word} aerodynamic shape optimization with {param_dict['num_processors']} processors..."
 
     def write_force_dict_to_file(forces_dict, file_name: str):
         forces_temp = deepcopy(forces_dict)
@@ -86,7 +86,7 @@ def shape_optimization(conn: mp.connection.Connection or None, param_dict: dict,
     parameter_list = geo_col.extract_design_variable_values(bounds_normalized=True)
     num_parameters = len(parameter_list)
 
-    send_over_pipe(("text", f"Number of active and unlinked design variables: {num_parameters}\n"))
+    send_over_pipe(("text", f"Number of active and unlinked design variables: {num_parameters}"))
 
     problem = TPAIOPT(n_var=param_dict['n_var'], n_obj=param_dict['n_obj'], n_constr=param_dict['n_constr'],
                       xl=param_dict['xl'], xu=param_dict['xu'], param_dict=param_dict)
@@ -316,6 +316,8 @@ def shape_optimization(conn: mp.connection.Connection or None, param_dict: dict,
 
         send_over_pipe(("opt_progress", {"text": algorithm.display.progress_dict, "completed": not algorithm.has_next(),
                                          "warm_start_gen": warm_start_gen}))
+
+        print(f"{algorithm.display.progress_dict = }")
 
         if len(objectives) == 1:
             if n_generation > 1:
