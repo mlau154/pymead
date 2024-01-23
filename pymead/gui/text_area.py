@@ -22,7 +22,7 @@ class ConsoleTextArea(QTextBrowser):
         # self.setTextColor(QColor("#13294B"))
         # self.setFontPointSize(5)
         self.setMinimumHeight(50)
-        self.setOpenLinks(True)
+        self.setOpenLinks(False)
         self.setOpenExternalLinks(True)
 
         self.document().setDefaultStyleSheet("""p, a {font-family: 'DejaVu Sans Mono'; font-size: 10pt}

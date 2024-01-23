@@ -37,8 +37,6 @@ Bug fixes
 - May need to eliminate the use of modulo in constraint equations to make the variable 
   space smooth
 - Fix loading bar for new version
-- Fix excessively large font of "XFOIL" hyperlink text after running XFOIL
-- XFOIL cp not working?
 - Fix blank line in Objective/Constraint setup not reverting to background color after editing and erasing
 - Remove wave/viscous drag from XFOIL drag history plots (optimization)
 - Fix symmetry constraint having switched target/tool points (perhaps automatically create the mirror point?)

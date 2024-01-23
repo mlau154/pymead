@@ -89,7 +89,7 @@ def update_mses_settings_from_stencil(mses_settings: dict, stencil: typing.List[
     return mses_settings
 
 
-def calculate_aero_data(airfoil_coord_dir: str, airfoil_name: str, coords: typing.Tuple[tuple] = None,
+def calculate_aero_data(airfoil_coord_dir: str, airfoil_name: str, coords: typing.List[np.ndarray] = None,
                         mea: MEA = None,
                         tool: str = 'XFOIL', xfoil_settings: dict = None, mset_settings: dict = None,
                         mses_settings: dict = None, mplot_settings: dict = None, export_Cp: bool = True,
@@ -381,9 +381,7 @@ def run_xfoil(airfoil_name: str, base_dir: str, xfoil_settings: dict, coords: np
         aero_data['timed_out'] = False
         aero_data['errored_out'] = False
         try:
-            # print(f"communicating")
             outs, errs = process.communicate(timeout=xfoil_settings['timeout'])
-            # print(f"done communicating")
             with open(xfoil_log, 'wb') as h:
                 h.write('Output:\n'.encode('utf-8'))
                 h.write(outs)
@@ -391,12 +389,16 @@ def run_xfoil(airfoil_name: str, base_dir: str, xfoil_settings: dict, coords: np
                 h.write(errs)
             aero_data['timed_out'] = False
             aero_data['converged'] = True
-            with open(xfoil_log, "r") as log_file:
-                for line in log_file:
-                    if "Convergence failed" in line:
-                        print(f"Convergence failed! {log_file = }")
-                        aero_data["converged"] = False
-                        break
+
+            # This commented code is currently not specific enough to handle only global convergence failure
+            # (and not catch local convergence failures)
+            # with open(xfoil_log, "r") as log_file:
+            #     for line in log_file:
+            #         if "Convergence failed" in line:
+            #             print(f"Convergence failed! {log_file = }")
+            #             aero_data["converged"] = False
+            #             break
+
         except subprocess.TimeoutExpired:
             process.kill()
             outs, errs = process.communicate()
