@@ -1,3 +1,4 @@
+import datetime
 import os
 import re
 import sys
@@ -16,6 +17,7 @@ from pymead.core.point import Point, PointSequence
 from pymead.core.transformation import Transformation3D
 from pymead.plugins.IGES.curves import BezierIGES
 from pymead.plugins.IGES.iges_generator import IGESGenerator
+from pymead.version import __version__
 
 
 class GeometryCollection(DualRep):
@@ -849,7 +851,15 @@ class GeometryCollection(DualRep):
     def get_dict_rep(self):
         dict_rep = {k_outer: {k: v.get_dict_rep() for k, v in self.container()[k_outer].items()}
                     for k_outer in self.container().keys()}
+        dict_rep["metadata"] = self.get_metadata()
         return dict_rep
+
+    @staticmethod
+    def get_metadata():
+        return {
+            "pymead_version": __version__,
+            "save_datetime": str(datetime.datetime.now())
+        }
 
     @classmethod
     def set_from_dict_rep(cls, d: dict, canvas=None, tree=None):

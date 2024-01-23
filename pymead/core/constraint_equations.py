@@ -95,7 +95,6 @@ def radius_of_curvature_constraint(x1: float, y1: float, x2: float, y2: float, x
     Lt = measure_distance(x1, y1, x2, y2)
     psi = measure_rel_angle3(x1, y1, x2, y2, x3, y3)
     Lc = jnp.abs(jnp.true_divide(Lt ** 2, R * (1 - 1 / n) * jnp.sin(psi)))
-    jax.debug.print(" {Lc} ", Lc=Lc)
     return distance_constraint(x2, y2, x3, y3, Lc)
 
 

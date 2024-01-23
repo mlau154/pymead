@@ -307,10 +307,10 @@ class ConstraintGraph(networkx.Graph):
         if len(abs_angle_constraints) == 0 and len(fixed_points) == 1:
             dof -= 1
 
-        for point in points:
-            if point.fixed_weak():
-                print(f"{point = } fixed weak")
-        print(f"{len(points) = }, {len(strong_equations) = }, {len(fixed_points) = }, {len(abs_angle_constraints) = }")
+        # for point in points:
+        #     if point.fixed_weak():
+        #         print(f"{point = } fixed weak")
+        # print(f"{len(points) = }, {len(strong_equations) = }, {len(fixed_points) = }, {len(abs_angle_constraints) = }")
 
         if dof < 0:
             raise OverConstrainedError("System is over-constrained")
@@ -404,8 +404,8 @@ class ConstraintGraph(networkx.Graph):
             # This next block should all go inside the next if statement
             cycles = [cycle for cycle in networkx.simple_cycles(self) if all([isinstance(node, Point) or (
                     isinstance(node, GeoCon) and node.kind in ["a3", "a4"]) for node in cycle])]
-            for cycle in cycles:
-                print(f"{cycle = }")
+            # for cycle in cycles:
+            #     print(f"{cycle = }")
 
             # 4. Angle loop closure
             if add_a3 and analyze_angle_loop:
@@ -484,7 +484,7 @@ class ConstraintGraph(networkx.Graph):
                 end_point = candidate_points[0]
             abs_angle_constraint = AbsAngleConstraintWeak(start_point, end_point, "aa1")
             weak_constraints.append(abs_angle_constraint)
-            print(f"{abs_angle_constraint = }, {start_point = }, {end_point = }")
+            # print(f"{abs_angle_constraint = }, {start_point = }, {end_point = }")
 
         weak_equations = []
         for cnstr in weak_constraints:
