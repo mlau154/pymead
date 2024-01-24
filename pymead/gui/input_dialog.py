@@ -239,39 +239,35 @@ class MSETMultiGridWidget(QTabWidget):
         self.generateWidgets()
         self.setTabs()
 
-    def onAirfoilAdded(self, new_airfoil_name_list: list):
-        for airfoil_name in new_airfoil_name_list:
-            if airfoil_name not in self.input_dict.keys():
-                self.input_dict[airfoil_name] = get_default_grid_settings_dict()
-        self.airfoils = new_airfoil_name_list
-        self.regenerateWidgets()
+    def onMEAChanged(self, mea: MEA):
+        # Set the airfoils based on the new mea
+        self.airfoils = [airfoil.name() for airfoil in mea.airfoils]
 
-    def onAirfoilRemoved(self, new_airfoil_name_list: list):
-        names_to_remove = []
-        for airfoil_name in self.input_dict.keys():
-            if airfoil_name not in new_airfoil_name_list:
-                names_to_remove.append(airfoil_name)
-        for airfoil_name in names_to_remove:
-            self.input_dict.pop(airfoil_name)
-        self.airfoils = new_airfoil_name_list
-        self.regenerateWidgets()
+        # Initialize any input dict item that has not yet been initialized
+        for airfoil in self.airfoils:
+            if airfoil in self.input_dict.keys():
+                continue
+            self.input_dict[airfoil] = get_default_grid_settings_dict()
 
-    def onAirfoilListChanged(self, new_airfoil_name_list: list):
-        new_airfoil_name_list = [] if new_airfoil_name_list == [""] else new_airfoil_name_list
-        if len(new_airfoil_name_list) > len(self.airfoils):
-            self.onAirfoilAdded(new_airfoil_name_list)
-        elif len(new_airfoil_name_list) < len(self.airfoils):
-            self.onAirfoilRemoved(new_airfoil_name_list)
-        else:
-            self.airfoils = new_airfoil_name_list
-            self.regenerateWidgets()
-        self.multiGridChanged.emit()
+        # Remove any item in the input dict that is not also an airfoil in the current mea
+        keys_to_remove = []
+        for airfoil in self.input_dict.keys():
+            if airfoil in self.airfoils:
+                continue
+            keys_to_remove.append(airfoil)
+        for key_to_remove in keys_to_remove:
+            self.input_dict.pop(key_to_remove)
+
+        # Regenerate the widgets
+        self.regenerateWidgets()
 
     def setTabs(self):
         self.clear()
+        print(f"{self.airfoils = }")
         for airfoil in self.airfoils:
             self.add_tab(airfoil)
             grid_row_counter = 0
+            print(f"{self.widget_dict[airfoil] = }")
             for k, v in self.widget_dict[airfoil].items():
                 self.grid_layout.addWidget(v['label'], grid_row_counter, 0)
                 self.grid_layout.addWidget(v['widget'], grid_row_counter, 1)
@@ -287,14 +283,17 @@ class MSETMultiGridWidget(QTabWidget):
         self.addTab(self.grid_widget, name)
 
     def setValue(self, values: dict):
-        self.input_dict = deepcopy(values)
-        self.updateTabNames([k for k in self.input_dict.keys()])
-        self.regenerateWidgets()  # This function already sets the values, thus the else statement
+        for k, v in values.items():
+            if k not in self.airfoils:
+                continue
+            self.input_dict[k] = deepcopy(v)
+        self.regenerateWidgets()
 
     def value(self):
         return self.input_dict
 
     def valueChanged(self, k1, k2, v2):
+        print(f"Value changed called {k1 = }, {k2 = }, {v2 = }")
         self.input_dict[k1][k2] = v2
         self.multiGridChanged.emit()
 
@@ -343,33 +342,27 @@ class XTRSWidget(QTabWidget):
         self.generateWidgets()
         self.setTabs()
 
-    def onAirfoilAdded(self, new_airfoil_name_list: list):
-        for airfoil_name in new_airfoil_name_list:
-            if airfoil_name not in self.input_dict.keys():
-                self.input_dict[airfoil_name] = get_default_XTRS_settings_dict()
-        self.airfoils = new_airfoil_name_list
-        self.regenerateWidgets()
+    def onMEAChanged(self, mea: MEA):
+        # Set the airfoils based on the new mea
+        self.airfoils = [airfoil.name() for airfoil in mea.airfoils]
 
-    def onAirfoilRemoved(self, new_airfoil_name_list: list):
-        names_to_remove = []
-        for airfoil_name in self.input_dict.keys():
-            if airfoil_name not in new_airfoil_name_list:
-                names_to_remove.append(airfoil_name)
-        for airfoil_name in names_to_remove:
-            self.input_dict.pop(airfoil_name)
-        self.airfoils = new_airfoil_name_list
-        self.regenerateWidgets()
+        # Initialize any input dict item that has not yet been initialized
+        for airfoil in self.airfoils:
+            if airfoil in self.input_dict.keys():
+                continue
+            self.input_dict[airfoil] = get_default_XTRS_settings_dict()
 
-    def onAirfoilListChanged(self, new_airfoil_name_list: list):
-        new_airfoil_name_list = [] if new_airfoil_name_list == [""] else new_airfoil_name_list
-        if len(new_airfoil_name_list) > len(self.airfoils):
-            self.onAirfoilAdded(new_airfoil_name_list)
-        elif len(new_airfoil_name_list) < len(self.airfoils):
-            self.onAirfoilRemoved(new_airfoil_name_list)
-        else:
-            self.airfoils = new_airfoil_name_list
-            self.regenerateWidgets()
-        self.XTRSChanged.emit()
+        # Remove any item in the input dict that is not also an airfoil in the current mea
+        keys_to_remove = []
+        for airfoil in self.input_dict.keys():
+            if airfoil in self.airfoils:
+                continue
+            keys_to_remove.append(airfoil)
+        for key_to_remove in keys_to_remove:
+            self.input_dict.pop(key_to_remove)
+
+        # Regenerate the widgets
+        self.regenerateWidgets()
 
     def setTabs(self):
         self.clear()
@@ -391,16 +384,11 @@ class XTRSWidget(QTabWidget):
         self.addTab(self.grid_widget, name)
 
     def setValues(self, values: dict):
-        print(f"{values = }")
-        self.input_dict = deepcopy(values)
-        # if self.input_dict['airfoil_order'] != self.airfoils:  # This only happens when re-loading the dialog
-        self.updateTabNames([k for k in self.input_dict.keys()])
-        self.regenerateWidgets()  # This function already sets the values, thus the else statement
-        # else:
-        #     for k1, v1 in values.items():
-        #         if k1 != 'airfoil_order':
-        #             for k2, v2 in v1.items():
-        #                 self.widget_dict[k1][k2]['widget'].setValue(v2)
+        for k, v in values.items():
+            if k not in self.airfoils:
+                continue
+            self.input_dict[k] = deepcopy(v)
+        self.regenerateWidgets()
 
     def values(self):
         return self.input_dict
@@ -1320,7 +1308,7 @@ class PymeadDialogWidget2(QWidget):
 
 class MSETDialogWidget2(PymeadDialogWidget2):
 
-    sigMEAChanged = pyqtSignal(str)
+    sigMEAChanged = pyqtSignal(MEA)
 
     def __init__(self, geo_col: GeometryCollection, parent=None):
         super().__init__(parent=parent)
@@ -1408,7 +1396,8 @@ class MSETDialogWidget2(PymeadDialogWidget2):
             row_count += row_span
 
         # Connect the MEA combobox to the "MEA changed" signal
-        self.widget_dict["mea"].widget.currentTextChanged.connect(self.sigMEAChanged)
+        self.widget_dict["mea"].widget.currentTextChanged.connect(self.onMEAChanged)
+        self.sigMEAChanged.connect(self.widget_dict["multi_airfoil_grid"].onMEAChanged)
         # Show a preview of the downsampling when the button is pushed
         self.widget_dict["use_downsampling"].push.clicked.connect(self.showAirfoilCoordinatesPreview)
         # Connect the airfoil analysis directory button to the choose directory function
@@ -1417,6 +1406,9 @@ class MSETDialogWidget2(PymeadDialogWidget2):
         # Connect the load and save settings buttons
         self.widget_dict["load_mses_settings"].widget.clicked.connect(self.loadMSESSuiteSettings)
         self.widget_dict["save_as_mses_settings"].widget.clicked.connect(self.saveasMSESSuiteSettings)
+
+    def onMEAChanged(self, mea_name: str):
+        self.sigMEAChanged.emit(self.geo_col.container()["mea"][mea_name])
 
     def setWidgetValuesFromDict(self, d: dict):
         for d_name, d_value in d.items():
@@ -1468,9 +1460,6 @@ class MSESDialogWidget(PymeadDialogWidget):
         super().__init__(settings_file=os.path.join(GUI_DEFAULTS_DIR, 'mses_settings.json'),
                          initial_mea=initial_mea)
         self.geo_col = geo_col
-
-    def onAirfoilsChanged(self, airfoil_list: str):
-        self.widget_dict['xtrs']['widget'].onAirfoilListChanged(airfoil_list.split(','))
 
     def deactivate_AD(self, read_only: bool):
         self.widget_dict['AD']['widget'].setReadOnly(read_only)
@@ -2053,6 +2042,7 @@ class MultiAirfoilDialog(PymeadDialog):
         mset_dialog_widget = MSETDialogWidget2(geo_col=geo_col)
         # mset_dialog_widget.sigMEAChanged.connect(self.onMEAChanged)
         mses_dialog_widget = MSESDialogWidget(geo_col=geo_col)
+        mset_dialog_widget.sigMEAChanged.connect(mses_dialog_widget.widget_dict["xtrs"]["widget"].onMEAChanged)
         mplot_dialog_widget = MPLOTDialogWidget()
 
         # Make a connection such that when the MEA is changed, this is reflected in both the MSET and MSES settings
@@ -2461,10 +2451,11 @@ class OptimizationSetupDialog(PymeadDialog):
     def __init__(self, parent, geo_col: GeometryCollection, settings_override: dict = None):
         w0 = GAGeneralSettingsDialogWidget()
         w3 = XFOILDialogWidget(current_airfoils=[k for k in geo_col.container()["airfoils"]])
-        w4 = MSETDialogWidget(geo_col=geo_col)
+        w4 = MSETDialogWidget2(geo_col=geo_col)
         w2 = GAConstraintsTerminationDialogWidget(geo_col=geo_col, mset_dialog_widget=w4)
         w7 = MultiPointOptDialogWidget()
         w5 = MSESDialogWidget(geo_col=geo_col)
+        w4.sigMEAChanged.connect(w5.widget_dict["xtrs"]["widget"].onMEAChanged)
         w1 = GeneticAlgorithmDialogWidget(multi_point_dialog_widget=w7)
         w6 = PymeadDialogWidget(os.path.join(GUI_DEFAULTS_DIR, 'mplot_settings.json'))
         w = OptimizationDialogVTabWidget(parent=self, widgets={'General Settings': w0,
