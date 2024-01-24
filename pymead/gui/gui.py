@@ -1260,7 +1260,6 @@ class GUI(QMainWindow):
         if inputs is not None:
             mset_settings = convert_dialog_to_mset_settings(inputs['MSET'])
             mses_settings = convert_dialog_to_mses_settings(inputs['MSES'])
-            mses_settings['n_airfoils'] = mset_settings['n_airfoils']
             mplot_settings = convert_dialog_to_mplot_settings(inputs['MPLOT'])
             self.multi_airfoil_analysis(mset_settings, mses_settings, mplot_settings)
 

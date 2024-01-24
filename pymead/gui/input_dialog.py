@@ -127,13 +127,9 @@ def convert_dialog_to_mses_settings(dialog_input: dict):
     elif dialog_input['spec_alfa_Cl'] == 'Specify Lift Coefficient':
         mses_settings['target'] = 'Cl'
 
-    for idx, (airfoil_name, airfoil) in enumerate(dialog_input['xtrs'].items()):
-        if airfoil_name != 'airfoils':
-            for k, v in airfoil.items():
-                if idx == 0:
-                    mses_settings[k] = [v]
-                else:
-                    mses_settings[k].append(v)
+    for xtrs_key in ("XTRSupper", "XTRSlower"):
+        mses_settings[xtrs_key] = {airfoil_name: xtrs_data[xtrs_key]
+                                   for airfoil_name, xtrs_data in dialog_input["xtrs"].items()}
 
     for idx, AD_idx in enumerate(dialog_input['AD'].values()):
         for k, v in AD_idx.items():
@@ -648,8 +644,8 @@ class PymeadDialogWidget(QWidget):
                     kwargs = self.kwargs
                     if "initial_mea" in kwargs:
                         kwargs.pop("initial_mea")
-                # elif w_dict["widget_type"] == "XTRSWidget":
-                #     kwargs = {"initial_mea": self.kwargs.get("initial_mea")}
+                elif w_dict["widget_type"] == "XTRSWidget":
+                    kwargs = {"initial_mea": self.kwargs.get("initial_mea")}
                 widget = getattr(sys.modules[__name__], w_dict['widget_type'])(parent=self, **kwargs)
             else:
                 raise ValueError(f"Widget type {w_dict['widget_type']} not found in PyQt5.QtWidgets or system modules")

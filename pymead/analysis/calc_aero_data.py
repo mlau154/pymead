@@ -218,7 +218,8 @@ def calculate_aero_data(airfoil_coord_dir: str, airfoil_name: str, coords: typin
 
         converged = False
         mses_log, mplot_log = None, None
-        mset_success, mset_log = run_mset(airfoil_name, airfoil_coord_dir, mset_settings, coords=coords, mea=mea)
+        mset_success, mset_log, airfoil_name_order = run_mset(
+            airfoil_name, airfoil_coord_dir, mset_settings, coords=coords, mea=mea)
 
         # Set up single-point or multipoint settings
         mset_mplot_loop_iterations = 1
@@ -238,7 +239,8 @@ def calculate_aero_data(airfoil_coord_dir: str, airfoil_name: str, coords: typin
                 # print(f"{mses_settings['XCDELH'] = }, {mses_settings['CLIFIN'] = }, {mses_settings['PTRHIN'] = }")
 
             if mset_success:
-                converged, mses_log = run_mses(airfoil_name, airfoil_coord_dir, mses_settings)
+                converged, mses_log = run_mses(airfoil_name, airfoil_coord_dir, mses_settings,
+                                               airfoil_name_order=airfoil_name_order)
             if mset_success and converged:
                 mplot_log = run_mplot(airfoil_name, airfoil_coord_dir, mplot_settings, mode='forces')
                 aero_data = read_forces_from_mses(mplot_log)
@@ -466,10 +468,15 @@ def run_mset(name: str, base_dir: str, mset_settings: dict, coords: typing.Tuple
 
     if coords is not None:
         write_blade_file(name, base_dir, mset_settings['grid_bounds'], coords)
+        raise NotImplementedError("Running MSES using only a coordinate set and not an MEA object is not yet "
+                                  "fully implemented")
     elif mea is not None:
-        mea.write_mses_blade_file(name, os.path.join(base_dir, name), grid_bounds=mset_settings["grid_bounds"])
+        blade_file_path, airfoil_name_order = mea.write_mses_blade_file(
+            name, os.path.join(base_dir, name), grid_bounds=mset_settings["grid_bounds"])
+    else:
+        raise ValueError("At least one of either coords or mea must be specified to write the blade file")
 
-    write_gridpar_file(name, base_dir, mset_settings)
+    write_gridpar_file(name, base_dir, mset_settings, airfoil_name_order=airfoil_name_order)
     mset_input_name = 'mset_input.txt'
     mset_input_file = os.path.join(base_dir, name, mset_input_name)
     mset_input_list = ['1', '0', '2', '', '', '', '3', '4', '0']
@@ -494,35 +501,39 @@ def run_mset(name: str, base_dir: str, mset_settings: dict, coords: typing.Tuple
                 f.write('\nErrors:\n'.encode('utf-8'))
                 f.write(errs)
                 mset_success = False
-    return mset_success, mset_log
+    return mset_success, mset_log, airfoil_name_order
 
 
-# noinspection PyTypeChecker
-def run_mses(name: str, base_folder: str, mses_settings: dict, stencil: bool = False):
+def run_mses(name: str, base_folder: str, mses_settings: dict, airfoil_name_order: typing.List[str],
+             stencil: bool = False):
     r"""
     A Python API for MSES
 
     Parameters
-    ==========
+    ----------
     name: str
-      Name of the airfoil [system]
+        Name of the airfoil [system]
 
     base_folder: str
-      MSES files will be stored in ``base_folder/name``
+        MSES files will be stored in ``base_folder/name``
 
     mses_settings: dict
-      Flow parameter set (dictionary)
+        Flow parameter set (dictionary)
+
+    airfoil_name_order: typing.List[str]
+        List of the names of the airfoils (from top to bottom)
 
     stencil: bool
-      Whether a multipoint stencil is to be used. This variable is only used here to determine whether to overwrite or
-      append to the log file. Default: ``False``
+        Whether a multipoint stencil is to be used. This variable is only used here to determine whether to overwrite or
+        append to the log file. Default: ``False``
 
     Returns
-    =======
+    -------
     bool, str
-      A boolean describing whether the MSES solution is converged and a string containing the path to the MSES log file
+        A boolean describing whether the MSES solution is converged and a string containing the path to the MSES
+        log file
     """
-    write_mses_file(name, base_folder, mses_settings)
+    write_mses_file(name, base_folder, mses_settings, airfoil_name_order=airfoil_name_order)
     mses_log = os.path.join(base_folder, name, 'mses.log')
     if stencil:
         read_write = 'ab'
@@ -710,7 +721,7 @@ def write_blade_file(name: str, base_dir: str, grid_bounds: typing.Iterable, coo
     return blade_file
 
 
-def write_gridpar_file(name: str, base_folder: str, mset_settings: dict):
+def write_gridpar_file(name: str, base_folder: str, mset_settings: dict, airfoil_name_order: typing.List[str]):
     """
     Writes grid parameters to a file readable by MSES
 
@@ -748,11 +759,11 @@ def write_gridpar_file(name: str, base_folder: str, mset_settings: dict):
 
         multi_airfoil_grid = mset_settings['multi_airfoil_grid']
 
-        for a in mset_settings['airfoils']:
+        for a in airfoil_name_order:
             f.write(f"{multi_airfoil_grid[a]['dsLE_dsAvg']} {multi_airfoil_grid[a]['dsTE_dsAvg']} "
                     f"{multi_airfoil_grid[a]['curvature_exp']}\n")
 
-        for a in mset_settings['airfoils']:
+        for a in airfoil_name_order:
             f.write(f"{multi_airfoil_grid[a]['U_s_smax_min']} {multi_airfoil_grid[a]['U_s_smax_max']} "
                     f"{multi_airfoil_grid[a]['L_s_smax_min']} {multi_airfoil_grid[a]['L_s_smax_max']} "
                     f"{multi_airfoil_grid[a]['U_local_avg_spac_ratio']} {multi_airfoil_grid[a]['L_local_avg_spac_ratio']}\n")
@@ -760,7 +771,7 @@ def write_gridpar_file(name: str, base_folder: str, mset_settings: dict):
     return gridpar_file
 
 
-def write_mses_file(name: str, base_folder: str, mses_settings: dict):
+def write_mses_file(name: str, base_folder: str, mses_settings: dict, airfoil_name_order: typing.List[str]):
     """
     Writes MSES flow parameters to a file
 
@@ -816,12 +827,12 @@ def write_mses_file(name: str, base_folder: str, mses_settings: dict):
         f.write(f"{int(F['ISMOM'])} {int(F['IFFBC'])}\n")
         f.write(f"{F['REYNIN']} {F['ACRIT']}\n")
 
-        for idx in range(F['n_airfoils']):
-            f.write(f"{F['XTRSupper'][idx]} {F['XTRSlower'][idx]}")
-            if idx == F['n_airfoils'] - 1:
-                f.write('\n')
+        for idx, airfoil_name in enumerate(airfoil_name_order):
+            f.write(f"{F['XTRSupper'][airfoil_name]} {F['XTRSlower'][airfoil_name]}")
+            if idx == len(airfoil_name_order) - 1:
+                f.write("\n")
             else:
-                f.write(' ')
+                f.write(" ")
 
         f.write(f"{F['MCRIT']} {F['MUCON']}\n")
 

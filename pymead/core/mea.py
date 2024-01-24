@@ -38,8 +38,7 @@ class MEA(PymeadObj):
                               airfoil_sys_name: str,
                               blade_file_dir: str,
                               mea_coords_list: typing.List[np.ndarray] or None = None,
-                              grid_bounds: typing.List[float] or None = None
-                              ):
+                              grid_bounds: typing.List[float] or None = None) -> (str, typing.List[str]):
 
         # Get the MEA coordinates list if not provided
         if mea_coords_list is None:
@@ -72,7 +71,10 @@ class MEA(PymeadObj):
         # Save the coordinates to file
         np.savetxt(blade_file_path, mea_coords, header=header, comments="")
 
-        return blade_file_path
+        # Get the airfoil name order
+        airfoil_name_order = [airfoil.name() for airfoil in [self.airfoils[idx] for idx in airfoil_order]]
+
+        return blade_file_path, airfoil_name_order
 
     def write_to_IGES(self, file_name: str):
         """
