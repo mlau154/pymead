@@ -91,7 +91,7 @@ def convert_dialog_to_mset_settings(dialog_input: dict):
     #         else:
     #             mset_settings[k].append(v)
     mset_settings = deepcopy(dialog_input)
-    print(f"{mset_settings = }")
+    # print(f"{mset_settings = }")
     mset_settings["airfoils"] = [k for k in mset_settings["multi_airfoil_grid"].keys()]
     mset_settings["n_airfoils"] = len(mset_settings["airfoils"])
     return mset_settings
@@ -263,11 +263,11 @@ class MSETMultiGridWidget(QTabWidget):
 
     def setTabs(self):
         self.clear()
-        print(f"{self.airfoils = }")
+        # print(f"{self.airfoils = }")
         for airfoil in self.airfoils:
             self.add_tab(airfoil)
             grid_row_counter = 0
-            print(f"{self.widget_dict[airfoil] = }")
+            # print(f"{self.widget_dict[airfoil] = }")
             for k, v in self.widget_dict[airfoil].items():
                 self.grid_layout.addWidget(v['label'], grid_row_counter, 0)
                 self.grid_layout.addWidget(v['widget'], grid_row_counter, 1)
@@ -293,7 +293,7 @@ class MSETMultiGridWidget(QTabWidget):
         return self.input_dict
 
     def valueChanged(self, k1, k2, v2):
-        print(f"Value changed called {k1 = }, {k2 = }, {v2 = }")
+        # print(f"Value changed called {k1 = }, {k2 = }, {v2 = }")
         self.input_dict[k1][k2] = v2
         self.multiGridChanged.emit()
 
@@ -578,7 +578,7 @@ class ADWidget(QTabWidget):
     def valueChanged(self, k1, k2, v2):
         # print(f"Value changed! {k1 = }, {k2 = }, {v2 = }")
         if k2 == 'from_geometry':
-            print("Setting from_geometry!")
+            # print("Setting from_geometry!")
             self.input_dict[k1]["from_geometry"][k1] = v2
         else:
             self.input_dict[k1][k2] = v2
@@ -1096,7 +1096,7 @@ class MSETDialogWidget(PymeadDialogWidget):
             self.widget_dict["mea"]["widget"].setCurrentText(mea_names[0])
 
     def change_airfoils(self, _):
-        print("Changing airfoils!")
+        # print("Changing airfoils!")
         if not all([a in self.widget_dict["mea"]["widget"].text().split(',') for a in get_parent(
                 self, 4).geo_col.container()["airfoils"].keys()]):
             current_airfoil_list = [a for a in get_parent(self, 4).geo_col.container()["airfoils"].keys()]
@@ -1602,7 +1602,7 @@ class OptConstraintsHTabWidget(PymeadDialogHTabWidget):
         self.reorderRegenerateWidgets(new_airfoil_name_list=new_airfoil_name_list)
 
     def onAirfoilListChanged(self, new_airfoil_name_list_str: str):
-        print(f"{new_airfoil_name_list_str = }")
+        # print(f"{new_airfoil_name_list_str = }")
         new_airfoil_name_list = new_airfoil_name_list_str.split(',')
         if len(new_airfoil_name_list) > len([k for k in self.w_dict.keys()]):
             self.onAirfoilAdded(new_airfoil_name_list)
@@ -1612,7 +1612,7 @@ class OptConstraintsHTabWidget(PymeadDialogHTabWidget):
             self.reorderRegenerateWidgets(new_airfoil_name_list=new_airfoil_name_list)
 
     def setValues(self, values: dict):
-        print(f"{values = }")
+        # print(f"{values = }")
         self.onAirfoilListChanged(new_airfoil_name_list_str=','.join([k for k in values.keys()]))
         self.setWidgetValuesFromDict(new_values=values)
 
