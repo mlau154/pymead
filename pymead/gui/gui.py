@@ -1293,8 +1293,7 @@ class GUI(QMainWindow):
             # Output failed MSES analysis info to console
             self.output_area_text(
                 f"[{str(self.n_analyses).zfill(2)}] MSES Converged = {aero_data['converged']} | Errored out = "
-                f"{aero_data['errored_out']} | Timed out = {aero_data['timed_out']}")
-            self.output_area_text('\n')
+                f"{aero_data['errored_out']} | Timed out = {aero_data['timed_out']}", line_break=True)
         else:
             # Calculate L/D if necessary
             if "L/D" not in aero_data.keys():
@@ -1308,7 +1307,6 @@ class GUI(QMainWindow):
                 f"Ma = {mses_settings['MACHIN']:.3f}): "
                 f"Cl = {aero_data['Cl']:+7.4f} | Cd = {aero_data['Cd']:+.5f} | "
                 f"Cm = {aero_data['Cm']:+7.4f} | L/D = {aero_data['L/D']:+8.4f}".replace("-", "\u2212"), line_break=True)
-            self.output_area_text("\n")
 
         if aero_data['converged'] and not aero_data['errored_out'] and not aero_data['timed_out']:
             if self.analysis_graph is None:
