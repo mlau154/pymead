@@ -10,6 +10,7 @@ from PyQt5.QtCore import QEvent, Qt, pyqtSignal
 from PyQt5.QtGui import QStandardItem, QStandardItemModel
 import tempfile
 from PyQt5.QtCore import pyqtSlot, pyqtSignal, QStandardPaths
+from pymead.core.param import Param
 
 from pymead.core.airfoil import Airfoil
 from pymead.core.geometry_collection import GeometryCollection
@@ -107,10 +108,9 @@ def convert_dialog_to_mses_settings(dialog_input: dict):
         'inverse_flag': 0,
         'inverse_side': 1,
         'verbose': dialog_input['verbose'],
+        'ISMOM': ISMOM_CONVERSION[dialog_input['ISMOM']],
+        'IFFBC': IFFBC_CONVERSION[dialog_input['IFFBC']]
     }
-
-    mses_settings['ISMOM'] = ISMOM_CONVERSION[dialog_input['ISMOM']]
-    mses_settings['IFFBC'] = IFFBC_CONVERSION[dialog_input['IFFBC']]
 
     if dialog_input['AD_active']:
         mses_settings['AD_flags'] = [1 for _ in range(dialog_input['AD_number'])]
@@ -128,8 +128,7 @@ def convert_dialog_to_mses_settings(dialog_input: dict):
         mses_settings['target'] = 'Cl'
 
     for xtrs_key in ("XTRSupper", "XTRSlower"):
-        mses_settings[xtrs_key] = {airfoil_name: xtrs_data[xtrs_key]
-                                   for airfoil_name, xtrs_data in dialog_input["xtrs"].items()}
+        mses_settings[xtrs_key] = dialog_input["xtrs"][xtrs_key]
 
     for idx, AD_idx in enumerate(dialog_input['AD'].values()):
         for k, v in AD_idx.items():
@@ -183,6 +182,7 @@ def get_default_AD_settings_dict():
     return {
         'ISDELH': 1,
         'XCDELH': 0.1,
+        "XCDELH-Param": "",
         'PTRHIN': 1.1,
         'ETAH': 0.95,
         'from_geometry': {}
@@ -309,93 +309,105 @@ class XTRSWidget(QTabWidget):
             'XTRSlower': 'XTRSlower',
         }
 
-        if initial_mea is None:
-            self.input_dict = {}
-            self.airfoils = []
-        else:
-            self.airfoils = [a.name() for a in initial_mea.airfoils]
-            self.input_dict = {a_name: get_default_XTRS_settings_dict() for a_name in self.airfoils}
-
+        self.airfoil_names = [] if initial_mea is None else [a.name() for a in initial_mea.airfoils]
         self.widget_dict = {}
+        self.grid_widgets = {}
         self.grid_widget = None
         self.grid_layout = None
-        self.generateWidgets()
-        self.setTabs()
+        self.setValue()
 
-    def generateWidgets(self):
-        for k1, v1 in self.input_dict.items():
-            self.widget_dict[k1] = {}
-            for k2, v2 in v1.items():
-                w = QDoubleSpinBox(self)
-                w.setMinimum(0.0)
-                w.setMaximum(1.0)
-                w.setValue(v2)
-                w.setSingleStep(0.05)
-                w.valueChanged.connect(partial(self.valueChanged, k1, k2))
-                w_label = QLabel(self.labels[k2], self)
-                self.widget_dict[k1][k2] = {
-                    "widget": w,
-                    "label": w_label,
-                }
+        # self.generateWidgets()
+        # self.setTabs()
 
-    def regenerateWidgets(self):
-        self.generateWidgets()
-        self.setTabs()
+    # def generateWidgets(self):
+    #     for k1, v1 in self.input_dict.items():
+    #         self.widget_dict[k1] = {}
+    #         for k2, v2 in v1.items():
+    #             w = QDoubleSpinBox(self)
+    #             w.setMinimum(0.0)
+    #             w.setMaximum(1.0)
+    #             w.setValue(v2)
+    #             w.setSingleStep(0.05)
+    #             w.valueChanged.connect(partial(self.valueChanged, k1, k2))
+    #             w_label = QLabel(self.labels[k2], self)
+    #             self.widget_dict[k1][k2] = {
+    #                 "widget": w,
+    #                 "label": w_label,
+    #             }
+    #
+    # def regenerateWidgets(self):
+    #     self.generateWidgets()
+    #     self.setTabs()
 
     def onMEAChanged(self, mea: MEA):
         # Set the airfoils based on the new mea
-        self.airfoils = [airfoil.name() for airfoil in mea.airfoils]
+        print("MEA Changed!")
+        self.airfoil_names = [airfoil.name() for airfoil in mea.airfoils]
+        self.setValue()
 
-        # Initialize any input dict item that has not yet been initialized
-        for airfoil in self.airfoils:
-            if airfoil in self.input_dict.keys():
-                continue
-            self.input_dict[airfoil] = get_default_XTRS_settings_dict()
-
-        # Remove any item in the input dict that is not also an airfoil in the current mea
-        keys_to_remove = []
-        for airfoil in self.input_dict.keys():
-            if airfoil in self.airfoils:
-                continue
-            keys_to_remove.append(airfoil)
-        for key_to_remove in keys_to_remove:
-            self.input_dict.pop(key_to_remove)
-
-        # Regenerate the widgets
-        self.regenerateWidgets()
-
-    def setTabs(self):
-        self.clear()
-        for airfoil in self.airfoils:
-            self.add_tab(airfoil)
-            grid_row_counter = 0
-            for k, v in self.widget_dict[airfoil].items():
-                self.grid_layout.addWidget(v['label'], grid_row_counter, 0)
-                self.grid_layout.addWidget(v['widget'], grid_row_counter, 1)
-                grid_row_counter += 1
-
-    def updateTabNames(self, tab_name_list: list):
-        self.airfoils = tab_name_list
+    # def setTabs(self):
+    #     self.clear()
+    #     for airfoil in self.airfoils:
+    #         self.add_tab(airfoil)
+    #         grid_row_counter = 0
+    #         for k, v in self.widget_dict[airfoil].items():
+    #             self.grid_layout.addWidget(v['label'], grid_row_counter, 0)
+    #             self.grid_layout.addWidget(v['widget'], grid_row_counter, 1)
+    #             grid_row_counter += 1
+    #
+    # def updateTabNames(self, tab_name_list: list):
+    #     self.airfoils = tab_name_list
 
     def add_tab(self, name: str):
         self.grid_widget = QWidget()
         self.grid_layout = QGridLayout(self)
         self.grid_widget.setLayout(self.grid_layout)
+        self.widget_dict[name] = {
+            "XTRSupper": PymeadLabeledDoubleSpinBox(label="XTRSupper", minimum=0.0, maximum=1.0, value=1.0,
+                                                    single_step=0.05),
+            "XTRSlower": PymeadLabeledDoubleSpinBox(label="XTRSlower", minimum=0.0, maximum=1.0, value=1.0,
+                                                    single_step=0.05)
+        }
+        for widget in self.widget_dict[name].values():
+            row_count = self.grid_layout.rowCount()
+            self.grid_layout.addWidget(widget.label, row_count, 0)
+            self.grid_layout.addWidget(widget.widget, row_count, 1)
+        self.grid_widgets[name] = self.grid_widget
         self.addTab(self.grid_widget, name)
 
-    def setValues(self, values: dict):
-        for k, v in values.items():
-            if k not in self.airfoils:
-                continue
-            self.input_dict[k] = deepcopy(v)
-        self.regenerateWidgets()
+    def setValue(self, value: dict = None):
+        if value is None:
+            for airfoil_name in self.airfoil_names:
+                if airfoil_name in self.widget_dict:
+                    continue
+                self.add_tab(airfoil_name)
 
-    def values(self):
-        return self.input_dict
+            airfoils_to_remove = list(set(self.widget_dict.keys()) - set(self.airfoil_names))
+            for airfoil_to_remove in airfoils_to_remove[::-1]:
+                self.removeTab(self.indexOf(self.grid_widgets[airfoil_to_remove]))
+                self.grid_widgets.pop(airfoil_to_remove)
+            return
 
-    def valueChanged(self, k1, k2, v2):
-        self.input_dict[k1][k2] = v2
-        self.XTRSChanged.emit()
+        for xtrs_key, xtrs_data in value.items():
+            for airfoil_name, xtrs_val in xtrs_data.items():
+                if airfoil_name not in self.widget_dict:
+                    self.add_tab(airfoil_name)
+                self.widget_dict[airfoil_name][xtrs_key].setValue(xtrs_val)
+        airfoils_to_remove = list(set(self.widget_dict.keys()) - set(value["XTRSupper"].keys()))
+        for airfoil_to_remove in airfoils_to_remove[::-1]:
+            self.removeTab(self.indexOf(self.grid_widgets[airfoil_to_remove]))
+            self.grid_widgets.pop(airfoil_to_remove)
+
+    def value(self):
+        value = {"XTRSupper": {}, "XTRSlower": {}}
+        for airfoil_name, airfoil_data in self.widget_dict.items():
+            value["XTRSupper"][airfoil_name] = airfoil_data["XTRSupper"].value()
+            value["XTRSlower"][airfoil_name] = airfoil_data["XTRSlower"].value()
+        return value
+    #
+    # def valueChanged(self, k1, k2, v2):
+    #     self.input_dict[k1][k2] = v2
+    #     self.XTRSChanged.emit()
 
 
 class ADDoubleSpinBox(QDoubleSpinBox):
@@ -404,44 +416,21 @@ class ADDoubleSpinBox(QDoubleSpinBox):
 
     def __init__(self, parent, AD_tab: str):
         super().__init__(parent=parent)
-        self.equation_edit = None
         self.AD_tab = AD_tab
         # design_tree_widget.sigSelChanged.connect(self.set_value_from_param_tree)
-
-    def contextMenuEvent(self, event: QContextMenuEvent) -> None:
-        menu = QMenu(self)
-        action = QAction('Define by equation', parent=self)
-        action.triggered.connect(self.on_define_by_equation)
-        menu.addAction(action)
-        if menu.exec_(event.globalPos()):
-            pass
-
-    def on_define_by_equation(self):
-        self.equation_edit = QLineEdit(self)
-        self.equation_edit.setMinimumWidth(100)
-        get_parent(self, depth=3).grid_layout[self.AD_tab].addWidget(self.equation_edit, 1, 3, 1, 1)
-        self.equation_edit.textChanged.connect(self.on_equation_changed)
-
-    def on_equation_changed(self):
-        self.sigEquationChanged.emit(self.equation_edit.text())
-
-    def set_value_from_param_tree(self, data: tuple):
-        if str(get_parent(self, depth=3).currentIndex() + 1) == self.AD_tab and self.equation_edit is not None:
-            # (Make sure we are writing to the widget corresponding to the current tab)
-            self.equation_edit.setText(data[0])
-            self.setValue(data[1])
-            get_parent(self, depth=3).input_dict[self.AD_tab]['from_geometry']['XCDELH'] = data[0]
 
 
 class ADWidget(QTabWidget):
 
     ADChanged = pyqtSignal()
+    sigXCDELHParamChanged = pyqtSignal(str)
 
-    def __init__(self, parent):
+    def __init__(self, parent, param_list: typing.List[str], geo_col: GeometryCollection):
         super().__init__(parent=parent)
         self.labels = {
             'ISDELH': 'AD Side',
             'XCDELH': 'AD X-Location',
+            "XCDELH-Param": "AD X-Location Param",
             'PTRHIN': 'AD Total Pres. Ratio',
             'ETAH': 'AD Thermal Efficiency'
         }
@@ -450,6 +439,9 @@ class ADWidget(QTabWidget):
         self.widget_dict = {}
         self.grid_widget = {}
         self.grid_layout = {}
+        self.param_list = param_list
+        self.param_list.insert(0, "")
+        self.geo_col = geo_col
         self.generateWidgets()
         self.setTabs()
 
@@ -462,6 +454,9 @@ class ADWidget(QTabWidget):
                         w = QDoubleSpinBox(self)
                     elif k2 == 'XCDELH':
                         w = ADDoubleSpinBox(self, k1)
+                    elif k2 == "XCDELH-Param":
+                        w = QComboBox(self)
+                        w.addItems(self.param_list)
                     else:
                         w = QSpinBox(self)
                     if k2 in ['XCDELH', 'ETAH']:
@@ -478,9 +473,13 @@ class ADWidget(QTabWidget):
                         w.setSingleStep(0.05)
                         w.setDecimals(12)
 
-                    w.setValue(v2)
+                    if isinstance(w, QComboBox):
+                        w.setCurrentText(v2)
+                        w.currentTextChanged.connect(partial(self.valueChanged, k1, k2))
+                    else:
+                        w.setValue(v2)
+                        w.valueChanged.connect(partial(self.valueChanged, k1, k2))
 
-                    w.valueChanged.connect(partial(self.valueChanged, k1, k2))
                     if isinstance(w, ADDoubleSpinBox):
                         w.sigEquationChanged.connect(partial(self.equationChanged, k1, k2))
                     w_label = QLabel(self.labels[k2], self)
@@ -505,7 +504,7 @@ class ADWidget(QTabWidget):
     def onADAdded(self, new_AD_list: list):
         for ad in new_AD_list:
             if ad not in self.input_dict.keys():
-                self.input_dict[ad] = deepcopy(get_default_AD_settings_dict()['1'])
+                self.input_dict[ad] = deepcopy(get_default_AD_settings_dict())
         self.tab_names = new_AD_list
         self.regenerateWidgets()
 
@@ -550,7 +549,7 @@ class ADWidget(QTabWidget):
         self.grid_widget[name].setLayout(self.grid_layout[name])
         self.addTab(self.grid_widget[name], name)
 
-    def setValues(self, values: dict):
+    def setValue(self, values: dict):
         for k1, v1 in values.items():
             for k2, v2 in v1['from_geometry'].items():
                 if len(v2) == 0:
@@ -561,14 +560,26 @@ class ADWidget(QTabWidget):
         for k1, v1 in values.items():
             for k2, v2 in v1.items():
                 if k2 != 'from_geometry':
-                    self.widget_dict[k1][k2]['widget'].setValue(v2)
+                    if isinstance(self.widget_dict[k1][k2]["widget"], QComboBox):
+                        self.widget_dict[k1][k2]["widget"].setCurrentText(v2)
+                        if len(v2) > 0:
+                            if "DV" in v2:
+                                sub_container = "desvar"
+                                param = v2.strip(" (DV)")
+                            else:
+                                sub_container = "params"
+                                param = v2
+                            self.widget_dict[k1]["XCDELH"]["widget"].setValue(
+                                self.geo_col.container()[sub_container][param].value())
+                    else:
+                        self.widget_dict[k1][k2]['widget'].setValue(v2)
                     self.input_dict[k1][k2] = v2
             for k2, v2 in v1['from_geometry'].items():
                 if len(v2) == 0:
                     continue
                 self.widget_dict[k1][k2]['from_geometry'].setText(v2)
 
-    def values(self):
+    def value(self):
         return self.input_dict
 
     def equationChanged(self, k1, k2, v2):
@@ -634,6 +645,11 @@ class PymeadDialogWidget(QWidget):
                         kwargs.pop("initial_mea")
                 elif w_dict["widget_type"] == "XTRSWidget":
                     kwargs = {"initial_mea": self.kwargs.get("initial_mea")}
+                if w_dict["widget_type"] != "ADWidget":
+                    if "param_list" in kwargs.keys():
+                        kwargs.pop("param_list")
+                    if "geo_col" in kwargs.keys():
+                        kwargs.pop("geo_col")
                 widget = getattr(sys.modules[__name__], w_dict['widget_type'])(parent=self, **kwargs)
             else:
                 raise ValueError(f"Widget type {w_dict['widget_type']} not found in PyQt5.QtWidgets or system modules")
@@ -1167,7 +1183,7 @@ class MSETDialogWidget(PymeadDialogWidget):
 
 class PymeadLabeledSpinBox:
     def __init__(self, label: str = "", tool_tip: str = "", minimum: int = None, maximum: int = None,
-                 value: int = None):
+                 value: int = None, read_only: bool = None):
         self.label = QLabel(label)
         self.widget = QSpinBox()
         self.label.setToolTip(tool_tip)
@@ -1178,6 +1194,8 @@ class PymeadLabeledSpinBox:
             self.widget.setMaximum(maximum)
         if value is not None:
             self.widget.setValue(value)
+        if read_only is not None:
+            self.widget.setReadOnly(read_only)
         self.push = None
 
     def setValue(self, value: int):
@@ -1189,7 +1207,7 @@ class PymeadLabeledSpinBox:
 
 class PymeadLabeledDoubleSpinBox:
     def __init__(self, label: str = "", tool_tip: str = "", minimum: float = None, maximum: float = None,
-                 value: float = None):
+                 value: float = None, decimals: int = None, single_step: float = None, read_only: bool = None):
         self.label = QLabel(label)
         self.widget = QDoubleSpinBox()
         self.label.setToolTip(tool_tip)
@@ -1198,8 +1216,14 @@ class PymeadLabeledDoubleSpinBox:
             self.widget.setMinimum(minimum)
         if maximum is not None:
             self.widget.setMaximum(maximum)
+        if decimals is not None:
+            self.widget.setDecimals(decimals)
         if value is not None:
             self.widget.setValue(value)
+        if single_step is not None:
+            self.widget.setSingleStep(single_step)
+        if read_only is not None:
+            self.widget.setReadOnly(read_only)
         self.push = None
 
     def setValue(self, value: float):
@@ -1232,7 +1256,8 @@ class PymeadLabeledComboBox:
 
     sigValueChanged = pyqtSignal(str)
 
-    def __init__(self, label: str = "", tool_tip: str = "", items: typing.List[str] = None):
+    def __init__(self, label: str = "", tool_tip: str = "", items: typing.List[str] = None,
+                 current_item: str = None):
         self.label = QLabel(label)
         self.widget = QComboBox()
         self.label.setToolTip(tool_tip)
@@ -1241,6 +1266,8 @@ class PymeadLabeledComboBox:
 
         if items is not None:
             self.widget.addItems(items)
+        if current_item is not None:
+            self.widget.setCurrentText(current_item)
 
     def setValue(self, text: str):
         self.widget.setCurrentText(text)
@@ -1457,8 +1484,11 @@ class MSESDialogWidget(PymeadDialogWidget):
     def __init__(self, geo_col: GeometryCollection):
         initial_mea_names = [k for k in geo_col.container()["mea"].keys()]
         initial_mea = None if len(initial_mea_names) == 0 else geo_col.container()["mea"][initial_mea_names[0]]
+
+        param_list = [param for param in geo_col.container()["params"]]
+        dv_list = [dv + " (DV)" for dv in geo_col.container()["desvar"]]
         super().__init__(settings_file=os.path.join(GUI_DEFAULTS_DIR, 'mses_settings.json'),
-                         initial_mea=initial_mea)
+                         initial_mea=initial_mea, param_list=param_list + dv_list, geo_col=geo_col)
         self.geo_col = geo_col
 
     def deactivate_AD(self, read_only: bool):
@@ -1549,6 +1579,136 @@ class MSESDialogWidget(PymeadDialogWidget):
             new_inputs = self.valuesFromWidgets()
             if not (w_name == 'MACHIN' and new_inputs['spec_Re']):
                 self.calculate_and_set_Reynolds_number(new_inputs)
+
+
+class MSESDialogWidget2(PymeadDialogWidget2):
+    def __init__(self, geo_col: GeometryCollection, parent=None):
+        super().__init__(parent=parent)
+        self.geo_col = geo_col
+        self.widget_dict = None
+        self.lay = QGridLayout()
+        self.setLayout(self.lay)
+        self.initializeWidgets(label_column_split="timeout")
+
+    def initializeWidgets(self, label_column_split: str):
+
+        initial_mea_names = [k for k in self.geo_col.container()["mea"].keys()]
+        initial_mea = None if len(initial_mea_names) == 0 else self.geo_col.container()["mea"][initial_mea_names[0]]
+
+        param_list = [param for param in self.geo_col.container()["params"]]
+        dv_list = [dv + " (DV)" for dv in self.geo_col.container()["desvar"]]
+
+        self.widget_dict = {
+            "viscous_flag": PymeadLabeledCheckbox(label="Viscosity On?", initial_state=2),
+            "spec_Re": PymeadLabeledCheckbox(label="Specify Reynolds Number?",
+                                             tool_tip="Whether to directly specify the Reynolds number instead of "
+                                                      "specifying the thermodynamic state",
+                                             initial_state=0),
+            "REYNIN": PymeadLabeledDoubleSpinBox(label="Reynolds Number",
+                                                 tool_tip="Can only modify this value if 'Specify Reynolds Number?' "
+                                                          "is checked",
+                                                 minimum=0.0, maximum=np.inf, decimals=16,
+                                                 value=15492705.8044970352202654, single_step=10000.0, read_only=True),
+            "MACHIN": PymeadLabeledDoubleSpinBox(label="Mach Number", minimum=0.0, maximum=np.inf, value=0.7,
+                                                 single_step=0.01, decimals=16),
+            "spec_P_T_rho": PymeadLabeledComboBox(label="Specify Flow Variables",
+                                                  tool_tip="Which pair of thermodynamic state variables to specify",
+                                                  items=["Specify Pressure, Temperature", "Specify Pressure, Density",
+                                                         "Specify Temperature, Density"]),
+            "P": PymeadLabeledDoubleSpinBox(label="Pressure (Pa)", minimum=0.0, maximum=np.inf, decimals=16,
+                                            value=101325.0, single_step=1000.0, read_only=False),
+            "T": PymeadLabeledDoubleSpinBox(label="Temperature (K)", minimum=0.001, maximum=np.inf, decimals=16,
+                                            value=300.0, single_step=10.0, read_only=False),
+            "rho": PymeadLabeledDoubleSpinBox(label="Density (kg/m^3)", minimum=0.001, maximum=np.inf, decimals=16,
+                                              value=1.1768292682926829, single_step=0.1, read_only=False),
+            "gam": PymeadLabeledDoubleSpinBox(label="Specific Heat Ratio", minimum=0.001, maximum=np.inf, decimals=16,
+                                              value=1.4, single_step=0.01),
+            "L": PymeadLabeledDoubleSpinBox(label="Length Scale (m)", minimum=0.0, maximum=np.inf, value=1.0,
+                                            single_step=0.1, decimals=16),
+            "R": PymeadLabeledDoubleSpinBox(label="Gas Constant (J/(kg*K))", minimum=0.001, maximum=np.inf, decimals=16,
+                                            single_step=1.0, value=287.05),
+            "spec_alfa_Cl": PymeadLabeledComboBox(label="Specify Alpha/Cl", items=["Specify Angle of Attack",
+                                                                                   "Specify Lift Coefficient"]),
+            "ALFAIN": PymeadLabeledDoubleSpinBox(label="Angle of Attack (deg)", minimum=-np.inf, maximum=np.inf,
+                                                 decimals=16, value=0.0, single_step=1.0, read_only=False),
+            "CLIFIN": PymeadLabeledDoubleSpinBox(label="Lift Coefficient", minimum=-np.inf, maximum=np.inf, decimals=16,
+                                                 value=0.0, single_step=0.1, read_only=True),
+            "ISMOM": PymeadLabeledComboBox(label="Isentropic/Momentum", tool_tip="The set of MSES equations used to"
+                                                                                 " solve the flow problem",
+                                           items=["S-momentum equation", "isentropic condition",
+                                                  "S-momentum equation, isentropic @ LE",
+                                                  "isentropic condition, S-mom. where diss. active"],
+                                           current_item="S-momentum equation, isentropic @ LE"),
+            "IFFBC": PymeadLabeledComboBox(label="Far-Field Boundary",
+                                           items=["solid wall airfoil far-field BCs",
+                                                  "vortex+source+doublet airfoil far-field BCs",
+                                                  "freestream pressure airfoil far-field BCs",
+                                                  "supersonic wave freestream BCs",
+                                                  "supersonic solid wall far-field BCs"],
+                                           current_item="vortex+source+doublet airfoil far-field BCs"),
+            "ACRIT": PymeadLabeledDoubleSpinBox(label="Crit. Amp. Factor",
+                                                tool_tip="Critical amplification factor used to determine the boundary"
+                                                         " layer transition point",
+                                                minimum=0.0, maximum=np.inf, decimals=4, value=9.0),
+            "MCRIT": PymeadLabeledDoubleSpinBox(label="Critical Mach Number", minimum=0.0, maximum=1.0,
+                                                decimals=4, value=0.95, single_step=0.01),
+            "MUCON": PymeadLabeledDoubleSpinBox(label="Artificial Dissipation",
+                                                tool_tip="Values close to 1.0 are less stable but generate 'crisper'"
+                                                         " shocks, while values much larger than 1.0 are more stable"
+                                                         " but generate smeared shocks",
+                                                minimum=1.0, maximum=np.inf,
+                                                decimals=4, value=1.05, single_step=0.01),
+            "timeout": PymeadLabeledDoubleSpinBox(label="Timeout", minimum=0.0, maximum=np.inf, value=15.0),
+            "iter": PymeadLabeledSpinBox(label="Maximum Iterations", minimum=1, maximum=1000000, value=100),
+            "verbose": PymeadLabeledCheckbox(label="Verbose?", initial_state=0),
+            "xtrs": XTRSWidget(parent=self, initial_mea=initial_mea),
+            "AD_active": PymeadLabeledCheckbox(label="Actuator Disks Active",
+                                               tool_tip="If this box is not checked, the actuator disk parameters"
+                                                        " will not be used",
+                                               initial_state=0),
+            "AD_number": PymeadLabeledSpinBox(label="Num. Actuator Disks", minimum=0, maximum=5, value=0,
+                                              read_only=True, tool_tip="'Actuator disks active' must be checked "
+                                                                       "to enable modification of the number of AD's"),
+            "AD": ADWidget(parent=self, param_list=param_list, geo_col=self.geo_col)
+        }
+
+        # Add all the widgets
+        row_count = 0
+        column = 0
+        for widget_name, widget in self.widget_dict.items():
+            if widget_name == label_column_split:
+                column = 4
+                row_count = 0
+            if widget_name == "AD":
+                row_span = 5
+                col_span = 4
+            elif widget_name == "xtrs":
+                row_span = 3
+                col_span = 4
+            else:
+                row_span = 1
+                col_span = 2 if widget.push is None else 1
+
+            if widget_name in ["AD", "xtrs"]:
+                self.lay.addWidget(widget, row_count, column, row_span, col_span)
+            else:
+                self.lay.addWidget(widget.label, row_count, column, 1, 1)
+                self.lay.addWidget(widget.widget, row_count, column + 1, row_span, col_span)
+
+                if widget.push is not None:
+                    self.lay.addWidget(widget.push, row_count, column + 2, row_span, col_span)
+
+            row_count += row_span
+
+    def setWidgetValuesFromDict(self, d: dict):
+        for d_name, d_value in d.items():
+            try:
+                self.widget_dict[d_name].setValue(d_value)
+            except KeyError:
+                pass
+
+    def valuesFromWidgets(self) -> dict:
+        return {k: v.value() for k, v in self.widget_dict.items()}
 
 
 class MPLOTDialogWidget(PymeadDialogWidget):
@@ -2041,8 +2201,8 @@ class MultiAirfoilDialog(PymeadDialog):
     def __init__(self, parent: QWidget, geo_col: GeometryCollection, settings_override: dict = None):
         mset_dialog_widget = MSETDialogWidget2(geo_col=geo_col)
         # mset_dialog_widget.sigMEAChanged.connect(self.onMEAChanged)
-        mses_dialog_widget = MSESDialogWidget(geo_col=geo_col)
-        mset_dialog_widget.sigMEAChanged.connect(mses_dialog_widget.widget_dict["xtrs"]["widget"].onMEAChanged)
+        mses_dialog_widget = MSESDialogWidget2(geo_col=geo_col)
+        mset_dialog_widget.sigMEAChanged.connect(mses_dialog_widget.widget_dict["xtrs"].onMEAChanged)
         mplot_dialog_widget = MPLOTDialogWidget()
 
         # Make a connection such that when the MEA is changed, this is reflected in both the MSET and MSES settings
