@@ -6,7 +6,7 @@ import numpy as np
 from typing import List
 from PyQt5.QtWidgets import QDialog, QDialogButtonBox, QFormLayout, QDoubleSpinBox, QComboBox, QSpinBox, \
     QTabWidget, QLabel, QMessageBox, QCheckBox, QVBoxLayout, QWidget, QGridLayout, QPushButton, QListView, QRadioButton
-from PyQt5.QtCore import QEvent, Qt, pyqtSignal
+from PyQt5.QtCore import QEvent, Qt, pyqtSignal, QObject
 from PyQt5.QtGui import QStandardItem, QStandardItemModel
 import tempfile
 from PyQt5.QtCore import pyqtSlot, pyqtSignal, QStandardPaths
@@ -348,195 +348,110 @@ class XTRSWidget(QTabWidget):
         return value
 
 
-class ADDoubleSpinBox(QDoubleSpinBox):
-
-    sigEquationChanged = pyqtSignal(str)
-
-    def __init__(self, parent, AD_tab: str):
-        super().__init__(parent=parent)
-        self.AD_tab = AD_tab
-        # design_tree_widget.sigSelChanged.connect(self.set_value_from_param_tree)
-
-
 class ADWidget(QTabWidget):
 
     ADChanged = pyqtSignal()
     sigXCDELHParamChanged = pyqtSignal(str)
 
-    def __init__(self, parent, param_list: typing.List[str], geo_col: GeometryCollection):
+    def __init__(self, parent, param_list: typing.List[str], geo_col: GeometryCollection, number_AD: int):
         super().__init__(parent=parent)
-        self.labels = {
-            'ISDELH': 'AD Side',
-            'XCDELH': 'AD X-Location',
-            "XCDELH-Param": "AD X-Location Param",
-            'PTRHIN': 'AD Total Pres. Ratio',
-            'ETAH': 'AD Thermal Efficiency'
-        }
-        self.tab_names = []
-        self.input_dict = {}
         self.widget_dict = {}
-        self.grid_widget = {}
-        self.grid_layout = {}
+        self.grid_widgets = {}
+        self.grid_widget = None
+        self.grid_layout = None
         self.param_list = param_list
         self.param_list.insert(0, "")
         self.geo_col = geo_col
-        self.generateWidgets()
-        self.setTabs()
-
-    def generateWidgets(self):
-        for k1, v1 in self.input_dict.items():
-            self.widget_dict[k1] = {}
-            for k2, v2 in v1.items():
-                if k2 != 'from_geometry':
-                    if k2 in ['PTRHIN', 'ETAH']:
-                        w = QDoubleSpinBox(self)
-                    elif k2 == 'XCDELH':
-                        w = ADDoubleSpinBox(self, k1)
-                    elif k2 == "XCDELH-Param":
-                        w = QComboBox(self)
-                        w.addItems(self.param_list)
-                    else:
-                        w = QSpinBox(self)
-                    if k2 in ['XCDELH', 'ETAH']:
-                        w.setMinimum(0.0)
-                        w.setMaximum(1.0)
-                        w.setSingleStep(0.01)
-                        w.setDecimals(12)
-                    elif k2 == 'ISDELH':
-                        w.setMinimum(1)
-                        w.setMaximum(100)
-                    elif k2 == 'PTRHIN':
-                        w.setMinimum(1.0)
-                        w.setMaximum(np.inf)
-                        w.setSingleStep(0.05)
-                        w.setDecimals(12)
-
-                    if isinstance(w, QComboBox):
-                        w.setCurrentText(v2)
-                        w.currentTextChanged.connect(partial(self.valueChanged, k1, k2))
-                    else:
-                        w.setValue(v2)
-                        w.valueChanged.connect(partial(self.valueChanged, k1, k2))
-
-                    if isinstance(w, ADDoubleSpinBox):
-                        w.sigEquationChanged.connect(partial(self.equationChanged, k1, k2))
-                    w_label = QLabel(self.labels[k2], self)
-                    self.widget_dict[k1][k2] = {
-                        'widget': w,
-                        'label': w_label,
-                    }
-            for k2, v2 in v1['from_geometry'].items():
-                if len(v2) == 0:
-                    continue
-                w = QLineEdit(self.widget_dict[k1][k2]['widget'])
-                w.setText(v2)
-                w.setMinimumWidth(100)
-                self.widget_dict[k1][k2]['widget'].equation_edit = w
-                w.textChanged.connect(partial(self.equationChanged, k1, k2))
-                self.widget_dict[k1][k2]['from_geometry'] = w
-
-    def regenerateWidgets(self):
-        self.generateWidgets()
-        self.setTabs()
-
-    def onADAdded(self, new_AD_list: list):
-        for ad in new_AD_list:
-            if ad not in self.input_dict.keys():
-                self.input_dict[ad] = deepcopy(get_default_AD_settings_dict())
-        self.tab_names = new_AD_list
-        self.regenerateWidgets()
-
-    def onADRemoved(self, new_AD_list: list):
-        ads_to_remove = []
-        for k in self.input_dict.keys():
-            if k not in new_AD_list:
-                ads_to_remove.append(k)
-        for ad_to_remove in ads_to_remove:
-            self.input_dict.pop(ad_to_remove)
-        self.tab_names = new_AD_list
-        self.regenerateWidgets()
-
-    def onADListChanged(self, new_AD_list: list):
-        if len(new_AD_list) > len(self.tab_names):
-            self.onADAdded(new_AD_list)
-        elif len(new_AD_list) < len(self.tab_names):
-            self.onADRemoved(new_AD_list)
-        else:
-            self.tab_names = new_AD_list
-            self.regenerateWidgets()
-        self.ADChanged.emit()
-
-    def setTabs(self):
-        self.clear()
-        for tab_name in self.tab_names:
-            self.add_tab(tab_name)
-            grid_row_counter = 0
-            for k, v in self.widget_dict[tab_name].items():
-                self.grid_layout[tab_name].addWidget(v['label'], grid_row_counter, 0)
-                self.grid_layout[tab_name].addWidget(v['widget'], grid_row_counter, 1)
-                if 'from_geometry' in v.keys():
-                    self.grid_layout[tab_name].addWidget(v['from_geometry'], grid_row_counter, 2)
-                grid_row_counter += 1
-
-    def updateTabNames(self, tab_name_list: list):
-        self.tab_names = tab_name_list
+        self.number_AD = number_AD
+        self.setValue()
 
     def add_tab(self, name: str):
-        self.grid_widget[name] = QWidget()
-        self.grid_layout[name] = QGridLayout(self)
-        self.grid_widget[name].setLayout(self.grid_layout[name])
-        self.addTab(self.grid_widget[name], name)
+        self.grid_widget = QWidget()
+        self.grid_layout = QGridLayout(self)
+        self.grid_widget.setLayout(self.grid_layout)
+        self.widget_dict[name] = {
+            "ISDELH": PymeadLabeledSpinBox(label="AD Side", minimum=1, maximum=100, value=1),
+            "XCDELH": PymeadLabeledDoubleSpinBox(label="AD X-Location", minimum=0.0, maximum=1.0, value=0.1,
+                                                 single_step=0.05, decimals=8),
+            "XCDELH-Param": PymeadLabeledComboBox(label="AD X-Location Param", items=self.param_list),
+            "PTRHIN": PymeadLabeledDoubleSpinBox(label="AD Total Pres. Ratio", minimum=1.0, maximum=np.inf,
+                                                 value=1.1, single_step=0.01),
+            "ETAH": PymeadLabeledDoubleSpinBox(label="AD Thermal Efficiency", minimum=0.0, maximum=1.0,
+                                               value=0.95, single_step=0.01)
+        }
 
-    def setValue(self, values: dict):
-        for k1, v1 in values.items():
-            for k2, v2 in v1['from_geometry'].items():
-                if len(v2) == 0:
+        # Add the connection between XCDELH-Param and XCDELH
+        self.widget_dict[name]["XCDELH-Param"].sigValueChanged.connect(partial(self.param_changed, name))
+
+        for widget in self.widget_dict[name].values():
+            row_count = self.grid_layout.rowCount()
+            self.grid_layout.addWidget(widget.label, row_count, 0)
+            self.grid_layout.addWidget(widget.widget, row_count, 1)
+        self.grid_widgets[name] = self.grid_widget
+        self.addTab(self.grid_widget, name)
+
+    def param_changed(self, ad_idx: str, param_name: str):
+        if param_name == "":
+            self.widget_dict[ad_idx]["XCDELH"].setReadOnly(False)
+            return
+
+        sub_container = "params" if "DV" not in param_name else "desvar"
+        param_name = param_name.strip(" (DV)")
+        param = self.geo_col.container()[sub_container][param_name]
+
+        if param.value() > 1.0:
+            raise ValueError(f"Parameter value ({param.value()}) is greater than the maximum allowable AD x/c "
+                             f"location (1.0)")
+        if param.value() < 0.0:
+            raise ValueError(f"Parameter value ({param.value()}) is less than the minimum allowable AD x/c "
+                             f"location (0.0)")
+
+        self.widget_dict[ad_idx]["XCDELH"].setValue(param.value())
+        self.widget_dict[ad_idx]["XCDELH"].setReadOnly(True)
+
+    def remove_tab(self, name: str):
+        self.removeTab(self.indexOf(self.grid_widgets[name]))
+        self.grid_widgets.pop(name)
+        self.widget_dict.pop(name)
+
+    def remove_tabs(self, names: typing.List[str]):
+        for name in names[::-1]:
+            self.remove_tab(name)
+
+    def numberADChanged(self, new_number: int):
+        self.number_AD = new_number
+        self.setValue()
+
+    def setValue(self, value: dict = None):
+        if isinstance(value, dict) and len(value) == 0:
+            return
+
+        if value is None:
+            for ad_idx in range(self.number_AD):
+                if str(ad_idx + 1) in self.widget_dict:
                     continue
-                self.input_dict[k1]['from_geometry'][k2] = v2
-        self.updateTabNames([k for k in values.keys()])
-        self.regenerateWidgets()
-        for k1, v1 in values.items():
-            for k2, v2 in v1.items():
-                if k2 != 'from_geometry':
-                    if isinstance(self.widget_dict[k1][k2]["widget"], QComboBox):
-                        self.widget_dict[k1][k2]["widget"].setCurrentText(v2)
-                        if len(v2) > 0:
-                            if "DV" in v2:
-                                sub_container = "desvar"
-                                param = v2.strip(" (DV)")
-                            else:
-                                sub_container = "params"
-                                param = v2
-                            self.widget_dict[k1]["XCDELH"]["widget"].setValue(
-                                self.geo_col.container()[sub_container][param].value())
-                    else:
-                        self.widget_dict[k1][k2]['widget'].setValue(v2)
-                    self.input_dict[k1][k2] = v2
-            for k2, v2 in v1['from_geometry'].items():
-                if len(v2) == 0:
-                    continue
-                self.widget_dict[k1][k2]['from_geometry'].setText(v2)
+                self.add_tab(str(ad_idx + 1))
+
+            ads_to_remove = list(set(self.widget_dict.keys()) - set([str(idx + 1) for idx in range(self.number_AD)]))
+            self.remove_tabs(ads_to_remove)
+            return
+
+        for ad_name, ad_data in value.items():
+            for ad_key, ad_val in ad_data.items():
+                if ad_name not in self.widget_dict:
+                    self.add_tab(ad_name)
+                self.widget_dict[ad_name][ad_key].setValue(ad_val)
+        ads_to_remove = list(set(self.widget_dict.keys()) - set(value.keys()))
+        self.remove_tabs(ads_to_remove)
 
     def value(self):
-        return self.input_dict
+        return {ad_idx: {ad_key: ad_spin.value() for ad_key, ad_spin in ad_data.items()}
+                for ad_idx, ad_data in self.widget_dict.items()}
 
-    def equationChanged(self, k1, k2, v2):
-        self.input_dict[k1]["from_geometry"][k2] = v2
-        self.ADChanged.emit()
-
-    def valueChanged(self, k1, k2, v2):
-        # print(f"Value changed! {k1 = }, {k2 = }, {v2 = }")
-        if k2 == 'from_geometry':
-            # print("Setting from_geometry!")
-            self.input_dict[k1]["from_geometry"][k1] = v2
-        else:
-            self.input_dict[k1][k2] = v2
-        self.ADChanged.emit()
-
-    def setReadOnly(self, read_only: bool):
-        for k1, v1 in self.widget_dict.items():
-            for k2, v2 in v1.items():
-                v2['widget'].setReadOnly(read_only)
+    def setAllActive(self, active: int):
+        for ad_idx, widget_set in self.widget_dict.items():
+            for key, widget in widget_set.items():
+                widget.setReadOnly(not active)
 
 
 class PymeadDialogWidget(QWidget):
@@ -1142,6 +1057,12 @@ class PymeadLabeledSpinBox:
     def value(self):
         return self.widget.value()
 
+    def setReadOnly(self, read_only: bool):
+        self.widget.setReadOnly(read_only)
+
+    def setActive(self, active: int):
+        self.widget.setReadOnly(not active)
+
 
 class PymeadLabeledDoubleSpinBox:
     def __init__(self, label: str = "", tool_tip: str = "", minimum: float = None, maximum: float = None,
@@ -1170,6 +1091,9 @@ class PymeadLabeledDoubleSpinBox:
     def value(self):
         return self.widget.value()
 
+    def setReadOnly(self, read_only: bool):
+        self.widget.setReadOnly(read_only)
+
 
 class PymeadLabeledLineEdit:
 
@@ -1189,8 +1113,11 @@ class PymeadLabeledLineEdit:
     def value(self):
         return self.widget.text()
 
+    def setReadOnly(self, read_only: bool):
+        self.widget.setReadOnly(read_only)
 
-class PymeadLabeledComboBox:
+
+class PymeadLabeledComboBox(QObject):
 
     sigValueChanged = pyqtSignal(str)
 
@@ -1207,11 +1134,17 @@ class PymeadLabeledComboBox:
         if current_item is not None:
             self.widget.setCurrentText(current_item)
 
+        super().__init__()
+        self.widget.currentTextChanged.connect(self.sigValueChanged)
+
     def setValue(self, text: str):
         self.widget.setCurrentText(text)
 
     def value(self):
         return self.widget.currentText()
+
+    def setReadOnly(self, read_only: bool):
+        self.widget.setEnabled(not read_only)
 
 
 class PymeadLabeledCheckbox:
@@ -1607,7 +1540,7 @@ class MSESDialogWidget2(PymeadDialogWidget2):
             "AD_number": PymeadLabeledSpinBox(label="Num. Actuator Disks", minimum=0, maximum=5, value=0,
                                               read_only=True, tool_tip="'Actuator disks active' must be checked "
                                                                        "to enable modification of the number of AD's"),
-            "AD": ADWidget(parent=self, param_list=param_list, geo_col=self.geo_col)
+            "AD": ADWidget(parent=self, param_list=param_list + dv_list, geo_col=self.geo_col, number_AD=0)
         }
 
         # Add all the widgets
@@ -1637,6 +1570,11 @@ class MSESDialogWidget2(PymeadDialogWidget2):
                     self.lay.addWidget(widget.push, row_count, column + 2, row_span, col_span)
 
             row_count += row_span
+
+        # Create the connections
+        self.widget_dict["AD_active"].widget.stateChanged.connect(self.widget_dict["AD_number"].setActive)
+        self.widget_dict["AD_active"].widget.stateChanged.connect(self.widget_dict["AD"].setAllActive)
+        self.widget_dict["AD_number"].widget.valueChanged.connect(self.widget_dict["AD"].numberADChanged)
 
     def setWidgetValuesFromDict(self, d: dict):
         for d_name, d_value in d.items():
