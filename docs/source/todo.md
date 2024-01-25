@@ -17,7 +17,6 @@ Planned feature additions
 - Graphical highlighting of constraint parameters and constraints
 - Add unit selection ComboBox
 - Add renaming to parameters
-- Add metadata to save files (date, pymead version, etc.)
 - Make the "Analysis" tab focused by default after an aerodynamics analysis (possibly implement a user option to
   override this behavior)
 - Write the XFOIL/MSES analysis code using the same `CPUBoundProcess` architecture used by optimization
@@ -39,8 +38,6 @@ Bug fixes
 - Fix blank line in Objective/Constraint setup not reverting to background color after editing and erasing
 - Remove wave/viscous drag from XFOIL drag history plots (optimization)
 - Fix symmetry constraint having switched target/tool points (perhaps automatically create the mirror point?)
-- Airfoil comboboxes not properly updating when an optimization settings file is loaded without a GeometryCollection
-  present
 - Toggle grid affects all the dock widgets
 
 Testing

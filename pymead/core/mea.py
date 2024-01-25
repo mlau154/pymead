@@ -15,14 +15,12 @@ class MEA(PymeadObj):
 
     def __init__(self, airfoils: typing.List[Airfoil], name: str or None = None):
         self.airfoils = airfoils
-        print(f"{self.airfoils = }")
         super().__init__(sub_container="mea")
 
         # Name the MEA
         name = "MEA-1" if name is None else name
         self._name = None
         self.set_name(name)
-        print(f"Now, {self.airfoils = }")
 
     def add_airfoil(self, airfoil: Airfoil):
         self.airfoils.append(airfoil)
@@ -91,6 +89,9 @@ class MEA(PymeadObj):
         entities_flattened = list(itertools.chain.from_iterable(bez_IGES_entities))
         iges_generator = IGESGenerator(entities_flattened)
         iges_generator.generate(file_name)
+
+    def get_max_x_extent(self):
+        return max([airfoil.get_coords_selig_format()[:, 0].max() for airfoil in self.airfoils])
 
     def get_dict_rep(self):
         return {"airfoils": [a.name() for a in self.airfoils]}

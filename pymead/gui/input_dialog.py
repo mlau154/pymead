@@ -1,20 +1,22 @@
+import sys
+import os
+from copy import deepcopy
+from functools import partial
 import typing
 from abc import abstractmethod
+from typing import List
 
 import PyQt5.QtWidgets
 import numpy as np
-from typing import List
+import pyqtgraph as pg
 from PyQt5.QtWidgets import QDialog, QDialogButtonBox, QFormLayout, QDoubleSpinBox, QComboBox, QSpinBox, \
     QTabWidget, QLabel, QMessageBox, QCheckBox, QVBoxLayout, QWidget, QGridLayout, QPushButton, QListView, QRadioButton
-from PyQt5.QtCore import QEvent, Qt, pyqtSignal, QObject
+from PyQt5.QtCore import QEvent, Qt, QObject
 from PyQt5.QtGui import QStandardItem, QStandardItemModel
 import tempfile
 from PyQt5.QtCore import pyqtSlot, pyqtSignal, QStandardPaths
-from pymead.core.param import Param
 
-from pymead.core.airfoil import Airfoil
 from pymead.core.geometry_collection import GeometryCollection
-# from pymead.core.mea import MEA
 from pymead.core.mea import MEA
 from pymead.gui.sampling_visualization import SamplingVisualizationWidget
 from pymead.gui.infty_doublespinbox import InftyDoubleSpinBox
@@ -23,10 +25,6 @@ from pymead.gui.scientificspinbox_master.ScientificDoubleSpinBox import Scientif
 from pymead.gui.file_selection import *
 from pymead.gui.separation_lines import QHSeperationLine
 from pymead.utils.widget_recursion import get_parent
-import sys
-import os
-from copy import deepcopy
-from functools import partial
 from pymead.utils.read_write_files import load_data, save_data, load_documents_path
 from pymead.utils.dict_recursion import recursive_get
 from pymead.gui.default_settings import xfoil_settings_default
@@ -34,11 +32,7 @@ from pymead.gui.bounds_values_table import BoundsValuesTable
 from pymead.optimization.objectives_and_constraints import Objective, Constraint, FunctionCompileError
 from pymead.analysis import cfd_output_templates
 from pymead.analysis.utils import viscosity_calculator
-from pymead import GUI_DEFAULTS_DIR, GUI_DIALOG_WIDGETS_DIR, q_settings
-import pyqtgraph as pg
-from PyQt5.QtWidgets import QMenu, QAction
-from PyQt5.QtGui import QContextMenuEvent
-from pymead import GUI_DIALOG_WIDGETS_DIR
+from pymead import GUI_DEFAULTS_DIR, q_settings, GUI_DIALOG_WIDGETS_DIR
 
 
 mses_settings_json = load_data(os.path.join(GUI_DEFAULTS_DIR, 'mses_settings.json'))
@@ -73,24 +67,6 @@ msg_modes = {'info': QMessageBox.Information, 'warn': QMessageBox.Warning, 'ques
 
 
 def convert_dialog_to_mset_settings(dialog_input: dict):
-    # mset_settings = {
-    #     'airfoil_order': dialog_input['airfoil_order']['text'].split(','),
-    #     'grid_bounds': dialog_input['grid_bounds']['values'],
-    #     'verbose': dialog_input['verbose']['state'],
-    #     'airfoil_analysis_dir': dialog_input['airfoil_analysis_dir']['text'],
-    #     'airfoil_coord_file_name': dialog_input['airfoil_coord_file_name']['text'],
-    # }
-    # values_list = ['airfoil_side_points', 'exp_side_points', 'inlet_pts_left_stream', 'outlet_pts_right_stream',
-    #                'num_streams_top', 'num_streams_bot', 'max_streams_between', 'elliptic_param',
-    #                'stag_pt_aspect_ratio', 'x_spacing_param', 'alf0_stream_gen', 'timeout']
-    # for value in values_list:
-    #     mset_settings[value] = dialog_input[value]['value']
-    # for idx, airfoil in enumerate(dialog_input['multi_airfoil_grid']['values'].values()):
-    #     for k, v in airfoil.items():
-    #         if idx == 0:
-    #             mset_settings[k] = [v]
-    #         else:
-    #             mset_settings[k].append(v)
     mset_settings = deepcopy(dialog_input)
     mset_settings["airfoils"] = [k for k in mset_settings["multi_airfoil_grid"].keys()]
     mset_settings["n_airfoils"] = len(mset_settings["airfoils"])
@@ -152,38 +128,6 @@ def convert_dialog_to_mplot_settings(dialog_input: dict):
         'epma': dialog_input['epma']
     }
     return mplot_settings
-
-
-# def get_default_grid_settings_dict():
-#     return {
-#         'dsLE_dsAvg': 0.35,
-#         'dsTE_dsAvg': 0.8,
-#         'curvature_exp': 1.3,
-#         'U_s_smax_min': 1,
-#         'U_s_smax_max': 1,
-#         'L_s_smax_min': 1,
-#         'L_s_smax_max': 1,
-#         'U_local_avg_spac_ratio': 0,
-#         'L_local_avg_spac_ratio': 0,
-#     }
-#
-#
-# def get_default_XTRS_settings_dict():
-#     return {
-#         'XTRSupper': 1.0,
-#         'XTRSlower': 1.0,
-#     }
-
-
-def get_default_AD_settings_dict():
-    return {
-        'ISDELH': 1,
-        'XCDELH': 0.1,
-        "XCDELH-Param": "",
-        'PTRHIN': 1.1,
-        'ETAH': 0.95,
-        'from_geometry': {}
-    }
 
 
 class MSETMultiGridWidget(QTabWidget):
