@@ -157,25 +157,25 @@ def convert_dialog_to_mplot_settings(dialog_input: dict):
     return mplot_settings
 
 
-def get_default_grid_settings_dict():
-    return {
-        'dsLE_dsAvg': 0.35,
-        'dsTE_dsAvg': 0.8,
-        'curvature_exp': 1.3,
-        'U_s_smax_min': 1,
-        'U_s_smax_max': 1,
-        'L_s_smax_min': 1,
-        'L_s_smax_max': 1,
-        'U_local_avg_spac_ratio': 0,
-        'L_local_avg_spac_ratio': 0,
-    }
-
-
-def get_default_XTRS_settings_dict():
-    return {
-        'XTRSupper': 1.0,
-        'XTRSlower': 1.0,
-    }
+# def get_default_grid_settings_dict():
+#     return {
+#         'dsLE_dsAvg': 0.35,
+#         'dsTE_dsAvg': 0.8,
+#         'curvature_exp': 1.3,
+#         'U_s_smax_min': 1,
+#         'U_s_smax_max': 1,
+#         'L_s_smax_min': 1,
+#         'L_s_smax_max': 1,
+#         'U_local_avg_spac_ratio': 0,
+#         'L_local_avg_spac_ratio': 0,
+#     }
+#
+#
+# def get_default_XTRS_settings_dict():
+#     return {
+#         'XTRSupper': 1.0,
+#         'XTRSlower': 1.0,
+#     }
 
 
 def get_default_AD_settings_dict():
@@ -195,107 +195,83 @@ class MSETMultiGridWidget(QTabWidget):
 
     def __init__(self, parent, initial_mea: MEA = None):
         super().__init__(parent=parent)
-        self.labels = {
-            'dsLE_dsAvg': 'dsLE/dsAvg',
-            'dsTE_dsAvg': 'dsTE/dsAvg',
-            'curvature_exp': 'Curvature Exponent',
-            'U_s_smax_min': 'U_s_smax_min',
-            'U_s_smax_max': 'U_s_smax_max',
-            'L_s_smax_min': 'L_s_smax_min',
-            'L_s_smax_max': 'L_s_smax_max',
-            'U_local_avg_spac_ratio': 'U Local Avg. Spac. Ratio',
-            'L_local_avg_spac_ratio': 'L Local Avg. Spac. Ratio',
-        }
-        if initial_mea is None:
-            self.input_dict = {}
-            self.airfoils = []
-        else:
-            self.airfoils = [a.name() for a in initial_mea.airfoils]
-            self.input_dict = {a_name: get_default_grid_settings_dict() for a_name in self.airfoils}
-
+        self.airfoil_names = [] if initial_mea is None else [a.name() for a in initial_mea.airfoils]
         self.widget_dict = {}
+        self.grid_widgets = {}
         self.grid_widget = None
         self.grid_layout = None
-        self.generateWidgets()
-        self.setTabs()
-
-    def generateWidgets(self):
-        for k1, v1 in self.input_dict.items():
-            self.widget_dict[k1] = {}
-            for k2, v2 in v1.items():
-                w = QDoubleSpinBox(self)
-                w.setMinimum(0.0)
-                w.setMaximum(np.inf)
-                w.setValue(v2)
-                w.setSingleStep(0.01)
-                w.valueChanged.connect(partial(self.valueChanged, k1, k2))
-                w_label = QLabel(self.labels[k2], self)
-                self.widget_dict[k1][k2] = {
-                    'widget': w,
-                    'label': w_label,
-                }
-
-    def regenerateWidgets(self):
-        self.generateWidgets()
-        self.setTabs()
+        self.setValue()
 
     def onMEAChanged(self, mea: MEA):
-        # Set the airfoils based on the new mea
-        self.airfoils = [airfoil.name() for airfoil in mea.airfoils]
-
-        # Initialize any input dict item that has not yet been initialized
-        for airfoil in self.airfoils:
-            if airfoil in self.input_dict.keys():
-                continue
-            self.input_dict[airfoil] = get_default_grid_settings_dict()
-
-        # Remove any item in the input dict that is not also an airfoil in the current mea
-        keys_to_remove = []
-        for airfoil in self.input_dict.keys():
-            if airfoil in self.airfoils:
-                continue
-            keys_to_remove.append(airfoil)
-        for key_to_remove in keys_to_remove:
-            self.input_dict.pop(key_to_remove)
-
-        # Regenerate the widgets
-        self.regenerateWidgets()
-
-    def setTabs(self):
-        self.clear()
-        # print(f"{self.airfoils = }")
-        for airfoil in self.airfoils:
-            self.add_tab(airfoil)
-            grid_row_counter = 0
-            # print(f"{self.widget_dict[airfoil] = }")
-            for k, v in self.widget_dict[airfoil].items():
-                self.grid_layout.addWidget(v['label'], grid_row_counter, 0)
-                self.grid_layout.addWidget(v['widget'], grid_row_counter, 1)
-                grid_row_counter += 1
-
-    def updateTabNames(self, tab_name_list: list):
-        self.airfoils = tab_name_list
+        # Updated the widget based on a new MEA
+        self.airfoil_names = [airfoil.name() for airfoil in mea.airfoils]
+        self.setValue()
 
     def add_tab(self, name: str):
         self.grid_widget = QWidget()
         self.grid_layout = QGridLayout(self)
         self.grid_widget.setLayout(self.grid_layout)
+        self.widget_dict[name] = {
+            "dsLE_dsAvg": PymeadLabeledDoubleSpinBox(label="dsLE/dsAvg", minimum=0.0, maximum=np.inf, value=0.35,
+                                                     single_step=0.01),
+            "dsTE_dsAvg": PymeadLabeledDoubleSpinBox(label="dsTE/dsAvg", minimum=0.0, maximum=np.inf, value=0.80,
+                                                     single_step=0.01),
+            "curvature_exp": PymeadLabeledDoubleSpinBox(label="Curvature Exponent", minimum=0.0, maximum=np.inf,
+                                                        value=1.30, single_step=0.01),
+            "U_s_smax_min": PymeadLabeledDoubleSpinBox(label="U_s_smax_min", minimum=0.0, maximum=np.inf,
+                                                       value=1.0, single_step=0.01),
+            "U_s_smax_max": PymeadLabeledDoubleSpinBox(label="U_s_smax_max", minimum=0.0, maximum=np.inf,
+                                                       value=1.0, single_step=0.01),
+            "L_s_smax_min": PymeadLabeledDoubleSpinBox(label="L_s_smax_min", minimum=0.0, maximum=np.inf,
+                                                       value=1.0, single_step=0.01),
+            "L_s_smax_max": PymeadLabeledDoubleSpinBox(label="L_s_smax_max", minimum=0.0, maximum=np.inf,
+                                                       value=1.0, single_step=0.01),
+            "U_local_avg_spac_ratio": PymeadLabeledDoubleSpinBox(label="U Local Avg. Spac. Ratio", minimum=0.0,
+                                                                 maximum=np.inf, value=0.0, single_step=0.01),
+            "L_local_avg_spac_ratio": PymeadLabeledDoubleSpinBox(label="L Local Avg. Spac. Ratio", minimum=0.0,
+                                                                 maximum=np.inf, value=0.0, single_step=0.01)
+        }
+        for widget in self.widget_dict[name].values():
+            row_count = self.grid_layout.rowCount()
+            self.grid_layout.addWidget(widget.label, row_count, 0)
+            self.grid_layout.addWidget(widget.widget, row_count, 1)
+        self.grid_widgets[name] = self.grid_widget
         self.addTab(self.grid_widget, name)
 
-    def setValue(self, values: dict):
-        for k, v in values.items():
-            if k not in self.airfoils:
-                continue
-            self.input_dict[k] = deepcopy(v)
-        self.regenerateWidgets()
+    def remove_tab(self, name: str):
+        self.removeTab(self.indexOf(self.grid_widgets[name]))
+        self.grid_widgets.pop(name)
+        self.widget_dict.pop(name)
+
+    def remove_tabs(self, names: typing.List[str]):
+        for name in names[::-1]:
+            self.remove_tab(name)
+
+    def setValue(self, value: dict = None):
+        if isinstance(value, dict) and len(value) == 0:
+            return
+
+        if value is None:
+            for airfoil_name in self.airfoil_names:
+                if airfoil_name in self.widget_dict:
+                    continue
+                self.add_tab(airfoil_name)
+
+            airfoils_to_remove = list(set(self.widget_dict.keys()) - set(self.airfoil_names))
+            self.remove_tabs(airfoils_to_remove)
+            return
+
+        for airfoil_name, grid_data in value.items():
+            for grid_key, grid_val in grid_data.items():
+                if airfoil_name not in self.widget_dict:
+                    self.add_tab(airfoil_name)
+                self.widget_dict[airfoil_name][grid_key].setValue(grid_val)
+        airfoils_to_remove = list(set(self.widget_dict.keys()) - set(value.keys()))
+        self.remove_tabs(airfoils_to_remove)
 
     def value(self):
-        return self.input_dict
-
-    def valueChanged(self, k1, k2, v2):
-        # print(f"Value changed called {k1 = }, {k2 = }, {v2 = }")
-        self.input_dict[k1][k2] = v2
-        self.multiGridChanged.emit()
+        return {airfoil_name: {grid_key: grid_spin.value() for grid_key, grid_spin in grid_data.items()}
+                for airfoil_name, grid_data in self.widget_dict.items()}
 
 
 class XTRSWidget(QTabWidget):
@@ -304,11 +280,6 @@ class XTRSWidget(QTabWidget):
 
     def __init__(self, parent, initial_mea: MEA = None):
         super().__init__(parent=parent)
-        self.labels = {
-            'XTRSupper': 'XTRSupper',
-            'XTRSlower': 'XTRSlower',
-        }
-
         self.airfoil_names = [] if initial_mea is None else [a.name() for a in initial_mea.airfoils]
         self.widget_dict = {}
         self.grid_widgets = {}
@@ -316,47 +287,10 @@ class XTRSWidget(QTabWidget):
         self.grid_layout = None
         self.setValue()
 
-        # self.generateWidgets()
-        # self.setTabs()
-
-    # def generateWidgets(self):
-    #     for k1, v1 in self.input_dict.items():
-    #         self.widget_dict[k1] = {}
-    #         for k2, v2 in v1.items():
-    #             w = QDoubleSpinBox(self)
-    #             w.setMinimum(0.0)
-    #             w.setMaximum(1.0)
-    #             w.setValue(v2)
-    #             w.setSingleStep(0.05)
-    #             w.valueChanged.connect(partial(self.valueChanged, k1, k2))
-    #             w_label = QLabel(self.labels[k2], self)
-    #             self.widget_dict[k1][k2] = {
-    #                 "widget": w,
-    #                 "label": w_label,
-    #             }
-    #
-    # def regenerateWidgets(self):
-    #     self.generateWidgets()
-    #     self.setTabs()
-
     def onMEAChanged(self, mea: MEA):
-        # Set the airfoils based on the new mea
-        print("MEA Changed!")
+        # Updated the widget based on a new MEA
         self.airfoil_names = [airfoil.name() for airfoil in mea.airfoils]
         self.setValue()
-
-    # def setTabs(self):
-    #     self.clear()
-    #     for airfoil in self.airfoils:
-    #         self.add_tab(airfoil)
-    #         grid_row_counter = 0
-    #         for k, v in self.widget_dict[airfoil].items():
-    #             self.grid_layout.addWidget(v['label'], grid_row_counter, 0)
-    #             self.grid_layout.addWidget(v['widget'], grid_row_counter, 1)
-    #             grid_row_counter += 1
-    #
-    # def updateTabNames(self, tab_name_list: list):
-    #     self.airfoils = tab_name_list
 
     def add_tab(self, name: str):
         self.grid_widget = QWidget()
@@ -375,7 +309,19 @@ class XTRSWidget(QTabWidget):
         self.grid_widgets[name] = self.grid_widget
         self.addTab(self.grid_widget, name)
 
+    def remove_tab(self, name: str):
+        self.removeTab(self.indexOf(self.grid_widgets[name]))
+        self.grid_widgets.pop(name)
+        self.widget_dict.pop(name)
+
+    def remove_tabs(self, names: typing.List[str]):
+        for name in names[::-1]:
+            self.remove_tab(name)
+
     def setValue(self, value: dict = None):
+        if isinstance(value, dict) and len(value["XTRSupper"]) == 0:
+            return
+
         if value is None:
             for airfoil_name in self.airfoil_names:
                 if airfoil_name in self.widget_dict:
@@ -383,9 +329,7 @@ class XTRSWidget(QTabWidget):
                 self.add_tab(airfoil_name)
 
             airfoils_to_remove = list(set(self.widget_dict.keys()) - set(self.airfoil_names))
-            for airfoil_to_remove in airfoils_to_remove[::-1]:
-                self.removeTab(self.indexOf(self.grid_widgets[airfoil_to_remove]))
-                self.grid_widgets.pop(airfoil_to_remove)
+            self.remove_tabs(airfoils_to_remove)
             return
 
         for xtrs_key, xtrs_data in value.items():
@@ -394,9 +338,7 @@ class XTRSWidget(QTabWidget):
                     self.add_tab(airfoil_name)
                 self.widget_dict[airfoil_name][xtrs_key].setValue(xtrs_val)
         airfoils_to_remove = list(set(self.widget_dict.keys()) - set(value["XTRSupper"].keys()))
-        for airfoil_to_remove in airfoils_to_remove[::-1]:
-            self.removeTab(self.indexOf(self.grid_widgets[airfoil_to_remove]))
-            self.grid_widgets.pop(airfoil_to_remove)
+        self.remove_tabs(airfoils_to_remove)
 
     def value(self):
         value = {"XTRSupper": {}, "XTRSlower": {}}
@@ -404,10 +346,6 @@ class XTRSWidget(QTabWidget):
             value["XTRSupper"][airfoil_name] = airfoil_data["XTRSupper"].value()
             value["XTRSlower"][airfoil_name] = airfoil_data["XTRSlower"].value()
         return value
-    #
-    # def valueChanged(self, k1, k2, v2):
-    #     self.input_dict[k1][k2] = v2
-    #     self.XTRSChanged.emit()
 
 
 class ADDoubleSpinBox(QDoubleSpinBox):
