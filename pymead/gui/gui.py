@@ -121,6 +121,7 @@ class GUI(QMainWindow):
         self.current_theme = "dark"
         self.cbar = None
         self.cbar_label_attrs = None
+        self.crameri_cmap = None
         self.default_field_dir = None
         self.objectives = []
         self.constraints = []
@@ -488,8 +489,11 @@ class GUI(QMainWindow):
             if hasattr(dock_widget.widget(), 'setBackground'):
                 dock_widget.widget().setBackground(theme["dock-widget-background-color"])
         if self.cbar is not None and self.cbar_label_attrs is not None:
-            self.cbar_label_attrs['color'] = theme["cbar-color"]
+            self.cbar_label_attrs["color"] = theme["cbar-color"]
             self.cbar.setLabel(**self.cbar_label_attrs)
+            self.cbar.setColorMap(self.crameri_cmap[self.current_theme])
+            self.cbar.axis.setStyle(tickFont=QFont(theme["cbar-tick-font-family"], theme["cbar-tick-point-size"]))
+            self.cbar.axis.setTextPen(pg.mkPen(color=theme["cbar-color"]))
         # if self.analysis_graph is not None:
         #     self.analysis_graph.set_background(theme["graph-background-color"])
         # if self.param_tree_instance is not None:
@@ -497,7 +501,7 @@ class GUI(QMainWindow):
 
     def set_title_and_icon(self):
         self.setWindowTitle("pymead")
-        image_path = os.path.join(ICON_DIR, 'pymead-logo.png')
+        image_path = os.path.join(ICON_DIR, "pymead-logo.png")
         self.setWindowIcon(QIcon(image_path))
 
     def create_menu_bar(self):
@@ -928,18 +932,17 @@ class GUI(QMainWindow):
         # )
         # bar.setImageItem(pcmi_list)
         self.cbar_label_attrs = {
-            'axis': 'right',
-            'text': flow_var_label[inputs['flow_variable']],
-            'font-size': '12pt',
+            "axis": "right",
+            "text": flow_var_label[inputs["flow_variable"]],
+            "font-size": "12pt",
+            "font-family": "DejaVu Sans"
         }
         # bar.setLabel(**self.cbar_label_attrs)
         # self.cbar = bar
         if self.current_theme == "dark":
             col_data = cm.berlin.colors
-            name = "berlin"
         elif self.current_theme == "light":
             col_data = cm.vik.colors
-            name = "vik"
         else:
             raise ValueError("Could not find color map for the current theme")
 
@@ -965,22 +968,21 @@ class GUI(QMainWindow):
             for p in pos2:
                 pos = np.append(pos, p)
 
-        crameri_cmap = pg.ColorMap(name=name, pos=pos, color=255*col_data[:, :3]+0.5)
+        self.crameri_cmap = {
+            "dark": pg.ColorMap(name="berlin", pos=pos, color=255*cm.berlin.colors[:, :3]+0.5),
+            "light": pg.ColorMap(name="vik", pos=pos, color=255*cm.vik.colors[:, :3]+0.5)
+        }
 
-        self.cbar = self.airfoil_canvas.plot.addColorBar(pcmi_list, colorMap=crameri_cmap)
-        if self.current_theme == "dark":
-            self.cbar_label_attrs['color'] = '#dce1e6'
-        elif self.current_theme == "light":
-            self.cbar_label_attrs['color'] = '#000000'
+        theme = self.themes[self.current_theme]
+
+        self.cbar = self.airfoil_canvas.plot.addColorBar(pcmi_list, colorMap=self.crameri_cmap[self.current_theme])
+        self.cbar_label_attrs["color"] = theme["cbar-color"]
 
         self.cbar.setLabel(**self.cbar_label_attrs)
         self.cbar.setLevels(values=levels)
 
-        # def on_levels_changed(cbar):
-        #     for pcm in pcmi_list:
-        #         pcm.setLevels(cbar.levels())
-        #
-        # bar.sigLevelsChanged.connect(on_levels_changed)
+        self.cbar.axis.setStyle(tickFont=QFont(theme["cbar-tick-font-family"], theme["cbar-tick-point-size"]))
+        self.cbar.axis.setTextPen(pg.mkPen(color=theme["cbar-color"]))
 
     def load_mea_no_dialog(self, file_name):
         self.permanent_widget.progress_bar.setValue(0)

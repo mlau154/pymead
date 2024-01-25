@@ -84,8 +84,8 @@ class AirfoilCanvas(pg.PlotWidget):
                            color=theme["main-color"])
         self.plot.setLabel(axis="left", text=f"y [{UNITS.current_length_unit()}]", font="10pt DejaVu Sans",
                            color=theme["main-color"])
-        self.plot.getAxis("bottom").setTickFont(QFont("DejaVu Sans", 8))
-        self.plot.getAxis("left").setTickFont(QFont("DejaVu Sans", 8))
+        self.plot.getAxis("bottom").setTickFont(QFont(theme["axis-tick-font-family"], theme["axis-tick-point-size"]))
+        self.plot.getAxis("left").setTickFont(QFont(theme["axis-tick-font-family"], theme["axis-tick-point-size"]))
         self.plot.getAxis("bottom").setTextPen(theme["main-color"])
         self.plot.getAxis("left").setTextPen(theme["main-color"])
 
