@@ -125,6 +125,7 @@ class GUI(QMainWindow):
         self.objectives = []
         self.constraints = []
         self.airfoil_name_list = []
+        self.last_analysis_dir = None
         self.analysis_graph = None
         self.opt_airfoil_graph = None
         self.parallel_coords_graph = None
@@ -851,8 +852,9 @@ class GUI(QMainWindow):
             self.cbar_label_attrs = None
 
     def plot_field(self):
-
-        dlg = MSESFieldPlotDialog(parent=self, default_field_dir=self.default_field_dir)
+        default_field_dir = self.default_field_dir if self.last_analysis_dir is None else self.last_analysis_dir
+        default_field_dir = "" if default_field_dir is None else default_field_dir
+        dlg = MSESFieldPlotDialog(parent=self, default_field_dir=default_field_dir)
         if dlg.exec_():
             inputs = dlg.valuesFromWidgets()
         else:
@@ -972,7 +974,6 @@ class GUI(QMainWindow):
             self.cbar_label_attrs['color'] = '#000000'
 
         self.cbar.setLabel(**self.cbar_label_attrs)
-        print(f"{levels = }")
         self.cbar.setLevels(values=levels)
 
         # def on_levels_changed(cbar):
@@ -1309,6 +1310,8 @@ class GUI(QMainWindow):
                 f"Cm = {aero_data['Cm']:+7.4f} | L/D = {aero_data['L/D']:+8.4f}".replace("-", "\u2212"), line_break=True)
 
         if aero_data['converged'] and not aero_data['errored_out'] and not aero_data['timed_out']:
+            self.last_analysis_dir = os.path.join(mset_settings["airfoil_analysis_dir"],
+                                                  mset_settings["airfoil_coord_file_name"])
             if self.analysis_graph is None:
                 # Need to set analysis_graph to None if analysis window is closed! Might also not want to allow
                 # geometry docking window to be closed
