@@ -7,7 +7,7 @@
   },
   "change-background-color": {
     "icon": "Moon-Icon.png",
-    "status_tip": "Activate dark mode",
+    "status_tip": "Toggle theme",
     "checkable": true,
     "checked-by-default": false,
     "function": "change_background_color_button_toggled"
