@@ -92,7 +92,6 @@ def convert_dialog_to_mset_settings(dialog_input: dict):
     #         else:
     #             mset_settings[k].append(v)
     mset_settings = deepcopy(dialog_input)
-    # print(f"{mset_settings = }")
     mset_settings["airfoils"] = [k for k in mset_settings["multi_airfoil_grid"].keys()]
     mset_settings["n_airfoils"] = len(mset_settings["airfoils"])
     return mset_settings
@@ -136,8 +135,6 @@ def convert_dialog_to_mses_settings(dialog_input: dict):
                 mses_settings[k] = [v]
             else:
                 mses_settings[k].append(v)
-
-    # print(f"{mses_settings = }")
 
     return mses_settings
 
@@ -832,10 +829,8 @@ class SingleAirfoilViscousDialog(QDialog):
             if 'upper_bound' in v.keys():
                 widget.setMaximum(v['upper_bound'])
             if 'value' in v.keys():
-                # print(f"Setting value of {v_['label']} to {v_['value']}")
                 widget.setValue(v['value'])
                 widget.valueChanged.connect(partial(self.dict_connection, widget, k))
-                # print(f"Actual returned value is {widget.value()}")
             if 'state' in v.keys():
                 widget.setCheckState(v['state'])
                 widget.setTristate(False)
@@ -965,7 +960,6 @@ class MSETDialogWidget(PymeadDialogWidget):
             self.widget_dict["mea"]["widget"].setCurrentText(mea_names[0])
 
     def change_airfoils(self, _):
-        # print("Changing airfoils!")
         if not all([a in self.widget_dict["mea"]["widget"].text().split(',') for a in get_parent(
                 self, 4).geo_col.container()["airfoils"].keys()]):
             current_airfoil_list = [a for a in get_parent(self, 4).geo_col.container()["airfoils"].keys()]
@@ -1003,7 +997,6 @@ class MSETDialogWidget(PymeadDialogWidget):
             # else:
             #     self.current_save_file = input_filename
             get_parent(self, 3).setStatusTip(f"Saved MSES settings to {input_filename}")
-            # print(f"{get_parent(self, 3) = }")
 
     def load_mset_mses_mplot_settings(self):
         override_inputs = get_parent(self, 2).valuesFromWidgets()
@@ -1034,7 +1027,10 @@ class MSETDialogWidget(PymeadDialogWidget):
         preview_dialog.exec_()
 
 
-class PymeadLabeledSpinBox:
+class PymeadLabeledSpinBox(QObject):
+
+    sigValueChanged = pyqtSignal(int)
+
     def __init__(self, label: str = "", tool_tip: str = "", minimum: int = None, maximum: int = None,
                  value: int = None, read_only: bool = None):
         self.label = QLabel(label)
@@ -1051,6 +1047,9 @@ class PymeadLabeledSpinBox:
             self.widget.setReadOnly(read_only)
         self.push = None
 
+        super().__init__()
+        self.widget.valueChanged.connect(self.sigValueChanged)
+
     def setValue(self, value: int):
         self.widget.setValue(value)
 
@@ -1064,7 +1063,10 @@ class PymeadLabeledSpinBox:
         self.widget.setReadOnly(not active)
 
 
-class PymeadLabeledDoubleSpinBox:
+class PymeadLabeledDoubleSpinBox(QObject):
+
+    sigValueChanged = pyqtSignal(float)
+
     def __init__(self, label: str = "", tool_tip: str = "", minimum: float = None, maximum: float = None,
                  value: float = None, decimals: int = None, single_step: float = None, read_only: bool = None):
         self.label = QLabel(label)
@@ -1084,6 +1086,8 @@ class PymeadLabeledDoubleSpinBox:
         if read_only is not None:
             self.widget.setReadOnly(read_only)
         self.push = None
+        super().__init__()
+        self.widget.valueChanged.connect(self.sigValueChanged)
 
     def setValue(self, value: float):
         self.widget.setValue(value)
@@ -1093,6 +1097,9 @@ class PymeadLabeledDoubleSpinBox:
 
     def setReadOnly(self, read_only: bool):
         self.widget.setReadOnly(read_only)
+
+    def setActive(self, active: bool):
+        self.widget.setReadOnly(not active)
 
 
 class PymeadLabeledLineEdit:
@@ -1147,7 +1154,7 @@ class PymeadLabeledComboBox(QObject):
         self.widget.setEnabled(not read_only)
 
 
-class PymeadLabeledCheckbox:
+class PymeadLabeledCheckbox(QObject):
 
     sigValueChanged = pyqtSignal(int)
 
@@ -1162,6 +1169,9 @@ class PymeadLabeledCheckbox:
 
         if push_label is not None:
             self.push = QPushButton(push_label)
+
+        super().__init__()
+        self.widget.stateChanged.connect(self.sigValueChanged)
 
     def setValue(self, state: int):
         self.widget.setCheckState(state)
@@ -1571,10 +1581,64 @@ class MSESDialogWidget2(PymeadDialogWidget2):
 
             row_count += row_span
 
-        # Create the connections
-        self.widget_dict["AD_active"].widget.stateChanged.connect(self.widget_dict["AD_number"].setActive)
-        self.widget_dict["AD_active"].widget.stateChanged.connect(self.widget_dict["AD"].setAllActive)
-        self.widget_dict["AD_number"].widget.valueChanged.connect(self.widget_dict["AD"].numberADChanged)
+        # Create the required connections
+        self.widget_dict["AD_active"].sigValueChanged.connect(self.widget_dict["AD_number"].setActive)
+        self.widget_dict["AD_active"].sigValueChanged.connect(self.widget_dict["AD"].setAllActive)
+        self.widget_dict["AD_number"].sigValueChanged.connect(self.widget_dict["AD"].numberADChanged)
+        self.widget_dict["spec_P_T_rho"].sigValueChanged.connect(self.spec_P_T_rho_changed)
+        for thermo_var in ("P", "T", "rho", "gam", "R", "MACHIN", "L"):
+            self.widget_dict[thermo_var].sigValueChanged.connect(self.recalculateThermoState)
+        self.widget_dict["spec_Re"].sigValueChanged.connect(self.spec_Re_changed)
+        self.widget_dict["spec_alfa_Cl"].sigValueChanged.connect(self.spec_alfa_Cl_changed)
+
+    def spec_P_T_rho_changed(self, spec_P_T_rho: str):
+        if "Pressure" in spec_P_T_rho:
+            self.widget_dict["P"].setReadOnly(False)
+        else:
+            self.widget_dict["P"].setReadOnly(True)
+        if "Temperature" in spec_P_T_rho:
+            self.widget_dict["T"].setReadOnly(False)
+        else:
+            self.widget_dict["T"].setReadOnly(True)
+        if "Density" in spec_P_T_rho:
+            self.widget_dict["rho"].setReadOnly(False)
+        else:
+            self.widget_dict["rho"].setReadOnly(True)
+
+    def spec_Re_changed(self, state: int):
+        if state:
+            for thermo_var in ("P", "T", "rho", "gam", "R", "MACHIN", "L", "spec_P_T_rho"):
+                self.widget_dict[thermo_var].setReadOnly(True)
+            self.widget_dict["REYNIN"].setReadOnly(False)
+        else:
+            for thermo_var in ("P", "T", "rho", "gam", "R", "MACHIN", "L", "spec_P_T_rho"):
+                self.widget_dict[thermo_var].setReadOnly(False)
+            self.widget_dict["REYNIN"].setReadOnly(True)
+            self.spec_P_T_rho_changed(self.widget_dict["spec_P_T_rho"].value())
+            self.recalculateThermoState(None)
+
+    def spec_alfa_Cl_changed(self, alfa_Cl: str):
+        if "Angle" in alfa_Cl:
+            self.widget_dict["ALFAIN"].setReadOnly(False)
+            self.widget_dict["CLIFIN"].setReadOnly(True)
+        else:
+            self.widget_dict["ALFAIN"].setReadOnly(True)
+            self.widget_dict["CLIFIN"].setReadOnly(False)
+
+    def recalculateThermoState(self, _):
+        spec_P_T_rho = self.widget_dict["spec_P_T_rho"].value()
+        R = self.widget_dict["R"].value()
+        gam = self.widget_dict["gam"].value()
+        if "Pressure" in spec_P_T_rho and "Temperature" in spec_P_T_rho:
+            self.widget_dict["rho"].setValue(self.widget_dict["P"].value() / (R * self.widget_dict["T"].value()))
+        elif "Pressure" in spec_P_T_rho and "Density" in spec_P_T_rho:
+            self.widget_dict["T"].setValue(self.widget_dict["P"].value() / (R * self.widget_dict["rho"].value()))
+        else:
+            self.widget_dict["P"].setValue(self.widget_dict["rho"].value() * R * self.widget_dict["T"].value())
+        nu = viscosity_calculator(self.widget_dict["T"].value(), rho=self.widget_dict["rho"].value())
+        a = np.sqrt(gam * R * self.widget_dict["T"].value())
+        V = self.widget_dict["MACHIN"].value() * a
+        self.widget_dict['REYNIN'].setValue(V * self.widget_dict["L"].value() / nu)
 
     def setWidgetValuesFromDict(self, d: dict):
         for d_name, d_value in d.items():
@@ -1638,7 +1702,6 @@ class OptConstraintsHTabWidget(PymeadDialogHTabWidget):
         self.reorderRegenerateWidgets(new_airfoil_name_list=new_airfoil_name_list)
 
     def onAirfoilListChanged(self, new_airfoil_name_list_str: str):
-        # print(f"{new_airfoil_name_list_str = }")
         new_airfoil_name_list = new_airfoil_name_list_str.split(',')
         if len(new_airfoil_name_list) > len([k for k in self.w_dict.keys()]):
             self.onAirfoilAdded(new_airfoil_name_list)
@@ -1648,7 +1711,6 @@ class OptConstraintsHTabWidget(PymeadDialogHTabWidget):
             self.reorderRegenerateWidgets(new_airfoil_name_list=new_airfoil_name_list)
 
     def setValues(self, values: dict):
-        # print(f"{values = }")
         self.onAirfoilListChanged(new_airfoil_name_list_str=','.join([k for k in values.keys()]))
         self.setWidgetValuesFromDict(new_values=values)
 
@@ -1805,7 +1867,6 @@ class GAGeneralSettingsDialogWidget(PymeadDialogWidget):
             else:
                 self.current_save_file = input_filename
             get_parent(self, 3).setStatusTip(f"Saved optimization settings to {input_filename}")
-            # print(f"{get_parent(self, 3) = }")
 
     def updateDialog(self, new_inputs: dict, w_name: str):
         pass
@@ -1926,7 +1987,6 @@ class GeneticAlgorithmDialogWidget(PymeadDialogWidget):
         pass
 
     def multi_point_changed(self, state: int or bool):
-        # print("Multi point changed!")
         self.multi_point = state
         self.objectives_changed(self.widget_dict['J']['widget'], self.widget_dict['J']['widget'].text())
         self.constraints_changed(self.widget_dict['G']['widget'], self.widget_dict['G']['widget'].text())
@@ -1953,7 +2013,6 @@ class GeneticAlgorithmDialogWidget(PymeadDialogWidget):
                 widget.setStyleSheet("QLineEdit {background-color: rgba(16,201,87,50)}")
             except FunctionCompileError:
                 widget.setStyleSheet("QLineEdit {background-color: rgba(176,25,25,50)}")
-                # print("Function compile error!")
                 return
 
     def constraints_changed(self, widget, text: str):
@@ -2076,20 +2135,12 @@ class XFOILDialog(PymeadDialog):
 class MultiAirfoilDialog(PymeadDialog):
     def __init__(self, parent: QWidget, geo_col: GeometryCollection, settings_override: dict = None):
         mset_dialog_widget = MSETDialogWidget2(geo_col=geo_col)
-        # mset_dialog_widget.sigMEAChanged.connect(self.onMEAChanged)
         mses_dialog_widget = MSESDialogWidget2(geo_col=geo_col)
         mset_dialog_widget.sigMEAChanged.connect(mses_dialog_widget.widget_dict["xtrs"].onMEAChanged)
         mplot_dialog_widget = MPLOTDialogWidget()
-
-        # Make a connection such that when the MEA is changed, this is reflected in both the MSET and MSES settings
-        # mset_dialog_widget.airfoilsChanged.connect(mses_dialog_widget.onAirfoilsChanged)
-
         tab_widgets = {"MSET": mset_dialog_widget, "MSES": mses_dialog_widget, "MPLOT": mplot_dialog_widget}
         widget = PymeadDialogVTabWidget(parent=None, widgets=tab_widgets, settings_override=settings_override)
         super().__init__(parent=parent, window_title="Multi-Element-Airfoil Analysis", widget=widget)
-
-    # def onMEAChanged(self, new_mea_name: str):
-    #     print(f"{new_mea_name = }")
 
 
 class SettingsDialog(QDialog):
