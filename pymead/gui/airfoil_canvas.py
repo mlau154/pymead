@@ -717,16 +717,11 @@ class AirfoilCanvas(pg.PlotWidget):
         drawLineSegmentThroughPointsAction = menu.addAction("Line Segment Through Points")
         generateAirfoilAction = menu.addAction("Generate Airfoil")
         generateMEAAction = menu.addAction("Generate MEA")
-        makePointsCollinearAction = menu.addAction("Add Collinear Constraint")
         addRelAngle3ConstraintAction = menu.addAction("Add Relative Angle 3 Constraint")
-        addRelAngle4ConstraintAction = menu.addAction("Add Relative Angle 4 Constraint")
-        addPerpendicularConstraintAction = menu.addAction("Add Perpendicular Constraint")
         addPerp3ConstraintAction = menu.addAction("Add Perpendicular 3 constraint")
         addAntiParallel3ConstraintAction = menu.addAction("Add Anti-Parallel 3 Constraint")
-        addParallelConstraintAction = menu.addAction("Add Parallel Constraint")
         addSymmetryConstraintAction = menu.addAction("Add Symmetry Constraint")
         addROCurvatureConstraintAction = menu.addAction("Add Radius of Curvature Constraint")
-        addCurvatureConstraintAction = menu.addAction("Add Curvature Constraint")
         addLengthDimensionAction = menu.addAction("Add Length Dimension")
         addAngleDimensionAction = menu.addAction("Add Angle Dimension")
         addDistanceConstraintAction = menu.addAction("Add Distance Constraint")
@@ -743,26 +738,16 @@ class AirfoilCanvas(pg.PlotWidget):
             self.generateAirfoil()
         elif res == generateMEAAction:
             self.generateMEA()
-        elif res == makePointsCollinearAction:
-            self.addCollinearConstraint()
         elif res == addRelAngle3ConstraintAction:
             self.addRelAngle3Constraint()
         elif res == addAntiParallel3ConstraintAction:
             self.addAntiParallel3Constraint()
-        elif res == addRelAngle4ConstraintAction:
-            self.addRelAngle4Constraint()
-        elif res == addPerpendicularConstraintAction:
-            self.addPerp4Constraint()
         elif res == addPerp3ConstraintAction:
             self.addPerp3Constraint()
-        elif res == addParallelConstraintAction:
-            self.addParallelConstraint()
         elif res == addSymmetryConstraintAction:
             self.addSymmetryConstraint()
         elif res == addROCurvatureConstraintAction:
             self.addROCurvatureConstraint()
-        elif res == addCurvatureConstraintAction:
-            self.addCurvatureConstraint()
         elif res == addLengthDimensionAction:
             self.addLengthDimension()
         elif res == addAngleDimensionAction:
