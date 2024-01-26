@@ -2,6 +2,12 @@ import os
 import re
 
 from PyQt5.QtCore import Qt
+from pymead import GUI_SETTINGS_DIR, q_settings
+
+from pymead.utils.read_write_files import load_data
+
+
+qsd = load_data(os.path.join(GUI_SETTINGS_DIR, "q_settings_descriptions.json"))
 
 
 def count_dollar_signs(input_string: str, search_for_character: str):
@@ -55,3 +61,11 @@ def make_ga_opt_dir(rootdir: str, ga_opt_dir_name: str):
 def convert_str_to_Qt_dash_pattern(dash: str):
     data = {"-": Qt.SolidLine, "--": Qt.DashLine, ":": Qt.DotLine, "-.": Qt.DashDotLine, "-..": Qt.DashDotDotLine}
     return data[dash]
+
+
+def get_setting(key: str):
+    return q_settings.value(key, qsd[key][1])
+
+
+def set_setting(key: str, value: object):
+    q_settings.setValue(key, value)

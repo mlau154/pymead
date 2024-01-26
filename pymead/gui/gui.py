@@ -55,7 +55,7 @@ from pymead.gui.dockable_tab_widget import PymeadDockWidget
 from pymead.core.mea import MEA
 from pymead.analysis.calc_aero_data import calculate_aero_data
 from pymead.utils.read_write_files import load_data, save_data
-from pymead.utils.misc import count_func_strs
+from pymead.utils.misc import count_func_strs, get_setting
 from pymead.analysis.read_aero_data import read_grid_stats_from_mses, read_field_from_mses, \
     read_streamline_grid_from_mses
 from pymead.analysis.read_aero_data import flow_var_idx
@@ -76,6 +76,9 @@ from pymead.analysis.calc_aero_data import SVG_PLOTS, SVG_SETTINGS_TR
 from pyqtgraph.exporters import CSVExporter, SVGExporter
 
 from pymead.gui.show_hide import ShowHideDialog
+
+
+qsd = load_data(os.path.join(GUI_SETTINGS_DIR, "q_settings_descriptions.json"))
 
 
 class GUI(QMainWindow):
@@ -492,12 +495,21 @@ class GUI(QMainWindow):
             self.cbar_label_attrs["color"] = theme["cbar-color"]
             self.cbar.setLabel(**self.cbar_label_attrs)
             self.cbar.setColorMap(self.crameri_cmap[self.current_theme])
-            self.cbar.axis.setStyle(tickFont=QFont(theme["cbar-tick-font-family"], theme["cbar-tick-point-size"]))
+            tick_font = QFont(get_setting("cbar-tick-font-family"), get_setting("cbar-tick-point-size"))
+            self.cbar.axis.setStyle(tickFont=tick_font)
             self.cbar.axis.setTextPen(pg.mkPen(color=theme["cbar-color"]))
         # if self.analysis_graph is not None:
         #     self.analysis_graph.set_background(theme["graph-background-color"])
         # if self.param_tree_instance is not None:
         #     self.param_tree_instance.set_theme(theme)
+
+    def set_color_bar_style(self, new_values: dict = None):
+        if self.cbar is None:
+            return
+
+        new_values = {} if new_values is None else new_values
+        self.cbar.setLabel(axis="right", )
+        self.cbar.getAxis("right").setWidth(25 + 1)
 
     def set_title_and_icon(self):
         self.setWindowTitle("pymead")
@@ -856,8 +868,12 @@ class GUI(QMainWindow):
             self.cbar_label_attrs = None
 
     def plot_field(self):
-        default_field_dir = self.default_field_dir if self.last_analysis_dir is None else self.last_analysis_dir
-        default_field_dir = "" if default_field_dir is None else default_field_dir
+        if self.last_analysis_dir is None and get_setting("plot-field-dir") != "":
+            default_field_dir = get_setting("plot-field-dir")
+        elif self.last_analysis_dir is not None:
+            default_field_dir = self.last_analysis_dir
+        else:
+            default_field_dir = ""
         dlg = MSESFieldPlotDialog(parent=self, default_field_dir=default_field_dir)
         if dlg.exec_():
             inputs = dlg.valuesFromWidgets()
@@ -931,12 +947,7 @@ class GUI(QMainWindow):
         #     pen='#8888FF', hoverPen='#EEEEFF', hoverBrush='#EEEEFF80'
         # )
         # bar.setImageItem(pcmi_list)
-        self.cbar_label_attrs = {
-            "axis": "right",
-            "text": flow_var_label[inputs["flow_variable"]],
-            "font-size": "12pt",
-            "font-family": "DejaVu Sans"
-        }
+
         # bar.setLabel(**self.cbar_label_attrs)
         # self.cbar = bar
         if self.current_theme == "dark":
@@ -973,6 +984,13 @@ class GUI(QMainWindow):
             "light": pg.ColorMap(name="vik", pos=pos, color=255*cm.vik.colors[:, :3]+0.5)
         }
 
+        self.cbar_label_attrs = {
+            "axis": "right",
+            "text": flow_var_label[inputs["flow_variable"]],
+            "font-size": f"{get_setting('axis-label-point-size')}pt",
+            "font-family": f"{get_setting('axis-label-font-family')}"
+        }
+
         theme = self.themes[self.current_theme]
 
         self.cbar = self.airfoil_canvas.plot.addColorBar(pcmi_list, colorMap=self.crameri_cmap[self.current_theme])
@@ -981,8 +999,11 @@ class GUI(QMainWindow):
         self.cbar.setLabel(**self.cbar_label_attrs)
         self.cbar.setLevels(values=levels)
 
-        self.cbar.axis.setStyle(tickFont=QFont(theme["cbar-tick-font-family"], theme["cbar-tick-point-size"]))
+        tick_font = QFont(get_setting("cbar-tick-font-family"), get_setting("cbar-tick-point-size"))
+        self.cbar.axis.setStyle(tickFont=tick_font)
         self.cbar.axis.setTextPen(pg.mkPen(color=theme["cbar-color"]))
+        self.cbar.getAxis("right").setWidth(20 + 2 * get_setting("axis-label-point-size") +
+                                            2 * get_setting("cbar-tick-point-size"))
 
     def load_mea_no_dialog(self, file_name):
         self.permanent_widget.progress_bar.setValue(0)

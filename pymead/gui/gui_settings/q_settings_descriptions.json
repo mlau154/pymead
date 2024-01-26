@@ -4,6 +4,8 @@
   "geometry_plot_default_open_location": "Directory where plot_geometry() starts by default",
   "dark_theme_checked": "set_theme('dark') used if true, else set_theme('light')",
   "ga-settings-dir": "Directory where GAGeneralSettingsDialogWidget.load_opt_settings starts",
+  "plot-field-dir": ["Directory from which field data is extracted", ""],
+  "plot-field-export-dir": ["Directory where field plot images are stored", ""],
   "pkl_file_dir": "Directory where import_algorithm_pkl_file starts",
   "pkl_file": "Starting value for the .pkl file to extract",
   "pkl_use_index": "Whether to extract parameter vector from optimal set by index",
@@ -29,5 +31,11 @@
   "cpnet_default_pen_color": ["Default pen color for Bezier curve control point nets", "lightgray"],
   "cpnet_default_pen_width": ["Default pen width for Bezier curve control point nets", 1],
   "cpnet_default_pen_dash": ["Default pen dash pattern for Bezier curve control point nets", "--"],
-  "cpnet_hovered_pen_width": ["Hovered pen width for Bezier curve control point nets", 3]
+  "cpnet_hovered_pen_width": ["Hovered pen width for Bezier curve control point nets", 3],
+  "cbar-tick-font-family": ["Default tick label font family for color bars", "DejaVu Sans Mono"],
+  "cbar-tick-point-size": ["Default tick label font point size for color bars", 8],
+  "axis-tick-font-family": ["Default tick label font family for axes", "DejaVu Sans Mono"],
+  "axis-tick-point-size": ["Default tick label font point size for axes", 8],
+  "axis-label-font-family": ["Default axis label font family", "DejaVu Sans"],
+  "axis-label-point-size": ["Default axis label font point size", 12]
 }

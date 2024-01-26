@@ -12,7 +12,7 @@ import pyqtgraph as pg
 from PyQt5.QtWidgets import QDialog, QDialogButtonBox, QFormLayout, QDoubleSpinBox, QComboBox, QSpinBox, \
     QTabWidget, QLabel, QMessageBox, QCheckBox, QVBoxLayout, QWidget, QGridLayout, QPushButton, QListView, QRadioButton
 from PyQt5.QtCore import QEvent, Qt, QObject
-from PyQt5.QtGui import QStandardItem, QStandardItemModel
+from PyQt5.QtGui import QStandardItem, QStandardItemModel, QFont
 import tempfile
 from PyQt5.QtCore import pyqtSlot, pyqtSignal, QStandardPaths
 
@@ -27,6 +27,7 @@ from pymead.gui.separation_lines import QHSeperationLine
 from pymead.utils.widget_recursion import get_parent
 from pymead.utils.read_write_files import load_data, save_data, load_documents_path
 from pymead.utils.dict_recursion import recursive_get
+from pymead.utils.misc import get_setting, set_setting
 from pymead.gui.default_settings import xfoil_settings_default
 from pymead.gui.bounds_values_table import BoundsValuesTable
 from pymead.optimization.objectives_and_constraints import Objective, Constraint, FunctionCompileError
@@ -1046,7 +1047,9 @@ class PymeadLabeledDoubleSpinBox(QObject):
         self.widget.setReadOnly(not active)
 
 
-class PymeadLabeledLineEdit:
+class PymeadLabeledLineEdit(QObject):
+
+    sigValueChanged = pyqtSignal(str)
 
     def __init__(self, label: str = "", tool_tip: str = "", text: str = "", push_label: str = None):
         self.label = QLabel(label)
@@ -1057,6 +1060,9 @@ class PymeadLabeledLineEdit:
 
         if push_label is not None:
             self.push = QPushButton(push_label)
+
+        super().__init__()
+        self.widget.textChanged.connect(self.sigValueChanged)
 
     def setValue(self, text: str):
         self.widget.setText(text)
@@ -2885,6 +2891,7 @@ class MSESFieldPlotDialogWidget(PymeadDialogWidget):
         super().__init__(settings_file=os.path.join(GUI_DEFAULTS_DIR, 'mses_field_plot_settings.json'))
         if default_field_dir is not None:
             self.widget_dict['analysis_dir']['widget'].setText(default_field_dir)
+        self.widget_dict["analysis_dir"]["widget"].textChanged.connect(partial(set_setting, "plot-field-dir"))
 
     def select_directory(self, line_edit: QLineEdit):
         select_directory(parent=self, line_edit=line_edit, starting_dir=tempfile.gettempdir())
@@ -2961,3 +2968,97 @@ class GridBounds(QWidget):
 
     def valueChanged(self, _):
         self.boundsChanged.emit()
+
+
+class PlotExportDialogWidget(PymeadDialogWidget2):
+    def __init__(self, gui_obj, parent=None):
+        super().__init__(parent=parent)
+        self.widget_dict = None
+        self.lay = QGridLayout()
+        self.setLayout(self.lay)
+        self.gui_obj = gui_obj
+        self.initializeWidgets()
+
+    def initializeWidgets(self):
+        available_fonts = ["DejaVu Sans Mono", "DejaVu Serif", "DejaVu Sans"]
+        self.widget_dict = {
+            "save_name": PymeadLabeledLineEdit(label="File Name", text="airfoil.png",
+                                               tool_tip="Name of the image. If the '.png' extension is not included,"
+                                                        " it will be appended automatically"),
+            "save_dir": PymeadLabeledLineEdit(label="Save Directory", push_label="Choose Directory",
+                                              text=get_setting("plot-field-export-dir")),
+            "width": PymeadLabeledSpinBox(label="Image Width", minimum=100, maximum=10000, value=1920,
+                                          tool_tip="Increasing this value increases the plot resolution but also "
+                                                   "increases the image file size"),
+            "tick_font_family": PymeadLabeledComboBox(label="Tick Font", items=available_fonts,
+                                                      current_item=get_setting("axis-tick-font-family")),
+            "tick_font_size": PymeadLabeledSpinBox(label="Tick Point Size", minimum=1, maximum=100,
+                                                   value=get_setting("axis-tick-point-size")),
+            "label_font_family": PymeadLabeledComboBox(label="Label Font", items=available_fonts,
+                                                       current_item=get_setting("axis-label-font-family")),
+            "label_font_size": PymeadLabeledSpinBox(label="Label Point Size", minimum=1, maximum=100,
+                                                    value=get_setting("axis-label-point-size")),
+        }
+
+        # Add all the widgets
+        for widget_name, widget in self.widget_dict.items():
+            row_count = self.lay.rowCount()
+            self.lay.addWidget(widget.label, row_count, 0)
+            self.lay.addWidget(widget.widget, row_count, 1)
+            if widget.push is not None:
+                self.lay.addWidget(widget.push, row_count, 2)
+
+        self.widget_dict["save_dir"].push.clicked.connect(
+            partial(select_directory, self, line_edit=self.widget_dict["save_dir"].widget))
+
+        self.widget_dict["tick_font_family"].sigValueChanged.connect(self.tickFontChanged)
+        self.widget_dict["tick_font_size"].sigValueChanged.connect(self.tickFontChanged)
+        self.widget_dict["label_font_family"].sigValueChanged.connect(self.labelFontChanged)
+        self.widget_dict["label_font_size"].sigValueChanged.connect(self.labelFontChanged)
+        self.widget_dict["save_dir"].sigValueChanged.connect(partial(set_setting, "plot-field-export-dir"))
+
+    def tickFontChanged(self, _):
+        widget_values = self.valuesFromWidgets()
+        tick_font = QFont(widget_values["tick_font_family"], widget_values["tick_font_size"])
+        set_setting("cbar-tick-font-family", widget_values["tick_font_family"])
+        set_setting("cbar-tick-point-size", widget_values["tick_font_size"])
+        set_setting("axis-tick-font-family", widget_values["tick_font_family"])
+        set_setting("axis-tick-point-size", widget_values["tick_font_size"])
+        if self.gui_obj.cbar is not None:
+            self.gui_obj.cbar.axis.setStyle(tickFont=tick_font)
+            self.gui_obj.cbar.getAxis("right").setWidth(20 + 2 * widget_values["label_font_size"] +
+                                                        2 * widget_values["tick_font_size"])
+        self.gui_obj.airfoil_canvas.plot.getAxis("bottom").setTickFont(tick_font)
+        self.gui_obj.airfoil_canvas.plot.getAxis("left").setTickFont(tick_font)
+
+    def labelFontChanged(self, _):
+        widget_values = self.valuesFromWidgets()
+        theme_color = self.gui_obj.themes[self.gui_obj.current_theme]["main-color"]
+        new_font = f"{widget_values['label_font_size']}pt {widget_values['label_font_family']}"
+        set_setting("axis-label-font-family", widget_values["label_font_family"])
+        set_setting("axis-label-point-size", widget_values["label_font_size"])
+        for axis in ("left", "bottom"):
+            label_text = self.gui_obj.airfoil_canvas.plot.getAxis(axis).label.toPlainText()
+            self.gui_obj.airfoil_canvas.plot.setLabel(
+                axis=axis, text=label_text, color=theme_color, font=new_font)
+        if self.gui_obj.cbar is not None:
+            cbar_text = self.gui_obj.cbar.getAxis("right").label.toPlainText()
+            self.gui_obj.cbar.setLabel(axis="right", text=cbar_text, color=theme_color, font=new_font)
+            self.gui_obj.cbar.getAxis("right").setWidth(20 + 2 * widget_values["label_font_size"] +
+                                                        2 * widget_values["tick_font_size"])
+
+    def setWidgetValuesFromDict(self, d: dict):
+        for d_name, d_value in d.items():
+            try:
+                self.widget_dict[d_name].setValue(d_value)
+            except KeyError:
+                pass
+
+    def valuesFromWidgets(self) -> dict:
+        return {k: v.value() for k, v in self.widget_dict.items()}
+
+
+class PlotExportDialog(PymeadDialog):
+    def __init__(self, parent, gui_obj):
+        widget = PlotExportDialogWidget(gui_obj=gui_obj)
+        super().__init__(parent, window_title="Plot Export", widget=widget)

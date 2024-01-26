@@ -9,6 +9,8 @@ from PyQt5 import QtWidgets
 from PyQt5.QtCore import pyqtSignal, QEventLoop, Qt
 from PyQt5.QtGui import QFont, QBrush, QColor
 from PyQt5.QtWidgets import QApplication
+
+from pymead.gui.input_dialog import PlotExportDialog
 from pymead.gui.polygon_item import PolygonItem
 
 from pymead.core.airfoil import Airfoil
@@ -24,6 +26,7 @@ from pymead.gui.constraint_items import *
 from pymead.gui.hoverable_curve import HoverableCurve
 from pymead.gui.draggable_point import DraggablePoint
 from pymead.utils.read_write_files import load_data
+from pymead.utils.misc import get_setting
 from pymead.core import UNITS
 from pymead import q_settings, GUI_SETTINGS_DIR
 
@@ -80,12 +83,14 @@ class AirfoilCanvas(pg.PlotWidget):
         return {sub_container: False for sub_container in sub_containers}
 
     def setAxisLabels(self, theme: dict):
-        self.plot.setLabel(axis="bottom", text=f"x [{UNITS.current_length_unit()}]", font="10pt DejaVu Sans",
+        label_font = f"{get_setting('axis-label-point-size')}pt {get_setting('axis-label-font-family')}"
+        self.plot.setLabel(axis="bottom", text=f"x [{UNITS.current_length_unit()}]", font=label_font,
                            color=theme["main-color"])
-        self.plot.setLabel(axis="left", text=f"y [{UNITS.current_length_unit()}]", font="10pt DejaVu Sans",
+        self.plot.setLabel(axis="left", text=f"y [{UNITS.current_length_unit()}]", font=label_font,
                            color=theme["main-color"])
-        self.plot.getAxis("bottom").setTickFont(QFont(theme["axis-tick-font-family"], theme["axis-tick-point-size"]))
-        self.plot.getAxis("left").setTickFont(QFont(theme["axis-tick-font-family"], theme["axis-tick-point-size"]))
+        tick_font = QFont(get_setting("axis-tick-font-family"), get_setting("axis-tick-point-size"))
+        self.plot.getAxis("bottom").setTickFont(tick_font)
+        self.plot.getAxis("left").setTickFont(tick_font)
         self.plot.getAxis("bottom").setTextPen(theme["main-color"])
         self.plot.getAxis("left").setTextPen(theme["main-color"])
 
@@ -694,38 +699,70 @@ class AirfoilCanvas(pg.PlotWidget):
         self.deepcopy_point()
         self.clearSelectedObjects()
 
-    def deepcopy_point(self):
-        point = self.geo_col.selected_objects["points"][0]
-        new_point = deepcopy(point)
-        print(f"{point.tree_item = }, {new_point.tree_item = }, {point.canvas_item = }, {new_point.canvas_item = }")
+    def exportPlot(self):
+        dialog = PlotExportDialog(self, gui_obj=self.gui_obj)
+        if dialog.exec_():
+            # Get the inputs from the dialog
+            inputs = dialog.valuesFromWidgets()
+
+            # Create the pyqtgraph ImageExporter object from the airfoil canvas
+            exporter = pg.exporters.ImageExporter(self.plot)
+
+            # Set the image width parameter
+            exporter.parameters()["width"] = inputs["width"]
+
+            # Prevent saves to the local GUI directory
+            if inputs["save_dir"] == "":
+                self.gui_obj.disp_message_box(f"Please select a save directory")
+                return
+
+            # Prevent saves to an invalid file path
+            if not os.path.exists(inputs["save_dir"]):
+                self.gui_obj.disp_message_box(f"The save directory {inputs['save_dir']} does not exist",
+                                              message_mode="error")
+                return
+
+            # If there is no .png extension, add one
+            file_path = os.path.join(inputs["save_dir"], inputs["save_name"])
+            if not os.path.splitext(file_path)[-1] == ".png":
+                file_path += ".png"
+
+            # Export the image
+            exporter.export(file_path)
+
+            # Display success message
+            self.gui_obj.disp_message_box(f"Plot saved to {file_path}", message_mode="info")
 
     def contextMenuEvent(self, event):
         menu = QtWidgets.QMenu(self)
+        create_geometry_menu = menu.addMenu("Create Geometry")
+        modify_geometry_menu = menu.addMenu("Modify Geometry")
+        add_constraint_menu = menu.addMenu("Add Constraint")
 
         removeCurveAction, curve_item, insertCurvePointAction = None, None, None
         if self.curve_hovered_item is not None:
             # Curve removal action
-            removeCurveAction = menu.addAction("Remove Curve")
+            removeCurveAction = modify_geometry_menu.addAction("Remove Curve")
             curve_item = self.curve_hovered_item
 
             # Curve point insertion action
-            insertCurvePointAction = menu.addAction(
+            insertCurvePointAction = modify_geometry_menu.addAction(
                 "Insert Curve Point") if self.curve_hovered_item is not None else None
 
-        drawPointAction = menu.addAction("Insert Point")
-        drawBezierCurveThroughPointsAction = menu.addAction("Bezier Curve Through Points")
-        drawLineSegmentThroughPointsAction = menu.addAction("Line Segment Through Points")
-        generateAirfoilAction = menu.addAction("Generate Airfoil")
-        generateMEAAction = menu.addAction("Generate MEA")
-        addRelAngle3ConstraintAction = menu.addAction("Add Relative Angle 3 Constraint")
-        addPerp3ConstraintAction = menu.addAction("Add Perpendicular 3 constraint")
-        addAntiParallel3ConstraintAction = menu.addAction("Add Anti-Parallel 3 Constraint")
-        addSymmetryConstraintAction = menu.addAction("Add Symmetry Constraint")
-        addROCurvatureConstraintAction = menu.addAction("Add Radius of Curvature Constraint")
-        addLengthDimensionAction = menu.addAction("Add Length Dimension")
-        addAngleDimensionAction = menu.addAction("Add Angle Dimension")
-        addDistanceConstraintAction = menu.addAction("Add Distance Constraint")
-        deepcopyPointsAction = menu.addAction("Deepcopy point")
+        drawPointAction = create_geometry_menu.addAction("Insert Point")
+        drawBezierCurveThroughPointsAction = create_geometry_menu.addAction("Bezier Curve Through Points")
+        drawLineSegmentThroughPointsAction = create_geometry_menu.addAction("Line Segment Through Points")
+        generateAirfoilAction = create_geometry_menu.addAction("Generate Airfoil")
+        generateMEAAction = create_geometry_menu.addAction("Generate MEA")
+        addRelAngle3ConstraintAction = add_constraint_menu.addAction("Add Relative Angle 3 Constraint")
+        addPerp3ConstraintAction = add_constraint_menu.addAction("Add Perpendicular 3 constraint")
+        addAntiParallel3ConstraintAction = add_constraint_menu.addAction("Add Anti-Parallel 3 Constraint")
+        addSymmetryConstraintAction = add_constraint_menu.addAction("Add Symmetry Constraint")
+        addROCurvatureConstraintAction = add_constraint_menu.addAction("Add Radius of Curvature Constraint")
+        addLengthDimensionAction = add_constraint_menu.addAction("Add Length Dimension")
+        addAngleDimensionAction = add_constraint_menu.addAction("Add Angle Dimension")
+        addDistanceConstraintAction = add_constraint_menu.addAction("Add Distance Constraint")
+        exportPlotAction = menu.addAction("Export Plot")
         view_pos = self.getPlotItem().getViewBox().mapSceneToView(event.pos())
         res = menu.exec_(event.globalPos())
         if res == drawPointAction:
@@ -758,8 +795,8 @@ class AirfoilCanvas(pg.PlotWidget):
             self.removeCurve(curve_item)
         elif res == insertCurvePointAction and curve_item is not None:
             self.addPointToCurve(curve_item)
-        elif res == deepcopyPointsAction:
-            self.selectPointsToDeepcopy()
+        elif res == exportPlotAction:
+            self.exportPlot()
 
     def removeSelectedPoints(self):
         self.geo_col.remove_selected_objects()
