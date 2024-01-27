@@ -222,7 +222,8 @@ class CpPlotCallbackMSES(OptCallback):
         # print(f"forces = {self.forces}")
         # The structure of forces dict is {..., "BL": [recent_gen_minus_2, recent_gen_minus_1, read_aero_data(recent_gen)]
         self.Cp = Cp
-        self.x_max = self.parent.mea.calculate_max_x_extent()
+        # self.x_max = self.parent.mea.calculate_max_x_extent()
+        self.x_max = 1.0
 
     def exec_callback(self):
         if self.parent.Cp_graph is None:

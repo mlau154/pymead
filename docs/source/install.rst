@@ -137,6 +137,7 @@ dependencies.
   using JAX's methods for just-in-time compilation and computation of the Jacobian using automatic differentiation
 - `networkx <https://networkx.org/documentation/stable/>`_: Analysis of the undirected graph describing the geometric
   constraint system
+- `psutil <https://pypi.org/project/psutil/>`_: Process management
 
 Optional
 --------

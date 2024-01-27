@@ -1,6 +1,6 @@
 import os
 import typing
-from multiprocessing import Pool
+from multiprocessing import Pool, active_children
 from multiprocessing.connection import Connection
 from copy import deepcopy
 
@@ -11,6 +11,7 @@ from pymead.core.airfoil import Airfoil
 from pymead.core.geometry_collection import GeometryCollection
 
 from pymead.analysis.calc_aero_data import calculate_aero_data
+from pymead.utils.multiprocessing import kill_child_processes
 
 
 class CustomGASettings:
@@ -33,12 +34,12 @@ class Chromosome:
 
         self.geo_col_dict = geo_col_dict
         self.geo_col = None
-        print(f"{mea_name = }, {airfoil_name = }")
         self.mea_name = mea_name
         self.airfoil_name = airfoil_name
         self.mea = None
         self.airfoil = None
         self.airfoil_list = None
+        self.mea_airfoil_names = None
 
         self.param_dict = deepcopy(param_dict)
         self.genes = deepcopy(genes)
@@ -67,6 +68,8 @@ class Chromosome:
         self.mea = None if self.mea_name is None else self.geo_col.container()["mea"][self.mea_name]
         self.airfoil = None if self.airfoil_name is None else self.geo_col.container()["airfoils"][self.airfoil_name]
         self.airfoil_list = [self.airfoil] if self.airfoil is not None else self.mea.airfoils
+        if self.mea is not None:
+            self.mea_airfoil_names = [airfoil.name() for airfoil in self.mea.airfoils]
         # self.mea_object = MEA.generate_from_param_dict(self.mea)
         # if deactivate_airfoil_graphs:
         #     self.mea_object.remove_airfoil_graphs()
@@ -133,10 +136,10 @@ class Chromosome:
     def update_param_dict(self):
         if self.param_dict["tool"] != "MSES":
             return
-        dben = benedict(self.param_dict)
-        for idx, from_geometry in enumerate(self.param_dict['mses_settings']['from_geometry']):
-            for k, v in from_geometry.items():
-                self.param_dict['mses_settings'][k][idx] = dben[v.replace('$', '')].value
+        # dben = benedict(self.param_dict)
+        # for idx, from_geometry in enumerate(self.param_dict['mses_settings']['from_geometry']):
+        #     for k, v in from_geometry.items():
+        #         self.param_dict['mses_settings'][k][idx] = dben[v.replace('$', '')].value
 
     def get_airfoil_line_strings(self):
         line_strings = {}
@@ -199,6 +202,8 @@ class Chromosome:
                 if self.verbose:
                     print(f'Max thickness is {max_thickness}. '
                           f'Failed thickness test in chk_max_thickness, trying again...')
+                for cnstr in self.geo_col.container()["geocon"].values():
+                    cnstr.data = None
                 return max_thickness_too_small_flag
             else:
                 max_thickness_too_small_flag = False
@@ -310,9 +315,12 @@ class Population:
             else:
                 raise ValueError('Only XFOIL and MSES are supported as tools in the optimization framework')
 
+            print(f"Evaluating aerodynamic data for {chromosome = }, {os.getpid() = }")
+
             chromosome.forces, _ = calculate_aero_data(chromosome.param_dict['base_folder'],
                                                        chromosome.param_dict['name'][chromosome.population_idx],
                                                        coords=chromosome.coords, tool=tool,
+                                                       mea_airfoil_names=chromosome.mea_airfoil_names,
                                                        xfoil_settings=xfoil_settings,
                                                        mset_settings=mset_settings,
                                                        mses_settings=mses_settings,
@@ -322,8 +330,15 @@ class Population:
             # Here, we remove the data attribute from the chromosome, since "data" includes a non-serializable
             # JIT-compiled equation set. Without these two lines, an error is raised when trying to send data across
             # the pipe
+            # chromosome.geo_col = None
+            # if chromosome.mea is not None:
+            #     chromosome.mea.geo_col = None
+            #     for airfoil in chromosome.mea.airfoils:
+            #         airfoil.geo_col = None
             for cnstr in chromosome.geo_col.container()["geocon"].values():
                 cnstr.data = None
+
+            print(f"{chromosome.geo_col = }, {chromosome.mea = }, {chromosome.airfoil = }")
 
             if (xfoil_settings is not None and xfoil_settings["multi_point_stencil"] is None) or (
                     mses_settings is not None and mses_settings['multi_point_stencil'] is None):
@@ -389,6 +404,11 @@ class Population:
                     print(status_bar_message)
 
                 if n_converged_chromosomes >= self.param_dict["population_size"]:
+                    for child in active_children():
+                        print(f"{child.pid = }. Killing child processes...")
+                        kill_child_processes(child.pid)
+                    pool.terminate()
+                    pool.join()
                     break
 
         for chromosome in self.converged_chromosomes:

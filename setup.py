@@ -44,7 +44,7 @@ setup(
     include_package_data=True,
     install_requires=["scipy", "numpy", "shapely", "matplotlib", "requests>=2.31", "PyQt5==5.15.7",
                       "pyqtgraph==0.13.1", "python-benedict", "pandas", "pymoo==0.5.0", "numba", "PyQtWebEngine",
-                      "cmcrameri", "jax", "jaxopt", "networkx"],
+                      "cmcrameri", "jax", "jaxopt", "networkx", "psutil"],
 )
 
 # TODO: fix relative file-pathing (like "menu.json") when calling the GUI main directly from a Python interpreter after

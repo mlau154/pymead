@@ -443,6 +443,7 @@ class PymeadDialogWidget(QWidget):
                 if w_dict["widget_type"] != "ADWidget":
                     if "param_list" in kwargs.keys():
                         kwargs.pop("param_list")
+                if w_dict["widget_type"] not in ["ADWidget", "OptConstraintsHTabWidget"]:
                     if "geo_col" in kwargs.keys():
                         kwargs.pop("geo_col")
                 widget = getattr(sys.modules[__name__], w_dict['widget_type'])(parent=self, **kwargs)
@@ -1627,7 +1628,7 @@ class OptConstraintsHTabWidget(PymeadDialogHTabWidget):
     def __init__(self, parent, geo_col: GeometryCollection, mset_dialog_widget: MSETDialogWidget = None):
         super().__init__(parent=parent,
                          widgets={k: OptConstraintsDialogWidget() for k in geo_col.container()["airfoils"]})
-        mset_dialog_widget.airfoilsChanged.connect(self.onAirfoilListChanged)
+        # mset_dialog_widget.airfoilsChanged.connect(self.onAirfoilListChanged)
 
     def reorderRegenerateWidgets(self, new_airfoil_name_list: list):
         temp_dict = {}
@@ -1636,32 +1637,32 @@ class OptConstraintsHTabWidget(PymeadDialogHTabWidget):
         self.w_dict = temp_dict
         self.regenerateWidgets()
 
-    def onAirfoilAdded(self, new_airfoil_name_list: list):
-        for airfoil_name in new_airfoil_name_list:
-            if airfoil_name not in self.w_dict.keys():
-                self.w_dict[airfoil_name] = OptConstraintsDialogWidget()
-        self.reorderRegenerateWidgets(new_airfoil_name_list=new_airfoil_name_list)
-
-    def onAirfoilRemoved(self, new_airfoil_name_list: list):
-        names_to_remove = []
-        for airfoil_name in self.w_dict.keys():
-            if airfoil_name not in new_airfoil_name_list:
-                names_to_remove.append(airfoil_name)
-        for airfoil_name in names_to_remove:
-            self.w_dict.pop(airfoil_name)
-        self.reorderRegenerateWidgets(new_airfoil_name_list=new_airfoil_name_list)
-
-    def onAirfoilListChanged(self, new_airfoil_name_list_str: str):
-        new_airfoil_name_list = new_airfoil_name_list_str.split(',')
-        if len(new_airfoil_name_list) > len([k for k in self.w_dict.keys()]):
-            self.onAirfoilAdded(new_airfoil_name_list)
-        elif len(new_airfoil_name_list) < len([k for k in self.w_dict.keys()]):
-            self.onAirfoilRemoved(new_airfoil_name_list)
-        else:
-            self.reorderRegenerateWidgets(new_airfoil_name_list=new_airfoil_name_list)
+    # def onAirfoilAdded(self, new_airfoil_name_list: list):
+    #     for airfoil_name in new_airfoil_name_list:
+    #         if airfoil_name not in self.w_dict.keys():
+    #             self.w_dict[airfoil_name] = OptConstraintsDialogWidget()
+    #     self.reorderRegenerateWidgets(new_airfoil_name_list=new_airfoil_name_list)
+    #
+    # def onAirfoilRemoved(self, new_airfoil_name_list: list):
+    #     names_to_remove = []
+    #     for airfoil_name in self.w_dict.keys():
+    #         if airfoil_name not in new_airfoil_name_list:
+    #             names_to_remove.append(airfoil_name)
+    #     for airfoil_name in names_to_remove:
+    #         self.w_dict.pop(airfoil_name)
+    #     self.reorderRegenerateWidgets(new_airfoil_name_list=new_airfoil_name_list)
+    #
+    # def onAirfoilListChanged(self, new_airfoil_name_list_str: str):
+    #     new_airfoil_name_list = new_airfoil_name_list_str.split(',')
+    #     if len(new_airfoil_name_list) > len([k for k in self.w_dict.keys()]):
+    #         self.onAirfoilAdded(new_airfoil_name_list)
+    #     elif len(new_airfoil_name_list) < len([k for k in self.w_dict.keys()]):
+    #         self.onAirfoilRemoved(new_airfoil_name_list)
+    #     else:
+    #         self.reorderRegenerateWidgets(new_airfoil_name_list=new_airfoil_name_list)
 
     def setValues(self, values: dict):
-        self.onAirfoilListChanged(new_airfoil_name_list_str=','.join([k for k in values.keys()]))
+        # self.onAirfoilListChanged(new_airfoil_name_list_str=','.join([k for k in values.keys()]))
         self.setWidgetValuesFromDict(new_values=values)
 
     def values(self):
@@ -1823,7 +1824,7 @@ class GAGeneralSettingsDialogWidget(PymeadDialogWidget):
 
 
 class GAConstraintsTerminationDialogWidget(PymeadDialogWidget):
-    def __init__(self, geo_col: GeometryCollection, mset_dialog_widget: MSETDialogWidget = None):
+    def __init__(self, geo_col: GeometryCollection, mset_dialog_widget: MSETDialogWidget2 = None):
         self.mset_dialog_widget = mset_dialog_widget
         super().__init__(settings_file=os.path.join(GUI_DEFAULTS_DIR, 'ga_constraints_termination_settings.json'),
                          geo_col=geo_col, mset_dialog_widget=mset_dialog_widget)
@@ -2491,8 +2492,8 @@ class OptimizationSetupDialog(PymeadDialog):
         w4 = MSETDialogWidget2(geo_col=geo_col)
         w2 = GAConstraintsTerminationDialogWidget(geo_col=geo_col, mset_dialog_widget=w4)
         w7 = MultiPointOptDialogWidget()
-        w5 = MSESDialogWidget(geo_col=geo_col)
-        w4.sigMEAChanged.connect(w5.widget_dict["xtrs"]["widget"].onMEAChanged)
+        w5 = MSESDialogWidget2(geo_col=geo_col)
+        # w4.sigMEAChanged.connect(w5.widget_dict["xtrs"].widget.onMEAChanged)
         w1 = GeneticAlgorithmDialogWidget(multi_point_dialog_widget=w7)
         w6 = PymeadDialogWidget(os.path.join(GUI_DEFAULTS_DIR, 'mplot_settings.json'))
         w = OptimizationDialogVTabWidget(parent=self, widgets={'General Settings': w0,

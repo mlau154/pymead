@@ -1,3 +1,4 @@
+import signal
 import subprocess
 import os
 import typing
@@ -89,8 +90,9 @@ def update_mses_settings_from_stencil(mses_settings: dict, stencil: typing.List[
     return mses_settings
 
 
-def calculate_aero_data(airfoil_coord_dir: str, airfoil_name: str, coords: typing.List[np.ndarray] = None,
-                        mea: MEA = None,
+def calculate_aero_data(airfoil_coord_dir: str, airfoil_name: str,
+                        coords: typing.List[np.ndarray] = None,
+                        mea: MEA = None, mea_airfoil_names: typing.List[str] = None,
                         tool: str = 'XFOIL', xfoil_settings: dict = None, mset_settings: dict = None,
                         mses_settings: dict = None, mplot_settings: dict = None, export_Cp: bool = True,
                         save_aero_data: bool = True):
@@ -219,7 +221,7 @@ def calculate_aero_data(airfoil_coord_dir: str, airfoil_name: str, coords: typin
         converged = False
         mses_log, mplot_log = None, None
         mset_success, mset_log, airfoil_name_order = run_mset(
-            airfoil_name, airfoil_coord_dir, mset_settings, coords=coords, mea=mea)
+            airfoil_name, airfoil_coord_dir, mset_settings, coords=coords, mea=mea, mea_airfoil_names=mea_airfoil_names)
 
         # Set up single-point or multipoint settings
         mset_mplot_loop_iterations = 1
@@ -257,14 +259,21 @@ def calculate_aero_data(airfoil_coord_dir: str, airfoil_name: str, coords: typin
                     break
 
                 if export_Cp:
-                    run_mplot(airfoil_name, airfoil_coord_dir, mplot_settings, mode='Cp')
-                    aero_data['BL'] = []
-                    bl = read_bl_data_from_mses(os.path.join(airfoil_coord_dir, airfoil_name,
-                                                             f"bl.{airfoil_name}"))
-                    for side in range(len(bl)):
-                        aero_data['BL'].append({})
-                        for output_var in ['x', 'y', 'Cp']:
-                            aero_data['BL'][-1][output_var] = bl[side][output_var]
+                    run_mplot(airfoil_name, airfoil_coord_dir, mplot_settings, mode="Cp")
+                    aero_data["BL"] = []
+                    for attempt in range(100):
+                        if attempt > 0:
+                            print(f"{attempt = }")
+                        try:
+                            bl = read_bl_data_from_mses(os.path.join(airfoil_coord_dir, airfoil_name,
+                                                                     f"bl.{airfoil_name}"))
+                            for side in range(len(bl)):
+                                aero_data["BL"].append({})
+                                for output_var in ["x", "y", "Cp"]:
+                                    aero_data["BL"][-1][output_var] = bl[side][output_var]
+                            break
+                        except KeyError:
+                            time.sleep(0.01)
 
                 if mplot_settings["CPK"]:
                     mplot_settings["flow_field"] = 2
@@ -435,7 +444,8 @@ def run_xfoil(airfoil_name: str, base_dir: str, xfoil_settings: dict, coords: np
     return aero_data, xfoil_log
 
 
-def run_mset(name: str, base_dir: str, mset_settings: dict, coords: typing.Tuple[tuple] = None, mea: MEA = None):
+def run_mset(name: str, base_dir: str, mset_settings: dict, mea_airfoil_names: typing.List[str],
+             coords: typing.List[np.ndarray] = None, mea: MEA = None):
     r"""
     A Python API for MSET
 
@@ -467,9 +477,8 @@ def run_mset(name: str, base_dir: str, mset_settings: dict, coords: typing.Tuple
         raise ValueError("Cannot specify both coords and mea")
 
     if coords is not None:
-        write_blade_file(name, base_dir, mset_settings['grid_bounds'], coords)
-        raise NotImplementedError("Running MSES using only a coordinate set and not an MEA object is not yet "
-                                  "fully implemented")
+        blade_file_path, airfoil_name_order = write_blade_file(name, base_dir, mset_settings['grid_bounds'], coords,
+                                                               mea_airfoil_names=mea_airfoil_names)
     elif mea is not None:
         blade_file_path, airfoil_name_order = mea.write_mses_blade_file(
             name, os.path.join(base_dir, name), grid_bounds=mset_settings["grid_bounds"])
@@ -543,6 +552,7 @@ def run_mses(name: str, base_folder: str, mses_settings: dict, airfoil_name_orde
     with open(mses_log, read_write) as f:
         process = subprocess.Popen(['mses', name, str(mses_settings['iter'])], stdout=subprocess.PIPE,
                                    stderr=subprocess.PIPE, cwd=os.path.join(base_folder, name))
+        print(f"{process.pid = }")
         try:
             outs, errs = process.communicate(timeout=mses_settings['timeout'])
             if 'Converged' in str(outs):
@@ -552,17 +562,24 @@ def run_mses(name: str, base_folder: str, mses_settings: dict, airfoil_name_orde
             else:
                 if mses_settings['verbose']:
                     print('Not converged!')
+            print(f"Completed MSES analysis for {process.pid = }. Converged = {converged}, {os.getpid() = }")
             f.write('Output:\n'.encode('utf-8'))
             f.write(outs)
             f.write('\nErrors:\n'.encode('utf-8'))
             f.write(errs)
         except subprocess.TimeoutExpired:
+            print(f"Timeout for {process.pid = }. Killing process... {os.getpid() = }")
             process.kill()
             outs, errs = process.communicate()
             f.write('After timeout, \nOutput: \n'.encode('utf-8'))
             f.write(outs)
             f.write('\nErrors:\n'.encode('utf-8'))
             f.write(errs)
+
+    print(f"For process {process.pid}, {process.poll() = }")
+    if process.poll() is None:
+        print(f"Killing process {process.pid}")
+        os.kill(process.pid, signal.SIGKILL)
 
     return converged, mses_log
 
@@ -673,7 +690,8 @@ def run_mplot(name: str, base_dir: str, mplot_settings: dict, mode: str = "force
     return mplot_log
 
 
-def write_blade_file(name: str, base_dir: str, grid_bounds: typing.Iterable, coords: typing.Tuple[tuple]) -> str:
+def write_blade_file(name: str, base_dir: str, grid_bounds: typing.Iterable, coords: typing.List[np.ndarray],
+                     mea_airfoil_names: typing.List[str]):
     r"""
     Writes airfoil geometry to an MSES blade file
 
@@ -692,7 +710,7 @@ def write_blade_file(name: str, base_dir: str, grid_bounds: typing.Iterable, coo
       perfectly rectangular because MSES produces far-field boundaries that follow the streamlines close to the
       specified :math:`x` and :math:`y`-locations for the grid.
 
-    coords: typing.Tuple[tuple]
+    coords: typing.List[np.ndarray]
       A 3-D set of coordinates to write as the airfoil geometry. The array of coordinates has size
       :math:`M \times N \times 2` where :math:`M` is the number of airfoils and :math:`N` is the number of airfoil
       coordinates. The coordinates can be input as a ragged array, where :math:`N` changes with each 3-D slice (i.e.,
@@ -703,22 +721,54 @@ def write_blade_file(name: str, base_dir: str, grid_bounds: typing.Iterable, coo
     str
         Absolute path to the generated MSES blade file
     """
-    if not os.path.exists(os.path.join(base_dir, name)):  # if specified directory doesn't exist,
-        os.mkdir(os.path.join(base_dir, name))  # create it
-    blade_file = os.path.join(base_dir, name, 'blade.' + name)  # blade file stored as
-    # <base_dir>\<name>\blade.<name>
-    with open(blade_file, 'w') as f:  # Open the blade_file with write permission
-        f.write(name + '\n')  # Write the name of the airfoil on the first line
-        for gb in grid_bounds[0:-1]:  # For each of the entries in grid_bounds except the last (type: list),
-            f.write(str(gb) + " ")  # write the grid_bound at the specified index with a space after it in blade_file
-        f.write(str(grid_bounds[-1]) + "\n")
-        for idx, airfoil_coords in enumerate(coords):
-            for xy in airfoil_coords:
-                f.write(f"{str(xy[0])} {str(xy[1])}\n")
-            if idx != len(coords) - 1:
-                f.write('999.0 999.0\n')  # Write 999.0 999.0 with a carriage return to indicate to MSES that another
-                # airfoil follows
-    return blade_file
+    # if not os.path.exists(os.path.join(base_dir, name)):  # if specified directory doesn't exist,
+    #     os.mkdir(os.path.join(base_dir, name))  # create it
+    # blade_file = os.path.join(base_dir, name, 'blade.' + name)  # blade file stored as
+    # # <base_dir>\<name>\blade.<name>
+    # with open(blade_file, 'w') as f:  # Open the blade_file with write permission
+    #     f.write(name + '\n')  # Write the name of the airfoil on the first line
+    #     for gb in grid_bounds[0:-1]:  # For each of the entries in grid_bounds except the last (type: list),
+    #         f.write(str(gb) + " ")  # write the grid_bound at the specified index with a space after it in blade_file
+    #     f.write(str(grid_bounds[-1]) + "\n")
+    #     for idx, airfoil_coords in enumerate(coords):
+    #         for xy in airfoil_coords:
+    #             f.write(f"{str(xy[0])} {str(xy[1])}\n")
+    #         if idx != len(coords) - 1:
+    #             f.write('999.0 999.0\n')  # Write 999.0 999.0 with a carriage return to indicate to MSES that another
+    #             # airfoil follows
+    # return blade_file
+
+    # Set the default grid bounds value
+    if grid_bounds is None:
+        grid_bounds = [-5.0, 5.0, -5.0, 5.0]
+
+    # Write the header (line 1: airfoil name, line 2: grid bounds values separated by spaces)
+    header = name + "\n" + " ".join([str(gb) for gb in grid_bounds])
+
+    # Determine the correct ordering for the airfoils. MSES expects airfoils to be ordered from top to bottom
+    max_y = [np.max(coord_xy[:, 1]) for coord_xy in coords]
+    airfoil_order = np.argsort(max_y)[::-1]
+
+    # Loop through the airfoils in the correct order
+    mea_coords = None
+    for airfoil_idx in airfoil_order:
+        airfoil_coords = coords[airfoil_idx]  # Extract the airfoil coordinates for this airfoil
+        if mea_coords is None:
+            mea_coords = airfoil_coords
+        else:
+            mea_coords = np.row_stack((mea_coords, np.array([999.0, 999.0])))  # MSES-specific airfoil delimiter
+            mea_coords = np.row_stack((mea_coords, airfoil_coords))  # Append this airfoil's coordinates to the mat.
+
+    # Generate the full file path
+    blade_file_path = os.path.join(base_dir, name, f"blade.{name}")
+
+    # Save the coordinates to file
+    np.savetxt(blade_file_path, mea_coords, header=header, comments="")
+
+    # Get the airfoil name order
+    airfoil_name_order = [mea_airfoil_names[idx] for idx in airfoil_order]
+
+    return blade_file_path, airfoil_name_order
 
 
 def write_gridpar_file(name: str, base_folder: str, mset_settings: dict, airfoil_name_order: typing.List[str]):

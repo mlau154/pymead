@@ -367,6 +367,9 @@ class GUI(QMainWindow):
         a0: QCloseEvent
             Qt CloseEvent object
         """
+        if self.shape_opt_process is not None:
+            self.stop_optimization()
+
         if self.mea_start_dict != self.copy_mea_dict():  # Only run this code if changes have been made
             save_dialog = NewMEADialog(parent=self)
             exit_dialog = ExitDialog(parent=self)
