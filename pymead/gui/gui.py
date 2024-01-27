@@ -1089,7 +1089,7 @@ class GUI(QMainWindow):
         self.text_area.insertHtml(f'<head><style> ')
 
     def display_airfoil_statistics(self):
-        airfoil_stats = AirfoilStatistics(mea=self.mea)
+        airfoil_stats = AirfoilStatistics(geo_col=self.geo_col)
         dialog = AirfoilStatisticsDialog(parent=self, airfoil_stats=airfoil_stats)
         dialog.exec()
 
