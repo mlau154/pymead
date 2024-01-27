@@ -3063,3 +3063,9 @@ class PlotExportDialog(PymeadDialog):
     def __init__(self, parent, gui_obj):
         widget = PlotExportDialogWidget(gui_obj=gui_obj)
         super().__init__(parent, window_title="Plot Export", widget=widget)
+
+
+class ExitOptimizationDialog(PymeadDialog):
+    def __init__(self, parent):
+        widget = QLabel("An optimization task is running. Quit?")
+        super().__init__(parent=parent, window_title="Terminate Optimization?", widget=widget)

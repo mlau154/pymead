@@ -1,5 +1,6 @@
 import typing
 from functools import partial
+from multiprocessing import active_children
 from threading import Thread
 
 import pyqtgraph as pg
@@ -21,7 +22,7 @@ from pymead.gui.main_icon_toolbar import MainIconToolbar
 
 from PyQt5.QtWidgets import QMainWindow, QApplication, \
     QWidget, QMenu, QStatusBar, QAction, QGraphicsScene, QGridLayout, QDockWidget, QVBoxLayout, QLabel, QSizeGrip, \
-    QMenuBar, QSizePolicy, QWidgetAction
+    QMenuBar, QSizePolicy, QWidgetAction, QDialog
 from PyQt5.QtGui import QIcon, QFont, QFontDatabase, QPainter, QCloseEvent, QTextCursor
 from PyQt5.QtCore import QEvent, QObject, Qt, QThreadPool, QSize, QRect
 from PyQt5.QtSvg import QSvgWidget
@@ -30,6 +31,7 @@ from PyQt5.QtCore import pyqtSlot
 from pymead.gui.airfoil_canvas import AirfoilCanvas
 from pymead.core.geometry_collection import GeometryCollection
 from pymead.gui.title_bar import TitleBar
+from pymead.utils.multiprocessing import kill_child_processes
 from pymead.version import __version__
 from pymead.utils.version_check import using_latest
 from pymead.core.transformation import Transformation3D
@@ -40,7 +42,7 @@ from pymead import RESOURCE_DIR
 from pymead.gui.input_dialog import LoadDialog, SaveAsDialog, OptimizationSetupDialog, \
     MultiAirfoilDialog, ColorInputDialog, ExportCoordinatesDialog, ExportControlPointsDialog, AirfoilPlotDialog, \
     AirfoilMatchingDialog, MSESFieldPlotDialog, ExportIGESDialog, XFOILDialog, NewMEADialog, EditBoundsDialog, \
-    ExitDialog, ScreenshotDialog, LoadAirfoilAlgFile
+    ExitDialog, ScreenshotDialog, LoadAirfoilAlgFile, ExitOptimizationDialog
 from pymead.gui.pymeadPColorMeshItem import PymeadPColorMeshItem
 from pymead.gui.analysis_graph import AnalysisGraph
 from pymead.gui.parameter_tree import ParameterTree
@@ -368,7 +370,12 @@ class GUI(QMainWindow):
             Qt CloseEvent object
         """
         if self.shape_opt_process is not None:
-            self.stop_optimization()
+            dialog = ExitOptimizationDialog(self)
+            if dialog.exec_():
+                self.stop_optimization()
+            else:
+                a0.ignore()
+                return
 
         if self.mea_start_dict != self.copy_mea_dict():  # Only run this code if changes have been made
             save_dialog = NewMEADialog(parent=self)
@@ -1771,6 +1778,8 @@ class GUI(QMainWindow):
         # Pool after the next CFD evaluation completes, depending on the progress of the optimization.
         self.shape_opt_process.parent_conn.close()
         self.shape_opt_process.child_conn.close()
+
+        self.shape_opt_process.terminate()
 
         if self.opt_thread is not None:
             self.opt_thread.join()

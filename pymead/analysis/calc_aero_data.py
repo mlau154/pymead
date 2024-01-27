@@ -552,7 +552,6 @@ def run_mses(name: str, base_folder: str, mses_settings: dict, airfoil_name_orde
     with open(mses_log, read_write) as f:
         process = subprocess.Popen(['mses', name, str(mses_settings['iter'])], stdout=subprocess.PIPE,
                                    stderr=subprocess.PIPE, cwd=os.path.join(base_folder, name))
-        print(f"{process.pid = }")
         try:
             outs, errs = process.communicate(timeout=mses_settings['timeout'])
             if 'Converged' in str(outs):
@@ -562,24 +561,17 @@ def run_mses(name: str, base_folder: str, mses_settings: dict, airfoil_name_orde
             else:
                 if mses_settings['verbose']:
                     print('Not converged!')
-            print(f"Completed MSES analysis for {process.pid = }. Converged = {converged}, {os.getpid() = }")
             f.write('Output:\n'.encode('utf-8'))
             f.write(outs)
             f.write('\nErrors:\n'.encode('utf-8'))
             f.write(errs)
         except subprocess.TimeoutExpired:
-            print(f"Timeout for {process.pid = }. Killing process... {os.getpid() = }")
             process.kill()
             outs, errs = process.communicate()
             f.write('After timeout, \nOutput: \n'.encode('utf-8'))
             f.write(outs)
             f.write('\nErrors:\n'.encode('utf-8'))
             f.write(errs)
-
-    print(f"For process {process.pid}, {process.poll() = }")
-    if process.poll() is None:
-        print(f"Killing process {process.pid}")
-        os.kill(process.pid, signal.SIGKILL)
 
     return converged, mses_log
 

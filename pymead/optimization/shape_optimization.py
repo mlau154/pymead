@@ -36,7 +36,7 @@ def shape_optimization(conn: mp.connection.Connection or None, param_dict: dict,
     objectives = [Objective(func_str=func_str) for func_str in objectives]
     constraints = [Constraint(func_str=func_str) for func_str in constraints]
 
-    print(f"Shape optimization has PID {os.getpid()}")
+    # print(f"Shape optimization has PID {os.getpid()}")
 
     def start_message(warm_start: bool):
         first_word = "Resuming" if warm_start else "Beginning"
@@ -317,7 +317,7 @@ def shape_optimization(conn: mp.connection.Connection or None, param_dict: dict,
         send_over_pipe(("opt_progress", {"text": algorithm.display.progress_dict, "completed": not algorithm.has_next(),
                                          "warm_start_gen": warm_start_gen}))
 
-        print(f"{algorithm.display.progress_dict = }")
+        # print(f"{algorithm.display.progress_dict = }")
 
         if len(objectives) == 1:
             if n_generation > 1:

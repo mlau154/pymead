@@ -3,8 +3,11 @@ Inspired by https://forum.qt.io/topic/110138/show-qprogressbar-with-computationa
 """
 
 import multiprocessing as mp
+from multiprocessing import active_children
 
 from PyQt5.QtCore import QObject, QRunnable, QThreadPool, pyqtSignal
+
+from pymead.utils.multiprocessing import kill_child_processes
 
 
 class ProgressEmitter(QRunnable):
@@ -65,4 +68,6 @@ class CPUBoundProcess(QObject):
 
     def terminate(self):
         self.progress_emitter.running = False
+        for child in active_children():
+            kill_child_processes(child.pid)
         self.process.terminate()

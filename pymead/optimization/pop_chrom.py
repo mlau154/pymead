@@ -63,7 +63,6 @@ class Chromosome:
         Chromosome generation flow
         :return:
         """
-        print(f"Generating {self.population_idx} with {os.getpid() = } from param_dict...")
         self.geo_col = GeometryCollection.set_from_dict_rep(self.geo_col_dict)
         self.mea = None if self.mea_name is None else self.geo_col.container()["mea"][self.mea_name]
         self.airfoil = None if self.airfoil_name is None else self.geo_col.container()["airfoils"][self.airfoil_name]
@@ -291,7 +290,7 @@ class Population:
         """
         Evaluates the fitness of a particular chromosome
         """
-        print(f"Generating {chromosome.population_idx}...")
+        # print(f"Generating {chromosome.population_idx}...")
         chromosome.generate()
         if not chromosome.valid_geometry:
             print(f"Geometry invalid for chromosome {chromosome.population_idx} "
@@ -315,8 +314,6 @@ class Population:
             else:
                 raise ValueError('Only XFOIL and MSES are supported as tools in the optimization framework')
 
-            print(f"Evaluating aerodynamic data for {chromosome = }, {os.getpid() = }")
-
             chromosome.forces, _ = calculate_aero_data(chromosome.param_dict['base_folder'],
                                                        chromosome.param_dict['name'][chromosome.population_idx],
                                                        coords=chromosome.coords, tool=tool,
@@ -337,8 +334,6 @@ class Population:
             #         airfoil.geo_col = None
             for cnstr in chromosome.geo_col.container()["geocon"].values():
                 cnstr.data = None
-
-            print(f"{chromosome.geo_col = }, {chromosome.mea = }, {chromosome.airfoil = }")
 
             if (xfoil_settings is not None and xfoil_settings["multi_point_stencil"] is None) or (
                     mses_settings is not None and mses_settings['multi_point_stencil'] is None):
@@ -380,15 +375,14 @@ class Population:
         n_eval = 0
         with Pool(processes=self.param_dict['num_processors']) as pool:
             result = pool.imap_unordered(self.eval_chromosome_fitness, self.population)
-            if self.verbose:
-                print(f'result = {result}')
+            # if self.verbose:
+            #     print(f'result = {result}')
             for chromosome in result:
 
                 if chromosome.fitness is not None:
                     self.converged_chromosomes.append(chromosome)
                 n_converged_chromosomes = len(self.converged_chromosomes)
                 n_eval += 1
-                print(f"{n_converged_chromosomes = }")
 
                 gen = 1 if self.generation == 0 else self.generation
                 status_bar_message = f"Generation {gen} of {self.param_dict['n_max_gen']}: Converged " \
@@ -405,7 +399,6 @@ class Population:
 
                 if n_converged_chromosomes >= self.param_dict["population_size"]:
                     for child in active_children():
-                        print(f"{child.pid = }. Killing child processes...")
                         kill_child_processes(child.pid)
                     pool.terminate()
                     pool.join()
