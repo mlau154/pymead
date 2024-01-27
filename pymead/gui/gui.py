@@ -1290,10 +1290,111 @@ class GUI(QMainWindow):
     def multi_airfoil_analysis_rejected(self):
         self.multi_airfoil_analysis_settings = self.dialog.valuesFromWidgets()
 
+    def display_mses_result(self, aero_data: dict, mset_settings: dict, mses_settings: dict):
+
+        def display_fail():
+            # Throw a GUI error
+            self.disp_message_box("MSES Analysis Failed", message_mode='error')
+
+            # Output failed MSES analysis info to console
+            self.output_area_text(
+                f"[{str(self.n_analyses).zfill(2)}] "
+                f"MSES Converged = {aero_data['converged']} | "
+                f"Errored out = {aero_data['errored_out']} | "
+                f"Timed out = {aero_data['timed_out']}",
+                line_break=True
+            )
+
+        def display_success():
+            # Calculate L/D if necessary
+            if "L/D" not in aero_data.keys():
+                aero_data["L/D"] = np.true_divide(aero_data["Cl"], aero_data["Cd"])
+
+            # Compute the output analysis directory
+            analysis_dir_full_path = os.path.abspath(
+                os.path.join(mset_settings['airfoil_analysis_dir'], mset_settings['airfoil_coord_file_name'], '')
+            )
+
+            # Output successful MSES analysis data to console
+            self.output_area_text(f"[{str(self.n_analyses).zfill(2)}] ")  # Number of analyses
+            self.output_area_text(f"<a href='{analysis_dir_full_path}'>MSES</a>", mode="html")  # Folder link
+            self.output_area_text(
+                f" ({mset_settings['mea']}, "
+                f"\u03b1 = {aero_data['alf']:.3f}\u00b0, "
+                f"Re = {mses_settings['REYNIN']:.3E}, "  # Reynolds number
+                f"Ma = {mses_settings['MACHIN']:.3f}): "  # Mach number
+                f"Cl = {aero_data['Cl']:+7.4f} | "  # Lift coefficient
+                f"Cd = {aero_data['Cd']:+.5f} | "  # Drag coefficient
+                f"Cm = {aero_data['Cm']:+7.4f} | "  # Pitching moment coefficient
+                f"L/D = {aero_data['L/D']:+8.4f}".replace("-", "\u2212"),  # Lift-to-drag ratio
+                # Note that the hyphens are replaced with the unicode subtraction char because the hyphen does not
+                # obey the fixed-width rule
+                line_break=True
+            )
+
+        if not aero_data['converged'] or aero_data['errored_out'] or aero_data['timed_out']:
+            display_fail()
+        else:
+            display_success()
+
+    def display_svgs(self, mset_settings: dict, mplot_settings: dict):
+
+        def display_svg():
+            f_name = os.path.join(mset_settings['airfoil_analysis_dir'],
+                                  mset_settings['airfoil_coord_file_name'],
+                                  f"{svg_plot}.svg")
+            if not os.path.exists(f_name):
+                self.disp_message_box(f"SVG file {f_name} was not found")
+                return
+
+            image = QSvgWidget(f_name)
+            graphics_scene = QGraphicsScene()
+            graphics_scene.addWidget(image)
+            view = CustomGraphicsView(graphics_scene, parent=self)
+            view.setRenderHint(QPainter.Antialiasing)
+            Mach_contour_widget = QWidget(self)
+            widget_layout = QGridLayout()
+            Mach_contour_widget.setLayout(widget_layout)
+            widget_layout.addWidget(view, 0, 0, 4, 4)
+            start_counter = 1
+            max_tab_name_search = 1000
+            for idx in range(max_tab_name_search):
+                name = f"{svg_plot}_{start_counter}"
+                if name in self.dock_widget_names:
+                    start_counter += 1
+                else:
+                    self.add_new_tab_widget(Mach_contour_widget, name)
+                    break
+
+        for svg_plot in SVG_PLOTS:
+            if mplot_settings[SVG_SETTINGS_TR[svg_plot]]:
+                display_svg()
+
+    def plot_mses_pressure_coefficient_distribution(self, aero_data: dict, mea: MEA):
+        if self.analysis_graph is None:
+            # Need to set analysis_graph to None if analysis window is closed
+            self.analysis_graph = AnalysisGraph(
+                background_color=self.themes[self.current_theme]["graph-background-color"])
+            self.add_new_tab_widget(self.analysis_graph.w, "Analysis")
+
+        # Get the index of the pen to determine which style to use
+        pen_idx = self.n_converged_analyses % len(self.pens)
+
+        # Get the maximum physical extent of the airfoil system in the x-direction (used to prevent showing
+        # off-body pressure recovery)
+        x_max = mea.get_max_x_extent()
+
+        # Plot the Cp distribution for each airfoil side
+        for side in aero_data["BL"]:
+            pg_plot_handle = self.analysis_graph.v.plot(
+                pen=pg.mkPen(color=self.pens[pen_idx][0], style=self.pens[pen_idx][1]), name=str(self.n_analyses)
+            )
+            x = side["x"] if isinstance(side["x"], np.ndarray) else np.array(side["x"])
+            Cp = side["Cp"] if isinstance(side["Cp"], np.ndarray) else np.array(side["Cp"])
+            pg_plot_handle.setData(x[np.where(x <= x_max)[0]], Cp[np.where(x <= x_max)[0]])
+
     def multi_airfoil_analysis(self, mset_settings: dict, mses_settings: dict,
                                mplot_settings: dict):
-        # print(f"{mplot_settings = }")
-        # mea = self.mea.deepcopy() if mset_settings["use_downsampling"] else self.mea
 
         mea = self.geo_col.container()["mea"][mset_settings["mea"]]
 
@@ -1310,83 +1411,19 @@ class GUI(QMainWindow):
             self.disp_message_box(str(os_error), message_mode="error")
             return
 
-        if not aero_data['converged'] or aero_data['errored_out'] or aero_data['timed_out']:
-            # Throw a GUI error
-            self.disp_message_box("MSES Analysis Failed", message_mode='error')
-
-            # Output failed MSES analysis info to console
-            self.output_area_text(
-                f"[{str(self.n_analyses).zfill(2)}] MSES Converged = {aero_data['converged']} | Errored out = "
-                f"{aero_data['errored_out']} | Timed out = {aero_data['timed_out']}", line_break=True)
-        else:
-            # Calculate L/D if necessary
-            if "L/D" not in aero_data.keys():
-                aero_data["L/D"] = np.true_divide(aero_data["Cl"], aero_data["Cd"])
-
-            # Output successful MSES analysis data to console
-            self.output_area_text(
-                f"[{str(self.n_analyses).zfill(2)}] ")
-            self.output_area_text(f"<a href='{os.path.abspath(os.path.join(mset_settings['airfoil_analysis_dir'], mset_settings['airfoil_coord_file_name'], ''))}'>MSES</a>", mode="html")
-            self.output_area_text(f" ({mset_settings['mea']}, \u03b1 = {aero_data['alf']:.3f}\u00b0, Re = {mses_settings['REYNIN']:.3E}, "
-                f"Ma = {mses_settings['MACHIN']:.3f}): "
-                f"Cl = {aero_data['Cl']:+7.4f} | Cd = {aero_data['Cd']:+.5f} | "
-                f"Cm = {aero_data['Cm']:+7.4f} | L/D = {aero_data['L/D']:+8.4f}".replace("-", "\u2212"), line_break=True)
+        self.display_mses_result(aero_data, mset_settings, mses_settings)
 
         if aero_data['converged'] and not aero_data['errored_out'] and not aero_data['timed_out']:
+            self.plot_mses_pressure_coefficient_distribution(aero_data, mea)
+            self.display_svgs(mset_settings, mplot_settings)
+
+            # Update the last successful analysis directory (for easy access in field plotting)
             self.last_analysis_dir = os.path.join(mset_settings["airfoil_analysis_dir"],
                                                   mset_settings["airfoil_coord_file_name"])
-            if self.analysis_graph is None:
-                # Need to set analysis_graph to None if analysis window is closed! Might also not want to allow
-                # geometry docking window to be closed
-                self.analysis_graph = AnalysisGraph(background_color=self.themes[self.current_theme]["graph-background-color"])
-                self.add_new_tab_widget(self.analysis_graph.w, "Analysis")
-            pen_idx = self.n_converged_analyses % len(self.pens)
-            x_max = mea.get_max_x_extent()
-            for side in aero_data['BL']:
-                pg_plot_handle = self.analysis_graph.v.plot(pen=pg.mkPen(color=self.pens[pen_idx][0],
-                                                                         style=self.pens[pen_idx][1]),
-                                                            name=str(self.n_analyses))
-                x = side["x"]
-                Cp = side["Cp"]
-                if not isinstance(x, np.ndarray):
-                    x = np.array(x)
-                if not isinstance(Cp, np.ndarray):
-                    Cp = np.array(Cp)
-                pg_plot_handle.setData(x[np.where(x <= x_max)[0]], Cp[np.where(x <= x_max)[0]])
-                # pg_plot_handle.setData(x, Cp)
-            # pg_plot_handle = self.analysis_graph.v.plot(pen=pg.mkPen(color=self.pens[pen_idx][0],
-            #                                                          style=self.pens[pen_idx][1]),
-            #                                             name=str(self.n_analyses))
-            # pg_plot_handle.setData(aero_data['BL'][0]['x'], aero_data['BL'][0]['Cp'])
-            # pen = pg.mkPen(color='green')
+
+            # Increment the number of converged analyses and the total number of analyses
             self.n_converged_analyses += 1
             self.n_analyses += 1
-            for svg_plot in SVG_PLOTS:
-                if mplot_settings[SVG_SETTINGS_TR[svg_plot]]:
-                    f_name = os.path.join(mset_settings['airfoil_analysis_dir'],
-                                          mset_settings['airfoil_coord_file_name'],
-                                          f"{svg_plot}.svg")
-                    if os.path.exists(f_name):
-                        image = QSvgWidget(f_name)
-                        graphics_scene = QGraphicsScene()
-                        graphics_scene.addWidget(image)
-                        view = CustomGraphicsView(graphics_scene, parent=self)
-                        view.setRenderHint(QPainter.Antialiasing)
-                        Mach_contour_widget = QWidget(self)
-                        widget_layout = QGridLayout()
-                        Mach_contour_widget.setLayout(widget_layout)
-                        widget_layout.addWidget(view, 0, 0, 4, 4)
-                        # new_image = QSvgWidget(os.path.join(RESOURCE_DIR, 'sec_34.svg'))
-                        # temp_widget.setWidget(new_image)
-                        start_counter = 1
-                        max_tab_name_search = 1000
-                        for idx in range(max_tab_name_search):
-                            name = f"{svg_plot}_{start_counter}"
-                            if name in self.dock_widget_names:
-                                start_counter += 1
-                            else:
-                                self.add_new_tab_widget(Mach_contour_widget, name)
-                                break
         else:
             self.n_analyses += 1
 
