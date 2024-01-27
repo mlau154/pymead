@@ -136,6 +136,9 @@ class Param(PymeadObj):
         if self.gcs is not None:
             self.gcs.multisolve_and_update(self.geo_cons[0])
 
+        if self.tree_item is not None:
+            self.tree_item.treeWidget().itemWidget(self.tree_item, 1).setValue(self.value())
+
     def lower(self):
         """
         Returns the lower bound for the design variable
