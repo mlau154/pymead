@@ -1774,15 +1774,12 @@ class GUI(QMainWindow):
 
     def stop_optimization(self):
 
-        # Close the Pipe, which triggers either an immediate termination of the worker process or a termination of the
-        # Pool after the next CFD evaluation completes, depending on the progress of the optimization.
-        self.shape_opt_process.parent_conn.close()
-        self.shape_opt_process.child_conn.close()
-
         self.shape_opt_process.terminate()
 
         if self.opt_thread is not None:
             self.opt_thread.join()
+
+        self.shape_opt_process = None
 
         print("Optimization terminated.")
 

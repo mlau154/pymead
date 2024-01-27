@@ -68,6 +68,8 @@ class CPUBoundProcess(QObject):
 
     def terminate(self):
         self.progress_emitter.running = False
+        self.parent_conn.close()
+        self.child_conn.close()
         for child in active_children():
             kill_child_processes(child.pid)
         self.process.terminate()

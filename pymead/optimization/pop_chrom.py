@@ -91,7 +91,7 @@ class Chromosome:
                     self.check_thickness_at_points(line_strings[airfoil_name], airfoil_name=airfoil_name)
             if self.valid_geometry:
                 if self.param_dict['constraints'][airfoil_name]['min_area'][1]:
-                    self.check_min_area(airfoil_name=airfoil_name)
+                    self.check_min_area(airfoil_polygons[airfoil_name], airfoil_name=airfoil_name)
             if self.valid_geometry:
                 if self.param_dict['constraints'][airfoil_name]['internal_geometry'] is not None:
                     if self.param_dict['constraints'][airfoil_name]['internal_geometry_timing'] == 'Before Aerodynamic Evaluation':
@@ -182,8 +182,8 @@ class Chromosome:
             min_radius = self.geo_col.container()["airfoils"][airfoil_name].compute_min_radius()
             min_radius_too_small = min_radius < self.param_dict['constraints'][airfoil_name]['min_radius_curvature'][0]
             self.valid_geometry = not min_radius_too_small
-            # if self.verbose:
-            #     print(f'Min radius of curvature too small? {min_radius_too_small}. Min radius is {min_radius}')
+            if self.verbose:
+                print(f'Min radius of curvature too small? {min_radius_too_small}. Min radius is {min_radius}')
             return min_radius_too_small
 
     def chk_max_thickness(self, line_string, airfoil_name: str) -> bool:
@@ -234,13 +234,14 @@ class Chromosome:
     def check_min_area(self, airfoil_polygon, airfoil_name: str):
         if self.airfoil_sys_generated:
             area = self.geo_col.container()["airfoils"][airfoil_name].compute_area(airfoil_polygon)
-            if area < self.param_dict['constraints'][airfoil_name]['min_area'][0]:
+            required_min_area = self.param_dict['constraints'][airfoil_name]['min_area'][0]
+            if area < required_min_area:
                 if self.verbose:
-                    print(f'Area is {area} < required min. area ({self.param_dict["min_area"]}). Trying again...')
+                    print(f'Area is {area} < required min. area ({required_min_area}). Trying again...')
                 self.valid_geometry = False
             else:
                 if self.verbose:
-                    print(f'Area is {area} >= minimum req. area ({self.param_dict["min_area"]}) [success]. '
+                    print(f'Area is {area} >= minimum req. area ({required_min_area}) [success]. '
                           f'Continuing...')
                 self.valid_geometry = True
         else:

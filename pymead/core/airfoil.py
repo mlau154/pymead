@@ -237,6 +237,18 @@ class Airfoil(PymeadObj):
         ) if airfoil_line_string is None else airfoil_line_string
         return not airfoil_line_string.is_simple
 
+    def compute_min_radius(self) -> float:
+        """
+        Computes the minimum radius of curvature for the airfoil.
+
+        Returns
+        -------
+        float:
+            The minimum radius of curvature
+
+        """
+        return min([np.abs(curve.evaluate().R).min() for curve in self.curves])
+
     def compute_thickness(self, airfoil_line_string: LineString = None, n_lines: int = 201):
         r"""Calculates the thickness distribution and maximum thickness of the airfoil.
 
