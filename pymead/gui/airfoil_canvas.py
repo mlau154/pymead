@@ -700,7 +700,7 @@ class AirfoilCanvas(pg.PlotWidget):
         self.clearSelectedObjects()
 
     def exportPlot(self):
-        dialog = PlotExportDialog(self, gui_obj=self.gui_obj)
+        dialog = PlotExportDialog(self, gui_obj=self.gui_obj, theme=self.gui_obj.themes[self.gui_obj.current_theme])
         if dialog.exec_():
             # Get the inputs from the dialog
             inputs = dialog.valuesFromWidgets()
@@ -735,6 +735,10 @@ class AirfoilCanvas(pg.PlotWidget):
 
     def contextMenuEvent(self, event):
         menu = QtWidgets.QMenu(self)
+        menu.setStyleSheet(f"""
+        QMenu::item:selected {{ background-color: 
+            {self.gui_obj.themes[self.gui_obj.current_theme]['menu-item-selected-color']} }}
+        """)
         create_geometry_menu = menu.addMenu("Create Geometry")
         modify_geometry_menu = menu.addMenu("Modify Geometry")
         add_constraint_menu = menu.addMenu("Add Constraint")

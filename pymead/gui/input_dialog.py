@@ -914,11 +914,11 @@ class MSETDialogWidget(PymeadDialogWidget):
             current_airfoil_list = [a for a in get_parent(self, 4).geo_col.container()["airfoils"].keys()]
         else:
             current_airfoil_list = self.widget_dict["airfoils"]["widget"].text().split(",")
-        dialog = AirfoilListDialog(self, current_airfoil_list=current_airfoil_list)
-        if dialog.exec_():
-            airfoils = dialog.getData()
-            self.widget_dict["airfoils"]["widget"].setText(",".join(airfoils))
-            self.airfoilsChanged.emit(",".join(airfoils))
+        # dialog = AirfoilListDialog(self, current_airfoil_list=current_airfoil_list)
+        # if dialog.exec_():
+        #     airfoils = dialog.getData()
+        #     self.widget_dict["airfoils"]["widget"].setText(",".join(airfoils))
+        #     self.airfoilsChanged.emit(",".join(airfoils))
 
     def select_directory(self, line_edit: QLineEdit):
         select_directory(parent=self.parent(), line_edit=line_edit)
@@ -2048,7 +2048,8 @@ class PymeadDialog(QDialog):
     _gripSize = 2
 
     """This subclass of QDialog forces the selection of a WindowTitle and matches the visual format of the GUI"""
-    def __init__(self, parent, window_title: str, widget: PymeadDialogWidget or PymeadDialogVTabWidget):
+    def __init__(self, parent, window_title: str, widget: PymeadDialogWidget or PymeadDialogVTabWidget,
+                 theme: dict):
         super().__init__(parent=parent)
         self.setWindowTitle(" " + window_title)
         self.setWindowFlags(self.windowFlags() | Qt.FramelessWindowHint)
@@ -2065,8 +2066,9 @@ class PymeadDialog(QDialog):
         # mandatory for cursor updates
         self.setMouseTracking(True)
 
-        theme = self.parent().themes[self.parent().current_theme]
-        self.title_bar = DialogTitleBar(self, theme=self.parent().themes[self.parent().current_theme])
+        self.theme = theme
+
+        self.title_bar = DialogTitleBar(self, theme=theme)
 
         self.sideGrips = [
             SideGrip(self, Qt.LeftEdge),
@@ -2149,20 +2151,22 @@ class PymeadDialog(QDialog):
 
 
 class XFOILDialog(PymeadDialog):
-    def __init__(self, parent: QWidget, current_airfoils: typing.List[str], settings_override: dict = None):
+    def __init__(self, parent: QWidget, current_airfoils: typing.List[str], theme: dict,
+                 settings_override: dict = None):
         self.w = XFOILDialogWidget(current_airfoils=current_airfoils)
-        super().__init__(parent=parent, window_title="Single Airfoil Viscous Analysis", widget=self.w)
+        super().__init__(parent=parent, window_title="Single Airfoil Viscous Analysis", widget=self.w,
+                         theme=theme)
 
 
 class MultiAirfoilDialog(PymeadDialog):
-    def __init__(self, parent: QWidget, geo_col: GeometryCollection, settings_override: dict = None):
+    def __init__(self, parent: QWidget, geo_col: GeometryCollection, theme: dict, settings_override: dict = None):
         mset_dialog_widget = MSETDialogWidget2(geo_col=geo_col)
         mses_dialog_widget = MSESDialogWidget2(geo_col=geo_col)
         mset_dialog_widget.sigMEAChanged.connect(mses_dialog_widget.widget_dict["xtrs"].onMEAChanged)
         mplot_dialog_widget = MPLOTDialogWidget()
         tab_widgets = {"MSET": mset_dialog_widget, "MSES": mses_dialog_widget, "MPLOT": mplot_dialog_widget}
         widget = PymeadDialogVTabWidget(parent=None, widgets=tab_widgets, settings_override=settings_override)
-        super().__init__(parent=parent, window_title="Multi-Element-Airfoil Analysis", widget=widget)
+        super().__init__(parent=parent, window_title="Multi-Element-Airfoil Analysis", widget=widget, theme=theme)
 
 
 class SettingsDialog(QDialog):
@@ -2188,10 +2192,10 @@ class InviscidCpCalcDialog(QDialog):
 
 
 class ScreenshotDialog(PymeadDialog):
-    def __init__(self, parent: QWidget):
+    def __init__(self, parent: QWidget, theme: dict):
 
         widget = QWidget()
-        super().__init__(parent=parent, window_title="Screenshot", widget=widget)
+        super().__init__(parent=parent, window_title="Screenshot", widget=widget, theme=theme)
         self.grid_widget = {}
         self.grid_layout = QGridLayout()
 
@@ -2546,7 +2550,7 @@ class OptimizationDialogVTabWidget(PymeadDialogVTabWidget):
 
 
 class OptimizationSetupDialog(PymeadDialog):
-    def __init__(self, parent, geo_col: GeometryCollection, settings_override: dict = None):
+    def __init__(self, parent, geo_col: GeometryCollection, theme: dict, settings_override: dict = None):
         w0 = GAGeneralSettingsDialogWidget()
         w3 = XFOILDialogWidget(current_airfoils=[k for k in geo_col.container()["airfoils"]])
         w4 = MSETDialogWidget2(geo_col=geo_col)
@@ -2562,7 +2566,7 @@ class OptimizationSetupDialog(PymeadDialog):
                                                                'Multi-Point Optimization': w7,
                                                         'XFOIL': w3, 'MSET': w4, 'MSES': w5, 'MPLOT': w6},
                                          settings_override=settings_override)
-        super().__init__(parent=parent, window_title='Optimization Setup', widget=w)
+        super().__init__(parent=parent, window_title='Optimization Setup', widget=w, theme=theme)
         w.objectives = self.parent().objectives
         w.constraints = self.parent().constraints
 
@@ -2713,9 +2717,9 @@ class ExportControlPointsDialog(QDialog):
 
 
 class ExportIGESDialog(PymeadDialog):
-    def __init__(self, parent):
+    def __init__(self, parent, theme: dict):
         widget = QWidget()
-        super().__init__(parent=parent, window_title="Export IGES", widget=widget)
+        super().__init__(parent=parent, window_title="Export IGES", widget=widget, theme=theme)
 
         self.grid_widget = {}
         self.grid_layout = QGridLayout(self)
@@ -2775,10 +2779,10 @@ class ExportIGESDialog(PymeadDialog):
 
 
 class AirfoilMatchingDialog(PymeadDialog):
-    def __init__(self, parent, airfoil_names: typing.List[str]):
+    def __init__(self, parent, airfoil_names: typing.List[str], theme: dict):
 
         widget = QWidget()
-        super().__init__(parent, window_title="Choose Airfoil to Match", widget=widget)
+        super().__init__(parent, window_title="Choose Airfoil to Match", widget=widget, theme=theme)
 
         self.airfoil_names = airfoil_names
 
@@ -2803,9 +2807,9 @@ class AirfoilMatchingDialog(PymeadDialog):
 
 
 class AirfoilPlotDialog(PymeadDialog):
-    def __init__(self, parent):
+    def __init__(self, parent, theme: dict):
         widget = QWidget()
-        super().__init__(parent, window_title="Select Airfoil to Plot", widget=widget)
+        super().__init__(parent, window_title="Select Airfoil to Plot", widget=widget, theme=theme)
         self.lay = QFormLayout(self)
         widget.setLayout(self.lay)
 
@@ -2839,9 +2843,9 @@ class MSESFieldPlotDialogWidget(PymeadDialogWidget):
 
 
 class MSESFieldPlotDialog(PymeadDialog):
-    def __init__(self, parent: QWidget, default_field_dir: str = None):
+    def __init__(self, parent: QWidget, theme: dict, default_field_dir: str = None):
         w = MSESFieldPlotDialogWidget(default_field_dir=default_field_dir)
-        super().__init__(parent=parent, window_title="MSES Field Plot Settings", widget=w)
+        super().__init__(parent=parent, window_title="MSES Field Plot Settings", widget=w, theme=theme)
 
 
 class PymeadMessageBox(QMessageBox):
@@ -2997,12 +3001,12 @@ class PlotExportDialogWidget(PymeadDialogWidget2):
 
 
 class PlotExportDialog(PymeadDialog):
-    def __init__(self, parent, gui_obj):
+    def __init__(self, parent, gui_obj, theme: dict):
         widget = PlotExportDialogWidget(gui_obj=gui_obj)
-        super().__init__(parent, window_title="Plot Export", widget=widget)
+        super().__init__(parent, window_title="Plot Export", widget=widget, theme=theme)
 
 
 class ExitOptimizationDialog(PymeadDialog):
-    def __init__(self, parent):
+    def __init__(self, parent, theme: dict):
         widget = QLabel("An optimization task is running. Quit?")
-        super().__init__(parent=parent, window_title="Terminate Optimization?", widget=widget)
+        super().__init__(parent=parent, window_title="Terminate Optimization?", widget=widget, theme=theme)

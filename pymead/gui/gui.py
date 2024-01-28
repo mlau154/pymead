@@ -370,7 +370,7 @@ class GUI(QMainWindow):
             Qt CloseEvent object
         """
         if self.shape_opt_process is not None:
-            dialog = ExitOptimizationDialog(self)
+            dialog = ExitOptimizationDialog(self, theme=self.themes[self.current_theme])
             if dialog.exec_():
                 self.stop_optimization()
             else:
@@ -586,7 +586,7 @@ class GUI(QMainWindow):
             "Console": self.text_area.winId()
         }
 
-        dialog = ScreenshotDialog(self)
+        dialog = ScreenshotDialog(self, theme=self.themes[self.current_theme])
         if dialog.exec_():
             inputs = dialog.getInputs()
 
@@ -896,7 +896,8 @@ class GUI(QMainWindow):
             default_field_dir = self.last_analysis_dir
         else:
             default_field_dir = ""
-        dlg = MSESFieldPlotDialog(parent=self, default_field_dir=default_field_dir)
+        dlg = MSESFieldPlotDialog(parent=self, default_field_dir=default_field_dir,
+                                  theme=self.themes[self.current_theme])
         if dlg.exec_():
             inputs = dlg.valuesFromWidgets()
         else:
@@ -1189,7 +1190,7 @@ class GUI(QMainWindow):
         HelpBrowserWindow(parent=self)
 
     def export_IGES(self):
-        self.dialog = ExportIGESDialog(parent=self)
+        self.dialog = ExportIGESDialog(parent=self, theme=self.themes[self.current_theme])
         if self.dialog.exec_():
             inputs = self.dialog.valuesFromWidgets()
             iges_file_path = self.geo_col.write_to_iges(base_dir=inputs["dir"], file_name=inputs["file_name"],
@@ -1199,7 +1200,8 @@ class GUI(QMainWindow):
             self.disp_message_box(f"Airfoil geometry saved to {iges_file_path}", message_mode="info")
 
     def single_airfoil_viscous_analysis(self):
-        self.dialog = XFOILDialog(parent=self, current_airfoils=[k for k in self.geo_col.container()["airfoils"]])
+        self.dialog = XFOILDialog(parent=self, current_airfoils=[k for k in self.geo_col.container()["airfoils"]],
+                                  theme=self.themes[self.current_theme])
         current_airfoils = [k for k in self.geo_col.container()["airfoils"].keys()]
         self.dialog.w.widget_dict["airfoil"]["widget"].addItems(current_airfoils)
         if self.dialog.exec():
@@ -1292,7 +1294,8 @@ class GUI(QMainWindow):
             return
 
         self.dialog = MultiAirfoilDialog(
-            parent=self, geo_col=self.geo_col, settings_override=self.multi_airfoil_analysis_settings
+            parent=self, geo_col=self.geo_col, theme=self.themes[self.current_theme],
+            settings_override=self.multi_airfoil_analysis_settings
         )
         self.dialog.accepted.connect(self.multi_airfoil_analysis_accepted)
         self.dialog.rejected.connect(self.multi_airfoil_analysis_rejected)
@@ -1451,7 +1454,7 @@ class GUI(QMainWindow):
 
     def match_airfoil(self):
         airfoil_names = [a for a in self.geo_col.container()["airfoils"].keys()]
-        dialog = AirfoilMatchingDialog(self, airfoil_names=airfoil_names)
+        dialog = AirfoilMatchingDialog(self, airfoil_names=airfoil_names, theme=self.themes[self.current_theme])
         if dialog.exec_():
             airfoil_match_settings = dialog.valuesFromWidgets()
             # res = match_airfoil_ga(self.mea, target_airfoil, airfoil_name)
@@ -1471,7 +1474,7 @@ class GUI(QMainWindow):
             self.disp_message_box(message=res.message, message_mode=msg_mode)
 
     def plot_airfoil_from_airfoiltools(self):
-        dialog = AirfoilPlotDialog(self)
+        dialog = AirfoilPlotDialog(self, theme=self.themes[self.current_theme])
         if dialog.exec_():
             airfoil_name = dialog.valuesFromWidgets()
             airfoil = extract_data_from_airfoiltools(airfoil_name)
@@ -1479,7 +1482,7 @@ class GUI(QMainWindow):
 
     def setup_optimization(self):
         self.dialog = OptimizationSetupDialog(self, settings_override=self.opt_settings,
-                                              geo_col=self.geo_col)
+                                              geo_col=self.geo_col, theme=self.themes[self.current_theme])
         self.dialog.accepted.connect(self.optimization_accepted)
         self.dialog.rejected.connect(self.optimization_rejected)
         self.dialog.exec_()
