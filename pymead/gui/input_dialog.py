@@ -2181,27 +2181,16 @@ class InviscidCpCalcDialog(QDialog):
         layout = QFormLayout(self)
 
 
-class ScreenshotDialog(QDialog):
+class ScreenshotDialog(PymeadDialog):
     def __init__(self, parent: QWidget):
 
-        super().__init__(parent=parent)
-
-        self.setWindowTitle("Screenshot")
-        self.setFont(self.parent().font())
-
+        widget = QWidget()
+        super().__init__(parent=parent, window_title="Screenshot", widget=widget)
         self.grid_widget = {}
-
-        buttonBox = QDialogButtonBox(self)
-        buttonBox.addButton(QDialogButtonBox.Ok)
-        buttonBox.addButton(QDialogButtonBox.Cancel)
-        self.grid_layout = QGridLayout(self)
+        self.grid_layout = QGridLayout()
 
         self.setInputs()
-
-        self.grid_layout.addWidget(buttonBox, self.grid_layout.rowCount(), 1, 1, 2)
-
-        buttonBox.accepted.connect(self.accept)
-        buttonBox.rejected.connect(self.reject)
+        widget.setLayout(self.grid_layout)
 
     def setInputs(self):
         widget_dict = load_data(os.path.join('dialog_widgets', 'screenshot_dialog.json'))
@@ -2574,55 +2563,6 @@ class OptimizationSetupDialog(PymeadDialog):
         w1.update_objectives_and_constraints()  # IMPORTANT: makes sure that the objectives/constraints get stored
 
 
-class SymmetryDialog(QDialog):
-    def __init__(self, parent):
-        super().__init__(parent)
-        self.setWindowTitle("Set symmetry")
-        self.setFont(self.parent().font())
-        self.current_param_path = None
-        self.current_form_idx = 1
-
-        buttonBox = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel, self)
-        layout = QFormLayout(self)
-
-        self.inputs = self.setInputs()
-        for i in self.inputs:
-            layout.addRow(i[0], i[1])
-
-        for idx, input_row in enumerate(self.inputs):
-            if not idx % 2 and isinstance(input_row[1], QPushButton):  # only evaluate the odd rows
-                input_row[1].clicked.connect(partial(self.switch_row, idx + 1))
-
-        layout.addWidget(buttonBox)
-
-        buttonBox.accepted.connect(self.accept)
-        buttonBox.rejected.connect(self.reject)
-
-    def setInputs(self):
-        r0 = ["Target", QPushButton("Select Parameter", self)]
-        r1 = ["Selected target", QLineEdit(self)]
-        r2 = ["Tool", QPushButton("Select Parameter", self)]
-        r3 = ["Selected tool", QLineEdit(self)]
-        r4 = ["x1", QPushButton("Select Parameter", self)]
-        r5 = ["Selected x1", QLineEdit(self)]
-        r6 = ["y1", QPushButton("Select Parameter", self)]
-        r7 = ["Selected y1", QLineEdit(self)]
-        r8 = ["Line angle", QPushButton("Select Parameter", self)]
-        r9 = ["Selected line angle", QLineEdit(self)]
-        return [r0, r1, r2, r3, r4, r5, r6, r7, r8, r9]
-
-    @pyqtSlot(int)
-    def switch_row(self, row: int):
-        self.current_form_idx = row
-
-    def valuesFromWidgets(self):
-        return {'target': self.inputs[1][1].text(),
-                'tool': self.inputs[3][1].text(),
-                'x1': self.inputs[5][1].text(),
-                'y1': self.inputs[7][1].text(),
-                'angle': self.inputs[9][1].text()}
-
-
 class ExportCoordinatesDialog(QDialog):
     def __init__(self, parent):
         super().__init__(parent=parent)
@@ -2766,26 +2706,17 @@ class ExportControlPointsDialog(QDialog):
             line_edit.setText(selected_dir)
 
 
-class ExportIGESDialog(QDialog):
+class ExportIGESDialog(PymeadDialog):
     def __init__(self, parent):
-        super().__init__(parent=parent)
-
-        self.setWindowTitle("Export IGES")
-        self.setFont(self.parent().font())
+        widget = QWidget()
+        super().__init__(parent=parent, window_title="Export IGES", widget=widget)
 
         self.grid_widget = {}
-
-        buttonBox = QDialogButtonBox(self)
-        buttonBox.addButton(QDialogButtonBox.Ok)
-        buttonBox.addButton(QDialogButtonBox.Cancel)
         self.grid_layout = QGridLayout(self)
 
         self.setInputs()
-
-        self.grid_layout.addWidget(buttonBox, 6, 1, 1, 2)
-
-        buttonBox.accepted.connect(self.accept)
-        buttonBox.rejected.connect(self.reject)
+        widget.setLayout(self.grid_layout)
+        self.setMinimumWidth(600)
 
     def setInputs(self):
         widget_dict = load_data(os.path.join(GUI_DIALOG_WIDGETS_DIR, "export_IGES.json"))
@@ -2837,25 +2768,22 @@ class ExportIGESDialog(QDialog):
             line_edit.setText(selected_dir)
 
 
-class AirfoilMatchingDialog(QDialog):
+class AirfoilMatchingDialog(PymeadDialog):
     def __init__(self, parent, airfoil_names: typing.List[str]):
-        super().__init__(parent)
-        self.setWindowTitle("Choose Airfoil to Match")
-        self.setFont(self.parent().font())
+
+        widget = QWidget()
+        super().__init__(parent, window_title="Choose Airfoil to Match", widget=widget)
 
         self.airfoil_names = airfoil_names
 
-        buttonBox = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel, self)
-        self.layout = QFormLayout(self)
+        self.lay = QFormLayout(self)
 
         self.inputs = self.setInputs()
         for i in self.inputs:
-            self.layout.addRow(i[0], i[1])
+            self.lay.addRow(i[0], i[1])
 
-        self.layout.addWidget(buttonBox)
-
-        buttonBox.accepted.connect(self.accept)
-        buttonBox.rejected.connect(self.reject)
+        widget.setLayout(self.lay)
+        self.setMinimumWidth(300)
 
     def setInputs(self):
         r0 = ["Tool Airfoil", QComboBox(self)]
@@ -2868,23 +2796,18 @@ class AirfoilMatchingDialog(QDialog):
         return {"tool_airfoil": self.inputs[0][1].currentText(), "target_airfoil": self.inputs[1][1].text()}
 
 
-class AirfoilPlotDialog(QDialog):
+class AirfoilPlotDialog(PymeadDialog):
     def __init__(self, parent):
-        super().__init__(parent)
-        self.setWindowTitle("Select Airfoil to Plot")
-        self.setFont(self.parent().font())
-
-        buttonBox = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel, self)
-        self.layout = QFormLayout(self)
+        widget = QWidget()
+        super().__init__(parent, window_title="Select Airfoil to Plot", widget=widget)
+        self.lay = QFormLayout(self)
+        widget.setLayout(self.lay)
 
         self.inputs = self.setInputs()
         for i in self.inputs:
-            self.layout.addRow(i[0], i[1])
+            self.lay.addRow(i[0], i[1])
 
-        self.layout.addWidget(buttonBox)
-
-        buttonBox.accepted.connect(self.accept)
-        buttonBox.rejected.connect(self.reject)
+        self.setMinimumWidth(300)
 
     def setInputs(self):
         r0 = ["Airfoil to Plot", QLineEdit(self)]
@@ -2893,63 +2816,6 @@ class AirfoilPlotDialog(QDialog):
 
     def valuesFromWidgets(self):
         return self.inputs[0][1].text()
-
-
-class AirfoilListView(QListView):
-    """Class created from
-    https://stackoverflow.com/questions/52873025/pyqt5-qlistview-drag-and-drop-creates-new-hidden-items"""
-
-    def __init__(self, parent: QWidget, airfoil_list: list):
-        super().__init__(parent=parent)
-        self.airfoil_list = airfoil_list
-        self.setDragDropMode(QListView.InternalMove)
-        self.setDefaultDropAction(Qt.MoveAction)
-        self.setAcceptDrops(True)
-        self.setDropIndicatorShown(True)
-        self.setDragEnabled(True)
-        model = QStandardItemModel(self)
-        for airfoil_name in self.airfoil_list:
-            item = QStandardItem(airfoil_name)
-            item.setCheckable(True)
-            item.setDragEnabled(True)
-            item.setDropEnabled(False)
-            item.setCheckState(Qt.Checked)
-            data = [airfoil_name, item.checkState()]
-            item.setData(data)
-            model.appendRow(item)
-
-        self.setModel(model)
-
-
-class AirfoilListDialog(QDialog):
-    def __init__(self, parent, current_airfoil_list: list):
-        super().__init__(parent)
-        self.setWindowTitle("Select Airfoil Order")
-        self.setFont(self.parent().font())
-
-        buttonBox = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel, self)
-
-        self.q_airfoil_listview = AirfoilListView(self, current_airfoil_list)
-
-        self.central_widget = QWidget(self)
-        self.layout = QVBoxLayout(self.central_widget)
-        self.layout.addWidget(self.q_airfoil_listview)
-        self.layout.addWidget(buttonBox)
-        self.setLayout(self.layout)
-
-        buttonBox.accepted.connect(self.accept)
-        buttonBox.rejected.connect(self.reject)
-
-    def getData(self):
-        """Function based on
-        https://stackoverflow.com/questions/52873025/pyqt5-qlistview-drag-and-drop-creates-new-hidden-items"""
-        checked_airfoils = []
-        model = self.q_airfoil_listview.model()
-        for row in range(model.rowCount()):
-            item = model.item(row)
-            if item is not None and item.checkState() == Qt.Checked:
-                checked_airfoils.append(item.text())
-        return checked_airfoils
 
 
 class MSESFieldPlotDialogWidget(PymeadDialogWidget):

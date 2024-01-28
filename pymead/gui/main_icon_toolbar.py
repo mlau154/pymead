@@ -4,7 +4,6 @@ from PyQt5.QtCore import pyqtSlot
 import os
 import pyqtgraph as pg
 from pymead.utils.read_write_files import load_data
-from pymead.gui.input_dialog import SymmetryDialog
 # from pymead.core.symmetry import symmetry
 from pymead import ICON_DIR, GUI_SETTINGS_DIR, q_settings
 # from functools import partial
