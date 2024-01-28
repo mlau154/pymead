@@ -491,9 +491,18 @@ class GUI(QMainWindow):
                     """)
         self.parameter_tree.setAutoFillBackground(True)
         self.parameter_tree.setStyleSheet(
-            f"""QTreeWidget::item {{ background-color: {theme['background-color']}; }} 
+            f"""QTreeWidget::item {{ background-color: {theme['tree-background-color']}; }} 
                 QTreeWidget::item:selected {{ background-color: {theme['menu-item-selected-color']}; color: {theme['main-color']} }}
                 QTreeWidget::item:hover {{ color: #edb126 }}
+                QTreeWidget {{ background-color: {theme['tree-background-color']} }}
+                QTreeWidget::branch {{ background: {theme['tree-background-color']} }}
+                QTreeWidget::branch::closed::has-children {{
+                    image: url(../icons/closed-arrow-{self.current_theme}.png);
+                }}            
+        
+                QTreeWidget::branch::open::has-children {{
+                    image: url(../icons/opened-arrow-{self.current_theme}.png);
+                }}
              """)
         self.parameter_tree.setForegroundColorAllItems(theme['main-color'])
         self.airfoil_canvas.setAxisLabels(theme)
@@ -512,6 +521,9 @@ class GUI(QMainWindow):
         #     self.analysis_graph.set_background(theme["graph-background-color"])
         # if self.param_tree_instance is not None:
         #     self.param_tree_instance.set_theme(theme)
+
+        for cnstr in self.geo_col.container()["geocon"].values():
+            cnstr.canvas_item.setStyle(theme)
 
     def set_color_bar_style(self, new_values: dict = None):
         if self.cbar is None:

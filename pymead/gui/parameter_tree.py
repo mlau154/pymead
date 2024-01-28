@@ -1135,4 +1135,3 @@ class ParameterTree(QTreeWidget):
                     self.geo_col.demote_desvar_to_param(pymead_obj)
 
             self.geo_col.clear_selected_objects()
-            # TODO: extend this logic to be more general (e.g., clear_selected_objs())

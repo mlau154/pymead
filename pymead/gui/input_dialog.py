@@ -2050,7 +2050,7 @@ class PymeadDialog(QDialog):
     """This subclass of QDialog forces the selection of a WindowTitle and matches the visual format of the GUI"""
     def __init__(self, parent, window_title: str, widget: PymeadDialogWidget or PymeadDialogVTabWidget):
         super().__init__(parent=parent)
-        self.setWindowTitle(window_title)
+        self.setWindowTitle(" " + window_title)
         self.setWindowFlags(self.windowFlags() | Qt.FramelessWindowHint)
         if self.parent() is not None:
             self.setFont(self.parent().font())
@@ -2065,6 +2065,7 @@ class PymeadDialog(QDialog):
         # mandatory for cursor updates
         self.setMouseTracking(True)
 
+        theme = self.parent().themes[self.parent().current_theme]
         self.title_bar = DialogTitleBar(self, theme=self.parent().themes[self.parent().current_theme])
 
         self.sideGrips = [
@@ -2079,6 +2080,11 @@ class PymeadDialog(QDialog):
         self.cornerGrips = [QSizeGrip(self) for _ in range(4)]
 
         self.resize(self.width(), self.title_bar.height() + self.height())
+
+        self.title_bar.title.setStyleSheet(
+            f"""background-color: qlineargradient(x1: 0.0, y1: 0.5, x2: 1.0, y2: 0.5, 
+                    stop: 0 {theme['title-gradient-color']}, 
+                    stop: 1 {theme['background-color']})""")
 
     # def setInputs(self):
     #     self.w.setInputs()

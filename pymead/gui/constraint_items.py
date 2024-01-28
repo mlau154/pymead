@@ -33,11 +33,23 @@ class ConstraintItem:
     def update(self):
         pass
 
+    def setStyle(self, theme: dict):
+        for item in self.canvas_items:
+            if isinstance(item, pg.ArrowItem):
+                item.setStyle(brush=theme["main-color"])
+            elif isinstance(item, pg.TextItem):
+                item.setColor(theme["main-color"])
+            elif isinstance(item, pg.PlotDataItem) or isinstance(item, pg.PlotCurveItem):
+                pen = item.opts["pen"]
+                if isinstance(pen, QPen):
+                    pen.setColor(QColor(theme["main-color"]))
+                item.setPen(pen)
+
 
 class DistanceConstraintItem(ConstraintItem):
     def __init__(self, constraint: DistanceConstraint):
-        self.arrow_style = {"brush": (150, 150, 150), "headLen": 10}
-        self.text_style = {"color": (255, 255, 255), "anchor": (0.5, 0.5)}
+        self.arrow_style = {"headLen": 10}
+        self.text_style = {"anchor": (0.5, 0.5)}
         canvas_items = [
             pg.ArrowItem(**self.arrow_style),
             pg.ArrowItem(**self.arrow_style),
@@ -136,7 +148,7 @@ class ROCurvatureConstraintItem(ConstraintItem):
 class AntiParallel3ConstraintItem(ConstraintItem):
     def __init__(self, constraint: AntiParallel3Constraint):
         self.text_style = dict(anchor=(0.5, 0.5))
-        pen = pg.mkPen(color="#ffffff", width=1, style=Qt.DashLine)
+        pen = pg.mkPen(width=1, style=Qt.DashLine)
         canvas_items = [
             pg.TextItem("\u2225", **self.text_style),
             pg.TextItem("\u2225", **self.text_style),
@@ -168,12 +180,12 @@ class AntiParallel3ConstraintItem(ConstraintItem):
 
 class RelAngle3ConstraintItem(ConstraintItem):
     def __init__(self, constraint: RelAngle3Constraint):
-        pen = pg.mkPen(color="#ffffff", width=1, style=Qt.DashLine)
+        pen = pg.mkPen(width=1, style=Qt.DashLine)
         canvas_items = [
-            pg.PlotDataItem(color="#ffffff"),
+            pg.PlotDataItem(),
             pg.PlotDataItem(pen=pen),
             pg.PlotDataItem(pen=pen),
-            pg.TextItem(anchor=(0, 0.5), color="#ffffff"),
+            pg.TextItem(anchor=(0, 0.5)),
         ]
         canvas_items[3].setFont(QFont("DejaVu Sans Mono", 10))
         super().__init__(constraint=constraint, canvas_items=canvas_items)
@@ -210,10 +222,10 @@ class RelAngle3ConstraintItem(ConstraintItem):
 
 class Perp3ConstraintItem(ConstraintItem):
     def __init__(self, constraint: Perp3Constraint):
-        pen = pg.mkPen(color="#ffffff", width=1, style=Qt.DashLine)
+        pen = pg.mkPen(width=1, style=Qt.DashLine)
         canvas_items = [
-            pg.PlotDataItem(color="#ffffff"),
-            pg.PlotDataItem(color="#ffffff"),
+            pg.PlotDataItem(),
+            pg.PlotDataItem(),
             pg.PlotDataItem(pen=pen),
             pg.PlotDataItem(pen=pen)
         ]
