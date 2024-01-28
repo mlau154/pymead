@@ -1282,9 +1282,9 @@ class GUI(QMainWindow):
         self.dialog = MultiAirfoilDialog(
             parent=self, geo_col=self.geo_col, settings_override=self.multi_airfoil_analysis_settings
         )
-        self.dialog.show()
         self.dialog.accepted.connect(self.multi_airfoil_analysis_accepted)
         self.dialog.rejected.connect(self.multi_airfoil_analysis_rejected)
+        self.dialog.exec_()
 
     def multi_airfoil_analysis_accepted(self):
 
@@ -1468,9 +1468,9 @@ class GUI(QMainWindow):
     def setup_optimization(self):
         self.dialog = OptimizationSetupDialog(self, settings_override=self.opt_settings,
                                               geo_col=self.geo_col)
-        self.dialog.show()
         self.dialog.accepted.connect(self.optimization_accepted)
         self.dialog.rejected.connect(self.optimization_rejected)
+        self.dialog.exec_()
 
     def optimization_accepted(self):
         exit_the_dialog = False

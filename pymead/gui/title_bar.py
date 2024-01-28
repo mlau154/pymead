@@ -8,24 +8,30 @@ from pymead import ICON_DIR
 
 
 class TitleBarButton(QToolButton):
-    def __init__(self, parent, operation: str):
+    def __init__(self, parent, operation: str, theme: dict = None):
         super().__init__(parent)
 
         if operation not in ("minimize", "maximize", "normal", "close"):
             raise ValueError("Invalid operation")
 
         self.operation = operation
+        self.theme = theme
 
     def hoverColor(self) -> str:
-        return self.parent().parent().themes[self.parent().parent().current_theme][f"{self.operation}-hover-color"]
+        if self.theme is not None:
+            return self.theme[f"{self.operation}-hover-color"]
+        else:
+            return self.parent().parent().themes[self.parent().parent().current_theme][f"{self.operation}-hover-color"]
 
     def setColorDefault(self):
-        self.setIcon(QIcon(os.path.join(ICON_DIR, f"{self.operation}-{self.parent().parent().current_theme}-mode.svg")))
+        theme_name = self.theme["theme-name"] if self.theme is not None else self.parent().parent().current_theme
+        self.setIcon(QIcon(os.path.join(ICON_DIR, f"{self.operation}-{theme_name}-mode.svg")))
         self.setStyleSheet(f"""QToolButton {{ border: none }}""")
 
     def setColorHover(self):
-        if self.parent().parent().current_theme == "dark":
-            self.setIcon(QIcon(os.path.join(ICON_DIR, f"{self.operation}-light-mode.svg")))
+        theme_name = self.theme["theme-name"] if self.theme is not None else self.parent().parent().current_theme
+        if theme_name == "dark":
+            self.setIcon(QIcon(os.path.join(ICON_DIR, f"{self.operation}-{theme_name}-mode.svg")))
         self.setStyleSheet(f"""QToolButton {{ background-color: {self.hoverColor()} }}""")
 
     def enterEvent(self, a0):
@@ -171,6 +177,121 @@ class TitleBar(QWidget):
         if not QDesktopServices.openUrl(url):
             self.sigMessage.emit("Could not open pymead's GitHub page", "error")
 
-    # def resizeEvent(self, event):
-    #     self.title.resize(self.minButton.x(), self.height())
-    #     self.updateTitle()
+
+class DialogTitleBar(QWidget):
+    clickPos = None
+
+    sigMessage = pyqtSignal(str, str)
+
+    def __init__(self, parent, theme: dict):
+        super().__init__(parent)
+
+        self.guiWindowMaximized = False
+
+        self.setAutoFillBackground(True)
+
+        self.lay = QHBoxLayout(self)
+        self.lay.setContentsMargins(1, 1, 1, 1)
+
+        self.title = QLabel("Custom Title Bar", self)
+        self.title.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+        self.title.setFixedHeight(30)
+        self.title.setMinimumWidth(400)
+        self.title.setAutoFillBackground(True)
+
+        # style = self.style()
+        # ref_size = self.fontMetrics().height()
+        # ref_size += style.pixelMetric(style.PM_ButtonMargin) * 2
+        # self.setMaximumHeight(ref_size + 2)
+
+        # Add the pymead logo as a button that, when clicked, opens the pymead GitHub page in the machine's default
+        # browser
+        pymeadLogoButton = QToolButton(self)
+        pymeadLogoButton.setIcon(QIcon(os.path.join(ICON_DIR, "pymead-logo.png")))
+        pymeadLogoButton.setFixedSize(30, 30)
+        pymeadLogoButton.setIconSize(QSize(30, 30))
+        # pymeadLogoButton.setEnabled(False)
+
+        gripFillerWidget = QWidget(self)
+        gripFillerWidget.setFixedWidth(0)
+
+        self.lay.addWidget(gripFillerWidget)
+        self.lay.addWidget(pymeadLogoButton)
+        self.lay.addWidget(self.title)
+
+        # self.lay.addStretch()
+
+        self.minimizeButton = None
+        self.normalButton = None
+        self.maximizeButton = None
+        self.closeButton = None
+
+        btn_size = QSize(30, 30)
+        for target, picture, hover_color, tool_tip in zip(
+                ('close',),
+                (f"close-{theme['theme-name']}-mode.svg",),
+                (theme["close-hover-color"],),
+                ("Close",)
+        ):
+            btn = TitleBarButton(self, operation=target, theme=theme)
+            btn.setFocusPolicy(Qt.NoFocus)
+            self.lay.addWidget(btn)
+            btn.setFixedSize(btn_size)
+            # btn.setIconSize(btn_size)
+
+            btn.setIcon(QIcon(os.path.join(ICON_DIR, picture)))
+            btn.setToolTip(tool_tip)
+
+            btn.setStyleSheet('''QToolButton { border: none }''')
+
+            signal = getattr(self, target + 'Clicked')
+            btn.clicked.connect(signal)
+
+            setattr(self, target + 'Button', btn)
+
+        gripFillerWidget = QWidget(self)
+        gripFillerWidget.setFixedWidth(0)
+
+        self.lay.addWidget(gripFillerWidget)
+
+        self.updateTitle(parent.windowTitle())
+        parent.windowTitleChanged.connect(self.updateTitle)
+
+    def updateTitle(self, title=None):
+        if title is None:
+            title = self.window().windowTitle()
+        width = self.title.width()
+        width -= self.style().pixelMetric(QStyle.PM_LayoutHorizontalSpacing) * 2
+        self.title.setText(self.fontMetrics().elidedText(
+            title, Qt.ElideRight, width))
+        # self.title.setStyleSheet("QLabel { color: blue; }")
+
+    def windowStateChanged(self, state):
+        self.normalButton.setVisible(state == Qt.WindowMaximized)
+        self.maximizeButton.setVisible(state != Qt.WindowMaximized)
+        self.guiWindowMaximized = state == Qt.WindowMaximized
+
+    def mousePressEvent(self, event):
+        if event.button() == Qt.LeftButton and not self.guiWindowMaximized:
+            self.clickPos = event.windowPos().toPoint()
+        super().mousePressEvent(event)
+        event.accept()
+
+    def mouseMoveEvent(self, event):
+        if self.clickPos is not None and not self.guiWindowMaximized:
+            self.window().move(event.globalPos() - self.clickPos)
+        super().mouseMoveEvent(event)
+        event.accept()
+
+    def mouseReleaseEvent(self, event):
+        self.clickPos = None
+        super().mouseReleaseEvent(event)
+        event.accept()
+
+    def closeClicked(self):
+        self.window().close()
+
+    def openGitHubPage(self):
+        url = QUrl("https://github.com/mlau154/pymead")
+        if not QDesktopServices.openUrl(url):
+            self.sigMessage.emit("Could not open pymead's GitHub page", "error")
