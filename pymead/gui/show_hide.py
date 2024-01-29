@@ -1,20 +1,22 @@
 from functools import partial
 
 from PyQt5.QtCore import Qt
-from PyQt5.QtWidgets import QDialog, QGridLayout, QCheckBox, QLabel
+from PyQt5.QtWidgets import QGridLayout, QCheckBox, QLabel, QWidget
+
+from pymead.gui.input_dialog import PymeadDialog
 
 
-class ShowHideDialog(QDialog):
-    def __init__(self, parent, state: dict):
-        super().__init__(parent=parent)
-        self.setWindowTitle("Show/Hide")
+class ShowHideDialog(PymeadDialog):
+    def __init__(self, parent, state: dict, theme: dict):
+        widget = QWidget()
+        super().__init__(parent=parent, window_title="Show/Hide", widget=widget, theme=theme)
         self.lay = QGridLayout()
-        self.setLayout(self.lay)
+        widget.setLayout(self.lay)
         self.state = state
         self.addRows()
-        self.lay.setColumnMinimumWidth(1, 100)
-        self.setWindowFlags(self.windowFlags() & ~Qt.WindowContextHelpButtonHint)
-        self.setFixedSize(150, 120)
+        self.lay.setColumnStretch(0, 0)
+        self.lay.setColumnStretch(1, 1)
+        self.setMinimumWidth(250)
 
     def addRows(self):
 

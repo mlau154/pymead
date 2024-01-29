@@ -2086,7 +2086,7 @@ class PymeadDialog(QDialog):
         self.title_bar.title.setStyleSheet(
             f"""background-color: qlineargradient(x1: 0.0, y1: 0.5, x2: 1.0, y2: 0.5, 
                     stop: 0 {theme['title-gradient-color']}, 
-                    stop: 1 {theme['background-color']})""")
+                    stop: 0.6 {theme['background-color']})""")
 
     # def setInputs(self):
     #     self.w.setInputs()
@@ -2846,6 +2846,7 @@ class MSESFieldPlotDialog(PymeadDialog):
     def __init__(self, parent: QWidget, theme: dict, default_field_dir: str = None):
         w = MSESFieldPlotDialogWidget(default_field_dir=default_field_dir)
         super().__init__(parent=parent, window_title="MSES Field Plot Settings", widget=w, theme=theme)
+        self.setMinimumWidth(450)
 
 
 class PymeadMessageBox(QMessageBox):

@@ -622,7 +622,7 @@ class GUI(QMainWindow):
     def openShowHidePymeadObjDialog(self):
         if self.showHideState is None:
             self.showAllPymeadObjs()
-        dialog = ShowHideDialog(self, state=self.showHideState)
+        dialog = ShowHideDialog(self, state=self.showHideState, theme=self.themes[self.current_theme])
         dialog.exec_()
 
     def showAllPymeadObjs(self):
