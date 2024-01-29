@@ -31,7 +31,7 @@ from PyQt5.QtCore import pyqtSlot
 from pymead.gui.airfoil_canvas import AirfoilCanvas
 from pymead.core.geometry_collection import GeometryCollection
 from pymead.gui.title_bar import TitleBar
-from pymead.utils.multiprocessing import kill_child_processes
+from pymead.utils.pymead_mp import kill_child_processes
 from pymead.version import __version__
 from pymead.utils.version_check import using_latest
 from pymead.core.transformation import Transformation3D

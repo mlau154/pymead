@@ -1,17 +1,15 @@
-import os
 import typing
 from multiprocessing import Pool, active_children
 from multiprocessing.connection import Connection
 from copy import deepcopy
 
 import numpy as np
-from benedict import benedict
 
 from pymead.core.airfoil import Airfoil
 from pymead.core.geometry_collection import GeometryCollection
 
 from pymead.analysis.calc_aero_data import calculate_aero_data
-from pymead.utils.multiprocessing import kill_child_processes
+from pymead.utils.pymead_mp import kill_child_processes
 
 
 class CustomGASettings:

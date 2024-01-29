@@ -7,7 +7,7 @@ from multiprocessing import active_children
 
 from PyQt5.QtCore import QObject, QRunnable, QThreadPool, pyqtSignal
 
-from pymead.utils.multiprocessing import kill_child_processes
+from pymead.utils.pymead_mp import kill_child_processes
 
 
 class ProgressEmitter(QRunnable):
