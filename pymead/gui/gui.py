@@ -204,6 +204,7 @@ class GUI(QMainWindow):
         self.setDockNestingEnabled(True)
 
         self.status_bar = QStatusBar()
+        self.status_bar.messageChanged.connect(self.statusChanged)
         self.setStatusBar(self.status_bar)
         # self.param_tree_instance = MEAParamTree(self.mea, self.statusBar(), parent=self)
         # self.design_tree_widget = self.param_tree_instance.t
@@ -215,7 +216,7 @@ class GUI(QMainWindow):
         # self.main_layout.addWidget(self.dockable_tab_window)
         # self.dockable_tab_window.add_new_tab_widget(self.w, "Geometry")
         # self.dockable_tab_window.tab_closed.connect(self.on_tab_closed)
-        self.geo_col = GeometryCollection()
+        self.geo_col = GeometryCollection(gui_obj=self)
 
         self.airfoil_canvas = AirfoilCanvas(self, geo_col=self.geo_col, gui_obj=self)
         self.airfoil_canvas.sigStatusBarUpdate.connect(self.setStatusBarText)
@@ -720,32 +721,8 @@ class GUI(QMainWindow):
             return current_param.child(full_param_name)
 
     def edit_bounds(self):
-        jmea_dict = self.mea.copy_as_param_dict(deactivate_airfoil_graphs=True)
-        bv_dialog = EditBoundsDialog(parent=self, jmea_dict=jmea_dict)
-        if bv_dialog.exec_():
-            data_to_modify = bv_dialog.bv_table.compare_data()
-            for k, data in data_to_modify.items():
-                p = self.get_grandchild(k)
-                p.airfoil_param.bounds = data["bounds"]
-                p.setValue(data["value"])
-                p.airfoil_param.active = data["active"]
-                if isinstance(data["value"], list):
-                    p.setReadonly(not data["active"][0])
-                else:
-                    p.setReadonly(not data["active"])
-                if data["eq"] is not None:
-                    if not p.hasChildren():
-                        self.param_tree_instance.add_equation_box(p, data["eq"])
-                        self.param_tree_instance.update_equation(p.child("Equation Definition"), data["eq"])
-                    else:
-                        self.param_tree_instance.update_equation(p.child("Equation Definition"), data["eq"])
-                else:
-                    if not p.hasChildren():
-                        pass
-                    else:
-                        p.airfoil_param.remove_func()
-                        p.setReadonly(False)
-                        p.child("Equation Definition").remove()
+        bv_dialog = EditBoundsDialog(geo_col=self.geo_col, theme=self.themes[self.current_theme], parent=self)
+        bv_dialog.exec_()
 
     def auto_range_geometry(self):
         x_data_range, y_data_range = self.airfoil_canvas.getPointRange()
@@ -1046,7 +1023,7 @@ class GUI(QMainWindow):
         # self.param_tree_instance.t.clear()
         geo_col_dict = load_data(file_name)
         self.geo_col = GeometryCollection.set_from_dict_rep(geo_col_dict, canvas=self.airfoil_canvas,
-                                                            tree=self.parameter_tree)
+                                                            tree=self.parameter_tree, gui_obj=self)
 
         self.permanent_widget.progress_bar.setValue(20)
         # for idx, airfoil in enumerate(self.mea.airfoils.values()):
@@ -1104,6 +1081,15 @@ class GUI(QMainWindow):
         self.text_area.setTextCursor(previous_cursor)
         sb = self.text_area.verticalScrollBar()
         sb.setValue(sb.maximum())
+
+    def showColoredMessage(self, message: str, msecs: int, color: str):
+        self.status_bar.setStyleSheet(f"color: {color}")
+        self.permanent_widget.info_label.setStyleSheet(f"color: {self.themes[self.current_theme]['main-color']}")
+        self.status_bar.showMessage(message, msecs)
+
+    def statusChanged(self, args):
+        if not args:
+            self.status_bar.setStyleSheet(f"color: {self.themes[self.current_theme]['main-color']}")
 
     def output_link_text(self, text: str, link: str, line_break: bool = False):
         previous_cursor = self.text_area.textCursor()

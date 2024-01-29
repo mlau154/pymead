@@ -2524,22 +2524,11 @@ class ExitDialog(QDialog):
         buttonBox.button(QDialogButtonBox.No).clicked.connect(self.reject)
 
 
-class EditBoundsDialog(QDialog):
-    def __init__(self, jmea_dict: dict, parent=None):
-        super().__init__(parent=parent)
-        self.setWindowTitle("Edit Bounds")
-        self.setFont(self.parent().font())
-        buttonBox = QDialogButtonBox(QDialogButtonBox.Save | QDialogButtonBox.Cancel, self)
-        layout = QFormLayout(self)
-
-        self.bv_table = BoundsValuesTable(jmea_dict=jmea_dict)
-
-        layout.addWidget(self.bv_table)
-
-        layout.addWidget(buttonBox)
-
-        buttonBox.button(QDialogButtonBox.Save).clicked.connect(self.accept)
-        buttonBox.rejected.connect(self.reject)
+class EditBoundsDialog(PymeadDialog):
+    def __init__(self, geo_col: GeometryCollection, theme: dict, parent=None):
+        self.bv_table = BoundsValuesTable(geo_col=geo_col)
+        super().__init__(parent=parent, window_title="Edit Bounds", widget=self.bv_table, theme=theme)
+        self.resize(self.bv_table.sizeHint())
 
 
 class OptimizationDialogVTabWidget(PymeadDialogVTabWidget):

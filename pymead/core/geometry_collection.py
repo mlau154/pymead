@@ -21,7 +21,7 @@ from pymead.version import __version__
 
 
 class GeometryCollection(DualRep):
-    def __init__(self):
+    def __init__(self, gui_obj=None):
         """
         The geometry collection is the primary class in pymead for housing all the available fundamental geometry
         types. Geometry, parameters, and constraints can be added using the nomenclature ``add_<object-name>()``.
@@ -39,6 +39,7 @@ class GeometryCollection(DualRep):
             "dims": {},
         }
         self.gcs = ConstraintGraph()
+        self.gui_obj = gui_obj
         self.canvas = None
         self.tree = None
         self.selected_objects = {k: [] for k in self._container.keys()}
@@ -798,6 +799,10 @@ class GeometryCollection(DualRep):
             self.gcs.add_constraint(constraint, **constraint_kwargs)
         except (OverConstrainedError, ValueError) as e:
             self.remove_pymead_obj(constraint)
+            self.clear_selected_objects()
+            if self.gui_obj is not None:
+                self.gui_obj.showColoredMessage("Constraint cluster is over-constrained. Removing constraint...",
+                                                4000, "#eb4034")
             raise e
         return constraint
 
@@ -862,8 +867,8 @@ class GeometryCollection(DualRep):
         }
 
     @classmethod
-    def set_from_dict_rep(cls, d: dict, canvas=None, tree=None):
-        geo_col = cls()
+    def set_from_dict_rep(cls, d: dict, canvas=None, tree=None, gui_obj=None):
+        geo_col = cls(gui_obj=gui_obj)
         geo_col.canvas = canvas
         geo_col.tree = tree
         for name, desvar_dict in d["desvar"].items():

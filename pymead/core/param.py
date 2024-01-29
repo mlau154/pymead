@@ -175,6 +175,9 @@ class Param(PymeadObj):
         if self._value is not None and self._value < self._lower:
             self._value = self._lower
 
+        if self.tree_item is not None:
+            self.tree_item.treeWidget().itemWidget(self.tree_item, 1).setMinimum(self.lower())
+
     def set_upper(self, upper: float):
         """
         Sets the upper bound for the design variable. If called from outside ``DesVar.__init__()``, adjust the design
@@ -188,6 +191,9 @@ class Param(PymeadObj):
         self._upper = upper
         if self._value is not None and self._value > self._upper:
             self._value = self._upper
+
+        if self.tree_item is not None:
+            self.tree_item.treeWidget().itemWidget(self.tree_item, 1).setMaximum(self.upper())
 
     def get_dict_rep(self):
         return {"value": float(self.value()) if self.dtype == "float" else int(self.value()),
