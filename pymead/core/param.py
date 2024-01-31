@@ -134,7 +134,8 @@ class Param(PymeadObj):
                 dim.update_points_from_param(updated_objs=updated_objs)
 
         if self.gcs is not None:
-            self.gcs.multisolve_and_update(self.geo_cons[0])
+            self.gcs.solve(self.geo_cons[0])
+            self.gcs.update_from_points(self.geo_cons[0])
 
         if self.tree_item is not None:
             self.tree_item.treeWidget().itemWidget(self.tree_item, 1).setValue(self.value())

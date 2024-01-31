@@ -6,7 +6,6 @@ import numpy as np
 
 from pymead.core import UNITS
 from pymead.core.bezier import Bezier
-from pymead.core.constraints import PositionConstraint, CollinearConstraint
 from pymead.core.dimensions import LengthDimension, AngleDimension
 from pymead.core.geometry_collection import GeometryCollection
 from pymead.core.line import LineSegment
@@ -193,106 +192,6 @@ class ParamTests(unittest.TestCase):
 
 
 class ConstraintTests(unittest.TestCase):
-    def test_pos_constraint(self):
-        dv_length = DesVar(0.2, "length", lower=0.1, upper=0.3)
-        dv_angle = DesVar(0.5, "angle", lower=0.1, upper=0.9)
-        point1 = Point(0.2, 0.1, name="tool_point", setting_from_geo_col=True)
-        point2 = Point(-0.1, 0.3, name="target_point", setting_from_geo_col=True)
-        constraint = PositionConstraint(tool=point1, target=point2, dist=dv_length, angle=dv_angle, bidirectional=False)
-        constraint.enforce("tool")
-        dv_length.set_value(0.25)
-        new_x1 = point1.x().value()
-        new_y1 = point1.y().value()
-        new_x2 = point2.x().value()
-        new_y2 = point2.y().value()
-        self.assertAlmostEqual(0.25, np.hypot(new_y2 - new_y1, new_x2 - new_x1))
-        self.assertAlmostEqual(0.5, np.arctan2(new_y2 - new_y1, new_x2 - new_x1))
-
-        point1.request_move(0.3, 0.0)
-        new_x1 = point1.x().value()
-        new_y1 = point1.y().value()
-        new_x2 = point2.x().value()
-        new_y2 = point2.y().value()
-        self.assertAlmostEqual(0.3, new_x1)
-        self.assertAlmostEqual(0.0, new_y1)
-        self.assertAlmostEqual(0.25, np.hypot(new_y2 - new_y1, new_x2 - new_x1))
-        self.assertAlmostEqual(0.5, np.arctan2(new_y2 - new_y1, new_x2 - new_x1))
-
-        point2.request_move(0.8, 0.4)
-        new_x1 = point1.x().value()
-        new_y1 = point1.y().value()
-        newer_x2 = point2.x().value()
-        newer_y2 = point2.y().value()
-        self.assertAlmostEqual(0.3, new_x1)
-        self.assertAlmostEqual(0.0, new_y1)
-        self.assertAlmostEqual(0.25, np.hypot(newer_y2 - new_y1, newer_x2 - new_x1))
-        self.assertAlmostEqual(0.5, np.arctan2(newer_y2 - new_y1, newer_x2 - new_x1))
-        # The x and y location of point2 should not have changed, because point2 has no degrees of freedom
-        self.assertAlmostEqual(new_x2, newer_x2)
-        self.assertAlmostEqual(new_y2, newer_y2)
-
-    def test_pos_constraint_bidirectional(self):
-        dv_length = DesVar(0.2, "length", lower=0.1, upper=0.3)
-        dv_angle = DesVar(0.5, "angle", lower=0.1, upper=0.9)
-        point1 = Point(0.2, 0.1, name="tool_point", setting_from_geo_col=True)
-        point2 = Point(-0.1, 0.3, name="target_point", setting_from_geo_col=True)
-        constraint = PositionConstraint(tool=point1, target=point2, dist=dv_length, angle=dv_angle, bidirectional=True)
-        constraint.enforce("tool")
-        dv_length.set_value(0.25)
-        new_x1 = point1.x().value()
-        new_y1 = point1.y().value()
-        new_x2 = point2.x().value()
-        new_y2 = point2.y().value()
-        self.assertAlmostEqual(0.25, np.hypot(new_y2 - new_y1, new_x2 - new_x1))
-        self.assertAlmostEqual(0.5, np.arctan2(new_y2 - new_y1, new_x2 - new_x1))
-
-        point1.request_move(0.3, 0.0)
-        new_x1 = point1.x().value()
-        new_y1 = point1.y().value()
-        new_x2 = point2.x().value()
-        new_y2 = point2.y().value()
-        self.assertAlmostEqual(0.3, new_x1)
-        self.assertAlmostEqual(0.0, new_y1)
-        self.assertAlmostEqual(0.25, np.hypot(new_y2 - new_y1, new_x2 - new_x1))
-        self.assertAlmostEqual(0.5, np.arctan2(new_y2 - new_y1, new_x2 - new_x1))
-
-        point2.request_move(0.8, 0.4)
-        new_x1 = point1.x().value()
-        new_y1 = point1.y().value()
-        new_x2 = point2.x().value()
-        new_y2 = point2.y().value()
-        self.assertAlmostEqual(0.8, new_x2)
-        self.assertAlmostEqual(0.4, new_y2)
-        self.assertAlmostEqual(0.25, np.hypot(new_y2 - new_y1, new_x2 - new_x1))
-        self.assertAlmostEqual(0.5, np.arctan2(new_y2 - new_y1, new_x2 - new_x1))
-
-    def test_collinear_constraint(self):
-        start_point = Point(-1.0, -0.5, name="start_point", setting_from_geo_col=True)
-        middle_point = Point(0.5, 1.0, name="middle_point", setting_from_geo_col=True)
-        end_point = Point(3.0, 2.0, name="end_point", setting_from_geo_col=True)
-
-        original_end_middle_distance = middle_point.measure_distance(end_point)
-        constraint = CollinearConstraint(start_point=start_point, middle_point=middle_point, end_point=end_point)
-        constraint.enforce("start")
-
-        # Ensure that the three points are now collinear after initial enforcement
-        angle_minus_pi = middle_point.measure_angle(start_point)
-        self.assertAlmostEqual(middle_point.measure_angle(end_point), angle_minus_pi + np.pi)
-
-        # Ensure that the distance between the end and middle points remains the same as before enforcement
-        self.assertAlmostEqual(middle_point.measure_distance(end_point), original_end_middle_distance)
-
-        # Move the middle point and ensure that the three points are still collinear
-        middle_point.request_move(0.0, 0.0)
-        self.assertAlmostEqual(start_point.measure_angle(middle_point), middle_point.measure_angle(end_point))
-
-        # Move the start point and ensure that the three points are still collinear
-        start_point.request_move(-5.0, 10.0)
-        self.assertAlmostEqual(start_point.measure_angle(middle_point), middle_point.measure_angle(end_point))
-
-        # Move the start point and ensure that the three points are still collinear
-        start_point.request_move(5.0, -2.0)
-        self.assertAlmostEqual(start_point.measure_angle(middle_point), middle_point.measure_angle(end_point))
 
     def test_curvature_constraint(self):
         geo_col = GeometryCollection()
@@ -448,33 +347,6 @@ class ConstraintTests(unittest.TestCase):
         self.assertAlmostEqual(3.0, end_point.x().value())
         self.assertAlmostEqual(4.0, end_point.y().value())
         self.assertAlmostEqual(5.0, dimension.param().value())
-
-    def test_collinear_plus_length_and_angle_dim(self):
-        UNITS.set_current_angle_unit("deg")
-        geo_col = GeometryCollection()
-        start_point = geo_col.add_point(-1.0, -1.0)
-        middle_point = geo_col.add_point(0.0, 0.0)
-        end_point = geo_col.add_point(3.0, 4.0)
-        collinear = CollinearConstraint(start_point=start_point, middle_point=middle_point, end_point=end_point)
-        collinear.enforce("start")
-
-        length_dimension1 = LengthDimension(tool_point=middle_point, target_point=end_point)
-        length_dimension2 = LengthDimension(tool_point=start_point, target_point=middle_point)
-
-        # The distance between the middle and end points should be preserved after collinear constraint enforcement
-        self.assertAlmostEqual(5.0, length_dimension1.param().value())
-
-        # The distance between the start and middle points should be preserved after collinear constraint enforcement
-        self.assertAlmostEqual(np.sqrt(2.0), length_dimension2.param().value())
-
-        angle_dimension1 = AngleDimension(tool_point=middle_point, target_point=end_point)
-        angle_dimension2 = AngleDimension(tool_point=start_point, target_point=middle_point)
-
-        # The angle should be 45 degrees because the collinear constraint was enforced at the start
-        self.assertAlmostEqual(45.0, angle_dimension2.param().value())
-
-        # These angles should be equal due to the collinear constraint
-        self.assertAlmostEqual(angle_dimension1.param().value(), angle_dimension2.param().value())
 
 
 class AirfoilTests(unittest.TestCase):

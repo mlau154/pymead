@@ -139,7 +139,7 @@ class Point(PymeadObj):
             curve.update()
 
     def __repr__(self):
-        return f"Point {self.name()}<x={self.x().value()}, y={self.y().value()}>"
+        return f"Point {self.name()}<x={self.x().value():.6f}, y={self.y().value():.6f}>"
 
     def get_dict_rep(self):
         return {"x": float(self.x().value()), "y": float(self.y().value()), "fixed": self.fixed()}

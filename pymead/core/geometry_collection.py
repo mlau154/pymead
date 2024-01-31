@@ -7,7 +7,8 @@ import typing
 from pymead.core.airfoil import Airfoil
 from pymead.core.bezier import Bezier
 from pymead.core.constraints import *
-from pymead.core.constraint_graph import ConstraintGraph, OverConstrainedError
+from pymead.core.constraint_graph import OverConstrainedError
+from pymead.core.gcs2 import GCS2
 from pymead.core.dimensions import LengthDimension, AngleDimension, Dimension
 from pymead.core.mea import MEA
 from pymead.core.pymead_obj import DualRep, PymeadObj
@@ -38,7 +39,7 @@ class GeometryCollection(DualRep):
             "geocon": {},
             "dims": {},
         }
-        self.gcs = ConstraintGraph()
+        self.gcs = GCS2()
         self.gui_obj = gui_obj
         self.canvas = None
         self.tree = None
@@ -601,7 +602,7 @@ class GeometryCollection(DualRep):
         desvar.gcs = self.gcs
         for constraint in desvar.geo_cons:
             constraint.set_param(desvar)
-        desvar.gcs.constraint_params[self.gcs.constraint_params.index(param)] = desvar
+        # desvar.gcs.constraint_params[self.gcs.constraint_params.index(param)] = desvar
 
         # Remove the parameter
         if param.point is None:
@@ -649,7 +650,7 @@ class GeometryCollection(DualRep):
         param.gcs = self.gcs
         for constraint in param.geo_cons:
             constraint.set_param(param)
-        param.gcs.constraint_params[self.gcs.constraint_params.index(desvar)] = param
+        # param.gcs.constraint_params[self.gcs.constraint_params.index(desvar)] = param
 
         # Remove the design variable
         self.remove_pymead_obj(desvar, promotion_demotion=True)
@@ -796,7 +797,10 @@ class GeometryCollection(DualRep):
     def add_constraint(self, constraint: GeoCon, assign_unique_name: bool = True, **constraint_kwargs):
         self.add_pymead_obj_by_ref(constraint, assign_unique_name=assign_unique_name)
         try:
-            self.gcs.add_constraint(constraint, **constraint_kwargs)
+            self.gcs.add_constraint(constraint)
+            if isinstance(constraint, AntiParallel3Constraint) or isinstance(constraint, Perp3Constraint):
+                self.gcs.solve(constraint)
+                self.gcs.update_from_points(constraint)
         except (OverConstrainedError, ValueError) as e:
             self.remove_pymead_obj(constraint)
             self.clear_selected_objects()
@@ -909,7 +913,7 @@ class GeometryCollection(DualRep):
                                    solve_and_update=False)
             constraints_added.append(constraint)
 
-        geo_col.gcs.compile_and_solve_first_constraint_of_all_clusters(constraint_list=constraints_added)
+        # geo_col.gcs.compile_and_solve_first_constraint_of_all_clusters(constraint_list=constraints_added)
 
         for name, dim_dict in d["dims"].items():
             if "length_param" in dim_dict.keys():
