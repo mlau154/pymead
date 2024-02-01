@@ -1,7 +1,9 @@
 import networkx
 import matplotlib.pyplot as plt
+import numpy as np
 
 from pymead.core.constraints import *
+from pymead.core.constraint_equations import *
 from pymead.core.point import Point
 
 
@@ -193,6 +195,9 @@ class GCS2(networkx.DiGraph):
 
             self.add_edge(constraint.p2, constraint.p3, angle=constraint)
             return
+        elif isinstance(constraint, SymmetryConstraint):
+            self.solve_symmetry_constraint(constraint)
+            self.update_from_points(constraint)
 
     def remove_constraint(self, constraint: GeoCon):
         raise NotImplementedError("Constraint removal not yet implemented")
@@ -201,6 +206,7 @@ class GCS2(networkx.DiGraph):
         return {point: Point(x=point.x().value(), y=point.y().value()) for point in self.points.values()}
 
     def solve(self, source: GeoCon):
+        points_solved = []
         if isinstance(source, DistanceConstraint):
             edge_data_p12 = self.get_edge_data(source.p1, source.p2)
             if edge_data_p12 and edge_data_p12["distance"] is source:
@@ -217,12 +223,8 @@ class GCS2(networkx.DiGraph):
             for point in networkx.bfs_tree(self, source=start):
                 point.x().set_value(point.x().value() + dx)
                 point.y().set_value(point.y().value() + dy)
-        # elif isinstance(source, RelAngle3Constraint):
-        #     angle_1 = source.vertex.measure_angle(source.start_point)
-        #     dist = source.vertex.measure_distance(source.end_point)
-        #     source.end_point.x().set_value(source.vertex.x().value() + dist * np.cos(angle_1 + source.param().value()))
-        #     source.end_point.y().set_value(source.vertex.y().value() + dist * np.sin(angle_1 + source.param().value()))
-        #     starting_point = source.end_point
+                if point not in points_solved:
+                    points_solved.append(point)
         elif isinstance(source, AntiParallel3Constraint) or isinstance(source, Perp3Constraint):
             edge_data_p21 = self.get_edge_data(source.p2, source.p1)
             edge_data_p23 = self.get_edge_data(source.p2, source.p3)
@@ -250,6 +252,8 @@ class GCS2(networkx.DiGraph):
                 new_xy = (rotation_mat @ dx_dy + rotation_point_mat).flatten()
                 point.x().set_value(new_xy[0])
                 point.y().set_value(new_xy[1])
+                if point not in points_solved:
+                    points_solved.append(point)
 
         elif isinstance(source, RelAngle3Constraint):
             edge_data_p21 = self.get_edge_data(source.vertex, source.start_point)
@@ -278,13 +282,45 @@ class GCS2(networkx.DiGraph):
                 new_xy = (rotation_mat @ dx_dy + rotation_point_mat).flatten()
                 point.x().set_value(new_xy[0])
                 point.y().set_value(new_xy[1])
+                if point not in points_solved:
+                    points_solved.append(point)
 
-        # for point in self.adj[starting_point]:
-        #     cnstr_dict = self.get_edge_data(starting_point, point)
-        #     print(f"{point = }, {starting_point = }, {cnstr_dict = }")
-        #     if len(cnstr_dict) == 1:
-        #         dist = point_copies[starting_point].measure_distance(point_copies[point])
-        #         angle = point_copies[starting_point].measure_angle(point_copies[point])
+        elif isinstance(source, SymmetryConstraint):
+            self.solve_symmetry_constraint(source)
+
+        self.solve_symmetry_constraints(points_solved)
+
+    @staticmethod
+    def solve_symmetry_constraint(constraint: SymmetryConstraint):
+        x1, y1 = constraint.p1.x().value(), constraint.p1.y().value()
+        x2, y2 = constraint.p2.x().value(), constraint.p2.y().value()
+        x3, y3 = constraint.p3.x().value(), constraint.p3.y().value()
+        line_angle = measure_abs_angle(x1, y1, x2, y2)
+        tool_angle = measure_rel_angle3(x1, y1, x2, y2, x3, y3)
+        if tool_angle < np.pi:
+            mirror_angle = line_angle - np.pi / 2
+        elif tool_angle > np.pi:
+            mirror_angle = line_angle + np.pi / 2
+        else:
+            constraint.p4.request_move(constraint.p3.x().value(), constraint.p3.y().value(), force=True)
+            return
+
+        mirror_distance = 2 * measure_point_line_distance_unsigned(x1, y1, x2, y2, x3, y3)
+        constraint.p4.request_move(
+            x3 + mirror_distance * np.cos(mirror_angle),
+            y3 + mirror_distance * np.sin(mirror_angle), force=True
+        )
+
+    def solve_symmetry_constraints(self, points: typing.List[Point]):
+        symmetry_constraints_solved = []
+        for point in points:
+            symmetry_constraints = [geo_con for geo_con in point.geo_cons if isinstance(geo_con, SymmetryConstraint)]
+            for symmetry_constraint in symmetry_constraints:
+                if symmetry_constraint in symmetry_constraints_solved:
+                    continue
+                self.solve_symmetry_constraint(symmetry_constraint)
+                symmetry_constraints_solved.append(symmetry_constraint)
+
 
     def update_from_points(self, constraint: GeoCon):
         curves_to_update = []

@@ -444,7 +444,6 @@ class AirfoilCanvas(pg.PlotWidget):
         curvature_data = ROCurvatureConstraint.calculate_curvature_data(self.geo_col.selected_objects["points"][0])
         R = 0.5 * (curvature_data.R1 + curvature_data.R2)
         # R = curvature_data.R1
-        print(f"{R = }")
         R_param = self.geo_col.add_param(R, name="ROC-1", unit_type="length")
         constraint = ROCurvatureConstraint(*self.geo_col.selected_objects["points"], value=R_param)
         self.geo_col.add_constraint(constraint)

@@ -83,9 +83,9 @@ class Point(PymeadObj):
     def measure_angle(self, other: "Point"):
         return np.arctan2(other.y().value() - self.y().value(), other.x().value() - self.x().value())
 
-    def request_move(self, xp: float, yp: float):
+    def request_move(self, xp: float, yp: float, force: bool = False):
 
-        if self.gcs is None or (self.gcs is not None and len(self.geo_cons) == 0):
+        if self.gcs is None or (self.gcs is not None and len(self.geo_cons) == 0) or force:
 
             self.x().set_value(xp)
             self.y().set_value(yp)

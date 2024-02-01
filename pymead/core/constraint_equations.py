@@ -1,25 +1,22 @@
 from collections import namedtuple
 
-import jax
 import numpy as np
-from jax import jit
-from jax import numpy as jnp
 
 
 def measure_distance(x1: float, y1: float, x2: float, y2: float):
-    return jnp.hypot(x1 - x2, y1 - y2)
+    return np.hypot(x1 - x2, y1 - y2)
 
 
 def measure_abs_angle(x1: float, y1: float, x2: float, y2: float):
-    return (jnp.arctan2(y2 - y1, x2 - x1)) % (2 * jnp.pi)
+    return (np.arctan2(y2 - y1, x2 - x1)) % (2 * np.pi)
 
 
 def measure_rel_angle3(x1: float, y1: float, x2: float, y2: float, x3: float, y3: float):
-    return (jnp.arctan2(y1 - y2, x1 - x2) - jnp.arctan2(y3 - y2, x3 - x2)) % (2 * jnp.pi)
+    return (np.arctan2(y1 - y2, x1 - x2) - np.arctan2(y3 - y2, x3 - x2)) % (2 * np.pi)
 
 
 def measure_rel_angle4(x1: float, y1: float, x2: float, y2: float, x3: float, y3: float, x4: float, y4: float):
-    return (jnp.arctan2(y4 - y3, x4 - x3) - jnp.arctan2(y2 - y1, x2 - x1)) % (2 * jnp.pi)
+    return (np.arctan2(y4 - y3, x4 - x3) - np.arctan2(y2 - y1, x2 - x1)) % (2 * np.pi)
 
 
 def measure_point_line_distance_signed(x1: float, y1: float, x2: float, y2: float, x3: float, y3: float):
@@ -49,19 +46,19 @@ def measure_point_line_distance_signed(x1: float, y1: float, x2: float, y2: floa
     float
         Distance from the target point to the line
     """
-    return (x2 - x1) * (y1 - y3) - (x1 - x3) * (y2 - y1) / measure_distance(x1, y1, x2, y2)
+    return ((x2 - x1) * (y1 - y3) - (x1 - x3) * (y2 - y1)) / measure_distance(x1, y1, x2, y2)
 
 
 def measure_point_line_distance_unsigned(x1: float, y1: float, x2: float, y2: float, x3: float, y3: float):
-    return jnp.abs(measure_point_line_distance_signed(x1, y1, x2, y2, x3, y3))
+    return np.abs(measure_point_line_distance_signed(x1, y1, x2, y2, x3, y3))
 
 
 def measure_radius_of_curvature_bezier(Lt: float, Lc: float, n: int, psi: float):
-    return jnp.abs(jnp.true_divide(Lt ** 2, Lc * (1 - 1 / n) * jnp.sin(psi)))
+    return np.abs(np.true_divide(Lt ** 2, Lc * (1 - 1 / n) * np.sin(psi)))
 
 
 def measure_curvature_bezier(Lt: float, Lc: float, n: int, psi: float):
-    return jnp.abs(jnp.true_divide(Lc * (1 - 1 / n) * jnp.sin(psi), Lt ** 2))
+    return np.abs(np.true_divide(Lc * (1 - 1 / n) * np.sin(psi), Lt ** 2))
 
 
 def measure_data_bezier_curve_joint(xy: np.ndarray, n: np.ndarray):
@@ -71,15 +68,15 @@ def measure_data_bezier_curve_joint(xy: np.ndarray, n: np.ndarray):
     theta2 = measure_abs_angle(xy[3, 0], xy[3, 1], xy[4, 0], xy[4, 1])
     psi1 = theta1 - phi1
     psi2 = theta2 - phi2
-    phi_rel = (phi1 - phi2) % (2 * jnp.pi)
+    phi_rel = (phi1 - phi2) % (2 * np.pi)
     Lt1 = measure_distance(xy[1, 0], xy[1, 1], xy[2, 0], xy[2, 1])
     Lt2 = measure_distance(xy[2, 0], xy[2, 1], xy[3, 0], xy[3, 1])
     Lc1 = measure_distance(xy[0, 0], xy[0, 1], xy[1, 0], xy[1, 1])
     Lc2 = measure_distance(xy[3, 0], xy[3, 1], xy[4, 0], xy[4, 1])
     kappa1 = measure_curvature_bezier(Lt1, Lc1, n[0], psi1)
     kappa2 = measure_curvature_bezier(Lt2, Lc2, n[1], psi2)
-    R1 = jnp.true_divide(1, kappa1)
-    R2 = jnp.true_divide(1, kappa2)
+    R1 = np.true_divide(1, kappa1)
+    R2 = np.true_divide(1, kappa2)
     n1 = n[0]
     n2 = n[1]
     field_names = ["phi1", "phi2", "theta1", "theta2", "psi1", "psi2", "phi_rel", "Lt1", "Lt2", "Lc1", "Lc2",
@@ -94,7 +91,7 @@ def measure_data_bezier_curve_joint(xy: np.ndarray, n: np.ndarray):
 def radius_of_curvature_constraint(x1: float, y1: float, x2: float, y2: float, x3: float, y3: float, R: float, n: int):
     Lt = measure_distance(x1, y1, x2, y2)
     psi = measure_rel_angle3(x1, y1, x2, y2, x3, y3)
-    Lc = jnp.abs(jnp.true_divide(Lt ** 2, R * (1 - 1 / n) * jnp.sin(psi)))
+    Lc = np.abs(np.true_divide(Lt ** 2, R * (1 - 1 / n) * np.sin(psi)))
     return distance_constraint(x2, y2, x3, y3, Lc)
 
 
@@ -163,19 +160,19 @@ def rel_angle4_constraint(x1: float, y1: float, x2: float, y2: float, x3: float,
 
 
 def perp3_constraint(x1: float, y1: float, x2: float, y2: float, x3: float, y3: float):
-    return measure_rel_angle3(x1, y1, x2, y2, x3, y3) - (jnp.pi / 2)
+    return measure_rel_angle3(x1, y1, x2, y2, x3, y3) - (np.pi / 2)
 
 
 def perp4_constraint(x1: float, y1: float, x2: float, y2: float, x3: float, y3: float, x4: float, y4: float):
-    return measure_rel_angle4(x1, y1, x2, y2, x3, y3, x4, y4) - (jnp.pi / 2)
+    return measure_rel_angle4(x1, y1, x2, y2, x3, y3, x4, y4) - (np.pi / 2)
 
 
 def antiparallel3_constraint(x1: float, y1: float, x2: float, y2: float, x3: float, y3: float):
-    return measure_rel_angle3(x1, y1, x2, y2, x3, y3) - jnp.pi
+    return measure_rel_angle3(x1, y1, x2, y2, x3, y3) - np.pi
 
 
 def antiparallel4_constraint(x1: float, y1: float, x2: float, y2: float, x3: float, y3: float, x4: float, y4: float):
-    return measure_rel_angle4(x1, y1, x2, y2, x3, y3, x4, y4) - jnp.pi
+    return measure_rel_angle4(x1, y1, x2, y2, x3, y3, x4, y4) - np.pi
 
 
 def parallel3_constraint(x1: float, y1: float, x2: float, y2: float, x3: float, y3: float):
