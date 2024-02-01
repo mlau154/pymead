@@ -588,8 +588,7 @@ class ROCurvatureConstraint(GeoCon):
         self.g2_point_curve_1 = self.curve_1.point_sequence().points()[self.g2_point_index_curve_1]
         self.g2_point_curve_2 = self.curve_2.point_sequence().points()[self.g2_point_index_curve_2]
 
-        points = [self.g2_point_curve_1, self.g1_point_curve_1,
-                  self.curve_joint,
+        points = [self.curve_joint, self.g2_point_curve_1, self.g1_point_curve_1,
                   self.g1_point_curve_2, self.g2_point_curve_2]
 
         param = value if isinstance(value, Param) else LengthParam(value=value, name="ROC-1")

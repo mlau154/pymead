@@ -800,7 +800,7 @@ class GeometryCollection(DualRep):
             self.gcs.add_constraint(constraint)
             if isinstance(constraint, AntiParallel3Constraint) or isinstance(constraint, Perp3Constraint):
                 self.gcs.solve(constraint)
-                self.gcs.update_from_points(constraint)
+                self.gcs.update_canvas_items(constraint)
         except (OverConstrainedError, ValueError) as e:
             self.remove_pymead_obj(constraint)
             self.clear_selected_objects()

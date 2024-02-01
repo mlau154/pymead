@@ -1,6 +1,4 @@
 import networkx
-import matplotlib.pyplot as plt
-import numpy as np
 
 from pymead.core.constraints import *
 from pymead.core.constraint_equations import *
@@ -197,7 +195,10 @@ class GCS2(networkx.DiGraph):
             return
         elif isinstance(constraint, SymmetryConstraint):
             self.solve_symmetry_constraint(constraint)
-            self.update_from_points(constraint)
+            self.update_canvas_items(constraint)
+        elif isinstance(constraint, ROCurvatureConstraint):
+            self.solve_roc_constraint(constraint)
+            self.update_canvas_items(constraint)
 
     def remove_constraint(self, constraint: GeoCon):
         raise NotImplementedError("Constraint removal not yet implemented")
@@ -287,8 +288,10 @@ class GCS2(networkx.DiGraph):
 
         elif isinstance(source, SymmetryConstraint):
             self.solve_symmetry_constraint(source)
+        elif isinstance(source, ROCurvatureConstraint):
+            self.solve_roc_constraint(source)
 
-        self.solve_symmetry_constraints(points_solved)
+        self.solve_other_constraints(points_solved)
 
     @staticmethod
     def solve_symmetry_constraint(constraint: SymmetryConstraint):
@@ -311,6 +314,22 @@ class GCS2(networkx.DiGraph):
             y3 + mirror_distance * np.sin(mirror_angle), force=True
         )
 
+    @staticmethod
+    def solve_roc_constraint(constraint: ROCurvatureConstraint):
+
+        def solve_for_single_curve(p_g1: Point, p_g2: Point, n: int):
+            Lc = measure_curvature_length_bezier(
+                constraint.curve_joint.x().value(), constraint.curve_joint.y().value(),
+                p_g1.x().value(), p_g1.y().value(),
+                p_g2.x().value(), p_g2.y().value(), constraint.param().value(), n
+            )
+            angle = p_g1.measure_angle(p_g2)
+            p_g2.request_move(p_g1.x().value() + Lc * np.cos(angle),
+                              p_g1.y().value() + Lc * np.sin(angle), force=True)
+
+        solve_for_single_curve(constraint.g1_point_curve_1, constraint.g2_point_curve_1, constraint.curve_1.degree)
+        solve_for_single_curve(constraint.g1_point_curve_2, constraint.g2_point_curve_2, constraint.curve_2.degree)
+
     def solve_symmetry_constraints(self, points: typing.List[Point]):
         symmetry_constraints_solved = []
         for point in points:
@@ -321,10 +340,37 @@ class GCS2(networkx.DiGraph):
                 self.solve_symmetry_constraint(symmetry_constraint)
                 symmetry_constraints_solved.append(symmetry_constraint)
 
+    def solve_roc_constraints(self, points: typing.List[Point]):
+        roc_constraints_solved =[]
+        for point in points:
+            roc_constraints = [geo_con for geo_con in point.geo_cons if isinstance(geo_con, ROCurvatureConstraint)]
+            for roc_constraint in roc_constraints:
+                if roc_constraint in roc_constraints_solved:
+                    continue
+                self.solve_roc_constraint(roc_constraint)
+                roc_constraints_solved.append(roc_constraint)
 
-    def update_from_points(self, constraint: GeoCon):
+    def solve_other_constraints(self, points: typing.List[Point]):
+        self.solve_symmetry_constraints(points)
+        self.solve_roc_constraints(points)
+
+    def update_canvas_items(self, source: GeoCon or Point):
+
+        points_to_update = []
+        if isinstance(source, Point):
+            starting_points = [source]
+        elif isinstance(source, GeoCon):
+            starting_points = source.child_nodes
+        else:
+            raise ValueError("source must be of type GeoCon or of type Point")
+        for starting_point in starting_points:
+            for point in networkx.dfs_preorder_nodes(self, source=starting_point):
+                if point in points_to_update:
+                    continue
+                points_to_update.append(point)
+
         curves_to_update = []
-        for point in self.points.values():
+        for point in points_to_update:
             if point.canvas_item is not None:
                 point.canvas_item.updateCanvasItem(point.x().value(), point.y().value())
 
@@ -344,7 +390,7 @@ class GCS2(networkx.DiGraph):
                 airfoil.canvas_item.generatePicture()
 
         constraints_to_update = []
-        for point in networkx.dfs_preorder_nodes(self, source=constraint.child_nodes[0]):
+        for point in networkx.dfs_preorder_nodes(self, source=source.child_nodes[0]):
             for geo_con in point.geo_cons:
                 if geo_con not in constraints_to_update:
                     constraints_to_update.append(geo_con)
