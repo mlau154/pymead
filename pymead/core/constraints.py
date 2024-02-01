@@ -1,18 +1,15 @@
 import typing
-from abc import abstractmethod
 from dataclasses import dataclass
 
 import numpy as np
 
-from pymead.core import constraint_equations as ceq
 from pymead.core.param import Param, AngleParam, LengthParam
-from pymead.core.point import PointSequence, Point
+from pymead.core.point import Point
 from pymead.core.pymead_obj import PymeadObj
 
 
 class GeoCon(PymeadObj):
 
-    equations: typing.List[typing.Callable] = None
     default_name: str = ""
 
     def __init__(self, param: Param or None, child_nodes: list, kind: str,
@@ -53,30 +50,9 @@ class GeoCon(PymeadObj):
 
             child_node.geo_cons.remove(self)
 
-    @abstractmethod
-    def get_arg_idx_array(self, param_list: typing.List[Param]) -> list:
-        pass
-
-
-class GeoConWeak(PymeadObj):
-
-    equations: typing.List[typing.Callable] = None
-    default_name: str = ""
-
-    def __init__(self, name: str or None = None):
-        sub_container = "geocon_weak"
-        super().__init__(sub_container=sub_container)
-        name = self.default_name if name is None else name
-        self.set_name(name)
-
-    @abstractmethod
-    def get_arg_idx_array(self, param_list: typing.List[Param], use_intermediate: bool = False) -> list:
-        pass
-
 
 class DistanceConstraint(GeoCon):
 
-    equations = [staticmethod(ceq.distance_constraint)]
     default_name = "DistCon-1"
 
     def __init__(self, p1: Point, p2: Point, value: float or LengthParam, name: str = None):
@@ -85,15 +61,6 @@ class DistanceConstraint(GeoCon):
         param = value if isinstance(value, Param) else LengthParam(value=value, name="unnamed")
         super().__init__(param=param, name=name, child_nodes=[self.p1, self.p2], kind="d")
 
-    def get_arg_idx_array(self, param_list: typing.List[Param]) -> list:
-        return [[
-            [param_list.index(self.p1.x()), 2],
-            [param_list.index(self.p1.y()), 2],
-            [param_list.index(self.p2.x()), 2],
-            [param_list.index(self.p2.y()), 2],
-            [param_list.index(self.param()), 2]
-        ]]
-
     def __repr__(self):
         return f"{self.__class__.__name__} {self.name()}<v={self.param().value()}>"
 
@@ -102,38 +69,8 @@ class DistanceConstraint(GeoCon):
                 "constraint_type": self.__class__.__name__}
 
 
-class DistanceConstraintWeak(GeoConWeak):
-
-    equations = [staticmethod(ceq.distance_constraint_weak)]
-    default_name = "DistConWeak-1"
-
-    def __init__(self, p1: Point, p2: Point, name: str = None):
-        self.p1 = p1
-        self.p2 = p2
-        super().__init__(name=name)
-
-    def get_arg_idx_array(self, param_list: typing.List[Param], use_intermediate: bool = False) -> list:
-        return [[
-            [param_list.index(self.p1.x()), 2],
-            [param_list.index(self.p1.y()), 2],
-            [param_list.index(self.p2.x()), 2],
-            [param_list.index(self.p2.y()), 2],
-            [param_list.index(self.p1.x()), int(use_intermediate)],
-            [param_list.index(self.p1.y()), int(use_intermediate)],
-            [param_list.index(self.p2.x()), int(use_intermediate)],
-            [param_list.index(self.p2.y()), int(use_intermediate)],
-        ]]
-
-    def __repr__(self):
-        return f"{self.__class__.__name__} {self.name()}"
-
-    def get_dict_rep(self) -> dict:
-        return {}
-
-
 class AbsAngleConstraint(GeoCon):
 
-    equations = [staticmethod(ceq.abs_angle_constraint)]
     default_name = "AbsAngleCon-1"
 
     def __init__(self, p1: Point, p2: Point, value: float or AngleParam, name: str = None):
@@ -142,15 +79,6 @@ class AbsAngleConstraint(GeoCon):
         param = value if isinstance(value, Param) else AngleParam(value=value, name="unnamed")
         super().__init__(param=param, name=name, child_nodes=[self.p1, self.p2], kind="a2")
 
-    def get_arg_idx_array(self, param_list: typing.List[Param]) -> list:
-        return [[
-            [param_list.index(self.p1.x()), 2],
-            [param_list.index(self.p1.y()), 2],
-            [param_list.index(self.p2.x()), 2],
-            [param_list.index(self.p2.y()), 2],
-            [param_list.index(self.param()), 2]
-        ]]
-
     def __repr__(self):
         return f"{self.__class__.__name__} {self.name()}<v={self.param().value()}>"
 
@@ -159,38 +87,8 @@ class AbsAngleConstraint(GeoCon):
                 "constraint_type": self.__class__.__name__}
 
 
-class AbsAngleConstraintWeak(GeoConWeak):
-
-    equations = [staticmethod(ceq.abs_angle_constraint_weak)]
-    default_name = "AbsAngleConWeak-1"
-
-    def __init__(self, p1: Point, p2: Point, name: str = None):
-        self.p1 = p1
-        self.p2 = p2
-        super().__init__(name)
-
-    def get_arg_idx_array(self, param_list: typing.List[Param], use_intermediate: bool = False) -> list:
-        return [[
-            [param_list.index(self.p1.x()), 2],
-            [param_list.index(self.p1.y()), 2],
-            [param_list.index(self.p2.x()), 2],
-            [param_list.index(self.p2.y()), 2],
-            [param_list.index(self.p1.x()), int(use_intermediate)],
-            [param_list.index(self.p1.y()), int(use_intermediate)],
-            [param_list.index(self.p2.x()), int(use_intermediate)],
-            [param_list.index(self.p2.y()), int(use_intermediate)],
-        ]]
-
-    def __repr__(self):
-        return f"{self.__class__.__name__} {self.name()}"
-
-    def get_dict_rep(self) -> dict:
-        return {}
-
-
 class Parallel3Constraint(GeoCon):
 
-    equations = [staticmethod(ceq.parallel3_constraint)]
     default_name = "Par3Con-1"
 
     def __init__(self, p1: Point, p2: Point, p3: Point, name: str = None):
@@ -198,16 +96,6 @@ class Parallel3Constraint(GeoCon):
         self.p2 = p2
         self.p3 = p3
         super().__init__(param=None, name=name, child_nodes=[self.p1, self.p2, self.p3], kind="a3")
-
-    def get_arg_idx_array(self, param_list: typing.List[Param]) -> list:
-        return [[
-            [param_list.index(self.p1.x()), 2],
-            [param_list.index(self.p1.y()), 2],
-            [param_list.index(self.p2.x()), 2],
-            [param_list.index(self.p2.y()), 2],
-            [param_list.index(self.p3.x()), 2],
-            [param_list.index(self.p3.y()), 2]
-        ]]
 
     def __repr__(self):
         return f"{self.__class__.__name__} {self.name()}"
@@ -219,7 +107,6 @@ class Parallel3Constraint(GeoCon):
 
 class AntiParallel3Constraint(GeoCon):
 
-    equations = [staticmethod(ceq.antiparallel3_constraint)]
     default_name = "AntiPar3Con-1"
 
     def __init__(self, p1: Point, p2: Point, p3: Point, name: str = None):
@@ -227,16 +114,6 @@ class AntiParallel3Constraint(GeoCon):
         self.p2 = p2
         self.p3 = p3
         super().__init__(param=None, name=name, child_nodes=[self.p1, self.p2, self.p3], kind="a3")
-
-    def get_arg_idx_array(self, param_list: typing.List[Param]) -> list:
-        return [[
-            [param_list.index(self.p1.x()), 2],
-            [param_list.index(self.p1.y()), 2],
-            [param_list.index(self.p2.x()), 2],
-            [param_list.index(self.p2.y()), 2],
-            [param_list.index(self.p3.x()), 2],
-            [param_list.index(self.p3.y()), 2]
-        ]]
 
     def __repr__(self):
         return f"{self.__class__.__name__} {self.name()}"
@@ -248,7 +125,6 @@ class AntiParallel3Constraint(GeoCon):
 
 class Parallel4Constraint(GeoCon):
 
-    equations = [staticmethod(ceq.parallel4_constraint)]
     default_name = "Par4Con-1"
 
     def __init__(self, p1: Point, p2: Point, p3: Point, p4: Point, name: str = None):
@@ -257,18 +133,6 @@ class Parallel4Constraint(GeoCon):
         self.p3 = p3
         self.p4 = p4
         super().__init__(param=None, name=name, child_nodes=[self.p1, self.p2, self.p3, self.p4], kind="a4")
-
-    def get_arg_idx_array(self, param_list: typing.List[Param]) -> list:
-        return [[
-            [param_list.index(self.p1.x()), 2],
-            [param_list.index(self.p1.y()), 2],
-            [param_list.index(self.p2.x()), 2],
-            [param_list.index(self.p2.y()), 2],
-            [param_list.index(self.p3.x()), 2],
-            [param_list.index(self.p3.y()), 2],
-            [param_list.index(self.p4.x()), 2],
-            [param_list.index(self.p4.y()), 2]
-        ]]
 
     def __repr__(self):
         return f"{self.__class__.__name__} {self.name()}"
@@ -280,7 +144,6 @@ class Parallel4Constraint(GeoCon):
 
 class AntiParallel4Constraint(GeoCon):
 
-    equations = [staticmethod(ceq.antiparallel4_constraint)]
     default_name = "AntiPar4Con-1"
 
     def __init__(self, p1: Point, p2: Point, p3: Point, p4: Point, name: str = None):
@@ -289,18 +152,6 @@ class AntiParallel4Constraint(GeoCon):
         self.p3 = p3
         self.p4 = p4
         super().__init__(param=None, name=name, child_nodes=[self.p1, self.p2, self.p3, self.p4], kind="a4")
-
-    def get_arg_idx_array(self, param_list: typing.List[Param]) -> list:
-        return [[
-            [param_list.index(self.p1.x()), 2],
-            [param_list.index(self.p1.y()), 2],
-            [param_list.index(self.p2.x()), 2],
-            [param_list.index(self.p2.y()), 2],
-            [param_list.index(self.p3.x()), 2],
-            [param_list.index(self.p3.y()), 2],
-            [param_list.index(self.p4.x()), 2],
-            [param_list.index(self.p4.y()), 2]
-        ]]
 
     def __repr__(self):
         return f"{self.__class__.__name__} {self.name()}"
@@ -312,7 +163,6 @@ class AntiParallel4Constraint(GeoCon):
 
 class SymmetryConstraint(GeoCon):
 
-    equations = [staticmethod(ceq.perp4_constraint), staticmethod(ceq.points_equidistant_from_line_constraint_signed)]
     default_name = "SymCon-1"
 
     def __init__(self, p1: Point, p2: Point, p3: Point, p4: Point, name: str = None):
@@ -321,29 +171,6 @@ class SymmetryConstraint(GeoCon):
         self.p3 = p3
         self.p4 = p4
         super().__init__(param=None, name=name, child_nodes=[self.p1, self.p2, self.p3, self.p4], kind="a4|d")
-
-    def get_arg_idx_array(self, param_list: typing.List[Param]) -> list:
-        return [
-            [
-                [param_list.index(self.p1.x()), 2],
-                [param_list.index(self.p1.y()), 2],
-                [param_list.index(self.p2.x()), 2],
-                [param_list.index(self.p2.y()), 2],
-                [param_list.index(self.p3.x()), 2],
-                [param_list.index(self.p3.y()), 2],
-                [param_list.index(self.p4.x()), 2],
-                [param_list.index(self.p4.y()), 2]
-            ],
-            [
-                [param_list.index(self.p1.x()), 2],
-                [param_list.index(self.p1.y()), 2],
-                [param_list.index(self.p2.x()), 2],
-                [param_list.index(self.p2.y()), 2],
-                [param_list.index(self.p3.x()), 2],
-                [param_list.index(self.p3.y()), 2],
-                [param_list.index(self.p4.x()), 2],
-                [param_list.index(self.p4.y()), 2]]
-        ]
 
     def __repr__(self):
         return f"{self.__class__.__name__} {self.name()}"
@@ -355,7 +182,6 @@ class SymmetryConstraint(GeoCon):
 
 class Perp3Constraint(GeoCon):
 
-    equations = [staticmethod(ceq.perp3_constraint)]
     default_name = "Perp3Con-1"
 
     def __init__(self, p1: Point, p2: Point, p3: Point, name: str = None):
@@ -363,16 +189,6 @@ class Perp3Constraint(GeoCon):
         self.p2 = p2
         self.p3 = p3
         super().__init__(param=None, name=name, child_nodes=[self.p1, self.p2, self.p3], kind="a3")
-
-    def get_arg_idx_array(self, param_list: typing.List[Param]) -> list:
-        return [[
-            [param_list.index(self.p1.x()), 2],
-            [param_list.index(self.p1.y()), 2],
-            [param_list.index(self.p2.x()), 2],
-            [param_list.index(self.p2.y()), 2],
-            [param_list.index(self.p3.x()), 2],
-            [param_list.index(self.p3.y()), 2]
-        ]]
 
     def __repr__(self):
         return f"{self.__class__.__name__} {self.name()}"
@@ -384,7 +200,6 @@ class Perp3Constraint(GeoCon):
 
 class Perp4Constraint(GeoCon):
 
-    equations = [staticmethod(ceq.perp4_constraint)]
     default_name = "Perp4Con-1"
 
     def __init__(self, p1: Point, p2: Point, p3: Point, p4: Point, name: str = None):
@@ -393,18 +208,6 @@ class Perp4Constraint(GeoCon):
         self.p3 = p3
         self.p4 = p4
         super().__init__(param=None, name=name, child_nodes=[self.p1, self.p2, self.p3, self.p4], kind="a4")
-
-    def get_arg_idx_array(self, param_list: typing.List[Param]) -> list:
-        return [[
-            [param_list.index(self.p1.x()), 2],
-            [param_list.index(self.p1.y()), 2],
-            [param_list.index(self.p2.x()), 2],
-            [param_list.index(self.p2.y()), 2],
-            [param_list.index(self.p3.x()), 2],
-            [param_list.index(self.p3.y()), 2],
-            [param_list.index(self.p4.x()), 2],
-            [param_list.index(self.p4.y()), 2]
-        ]]
 
     def __repr__(self):
         return f"{self.__class__.__name__} {self.name()}"
@@ -416,7 +219,6 @@ class Perp4Constraint(GeoCon):
 
 class RelAngle3Constraint(GeoCon):
 
-    equations = [staticmethod(ceq.rel_angle3_constraint)]
     default_name = "RelAng3Con-1"
 
     def __init__(self, start_point: Point, vertex: Point, end_point: Point, value: float or AngleParam, name: str = None):
@@ -425,17 +227,6 @@ class RelAngle3Constraint(GeoCon):
         self.end_point = end_point
         param = value if isinstance(value, Param) else AngleParam(value=value, name="unnamed")
         super().__init__(param=param, name=name, child_nodes=[self.start_point, self.vertex, self.end_point], kind="a3")
-
-    def get_arg_idx_array(self, param_list: typing.List[Param]) -> list:
-        return [[
-            [param_list.index(self.start_point.x()), 2],
-            [param_list.index(self.start_point.y()), 2],
-            [param_list.index(self.vertex.x()), 2],
-            [param_list.index(self.vertex.y()), 2],
-            [param_list.index(self.end_point.x()), 2],
-            [param_list.index(self.end_point.y()), 2],
-            [param_list.index(self.param()), 2]
-        ]]
 
     def __repr__(self):
         return f"{self.__class__.__name__} {self.name()}<v={self.param().value()}>"
@@ -448,7 +239,6 @@ class RelAngle3Constraint(GeoCon):
 
 class RelAngle4Constraint(GeoCon):
 
-    equations = [staticmethod(ceq.rel_angle4_constraint)]
     default_name = "RelAng4Con-1"
 
     def __init__(self, p1: Point, p2: Point, p3: Point, p4: Point, value: float, name: str = None):
@@ -459,18 +249,6 @@ class RelAngle4Constraint(GeoCon):
         param = value if isinstance(value, Param) else AngleParam(value=value, name="unnamed")
         super().__init__(param=param, name=name, child_nodes=[self.p1, self.p2, self.p3, self.p4], kind="a3")
 
-    def get_arg_idx_array(self, param_list: typing.List[Param]) -> list:
-        return [[
-            [param_list.index(self.p1.x()), 2],
-            [param_list.index(self.p1.y()), 2],
-            [param_list.index(self.p2.x()), 2],
-            [param_list.index(self.p2.y()), 2],
-            [param_list.index(self.p3.x()), 2],
-            [param_list.index(self.p3.y()), 2],
-            [param_list.index(self.p4.x()), 2],
-            [param_list.index(self.p4.y()), 2]
-        ]]
-
     def __repr__(self):
         return f"{self.__class__.__name__} {self.name()}<v={self.param().value()}>"
 
@@ -480,43 +258,8 @@ class RelAngle4Constraint(GeoCon):
                 "constraint_type": self.__class__.__name__}
 
 
-class RelAngle3ConstraintWeak(GeoConWeak):
-
-    equations = [staticmethod(ceq.rel_angle3_constraint_weak)]
-    default_name = "RelAng3ConWeak-1"
-
-    def __init__(self, start_point: Point, vertex: Point, end_point: Point, name: str = None):
-        self.start_point = start_point
-        self.vertex = vertex
-        self.end_point = end_point
-        super().__init__(name=name)
-
-    def get_arg_idx_array(self, param_list: typing.List[Param], use_intermediate: bool = False) -> list:
-        return [[
-            [param_list.index(self.start_point.x()), 2],
-            [param_list.index(self.start_point.y()), 2],
-            [param_list.index(self.vertex.x()), 2],
-            [param_list.index(self.vertex.y()), 2],
-            [param_list.index(self.end_point.x()), 2],
-            [param_list.index(self.end_point.y()), 2],
-            [param_list.index(self.start_point.x()), int(use_intermediate)],
-            [param_list.index(self.start_point.y()), int(use_intermediate)],
-            [param_list.index(self.vertex.x()), int(use_intermediate)],
-            [param_list.index(self.vertex.y()), int(use_intermediate)],
-            [param_list.index(self.end_point.x()), int(use_intermediate)],
-            [param_list.index(self.end_point.y()), int(use_intermediate)]
-        ]]
-
-    def __repr__(self):
-        return f"{self.__class__.__name__} {self.name()}"
-
-    def get_dict_rep(self) -> dict:
-        return {}
-
-
 class PointOnLineConstraint(GeoCon):
 
-    equations = [staticmethod(ceq.point_on_line_constraint)]
     default_name = "POLCon-1"
 
     def __init__(self, point: Point, line_start: Point, line_end: Point, name: str = None):
@@ -524,16 +267,6 @@ class PointOnLineConstraint(GeoCon):
         self.line_start = line_start
         self.line_end = line_end
         super().__init__(param=None, name=name, child_nodes=[self.point, self.line_start, self.line_end], kind="a3")
-
-    def get_arg_idx_array(self, param_list: typing.List[Param]) -> list:
-        return [[
-            [param_list.index(self.point.x()), 2],
-            [param_list.index(self.point.y()), 2],
-            [param_list.index(self.line_start.x()), 2],
-            [param_list.index(self.line_start.y()), 2],
-            [param_list.index(self.line_end.x()), 2],
-            [param_list.index(self.line_end.y()), 2]
-        ]]
 
     def __repr__(self):
         return f"{self.__class__.__name__} {self.name()}"
@@ -563,7 +296,6 @@ class CurvatureConstraintData:
 
 class ROCurvatureConstraint(GeoCon):
 
-    equations = [staticmethod(ceq.radius_of_curvature_constraint), staticmethod(ceq.radius_of_curvature_constraint)]
     default_name = "ROCCon-1"
 
     def __init__(self, curve_joint: Point, value: float or LengthParam, name: str = None):
@@ -630,28 +362,6 @@ class ROCurvatureConstraint(GeoCon):
         data = CurvatureConstraintData(Lt1=Lt1, Lt2=Lt2, Lc1=Lc1, Lc2=Lc2, n1=n1, n2=n2, theta1=theta1, theta2=theta2,
                                        phi1=phi1, phi2=phi2, psi1=psi1, psi2=psi2, R1=R1, R2=R2)
         return data
-
-    def get_arg_idx_array(self, param_list: typing.List[Param]) -> list:
-        return [[
-            [param_list.index(self.curve_joint.x()), 2],
-            [param_list.index(self.curve_joint.y()), 2],
-            [param_list.index(self.g1_point_curve_1.x()), 2],
-            [param_list.index(self.g1_point_curve_1.y()), 2],
-            [param_list.index(self.g2_point_curve_1.x()), 2],
-            [param_list.index(self.g2_point_curve_1.y()), 2],
-            [param_list.index(self.param()), 2],
-            [param_list.index(self.secondary_params[0]), 2]
-        ],
-            [
-            [param_list.index(self.curve_joint.x()), 2],
-            [param_list.index(self.curve_joint.y()), 2],
-            [param_list.index(self.g1_point_curve_2.x()), 2],
-            [param_list.index(self.g1_point_curve_2.y()), 2],
-            [param_list.index(self.g2_point_curve_2.x()), 2],
-            [param_list.index(self.g2_point_curve_2.y()), 2],
-            [param_list.index(self.param()), 2],
-            [param_list.index(self.secondary_params[1]), 2]
-        ]]
 
     def __repr__(self):
         return f"{self.__class__.__name__} {self.name()} <C1={self.curve_1.name()}, C2={self.curve_2.name()}>"

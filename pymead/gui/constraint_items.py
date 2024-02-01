@@ -1,4 +1,5 @@
 import os
+from abc import abstractmethod
 
 import pyqtgraph as pg
 import numpy as np
