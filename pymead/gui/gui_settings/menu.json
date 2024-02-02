@@ -1,9 +1,9 @@
 {
   "File": {
-    "New": ["new_mea", "Ctrl+N"],
-    "Open": ["load_mea", "Ctrl+O"],
-    "Save As": "save_as_mea",
-    "Save": ["save_mea", "Ctrl+S"],
+    "New": ["new_geo_col", "Ctrl+N"],
+    "Open": ["load_geo_col", "Ctrl+O"],
+    "Save As": "save_as_geo_col",
+    "Save": ["save_geo_col", "Ctrl+S"],
     "Import": {
       "Design Variable Values": "import_design_variable_values",
       "Optimized Airfoil": "import_algorithm_pkl_file"

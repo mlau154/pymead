@@ -31,6 +31,8 @@ class GCS2(networkx.DiGraph):
             first_constraint_in_cluster = True
 
         if first_constraint_in_cluster:
+            if not isinstance(constraint, DistanceConstraint):
+                raise ValueError("The first constraint in a constraint cluster must be a distance constraint")
             constraint.child_nodes[0].root = True
 
         if constraint.param() is not None:
@@ -93,10 +95,10 @@ class GCS2(networkx.DiGraph):
             # if edge_data_p12:
             #     networkx.set_edge_attributes(self, {(constraint.start_point, constraint.vertex): constraint}, name="angle")
             #     return
-            if edge_data_p21:
+            if edge_data_p21 and not angle_in_p21 and not (constraint.vertex.root and "distance" in edge_data_p21.keys()):
                 networkx.set_edge_attributes(self, {(constraint.vertex, constraint.start_point): constraint}, name="angle")
                 return
-            if edge_data_p23:
+            if edge_data_p23 and not angle_in_p23 and not (constraint.vertex.root and "distance" in edge_data_p23.keys()):
                 networkx.set_edge_attributes(self, {(constraint.vertex, constraint.end_point): constraint}, name="angle")
                 return
             # if edge_data_p32:
@@ -160,10 +162,10 @@ class GCS2(networkx.DiGraph):
             # if edge_data_p12:
             #     networkx.set_edge_attributes(self, {(constraint.p1, constraint.p2): constraint}, name="angle")
             #     return
-            if edge_data_p21:
+            if edge_data_p21 and not angle_in_p21 and not (constraint.p2.root and "distance" in edge_data_p21.keys()):
                 networkx.set_edge_attributes(self, {(constraint.p2, constraint.p1): constraint}, name="angle")
                 return
-            if edge_data_p23:
+            if edge_data_p23 and not angle_in_p23 and not (constraint.p2.root and "distance" in edge_data_p23.keys()):
                 networkx.set_edge_attributes(self, {(constraint.p2, constraint.p3): constraint}, name="angle")
                 return
             # if edge_data_p32:
@@ -278,9 +280,9 @@ class GCS2(networkx.DiGraph):
             rotation_point = source.vertex
 
             if edge_data_p21 and edge_data_p21["angle"] is source:
-                start = source.start_point
+                pass
             elif edge_data_p23 and edge_data_p23["angle"] is source:
-                start = source.end_point
+                pass
                 d_angle *= -1
             else:
                 raise ValueError("Somehow no angle constraint found between the three points")
@@ -288,7 +290,9 @@ class GCS2(networkx.DiGraph):
             rotation_mat = np.array([[np.cos(d_angle), -np.sin(d_angle)], [np.sin(d_angle), np.cos(d_angle)]])
             rotation_point_mat = np.array([[rotation_point.x().value()], [rotation_point.y().value()]])
 
-            for point in networkx.bfs_tree(self, source=start):
+            for point in networkx.bfs_tree(self, source=source.vertex):
+                if point is source.vertex:
+                    continue
                 dx_dy = np.array([[point.x().value() - rotation_point.x().value()],
                                   [point.y().value() - rotation_point.y().value()]])
                 new_xy = (rotation_mat @ dx_dy + rotation_point_mat).flatten()
@@ -303,6 +307,10 @@ class GCS2(networkx.DiGraph):
             self.solve_roc_constraint(source)
 
         self.solve_other_constraints(points_solved)
+
+        # networkx.draw_circular(self, labels={point: point.name() for point in self.nodes})
+        # from matplotlib import pyplot as plt
+        # plt.show()
 
     def move_root(self, root: Point, dx: float, dy: float):
         if not root.root:

@@ -320,27 +320,6 @@ class AirfoilCanvas(pg.PlotWidget):
 
         self.geo_col.add_angle_dimension(tool_point=tool_point, target_point=target_point, angle_param=angle_param)
 
-    @runSelectionEventLoop(drawing_object="CollinearConstraint", starting_message="Select the start point")
-    def addCollinearConstraint(self):
-        if len(self.geo_col.selected_objects["points"]) != 3:
-            msg = f"Choose exactly 3 points for a collinear constraint"
-            self.sigStatusBarUpdate.emit(msg, 2000)
-            return
-        constraint = self.geo_col.add_collinear_constraint(start_point=self.geo_col.selected_objects["points"][0],
-                                                           middle_point=self.geo_col.selected_objects["points"][1],
-                                                           end_point=self.geo_col.selected_objects["points"][2])
-        constraint.enforce("start")
-
-    @runSelectionEventLoop(drawing_object="CurvatureConstraint", starting_message="Select the curve joint")
-    def addCurvatureConstraint(self):
-        if len(self.geo_col.selected_objects["points"]) != 1:
-            msg = f"Choose only one point (the curve joint) for a curvature constraint"
-            self.sigStatusBarUpdate.emit(msg, 2000)
-            return
-        constraint = self.geo_col.add_curvature_constraint(curve_joint=self.geo_col.selected_objects["points"][0])
-        constraint.enforce(constraint.target().points()[1])
-        constraint.enforce(constraint.target().points()[0])
-
     @runSelectionEventLoop(drawing_object="RelAngle3Constraint", starting_message="Select any point other than "
                                                                                   "the vertex")
     def addRelAngle3Constraint(self):
@@ -349,11 +328,6 @@ class AirfoilCanvas(pg.PlotWidget):
                    f"relative angle 3 constraint")
             self.sigStatusBarUpdate.emit(msg, 4000)
             return
-        # TODO: also allow for 0 params, and make a new param on creation
-        # if len(self.geo_col.selected_objects["params"]) != 1:
-        #     msg = f"Choose a param"
-        #     self.sigStatusBarUpdate.emit(msg, 4000)
-        #     return
         args = []
         for point in self.geo_col.selected_objects["points"]:
             args.extend([point.x().value(), point.y().value()])
@@ -385,23 +359,6 @@ class AirfoilCanvas(pg.PlotWidget):
         constraint = SymmetryConstraint(*self.geo_col.selected_objects["points"])
         self.geo_col.add_constraint(constraint)
 
-    @runSelectionEventLoop(drawing_object="RelAngle4Constraint", starting_message="Select the first of two points "
-                                                                                 "on the tool line")
-    def addRelAngle4Constraint(self):
-        if len(self.geo_col.selected_objects["points"]) != 4:
-            msg = (f"Choose exactly four points (the tool line start and end, and the target line start and end) for a "
-                   f"relative angle constraint")
-            self.sigStatusBarUpdate.emit(msg, 4000)
-            return
-        # TODO: also allow for 0 params, and make a new param on creation
-        if len(self.geo_col.selected_objects["params"]) != 1:
-            msg = f"Choose a param"
-            self.sigStatusBarUpdate.emit(msg, 4000)
-            return
-        constraint = RelAngle4Constraint(*self.geo_col.selected_objects["points"],
-                                         self.geo_col.selected_objects["params"][0])
-        self.geo_col.add_constraint(constraint)
-
     @runSelectionEventLoop(drawing_object="Perp3Constraint", starting_message="Select the first point (not the vertex)")
     def addPerp3Constraint(self):
         if len(self.geo_col.selected_objects["points"]) != 3:
@@ -409,29 +366,6 @@ class AirfoilCanvas(pg.PlotWidget):
             self.sigStatusBarUpdate.emit(msg, 4000)
             return
         constraint = Perp3Constraint(*self.geo_col.selected_objects["points"])
-        self.geo_col.add_constraint(constraint)
-
-    @runSelectionEventLoop(drawing_object="PerpendicularConstraint", starting_message="Select the first of two points "
-                                                                                      "on the tool line")
-    def addPerp4Constraint(self):
-        if len(self.geo_col.selected_objects["points"]) != 4:
-            msg = (f"Choose exactly four points (the tool line start and end, and the target line start and end) for a "
-                   f"perpendicular constraint")
-            self.sigStatusBarUpdate.emit(msg, 4000)
-            return
-        constraint = Perp4Constraint(*self.geo_col.selected_objects["points"])
-        self.geo_col.add_constraint(constraint)
-
-    @runSelectionEventLoop(drawing_object="ParallelConstraint", starting_message="Select the first of two points "
-                                                                                      "on the tool line")
-    def addParallelConstraint(self):
-        if len(self.geo_col.selected_objects["points"]) != 4:
-            msg = (f"Choose exactly four points (the tool line start and end, and the target line start and end) for a "
-                   f"parallel constraint")
-            self.sigStatusBarUpdate.emit(msg, 4000)
-            return
-
-        constraint = Parallel4Constraint(*self.geo_col.selected_objects["points"])
         self.geo_col.add_constraint(constraint)
 
     @runSelectionEventLoop(drawing_object="ROCurvatureConstraint", starting_message="Select the curve joint")

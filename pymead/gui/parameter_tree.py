@@ -665,8 +665,8 @@ class Perp3ConstraintButton(TreeButton):
         layout.addWidget(name_edit, 1, 1)
 
         labels = ["Start", "Vertex", "End"]
-        points = [self.perp3_constraint.start_point, self.perp3_constraint.vertex,
-                  self.perp3_constraint.end_point]
+        points = [self.perp3_constraint.p1, self.perp3_constraint.p2,
+                  self.perp3_constraint.p3]
         for label, point in zip(labels, points):
             point_button = PointButton(point, self.tree)
             point_button.sigNameChanged.connect(self.onPointNameChange)

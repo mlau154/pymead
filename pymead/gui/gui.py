@@ -632,13 +632,13 @@ class GUI(QMainWindow):
     def hideAllPymeadObjs(self):
         self.showHideState = self.airfoil_canvas.hideAllPymeadObjs()
 
-    def save_as_mea(self):
+    def save_as_geo_col(self):
         dialog = SaveAsDialog(self)
         if dialog.exec_():
             self.current_save_name = dialog.selectedFiles()[0]
             if self.current_save_name[-5:] != '.jmea':
                 self.current_save_name += '.jmea'
-            self.save_mea()
+            self.save_geo_col()
             self.setWindowTitle(f"pymead - {os.path.split(self.current_save_name)[-1]}")
             self.disp_message_box(f"Multi-element airfoil saved as {self.current_save_name}", message_mode='info')
             return True
@@ -648,12 +648,12 @@ class GUI(QMainWindow):
                 self.disp_message_box('No file name specified. File not saved.', message_mode='warn')
             return False
 
-    def save_mea(self):
+    def save_geo_col(self):
         # if self.mea.file_name is None:
         if self.current_save_name is None:
             if self.save_attempts < 1:
                 self.save_attempts += 1
-                return self.save_as_mea()
+                return self.save_as_geo_col()
             else:
                 self.save_attempts = 0
                 self.disp_message_box('No file name specified. File not saved.', message_mode='warn')
