@@ -1,6 +1,7 @@
 import sys
 import typing
 
+import networkx
 import numpy as np
 
 from pymead.core.param import LengthParam
@@ -16,6 +17,7 @@ class Point(PymeadObj):
         self._fixed = fixed
         self._fixed_weak = False
         self.gcs = None
+        self.root = False
         self.geo_cons = []
         self.dims = []
         self.curves = []
@@ -85,25 +87,37 @@ class Point(PymeadObj):
 
     def request_move(self, xp: float, yp: float, force: bool = False):
 
-        if self.gcs is None or (self.gcs is not None and len(self.geo_cons) == 0) or force:
+        if (self.gcs is None or (self.gcs is not None and len(self.geo_cons) == 0) or force or
+                (self.gcs is not None and self.root)):
 
-            self.x().set_value(xp)
-            self.y().set_value(yp)
+            if self.root:
+                points_to_update = self.gcs.move_root(self, dx=xp-self.x().value(), dy=yp-self.y().value())
+                constraints_to_update = []
+                for point in networkx.dfs_preorder_nodes(self.gcs, source=self):
+                    for geo_con in point.geo_cons:
+                        if geo_con not in constraints_to_update:
+                            constraints_to_update.append(geo_con)
+
+                for geo_con in constraints_to_update:
+                    if geo_con.canvas_item is not None:
+                        geo_con.canvas_item.update()
+            else:
+                self.x().set_value(xp)
+                self.y().set_value(yp)
+                points_to_update = [self]
 
             # Update the GUI object, if there is one
             if self.canvas_item is not None:
                 self.canvas_item.updateCanvasItem(self.x().value(), self.y().value())
 
-            for curve in self.curves:
-                curve.update()
-
             curves_to_update = []
-            if self.canvas_item is not None:
-                self.canvas_item.updateCanvasItem(self.x().value(), self.y().value())
+            for point in points_to_update:
+                if point.canvas_item is not None:
+                    point.canvas_item.updateCanvasItem(point.x().value(), point.y().value())
 
-            for curve in self.curves:
-                if curve not in curves_to_update:
-                    curves_to_update.append(curve)
+                for curve in point.curves:
+                    if curve not in curves_to_update:
+                        curves_to_update.append(curve)
 
             airfoils_to_update = []
             for curve in curves_to_update:
@@ -115,28 +129,6 @@ class Point(PymeadObj):
                 airfoil.update_coords()
                 if airfoil.canvas_item is not None:
                     airfoil.canvas_item.generatePicture()
-        # else:
-        #     start_param_vec = np.array([p.value() for p in self.gcs.params])
-        #
-        #     self.x().set_value(xp)
-        #     self.y().set_value(yp)
-        #
-        #     intermediate_param_vec = np.array([p.value() for p in self.gcs.params])
-        #
-        #     params, info = self.gcs.solve(start_param_vec, intermediate_param_vec)
-        #
-        #     self.gcs.update(params)
-
-    def force_move(self, xp: float, yp: float):
-        self.x().set_value(xp)
-        self.y().set_value(yp)
-
-        # Update the GUI object, if there is one
-        if self.canvas_item is not None:
-            self.canvas_item.updateCanvasItem(self.x().value(), self.y().value())
-
-        for curve in self.curves:
-            curve.update()
 
     def __repr__(self):
         return f"Point {self.name()}<x={self.x().value():.6f}, y={self.y().value():.6f}>"

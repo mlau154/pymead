@@ -22,6 +22,15 @@ class GCS2(networkx.DiGraph):
 
     def add_constraint(self, constraint: GeoCon):
 
+        first_constraint_in_cluster = True
+        for point in constraint.child_nodes:
+            if len(self.adj[point]) > 0:
+                first_constraint_in_cluster = False
+                break
+
+        if first_constraint_in_cluster:
+            constraint.child_nodes[0].root = True
+
         if constraint.param() is not None:
             constraint.param().gcs = self
 
@@ -292,6 +301,18 @@ class GCS2(networkx.DiGraph):
             self.solve_roc_constraint(source)
 
         self.solve_other_constraints(points_solved)
+
+    def move_root(self, root: Point, dx: float, dy: float):
+        if not root.root:
+            raise ValueError("Cannot move a point that is not a root of a constraint cluster")
+        points_solved = []
+        for point in networkx.bfs_tree(self, source=root):
+            point.x().set_value(point.x().value() + dx)
+            point.y().set_value(point.y().value() + dy)
+            if point not in points_solved:
+                points_solved.append(point)
+        self.solve_other_constraints(points_solved)
+        return points_solved
 
     @staticmethod
     def solve_symmetry_constraint(constraint: SymmetryConstraint):
