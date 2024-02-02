@@ -22,11 +22,13 @@ class GCS2(networkx.DiGraph):
 
     def add_constraint(self, constraint: GeoCon):
 
-        first_constraint_in_cluster = True
         for point in constraint.child_nodes:
-            if len(self.adj[point]) > 0:
+            # If there is already an edge attached to any of the points in this constraint, do not create a new root
+            if len(self.in_edges(nbunch=point)) > 0 or len(self.out_edges(nbunch=point)) > 0:
                 first_constraint_in_cluster = False
                 break
+        else:
+            first_constraint_in_cluster = True
 
         if first_constraint_in_cluster:
             constraint.child_nodes[0].root = True

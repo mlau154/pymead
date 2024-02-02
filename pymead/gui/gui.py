@@ -41,7 +41,7 @@ from pymead.optimization.shape_optimization import shape_optimization as shape_o
 from pymead import RESOURCE_DIR
 from pymead.gui.input_dialog import LoadDialog, SaveAsDialog, OptimizationSetupDialog, \
     MultiAirfoilDialog, ColorInputDialog, ExportCoordinatesDialog, ExportControlPointsDialog, AirfoilPlotDialog, \
-    AirfoilMatchingDialog, MSESFieldPlotDialog, ExportIGESDialog, XFOILDialog, NewMEADialog, EditBoundsDialog, \
+    AirfoilMatchingDialog, MSESFieldPlotDialog, ExportIGESDialog, XFOILDialog, NewGeoColDialog, EditBoundsDialog, \
     ExitDialog, ScreenshotDialog, LoadAirfoilAlgFile, ExitOptimizationDialog
 from pymead.gui.pymeadPColorMeshItem import PymeadPColorMeshItem
 from pymead.gui.analysis_graph import AnalysisGraph
@@ -379,7 +379,7 @@ class GUI(QMainWindow):
                 return
 
         if self.mea_start_dict != self.copy_mea_dict():  # Only run this code if changes have been made
-            save_dialog = NewMEADialog(parent=self)
+            save_dialog = NewGeoColDialog(parent=self)
             exit_dialog = ExitDialog(parent=self)
             while True:
                 if save_dialog.exec_():  # If "Yes" to "Save Changes,"
@@ -670,7 +670,7 @@ class GUI(QMainWindow):
     def copy_mea_dict(self, deactivate_airfoil_graphs: bool = False):
         return self.mea.copy_as_param_dict(deactivate_airfoil_graphs=deactivate_airfoil_graphs)
 
-    def load_mea(self):
+    def load_geo_col(self):
 
         # if self.mea_start_dict is not None:
         #     if self.mea_start_dict != self.copy_mea_dict():
@@ -700,25 +700,15 @@ class GUI(QMainWindow):
         else:
             file_name = None
         if file_name is not None:
-            self.load_mea_no_dialog(file_name)
+            self.load_geo_col_no_dialog(file_name)
             self.setWindowTitle(f"pymead - {os.path.split(file_name)[-1]}")
 
-    def new_mea(self):
-        dialog = NewMEADialog(self)
+    def new_geo_col(self):
+        dialog = NewGeoColDialog(self)
         if dialog.exec_():
-            self.load_mea_no_dialog(os.path.join(GUI_DEFAULT_AIRFOIL_DIR, "default_airfoil.jmea"))
+            self.load_geo_col_no_dialog(os.path.join(GUI_DEFAULT_AIRFOIL_DIR, "default_airfoil.jmea"))
             self.mea.file_name = None
             self.setWindowTitle(f"pymead")
-
-    def get_grandchild(self, full_param_name: str):
-        child_list = full_param_name.split(".")
-        current_param = self.param_tree_instance.p.child("Airfoil Parameters").child(child_list[0])
-        for idx in range(1, len(child_list) - 1):
-            current_param = current_param.child(child_list[idx])
-        if child_list[0] == "Custom":
-            return current_param.child(child_list[-1])
-        else:
-            return current_param.child(full_param_name)
 
     def edit_bounds(self):
         bv_dialog = EditBoundsDialog(geo_col=self.geo_col, theme=self.themes[self.current_theme], parent=self)
@@ -1005,7 +995,7 @@ class GUI(QMainWindow):
         self.cbar.getAxis("right").setWidth(20 + 2 * get_setting("axis-label-point-size") +
                                             2 * get_setting("cbar-tick-point-size"))
 
-    def load_mea_no_dialog(self, file_name):
+    def load_geo_col_no_dialog(self, file_name):
         self.permanent_widget.progress_bar.setValue(0)
         self.permanent_widget.progress_bar.show()
         self.statusBar().showMessage("Loading MEA...")

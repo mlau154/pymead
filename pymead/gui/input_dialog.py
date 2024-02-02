@@ -2469,7 +2469,7 @@ class SaveAsDialog(QFileDialog):
         self.setViewMode(QFileDialog.Detail)
 
 
-class NewMEADialog(QDialog):
+class NewGeoColDialog(QDialog):
     def __init__(self, parent=None, window_title: str or None = None, message: str or None = None):
         super().__init__(parent=parent)
         window_title = window_title if window_title is not None else "Save Changes?"
