@@ -3,17 +3,22 @@ from abc import abstractmethod
 
 import pyqtgraph as pg
 import numpy as np
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import Qt, pyqtSignal, QObject
 from PyQt5.QtGui import QFont, QImage, QTransform, QPainterPath, QBrush, QPen, QColor
 import PIL
 
 from pymead.core.constraints import *
 from pymead import ICON_DIR
+from pymead.utils.misc import get_setting
 
 
-class ConstraintItem:
+class ConstraintItem(QObject):
+
+    sigItemHovered = pyqtSignal()
+    sigItemLeaveHovered = pyqtSignal()
 
     def __init__(self, constraint: GeoCon, canvas_items: list):
+        super().__init__()
         self.constraint = constraint
         self.constraint.canvas_item = self
         self.canvas_items = canvas_items
@@ -21,6 +26,7 @@ class ConstraintItem:
     def addItems(self, canvas):
         for item in self.canvas_items:
             canvas.addItem(item)
+            # TODO: connect hover leave/enter signals here
 
     def hide(self):
         for canvas_item in self.canvas_items:
@@ -34,16 +40,27 @@ class ConstraintItem:
     def update(self):
         pass
 
-    def setStyle(self, theme: dict):
+    def setStyle(self, theme: dict = None, mode: str = "default"):
+        if mode == "default" and theme is None:
+            raise ValueError("Must specify theme for default constraint style")
         for item in self.canvas_items:
             if isinstance(item, pg.ArrowItem):
-                item.setStyle(brush=theme["main-color"])
+                if mode == "default":
+                    item.setStyle(brush=theme["main-color"])
+                else:
+                    item.setStyle(brush=get_setting(f"curve_{mode}_pen_color"))
             elif isinstance(item, pg.TextItem):
-                item.setColor(theme["main-color"])
+                if mode == "default":
+                    item.setColor(theme["main-color"])
+                else:
+                    item.setColor(get_setting(f"curve_{mode}_pen_color"))
             elif isinstance(item, pg.PlotDataItem) or isinstance(item, pg.PlotCurveItem):
                 pen = item.opts["pen"]
                 if isinstance(pen, QPen):
-                    pen.setColor(QColor(theme["main-color"]))
+                    if mode == "default":
+                        pen.setColor(QColor(theme["main-color"]))
+                    else:
+                        pen.setColor(QColor(get_setting(f"curve_{mode}_pen_color")))
                 item.setPen(pen)
 
 

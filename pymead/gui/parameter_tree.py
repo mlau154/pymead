@@ -1018,9 +1018,9 @@ class ParameterTree(QTreeWidget):
         button. In this case, the mouseMoveEvent will not catch the hover leave, so we need to put that logic here.
         """
         if self.previous_item_hovered is not None and self.previous_item_hovered.hoverable:
-            button = self.itemWidget(self.previous_item_hovered, 1)
-            if button is not None:
-                self.geo_col.hover_leave_obj(button.pymead_obj)
+            pymead_obj = self.getPymeadObjFromItem(self.previous_item_hovered)
+            if pymead_obj is not None:
+                self.geo_col.hover_leave_obj(pymead_obj)
             else:
                 self.setItemStyle(self.previous_item_hovered, "default")
             self.previous_item_hovered = None

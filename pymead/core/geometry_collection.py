@@ -259,6 +259,9 @@ class GeometryCollection(DualRep):
                 for curve in pymead_obj.curves:
                     curve.canvas_item.hoverable = True
                     self.canvas.setItemStyle(curve.canvas_item, "default")
+            elif isinstance(pymead_obj, GeoCon):
+                pymead_obj.canvas_item.hoverable = True
+                pymead_obj.canvas_item.setStyle(theme=self.gui_obj.themes[self.gui_obj.current_theme])
 
         # if isinstance(pymead_obj, Point):
         #     if pymead_obj in self.selected_objects:

@@ -50,6 +50,7 @@ class AirfoilCanvas(pg.PlotWidget):
         self.adding_point_to_curve = None
         self.curve_hovered_item = None
         self.point_hovered_item = None
+        self.constraint_hovered_item = None
         self.point_text_item = None
         self.geo_col = geo_col
         self.geo_col.canvas = self
@@ -191,6 +192,9 @@ class AirfoilCanvas(pg.PlotWidget):
             # raise NotImplementedError(f"Constraint {pymead_obj.__class__.__name__} does not yet have a canvas item")
 
             constraint_item.addItems(self)
+
+            # Connect hover/not hover signals
+            # TODO: need to connect these
 
         elif isinstance(pymead_obj, Airfoil):
 
@@ -547,6 +551,9 @@ class AirfoilCanvas(pg.PlotWidget):
             elif isinstance(item, HoverableCurve):
                 self.curve_hovered_item = item
                 item.setCurveStyle("hovered")
+            elif isinstance(item, ConstraintItem):
+                self.constraint_hovered_item = item
+                item.setStyle(mode="hovered")
 
         elif style == "default":
             # Point
@@ -559,6 +566,9 @@ class AirfoilCanvas(pg.PlotWidget):
             elif isinstance(item, HoverableCurve):
                 self.curve_hovered_item = None
                 item.setCurveStyle("default")
+            elif isinstance(item, ConstraintItem):
+                self.constraint_hovered_item = None
+                item.setStyle(theme=self.gui_obj.themes[self.gui_obj.current_theme])
 
         elif style == "selected":
             # Point
@@ -567,6 +577,9 @@ class AirfoilCanvas(pg.PlotWidget):
                 self.removeItem(self.point_text_item)
                 self.point_text_item = None
                 item.setScatterStyle(mode="selected")
+            elif isinstance(item, ConstraintItem):
+                self.constraint_hovered_item = None
+                item.setStyle(mode="selected")
             # Curve
             # elif isinstance(item, HoverableCurve):
             #     self.curve_hovered_item = None
@@ -585,6 +598,12 @@ class AirfoilCanvas(pg.PlotWidget):
 
     def curveLeaveHovered(self, item):
         self.geo_col.hover_leave_obj(item.parametric_curve)
+
+    def constraintHovered(self, item):
+        self.geo_col.hover_enter_obj(item.canvas_item)
+
+    def constraintLeaveHovered(self, item):
+        self.geo_col.hover_leave_obj(item.canvas_item)
 
     def airfoil_hovered(self, airfoil: Airfoil, x_centroid: float, y_centroid: float):
         """
