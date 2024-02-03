@@ -58,13 +58,14 @@ class Param(PymeadObj):
             raise ValueError(f"Specified upper bound ({upper}) smaller than current parameter value ({value})"
                              f"for {name}")
 
+        self.set_value(value)
+
         if lower is not None:
             self.set_lower(lower)
 
         if upper is not None:
             self.set_upper(upper)
 
-        self.set_value(value)
         self.set_name(name)
 
     def value(self, bounds_normalized: bool = False):
@@ -133,7 +134,7 @@ class Param(PymeadObj):
             for dim in self.dims:
                 dim.update_points_from_param(updated_objs=updated_objs)
 
-        if self.gcs is not None:
+        if self.gcs is not None and self.geo_cons:
             self.gcs.solve(self.geo_cons[0])
             self.gcs.update_canvas_items(self.geo_cons[0])
 
@@ -172,9 +173,10 @@ class Param(PymeadObj):
         lower: float
             Lower bound for the design variable
         """
+        if lower > self.value():
+            return
+
         self._lower = lower
-        if self._value is not None and self._value < self._lower:
-            self._value = self._lower
 
         if self.tree_item is not None:
             self.tree_item.treeWidget().itemWidget(self.tree_item, 1).setMinimum(self.lower())
@@ -189,9 +191,10 @@ class Param(PymeadObj):
         upper: float
             Upper bound for the design variable
         """
+        if upper < self.value():
+            return
+
         self._upper = upper
-        if self._value is not None and self._value > self._upper:
-            self._value = self._upper
 
         if self.tree_item is not None:
             self.tree_item.treeWidget().itemWidget(self.tree_item, 1).setMaximum(self.upper())

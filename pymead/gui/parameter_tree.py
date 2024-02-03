@@ -7,7 +7,7 @@ import numpy as np
 from PyQt5 import QtGui
 from PyQt5.QtGui import QValidator, QFont, QBrush, QColor
 from PyQt5.QtWidgets import QTreeWidget, QTreeWidgetItem, QPushButton, QHBoxLayout, QHeaderView, QDialog, QGridLayout, \
-    QDoubleSpinBox, QLineEdit, QLabel, QDialogButtonBox, QMenu, QAbstractItemView, QTreeWidgetItemIterator
+    QDoubleSpinBox, QLineEdit, QLabel, QDialogButtonBox, QMenu, QAbstractItemView, QTreeWidgetItemIterator, QWidget
 from PyQt5.QtCore import Qt, pyqtSignal, pyqtSlot, QRegularExpression
 
 from pymead.core.airfoil import Airfoil
@@ -21,6 +21,7 @@ from pymead.core.line import LineSegment
 from pymead.core.geometry_collection import GeometryCollection
 from pymead.core.param import Param, DesVar, LengthParam, AngleParam, LengthDesVar, AngleDesVar
 from pymead.core.pymead_obj import PymeadObj
+from pymead.gui.input_dialog import PymeadDialog
 
 
 class HeaderButtonRow(QHeaderView):
@@ -188,6 +189,7 @@ class LowerSpin(QDoubleSpinBox):
 
     def onValueChanged(self, lower: float):
         self.param.set_lower(lower)
+        self.setValue(self.param.lower())
 
 
 class UpperSpin(QDoubleSpinBox):
@@ -223,6 +225,7 @@ class TreeButton(QPushButton):
         if self.dialog.exec_():
             pass
         self.dialog = None
+        self.tree.geo_col.clear_selected_objects()
 
     def onNameChange(self, name: str):
         if self.dialog is not None:
@@ -234,24 +237,17 @@ class TreeButton(QPushButton):
         self.sigNameChanged.emit(name, self.pymead_obj)
 
     def createDialog(self):
-        dialog = QDialog(self)
-        dialog.setWindowTitle(f"{self.pymead_obj.name()}")
+        widget = QWidget()
+        theme = self.tree.gui_obj.themes[self.tree.gui_obj.current_theme]
+        dialog = PymeadDialog(self, window_title=f"{self.pymead_obj.name()}", widget=widget, theme=theme)
         layout = QGridLayout()
-        dialog.setLayout(layout)
+        widget.setLayout(layout)
         self.modifyDialogInternals(dialog, layout)
-        self.addButtonBoxToDialog(dialog, layout)
         return dialog
 
     @abstractmethod
     def modifyDialogInternals(self, dialog: QDialog, layout: QGridLayout) -> None:
         pass
-
-    def addButtonBoxToDialog(self, dialog: QDialog, layout: QGridLayout):
-        # Add the button box
-        buttonBox = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel, self)
-        layout.addWidget(buttonBox, layout.rowCount(), 1)
-        buttonBox.accepted.connect(dialog.accept)
-        buttonBox.rejected.connect(dialog.reject)
 
 
 class ParamButton(TreeButton):
@@ -870,12 +866,15 @@ class PymeadTreeWidgetItem(QTreeWidgetItem):
 
 
 class ParameterTree(QTreeWidget):
-    def __init__(self, geo_col: GeometryCollection, parent):
+    def __init__(self, geo_col: GeometryCollection, parent, gui_obj):
         super().__init__(parent)
 
         # Exchange references with the geometry collection
         self.geo_col = geo_col
         self.geo_col.tree = self
+
+        # Access to GUI object
+        self.gui_obj = gui_obj
 
         # Single column for the tree
         self.setColumnCount(2)
@@ -892,6 +891,7 @@ class ParameterTree(QTreeWidget):
             "geocon": "Geometric Constraints",
             "dims": "Dimensions"
         }
+        self.inverse_mapped_containers = {v: k for k, v in self.container_titles.items()}
 
         # Set the top-level items (sub_containers)
         self.items = None
@@ -924,34 +924,49 @@ class ParameterTree(QTreeWidget):
         # Allow mouse tracking so we can implement a hover method
         self.setMouseTracking(True)
 
+        # Set double-click behavior
+        self.doubleClicked.connect(self.onDoubleClick)
+
         # Previous item hovered
         self.previous_item_hovered = None
+
+    def getPymeadObjFromItem(self, item: QTreeWidgetItem):
+        pymead_obj_name = item.data(0, Qt.DisplayRole)
+        pymead_obj_parent_tree_item = item.parent()
+        if pymead_obj_parent_tree_item is None:
+            return
+        pymead_obj_parent_name = pymead_obj_parent_tree_item.data(0, Qt.DisplayRole)
+        pymead_obj_sub_container = self.inverse_mapped_containers[pymead_obj_parent_name]
+        try:
+            pymead_obj = self.geo_col.container()[pymead_obj_sub_container][pymead_obj_name]
+            return pymead_obj
+        except KeyError:
+            return
+
+    def onDoubleClick(self, index):
+        item = self.itemFromIndex(index)
+        pymead_obj = self.getPymeadObjFromItem(item)
+
+        if pymead_obj is None:
+            return
+
+        # Create a ghost TreeButton based on the pymead_obj and click it
+        button_args = (pymead_obj, self)
+        button = getattr(sys.modules[__name__], f"{type(pymead_obj).__name__}Button")(*button_args, top_level=True)
+        button.setParent(self)
+        button.onClicked()
 
     def onItemSelectionChanged(self):
         if self.previous_items is not None:
             for item in self.previous_items:
-                if item.parent() is not None and item.parent().text(0) == "Points" and item not in self.selectedItems():
-                    button = self.itemWidget(item, 1)
-                    if button is not None:
-                        point = button.point
-                        self.geo_col.deselect_object(point)
-                elif item.parent() is not None and item.parent().text(0) == "Airfoils" and item not in self.selectedItems():
-                    button = self.itemWidget(item, 1)
-                    if button is not None:
-                        airfoil = button.airfoil
-                        self.geo_col.deselect_object(airfoil)
+                pymead_obj = self.getPymeadObjFromItem(item)
+                if pymead_obj is not None and item not in self.selectedItems():
+                    self.geo_col.deselect_object(pymead_obj)
 
         for item in self.selectedItems():
-            if item.parent() is not None and item.parent().text(0) == "Points":
-                button = self.itemWidget(item, 1)
-                if button is not None:
-                    point = button.point
-                    self.geo_col.select_object(point)
-            elif item.parent() is not None and item.parent().text(0) == "Airfoils":
-                button = self.itemWidget(item, 1)
-                if button is not None:
-                    airfoil = button.airfoil
-                    self.geo_col.select_object(airfoil)
+            pymead_obj = self.getPymeadObjFromItem(item)
+            if pymead_obj is not None:
+                self.geo_col.select_object(pymead_obj)
 
         self.previous_items = self.selectedItems()
 
@@ -976,9 +991,9 @@ class ParameterTree(QTreeWidget):
         # Hover leave
         if (self.previous_item_hovered is not None and tree_item is not self.previous_item_hovered and
                 self.previous_item_hovered.hoverable):
-            button = self.itemWidget(self.previous_item_hovered, 1)
-            if button is not None:
-                self.geo_col.hover_leave_obj(button.pymead_obj)
+            pymead_obj = self.getPymeadObjFromItem(self.previous_item_hovered)
+            if pymead_obj is not None:
+                self.geo_col.hover_leave_obj(pymead_obj)
             else:
                 self.setItemStyle(self.previous_item_hovered, "default")
 
@@ -986,14 +1001,13 @@ class ParameterTree(QTreeWidget):
             self.previous_item_hovered = tree_item
             return
 
-        if tree_item.hoverable:
+        if tree_item.hoverable and tree_item is not None:
             # Hover enter
-            if tree_item is not None:
-                right_column_widget = self.itemWidget(tree_item, 1)
-                if right_column_widget is not None:
-                    self.geo_col.hover_enter_obj(right_column_widget.pymead_obj)
-                else:
-                    self.setItemStyle(tree_item, "hovered")
+            pymead_obj = self.getPymeadObjFromItem(tree_item)
+            if pymead_obj is not None:
+                self.geo_col.hover_enter_obj(pymead_obj)
+            else:
+                self.setItemStyle(tree_item, "hovered")
 
         # Assign the current tree widget item to the previous item hovered
         self.previous_item_hovered = tree_item
@@ -1019,12 +1033,7 @@ class ParameterTree(QTreeWidget):
 
         if isinstance(pymead_obj, Param):
             right_column_widget = ValueSpin(self, pymead_obj)
-        else:
-            button_args = (pymead_obj, self)
-            right_column_widget = getattr(sys.modules[__name__],
-                                          f"{type(pymead_obj).__name__}Button")(*button_args, top_level=True)
-
-        self.setItemWidget(child_item, 1, right_column_widget)
+            self.setItemWidget(child_item, 1, right_column_widget)
 
     def removePymeadTreeItem(self, pymead_obj: PymeadObj):
         top_level_item = self.items[self.topLevelDict[pymead_obj.sub_container]]
@@ -1097,7 +1106,8 @@ class ParameterTree(QTreeWidget):
         elif all([item.parent() is not None for item in items]) and all(
                 [item.parent() is items[0].parent() for item in items]):
             # button = self.itemWidget(item, 1)
-            pymead_objs = [self.itemWidget(item, 1).pymead_obj for item in items]
+            pymead_objs = [self.getPymeadObjFromItem(item) for item in items]
+            pymead_objs = [pymead_obj for pymead_obj in pymead_objs if pymead_obj is not None]
 
             promoteAction = None
             demoteAction = None

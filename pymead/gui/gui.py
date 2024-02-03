@@ -223,7 +223,7 @@ class GUI(QMainWindow):
 
         # self.temp_text = ConsoleTextArea(self)
 
-        self.parameter_tree = ParameterTree(geo_col=self.geo_col, parent=self)
+        self.parameter_tree = ParameterTree(geo_col=self.geo_col, parent=self, gui_obj=self)
 
         self.geo_col.add_param(value=0.5, name="test_param")
 
