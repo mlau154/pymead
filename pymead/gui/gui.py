@@ -1,90 +1,73 @@
-import typing
-from functools import partial
-from multiprocessing import active_children
-from threading import Thread
-
-import pyqtgraph as pg
-import numpy as np
-from copy import deepcopy
-import itertools
+import multiprocessing as mp
+import os
 import shutil
 import sys
-import os
+import typing
 from collections import namedtuple
-import multiprocessing as mp
-from cmcrameri import cm
+from copy import deepcopy
+from functools import partial
+from threading import Thread
 
+import numpy as np
+import pyqtgraph as pg
 import requests
-from pymoo.factory import get_decomposition
-
-from pymead.gui.rename_popup import RenamePopup
-from pymead.gui.main_icon_toolbar import MainIconToolbar
-
-from PyQt5.QtWidgets import QMainWindow, QApplication, \
-    QWidget, QMenu, QStatusBar, QAction, QGraphicsScene, QGridLayout, QDockWidget, QVBoxLayout, QLabel, QSizeGrip, \
-    QMenuBar, QSizePolicy, QWidgetAction, QDialog
-from PyQt5.QtGui import QIcon, QFont, QFontDatabase, QPainter, QCloseEvent, QTextCursor
-from PyQt5.QtCore import QEvent, QObject, Qt, QThreadPool, QSize, QRect
-from PyQt5.QtSvg import QSvgWidget
+from PyQt5.QtCore import QEvent, QObject, Qt, QThreadPool, QRect
 from PyQt5.QtCore import pyqtSlot
+from PyQt5.QtGui import QIcon, QFont, QFontDatabase, QPainter, QCloseEvent, QTextCursor
+from PyQt5.QtSvg import QSvgWidget
+from PyQt5.QtWidgets import QMainWindow, QApplication, \
+    QWidget, QMenu, QStatusBar, QAction, QGraphicsScene, QGridLayout, QDockWidget, QSizeGrip
+from cmcrameri import cm
+from pymoo.factory import get_decomposition
+from pyqtgraph.exporters import CSVExporter, SVGExporter
 
-from pymead.gui.airfoil_canvas import AirfoilCanvas
-from pymead.core.geometry_collection import GeometryCollection
-from pymead.gui.title_bar import TitleBar
-from pymead.utils.pymead_mp import kill_child_processes
-from pymead.version import __version__
-from pymead.utils.version_check import using_latest
-from pymead.core.transformation import Transformation3D
-from pymead.gui.concurrency import CPUBoundProcess
-from pymead.gui.permanent_widget import PermanentWidget
-from pymead.optimization.shape_optimization import shape_optimization as shape_optimization_static
+from pymead import ICON_DIR, GUI_SETTINGS_DIR, GUI_THEMES_DIR, GUI_DEFAULT_AIRFOIL_DIR, q_settings
 from pymead import RESOURCE_DIR
+from pymead.analysis.calc_aero_data import SVG_PLOTS, SVG_SETTINGS_TR
+from pymead.analysis.calc_aero_data import calculate_aero_data
+from pymead.analysis.read_aero_data import flow_var_idx
+from pymead.analysis.read_aero_data import read_grid_stats_from_mses, read_field_from_mses, \
+    read_streamline_grid_from_mses
+from pymead.analysis.single_element_inviscid import single_element_inviscid
+from pymead.core.geometry_collection import GeometryCollection
+from pymead.core.mea import MEA
+from pymead.gui.airfoil_canvas import AirfoilCanvas
+from pymead.gui.airfoil_statistics import AirfoilStatisticsDialog, AirfoilStatistics
+from pymead.gui.analysis_graph import AnalysisGraph
+from pymead.gui.concurrency import CPUBoundProcess
+from pymead.gui.custom_graphics_view import CustomGraphicsView
+from pymead.gui.dockable_tab_widget import PymeadDockWidget
+from pymead.gui.help_browser import HelpBrowserWindow
 from pymead.gui.input_dialog import LoadDialog, SaveAsDialog, OptimizationSetupDialog, \
     MultiAirfoilDialog, ColorInputDialog, ExportCoordinatesDialog, ExportControlPointsDialog, AirfoilPlotDialog, \
     AirfoilMatchingDialog, MSESFieldPlotDialog, ExportIGESDialog, XFOILDialog, NewGeoColDialog, EditBoundsDialog, \
     ExitDialog, ScreenshotDialog, LoadAirfoilAlgFile, ExitOptimizationDialog
-from pymead.gui.pymeadPColorMeshItem import PymeadPColorMeshItem
-from pymead.gui.analysis_graph import AnalysisGraph
-from pymead.gui.parameter_tree import ParameterTree
-from pymead.gui.side_grip import SideGrip
-from pymead.plugins.IGES.curves import BezierIGES
-from pymead.plugins.IGES.iges_generator import IGESGenerator
-from pymead.utils.airfoil_matching import match_airfoil
-from pymead.optimization.opt_setup import read_stencil_from_array, convert_opt_settings_to_param_dict
-from pymead.analysis.single_element_inviscid import single_element_inviscid
-from pymead.gui.text_area import ConsoleTextArea
-from pymead.gui.dockable_tab_widget import PymeadDockWidget
-from pymead.core.mea import MEA
-from pymead.analysis.calc_aero_data import calculate_aero_data
-from pymead.utils.read_write_files import load_data, save_data
-from pymead.utils.misc import count_func_strs, get_setting
-from pymead.analysis.read_aero_data import read_grid_stats_from_mses, read_field_from_mses, \
-    read_streamline_grid_from_mses
-from pymead.analysis.read_aero_data import flow_var_idx
-from pymead.post.mses_field import flow_var_label
-from pymead.utils.misc import make_ga_opt_dir
-from pymead.utils.get_airfoil import extract_data_from_airfoiltools
-from pymead.optimization.opt_setup import calculate_warm_start_index
-from pymead.gui.message_box import disp_message_box
-from pymead.optimization.opt_callback import PlotAirfoilCallback, ParallelCoordsCallback, OptCallback, \
-    DragPlotCallbackXFOIL, CpPlotCallbackXFOIL, DragPlotCallbackMSES, CpPlotCallbackMSES, TextCallback
 from pymead.gui.input_dialog import convert_dialog_to_mset_settings, convert_dialog_to_mses_settings, \
     convert_dialog_to_mplot_settings
-from pymead.gui.airfoil_statistics import AirfoilStatisticsDialog, AirfoilStatistics
-from pymead.gui.custom_graphics_view import CustomGraphicsView
-from pymead.gui.help_browser import HelpBrowserWindow
-from pymead import ICON_DIR, GUI_SETTINGS_DIR, GUI_THEMES_DIR, GUI_DEFAULT_AIRFOIL_DIR, q_settings
-from pymead.analysis.calc_aero_data import SVG_PLOTS, SVG_SETTINGS_TR
-from pyqtgraph.exporters import CSVExporter, SVGExporter
-
+from pymead.gui.main_icon_toolbar import MainIconToolbar
+from pymead.gui.message_box import disp_message_box
+from pymead.gui.parameter_tree import ParameterTree
+from pymead.gui.permanent_widget import PermanentWidget
+from pymead.gui.pymeadPColorMeshItem import PymeadPColorMeshItem
 from pymead.gui.show_hide import ShowHideDialog
-
-
-qsd = load_data(os.path.join(GUI_SETTINGS_DIR, "q_settings_descriptions.json"))
+from pymead.gui.side_grip import SideGrip
+from pymead.gui.text_area import ConsoleTextArea
+from pymead.gui.title_bar import TitleBar
+from pymead.optimization.opt_callback import PlotAirfoilCallback, ParallelCoordsCallback, OptCallback, \
+    DragPlotCallbackXFOIL, CpPlotCallbackXFOIL, DragPlotCallbackMSES, CpPlotCallbackMSES, TextCallback
+from pymead.optimization.opt_setup import calculate_warm_start_index
+from pymead.optimization.opt_setup import read_stencil_from_array, convert_opt_settings_to_param_dict
+from pymead.optimization.shape_optimization import shape_optimization as shape_optimization_static
+from pymead.post.mses_field import flow_var_label
+from pymead.utils.airfoil_matching import match_airfoil
+from pymead.utils.get_airfoil import extract_data_from_airfoiltools
+from pymead.utils.misc import count_func_strs, get_setting
+from pymead.utils.misc import make_ga_opt_dir
+from pymead.utils.read_write_files import load_data, save_data
+from pymead.utils.version_check import using_latest
 
 
 class GUI(QMainWindow):
-
     _gripSize = 5
 
     def __init__(self, path=None, parent=None):
@@ -109,8 +92,6 @@ class GUI(QMainWindow):
         for font_name in ["DejaVuSans", "DejaVuSansMono", "DejaVuSerif"]:
             QFontDatabase.addApplicationFont(os.path.join(RESOURCE_DIR, "dejavu-fonts-ttf-2.37", "ttf",
                                                           f"{font_name}.ttf"))
-        # QFontDatabase.addApplicationFont(os.path.join(RESOURCE_DIR, "cascadia-code", "Cascadia.ttf"))
-        # print(QFontDatabase().families())
         self.themes = {
             "dark": load_data(os.path.join(GUI_THEMES_DIR, "dark_theme.json")),
             "light": load_data(os.path.join(GUI_THEMES_DIR, "light_theme.json")),
@@ -151,15 +132,22 @@ class GUI(QMainWindow):
         self.n_converged_analyses = 0
         self.threadpool = QThreadPool().globalInstance()
         self.threadpool.setMaxThreadCount(4)
-        self.pens = [('#d4251c', Qt.SolidLine), ('darkorange', Qt.SolidLine), ('gold', Qt.SolidLine),
-                     ('limegreen', Qt.SolidLine), ('cyan', Qt.SolidLine), ('mediumpurple', Qt.SolidLine),
-                     ('deeppink', Qt.SolidLine), ('#d4251c', Qt.DashLine), ('darkorange', Qt.DashLine),
-                     ('gold', Qt.DashLine),
-                     ('limegreen', Qt.DashLine), ('cyan', Qt.DashLine), ('mediumpurple', Qt.DashLine),
-                     ('deeppink', Qt.DashLine)]
-        # self.setFont(QFont("DejaVu Sans"))
-        # self.setFont(QFont("Times New Roman"))
-        # self.setStyleSheet('QWidget {font: "DejaVu Sans"}')
+        self.pens = [
+            ('#d4251c', Qt.SolidLine),
+            ('darkorange', Qt.SolidLine),
+            ('gold', Qt.SolidLine),
+            ('limegreen', Qt.SolidLine),
+            ('cyan', Qt.SolidLine),
+            ('mediumpurple', Qt.SolidLine),
+            ('deeppink', Qt.SolidLine),
+            ('#d4251c', Qt.DashLine),
+            ('darkorange', Qt.DashLine),
+            ('gold', Qt.DashLine),
+            ('limegreen', Qt.DashLine),
+            ('cyan', Qt.DashLine),
+            ('mediumpurple', Qt.DashLine),
+            ('deeppink', Qt.DashLine)
+        ]
 
         self.current_save_name = None
 
@@ -180,22 +168,7 @@ class GUI(QMainWindow):
         # alternatively, widget.raise_() can be used
         self.cornerGrips = [QSizeGrip(self) for i in range(4)]
 
-        # self.setContentsMargins(0, -200, 0, 0)
-        # self.resize(800, self.title_bar.height() + 600)
-
-        # self.mea = MEA(airfoil_graphs_active=True)
-        # self.w = pg.GraphicsLayoutWidget(show=True, size=(1000, 300))
-        # self.w.setBackground('#2a2a2b')
-        # self.v = self.w.addPlot()
-        # self.v.setAspectLocked()
-        # self.v.hideButtons()
-
         # Dock widget items
-        # self.w = QWidget()
-        # self.w.setSizePolicy(QSizePolicy.MinimumExpanding, QSizePolicy.MinimumExpanding)
-        # layout = QGridLayout()
-        # self.w.setLayout(layout)
-        # self.setCentralWidget(self.w)
         self.dock_widgets = []
         self.dock_widget_names = []
         self.first_dock_widget = None
@@ -206,22 +179,13 @@ class GUI(QMainWindow):
         self.status_bar = QStatusBar()
         self.status_bar.messageChanged.connect(self.statusChanged)
         self.setStatusBar(self.status_bar)
-        # self.param_tree_instance = MEAParamTree(self.mea, self.statusBar(), parent=self)
-        # self.design_tree_widget = self.param_tree_instance.t
 
         self.text_area = ConsoleTextArea(self)
 
-        # self.right_widget_layout = QVBoxLayout()
-        # self.dockable_tab_window = DockableTabWidget(self)
-        # self.main_layout.addWidget(self.dockable_tab_window)
-        # self.dockable_tab_window.add_new_tab_widget(self.w, "Geometry")
-        # self.dockable_tab_window.tab_closed.connect(self.on_tab_closed)
         self.geo_col = GeometryCollection(gui_obj=self)
 
         self.airfoil_canvas = AirfoilCanvas(self, geo_col=self.geo_col, gui_obj=self)
         self.airfoil_canvas.sigStatusBarUpdate.connect(self.setStatusBarText)
-
-        # self.temp_text = ConsoleTextArea(self)
 
         self.parameter_tree = ParameterTree(geo_col=self.geo_col, parent=self, gui_obj=self)
 
@@ -230,15 +194,6 @@ class GUI(QMainWindow):
         self.add_new_tab_widget(self.parameter_tree, "Tree")
         self.add_new_tab_widget(self.airfoil_canvas, "Geometry")
         self.add_new_tab_widget(self.text_area, "Console")
-        # self.right_widget_layout.addWidget(self.dockable_tab_window)
-        # self.right_widget_layout.addWidget(self.text_area)
-        # self.right_widget = QWidget()
-        # self.right_widget.setLayout(self.right_widget_layout)
-        # self.main_layout.addWidget(self.design_tree_widget, 1)
-        # self.main_layout.addWidget(self.right_widget, 3)
-        # self.main_widget = QWidget()
-        # self.main_widget.setLayout(self.main_layout)
-        # self.setCentralWidget(self.main_widget)
 
         self.set_title_and_icon()
         self.create_menu_bar()
@@ -259,37 +214,14 @@ class GUI(QMainWindow):
         else:
             raise ValueError(f"Current theme options are 'dark' and 'light'. Theme chosen was {theme}")
 
-        # self.output_area_text(f"<font color='#1fbbcc' size='5'>pymead</font> <font size='5'>version</font> "
-        #                       f"<font color='#44e37e' size='5'>{__version__}</font>",
-        #                       mode='html')
-        # self.output_area_text(f"<font color='#1fbbcc' size='5'> </font>", mode="html")
-        # self.output_area_text(
-        #     f"<head><style>body {{font-family: DejaVu Sans Mono;}}</style></head><body><p><font size='4'>&#8203;</font></p></body>",
-        #     mode="html")
-        # self.output_area_text('\n\n')
-        # self.output_area_text("<font color='#ffffff' size='3'>\n\n</font>", mode='html')
-        # airfoil = Airfoil(base_airfoil_params=BaseAirfoilParams(dx=Param(0.0), dy=Param(0.0)))
-        # self.add_airfoil(airfoil)
         # self.auto_range_geometry()
         self.statusBar().clearMessage()
-        # self.progress_bar = QProgressBar(parent=self)
-        # self.progress_bar.setTextVisible(False)
-        # self.progress_bar.setStyleSheet('''QProgressBar {border: 2px solid; border-color: #8E9091;}
-        # QProgressBar::chunk {background-color: #6495ED; width: 10px; margin: 0.5px;}
-        # ''')
-        # self.statusBar().addPermanentWidget(self.progress_bar)
-        # self.progress_bar.setValue(0)
-        # self.progress_bar.hide()
         self.permanent_widget = PermanentWidget(self)
         self.statusBar().addPermanentWidget(self.permanent_widget)
 
         self.parameter_tree.setMaximumWidth(300)
         self.resize(1000, self.title_bar.height() + 600)
         self.parameter_tree.setMaximumWidth(800)
-
-        # self.showMaximized()
-        # for dw in self.dock_widgets:
-        #     dw.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.MinimumExpanding)
 
         # Load the airfoil system from the system argument variable if necessary
         # self.mea_start_dict = None
@@ -410,6 +342,7 @@ class GUI(QMainWindow):
 
             super().changeEvent(a0)
             a0.accept()
+
     #
     # def resizeEvent(self, a0):
     #     self.title_bar.resize(self.width(), self.title_bar.height())
@@ -970,8 +903,8 @@ class GUI(QMainWindow):
                 pos = np.append(pos, p)
 
         self.crameri_cmap = {
-            "dark": pg.ColorMap(name="berlin", pos=pos, color=255*cm.berlin.colors[:, :3]+0.5),
-            "light": pg.ColorMap(name="vik", pos=pos, color=255*cm.vik.colors[:, :3]+0.5)
+            "dark": pg.ColorMap(name="berlin", pos=pos, color=255 * cm.berlin.colors[:, :3] + 0.5),
+            "light": pg.ColorMap(name="vik", pos=pos, color=255 * cm.vik.colors[:, :3] + 0.5)
         }
 
         self.cbar_label_attrs = {
@@ -1117,7 +1050,8 @@ class GUI(QMainWindow):
 
             extra_get_coords_kwargs = dict(downsample=inputs["use_downsampling"],
                                            ds_max_points=inputs["downsampling_max_pts"],
-                                           ds_curve_exp=inputs["downsampling_curve_exp"]) if inputs["use_downsampling"] else {}
+                                           ds_curve_exp=inputs["downsampling_curve_exp"]) if inputs[
+                "use_downsampling"] else {}
 
             if json:
                 coord_dict = {}
@@ -1203,7 +1137,7 @@ class GUI(QMainWindow):
             elif xfoil_settings['prescribe'] == 'Inviscid Cl':
                 xfoil_settings['CLI'] = inputs['CLI']
 
-            #TODO: insert downsampling step here
+            # TODO: insert downsampling step here
 
             # coords = tuple(self.mea.deepcopy().airfoils[xfoil_settings['airfoil']].get_coords(
             #     body_fixed_csys=False, as_tuple=True))
@@ -1231,12 +1165,13 @@ class GUI(QMainWindow):
                 self.output_area_text(
                     f"[{str(self.n_analyses).zfill(2)}] ")
                 self.output_area_text(
-                    f"<a href='file:///{os.path.join(xfoil_settings['airfoil_analysis_dir'], xfoil_settings['airfoil_coord_file_name'])}'><font family='DejaVu Sans Mono' size='3'>XFOIL</font></a>", mode="html")
+                    f"<a href='file:///{os.path.join(xfoil_settings['airfoil_analysis_dir'], xfoil_settings['airfoil_coord_file_name'])}'><font family='DejaVu Sans Mono' size='3'>XFOIL</font></a>",
+                    mode="html")
                 self.output_area_text(f" ({xfoil_settings['airfoil']}, "
-                    f"\u03b1 = {aero_data['alf']:.3f}, Re = {xfoil_settings['Re']:.3E}, "
-                    f"Ma = {xfoil_settings['Ma']:.3f}): "
-                    f"Cl = {aero_data['Cl']:+7.4f} | Cd = {aero_data['Cd']:+.5f} | Cm = {aero_data['Cm']:+7.4f} "
-                    f"| L/D = {aero_data['L/D']:+8.4f}".replace("-", "\u2212"), line_break=True)
+                                      f"\u03b1 = {aero_data['alf']:.3f}, Re = {xfoil_settings['Re']:.3E}, "
+                                      f"Ma = {xfoil_settings['Ma']:.3f}): "
+                                      f"Cl = {aero_data['Cl']:+7.4f} | Cd = {aero_data['Cd']:+.5f} | Cm = {aero_data['Cm']:+7.4f} "
+                                      f"| L/D = {aero_data['L/D']:+8.4f}".replace("-", "\u2212"), line_break=True)
             bar = self.text_area.verticalScrollBar()
             sb = bar
             sb.setValue(sb.maximum())
@@ -1244,7 +1179,8 @@ class GUI(QMainWindow):
             if aero_data['converged'] and not aero_data['errored_out'] and not aero_data['timed_out']:
                 if self.analysis_graph is None:
                     # Need to set analysis_graph to None if analysis window is closed! Might also not want to allow geometry docking window to be closed
-                    self.analysis_graph = AnalysisGraph(background_color=self.themes[self.current_theme]["graph-background-color"])
+                    self.analysis_graph = AnalysisGraph(
+                        background_color=self.themes[self.current_theme]["graph-background-color"])
                     self.add_new_tab_widget(self.analysis_graph.w, "Analysis")
                 pg_plot_handle = self.analysis_graph.v.plot(pen=pg.mkPen(color=self.pens[self.n_converged_analyses][0],
                                                                          style=self.pens[self.n_converged_analyses][1]),
