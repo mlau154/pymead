@@ -13,10 +13,16 @@
     "function": "change_background_color_button_toggled"
   },
   "draw-point": {
-    "icon": "point.png",
+    "icon": "point.svg",
     "status_tip": "Draw points",
     "checkable": false,
     "function": "on_draw_points_pressed"
+  },
+  "draw-line": {
+    "icon": "line.svg",
+    "status_tip": "Draw lines",
+    "checkable": false,
+    "function": "on_draw_lines_pressed"
   },
   "stop-optimization": {
     "icon": "stop.png",

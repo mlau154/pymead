@@ -254,6 +254,9 @@ class AirfoilCanvas(pg.PlotWidget):
         point_sequence = PointSequence([pt for pt in self.geo_col.selected_objects["points"]])
         self.geo_col.add_line(point_sequence=point_sequence)
 
+    def drawLines(self):
+        self.drawLineSegment()
+
     @runSelectionEventLoop(drawing_object="Airfoil", starting_message="Select the leading edge point")
     def generateAirfoil(self):
         if len(self.geo_col.selected_objects["points"]) not in [2, 4]:

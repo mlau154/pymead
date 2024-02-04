@@ -78,5 +78,8 @@ class MainIconToolbar(QToolBar):
     def on_draw_points_pressed(self):
         self.parent.airfoil_canvas.drawPoints()
 
+    def on_draw_lines_pressed(self):
+        self.parent.airfoil_canvas.drawLines()
+
     def on_help_button_pressed(self):
         self.parent.show_help()
