@@ -53,6 +53,7 @@ class AirfoilCanvas(pg.PlotWidget):
         self.point_hovered_item = None
         self.constraint_hovered_item = None
         self.point_text_item = None
+        self.enter_connection = None
         self.geo_col = geo_col
         self.geo_col.canvas = self
         self.gui_obj = gui_obj
@@ -206,6 +207,13 @@ class AirfoilCanvas(pg.PlotWidget):
             pymead_obj.canvas_item.sigPolyEnter.connect(self.airfoil_hovered)
             pymead_obj.canvas_item.sigPolyExit.connect(self.airfoil_exited)
 
+    def closeEnterCallbackConnection(self):
+        if self.enter_connection is None:
+            return
+
+        self.sigEnterPressed.disconnect(self.enter_connection)
+        self.enter_connection = None
+
     @staticmethod
     def runSelectionEventLoop(drawing_object: str, starting_message: str, enter_callback: typing.Callable = None):
         drawing_object = drawing_object
@@ -215,10 +223,10 @@ class AirfoilCanvas(pg.PlotWidget):
             def wrapped(self, *args, **kwargs):
                 self.drawing_object = drawing_object
                 self.sigStatusBarUpdate.emit(starting_message, 0)
+                self.closeEnterCallbackConnection()
                 loop = QEventLoop()
-                connection = None
                 if enter_callback:
-                    connection = self.sigEnterPressed.connect(partial(enter_callback, self))
+                    self.enter_connection = self.sigEnterPressed.connect(partial(enter_callback, self))
                 else:
                     self.sigEnterPressed.connect(loop.quit)
                 self.sigEscapePressed.connect(loop.quit)
@@ -232,7 +240,7 @@ class AirfoilCanvas(pg.PlotWidget):
                 self.drawing_object = None
                 self.sigStatusBarUpdate.emit("", 0)
                 if enter_callback:
-                    self.sigEnterPressed.disconnect(connection)
+                    self.closeEnterCallbackConnection()
             return wrapped
         return decorator
 
@@ -702,14 +710,6 @@ class AirfoilCanvas(pg.PlotWidget):
     def removeCurve(self, item):
         self.geo_col.remove_pymead_obj(item.parametric_curve)
 
-    def selectPointsToDeepcopy(self):
-        self.sigStatusBarUpdate.emit("Click the point to deepcopy", 0)
-        loop = QEventLoop()
-        self.sigEnterPressed.connect(loop.quit)
-        loop.exec()
-        self.deepcopy_point()
-        self.clearSelectedObjects()
-
     def exportPlot(self):
         dialog = PlotExportDialog(self, gui_obj=self.gui_obj, theme=self.gui_obj.themes[self.gui_obj.current_theme])
         if dialog.exec_():
@@ -848,26 +848,32 @@ class AirfoilCanvas(pg.PlotWidget):
         view_pos = self.getPlotItem().getViewBox().mapSceneToView(ev.pos())
         self.geo_col.add_point(view_pos.x(), view_pos.y())
 
+    def canvasShortcuts(self):
+        return {
+            Qt.Key_P: self.drawPoints,
+            Qt.Key_L: self.drawLines,
+            Qt.Key_B: self.drawBeziers,
+            Qt.Key_D: self.addDistanceConstraint,
+            Qt.Key_A: self.addRelAngle3Constraint,
+            Qt.Key_T: self.addPerp3Constraint,
+            Qt.Key_H: self.addAntiParallel3Constraint,
+            Qt.Key_M: self.addSymmetryConstraint,
+            Qt.Key_R: self.addROCurvatureConstraint
+        }
+
     def keyPressEvent(self, ev):
+        key = ev.key()
         mods = QApplication.keyboardModifiers()
-        if ev.key() == Qt.Key_Return:
+        if key == Qt.Key_Return:
             self.sigEnterPressed.emit()
-        elif ev.key() == Qt.Key_Escape:
+        elif key == Qt.Key_Escape:
             self.sigEscapePressed.emit()
             self.geo_col.clear_selected_objects()
             self.sigStatusBarUpdate.emit("", 0)
-        elif ev.key() == Qt.Key_Delete:
+        elif key == Qt.Key_Delete:
             self.geo_col.remove_selected_objects()
             self.sigStatusBarUpdate.emit("", 0)
-        elif ev.key() in (Qt.Key_Left, Qt.Key_Right, Qt.Key_Down, Qt.Key_Up) and len(self.geo_col.selected_objects["points"]) > 0:
+        elif key in (Qt.Key_Left, Qt.Key_Right, Qt.Key_Down, Qt.Key_Up) and len(self.geo_col.selected_objects["points"]) > 0:
             self.arrowKeyPointMove(ev.key(), mods)
-        elif ev.key() == Qt.Key_P:
-            self.drawPoints()
-
-
-if __name__ == '__main__':
-    app = QtWidgets.QApplication(sys.argv)
-    _geo_col = GeometryCollection()
-    plot = AirfoilCanvas(geo_col=_geo_col)
-    plot.show()
-    app.exec_()
+        elif key in self.canvasShortcuts():
+            self.canvasShortcuts()[key]()
