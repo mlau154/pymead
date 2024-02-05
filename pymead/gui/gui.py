@@ -459,6 +459,14 @@ class GUI(QMainWindow):
         for cnstr in self.geo_col.container()["geocon"].values():
             cnstr.canvas_item.setStyle(theme)
 
+        for button_name, button_setting in self.main_icon_toolbar.button_settings.items():
+            icon_name = button_setting["icon"]
+            if "dark" not in icon_name:
+                continue
+
+            image_path = os.path.join(ICON_DIR, icon_name.replace("dark", theme_name))
+            self.main_icon_toolbar.buttons[button_name]["button"].setIcon(QIcon(image_path))
+
     def set_color_bar_style(self, new_values: dict = None):
         if self.cbar is None:
             return

@@ -13,16 +13,58 @@
     "function": "change_background_color_button_toggled"
   },
   "draw-point": {
-    "icon": "point.svg",
+    "icon": "point_dark.svg",
     "status_tip": "Draw points",
     "checkable": false,
     "function": "on_draw_points_pressed"
   },
   "draw-line": {
-    "icon": "line.svg",
+    "icon": "line_dark.svg",
     "status_tip": "Draw lines",
     "checkable": false,
     "function": "on_draw_lines_pressed"
+  },
+  "draw-bezier": {
+    "icon": "bezier_dark.svg",
+    "status_tip": "Draw Bezier curves",
+    "checkable": false,
+    "function": "on_draw_bezier_pressed"
+  },
+  "add-distance-constraint": {
+    "icon": "distance_constraint_dark.svg",
+    "status_tip": "Add a distance constraint",
+    "checkable": false,
+    "function": "on_add_distance_constraint_pressed"
+  },
+  "add-rel-angle-constraint": {
+    "icon": "rel_angle_constraint_dark.svg",
+    "status_tip": "Add a relative angle constraint",
+    "checkable": false,
+    "function": "on_add_rel_angle_constraint_pressed"
+  },
+  "add-perp-constraint": {
+    "icon": "perp3_constraint_dark.svg",
+    "status_tip": "Add a perpendicular constraint",
+    "checkable": false,
+    "function": "on_add_perp_constraint_pressed"
+  },
+  "add-anti-parallel-constraint": {
+    "icon": "anti_parallel_constraint_dark.svg",
+    "status_tip": "Add an anti-parallel constraint",
+    "checkable": false,
+    "function": "on_add_anti_parallel_constraint_pressed"
+  },
+  "add-symmetry-constraint": {
+    "icon": "symmetry_constraint_dark.svg",
+    "status_tip": "Add a symmetry constraint",
+    "checkable": false,
+    "function": "on_add_symmetry_constraint_pressed"
+  },
+  "add-roc-constraint": {
+    "icon": "roc_constraint_dark.svg",
+    "status_tip": "Add a radius of curvature constraint",
+    "checkable": false,
+    "function": "on_add_roc_constraint_pressed"
   },
   "stop-optimization": {
     "icon": "stop.png",

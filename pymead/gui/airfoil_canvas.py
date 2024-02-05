@@ -2,6 +2,7 @@ import os
 import typing
 import sys
 from copy import deepcopy
+from functools import partial
 
 import numpy as np
 import pyqtgraph as pg
@@ -206,7 +207,7 @@ class AirfoilCanvas(pg.PlotWidget):
             pymead_obj.canvas_item.sigPolyExit.connect(self.airfoil_exited)
 
     @staticmethod
-    def runSelectionEventLoop(drawing_object: str, starting_message: str):
+    def runSelectionEventLoop(drawing_object: str, starting_message: str, enter_callback: typing.Callable = None):
         drawing_object = drawing_object
         starting_message = starting_message
 
@@ -215,7 +216,11 @@ class AirfoilCanvas(pg.PlotWidget):
                 self.drawing_object = drawing_object
                 self.sigStatusBarUpdate.emit(starting_message, 0)
                 loop = QEventLoop()
-                self.sigEnterPressed.connect(loop.quit)
+                connection = None
+                if enter_callback:
+                    connection = self.sigEnterPressed.connect(partial(enter_callback, self))
+                else:
+                    self.sigEnterPressed.connect(loop.quit)
                 self.sigEscapePressed.connect(loop.quit)
                 loop.exec()
                 # if len(self.geo_col.selected_objects["points"]) > 0:
@@ -226,6 +231,8 @@ class AirfoilCanvas(pg.PlotWidget):
                 #     self.clearSelectedObjects()
                 self.drawing_object = None
                 self.sigStatusBarUpdate.emit("", 0)
+                if enter_callback:
+                    self.sigEnterPressed.disconnect(connection)
             return wrapped
         return decorator
 
@@ -233,6 +240,18 @@ class AirfoilCanvas(pg.PlotWidget):
                                                                      "Press Escape to stop drawing points.")
     def drawPoints(self):
         pass
+
+    def drawBezierNoEvent(self):
+        if len(self.geo_col.selected_objects["points"]) < 2:
+            msg = f"Choose at least 2 points to define a curve"
+            self.sigStatusBarUpdate.emit(msg, 2000)
+            return
+
+        point_sequence = PointSequence([pt for pt in self.geo_col.selected_objects["points"]])
+        self.geo_col.add_bezier(point_sequence=point_sequence)
+
+        self.clearSelectedObjects()
+        self.sigStatusBarUpdate.emit("Select the first Bezier control point of the next curve", 0)
 
     @runSelectionEventLoop(drawing_object="Bezier", starting_message="Select the first Bezier control point")
     def drawBezier(self):
@@ -244,6 +263,14 @@ class AirfoilCanvas(pg.PlotWidget):
         point_sequence = PointSequence([pt for pt in self.geo_col.selected_objects["points"]])
         self.geo_col.add_bezier(point_sequence=point_sequence)
 
+    @runSelectionEventLoop(drawing_object="Beziers", starting_message="Select the first Bezier control point",
+                           enter_callback=drawBezierNoEvent)
+    def drawBeziers(self):
+        if len(self.geo_col.selected_objects["points"]) < 2:
+            msg = f"Choose at least 2 points to define a curve"
+            self.sigStatusBarUpdate.emit(msg, 2000)
+            return
+
     @runSelectionEventLoop(drawing_object="LineSegment", starting_message="Select the first line endpoint")
     def drawLineSegment(self):
         if len(self.geo_col.selected_objects["points"]) < 2:
@@ -254,8 +281,12 @@ class AirfoilCanvas(pg.PlotWidget):
         point_sequence = PointSequence([pt for pt in self.geo_col.selected_objects["points"]])
         self.geo_col.add_line(point_sequence=point_sequence)
 
+    @runSelectionEventLoop(drawing_object="LineSegments", starting_message="Select the first line endpoint")
     def drawLines(self):
-        self.drawLineSegment()
+        if len(self.geo_col.selected_objects["points"]) < 2:
+            msg = f"Choose at least 2 points to define a curve"
+            self.sigStatusBarUpdate.emit(msg, 2000)
+            return
 
     @runSelectionEventLoop(drawing_object="Airfoil", starting_message="Select the leading edge point")
     def generateAirfoil(self):
@@ -263,6 +294,7 @@ class AirfoilCanvas(pg.PlotWidget):
             self.sigStatusBarUpdate.emit(
                 "Choose either 2 points (sharp trailing edge) or 4 points (blunt trailing edge)"
                 " to generate an airfoil", 4000)
+            return
 
         le = self.geo_col.selected_objects["points"][0]
         te = self.geo_col.selected_objects["points"][1]
@@ -291,6 +323,7 @@ class AirfoilCanvas(pg.PlotWidget):
             self.sigStatusBarUpdate.emit("Choose either 2 points (no length parameter) or 3 points "
                                          "(specified length parameter)"
                                          " to add a length dimension", 4000)
+            return
 
         tool_point = self.geo_col.selected_objects["points"][0]
         target_point = self.geo_col.selected_objects["points"][1]
@@ -302,6 +335,7 @@ class AirfoilCanvas(pg.PlotWidget):
     def addDistanceConstraint(self):
         if len(self.geo_col.selected_objects["points"]) != 2:
             self.sigStatusBarUpdate.emit("Choose exactly two points to define a distance constraint", 4000)
+            return
 
         # p1 = self.geo_col.selected_objects["points"][0]
         # p2 = self.geo_col.selected_objects["points"][1]
@@ -321,6 +355,7 @@ class AirfoilCanvas(pg.PlotWidget):
             self.sigStatusBarUpdate.emit("Choose either 2 points (no angle parameter) or 3 points "
                                          "(specified angle parameter)"
                                          " to add an angle dimension", 4000)
+            return
         tool_point = self.geo_col.selected_objects["points"][0]
         target_point = self.geo_col.selected_objects["points"][1]
         angle_param = None if len(self.geo_col.selected_objects["points"]) <= 2 else self.geo_col.selected_objects["points"][2]
@@ -424,14 +459,35 @@ class AirfoilCanvas(pg.PlotWidget):
             self.geo_col.select_object(point_item.point)
             n_ctrl_pts = len(self.geo_col.selected_objects["points"])
             degree = n_ctrl_pts - 1
-            msg = (f"Added control point to curve. Number of control points: {len(self.geo_col.selected_objects['points'])} "
+            msg = (f"Added control point to curve. Number of control points: "
+                   f"{len(self.geo_col.selected_objects['points'])} "
+                   f"(degree: {degree}). Press 'Enter' to generate the curve.")
+            self.sigStatusBarUpdate.emit(msg, 0)
+        elif self.drawing_object == "Beziers":
+            self.geo_col.select_object(point_item.point)
+            n_ctrl_pts = len(self.geo_col.selected_objects["points"])
+            degree = n_ctrl_pts - 1
+            msg = (f"Added control point to curve. Number of control points: "
+                   f"{len(self.geo_col.selected_objects['points'])} "
                    f"(degree: {degree}). Press 'Enter' to generate the curve.")
             self.sigStatusBarUpdate.emit(msg, 0)
         elif self.drawing_object == "LineSegment":
             if len(self.geo_col.selected_objects["points"]) < 2:
                 self.geo_col.select_object(point_item.point)
+            if len(self.geo_col.selected_objects["points"]) == 1:
+                self.sigStatusBarUpdate.emit("Next, choose the line's endpoint", 0)
             if len(self.geo_col.selected_objects["points"]) == 2:
                 self.sigEnterPressed.emit()  # Complete the line after selecting the second point
+        elif self.drawing_object == "LineSegments":
+            if len(self.geo_col.selected_objects["points"]) < 2:
+                self.geo_col.select_object(point_item.point)
+            if len(self.geo_col.selected_objects["points"]) == 1:
+                self.sigStatusBarUpdate.emit("Next, choose the line's endpoint", 0)
+            if len(self.geo_col.selected_objects["points"]) == 2:
+                point_sequence = PointSequence([pt for pt in self.geo_col.selected_objects["points"]])
+                self.geo_col.add_line(point_sequence=point_sequence)
+                self.clearSelectedObjects()
+                self.sigStatusBarUpdate.emit("Choose the next line's start point", 0)
         elif self.adding_point_to_curve is not None:
             if len(self.geo_col.selected_objects["points"]) < 2:
                 self.geo_col.select_object(point_item.point)

@@ -14,9 +14,9 @@ Planned feature additions
 - Add variable constraint GUI object positioning (add keyword arguments that are stored in the `.jmea` files)
 - Add error handling for over-constrained/Jax shape/no solution in GCS
 - Add an undo/redo framework to the GUI
-- Graphical highlighting of constraint parameters and constraints
+- Graphical highlighting of constraint parameters and constraints - make hoverEnter detection on constraint canvas items
+- Tie parameter hover to associated constraint hover events
 - Add unit selection ComboBox
-- Add renaming to parameters
 - Make the "Analysis" tab focused by default after an aerodynamics analysis (possibly implement a user option to
   override this behavior)
 - Write the XFOIL/MSES analysis code using the same `CPUBoundProcess` architecture used by optimization
@@ -40,6 +40,8 @@ Bug fixes
 - Remove wave/viscous drag from XFOIL drag history plots (optimization)
 - Fix symmetry constraint having switched target/tool points (perhaps automatically create the mirror point?)
 - Toggle grid affects all the dock widgets
+- Apply theme to status bar widgets immediately on theme change
+- Correct dimensions having default colors before switching themes
 
 Testing
 -------

@@ -81,5 +81,26 @@ class MainIconToolbar(QToolBar):
     def on_draw_lines_pressed(self):
         self.parent.airfoil_canvas.drawLines()
 
+    def on_draw_bezier_pressed(self):
+        self.parent.airfoil_canvas.drawBeziers()
+
+    def on_add_distance_constraint_pressed(self):
+        self.parent.airfoil_canvas.addDistanceConstraint()
+
+    def on_add_rel_angle_constraint_pressed(self):
+        self.parent.airfoil_canvas.addRelAngle3Constraint()
+
+    def on_add_perp_constraint_pressed(self):
+        self.parent.airfoil_canvas.addPerp3Constraint()
+
+    def on_add_anti_parallel_constraint_pressed(self):
+        self.parent.airfoil_canvas.addAntiParallel3Constraint()
+
+    def on_add_symmetry_constraint_pressed(self):
+        self.parent.airfoil_canvas.addSymmetryConstraint()
+
+    def on_add_roc_constraint_pressed(self):
+        self.parent.airfoil_canvas.addROCurvatureConstraint()
+
     def on_help_button_pressed(self):
         self.parent.show_help()

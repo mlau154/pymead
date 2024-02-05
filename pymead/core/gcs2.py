@@ -248,10 +248,10 @@ class GCS2(networkx.DiGraph):
             d_angle = new_angle - old_angle
             rotation_point = source.p2
 
-            if edge_data_p21 and edge_data_p21["angle"] is source:
+            if edge_data_p21 and "angle" in edge_data_p21 and edge_data_p21["angle"] is source:
                 start = source.p1
                 # d_angle *= -1
-            elif edge_data_p23 and edge_data_p23["angle"] is source:
+            elif edge_data_p23 and "angle" in edge_data_p23 and edge_data_p23["angle"] is source:
                 start = source.p3
                 d_angle *= -1
             else:
@@ -279,9 +279,9 @@ class GCS2(networkx.DiGraph):
             d_angle = new_angle - old_angle
             rotation_point = source.vertex
 
-            if edge_data_p21 and edge_data_p21["angle"] is source:
+            if edge_data_p21 and "angle" in edge_data_p21 and edge_data_p21["angle"] is source:
                 pass
-            elif edge_data_p23 and edge_data_p23["angle"] is source:
+            elif edge_data_p23 and "angle" in edge_data_p23 and edge_data_p23["angle"] is source:
                 pass
                 d_angle *= -1
             else:
