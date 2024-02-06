@@ -30,6 +30,18 @@
     "checkable": false,
     "function": "on_draw_bezier_pressed"
   },
+  "generate-airfoil": {
+    "icon": "airfoil_dark.svg",
+    "status_tip": "Generate airfoil",
+    "checkable": false,
+    "function": "on_generate_airfoil_pressed"
+  },
+  "generate-mea": {
+    "icon": "mea_dark.svg",
+    "status_tip": "Generate multi-element airfoil",
+    "checkable": false,
+    "function": "on_generate_mea_pressed"
+  },
   "add-distance-constraint": {
     "icon": "distance_constraint_dark.svg",
     "status_tip": "Add a distance constraint",

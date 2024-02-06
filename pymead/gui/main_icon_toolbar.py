@@ -84,6 +84,12 @@ class MainIconToolbar(QToolBar):
     def on_draw_bezier_pressed(self):
         self.parent.airfoil_canvas.drawBeziers()
 
+    def on_generate_airfoil_pressed(self):
+        self.parent.airfoil_canvas.generateAirfoil()
+
+    def on_generate_mea_pressed(self):
+        self.parent.airfoil_canvas.generateMEA()
+
     def on_add_distance_constraint_pressed(self):
         self.parent.airfoil_canvas.addDistanceConstraint()
 

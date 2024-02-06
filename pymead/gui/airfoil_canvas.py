@@ -853,11 +853,13 @@ class AirfoilCanvas(pg.PlotWidget):
             Qt.Key_P: self.drawPoints,
             Qt.Key_L: self.drawLines,
             Qt.Key_B: self.drawBeziers,
+            Qt.Key_F: self.generateAirfoil,
+            Qt.Key_M: self.generateMEA,
             Qt.Key_D: self.addDistanceConstraint,
             Qt.Key_A: self.addRelAngle3Constraint,
             Qt.Key_T: self.addPerp3Constraint,
             Qt.Key_H: self.addAntiParallel3Constraint,
-            Qt.Key_M: self.addSymmetryConstraint,
+            Qt.Key_S: self.addSymmetryConstraint,
             Qt.Key_R: self.addROCurvatureConstraint
         }
 
