@@ -34,6 +34,7 @@ class GCS2(networkx.DiGraph):
             if not isinstance(constraint, DistanceConstraint):
                 raise ValueError("The first constraint in a constraint cluster must be a distance constraint")
             constraint.child_nodes[0].root = True
+            constraint.child_nodes[1].rotation_handle = True
 
         if constraint.param() is not None:
             constraint.param().gcs = self
@@ -95,10 +96,10 @@ class GCS2(networkx.DiGraph):
             # if edge_data_p12:
             #     networkx.set_edge_attributes(self, {(constraint.start_point, constraint.vertex): constraint}, name="angle")
             #     return
-            if edge_data_p21 and not angle_in_p21 and not (constraint.vertex.root and "distance" in edge_data_p21.keys()):
+            if edge_data_p21 and not angle_in_p21 and not (constraint.vertex.root and "distance" in edge_data_p21.keys() and constraint.start_point.rotation_handle):
                 networkx.set_edge_attributes(self, {(constraint.vertex, constraint.start_point): constraint}, name="angle")
                 return
-            if edge_data_p23 and not angle_in_p23 and not (constraint.vertex.root and "distance" in edge_data_p23.keys()):
+            if edge_data_p23 and not angle_in_p23 and not (constraint.vertex.root and "distance" in edge_data_p23.keys() and constraint.end_point.rotation_handle):
                 networkx.set_edge_attributes(self, {(constraint.vertex, constraint.end_point): constraint}, name="angle")
                 return
             # if edge_data_p32:
@@ -107,38 +108,48 @@ class GCS2(networkx.DiGraph):
 
             if len(in_edges_p1) > 0:
                 # if angle_in_p12 or angle_in_p21:
-                if angle_in_p21:
+                if angle_in_p21 and not constraint.end_point.rotation_handle:
                     self.add_edge(constraint.vertex, constraint.end_point, angle=constraint)
                     return
                 # if angle_in_p23 or angle_in_p32:
                 if angle_in_p23:
                     raise ValueError("Cannot create a valid angle constraint from this case")
-                self.add_edge(constraint.vertex, constraint.end_point, angle=constraint)
-                return
+                if constraint.vertex not in [nbr for nbr in self.neighbors(constraint.end_point)]:
+                    self.add_edge(constraint.vertex, constraint.end_point, angle=constraint)
+                    return
             if len(in_edges_p2) > 0:
                 # if angle_in_p12 or angle_in_p21:
-                if angle_in_p21:
+                if angle_in_p21 and not constraint.end_point.rotation_handle:
                     self.add_edge(constraint.vertex, constraint.end_point, angle=constraint)
                     return
                 # if angle_in_p23 or angle_in_p32:
-                if angle_in_p23:
+                if angle_in_p23 and not constraint.start_point.rotation_handle:
                     self.add_edge(constraint.vertex, constraint.start_point, angle=constraint)
                     return
-                self.add_edge(constraint.vertex, constraint.end_point, angle=constraint)
-                return
+                if constraint.vertex not in [nbr for nbr in self.neighbors(constraint.end_point)]:
+                    self.add_edge(constraint.vertex, constraint.end_point, angle=constraint)
+                    return
             if len(in_edges_p3) > 0:
                 # if angle_in_p12 or angle_in_p21:
                 if angle_in_p21:
                     raise ValueError("Cannot create a valid angle constraint from this case")
                 # if angle_in_p23 or angle_in_p32:
-                if angle_in_p23:
+                if angle_in_p23 and not constraint.start_point.rotation_handle:
                     self.add_edge(constraint.vertex, constraint.start_point, angle=constraint)
                     return
+                if constraint.vertex not in [nbr for nbr in self.neighbors(constraint.start_point)]:
+                    self.add_edge(constraint.vertex, constraint.start_point, angle=constraint)
+                    return
+
+            if not constraint.end_point.rotation_handle and constraint.vertex not in [nbr for nbr in self.neighbors(constraint.end_point)]:
+                self.add_edge(constraint.vertex, constraint.end_point, angle=constraint)
+                return
+            if not constraint.start_point.rotation_handle and constraint.vertex not in [nbr for nbr in self.neighbors(constraint.start_point)]:
                 self.add_edge(constraint.vertex, constraint.start_point, angle=constraint)
                 return
 
-            self.add_edge(constraint.vertex, constraint.end_point, angle=constraint)
-            return
+            raise ValueError("Relative angle constraint could not be created")
+
         elif isinstance(constraint, AntiParallel3Constraint) or isinstance(constraint, Perp3Constraint):
             in_edges_p1 = tuple([edge for edge in self.in_edges(nbunch=constraint.p1, data=True)])
             in_edges_p2 = tuple([edge for edge in self.in_edges(nbunch=constraint.p2, data=True)])
@@ -162,10 +173,10 @@ class GCS2(networkx.DiGraph):
             # if edge_data_p12:
             #     networkx.set_edge_attributes(self, {(constraint.p1, constraint.p2): constraint}, name="angle")
             #     return
-            if edge_data_p21 and not angle_in_p21 and not (constraint.p2.root and "distance" in edge_data_p21.keys()):
+            if edge_data_p21 and not angle_in_p21 and not (constraint.p2.root and "distance" in edge_data_p21.keys() and constraint.p1.rotation_handle):
                 networkx.set_edge_attributes(self, {(constraint.p2, constraint.p1): constraint}, name="angle")
                 return
-            if edge_data_p23 and not angle_in_p23 and not (constraint.p2.root and "distance" in edge_data_p23.keys()):
+            if edge_data_p23 and not angle_in_p23 and not (constraint.p2.root and "distance" in edge_data_p23.keys() and constraint.p3.rotation_handle):
                 networkx.set_edge_attributes(self, {(constraint.p2, constraint.p3): constraint}, name="angle")
                 return
             # if edge_data_p32:
@@ -174,44 +185,51 @@ class GCS2(networkx.DiGraph):
 
             if len(in_edges_p1) > 0:
                 # if angle_in_p12 or angle_in_p21:
-                if angle_in_p21:
+                if angle_in_p21 and not constraint.p3.rotation_handle:
                     self.add_edge(constraint.p2, constraint.p3, angle=constraint)
                     return
                 # if angle_in_p23 or angle_in_p32:
                 if angle_in_p23:
                     raise ValueError("Cannot create a valid angle constraint from this case")
-                self.add_edge(constraint.p2, constraint.p3, angle=constraint)
-                return
+                if not constraint.p3.rotation_handle:
+                    self.add_edge(constraint.p2, constraint.p3, angle=constraint)
+                    return
             if len(in_edges_p2) > 0:
                 # if angle_in_p12 or angle_in_p21:
-                if angle_in_p21:
+                if angle_in_p21 and not constraint.p3.rotation_handle:
                     self.add_edge(constraint.p2, constraint.p3, angle=constraint)
                     return
                 # if angle_in_p23 or angle_in_p32:
-                if angle_in_p23:
+                if angle_in_p23 and not constraint.p1.rotation_handle:
                     self.add_edge(constraint.p2, constraint.p1, angle=constraint)
                     return
-                self.add_edge(constraint.p2, constraint.p3, angle=constraint)
-                return
+                if not constraint.p3.rotation_handle:
+                    self.add_edge(constraint.p2, constraint.p3, angle=constraint)
+                    return
             if len(in_edges_p3) > 0:
                 # if angle_in_p12 or angle_in_p21:
                 if angle_in_p21:
                     raise ValueError("Cannot create a valid angle constraint from this case")
                 # if angle_in_p23 or angle_in_p32:
-                if angle_in_p23:
+                if angle_in_p23 and not constraint.p1.rotation_handle:
                     self.add_edge(constraint.p2, constraint.p1, angle=constraint)
                     return
-                self.add_edge(constraint.p2, constraint.p1, angle=constraint)
-                return
+                if not constraint.p1.rotation_handle:
+                    self.add_edge(constraint.p2, constraint.p1, angle=constraint)
+                    return
 
-            self.add_edge(constraint.p2, constraint.p3, angle=constraint)
-            return
+            if constraint.p1.rotation_handle:
+                self.add_edge(constraint.p2, constraint.p3, angle=constraint)
+                return
+            if constraint.p3.rotation_handle:
+                self.add_edge(constraint.p2, constraint.p1, angle=constraint)
+
         elif isinstance(constraint, SymmetryConstraint):
-            self.solve_symmetry_constraint(constraint)
-            self.update_canvas_items(constraint)
+            points_solved = self.solve_symmetry_constraint(constraint)
+            self.update_canvas_items(points_solved)
         elif isinstance(constraint, ROCurvatureConstraint):
-            self.solve_roc_constraint(constraint)
-            self.update_canvas_items(constraint)
+            points_solved = self.solve_roc_constraint(constraint)
+            self.update_canvas_items(points_solved)
 
     def remove_constraint(self, constraint: GeoCon):
         raise NotImplementedError("Constraint removal not yet implemented")
@@ -221,6 +239,8 @@ class GCS2(networkx.DiGraph):
 
     def solve(self, source: GeoCon):
         points_solved = []
+        symmetry_points_solved = []
+        roc_points_solved = []
         if isinstance(source, DistanceConstraint):
             edge_data_p12 = self.get_edge_data(source.p1, source.p2)
             if edge_data_p12 and edge_data_p12["distance"] is source:
@@ -280,9 +300,9 @@ class GCS2(networkx.DiGraph):
             rotation_point = source.vertex
 
             if edge_data_p21 and "angle" in edge_data_p21 and edge_data_p21["angle"] is source:
-                pass
+                start = source.start_point if not source.vertex.root else source.vertex
             elif edge_data_p23 and "angle" in edge_data_p23 and edge_data_p23["angle"] is source:
-                pass
+                start = source.end_point if not source.vertex.root else source.vertex
                 d_angle *= -1
             else:
                 raise ValueError("Somehow no angle constraint found between the three points")
@@ -290,8 +310,21 @@ class GCS2(networkx.DiGraph):
             rotation_mat = np.array([[np.cos(d_angle), -np.sin(d_angle)], [np.sin(d_angle), np.cos(d_angle)]])
             rotation_point_mat = np.array([[rotation_point.x().value()], [rotation_point.y().value()]])
 
-            for point in networkx.bfs_tree(self, source=source.vertex):
-                if point is source.vertex:
+            # Get all the points that might need to rotate
+            all_downstream_points = []
+            rotation_handle = None
+            for point in networkx.bfs_tree(self, source=start):
+                all_downstream_points.append(point)
+                if point.rotation_handle:
+                    rotation_handle = point
+
+            # Get the branch to cut, if there is one
+            root_rotation_branch = []
+            if source.vertex.root and rotation_handle is not None:
+                root_rotation_branch = [point for point in networkx.bfs_tree(self, source=rotation_handle)]
+
+            for point in all_downstream_points:
+                if point is source.vertex or point in root_rotation_branch:
                     continue
                 dx_dy = np.array([[point.x().value() - rotation_point.x().value()],
                                   [point.y().value() - rotation_point.y().value()]])
@@ -302,15 +335,20 @@ class GCS2(networkx.DiGraph):
                     points_solved.append(point)
 
         elif isinstance(source, SymmetryConstraint):
-            self.solve_symmetry_constraint(source)
+            symmetry_points_solved = self.solve_symmetry_constraint(source)
         elif isinstance(source, ROCurvatureConstraint):
-            self.solve_roc_constraint(source)
+            roc_points_solved = self.solve_roc_constraint(source)
 
-        self.solve_other_constraints(points_solved)
+        other_points_solved = self.solve_other_constraints(points_solved)
+        other_points_solved = list(set(other_points_solved).union(set(symmetry_points_solved)).union(set(roc_points_solved)))
+
+        points_solved = list(set(points_solved).union(set(other_points_solved)))
 
         # networkx.draw_circular(self, labels={point: point.name() for point in self.nodes})
         # from matplotlib import pyplot as plt
         # plt.show()
+
+        return points_solved
 
     def move_root(self, root: Point, dx: float, dy: float):
         if not root.root:
@@ -345,6 +383,8 @@ class GCS2(networkx.DiGraph):
             y3 + mirror_distance * np.sin(mirror_angle), force=True
         )
 
+        return constraint.child_nodes
+
     @staticmethod
     def solve_roc_constraint(constraint: ROCurvatureConstraint):
 
@@ -361,47 +401,54 @@ class GCS2(networkx.DiGraph):
         solve_for_single_curve(constraint.g1_point_curve_1, constraint.g2_point_curve_1, constraint.curve_1.degree)
         solve_for_single_curve(constraint.g1_point_curve_2, constraint.g2_point_curve_2, constraint.curve_2.degree)
 
+        return constraint.child_nodes
+
     def solve_symmetry_constraints(self, points: typing.List[Point]):
+        points_solved = []
         symmetry_constraints_solved = []
         for point in points:
             symmetry_constraints = [geo_con for geo_con in point.geo_cons if isinstance(geo_con, SymmetryConstraint)]
             for symmetry_constraint in symmetry_constraints:
                 if symmetry_constraint in symmetry_constraints_solved:
                     continue
-                self.solve_symmetry_constraint(symmetry_constraint)
+                symmetry_points_solved = self.solve_symmetry_constraint(symmetry_constraint)
                 symmetry_constraints_solved.append(symmetry_constraint)
+                for symmetry_point_solved in symmetry_points_solved:
+                    if symmetry_point_solved in points_solved:
+                        continue
+
+                    points_solved.append(symmetry_point_solved)
+
+        return points_solved
 
     def solve_roc_constraints(self, points: typing.List[Point]):
-        roc_constraints_solved =[]
+        points_solved = []
+        roc_constraints_solved = []
         for point in points:
             roc_constraints = [geo_con for geo_con in point.geo_cons if isinstance(geo_con, ROCurvatureConstraint)]
             for roc_constraint in roc_constraints:
                 if roc_constraint in roc_constraints_solved:
                     continue
-                self.solve_roc_constraint(roc_constraint)
+                roc_points_solved = self.solve_roc_constraint(roc_constraint)
                 roc_constraints_solved.append(roc_constraint)
+                for roc_point_solved in roc_points_solved:
+                    if roc_point_solved in points_solved:
+                        continue
+
+                    points_solved.append(roc_point_solved)
+
+        return points_solved
 
     def solve_other_constraints(self, points: typing.List[Point]):
-        self.solve_symmetry_constraints(points)
-        self.solve_roc_constraints(points)
+        symmetry_points_solved = self.solve_symmetry_constraints(points)
+        roc_points_solved = self.solve_roc_constraints(points)
+        return list(set(symmetry_points_solved).union(roc_points_solved))
 
-    def update_canvas_items(self, source: GeoCon or Point):
-
-        points_to_update = []
-        if isinstance(source, Point):
-            starting_points = [source]
-        elif isinstance(source, GeoCon):
-            starting_points = source.child_nodes
-        else:
-            raise ValueError("source must be of type GeoCon or of type Point")
-        for starting_point in starting_points:
-            for point in networkx.dfs_preorder_nodes(self, source=starting_point):
-                if point in points_to_update:
-                    continue
-                points_to_update.append(point)
+    @staticmethod
+    def update_canvas_items(points_solved: typing.List[Point]):
 
         curves_to_update = []
-        for point in points_to_update:
+        for point in points_solved:
             if point.canvas_item is not None:
                 point.canvas_item.updateCanvasItem(point.x().value(), point.y().value())
 
@@ -421,7 +468,7 @@ class GCS2(networkx.DiGraph):
                 airfoil.canvas_item.generatePicture()
 
         constraints_to_update = []
-        for point in networkx.dfs_preorder_nodes(self, source=source.child_nodes[0]):
+        for point in points_solved:
             for geo_con in point.geo_cons:
                 if geo_con not in constraints_to_update:
                     constraints_to_update.append(geo_con)
@@ -433,64 +480,3 @@ class GCS2(networkx.DiGraph):
 
 class ConstraintValidationError(Exception):
     pass
-
-
-
-def main():
-    pass
-    # geo_col = GeometryCollection()
-    # gcs2 = GCS2()
-    # points = [
-    #     geo_col.add_point(0.0, 0.0),
-    #     geo_col.add_point(1.1, 0.0),
-    #     geo_col.add_point(0.1, -0.1),
-    #     geo_col.add_point(0.5, 0.2),
-    #     geo_col.add_point(0.2, 0.7),
-    #     geo_col.add_point(0.4, 0.4)
-    # ]
-    # for point in points:
-    #     gcs2.add_point(point)
-    # constraints = [
-    #     DistanceConstraint(points[0], points[1], 0.25),
-    #     DistanceConstraint(points[1], points[2], 0.35),
-    #     DistanceConstraint(points[2], points[3], 0.4),
-    #     DistanceConstraint(points[1], points[4], 0.15),
-    #     DistanceConstraint(points[2], points[5], 0.2),
-    #     AntiParallel3Constraint(points[0], points[1], points[2]),
-    #     AntiParallel3Constraint(points[1], points[2], points[3]),
-    #     Perp3Constraint(points[4], points[1], points[0]),
-    #     Perp3Constraint(points[5], points[2], points[1])
-    # ]
-    # for constraint in constraints:
-    #     gcs2.add_constraint(constraint)
-    #     gcs2.solve(constraint)
-    #     print(f"{points[0].measure_distance(points[1]) = }")
-    #     print(f"{points[1].measure_distance(points[2]) = }")
-    #     print(f"{points[2].measure_distance(points[3]) = }")
-    #     print(f"{points[2].measure_distance(points[4]) = }")
-    #     print(f"{points[3].measure_distance(points[5]) = }")
-    #     # plt.plot([p.x().value() for p in points], [p.y().value() for p in points], ls="none", marker="o")
-    #     # plt.show()
-    #
-    # constraints[0].param().set_value(0.35)
-    # gcs2.solve(constraints[0])
-    # plt.plot([p.x().value() for p in points], [p.y().value() for p in points], ls="none", marker="o")
-    # plt.show()
-    #
-    # networkx.draw_networkx(gcs2)
-    # plt.show()
-    #
-    # for point in points:
-    #     tree = networkx.bfs_tree(gcs2, source=point)
-    #     networkx.draw_networkx(tree)
-    #     plt.show()
-    #
-    # plt.plot([p.x().value() for p in points], [p.y().value() for p in points], ls="none", marker="o")
-    # plt.gca().set_aspect("equal")
-    # plt.show()
-    # networkx.draw_networkx(gcs2)
-    # plt.show()
-
-
-if __name__ == "__main__":
-    main()

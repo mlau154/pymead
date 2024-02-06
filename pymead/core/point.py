@@ -18,6 +18,7 @@ class Point(PymeadObj):
         self._fixed_weak = False
         self.gcs = None
         self.root = False
+        self.rotation_handle = False
         self.geo_cons = []
         self.dims = []
         self.curves = []
