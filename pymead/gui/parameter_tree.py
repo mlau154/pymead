@@ -632,8 +632,8 @@ class RelAngle3ConstraintButton(TreeButton):
         layout.addWidget(AngleParamButton(self.rel_angle_constraint.param(), self.tree), row_count, 1)
 
         labels = ["Start", "Vertex", "End"]
-        points = [self.rel_angle_constraint.start_point, self.rel_angle_constraint.vertex,
-                  self.rel_angle_constraint.end_point]
+        points = [self.rel_angle_constraint.p1, self.rel_angle_constraint.p2,
+                  self.rel_angle_constraint.p3]
         for label, point in zip(labels, points):
             point_button = PointButton(point, self.tree)
             point_button.sigNameChanged.connect(self.onPointNameChange)

@@ -221,19 +221,19 @@ class RelAngle3Constraint(GeoCon):
 
     default_name = "RelAng3Con-1"
 
-    def __init__(self, start_point: Point, vertex: Point, end_point: Point, value: float or AngleParam, name: str = None):
-        self.start_point = start_point
-        self.vertex = vertex
-        self.end_point = end_point
+    def __init__(self, p1: Point, p2: Point, p3: Point, value: float or AngleParam, name: str = None):
+        self.p1 = p1
+        self.p2 = p2
+        self.p3 = p3
         param = value if isinstance(value, Param) else AngleParam(value=value, name="unnamed")
-        super().__init__(param=param, name=name, child_nodes=[self.start_point, self.vertex, self.end_point], kind="a3")
+        super().__init__(param=param, name=name, child_nodes=[self.p1, self.p2, self.p3], kind="a3")
 
     def __repr__(self):
         return f"{self.__class__.__name__} {self.name()}<v={self.param().value()}>"
 
     def get_dict_rep(self) -> dict:
-        return {"start_point": self.start_point.name(), "vertex": self.vertex.name(),
-                "end_point": self.end_point.name(), "value": self.param().name(),
+        return {"p1": self.p1.name(), "p2": self.p2.name(),
+                "p3": self.p3.name(), "value": self.param().name(),
                 "constraint_type": self.__class__.__name__}
 
 

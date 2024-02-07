@@ -212,24 +212,24 @@ class RelAngle3ConstraintItem(ConstraintItem):
         self.update()
 
     def update(self):
-        dist1 = self.constraint.vertex.measure_distance(self.constraint.start_point)
-        dist2 = self.constraint.vertex.measure_distance(self.constraint.end_point)
-        angle1 = self.constraint.vertex.measure_angle(self.constraint.start_point)
+        dist1 = self.constraint.p2.measure_distance(self.constraint.p1)
+        dist2 = self.constraint.p2.measure_distance(self.constraint.p3)
+        angle1 = self.constraint.p2.measure_angle(self.constraint.p1)
         angle2 = angle1 - self.constraint.param().rad()
         mean_angle = np.mean([angle1, angle2])
         text_distance = 0.15 * np.mean([dist1, dist2])
-        text_x = self.constraint.vertex.x().value() + text_distance * np.cos(mean_angle)
-        text_y = self.constraint.vertex.y().value() + text_distance * np.sin(mean_angle)
+        text_x = self.constraint.p2.x().value() + text_distance * np.cos(mean_angle)
+        text_y = self.constraint.p2.y().value() + text_distance * np.sin(mean_angle)
 
         theta = np.linspace(angle1, angle2, 30)
-        x = self.constraint.vertex.x().value() + np.mean([dist1, dist2]) * 0.1 * np.cos(theta)
-        y = self.constraint.vertex.y().value() + np.mean([dist1, dist2]) * 0.1 * np.sin(theta)
+        x = self.constraint.p2.x().value() + np.mean([dist1, dist2]) * 0.1 * np.cos(theta)
+        y = self.constraint.p2.y().value() + np.mean([dist1, dist2]) * 0.1 * np.sin(theta)
 
-        line1_x = [self.constraint.vertex.x().value(), self.constraint.start_point.x().value()]
-        line1_y = [self.constraint.vertex.y().value(), self.constraint.start_point.y().value()]
+        line1_x = [self.constraint.p2.x().value(), self.constraint.p1.x().value()]
+        line1_y = [self.constraint.p2.y().value(), self.constraint.p1.y().value()]
 
-        line2_x = [self.constraint.vertex.x().value(), self.constraint.end_point.x().value()]
-        line2_y = [self.constraint.vertex.y().value(), self.constraint.end_point.y().value()]
+        line2_x = [self.constraint.p2.x().value(), self.constraint.p3.x().value()]
+        line2_y = [self.constraint.p2.y().value(), self.constraint.p3.y().value()]
 
         self.canvas_items[0].setData(x=x, y=y)
         self.canvas_items[1].setData(x=line1_x, y=line1_y)

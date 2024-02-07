@@ -439,32 +439,32 @@ class ConstraintGraph(networkx.Graph):
             for cnstr in point.geo_cons:
                 if isinstance(cnstr, DistanceConstraint) or isinstance(cnstr, DistanceConstraintWeak):
                     start_point = point
-                    vertex = cnstr.p2 if cnstr.p2 is not point else cnstr.p1
+                    p2 = cnstr.p2 if cnstr.p2 is not point else cnstr.p1
                     end_point = None
 
-                    for sub_cnstr in vertex.geo_cons:
+                    for sub_cnstr in p2.geo_cons:
                         if sub_cnstr is cnstr:
                             continue
                         if isinstance(sub_cnstr, RelAngle3Constraint) or isinstance(sub_cnstr, RelAngle3ConstraintWeak):
-                            end_point = sub_cnstr.start_point
+                            end_point = sub_cnstr.p1
                         elif (isinstance(sub_cnstr, Perp3Constraint) or isinstance(sub_cnstr, Parallel3Constraint) or
                               isinstance(sub_cnstr, AntiParallel3Constraint)):
                             end_point = sub_cnstr.p1
                     if end_point is not None:
-                        rel_angle3_constraint_weak = RelAngle3ConstraintWeak(start_point, vertex, end_point, "ra3")
+                        rel_angle3_constraint_weak = RelAngle3ConstraintWeak(start_point, p2, end_point, "ra3")
                         weak_constraints.append(rel_angle3_constraint_weak)
                         dof -= 1
                         break
 
-                    for sub_cnstr in vertex.geo_cons:
+                    for sub_cnstr in p2.geo_cons:
                         if sub_cnstr is cnstr:
                             continue
 
                         if isinstance(sub_cnstr, DistanceConstraint) or isinstance(sub_cnstr, DistanceConstraintWeak):
-                            end_point = sub_cnstr.p1 if sub_cnstr.p1 not in [start_point, vertex] else sub_cnstr.p2
+                            end_point = sub_cnstr.p1 if sub_cnstr.p1 not in [start_point, p2] else sub_cnstr.p2
 
                     if end_point is not None:
-                        rel_angle3_constraint_weak = RelAngle3ConstraintWeak(start_point, vertex, end_point, "ra3")
+                        rel_angle3_constraint_weak = RelAngle3ConstraintWeak(start_point, p2, end_point, "ra3")
                         weak_constraints.append(rel_angle3_constraint_weak)
                         dof -= 1
                         break
@@ -484,7 +484,7 @@ class ConstraintGraph(networkx.Graph):
                 end_point = candidate_points[0]
             abs_angle_constraint = AbsAngleConstraintWeak(start_point, end_point, "aa1")
             weak_constraints.append(abs_angle_constraint)
-            # print(f"{abs_angle_constraint = }, {start_point = }, {end_point = }")
+            # print(f"{abs_angle_constraint = }, {p1 = }, {p3 = }")
 
         weak_equations = []
         for cnstr in weak_constraints:

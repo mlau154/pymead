@@ -289,8 +289,8 @@ class ConstraintTests(unittest.TestCase):
 
         # First, test the case where a param is directly specified
         param = AngleParam(0.25, "AngleDim")
-        start_point = Point(0.0, 0.0, "start_point", setting_from_geo_col=True)
-        end_point = Point(0.4, 0.4, "end_point", setting_from_geo_col=True)
+        start_point = Point(0.0, 0.0, "p1", setting_from_geo_col=True)
+        end_point = Point(0.4, 0.4, "p3", setting_from_geo_col=True)
         AngleDimension(tool_point=start_point, target_point=end_point, angle_param=param)
 
         # Make sure that the param angle value gets changed to 45 degrees
@@ -304,8 +304,8 @@ class ConstraintTests(unittest.TestCase):
         self.assertAlmostEqual(135.0, dimension.param().value())
 
     def test_units(self):
-        start_point = Point(0.0, 0.0, "start_point", setting_from_geo_col=True)
-        end_point = Point(0.3, 0.4, "end_point", setting_from_geo_col=True)
+        start_point = Point(0.0, 0.0, "p1", setting_from_geo_col=True)
+        end_point = Point(0.3, 0.4, "p3", setting_from_geo_col=True)
 
         dimension = LengthDimension(tool_point=start_point, target_point=end_point)
 

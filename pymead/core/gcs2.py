@@ -20,210 +20,180 @@ class GCS2(networkx.DiGraph):
         self.remove_node(point)
         self.points.pop(point.name())
 
-    def add_constraint(self, constraint: GeoCon):
-
+    def _check_if_constraint_creates_new_cluster(self, constraint: GeoCon):
         for point in constraint.child_nodes:
             # If there is already an edge attached to any of the points in this constraint, do not create a new root
             if len(self.in_edges(nbunch=point)) > 0 or len(self.out_edges(nbunch=point)) > 0:
-                first_constraint_in_cluster = False
-                break
-        else:
-            first_constraint_in_cluster = True
+                return False
+        return True
 
+    @staticmethod
+    def _set_distance_constraint_as_root(constraint: DistanceConstraint):
+        constraint.child_nodes[0].root = True
+        constraint.child_nodes[1].rotation_handle = True
+
+    def _check_if_constraint_addition_requires_cluster_merge(self, constraint: GeoCon):
+        """
+        Check if the addition of this constraint requires a cluster merge by analyzing how many nodes have incident
+        edges. Any constraint with more than one incident edge requires a cluster merge.
+
+        Parameters
+        ----------
+        constraint: GeoCon
+            Constraint to test for cluster merge
+
+        Returns
+        -------
+        bool
+            ``True`` if there are at least two nodes with incident edges, otherwise ``False``
+        """
+        nodes_with_in_edge = 0
+        for point in constraint.child_nodes:
+            if len(self.in_edges(nbunch=point)) > 0:
+                nodes_with_in_edge += 1
+        return True if nodes_with_in_edge > 1 else False
+
+    def _check_if_node_has_incident_edge(self, node: Point):
+        in_edges = [edge for edge in self.in_edges(nbunch=node)]
+        return True if in_edges else False
+
+    def _check_if_node_reaches_root(self, node: Point):
+        for node in networkx.dfs_preorder_nodes(self, source=node):
+            if node.root:
+                return True
+        return False
+
+    def _add_distance_constraint_to_directed_edge(self, constraint: DistanceConstraint,
+                                                  first_constraint_in_cluster: bool):
+
+        def _add_edge_or_append_data(node1: Point, node2: Point):
+            edge_data = self.get_edge_data(node1, node2)
+            if edge_data:
+                if "distance" in edge_data.keys():
+                    raise ValueError("Cannot add a second distance constraint between the same pair of points")
+                else:
+                    networkx.set_edge_attributes(self, {(node1, node2): constraint}, name="distance")
+            else:
+                self.add_edge(node1, node2, distance=constraint)
+
+        p1_edges = [edge for edge in self.in_edges(nbunch=constraint.p1, data=True)]
+        p2_edges = [edge for edge in self.in_edges(nbunch=constraint.p2, data=True)]
+        edge_lists = [p1_edges, p2_edges]
+        point_pairs = [(constraint.p1, constraint.p2), (constraint.p2, constraint.p1)]
+
+        if first_constraint_in_cluster:
+            _add_edge_or_append_data(constraint.p1, constraint.p2)
+            return
+
+        for edge_list, point_pair in zip(edge_lists, point_pairs):
+
+            if len(edge_list) > 1:
+                raise ValueError("Detected multiple edges for the same pair of points when adding distance constraint")
+
+            if len(edge_list) <= 1:
+                if (self._check_if_node_has_incident_edge(point_pair[1])
+                        or self._check_if_node_reaches_root(point_pair[1])):
+                    continue
+
+                _add_edge_or_append_data(point_pair[0], point_pair[1])
+                return
+
+        raise ValueError("Failed to add distance constraint")
+
+    def _add_angle_constraint_to_directed_edge(self,
+            constraint: RelAngle3Constraint or AntiParallel3Constraint or Perp3Constraint,
+            first_constraint_in_cluster: bool):
+
+        if first_constraint_in_cluster:
+            raise ValueError("First constraint in a cluster must be a distance constraint")
+
+        in_edges_p1 = tuple([edge for edge in self.in_edges(nbunch=constraint.p1, data=True)])
+        in_edges_p2 = tuple([edge for edge in self.in_edges(nbunch=constraint.p2, data=True)])
+        in_edges_p3 = tuple([edge for edge in self.in_edges(nbunch=constraint.p3, data=True)])
+
+        edge_data_p21 = self.get_edge_data(constraint.p2, constraint.p1)
+        edge_data_p23 = self.get_edge_data(constraint.p2, constraint.p3)
+
+        angle_in_p21 = False if not edge_data_p21 else "angle" in edge_data_p21.keys()
+        angle_in_p23 = False if not edge_data_p23 else "angle" in edge_data_p23.keys()
+
+        if angle_in_p21 and angle_in_p23:
+            raise ConstraintValidationError(f"{constraint} already has angle constraints associated with both"
+                                            f" pairs of points")
+
+        if edge_data_p21 and not angle_in_p21 and not (
+                constraint.p2.root and "distance" in edge_data_p21.keys() and constraint.p1.rotation_handle):
+            networkx.set_edge_attributes(self, {(constraint.p2, constraint.p1): constraint}, name="angle")
+            return
+        if edge_data_p23 and not angle_in_p23 and not (
+                constraint.p2.root and "distance" in edge_data_p23.keys() and constraint.p3.rotation_handle):
+            networkx.set_edge_attributes(self, {(constraint.p2, constraint.p3): constraint}, name="angle")
+            return
+
+        if len(in_edges_p1) > 0:
+            # if angle_in_p12 or angle_in_p21:
+            if angle_in_p21 and not constraint.p3.rotation_handle:
+                self.add_edge(constraint.p2, constraint.p3, angle=constraint)
+                return
+            # if angle_in_p23 or angle_in_p32:
+            if angle_in_p23:
+                raise ValueError("Cannot create a valid angle constraint from this case")
+            if constraint.p2 not in [nbr for nbr in self.neighbors(constraint.p3)]:
+                self.add_edge(constraint.p2, constraint.p3, angle=constraint)
+                return
+        if len(in_edges_p2) > 0:
+            # if angle_in_p12 or angle_in_p21:
+            if angle_in_p21 and not constraint.p3.rotation_handle:
+                self.add_edge(constraint.p2, constraint.p3, angle=constraint)
+                return
+            # if angle_in_p23 or angle_in_p32:
+            if angle_in_p23 and not constraint.p1.rotation_handle:
+                self.add_edge(constraint.p2, constraint.p1, angle=constraint)
+                return
+            if constraint.p2 not in [nbr for nbr in self.neighbors(constraint.p3)]:
+                self.add_edge(constraint.p2, constraint.p3, angle=constraint)
+                return
+        if len(in_edges_p3) > 0:
+            # if angle_in_p12 or angle_in_p21:
+            if angle_in_p21:
+                raise ValueError("Cannot create a valid angle constraint from this case")
+            # if angle_in_p23 or angle_in_p32:
+            if angle_in_p23 and not constraint.p1.rotation_handle:
+                self.add_edge(constraint.p2, constraint.p1, angle=constraint)
+                return
+            if constraint.p2 not in [nbr for nbr in self.neighbors(constraint.p1)]:
+                self.add_edge(constraint.p2, constraint.p1, angle=constraint)
+                return
+
+        if not constraint.p3.rotation_handle and constraint.p2 not in [nbr for nbr in self.neighbors(constraint.p3)]:
+            self.add_edge(constraint.p2, constraint.p3, angle=constraint)
+            return
+        if not constraint.p1.rotation_handle and constraint.p2 not in [nbr for nbr in self.neighbors(constraint.p1)]:
+            self.add_edge(constraint.p2, constraint.p1, angle=constraint)
+            return
+
+        raise ValueError("Relative angle constraint could not be created")
+
+    def add_constraint(self, constraint: GeoCon):
+
+        # Check if this constraint creates a new cluster
+        first_constraint_in_cluster = self._check_if_constraint_creates_new_cluster(constraint)
+
+        # If it does, make sure it is a distance constraint and set it as the root constraint
         if first_constraint_in_cluster:
             if not isinstance(constraint, DistanceConstraint):
                 raise ValueError("The first constraint in a constraint cluster must be a distance constraint")
-            constraint.child_nodes[0].root = True
-            constraint.child_nodes[1].rotation_handle = True
+            self._set_distance_constraint_as_root(constraint)
 
+        # If the constraint has a Param associated with it, pass the GCS reference to this parameter
         if constraint.param() is not None:
             constraint.param().gcs = self
 
         if isinstance(constraint, DistanceConstraint):
-            in_edges_p1 = tuple([edge for edge in self.in_edges(nbunch=constraint.p1, data=True) if "distance" in edge[2].keys()])
-            in_edges_p2 = tuple([edge for edge in self.in_edges(nbunch=constraint.p2, data=True) if "distance" in edge[2].keys()])
-            if len(in_edges_p1) > 0 and len(in_edges_p2) > 0:
-                raise ConstraintValidationError(f"Failed to draw distance constraint {constraint} due to identified"
-                                                f" incident distance constraints on both start and end points")
-
-            if len(in_edges_p1) > 0:
-                edge_data = self.get_edge_data(constraint.p1, constraint.p2)
-                if edge_data:
-                    if "distance" in self.get_edge_data(constraint.p1, constraint.p2).keys():
-                        raise ConstraintValidationError(f"Cannot add a duplicate distance constraint between"
-                                                        f" {constraint.p1} and {constraint.p2}")
-                    networkx.set_edge_attributes(self, {(constraint.p1, constraint.p2): constraint},
-                                                 name="distance")
-                    return
-                self.add_edge(constraint.p1, constraint.p2, distance=constraint)
-                return
-            if len(in_edges_p2) > 0:
-                edge_data = self.get_edge_data(constraint.p2, constraint.p1)
-                if edge_data:
-                    if "distance" in self.get_edge_data(constraint.p2, constraint.p1).keys():
-                        raise ConstraintValidationError(f"Cannot add a duplicate distance constraint between"
-                                                        f" {constraint.p2} and {constraint.p1}")
-                    networkx.set_edge_attributes(self, {(constraint.p2, constraint.p1): constraint},
-                                                 name="distance")
-                    return
-                self.add_edge(constraint.p2, constraint.p1, distance=constraint)
-                return
-
-            # Default case
-            self.add_edge(constraint.p1, constraint.p2, distance=constraint)
-            return
-
-        elif isinstance(constraint, RelAngle3Constraint):
-            in_edges_p1 = tuple([edge for edge in self.in_edges(nbunch=constraint.start_point, data=True)])
-            in_edges_p2 = tuple([edge for edge in self.in_edges(nbunch=constraint.vertex, data=True)])
-            in_edges_p3 = tuple([edge for edge in self.in_edges(nbunch=constraint.end_point, data=True)])
-
-            # edge_data_p12 = self.get_edge_data(constraint.start_point, constraint.vertex)
-            edge_data_p21 = self.get_edge_data(constraint.vertex, constraint.start_point)
-            edge_data_p23 = self.get_edge_data(constraint.vertex, constraint.end_point)
-            # edge_data_p32 = self.get_edge_data(constraint.end_point, constraint.vertex)
-
-            # angle_in_p12 = False if not edge_data_p12 else "angle" in edge_data_p12.keys()
-            angle_in_p21 = False if not edge_data_p21 else "angle" in edge_data_p21.keys()
-            angle_in_p23 = False if not edge_data_p23 else "angle" in edge_data_p23.keys()
-            # angle_in_p32 = False if not edge_data_p32 else "angle" in edge_data_p32.keys()
-
-            # if (angle_in_p12 or angle_in_p21) and (angle_in_p23 or angle_in_p32):
-            if angle_in_p21 and angle_in_p23:
-                raise ConstraintValidationError(f"{constraint} already has angle constraints associated with both"
-                                                f" pairs of points")
-
-            # if edge_data_p12:
-            #     networkx.set_edge_attributes(self, {(constraint.start_point, constraint.vertex): constraint}, name="angle")
-            #     return
-            if edge_data_p21 and not angle_in_p21 and not (constraint.vertex.root and "distance" in edge_data_p21.keys() and constraint.start_point.rotation_handle):
-                networkx.set_edge_attributes(self, {(constraint.vertex, constraint.start_point): constraint}, name="angle")
-                return
-            if edge_data_p23 and not angle_in_p23 and not (constraint.vertex.root and "distance" in edge_data_p23.keys() and constraint.end_point.rotation_handle):
-                networkx.set_edge_attributes(self, {(constraint.vertex, constraint.end_point): constraint}, name="angle")
-                return
-            # if edge_data_p32:
-            #     networkx.set_edge_attributes(self, {(constraint.end_point, constraint.vertex): constraint}, name="angle")
-            #     return
-
-            if len(in_edges_p1) > 0:
-                # if angle_in_p12 or angle_in_p21:
-                if angle_in_p21 and not constraint.end_point.rotation_handle:
-                    self.add_edge(constraint.vertex, constraint.end_point, angle=constraint)
-                    return
-                # if angle_in_p23 or angle_in_p32:
-                if angle_in_p23:
-                    raise ValueError("Cannot create a valid angle constraint from this case")
-                if constraint.vertex not in [nbr for nbr in self.neighbors(constraint.end_point)]:
-                    self.add_edge(constraint.vertex, constraint.end_point, angle=constraint)
-                    return
-            if len(in_edges_p2) > 0:
-                # if angle_in_p12 or angle_in_p21:
-                if angle_in_p21 and not constraint.end_point.rotation_handle:
-                    self.add_edge(constraint.vertex, constraint.end_point, angle=constraint)
-                    return
-                # if angle_in_p23 or angle_in_p32:
-                if angle_in_p23 and not constraint.start_point.rotation_handle:
-                    self.add_edge(constraint.vertex, constraint.start_point, angle=constraint)
-                    return
-                if constraint.vertex not in [nbr for nbr in self.neighbors(constraint.end_point)]:
-                    self.add_edge(constraint.vertex, constraint.end_point, angle=constraint)
-                    return
-            if len(in_edges_p3) > 0:
-                # if angle_in_p12 or angle_in_p21:
-                if angle_in_p21:
-                    raise ValueError("Cannot create a valid angle constraint from this case")
-                # if angle_in_p23 or angle_in_p32:
-                if angle_in_p23 and not constraint.start_point.rotation_handle:
-                    self.add_edge(constraint.vertex, constraint.start_point, angle=constraint)
-                    return
-                if constraint.vertex not in [nbr for nbr in self.neighbors(constraint.start_point)]:
-                    self.add_edge(constraint.vertex, constraint.start_point, angle=constraint)
-                    return
-
-            if not constraint.end_point.rotation_handle and constraint.vertex not in [nbr for nbr in self.neighbors(constraint.end_point)]:
-                self.add_edge(constraint.vertex, constraint.end_point, angle=constraint)
-                return
-            if not constraint.start_point.rotation_handle and constraint.vertex not in [nbr for nbr in self.neighbors(constraint.start_point)]:
-                self.add_edge(constraint.vertex, constraint.start_point, angle=constraint)
-                return
-
-            raise ValueError("Relative angle constraint could not be created")
-
-        elif isinstance(constraint, AntiParallel3Constraint) or isinstance(constraint, Perp3Constraint):
-            in_edges_p1 = tuple([edge for edge in self.in_edges(nbunch=constraint.p1, data=True)])
-            in_edges_p2 = tuple([edge for edge in self.in_edges(nbunch=constraint.p2, data=True)])
-            in_edges_p3 = tuple([edge for edge in self.in_edges(nbunch=constraint.p3, data=True)])
-
-            # edge_data_p12 = self.get_edge_data(constraint.p1, constraint.p2)
-            edge_data_p21 = self.get_edge_data(constraint.p2, constraint.p1)
-            edge_data_p23 = self.get_edge_data(constraint.p2, constraint.p3)
-            # edge_data_p32 = self.get_edge_data(constraint.p3, constraint.p2)
-
-            # angle_in_p12 = False if not edge_data_p12 else "angle" in edge_data_p12.keys()
-            angle_in_p21 = False if not edge_data_p21 else "angle" in edge_data_p21.keys()
-            angle_in_p23 = False if not edge_data_p23 else "angle" in edge_data_p23.keys()
-            # angle_in_p32 = False if not edge_data_p32 else "angle" in edge_data_p32.keys()
-
-            # if (angle_in_p12 or angle_in_p21) and (angle_in_p23 or angle_in_p32):
-            if angle_in_p21 and angle_in_p23:
-                raise ConstraintValidationError(f"{constraint} already has angle constraints associated with both"
-                                                f" pairs of points")
-
-            # if edge_data_p12:
-            #     networkx.set_edge_attributes(self, {(constraint.p1, constraint.p2): constraint}, name="angle")
-            #     return
-            if edge_data_p21 and not angle_in_p21 and not (constraint.p2.root and "distance" in edge_data_p21.keys() and constraint.p1.rotation_handle):
-                networkx.set_edge_attributes(self, {(constraint.p2, constraint.p1): constraint}, name="angle")
-                return
-            if edge_data_p23 and not angle_in_p23 and not (constraint.p2.root and "distance" in edge_data_p23.keys() and constraint.p3.rotation_handle):
-                networkx.set_edge_attributes(self, {(constraint.p2, constraint.p3): constraint}, name="angle")
-                return
-            # if edge_data_p32:
-            #     networkx.set_edge_attributes(self, {(constraint.p3, constraint.p2): constraint}, name="angle")
-            #     return
-
-            if len(in_edges_p1) > 0:
-                # if angle_in_p12 or angle_in_p21:
-                if angle_in_p21 and not constraint.p3.rotation_handle:
-                    self.add_edge(constraint.p2, constraint.p3, angle=constraint)
-                    return
-                # if angle_in_p23 or angle_in_p32:
-                if angle_in_p23:
-                    raise ValueError("Cannot create a valid angle constraint from this case")
-                if not constraint.p3.rotation_handle:
-                    self.add_edge(constraint.p2, constraint.p3, angle=constraint)
-                    return
-            if len(in_edges_p2) > 0:
-                # if angle_in_p12 or angle_in_p21:
-                if angle_in_p21 and not constraint.p3.rotation_handle:
-                    self.add_edge(constraint.p2, constraint.p3, angle=constraint)
-                    return
-                # if angle_in_p23 or angle_in_p32:
-                if angle_in_p23 and not constraint.p1.rotation_handle:
-                    self.add_edge(constraint.p2, constraint.p1, angle=constraint)
-                    return
-                if not constraint.p3.rotation_handle:
-                    self.add_edge(constraint.p2, constraint.p3, angle=constraint)
-                    return
-            if len(in_edges_p3) > 0:
-                # if angle_in_p12 or angle_in_p21:
-                if angle_in_p21:
-                    raise ValueError("Cannot create a valid angle constraint from this case")
-                # if angle_in_p23 or angle_in_p32:
-                if angle_in_p23 and not constraint.p1.rotation_handle:
-                    self.add_edge(constraint.p2, constraint.p1, angle=constraint)
-                    return
-                if not constraint.p1.rotation_handle:
-                    self.add_edge(constraint.p2, constraint.p1, angle=constraint)
-                    return
-
-            if constraint.p1.rotation_handle:
-                self.add_edge(constraint.p2, constraint.p3, angle=constraint)
-                return
-            if constraint.p3.rotation_handle:
-                self.add_edge(constraint.p2, constraint.p1, angle=constraint)
-
+            self._add_distance_constraint_to_directed_edge(constraint, first_constraint_in_cluster)
+        elif isinstance(constraint, RelAngle3Constraint) or isinstance(
+                constraint, AntiParallel3Constraint) or isinstance(constraint, Perp3Constraint):
+            self._add_angle_constraint_to_directed_edge(constraint, first_constraint_in_cluster)
         elif isinstance(constraint, SymmetryConstraint):
             points_solved = self.solve_symmetry_constraint(constraint)
             self.update_canvas_items(points_solved)
@@ -290,19 +260,19 @@ class GCS2(networkx.DiGraph):
                     points_solved.append(point)
 
         elif isinstance(source, RelAngle3Constraint):
-            edge_data_p21 = self.get_edge_data(source.vertex, source.start_point)
-            edge_data_p23 = self.get_edge_data(source.vertex, source.end_point)
+            edge_data_p21 = self.get_edge_data(source.p2, source.p1)
+            edge_data_p23 = self.get_edge_data(source.p2, source.p3)
 
-            old_angle = (source.vertex.measure_angle(source.start_point) -
-                         source.vertex.measure_angle(source.end_point)) % (2 * np.pi)
+            old_angle = (source.p2.measure_angle(source.p1) -
+                         source.p2.measure_angle(source.p3)) % (2 * np.pi)
             new_angle = source.param().rad()
             d_angle = new_angle - old_angle
-            rotation_point = source.vertex
+            rotation_point = source.p2
 
             if edge_data_p21 and "angle" in edge_data_p21 and edge_data_p21["angle"] is source:
-                start = source.start_point if not source.vertex.root else source.vertex
+                start = source.p1 if not source.p2.root else source.p2
             elif edge_data_p23 and "angle" in edge_data_p23 and edge_data_p23["angle"] is source:
-                start = source.end_point if not source.vertex.root else source.vertex
+                start = source.p3 if not source.p2.root else source.p2
                 d_angle *= -1
             else:
                 raise ValueError("Somehow no angle constraint found between the three points")
@@ -320,11 +290,11 @@ class GCS2(networkx.DiGraph):
 
             # Get the branch to cut, if there is one
             root_rotation_branch = []
-            if source.vertex.root and rotation_handle is not None:
+            if source.p2.root and rotation_handle is not None:
                 root_rotation_branch = [point for point in networkx.bfs_tree(self, source=rotation_handle)]
 
             for point in all_downstream_points:
-                if point is source.vertex or point in root_rotation_branch:
+                if point is source.p2 or point in root_rotation_branch:
                     continue
                 dx_dy = np.array([[point.x().value() - rotation_point.x().value()],
                                   [point.y().value() - rotation_point.y().value()]])
