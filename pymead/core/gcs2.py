@@ -9,7 +9,7 @@ class GCS2(networkx.DiGraph):
     def __init__(self):
         super().__init__()
         self.points = {}
-        self.clusters = {}
+        self.roots = []
 
     def add_point(self, point: Point):
         point.gcs = self
@@ -27,10 +27,31 @@ class GCS2(networkx.DiGraph):
                 return False
         return True
 
-    @staticmethod
-    def _set_distance_constraint_as_root(constraint: DistanceConstraint):
+    def _set_distance_constraint_as_root(self, constraint: DistanceConstraint):
         constraint.child_nodes[0].root = True
         constraint.child_nodes[1].rotation_handle = True
+        if constraint.child_nodes[0] not in [r[0] for r in self.roots]:
+            self.roots.append((constraint.child_nodes[0], constraint.child_nodes[1], constraint))
+
+    def _delete_root_status(self, root_node: Point):
+        for edge in self.out_edges(nbunch=root_node, data=True):
+            if "distance" not in edge[2].keys():
+                continue
+            else:
+                constraint = edge[2]["distance"]
+
+            if not (constraint.child_nodes[0].rotation_handle or constraint.child_nodes[1].rotation_handle):
+                continue
+
+            for node in constraint.child_nodes:
+                node.root = False
+                node.rotation_handle = False
+
+            root_idx = [r[0] for r in self.roots].index(root_node)
+            self.roots.pop(root_idx)
+            return
+
+        raise ValueError("Could not detect the distance constraint or rotation handle associated with this root")
 
     def _check_if_constraint_addition_requires_cluster_merge(self, constraint: GeoCon):
         """
@@ -47,21 +68,45 @@ class GCS2(networkx.DiGraph):
         bool
             ``True`` if there are at least two nodes with incident edges, otherwise ``False``
         """
-        nodes_with_in_edge = 0
+        unique_roots = []
         for point in constraint.child_nodes:
-            if len(self.in_edges(nbunch=point)) > 0:
-                nodes_with_in_edge += 1
-        return True if nodes_with_in_edge > 1 else False
+            root = self._discover_root_from_node(point)
+            if root and root not in unique_roots:
+                unique_roots.append(root)
+        return True if len(unique_roots) > 1 else False
+
+    def _identify_cluster_roots_for_constraint_addition(self, constraint: GeoCon):
+        pass
 
     def _check_if_node_has_incident_edge(self, node: Point):
         in_edges = [edge for edge in self.in_edges(nbunch=node)]
         return True if in_edges else False
 
-    def _check_if_node_reaches_root(self, node: Point):
-        for node in networkx.dfs_preorder_nodes(self, source=node):
+    def _check_if_node_reaches_root(self, source_node: Point):
+        for node in networkx.dfs_preorder_nodes(self, source=source_node):
             if node.root:
                 return True
         return False
+
+    def _discover_root_from_node(self, source_node: Point):
+        """
+        Traverse backward along the constraint graph from the ``source_node`` until the root node is reached.
+        Returns ``None`` if the root was not found.
+
+        Parameters
+        ----------
+        source_node: Point
+            Starting point
+
+        Returns
+        -------
+        Point or None
+            The root node/point if found, otherwise ``None``
+        """
+        for node in networkx.bfs_tree(self, source=source_node, reverse=True):
+            if node.root:
+                return node
+        return None
 
     def _add_distance_constraint_to_directed_edge(self, constraint: DistanceConstraint,
                                                   first_constraint_in_cluster: bool):
@@ -100,8 +145,8 @@ class GCS2(networkx.DiGraph):
 
         raise ValueError("Failed to add distance constraint")
 
-    def _add_angle_constraint_to_directed_edge(self,
-            constraint: RelAngle3Constraint or AntiParallel3Constraint or Perp3Constraint,
+    def _add_angle_constraint_to_directed_edge(
+            self, constraint: RelAngle3Constraint or AntiParallel3Constraint or Perp3Constraint,
             first_constraint_in_cluster: bool):
 
         if first_constraint_in_cluster:
@@ -189,6 +234,8 @@ class GCS2(networkx.DiGraph):
         if constraint.param() is not None:
             constraint.param().gcs = self
 
+        needs_cluster_merge = self._check_if_constraint_addition_requires_cluster_merge(constraint)
+
         if isinstance(constraint, DistanceConstraint):
             self._add_distance_constraint_to_directed_edge(constraint, first_constraint_in_cluster)
         elif isinstance(constraint, RelAngle3Constraint) or isinstance(
@@ -207,116 +254,131 @@ class GCS2(networkx.DiGraph):
     def make_point_copies(self):
         return {point: Point(x=point.x().value(), y=point.y().value()) for point in self.points.values()}
 
+    def _solve_distance_constraint(self, source: DistanceConstraint):
+        points_solved = []
+        edge_data_p12 = self.get_edge_data(source.p1, source.p2)
+        if edge_data_p12 and edge_data_p12["distance"] is source:
+            angle = source.p1.measure_angle(source.p2)
+            start = source.p2
+        else:
+            angle = source.p2.measure_angle(source.p1)
+            start = source.p1
+        old_distance = source.p1.measure_distance(source.p2)
+        new_distance = source.param().value()
+        dx = (new_distance - old_distance) * np.cos(angle)
+        dy = (new_distance - old_distance) * np.sin(angle)
+
+        for point in networkx.bfs_tree(self, source=start):
+            point.x().set_value(point.x().value() + dx)
+            point.y().set_value(point.y().value() + dy)
+            if point not in points_solved:
+                points_solved.append(point)
+
+        return points_solved
+
+    def _solve_perp_parallel_constraint(self, source: AntiParallel3Constraint or Perp3Constraint):
+        points_solved = []
+        edge_data_p21 = self.get_edge_data(source.p2, source.p1)
+        edge_data_p23 = self.get_edge_data(source.p2, source.p3)
+
+        old_angle = (source.p2.measure_angle(source.p1) - source.p2.measure_angle(source.p3)) % (2 * np.pi)
+        new_angle = np.pi if isinstance(source, AntiParallel3Constraint) else np.pi / 2
+        d_angle = new_angle - old_angle
+        rotation_point = source.p2
+
+        if edge_data_p21 and "angle" in edge_data_p21 and edge_data_p21["angle"] is source:
+            start = source.p1
+            # d_angle *= -1
+        elif edge_data_p23 and "angle" in edge_data_p23 and edge_data_p23["angle"] is source:
+            start = source.p3
+            d_angle *= -1
+        else:
+            raise ValueError("Somehow no angle constraint found between the three points")
+
+        rotation_mat = np.array([[np.cos(d_angle), -np.sin(d_angle)], [np.sin(d_angle), np.cos(d_angle)]])
+        rotation_point_mat = np.array([[rotation_point.x().value()], [rotation_point.y().value()]])
+
+        for point in networkx.bfs_tree(self, source=start):
+            dx_dy = np.array([[point.x().value() - rotation_point.x().value()],
+                              [point.y().value() - rotation_point.y().value()]])
+            new_xy = (rotation_mat @ dx_dy + rotation_point_mat).flatten()
+            point.x().set_value(new_xy[0])
+            point.y().set_value(new_xy[1])
+            if point not in points_solved:
+                points_solved.append(point)
+        return points_solved
+
+    def _solve_rel_angle3_constraint(self, source: RelAngle3Constraint):
+        points_solved = []
+        edge_data_p21 = self.get_edge_data(source.p2, source.p1)
+        edge_data_p23 = self.get_edge_data(source.p2, source.p3)
+
+        old_angle = (source.p2.measure_angle(source.p1) -
+                     source.p2.measure_angle(source.p3)) % (2 * np.pi)
+        new_angle = source.param().rad()
+        d_angle = new_angle - old_angle
+        rotation_point = source.p2
+
+        if edge_data_p21 and "angle" in edge_data_p21 and edge_data_p21["angle"] is source:
+            start = source.p1 if not source.p2.root else source.p2
+        elif edge_data_p23 and "angle" in edge_data_p23 and edge_data_p23["angle"] is source:
+            start = source.p3 if not source.p2.root else source.p2
+            d_angle *= -1
+        else:
+            raise ValueError("Somehow no angle constraint found between the three points")
+
+        rotation_mat = np.array([[np.cos(d_angle), -np.sin(d_angle)], [np.sin(d_angle), np.cos(d_angle)]])
+        rotation_point_mat = np.array([[rotation_point.x().value()], [rotation_point.y().value()]])
+
+        # Get all the points that might need to rotate
+        all_downstream_points = []
+        rotation_handle = None
+        for point in networkx.bfs_tree(self, source=start):
+            all_downstream_points.append(point)
+            if point.rotation_handle:
+                rotation_handle = point
+
+        # Get the branch to cut, if there is one
+        root_rotation_branch = []
+        if source.p2.root and rotation_handle is not None:
+            root_rotation_branch = [point for point in networkx.bfs_tree(self, source=rotation_handle)]
+
+        for point in all_downstream_points:
+            if point is source.p2 or point in root_rotation_branch:
+                continue
+            dx_dy = np.array([[point.x().value() - rotation_point.x().value()],
+                              [point.y().value() - rotation_point.y().value()]])
+            new_xy = (rotation_mat @ dx_dy + rotation_point_mat).flatten()
+            point.x().set_value(new_xy[0])
+            point.y().set_value(new_xy[1])
+            if point not in points_solved:
+                points_solved.append(point)
+        return points_solved
+
     def solve(self, source: GeoCon):
         points_solved = []
         symmetry_points_solved = []
         roc_points_solved = []
         if isinstance(source, DistanceConstraint):
-            edge_data_p12 = self.get_edge_data(source.p1, source.p2)
-            if edge_data_p12 and edge_data_p12["distance"] is source:
-                angle = source.p1.measure_angle(source.p2)
-                start = source.p2
-            else:
-                angle = source.p2.measure_angle(source.p1)
-                start = source.p1
-            old_distance = source.p1.measure_distance(source.p2)
-            new_distance = source.param().value()
-            dx = (new_distance - old_distance) * np.cos(angle)
-            dy = (new_distance - old_distance) * np.sin(angle)
-
-            for point in networkx.bfs_tree(self, source=start):
-                point.x().set_value(point.x().value() + dx)
-                point.y().set_value(point.y().value() + dy)
-                if point not in points_solved:
-                    points_solved.append(point)
+            points_solved.extend(self._solve_distance_constraint(source))
         elif isinstance(source, AntiParallel3Constraint) or isinstance(source, Perp3Constraint):
-            edge_data_p21 = self.get_edge_data(source.p2, source.p1)
-            edge_data_p23 = self.get_edge_data(source.p2, source.p3)
-
-            old_angle = (source.p2.measure_angle(source.p1) - source.p2.measure_angle(source.p3)) % (2 * np.pi)
-            new_angle = np.pi if isinstance(source, AntiParallel3Constraint) else np.pi / 2
-            d_angle = new_angle - old_angle
-            rotation_point = source.p2
-
-            if edge_data_p21 and "angle" in edge_data_p21 and edge_data_p21["angle"] is source:
-                start = source.p1
-                # d_angle *= -1
-            elif edge_data_p23 and "angle" in edge_data_p23 and edge_data_p23["angle"] is source:
-                start = source.p3
-                d_angle *= -1
-            else:
-                raise ValueError("Somehow no angle constraint found between the three points")
-
-            rotation_mat = np.array([[np.cos(d_angle), -np.sin(d_angle)], [np.sin(d_angle), np.cos(d_angle)]])
-            rotation_point_mat = np.array([[rotation_point.x().value()], [rotation_point.y().value()]])
-
-            for point in networkx.bfs_tree(self, source=start):
-                dx_dy = np.array([[point.x().value() - rotation_point.x().value()],
-                                  [point.y().value() - rotation_point.y().value()]])
-                new_xy = (rotation_mat @ dx_dy + rotation_point_mat).flatten()
-                point.x().set_value(new_xy[0])
-                point.y().set_value(new_xy[1])
-                if point not in points_solved:
-                    points_solved.append(point)
-
+            points_solved.extend(self._solve_perp_parallel_constraint(source))
         elif isinstance(source, RelAngle3Constraint):
-            edge_data_p21 = self.get_edge_data(source.p2, source.p1)
-            edge_data_p23 = self.get_edge_data(source.p2, source.p3)
-
-            old_angle = (source.p2.measure_angle(source.p1) -
-                         source.p2.measure_angle(source.p3)) % (2 * np.pi)
-            new_angle = source.param().rad()
-            d_angle = new_angle - old_angle
-            rotation_point = source.p2
-
-            if edge_data_p21 and "angle" in edge_data_p21 and edge_data_p21["angle"] is source:
-                start = source.p1 if not source.p2.root else source.p2
-            elif edge_data_p23 and "angle" in edge_data_p23 and edge_data_p23["angle"] is source:
-                start = source.p3 if not source.p2.root else source.p2
-                d_angle *= -1
-            else:
-                raise ValueError("Somehow no angle constraint found between the three points")
-
-            rotation_mat = np.array([[np.cos(d_angle), -np.sin(d_angle)], [np.sin(d_angle), np.cos(d_angle)]])
-            rotation_point_mat = np.array([[rotation_point.x().value()], [rotation_point.y().value()]])
-
-            # Get all the points that might need to rotate
-            all_downstream_points = []
-            rotation_handle = None
-            for point in networkx.bfs_tree(self, source=start):
-                all_downstream_points.append(point)
-                if point.rotation_handle:
-                    rotation_handle = point
-
-            # Get the branch to cut, if there is one
-            root_rotation_branch = []
-            if source.p2.root and rotation_handle is not None:
-                root_rotation_branch = [point for point in networkx.bfs_tree(self, source=rotation_handle)]
-
-            for point in all_downstream_points:
-                if point is source.p2 or point in root_rotation_branch:
-                    continue
-                dx_dy = np.array([[point.x().value() - rotation_point.x().value()],
-                                  [point.y().value() - rotation_point.y().value()]])
-                new_xy = (rotation_mat @ dx_dy + rotation_point_mat).flatten()
-                point.x().set_value(new_xy[0])
-                point.y().set_value(new_xy[1])
-                if point not in points_solved:
-                    points_solved.append(point)
-
+            points_solved.extend(self._solve_rel_angle3_constraint(source))
         elif isinstance(source, SymmetryConstraint):
             symmetry_points_solved = self.solve_symmetry_constraint(source)
         elif isinstance(source, ROCurvatureConstraint):
             roc_points_solved = self.solve_roc_constraint(source)
 
         other_points_solved = self.solve_other_constraints(points_solved)
-        other_points_solved = list(set(other_points_solved).union(set(symmetry_points_solved)).union(set(roc_points_solved)))
+        other_points_solved = list(
+            set(other_points_solved).union(set(symmetry_points_solved)).union(set(roc_points_solved)))
 
         points_solved = list(set(points_solved).union(set(other_points_solved)))
 
-        # networkx.draw_circular(self, labels={point: point.name() for point in self.nodes})
-        # from matplotlib import pyplot as plt
-        # plt.show()
+        networkx.draw_circular(self, labels={point: point.name() for point in self.nodes})
+        from matplotlib import pyplot as plt
+        plt.show()
 
         return points_solved
 
@@ -344,6 +406,7 @@ class GCS2(networkx.DiGraph):
         elif tool_angle > np.pi:
             mirror_angle = line_angle + np.pi / 2
         else:
+            # Rare case where the point is coincident with the line: just make p4 = p3
             constraint.p4.request_move(constraint.p3.x().value(), constraint.p3.y().value(), force=True)
             return
 
