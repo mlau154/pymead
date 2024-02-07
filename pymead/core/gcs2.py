@@ -65,15 +65,15 @@ class GCS2(networkx.DiGraph):
 
         Returns
         -------
-        bool
-            ``True`` if there are at least two nodes with incident edges, otherwise ``False``
+        typing.List[Point] or None
+            The list of unique roots if there are at least two, otherwise ``None``
         """
         unique_roots = []
         for point in constraint.child_nodes:
             root = self._discover_root_from_node(point)
             if root and root not in unique_roots:
                 unique_roots.append(root)
-        return True if len(unique_roots) > 1 else False
+        return unique_roots if len(unique_roots) > 1 else None
 
     def _identify_cluster_roots_for_constraint_addition(self, constraint: GeoCon):
         pass
@@ -156,11 +156,26 @@ class GCS2(networkx.DiGraph):
         in_edges_p2 = tuple([edge for edge in self.in_edges(nbunch=constraint.p2, data=True)])
         in_edges_p3 = tuple([edge for edge in self.in_edges(nbunch=constraint.p3, data=True)])
 
+        # Edges from vertex to outer points
         edge_data_p21 = self.get_edge_data(constraint.p2, constraint.p1)
         edge_data_p23 = self.get_edge_data(constraint.p2, constraint.p3)
 
+        # Edges from outer points to vertex
+        edge_data_p12 = self.get_edge_data(constraint.p1, constraint.p2)
+        edge_data_p32 = self.get_edge_data(constraint.p3, constraint.p2)
+
         angle_in_p21 = False if not edge_data_p21 else "angle" in edge_data_p21.keys()
         angle_in_p23 = False if not edge_data_p23 else "angle" in edge_data_p23.keys()
+
+        def add_edge_21():
+            self.add_edge(constraint.p2, constraint.p1, angle=constraint)
+            if not edge_data_p32:
+                self.add_edge(constraint.p3, constraint.p2)
+
+        def add_edge_23():
+            self.add_edge(constraint.p2, constraint.p3, angle=constraint)
+            if not edge_data_p12:
+                self.add_edge(constraint.p1, constraint.p2)
 
         if angle_in_p21 and angle_in_p23:
             raise ConstraintValidationError(f"{constraint} already has angle constraints associated with both"
@@ -178,25 +193,25 @@ class GCS2(networkx.DiGraph):
         if len(in_edges_p1) > 0:
             # if angle_in_p12 or angle_in_p21:
             if angle_in_p21 and not constraint.p3.rotation_handle:
-                self.add_edge(constraint.p2, constraint.p3, angle=constraint)
+                add_edge_23()
                 return
             # if angle_in_p23 or angle_in_p32:
             if angle_in_p23:
                 raise ValueError("Cannot create a valid angle constraint from this case")
             if constraint.p2 not in [nbr for nbr in self.neighbors(constraint.p3)]:
-                self.add_edge(constraint.p2, constraint.p3, angle=constraint)
+                add_edge_23()
                 return
         if len(in_edges_p2) > 0:
             # if angle_in_p12 or angle_in_p21:
             if angle_in_p21 and not constraint.p3.rotation_handle:
-                self.add_edge(constraint.p2, constraint.p3, angle=constraint)
+                add_edge_23()
                 return
             # if angle_in_p23 or angle_in_p32:
             if angle_in_p23 and not constraint.p1.rotation_handle:
-                self.add_edge(constraint.p2, constraint.p1, angle=constraint)
+                add_edge_21()
                 return
             if constraint.p2 not in [nbr for nbr in self.neighbors(constraint.p3)]:
-                self.add_edge(constraint.p2, constraint.p3, angle=constraint)
+                add_edge_23()
                 return
         if len(in_edges_p3) > 0:
             # if angle_in_p12 or angle_in_p21:
@@ -204,17 +219,17 @@ class GCS2(networkx.DiGraph):
                 raise ValueError("Cannot create a valid angle constraint from this case")
             # if angle_in_p23 or angle_in_p32:
             if angle_in_p23 and not constraint.p1.rotation_handle:
-                self.add_edge(constraint.p2, constraint.p1, angle=constraint)
+                add_edge_21()
                 return
             if constraint.p2 not in [nbr for nbr in self.neighbors(constraint.p1)]:
-                self.add_edge(constraint.p2, constraint.p1, angle=constraint)
+                add_edge_21()
                 return
 
         if not constraint.p3.rotation_handle and constraint.p2 not in [nbr for nbr in self.neighbors(constraint.p3)]:
-            self.add_edge(constraint.p2, constraint.p3, angle=constraint)
+            add_edge_23()
             return
         if not constraint.p1.rotation_handle and constraint.p2 not in [nbr for nbr in self.neighbors(constraint.p1)]:
-            self.add_edge(constraint.p2, constraint.p1, angle=constraint)
+            add_edge_21()
             return
 
         raise ValueError("Relative angle constraint could not be created")
@@ -234,7 +249,9 @@ class GCS2(networkx.DiGraph):
         if constraint.param() is not None:
             constraint.param().gcs = self
 
-        needs_cluster_merge = self._check_if_constraint_addition_requires_cluster_merge(constraint)
+        if isinstance(constraint, DistanceConstraint) or isinstance(constraint, AntiParallel3Constraint) or isinstance(
+            constraint, Perp3Constraint) or isinstance(constraint, RelAngle3Constraint):
+            needs_cluster_merge = self._check_if_constraint_addition_requires_cluster_merge(constraint)
 
         if isinstance(constraint, DistanceConstraint):
             self._add_distance_constraint_to_directed_edge(constraint, first_constraint_in_cluster)
