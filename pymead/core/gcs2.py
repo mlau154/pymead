@@ -73,7 +73,11 @@ class GCS2(networkx.DiGraph):
             root = self._discover_root_from_node(point)
             if root and root not in unique_roots:
                 unique_roots.append(root)
-        return unique_roots if len(unique_roots) > 1 else None
+
+        if len(unique_roots) > 2:
+            raise ValueError("Found more than two unique roots connected to the constraint being added")
+
+        return unique_roots if len(unique_roots) == 2 else None
 
     def _identify_cluster_roots_for_constraint_addition(self, constraint: GeoCon):
         pass
@@ -108,8 +112,79 @@ class GCS2(networkx.DiGraph):
                 return node
         return None
 
+    def _merge_clusters_with_constraint(self, constraint: GeoCon, unique_roots: typing.List[Point]):
+
+        print(f"Performing cluster merge! {unique_roots = }")
+
+        def _add_ghost_edges_to_constraint():
+            if isinstance(constraint, DistanceConstraint):
+                self.add_edge(constraint.p1, constraint.p2)
+            elif isinstance(constraint, RelAngle3Constraint) or isinstance(
+                    constraint, Perp3Constraint) or isinstance(constraint, AntiParallel3Constraint):
+                self.add_edge(constraint.p1, constraint.p2)
+                self.add_edge(constraint.p2, constraint.p3)
+
+        def _determine_merged_cluster_root():
+            current_roots = [r[0] for r in self.roots]
+            if current_roots.index(unique_roots[0]) < current_roots.index(unique_roots[1]):
+                return unique_roots[0]
+            else:
+                return unique_roots[1]
+
+        def _delete_root_status_of_other_roots(new_root: Point):
+            for root in unique_roots:
+                if root is new_root:
+                    continue
+                self._delete_root_status(root)
+                break
+
+        def _flip_distance_constraint(dist_con: DistanceConstraint):
+            edge_data_12 = self.get_edge_data(dist_con.p1, dist_con.p2)
+            if edge_data_12 is not None and "distance" in edge_data_12.keys():
+                self.remove_edge(dist_con.p1, dist_con.p2)
+                self.add_edge(dist_con.p2, dist_con.p1, distance=dist_con)
+                return
+            edge_data_21 = self.get_edge_data(dist_con.p2, dist_con.p1)
+            if edge_data_21 is not None and "distance" in edge_data_21.keys():
+                self.remove_edge(dist_con.p2, dist_con.p1)
+                self.add_edge(dist_con.p1, dist_con.p2, distance=dist_con)
+                return
+            raise ValueError(f"Failed to flip distance constraint {dist_con}")
+
+        def _merge(root: Point):
+            while True:
+                constraints_to_flip = []
+                points_from_root = [point for point in networkx.dfs_preorder_nodes(self, source=root)]
+                print(f"{points_from_root = }")
+                for point in points_from_root:
+                    in_edges = self.in_edges(nbunch=point)
+                    u_values = [in_edge[0] for in_edge in in_edges]
+                    print(f"{point = }, {in_edges = }, {u_values = }")
+                    set_difference = list(set(u_values) - set(points_from_root))
+                    for u_value in set_difference:
+                        constraints_to_flip.extend(u_value.geo_cons)
+                print(f"{constraints_to_flip = }")
+                if len(constraints_to_flip) == 0:
+                    break
+                else:
+                    for constraint_to_flip in constraints_to_flip:
+                        print(f"Flipping distance constraint {constraint_to_flip}")
+                        _flip_distance_constraint(constraint_to_flip)
+                        print("Flipped distance constraint!")
+
+                # TEMPORARY RETURN VALUE - this will only run once
+                # return
+
+        _add_ghost_edges_to_constraint()
+        merged_cluster_root = _determine_merged_cluster_root()
+        print(f"{merged_cluster_root = }")
+        _delete_root_status_of_other_roots(merged_cluster_root)
+        print("Deleted other root status")
+        _merge(merged_cluster_root)
+
     def _add_distance_constraint_to_directed_edge(self, constraint: DistanceConstraint,
-                                                  first_constraint_in_cluster: bool):
+                                                  first_constraint_in_cluster: bool,
+                                                  follows_merge_action: bool = False):
 
         def _add_edge_or_append_data(node1: Point, node2: Point):
             edge_data = self.get_edge_data(node1, node2)
@@ -120,6 +195,17 @@ class GCS2(networkx.DiGraph):
                     networkx.set_edge_attributes(self, {(node1, node2): constraint}, name="distance")
             else:
                 self.add_edge(node1, node2, distance=constraint)
+
+        if follows_merge_action:
+            edge_data_12 = self.get_edge_data(constraint.p1, constraint.p2)
+            if edge_data_12 is not None and "distance" not in edge_data_12.keys():
+                networkx.set_edge_attributes(self, {(constraint.p1, constraint.p2): constraint}, name="distance")
+                return
+            edge_data_21 = self.get_edge_data(constraint.p2, constraint.p1)
+            if edge_data_21 is not None and "distance" not in edge_data_21.keys():
+                networkx.set_edge_attributes(self, {(constraint.p2, constraint.p1): constraint}, name="distance")
+                return
+            raise ValueError("Failed to add constraint following merge")
 
         p1_edges = [edge for edge in self.in_edges(nbunch=constraint.p1, data=True)]
         p2_edges = [edge for edge in self.in_edges(nbunch=constraint.p2, data=True)]
@@ -249,12 +335,18 @@ class GCS2(networkx.DiGraph):
         if constraint.param() is not None:
             constraint.param().gcs = self
 
+        # Perform a cluster merge if necessary
+        merge_clusters = False
         if isinstance(constraint, DistanceConstraint) or isinstance(constraint, AntiParallel3Constraint) or isinstance(
             constraint, Perp3Constraint) or isinstance(constraint, RelAngle3Constraint):
-            needs_cluster_merge = self._check_if_constraint_addition_requires_cluster_merge(constraint)
+            unique_roots = self._check_if_constraint_addition_requires_cluster_merge(constraint)
+            merge_clusters = bool(unique_roots)
+            if merge_clusters:
+                self._merge_clusters_with_constraint(constraint, unique_roots)
 
         if isinstance(constraint, DistanceConstraint):
-            self._add_distance_constraint_to_directed_edge(constraint, first_constraint_in_cluster)
+            self._add_distance_constraint_to_directed_edge(constraint, first_constraint_in_cluster,
+                                                           follows_merge_action=merge_clusters)
         elif isinstance(constraint, RelAngle3Constraint) or isinstance(
                 constraint, AntiParallel3Constraint) or isinstance(constraint, Perp3Constraint):
             self._add_angle_constraint_to_directed_edge(constraint, first_constraint_in_cluster)
