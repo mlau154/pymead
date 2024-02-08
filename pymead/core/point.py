@@ -86,10 +86,26 @@ class Point(PymeadObj):
     def measure_angle(self, other: "Point"):
         return np.arctan2(other.y().value() - self.y().value(), other.x().value() - self.x().value())
 
+    def _is_symmetry_123_and_no_edges(self):
+        if self.gcs is None:
+            return False
+        if len([edge for edge in self.gcs.in_edges(nbunch=self)]) != 0:
+            return False
+        if len([edge for edge in self.gcs.out_edges(nbunch=self)]) != 0:
+            return False
+        symmetry_constraints = []
+        for geo_con in self.geo_cons:
+            if geo_con.__class__.__name__ == "SymmetryConstraint":
+                symmetry_constraints.append(geo_con)
+        for symmetry_constraint in symmetry_constraints:
+            if self is symmetry_constraint.p4:
+                return False
+        return symmetry_constraints
+
     def request_move(self, xp: float, yp: float, force: bool = False):
 
         if (self.gcs is None or (self.gcs is not None and len(self.geo_cons) == 0) or force or
-                (self.gcs is not None and self.root)):
+                (self.gcs is not None and self.root) or self._is_symmetry_123_and_no_edges()):
 
             if self.root:
                 points_to_update = self.gcs.move_root(self, dx=xp-self.x().value(), dy=yp-self.y().value())
@@ -106,6 +122,15 @@ class Point(PymeadObj):
                 self.x().set_value(xp)
                 self.y().set_value(yp)
                 points_to_update = [self]
+                symmetry_constraints = self._is_symmetry_123_and_no_edges()
+                if symmetry_constraints:
+                    for symmetry_constraint in symmetry_constraints:
+                        self.gcs.solve_symmetry_constraint(symmetry_constraint)
+                        points_to_update.extend(symmetry_constraint.child_nodes)
+                    points_to_update = list(set(points_to_update))  # Get only the unique points
+                    for symmetry_constraint in symmetry_constraints:
+                        if symmetry_constraint.canvas_item is not None:
+                            symmetry_constraint.canvas_item.update()
 
             # Update the GUI object, if there is one
             if self.canvas_item is not None:

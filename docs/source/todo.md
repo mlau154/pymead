@@ -24,6 +24,7 @@ Planned feature additions
 - Create a custom context menu for all callback plots (similar to airfoil canvas context menu) with a subset of the
   original context menu actions
 - Make a "File Already Exists. Overwrite?" dialog
+- Allow symmetry constraints as first constraint
 
 Refactoring
 -----------
