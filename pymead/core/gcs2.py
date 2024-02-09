@@ -374,7 +374,7 @@ class GCS2(networkx.DiGraph):
         # Perform a cluster merge if necessary
         merge_clusters = False
         if isinstance(constraint, DistanceConstraint) or isinstance(constraint, AntiParallel3Constraint) or isinstance(
-            constraint, Perp3Constraint) or isinstance(constraint, RelAngle3Constraint):
+                constraint, Perp3Constraint) or isinstance(constraint, RelAngle3Constraint):
             unique_roots = self._check_if_constraint_addition_requires_cluster_merge(constraint)
             merge_clusters = bool(unique_roots)
             if merge_clusters:
@@ -393,8 +393,54 @@ class GCS2(networkx.DiGraph):
             points_solved = self.solve_roc_constraint(constraint)
             self.update_canvas_items(points_solved)
 
+    def _remove_distance_constraint_from_directed_edge(self, constraint: DistanceConstraint):
+        edge_data_12 = self.get_edge_data(constraint.p1, constraint.p2)
+        if edge_data_12 is not None and "distance" in edge_data_12.keys():
+            angle_constraint_present = False
+            for geo_con in constraint.p2.geo_cons:
+                if isinstance(
+                        geo_con, RelAngle3Constraint) or isinstance(
+                        geo_con, AntiParallel3Constraint) or isinstance(
+                        geo_con, Perp3Constraint) and geo_con.p2 is constraint.p2:
+                    angle_constraint_present = True
+                    break
+            if angle_constraint_present:
+                edge_data_12.pop("distance")
+            else:
+                self.remove_edge(constraint.p1, constraint.p2)
+
+        edge_data_21 = self.get_edge_data(constraint.p2, constraint.p1)
+        if edge_data_21 is not None and "distance" in edge_data_21.keys():
+            angle_constraint_present = False
+            for geo_con in constraint.p1.geo_cons:
+                if isinstance(
+                        geo_con, RelAngle3Constraint) or isinstance(
+                    geo_con, AntiParallel3Constraint) or isinstance(
+                    geo_con, Perp3Constraint) and geo_con.p2 is constraint.p1:
+                    angle_constraint_present = True
+                    break
+            if angle_constraint_present:
+                edge_data_21.pop("distance")
+            else:
+                self.remove_edge(constraint.p2, constraint.p1)
+
+    def _remove_angle_constraint_from_directed_edge(self, constraint: RelAngle3Constraint or AntiParallel3Constraint or Perp3Constraint):
+        edge_data_21 = self.get_edge_data(constraint.p2, constraint.p1)
+        if edge_data_21 is not None and "angle" in edge_data_21.keys():
+            if "distance" in edge_data_21.keys():
+                edge_data_21.pop("angle")
+            else:
+                self.remove_edge(constraint.p2, constraint.p1)
+            pass
+
     def remove_constraint(self, constraint: GeoCon):
-        raise NotImplementedError("Constraint removal not yet implemented")
+        if isinstance(constraint, DistanceConstraint):
+            self._remove_distance_constraint_from_directed_edge(constraint)
+        else:
+            raise NotImplementedError(f"Constraint removal not yet implemented for constraint type {type(constraint)}")
+
+        for child_node in constraint.child_nodes:
+            child_node.geo_cons.remove(constraint)
 
     def make_point_copies(self):
         return {point: Point(x=point.x().value(), y=point.y().value()) for point in self.points.values()}
