@@ -141,45 +141,81 @@ class GCS2(networkx.DiGraph):
         def _flip_distance_constraint(dist_con: DistanceConstraint):
             edge_data_12 = self.get_edge_data(dist_con.p1, dist_con.p2)
             if edge_data_12 is not None and "distance" in edge_data_12.keys():
-                self.remove_edge(dist_con.p1, dist_con.p2)
-                self.add_edge(dist_con.p2, dist_con.p1, distance=dist_con)
+                if "angle" in edge_data_12.keys():
+                    edge_data_12.pop("distance")
+                else:
+                    # Only remove the edge if there are no other constraints tied to it
+                    self.remove_edge(dist_con.p1, dist_con.p2)
+                if self.get_edge_data(dist_con.p2, dist_con.p1) is None:
+                    self.add_edge(dist_con.p2, dist_con.p1, distance=dist_con)
+                else:
+                    networkx.set_edge_attributes(self, {(dist_con.p2, dist_con.p1): dist_con}, name="distance")
                 return
             edge_data_21 = self.get_edge_data(dist_con.p2, dist_con.p1)
             if edge_data_21 is not None and "distance" in edge_data_21.keys():
-                self.remove_edge(dist_con.p2, dist_con.p1)
-                self.add_edge(dist_con.p1, dist_con.p2, distance=dist_con)
+                if "angle" in edge_data_21.keys():
+                    edge_data_21.pop("distance")
+                else:
+                    self.remove_edge(dist_con.p2, dist_con.p1)
+                if self.get_edge_data(dist_con.p1, dist_con.p2) is None:
+                    self.add_edge(dist_con.p1, dist_con.p2, distance=dist_con)
+                else:
+                    networkx.set_edge_attributes(self, {(dist_con.p1, dist_con.p2): dist_con}, name="distance")
                 return
             raise ValueError(f"Failed to flip distance constraint {dist_con}")
+
+        def _flip_angle_constraint(angle_con: RelAngle3Constraint or Perp3Constraint or AntiParallel3Constraint):
+            edge_data_21 = self.get_edge_data(angle_con.p2, angle_con.p1)
+            if edge_data_21 is not None and "angle" in edge_data_21.keys():
+                if "distance" in edge_data_21.keys():
+                    edge_data_21.pop("angle")
+                else:
+                    self.remove_edge(angle_con.p2, angle_con.p1)
+                if self.get_edge_data(angle_con.p2, angle_con.p3) is None:
+                    self.add_edge(angle_con.p2, angle_con.p3, angle=angle_con)
+                else:
+                    networkx.set_edge_attributes(self, {(angle_con.p2, angle_con.p3): angle_con}, name="angle")
+                return
+            edge_data_23 = self.get_edge_data(angle_con.p2, angle_con.p3)
+            if edge_data_23 is not None and "angle" in edge_data_23.keys():
+                if "distance" in edge_data_23.keys():
+                    edge_data_23.pop("angle")
+                else:
+                    self.remove_edge(angle_con.p2, angle_con.p3)
+                if self.get_edge_data(angle_con.p2, angle_con.p1) is None:
+                    self.add_edge(angle_con.p2, angle_con.p1, angle=angle_con)
+                else:
+                    networkx.set_edge_attributes(self, {(angle_con.p2, angle_con.p1): angle_con}, name="angle")
+                return
+            raise ValueError(f"Failed to flip angle constraint {angle_con}")
 
         def _merge(root: Point):
             while True:
                 constraints_to_flip = []
                 points_from_root = [point for point in networkx.dfs_preorder_nodes(self, source=root)]
-                print(f"{points_from_root = }")
                 for point in points_from_root:
                     in_edges = self.in_edges(nbunch=point)
                     u_values = [in_edge[0] for in_edge in in_edges]
-                    print(f"{point = }, {in_edges = }, {u_values = }")
                     set_difference = list(set(u_values) - set(points_from_root))
                     for u_value in set_difference:
                         constraints_to_flip.extend(u_value.geo_cons)
-                print(f"{constraints_to_flip = }")
                 if len(constraints_to_flip) == 0:
                     break
                 else:
                     for constraint_to_flip in constraints_to_flip:
-                        print(f"Flipping distance constraint {constraint_to_flip}")
-                        _flip_distance_constraint(constraint_to_flip)
-                        print("Flipped distance constraint!")
+                        if isinstance(constraint_to_flip, DistanceConstraint):
+                            _flip_distance_constraint(constraint_to_flip)
+                        elif isinstance(constraint_to_flip, RelAngle3Constraint) or isinstance(
+                                constraint_to_flip, Perp3Constraint) or isinstance(
+                            constraint_to_flip, AntiParallel3Constraint):
+                            _flip_angle_constraint(constraint_to_flip)
 
                 # TEMPORARY RETURN VALUE - this will only run once
-                # return
+                return
 
         _add_ghost_edges_to_constraint()
         merged_cluster_root = _determine_merged_cluster_root()
-        print(f"{merged_cluster_root = }")
         _delete_root_status_of_other_roots(merged_cluster_root)
-        print("Deleted other root status")
         _merge(merged_cluster_root)
 
     def _add_distance_constraint_to_directed_edge(self, constraint: DistanceConstraint,
