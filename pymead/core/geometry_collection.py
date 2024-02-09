@@ -401,7 +401,7 @@ class GeometryCollection(DualRep):
             for geo_con in pymead_obj.geo_cons[::-1]:
                 self.remove_pymead_obj(geo_con)
 
-            self.gcs.remove_point(pymead_obj)
+            self.gcs._remove_point(pymead_obj)
 
         elif isinstance(pymead_obj, Dimension):
             # Remove the dimension references from the points
@@ -471,7 +471,7 @@ class GeometryCollection(DualRep):
         point.x().geo_col = self
         point.y().geo_col = self
         self.add_pymead_obj_by_ref(point, assign_unique_name=assign_unique_name)
-        self.gcs.add_point(point)
+        self.gcs._add_point(point)
 
         return point
 

@@ -11,12 +11,12 @@ class GCS2(networkx.DiGraph):
         self.points = {}
         self.roots = []
 
-    def add_point(self, point: Point):
+    def _add_point(self, point: Point):
         point.gcs = self
         self.add_node(point)
         self.points[point.name()] = point
 
-    def remove_point(self, point: Point):
+    def _remove_point(self, point: Point):
         self.remove_node(point)
         self.points.pop(point.name())
 
@@ -27,7 +27,7 @@ class GCS2(networkx.DiGraph):
                 return False
         return True
 
-    def _set_distance_constraint_as_root(self, constraint: DistanceConstraint):
+    def _set_constraint_as_root(self, constraint: DistanceConstraint or RelAngle3Constraint or AntiParallel3Constraint or Perp3Constraint):
         constraint.child_nodes[0].root = True
         constraint.child_nodes[1].rotation_handle = True
         if constraint.child_nodes[0] not in [r[0] for r in self.roots]:
@@ -113,8 +113,6 @@ class GCS2(networkx.DiGraph):
         return None
 
     def _merge_clusters_with_constraint(self, constraint: GeoCon, unique_roots: typing.List[Point]):
-
-        print(f"Performing cluster merge! {unique_roots = }")
 
         def _add_ghost_edges_to_constraint():
             if isinstance(constraint, DistanceConstraint):
@@ -361,11 +359,13 @@ class GCS2(networkx.DiGraph):
         # Check if this constraint creates a new cluster
         first_constraint_in_cluster = self._check_if_constraint_creates_new_cluster(constraint)
 
-        # If it does, make sure it is a distance constraint and set it as the root constraint
+        # If it does, set it as the root constraint
         if first_constraint_in_cluster:
-            if not isinstance(constraint, DistanceConstraint):
-                raise ValueError("The first constraint in a constraint cluster must be a distance constraint")
-            self._set_distance_constraint_as_root(constraint)
+            if not isinstance(constraint, DistanceConstraint) or isinstance(
+                    constraint, RelAngle3Constraint) or isinstance(
+                constraint, Perp3Constraint) or isinstance(
+                constraint, AntiParallel3Constraint):
+                self._set_constraint_as_root(constraint)
 
         # If the constraint has a Param associated with it, pass the GCS reference to this parameter
         if constraint.param() is not None:
@@ -424,18 +424,38 @@ class GCS2(networkx.DiGraph):
             else:
                 self.remove_edge(constraint.p2, constraint.p1)
 
-    def _remove_angle_constraint_from_directed_edge(self, constraint: RelAngle3Constraint or AntiParallel3Constraint or Perp3Constraint):
+    def _remove_angle_constraint_from_directed_edge(self, constraint: RelAngle3Constraint
+                                                                      or AntiParallel3Constraint
+                                                                      or Perp3Constraint):
         edge_data_21 = self.get_edge_data(constraint.p2, constraint.p1)
         if edge_data_21 is not None and "angle" in edge_data_21.keys():
             if "distance" in edge_data_21.keys():
                 edge_data_21.pop("angle")
             else:
                 self.remove_edge(constraint.p2, constraint.p1)
-            pass
+
+            # Remove the ghost edge if there is one
+            edge_data_32 = self.get_edge_data(constraint.p3, constraint.p2)
+            if edge_data_32 is not None and len(edge_data_32) == 0:
+                self.remove_edge(constraint.p3, constraint.p2)
+        edge_data_23 = self.get_edge_data(constraint.p2, constraint.p3)
+        if edge_data_23 is not None and "angle" in edge_data_23.keys():
+            if "distance" in edge_data_23.keys():
+                edge_data_23.pop("angle")
+            else:
+                self.remove_edge(constraint.p2, constraint.p3)
+
+            # Remove the ghost edge if there is one
+            edge_data_12 = self.get_edge_data(constraint.p1, constraint.p2)
+            if edge_data_12 is not None and len(edge_data_12) == 0:
+                self.remove_edge(constraint.p1, constraint.p2)
 
     def remove_constraint(self, constraint: GeoCon):
         if isinstance(constraint, DistanceConstraint):
             self._remove_distance_constraint_from_directed_edge(constraint)
+        elif isinstance(constraint, RelAngle3Constraint) or isinstance(
+                constraint, AntiParallel3Constraint) or isinstance(constraint, Perp3Constraint):
+            self._remove_angle_constraint_from_directed_edge(constraint)
         else:
             raise NotImplementedError(f"Constraint removal not yet implemented for constraint type {type(constraint)}")
 
