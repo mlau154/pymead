@@ -7,8 +7,7 @@ import typing
 from pymead.core.airfoil import Airfoil
 from pymead.core.bezier import Bezier
 from pymead.core.constraints import *
-from pymead.core.constraint_graph import OverConstrainedError
-from pymead.core.gcs2 import GCS2
+from pymead.core.gcs import GCS2
 from pymead.core.dimensions import LengthDimension, AngleDimension, Dimension
 from pymead.core.mea import MEA
 from pymead.core.pymead_obj import DualRep, PymeadObj
@@ -796,13 +795,14 @@ class GeometryCollection(DualRep):
             if isinstance(constraint, AntiParallel3Constraint) or isinstance(constraint, Perp3Constraint):
                 points_solved = self.gcs.solve(constraint)
                 self.gcs.update_canvas_items(points_solved)
-        except (OverConstrainedError, ValueError) as e:
+        except ValueError as e:
             self.remove_pymead_obj(constraint)
             self.clear_selected_objects()
             if self.gui_obj is not None:
-                self.gui_obj.showColoredMessage("Constraint cluster is over-constrained. Removing constraint...",
-                                                4000, "#eb4034")
-            raise e
+                # self.gui_obj.showColoredMessage("Constraint cluster is over-constrained. Removing constraint...",
+                #                                 4000, "#eb4034")
+                self.gui_obj.disp_message_box(str(e), message_mode="error")
+            return
         return constraint
 
     def get_dict_rep(self):
