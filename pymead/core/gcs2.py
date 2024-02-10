@@ -39,6 +39,13 @@ class GCS2(networkx.DiGraph):
         root_idx = [r[0] for r in self.roots].index(root_node)
         self.roots.pop(root_idx)
 
+    def _identify_and_delete_root(self, root_node: Point):
+        for edge in self.out_edges(nbunch=root_node):
+            if edge[1].rotation_handle:
+                self._delete_root_status(root_node, edge[1])
+                return
+        raise ValueError("Could not identify root to remove")
+
     def _get_unique_roots_from_constraint(self, constraint: GeoCon):
         unique_roots = []
         for point in constraint.child_nodes:
@@ -50,19 +57,6 @@ class GCS2(networkx.DiGraph):
             raise ValueError("Found more than two unique roots connected to the constraint being added")
 
         return unique_roots
-
-    def _identify_cluster_roots_for_constraint_addition(self, constraint: GeoCon):
-        pass
-
-    def _check_if_node_has_incident_edge(self, node: Point):
-        in_edges = [edge for edge in self.in_edges(nbunch=node)]
-        return True if in_edges else False
-
-    def _check_if_node_reaches_root(self, source_node: Point):
-        for node in networkx.dfs_preorder_nodes(self, source=source_node):
-            if node.root:
-                return True
-        return False
 
     def _discover_root_from_node(self, source_node: Point):
         """
@@ -156,8 +150,8 @@ class GCS2(networkx.DiGraph):
             self.add_edge(angle_con.p2, angle_con.p3)
         self._reassign_angle_constraint(angle_con)
 
-    def _add_ghost_edges_to_angle_constraint(self, constraint: RelAngle3Constraint or AntiParallel3Constraint or
-                                                               Perp3Constraint):
+    def _add_ghost_edges_to_angle_constraint(
+            self, constraint: RelAngle3Constraint or AntiParallel3Constraint or Perp3Constraint):
         # Only add ghost edges if there is not a concrete edge present (even if facing the wrong direction)
         if not (self.get_edge_data(constraint.p1, constraint.p2)
                 or self.get_edge_data(constraint.p2, constraint.p1)):
@@ -170,7 +164,7 @@ class GCS2(networkx.DiGraph):
         subgraph = self.subgraph([node for node in networkx.dfs_preorder_nodes(self, source=root_node)])
         return networkx.is_branching(subgraph)
 
-    def _merge_clusters_with_constraint(self, constraint: GeoCon, unique_roots: typing.List[Point]):
+    def _merge_clusters_with_constraint(self, unique_roots: typing.List[Point]):
 
         def _determine_merged_cluster_root():
             current_roots = [r[0] for r in self.roots]
@@ -198,10 +192,11 @@ class GCS2(networkx.DiGraph):
         first_constraint_in_cluster = self._check_if_constraint_creates_new_cluster(constraint)
 
         # If it does, set it as the root constraint
-        if first_constraint_in_cluster and (isinstance(constraint, DistanceConstraint) or isinstance(
-                constraint, RelAngle3Constraint) or isinstance(
-            constraint, Perp3Constraint) or isinstance(
-            constraint, AntiParallel3Constraint)):
+        if first_constraint_in_cluster and (
+                isinstance(constraint, DistanceConstraint) or
+                isinstance(constraint, RelAngle3Constraint) or
+                isinstance(constraint, Perp3Constraint) or
+                isinstance(constraint, AntiParallel3Constraint)):
             self._set_edge_as_root(constraint.p1, constraint.p2)
 
         # If the constraint has a Param associated with it, pass the GCS reference to this parameter
@@ -220,7 +215,7 @@ class GCS2(networkx.DiGraph):
             unique_roots = self._get_unique_roots_from_constraint(constraint)
             merge_clusters = False if len(unique_roots) < 2 else True
             if merge_clusters:
-                root = self._merge_clusters_with_constraint(constraint, unique_roots)
+                root = self._merge_clusters_with_constraint(unique_roots)
             else:
                 constraints_to_reassign = self._orient_flow_away_from_root(unique_roots[0])
                 self._reassign_constraints(constraints_to_reassign)
@@ -239,23 +234,15 @@ class GCS2(networkx.DiGraph):
             points_solved = self.solve_roc_constraint(constraint)
             self.update_canvas_items(points_solved)
 
-    def _identify_and_delete_root(self, root_node: Point):
-        for edge in self.out_edges(nbunch=root_node):
-            if edge[1].rotation_handle:
-                self._delete_root_status(root_node, edge[1])
-                return
-        raise ValueError("Could not identify root to remove")
-
     def _remove_distance_constraint_from_directed_edge(self, constraint: DistanceConstraint):
         edges_removed = None
         edge_data_12 = self.get_edge_data(constraint.p1, constraint.p2)
         if edge_data_12 is not None and "distance" in edge_data_12.keys():
             angle_constraint_present = False
             for geo_con in constraint.p2.geo_cons:
-                if isinstance(
-                        geo_con, RelAngle3Constraint) or isinstance(
-                    geo_con, AntiParallel3Constraint) or isinstance(
-                    geo_con, Perp3Constraint) and geo_con.p2 is constraint.p2:
+                if (isinstance(geo_con, RelAngle3Constraint) or
+                        isinstance(geo_con, AntiParallel3Constraint) or
+                        isinstance(geo_con, Perp3Constraint) and geo_con.p2 is constraint.p2):
                     angle_constraint_present = True
                     break
             if angle_constraint_present:
@@ -289,9 +276,8 @@ class GCS2(networkx.DiGraph):
 
         raise ValueError(f"Failed to remove distance constraint {constraint}")
 
-    def _remove_angle_constraint_from_directed_edge(self, constraint: RelAngle3Constraint or
-                                                                      AntiParallel3Constraint or
-                                                                      Perp3Constraint):
+    def _remove_angle_constraint_from_directed_edge(
+            self, constraint: RelAngle3Constraint or AntiParallel3Constraint or Perp3Constraint):
         edges_removed = None
         edge_data_21 = self.get_edge_data(constraint.p2, constraint.p1)
         if edge_data_21 is not None and "angle" in edge_data_21.keys():
@@ -355,9 +341,6 @@ class GCS2(networkx.DiGraph):
 
         for child_node in constraint.child_nodes:
             child_node.geo_cons.remove(constraint)
-
-    def make_point_copies(self):
-        return {point: Point(x=point.x().value(), y=point.y().value()) for point in self.points.values()}
 
     def _solve_distance_constraint(self, source: DistanceConstraint):
         points_solved = []
@@ -481,9 +464,9 @@ class GCS2(networkx.DiGraph):
 
         points_solved = list(set(points_solved).union(set(other_points_solved)))
 
-        networkx.draw_circular(self, labels={point: point.name() for point in self.nodes})
-        from matplotlib import pyplot as plt
-        plt.show()
+        # networkx.draw_circular(self, labels={point: point.name() for point in self.nodes})
+        # from matplotlib import pyplot as plt
+        # plt.show()
 
         return points_solved
 
