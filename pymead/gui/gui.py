@@ -989,8 +989,9 @@ class GUI(QMainWindow):
         self.geo_col.canvas.geo_col = self.geo_col
         self.auto_range_geometry()
 
-    def disp_message_box(self, message: str, message_mode: str = 'error', rich_text: bool = False):
-        disp_message_box(message, self, message_mode=message_mode, rich_text=rich_text)
+    def disp_message_box(self, message: str, message_mode: str = "error", rich_text: bool = False):
+        disp_message_box(message, self, message_mode=message_mode, rich_text=rich_text,
+                         theme=self.themes[self.current_theme])
 
     def output_area_text(self, text: str, mode: str = 'plain', mono: bool = True, line_break: bool = False):
         # prepend_html = f"<head><style>body {{font-family: DejaVu Sans Mono;}}</style>" \

@@ -67,7 +67,8 @@ grid_names = {'label': ['label.row', 'label.column', 'label.rowSpan', 'label.col
 # sum(<ragged list>, []) flattens a ragged (or uniform) 2-D list into a 1-D list
 reserved_names = ['label', 'widget_type', 'push_button', 'push_button_action', 'clicked_connect', 'active_checkbox',
                   *sum([v for v in grid_names.values()], [])]
-msg_modes = {'info': QMessageBox.Information, 'warn': QMessageBox.Warning, 'question': QMessageBox.Question}
+msg_modes = {'info': QMessageBox.Information, 'warn': QMessageBox.Warning, 'question': QMessageBox.Question,
+             "error": QMessageBox.Critical}
 
 
 def convert_dialog_to_mset_settings(dialog_input: dict):
@@ -2839,12 +2840,81 @@ class MSESFieldPlotDialog(PymeadDialog):
 
 
 class PymeadMessageBox(QMessageBox):
-    def __init__(self, parent, msg: str, window_title: str, msg_mode: str):
+
+    _gripSize = 2
+
+    def __init__(self, parent, msg: str, window_title: str, msg_mode: str, theme: dict):
         super().__init__(parent=parent)
         self.setText(msg)
         self.setWindowTitle(window_title)
+        self.setWindowFlags(self.windowFlags() | Qt.FramelessWindowHint)
         self.setIcon(msg_modes[msg_mode])
         self.setFont(self.parent().font())
+
+        # mandatory for cursor updates
+        self.setMouseTracking(True)
+
+        self.theme = theme
+
+        self.title_bar = DialogTitleBar(self, theme=theme)
+
+        self.sideGrips = [
+            SideGrip(self, Qt.LeftEdge),
+            SideGrip(self, Qt.TopEdge),
+            SideGrip(self, Qt.RightEdge),
+            SideGrip(self, Qt.BottomEdge),
+        ]
+        # corner grips should be "on top" of everything, otherwise the side grips
+        # will take precedence on mouse events, so we are adding them *after*;
+        # alternatively, widget.raise_() can be used
+        self.cornerGrips = [QSizeGrip(self) for _ in range(4)]
+
+        self.resize(self.width(), self.title_bar.height() + self.height())
+
+        self.title_bar.title.setStyleSheet(
+            f"""background-color: qlineargradient(x1: 0.0, y1: 0.5, x2: 1.0, y2: 0.5, 
+                            stop: 0 {theme['title-gradient-color']}, 
+                            stop: 0.6 {theme['background-color']})""")
+
+    @property
+    def gripSize(self):
+        return self._gripSize
+
+    def setGripSize(self, size):
+        if size == self._gripSize:
+            return
+        self._gripSize = max(2, size)
+        self.updateGrips()
+
+    def updateGrips(self):
+        self.setContentsMargins(self.gripSize, self.gripSize + self.title_bar.height(), self.gripSize, self.gripSize)
+
+        outRect = self.rect()
+        # an "inner" rect used for reference to set the geometries of size grips
+        inRect = outRect.adjusted(self.gripSize, self.gripSize, -self.gripSize, -self.gripSize)
+
+        # top left
+        self.cornerGrips[0].setGeometry(QRect(outRect.topLeft(), inRect.topLeft()))
+        # top right
+        self.cornerGrips[1].setGeometry(QRect(outRect.topRight(), inRect.topRight()).normalized())
+        # bottom right
+        self.cornerGrips[2].setGeometry(QRect(inRect.bottomRight(), outRect.bottomRight()))
+        # bottom left
+        self.cornerGrips[3].setGeometry(QRect(outRect.bottomLeft(), inRect.bottomLeft()).normalized())
+
+        # left edge
+        self.sideGrips[0].setGeometry(0, inRect.top(), self.gripSize, inRect.height())
+        # top edge
+        self.sideGrips[1].setGeometry(inRect.left(), 0, inRect.width(), self.gripSize)
+        # right edge
+        self.sideGrips[2].setGeometry(inRect.left() + inRect.width(), inRect.top(), self.gripSize, inRect.height())
+        # bottom edge
+        self.sideGrips[3].setGeometry(self.gripSize, inRect.top() + inRect.height(), inRect.width(), self.gripSize)
+
+    def resizeEvent(self, event):
+        self.title_bar.resize(self.width(), self.title_bar.height())
+        super().resizeEvent(event)
+        self.updateGrips()
 
 
 class GridBounds(QWidget):
