@@ -27,31 +27,18 @@ class GCS2(networkx.DiGraph):
                 return False
         return True
 
-    def _set_constraint_as_root(self, constraint: DistanceConstraint or RelAngle3Constraint or AntiParallel3Constraint or Perp3Constraint):
-        constraint.child_nodes[0].root = True
-        constraint.child_nodes[1].rotation_handle = True
-        if constraint.child_nodes[0] not in [r[0] for r in self.roots]:
-            self.roots.append((constraint.child_nodes[0], constraint.child_nodes[1], constraint))
+    def _set_edge_as_root(self, u: Point, v: Point):
+        u.root = True
+        v.rotation_handle = True
+        if u not in [edge[0] for edge in self.roots]:
+            self.roots.append((u, v))
 
-    def _delete_root_status(self, root_node: Point):
-        for edge in self.out_edges(nbunch=root_node, data=True):
-            if "distance" not in edge[2].keys():
-                continue
-            else:
-                constraint = edge[2]["distance"]
-
-            if not (constraint.child_nodes[0].rotation_handle or constraint.child_nodes[1].rotation_handle):
-                continue
-
-            for node in constraint.child_nodes:
-                node.root = False
-                node.rotation_handle = False
-
-            root_idx = [r[0] for r in self.roots].index(root_node)
-            self.roots.pop(root_idx)
-            return
-
-        raise ValueError("Could not detect the distance constraint or rotation handle associated with this root")
+    def _delete_root_status(self, root_node: Point, rotation_handle_node: Point):
+        print(f"{root_node = }")
+        root_node.root = False
+        rotation_handle_node.rotation_handle = False
+        root_idx = [r[0] for r in self.roots].index(root_node)
+        self.roots.pop(root_idx)
 
     def _get_unique_roots_from_constraint(self, constraint: GeoCon):
         unique_roots = []
@@ -181,6 +168,10 @@ class GCS2(networkx.DiGraph):
                 self.get_edge_data(constraint.p3, constraint.p2)):
             self.add_edge(constraint.p2, constraint.p3)
 
+    def _test_if_cluster_is_branching(self, root_node: Point):
+        subgraph = self.subgraph([node for node in networkx.dfs_preorder_nodes(self, source=root_node)])
+        return networkx.is_branching(subgraph)
+
     def _merge_clusters_with_constraint(self, constraint: GeoCon, unique_roots: typing.List[Point]):
 
         def _determine_merged_cluster_root():
@@ -194,205 +185,14 @@ class GCS2(networkx.DiGraph):
             for root in unique_roots:
                 if root is new_root:
                     continue
-                self._delete_root_status(root)
+                self._identify_and_delete_root(root)
                 break
-
-        # def _flip_distance_constraint(dist_con: DistanceConstraint):
-        #     edge_data_12 = self.get_edge_data(dist_con.p1, dist_con.p2)
-        #     if edge_data_12 is not None:
-        #         networkx.set_edge_attributes(self, {(dist_con.p1, dist_con.p2): dist_con}, name="distance")
-        #         return
-        #     edge_data_21 = self.get_edge_data(dist_con.p2, dist_con.p1)
-        #     if edge_data_21 is not None:
-        #         networkx.set_edge_attributes(self, {(dist_con.p2, dist_con.p1): dist_con}, name="distance")
-        #         return
-        #     raise ValueError(f"Failed to flip distance constraint {dist_con}")
-        #
-        # def _flip_angle_constraint(angle_con: RelAngle3Constraint or Perp3Constraint or AntiParallel3Constraint):
-        #     edge_data_21 = self.get_edge_data(angle_con.p2, angle_con.p1)
-        #     if edge_data_21 is not None:
-        #         networkx.set_edge_attributes(self, {(angle_con.p2, angle_con.p1): angle_con}, name="angle")
-        #         return
-        #     edge_data_23 = self.get_edge_data(angle_con.p2, angle_con.p3)
-        #     if edge_data_23 is not None:
-        #         networkx.set_edge_attributes(self, {(angle_con.p2, angle_con.p3): angle_con}, name="angle")
-        #         return
-        #     raise ValueError(f"Failed to flip angle constraint {angle_con}")
-        #
-        # def _merge(root: Point):
-        #     while True:
-        #         constraints_to_flip = []
-        #         points_from_root = [point for point in networkx.dfs_preorder_nodes(self, source=root)]
-        #         for point in points_from_root:
-        #             in_edges = self.in_edges(nbunch=point)
-        #             u_values = [in_edge[0] for in_edge in in_edges]
-        #             v_values = [in_edge[1] for in_edge in in_edges]
-        #             set_difference = list(set(u_values) - set(points_from_root))
-        #             for u_value in set_difference:
-        #                 constraints_to_flip.extend(u_value.geo_cons)
-        #                 in_edge_idx = u_values.index(u_value)
-        #                 v = v_values[in_edge_idx]
-        #                 self.remove_edge(u_value, v)
-        #                 self.add_edge(v, u_value)
-        #                 print(f"Removing edge {u_value}, {v} and adding edge {v}, {u_value}")
-        #         constraints_to_flip = list(set(constraints_to_flip))
-        #         print(f"{constraints_to_flip = }, {points_from_root = }")
-        #         if len(constraints_to_flip) == 0:
-        #             break
-        #         else:
-        #             for constraint_to_flip in constraints_to_flip:
-        #                 if isinstance(constraint_to_flip, DistanceConstraint):
-        #                     _flip_distance_constraint(constraint_to_flip)
-        #                 elif isinstance(constraint_to_flip, RelAngle3Constraint) or isinstance(
-        #                         constraint_to_flip, Perp3Constraint) or isinstance(
-        #                     constraint_to_flip, AntiParallel3Constraint):
-        #                     _flip_angle_constraint(constraint_to_flip)
-
-                # TEMPORARY RETURN VALUE - this will only run once
-                # return
 
         merged_cluster_root = _determine_merged_cluster_root()
         _delete_root_status_of_other_roots(merged_cluster_root)
         constraints_needing_reassign = self._orient_flow_away_from_root(merged_cluster_root)
         self._reassign_constraints(constraints_needing_reassign)
-
-    # def _add_distance_constraint_to_directed_edge(self, constraint: DistanceConstraint,
-    #                                               first_constraint_in_cluster: bool,
-    #                                               follows_merge_action: bool = False):
-    #
-    #     def _add_edge_or_append_data(node1: Point, node2: Point):
-    #         edge_data = self.get_edge_data(node1, node2)
-    #         if edge_data:
-    #             if "distance" in edge_data.keys():
-    #                 raise ValueError("Cannot add a second distance constraint between the same pair of points")
-    #             else:
-    #                 networkx.set_edge_attributes(self, {(node1, node2): constraint}, name="distance")
-    #         else:
-    #             self.add_edge(node1, node2, distance=constraint)
-    #
-    #     if follows_merge_action:
-    #         edge_data_12 = self.get_edge_data(constraint.p1, constraint.p2)
-    #         if edge_data_12 is not None and "distance" not in edge_data_12.keys():
-    #             networkx.set_edge_attributes(self, {(constraint.p1, constraint.p2): constraint}, name="distance")
-    #             return
-    #         edge_data_21 = self.get_edge_data(constraint.p2, constraint.p1)
-    #         if edge_data_21 is not None and "distance" not in edge_data_21.keys():
-    #             networkx.set_edge_attributes(self, {(constraint.p2, constraint.p1): constraint}, name="distance")
-    #             return
-    #         raise ValueError("Failed to add constraint following merge")
-    #
-    #     p1_edges = [edge for edge in self.in_edges(nbunch=constraint.p1, data=True)]
-    #     p2_edges = [edge for edge in self.in_edges(nbunch=constraint.p2, data=True)]
-    #     edge_lists = [p1_edges, p2_edges]
-    #     point_pairs = [(constraint.p1, constraint.p2), (constraint.p2, constraint.p1)]
-    #
-    #     if first_constraint_in_cluster:
-    #         _add_edge_or_append_data(constraint.p1, constraint.p2)
-    #         return
-    #
-    #     for edge_list, point_pair in zip(edge_lists, point_pairs):
-    #
-    #         if len(edge_list) > 1:
-    #             raise ValueError("Detected multiple edges for the same pair of points when adding distance constraint")
-    #
-    #         if len(edge_list) <= 1:
-    #             if (self._check_if_node_has_incident_edge(point_pair[1])
-    #                     or self._check_if_node_reaches_root(point_pair[1])):
-    #                 continue
-    #
-    #             _add_edge_or_append_data(point_pair[0], point_pair[1])
-    #             return
-    #
-    #     raise ValueError("Failed to add distance constraint")
-    #
-    # def _add_angle_constraint_to_directed_edge(
-    #         self, constraint: RelAngle3Constraint or AntiParallel3Constraint or Perp3Constraint,
-    #         first_constraint_in_cluster: bool):
-    #
-    #     if first_constraint_in_cluster:
-    #         raise ValueError("First constraint in a cluster must be a distance constraint")
-    #
-    #     in_edges_p1 = tuple([edge for edge in self.in_edges(nbunch=constraint.p1, data=True)])
-    #     in_edges_p2 = tuple([edge for edge in self.in_edges(nbunch=constraint.p2, data=True)])
-    #     in_edges_p3 = tuple([edge for edge in self.in_edges(nbunch=constraint.p3, data=True)])
-    #
-    #     # Edges from vertex to outer points
-    #     edge_data_p21 = self.get_edge_data(constraint.p2, constraint.p1)
-    #     edge_data_p23 = self.get_edge_data(constraint.p2, constraint.p3)
-    #
-    #     # Edges from outer points to vertex
-    #     edge_data_p12 = self.get_edge_data(constraint.p1, constraint.p2)
-    #     edge_data_p32 = self.get_edge_data(constraint.p3, constraint.p2)
-    #
-    #     angle_in_p21 = False if not edge_data_p21 else "angle" in edge_data_p21.keys()
-    #     angle_in_p23 = False if not edge_data_p23 else "angle" in edge_data_p23.keys()
-    #
-    #     def add_edge_21():
-    #         self.add_edge(constraint.p2, constraint.p1, angle=constraint)
-    #         if not edge_data_p32:
-    #             self.add_edge(constraint.p3, constraint.p2)
-    #
-    #     def add_edge_23():
-    #         self.add_edge(constraint.p2, constraint.p3, angle=constraint)
-    #         if not edge_data_p12:
-    #             self.add_edge(constraint.p1, constraint.p2)
-    #
-    #     if angle_in_p21 and angle_in_p23:
-    #         raise ConstraintValidationError(f"{constraint} already has angle constraints associated with both"
-    #                                         f" pairs of points")
-    #
-    #     if edge_data_p21 and not angle_in_p21 and not (
-    #             constraint.p2.root and "distance" in edge_data_p21.keys() and constraint.p1.rotation_handle):
-    #         networkx.set_edge_attributes(self, {(constraint.p2, constraint.p1): constraint}, name="angle")
-    #         return
-    #     if edge_data_p23 and not angle_in_p23 and not (
-    #             constraint.p2.root and "distance" in edge_data_p23.keys() and constraint.p3.rotation_handle):
-    #         networkx.set_edge_attributes(self, {(constraint.p2, constraint.p3): constraint}, name="angle")
-    #         return
-    #
-    #     if len(in_edges_p1) > 0:
-    #         # if angle_in_p12 or angle_in_p21:
-    #         if angle_in_p21 and not constraint.p3.rotation_handle:
-    #             add_edge_23()
-    #             return
-    #         # if angle_in_p23 or angle_in_p32:
-    #         if angle_in_p23:
-    #             raise ValueError("Cannot create a valid angle constraint from this case")
-    #         if constraint.p2 not in [nbr for nbr in self.neighbors(constraint.p3)]:
-    #             add_edge_23()
-    #             return
-    #     if len(in_edges_p2) > 0:
-    #         # if angle_in_p12 or angle_in_p21:
-    #         if angle_in_p21 and not constraint.p3.rotation_handle:
-    #             add_edge_23()
-    #             return
-    #         # if angle_in_p23 or angle_in_p32:
-    #         if angle_in_p23 and not constraint.p1.rotation_handle:
-    #             add_edge_21()
-    #             return
-    #         if constraint.p2 not in [nbr for nbr in self.neighbors(constraint.p3)]:
-    #             add_edge_23()
-    #             return
-    #     if len(in_edges_p3) > 0:
-    #         # if angle_in_p12 or angle_in_p21:
-    #         if angle_in_p21:
-    #             raise ValueError("Cannot create a valid angle constraint from this case")
-    #         # if angle_in_p23 or angle_in_p32:
-    #         if angle_in_p23 and not constraint.p1.rotation_handle:
-    #             add_edge_21()
-    #             return
-    #         if constraint.p2 not in [nbr for nbr in self.neighbors(constraint.p1)]:
-    #             add_edge_21()
-    #             return
-    #
-    #     if not constraint.p3.rotation_handle and constraint.p2 not in [nbr for nbr in self.neighbors(constraint.p3)]:
-    #         add_edge_23()
-    #         return
-    #     if not constraint.p1.rotation_handle and constraint.p2 not in [nbr for nbr in self.neighbors(constraint.p1)]:
-    #         add_edge_21()
-    #         return
-    #
-    #     raise ValueError("Relative angle constraint could not be created")
+        return merged_cluster_root
 
     def add_constraint(self, constraint: GeoCon):
 
@@ -401,10 +201,10 @@ class GCS2(networkx.DiGraph):
 
         # If it does, set it as the root constraint
         if first_constraint_in_cluster and (isinstance(constraint, DistanceConstraint) or isinstance(
-                    constraint, RelAngle3Constraint) or isinstance(
-                constraint, Perp3Constraint) or isinstance(
-                constraint, AntiParallel3Constraint)):
-            self._set_constraint_as_root(constraint)
+                constraint, RelAngle3Constraint) or isinstance(
+            constraint, Perp3Constraint) or isinstance(
+            constraint, AntiParallel3Constraint)):
+            self._set_edge_as_root(constraint.p1, constraint.p2)
 
         # If the constraint has a Param associated with it, pass the GCS reference to this parameter
         if constraint.param() is not None:
@@ -422,10 +222,20 @@ class GCS2(networkx.DiGraph):
             unique_roots = self._get_unique_roots_from_constraint(constraint)
             merge_clusters = False if len(unique_roots) < 2 else True
             if merge_clusters:
-                self._merge_clusters_with_constraint(constraint, unique_roots)
+                root = self._merge_clusters_with_constraint(constraint, unique_roots)
             else:
                 constraints_to_reassign = self._orient_flow_away_from_root(unique_roots[0])
                 self._reassign_constraints(constraints_to_reassign)
+                root = self._discover_root_from_node(constraint.p1)
+
+            print(f"{root = }")
+
+            # Check if the addition of this constraint creates a closed loop
+            is_branching = self._test_if_cluster_is_branching(root)
+            print(f"{is_branching = }")
+            if not is_branching:
+                raise ValueError("Detected a closed loop in the constraint graph. Closed loop sets of constraints "
+                                 "are currently not supported in pymead")
 
         elif isinstance(constraint, SymmetryConstraint):
             points_solved = self.solve_symmetry_constraint(constraint)
@@ -434,71 +244,119 @@ class GCS2(networkx.DiGraph):
             points_solved = self.solve_roc_constraint(constraint)
             self.update_canvas_items(points_solved)
 
+    def _identify_and_delete_root(self, root_node: Point):
+        for edge in self.out_edges(nbunch=root_node):
+            if edge[1].rotation_handle:
+                self._delete_root_status(root_node, edge[1])
+                return
+        raise ValueError("Could not identify root to remove")
+
     def _remove_distance_constraint_from_directed_edge(self, constraint: DistanceConstraint):
+        edges_removed = None
         edge_data_12 = self.get_edge_data(constraint.p1, constraint.p2)
         if edge_data_12 is not None and "distance" in edge_data_12.keys():
             angle_constraint_present = False
             for geo_con in constraint.p2.geo_cons:
                 if isinstance(
                         geo_con, RelAngle3Constraint) or isinstance(
-                        geo_con, AntiParallel3Constraint) or isinstance(
-                        geo_con, Perp3Constraint) and geo_con.p2 is constraint.p2:
+                    geo_con, AntiParallel3Constraint) or isinstance(
+                    geo_con, Perp3Constraint) and geo_con.p2 is constraint.p2:
                     angle_constraint_present = True
                     break
             if angle_constraint_present:
                 edge_data_12.pop("distance")
             else:
+                if constraint.p1.root:
+                    self._identify_and_delete_root(constraint.p1)
                 self.remove_edge(constraint.p1, constraint.p2)
+                edges_removed = [(constraint.p1, constraint.p2)]
+
+            return edges_removed
 
         edge_data_21 = self.get_edge_data(constraint.p2, constraint.p1)
         if edge_data_21 is not None and "distance" in edge_data_21.keys():
             angle_constraint_present = False
             for geo_con in constraint.p1.geo_cons:
-                if isinstance(
-                        geo_con, RelAngle3Constraint) or isinstance(
-                    geo_con, AntiParallel3Constraint) or isinstance(
-                    geo_con, Perp3Constraint) and geo_con.p2 is constraint.p1:
+                if (isinstance(geo_con, RelAngle3Constraint) or
+                        isinstance(geo_con, AntiParallel3Constraint) or
+                        isinstance(geo_con, Perp3Constraint) and geo_con.p2 is constraint.p1):
                     angle_constraint_present = True
                     break
             if angle_constraint_present:
                 edge_data_21.pop("distance")
             else:
+                if constraint.p2.root:
+                    self._identify_and_delete_root(constraint.p2)
                 self.remove_edge(constraint.p2, constraint.p1)
+                edges_removed = [(constraint.p2, constraint.p1)]
 
-    def _remove_angle_constraint_from_directed_edge(self, constraint: RelAngle3Constraint
-                                                                      or AntiParallel3Constraint
-                                                                      or Perp3Constraint):
+            return edges_removed
+
+        raise ValueError(f"Failed to remove distance constraint {constraint}")
+
+    def _remove_angle_constraint_from_directed_edge(self, constraint: RelAngle3Constraint or
+                                                                      AntiParallel3Constraint or
+                                                                      Perp3Constraint):
+        edges_removed = None
         edge_data_21 = self.get_edge_data(constraint.p2, constraint.p1)
         if edge_data_21 is not None and "angle" in edge_data_21.keys():
             if "distance" in edge_data_21.keys():
                 edge_data_21.pop("angle")
             else:
                 self.remove_edge(constraint.p2, constraint.p1)
+                edges_removed = [(constraint.p2, constraint.p1)]
 
             # Remove the ghost edge if there is one
             edge_data_32 = self.get_edge_data(constraint.p3, constraint.p2)
             if edge_data_32 is not None and len(edge_data_32) == 0:
+                if constraint.p3.root:
+                    self._identify_and_delete_root(constraint.p3)
                 self.remove_edge(constraint.p3, constraint.p2)
+                edges_removed.append((constraint.p3, constraint.p2))
+
+            return edges_removed
+
         edge_data_23 = self.get_edge_data(constraint.p2, constraint.p3)
         if edge_data_23 is not None and "angle" in edge_data_23.keys():
             if "distance" in edge_data_23.keys():
                 edge_data_23.pop("angle")
             else:
                 self.remove_edge(constraint.p2, constraint.p3)
+                edges_removed = [(constraint.p2, constraint.p3)]
 
             # Remove the ghost edge if there is one
             edge_data_12 = self.get_edge_data(constraint.p1, constraint.p2)
             if edge_data_12 is not None and len(edge_data_12) == 0:
+                if constraint.p1.root:
+                    self._identify_and_delete_root(constraint.p1)
                 self.remove_edge(constraint.p1, constraint.p2)
+                edges_removed.append((constraint.p1, constraint.p2))
+
+            return edges_removed
+
+        raise ValueError(f"Failed to remove angle constraint {constraint}")
+
+    def _assign_new_root_if_required(self, v_of_edge_removed: Point):
+        neighbors_of_v = [nbr for nbr in self.adj[v_of_edge_removed]]
+        if len(neighbors_of_v) > 0:
+            self._set_edge_as_root(v_of_edge_removed, neighbors_of_v[0])
+        else:
+            pass  # This means we trimmed the end of the branch
+
+    def _update_roots_based_on_constraint_removal(self, edges_removed: typing.List[tuple]):
+        for edge_removed in edges_removed:
+            self._assign_new_root_if_required(edge_removed[1])
 
     def remove_constraint(self, constraint: GeoCon):
+        edges_removed = None
         if isinstance(constraint, DistanceConstraint):
-            self._remove_distance_constraint_from_directed_edge(constraint)
+            edges_removed = self._remove_distance_constraint_from_directed_edge(constraint)
         elif isinstance(constraint, RelAngle3Constraint) or isinstance(
                 constraint, AntiParallel3Constraint) or isinstance(constraint, Perp3Constraint):
-            self._remove_angle_constraint_from_directed_edge(constraint)
-        else:
-            raise NotImplementedError(f"Constraint removal not yet implemented for constraint type {type(constraint)}")
+            edges_removed = self._remove_angle_constraint_from_directed_edge(constraint)
+
+        if edges_removed is not None:
+            self._update_roots_based_on_constraint_removal(edges_removed)
 
         for child_node in constraint.child_nodes:
             child_node.geo_cons.remove(constraint)
