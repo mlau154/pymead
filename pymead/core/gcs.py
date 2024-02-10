@@ -110,7 +110,7 @@ class GCS(networkx.DiGraph):
         if u not in [edge[0] for edge in self.roots]:
             self.roots.append((u, v))
 
-    def _delete_root_status(self, root_node: Point, rotation_handle_node: Point):
+    def _delete_root_status(self, root_node: Point, rotation_handle_node: Point = None):
         """
         Removes root status from the given edge.
 
@@ -127,7 +127,8 @@ class GCS(networkx.DiGraph):
 
         """
         root_node.root = False
-        rotation_handle_node.rotation_handle = False
+        if rotation_handle_node is not None:
+            rotation_handle_node.rotation_handle = False
         root_idx = [r[0] for r in self.roots].index(root_node)
         self.roots.pop(root_idx)
 
@@ -193,7 +194,7 @@ class GCS(networkx.DiGraph):
             if edge[1].rotation_handle:
                 self._delete_root_status(root_node, edge[1])
                 return
-        raise ValueError("Could not identify root to remove")
+        self._delete_root_status(root_node=root_node)
 
     def _get_unique_roots_from_constraint(self, constraint: GeoCon) -> typing.List[Point]:
         """
@@ -532,8 +533,6 @@ class GCS(networkx.DiGraph):
             if angle_constraint_present:
                 edge_data_12.pop("distance")
             else:
-                if constraint.p1.root:
-                    self._identify_and_delete_root(constraint.p1)
                 self.remove_edge(constraint.p1, constraint.p2)
                 edges_removed = [(constraint.p1, constraint.p2)]
 
@@ -551,8 +550,6 @@ class GCS(networkx.DiGraph):
             if angle_constraint_present:
                 edge_data_21.pop("distance")
             else:
-                if constraint.p2.root:
-                    self._identify_and_delete_root(constraint.p2)
                 self.remove_edge(constraint.p2, constraint.p1)
                 edges_removed = [(constraint.p2, constraint.p1)]
 
@@ -574,8 +571,6 @@ class GCS(networkx.DiGraph):
             # Remove the ghost edge if there is one
             edge_data_32 = self.get_edge_data(constraint.p3, constraint.p2)
             if edge_data_32 is not None and len(edge_data_32) == 0:
-                if constraint.p3.root:
-                    self._identify_and_delete_root(constraint.p3)
                 self.remove_edge(constraint.p3, constraint.p2)
                 edges_removed.append((constraint.p3, constraint.p2))
 
@@ -592,8 +587,6 @@ class GCS(networkx.DiGraph):
             # Remove the ghost edge if there is one
             edge_data_12 = self.get_edge_data(constraint.p1, constraint.p2)
             if edge_data_12 is not None and len(edge_data_12) == 0:
-                if constraint.p1.root:
-                    self._identify_and_delete_root(constraint.p1)
                 self.remove_edge(constraint.p1, constraint.p2)
                 edges_removed.append((constraint.p1, constraint.p2))
 
@@ -610,9 +603,17 @@ class GCS(networkx.DiGraph):
 
     def _update_roots_based_on_constraint_removal(self, edges_removed: typing.List[tuple]):
         for edge_removed in edges_removed:
+            if edge_removed[1].rotation_handle:
+                edge_removed[1].rotation_handle = False
+                for out_edge in self.out_edges(nbunch=edge_removed[0]):
+                    out_edge[1].rotation_handle = True
+                    break
+                else:  # In this case, no more edges were attached to the root, so the root should be deleted
+                    self._identify_and_delete_root(edge_removed[0])
             self._assign_new_root_if_required(edge_removed[1])
 
     def remove_constraint(self, constraint: GeoCon):
+
         edges_removed = None
         if isinstance(constraint, DistanceConstraint):
             edges_removed = self._remove_distance_constraint_from_directed_edge(constraint)
