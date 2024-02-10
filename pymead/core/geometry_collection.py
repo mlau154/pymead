@@ -7,7 +7,7 @@ import typing
 from pymead.core.airfoil import Airfoil
 from pymead.core.bezier import Bezier
 from pymead.core.constraints import *
-from pymead.core.gcs import GCS2
+from pymead.core.gcs import GCS
 from pymead.core.dimensions import LengthDimension, AngleDimension, Dimension
 from pymead.core.mea import MEA
 from pymead.core.pymead_obj import DualRep, PymeadObj
@@ -38,7 +38,7 @@ class GeometryCollection(DualRep):
             "geocon": {},
             "dims": {},
         }
-        self.gcs = GCS2()
+        self.gcs = GCS()
         self.gui_obj = gui_obj
         self.canvas = None
         self.tree = None

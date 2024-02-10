@@ -5,22 +5,83 @@ from pymead.core.constraint_equations import *
 from pymead.core.point import Point
 
 
-class GCS2(networkx.DiGraph):
+class GCS(networkx.DiGraph):
+    """
+    A Geometric Constraint Solver (GCS) used to maintain constraints between points in pymead, implemented using
+    the directed graph class in ``networkx``. Instances of this
+    class should not normally be created directly; the geometry collection creates objects of this class when
+    ``GeometryCollection.add_constraint`` is called.
+
+    This constraint solver, while not powerful enough to handle arbitrary systems of equations, is nevertheless
+    sufficient for handling many common types of constraints needed for airfoil systems. The constraints are solved
+    using a graph-constructive approach and maintained using simple rigid body transformations. These transformations
+    occur for a given set of points when the parameter value of a constraint "upstream" of this set of points is
+    modified. All the points downstream of this constraint are handled as a rigid body (even if they are not
+    fully constrained as such) to preserve each of the relative constraints.
+
+    The primary constraints in pymead are distance constraints and relative angle constraints (with specialized options
+    for perpendicular and antiparallel constraints). The angle constraints are formed between three points
+    (start, vertex, and end). Two other special kinds of constraints, symmetry constraints and radius of curvature
+    constraints, are solved following the rigid body transformation.
+    """
     def __init__(self):
+        """
+        Constructor for the geometric constraint solver.
+        """
         super().__init__()
         self.points = {}
         self.roots = []
 
     def _add_point(self, point: Point):
+        """
+        Adds a point (node) to the graph (and to the ``"points"`` attribute). Also assigns this graph to the point.
+
+        Parameters
+        ----------
+        point: Point
+            Point to add
+
+        Returns
+        -------
+
+        """
         point.gcs = self
         self.add_node(point)
         self.points[point.name()] = point
 
     def _remove_point(self, point: Point):
+        """
+        Removes a point (node) from the graph (and from the ``"points"`` attribute).
+
+        Parameters
+        ----------
+        point: Point
+            Point to remove
+
+        Returns
+        -------
+
+        """
         self.remove_node(point)
         self.points.pop(point.name())
 
     def _check_if_constraint_creates_new_cluster(self, constraint: GeoCon):
+        """
+        Determines if a new cluster is formed by adding this constraint by checking if there are any edges connected
+        in either direction to any of the points associated with the constraint. Only if no edges are found is a new
+        cluster created.
+
+        Parameters
+        ----------
+        constraint: GeoCon
+            Constraint to analyze
+
+        Returns
+        -------
+        bool
+            ``True`` if adding this constraint forms a cluster, ``False`` otherwise
+
+        """
         for point in constraint.child_nodes:
             # If there is already an edge attached to any of the points in this constraint, do not create a new root
             if len(self.in_edges(nbunch=point)) > 0 or len(self.out_edges(nbunch=point)) > 0:
@@ -28,25 +89,86 @@ class GCS2(networkx.DiGraph):
         return True
 
     def _set_edge_as_root(self, u: Point, v: Point):
+        """
+        Sets the given edge as a root by setting the ``u`` value as the root and the ``v`` value as the rotation
+        handle of the constraint cluster.
+
+        Parameters
+        ----------
+        u: Point
+            Starting node of the edge
+
+        v: Point
+            Terminating node of the edge
+
+        Returns
+        -------
+
+        """
         u.root = True
         v.rotation_handle = True
         if u not in [edge[0] for edge in self.roots]:
             self.roots.append((u, v))
 
     def _delete_root_status(self, root_node: Point, rotation_handle_node: Point):
+        """
+        Removes root status from the given edge.
+
+        Parameters
+        ----------
+        root_node: Point
+            ``u``-value of the edge
+
+        rotation_handle_node: Point
+            ``v``-value of the edge
+
+        Returns
+        -------
+
+        """
         root_node.root = False
         rotation_handle_node.rotation_handle = False
         root_idx = [r[0] for r in self.roots].index(root_node)
         self.roots.pop(root_idx)
 
     def _identify_and_delete_root(self, root_node: Point):
+        """
+        Identifies the root edge by starting at the root node and testing each of the root node's neighbors
+        until the rotation handle is found (the ``v``-value of the root edge). Then, ``self._delete_root_status`` is
+        applied to demote the edge.
+
+        Parameters
+        ----------
+        root_node: Point
+            Root of the constraint cluster
+
+        Returns
+        -------
+
+        """
         for edge in self.out_edges(nbunch=root_node):
             if edge[1].rotation_handle:
                 self._delete_root_status(root_node, edge[1])
                 return
         raise ValueError("Could not identify root to remove")
 
-    def _get_unique_roots_from_constraint(self, constraint: GeoCon):
+    def _get_unique_roots_from_constraint(self, constraint: GeoCon) -> typing.List[Point]:
+        """
+        Gets the unique roots associated with the addition of the input constraint. Used to determine whether a cluster
+        merge should occur.
+
+        Parameters
+        ----------
+        constraint: GeoCon
+            Constraint from which to determine the unique, connected set of cluster roots
+
+        Returns
+        -------
+        typing.List[Point]
+            List of points representing the unique roots found. An error is raised if more than two are found, since
+            this should not be possible when adding a constraint.
+
+        """
         unique_roots = []
         for point in constraint.child_nodes:
             root = self._discover_root_from_node(point)
@@ -76,12 +198,25 @@ class GCS2(networkx.DiGraph):
         for node in networkx.bfs_tree(self, source=source_node, reverse=True):
             if node.root:
                 return node
-        # for node in networkx.bfs_tree(self, source=source_node, reverse=False):
-        #     if node.root:
-        #         return node
         return None
 
-    def _orient_flow_away_from_root(self, root: Point):
+    def _orient_flow_away_from_root(self, root: Point) -> typing.List[GeoCon]:
+        """
+        Orients the flow of the edges away from the given root of a constraint cluster. Critical method that ensures
+        the rigid body transformation triggered by a given constraint value change applies to the correct set of points
+        to preserve the constraint state.
+
+        Parameters
+        ----------
+        root: Point
+            Root of the constraint cluster
+
+        Returns
+        -------
+        typing.List[GeoCon]
+            A list of constraints associated with the edges that were affected by this reorientation. These constraints
+            need re-assigning to apply the constraint data to the flipped edges.
+        """
         constraints_needing_reassign = []
         while True:
             constraints_to_flip = []
@@ -103,6 +238,18 @@ class GCS2(networkx.DiGraph):
         return list(set(constraints_needing_reassign))
 
     def _reassign_distance_constraint(self, dist_con: DistanceConstraint):
+        """
+        Re-assigns distance constraint data to a flipped edge.
+
+        Parameters
+        ----------
+        dist_con: DistanceConstraint
+            Constraint to re-assign
+
+        Returns
+        -------
+
+        """
         edge_data_12 = self.get_edge_data(dist_con.p1, dist_con.p2)
         if edge_data_12 is not None:
             networkx.set_edge_attributes(self, {(dist_con.p1, dist_con.p2): dist_con}, name="distance")
@@ -114,6 +261,18 @@ class GCS2(networkx.DiGraph):
         raise ValueError(f"Could not reassign distance constraint {dist_con}")
 
     def _reassign_angle_constraint(self, angle_con: RelAngle3Constraint or AntiParallel3Constraint or Perp3Constraint):
+        """
+        Re-assigns angle constraint data to a swapped edge.
+
+        Parameters
+        ----------
+        angle_con: RelAngle3Constraint or AntiParallel3Constraint or Perp3Constraint
+            Constraint to re-assign
+
+        Returns
+        -------
+
+        """
         edge_data_21 = self.get_edge_data(angle_con.p2, angle_con.p1)
         if edge_data_21 is not None:
             networkx.set_edge_attributes(self, {(angle_con.p2, angle_con.p1): angle_con}, name="angle")
@@ -125,6 +284,19 @@ class GCS2(networkx.DiGraph):
         raise ValueError(f"Could not reassign angle constraint {angle_con}")
 
     def _reassign_constraint(self, constraint: GeoCon):
+        """
+        Convenience method that applies either ``self._reassign_distance_constraint`` or
+        ``self._reassign_angle_constraint`` depending on the type of the input constraint.
+
+        Parameters
+        ----------
+        constraint: GeoCon
+            Constraint to re-assign
+
+        Returns
+        -------
+
+        """
         if isinstance(constraint, DistanceConstraint):
             self._reassign_distance_constraint(constraint)
         elif isinstance(constraint, RelAngle3Constraint) or isinstance(constraint, Perp3Constraint) or isinstance(
@@ -134,14 +306,53 @@ class GCS2(networkx.DiGraph):
             raise ValueError(f"Constraint reassignment for constraints of type {constraint} are not implemented")
 
     def _reassign_constraints(self, constraints: typing.List[GeoCon]):
+        """
+        Convenience method that applies ``self._reassign_constraint`` to a list of constraints
+
+        Parameters
+        ----------
+        constraints: typing.List[GeoCon]
+            List of constraints to re-assign
+
+        Returns
+        -------
+
+        """
         for constraint in constraints:
             self._reassign_constraint(constraint)
 
     def _assign_distance_constraint(self, dist_con: DistanceConstraint):
+        """
+        Assigns a distance constraint by first adding an edge from ``p1`` to ``p2`` with no data and subsequently
+        applying the constraint data.
+
+        Parameters
+        ----------
+        dist_con: DistanceConstraint
+            Constraint to assign
+
+        Returns
+        -------
+
+        """
         self.add_edge(dist_con.p1, dist_con.p2)
         self._reassign_distance_constraint(dist_con)
 
     def _assign_angle_constraint(self, angle_con: RelAngle3Constraint or AntiParallel3Constraint or Perp3Constraint):
+        """
+        Assigns an angle constraint by first adding an edge from either ``p2`` to ``p1`` or ``p2`` to ``p3``
+        (depending on which edge already has data) with no data and subsequently applying the constraint data.
+
+
+        Parameters
+        ----------
+        angle_con: RelAngle3Constraint or AntiParallel3Constraint or Perp3Constraint
+            Constraint to assign
+
+        Returns
+        -------
+
+        """
         if not (self.get_edge_data(angle_con.p1, angle_con.p2)
                 or self.get_edge_data(angle_con.p2, angle_con.p1)):
             self.add_edge(angle_con.p2, angle_con.p1)
@@ -152,6 +363,20 @@ class GCS2(networkx.DiGraph):
 
     def _add_ghost_edges_to_angle_constraint(
             self, constraint: RelAngle3Constraint or AntiParallel3Constraint or Perp3Constraint):
+        """
+        Adds any required "ghost" edges (edges with no data) to an angle constraint to ensure that there are edges
+        connecting both (``p1`` and ``p2``) and (``p2`` and ``p3``). Performing this action ensures that any upstream
+        changes in constraint parameter value properly flow down to this angle constraint.
+
+        Parameters
+        ----------
+        constraint: RelAngle3Constraint or AntiParallel3Constraint or Perp3Constraint
+            Angle constraint to add ghost edges to (if necessary)
+
+        Returns
+        -------
+
+        """
         # Only add ghost edges if there is not a concrete edge present (even if facing the wrong direction)
         if not (self.get_edge_data(constraint.p1, constraint.p2)
                 or self.get_edge_data(constraint.p2, constraint.p1)):
@@ -160,7 +385,23 @@ class GCS2(networkx.DiGraph):
                 self.get_edge_data(constraint.p3, constraint.p2)):
             self.add_edge(constraint.p2, constraint.p3)
 
-    def _test_if_cluster_is_branching(self, root_node: Point):
+    def _test_if_cluster_is_branching(self, root_node: Point) -> bool:
+        """
+        Computes the subgraph corresponding to the constraint cluster given by the input root node, and checks if
+        this subgraph is branching: each node must have exactly one parent.
+
+        Parameters
+        ----------
+        root_node: Point
+            Root of the cluster to analyze
+
+        Returns
+        -------
+        bool
+            Whether this constraint cluster is branching. If not, an error should be thrown (since closed loops
+            of constraints are not possible in pymead)
+
+        """
         subgraph = self.subgraph([node for node in networkx.dfs_preorder_nodes(self, source=root_node)])
         return networkx.is_branching(subgraph)
 
