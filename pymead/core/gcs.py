@@ -274,11 +274,11 @@ class GCS(networkx.DiGraph):
 
         """
         edge_data_21 = self.get_edge_data(angle_con.p2, angle_con.p1)
-        if edge_data_21 is not None:
+        if edge_data_21 is not None and "angle" not in edge_data_21.keys():
             networkx.set_edge_attributes(self, {(angle_con.p2, angle_con.p1): angle_con}, name="angle")
             return
         edge_data_23 = self.get_edge_data(angle_con.p2, angle_con.p3)
-        if edge_data_23 is not None:
+        if edge_data_23 is not None and "angle" not in edge_data_23.keys():
             networkx.set_edge_attributes(self, {(angle_con.p2, angle_con.p3): angle_con}, name="angle")
             return
         raise ValueError(f"Could not reassign angle constraint {angle_con}")
@@ -685,6 +685,11 @@ class GCS(networkx.DiGraph):
         return points_solved
 
     def solve(self, source: GeoCon):
+
+        # networkx.draw_circular(self, labels={point: point.name() for point in self.nodes})
+        # from matplotlib import pyplot as plt
+        # plt.show()
+
         points_solved = []
         symmetry_points_solved = []
         roc_points_solved = []
@@ -704,10 +709,6 @@ class GCS(networkx.DiGraph):
             set(other_points_solved).union(set(symmetry_points_solved)).union(set(roc_points_solved)))
 
         points_solved = list(set(points_solved).union(set(other_points_solved)))
-
-        # networkx.draw_circular(self, labels={point: point.name() for point in self.nodes})
-        # from matplotlib import pyplot as plt
-        # plt.show()
 
         return points_solved
 
