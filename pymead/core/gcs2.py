@@ -34,7 +34,6 @@ class GCS2(networkx.DiGraph):
             self.roots.append((u, v))
 
     def _delete_root_status(self, root_node: Point, rotation_handle_node: Point):
-        print(f"{root_node = }")
         root_node.root = False
         rotation_handle_node.rotation_handle = False
         root_idx = [r[0] for r in self.roots].index(root_node)
@@ -104,7 +103,6 @@ class GCS2(networkx.DiGraph):
                     v = v_values[in_edge_idx]
                     self.remove_edge(u_value, v)
                     self.add_edge(v, u_value)
-                    print(f"Removing edge {u_value}, {v} and adding edge {v}, {u_value}")
             constraints_needing_reassign.extend(constraints_to_flip)
             if len(constraints_to_flip) == 0:
                 break
@@ -228,11 +226,8 @@ class GCS2(networkx.DiGraph):
                 self._reassign_constraints(constraints_to_reassign)
                 root = self._discover_root_from_node(constraint.p1)
 
-            print(f"{root = }")
-
             # Check if the addition of this constraint creates a closed loop
             is_branching = self._test_if_cluster_is_branching(root)
-            print(f"{is_branching = }")
             if not is_branching:
                 raise ValueError("Detected a closed loop in the constraint graph. Closed loop sets of constraints "
                                  "are currently not supported in pymead")
