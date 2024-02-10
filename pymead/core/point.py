@@ -105,12 +105,24 @@ class Point(PymeadObj):
     def request_move(self, xp: float, yp: float, force: bool = False):
 
         if (self.gcs is None or (self.gcs is not None and len(self.geo_cons) == 0) or force or
-                (self.gcs is not None and self.root) or self._is_symmetry_123_and_no_edges()):
+                (self.gcs is not None and self.root) or (self.gcs is not None and self.rotation_handle)
+                or self._is_symmetry_123_and_no_edges()):
 
             if self.root:
-                points_to_update = self.gcs.move_root(self, dx=xp-self.x().value(), dy=yp-self.y().value())
+                points_to_update = self.gcs.translate_cluster(self, dx=xp - self.x().value(), dy=yp - self.y().value())
                 constraints_to_update = []
                 for point in networkx.dfs_preorder_nodes(self.gcs, source=self):
+                    for geo_con in point.geo_cons:
+                        if geo_con not in constraints_to_update:
+                            constraints_to_update.append(geo_con)
+
+                for geo_con in constraints_to_update:
+                    if geo_con.canvas_item is not None:
+                        geo_con.canvas_item.update()
+            elif self.rotation_handle:
+                points_to_update, root = self.gcs.rotate_cluster(self, xp, yp)
+                constraints_to_update = []
+                for point in networkx.dfs_preorder_nodes(self.gcs, source=root):
                     for geo_con in point.geo_cons:
                         if geo_con not in constraints_to_update:
                             constraints_to_update.append(geo_con)

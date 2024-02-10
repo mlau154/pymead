@@ -131,6 +131,49 @@ class GCS(networkx.DiGraph):
         root_idx = [r[0] for r in self.roots].index(root_node)
         self.roots.pop(root_idx)
 
+    def _identify_root_from_rotation_handle(self, rotation_handle: Point) -> Point:
+        """
+        Computes the root of the cluster given the rotation handle as the ``u``-value of the edge incident to the
+        rotation handle.
+
+        Parameters
+        ----------
+        rotation_handle: Point
+            Rotation handle of the constraint cluster
+
+        Returns
+        -------
+        Point
+            Root of the constraint cluster
+
+        """
+        in_edges = [edge for edge in self.in_edges(nbunch=rotation_handle)]
+        if not len(in_edges) == 1:
+            raise ValueError("Invalid rotation handle. Rotation should have exactly one incident edge "
+                             "(the cluster root)")
+        return in_edges[0][0]
+
+    def _identify_rotation_handle(self, root_node: Point):
+        """
+        Identifies the rotation handle by starting at the root node and testing each of the root node's neighbors
+        until the rotation handle is found.
+
+        Parameters
+        ----------
+        root_node: Point
+            Root of the constraint cluster
+
+        Returns
+        -------
+        Point
+            Rotation handle
+
+        """
+        for edge in self.out_edges(nbunch=root_node):
+            if edge[1].rotation_handle:
+                return edge[1]
+        raise ValueError("Could not identify rotation handle")
+
     def _identify_and_delete_root(self, root_node: Point):
         """
         Identifies the root edge by starting at the root node and testing each of the root node's neighbors
@@ -712,7 +755,7 @@ class GCS(networkx.DiGraph):
 
         return points_solved
 
-    def move_root(self, root: Point, dx: float, dy: float):
+    def translate_cluster(self, root: Point, dx: float, dy: float):
         if not root.root:
             raise ValueError("Cannot move a point that is not a root of a constraint cluster")
         points_solved = []
@@ -723,6 +766,31 @@ class GCS(networkx.DiGraph):
                 points_solved.append(point)
         self.solve_other_constraints(points_solved)
         return points_solved
+
+    def rotate_cluster(self, rotation_handle: Point, new_rotation_handle_x: float, new_rotation_handle_y: float):
+        root = self._identify_root_from_rotation_handle(rotation_handle)
+        if not root.root:
+            raise ValueError("Cannot move a point that is not a root of a constraint cluster")
+        old_rotation_handle_angle = root.measure_angle(rotation_handle)
+        new_rotation_handle_angle = root.measure_angle(Point(new_rotation_handle_x, new_rotation_handle_y))
+        delta_angle = new_rotation_handle_angle - old_rotation_handle_angle
+        root_x = root.x().value()
+        root_y = root.y().value()
+
+        points_solved = []
+        for point in networkx.bfs_tree(self, source=root):
+            if point is root:
+                continue
+            old_x = point.x().value()
+            old_y = point.y().value()
+            new_x = (old_x - root_x) * np.cos(delta_angle) - (old_y - root_y) * np.sin(delta_angle) + root_x
+            new_y = (old_x - root_x) * np.sin(delta_angle) + (old_y - root_y) * np.cos(delta_angle) + root_y
+            point.x().set_value(new_x)
+            point.y().set_value(new_y)
+            if point not in points_solved:
+                points_solved.append(point)
+        self.solve_other_constraints(points_solved)
+        return points_solved, root
 
     @staticmethod
     def solve_symmetry_constraint(constraint: SymmetryConstraint):
