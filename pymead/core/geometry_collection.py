@@ -3,6 +3,7 @@ import os
 import re
 import sys
 import typing
+from copy import copy
 
 from pymead.core.airfoil import Airfoil
 from pymead.core.bezier import Bezier
@@ -172,7 +173,8 @@ class GeometryCollection(DualRep):
         self.container()[pymead_obj.sub_container].pop(pymead_obj.name())
 
     def add_param(self, value: float, name: str or None = None, lower: float or None = None,
-                  upper: float or None = None, unit_type: str or None = None, assign_unique_name: bool = True):
+                  upper: float or None = None, unit_type: str or None = None, assign_unique_name: bool = True,
+                  point: Point = None):
         """
         Adds a parameter to the geometry collection sub-container ``"params"``, and modifies the name to make it
         unique if necessary.
@@ -199,7 +201,7 @@ class GeometryCollection(DualRep):
         Param
             The generated parameter
         """
-        kwargs = dict(value=value, name=name, lower=lower, upper=upper, setting_from_geo_col=True)
+        kwargs = dict(value=value, name=name, lower=lower, upper=upper, setting_from_geo_col=True, point=point)
         if unit_type is None:
             param = Param(**kwargs)
         elif unit_type == "length":
@@ -488,7 +490,7 @@ class GeometryCollection(DualRep):
         return self.add_pymead_obj_by_ref(line, assign_unique_name=assign_unique_name)
 
     def add_desvar(self, value: float, name: str, lower: float or None = None, upper: float or None = None,
-                   unit_type: str or None = None, assign_unique_name: bool = True):
+                   unit_type: str or None = None, assign_unique_name: bool = True, point: Point = None):
         """
         Directly adds a design variable value to the geometry collection.
 
@@ -516,7 +518,7 @@ class GeometryCollection(DualRep):
         DesVar
             The generated design variable
         """
-        kwargs = dict(value=value, name=name, lower=lower, upper=upper, setting_from_geo_col=True)
+        kwargs = dict(value=value, name=name, lower=lower, upper=upper, setting_from_geo_col=True, point=point)
         if unit_type is None:
             desvar = DesVar(**kwargs)
         elif unit_type == "length":
@@ -581,7 +583,8 @@ class GeometryCollection(DualRep):
         else:
             unit_type = None
 
-        desvar = self.add_desvar(value=param.value(), name=param.name(), lower=lower, upper=upper, unit_type=unit_type)
+        desvar = self.add_desvar(value=param.value(), name=param.name(), lower=lower, upper=upper, unit_type=unit_type,
+                                 point=copy(param.point))
 
         # Replace the corresponding x() or y() in parameter with the new design variable
         self.replace_geo_objs(tool=param, target=desvar)
@@ -602,8 +605,7 @@ class GeometryCollection(DualRep):
         # desvar.gcs.constraint_params[self.gcs.constraint_params.index(param)] = desvar
 
         # Remove the parameter
-        if param.point is None:
-            self.remove_pymead_obj(param, promotion_demotion=True)
+        self.remove_pymead_obj(param, promotion_demotion=True)
 
         return desvar
 
@@ -629,7 +631,7 @@ class GeometryCollection(DualRep):
         else:
             unit_type = None
 
-        param = self.add_param(value=desvar.value(), name=desvar.name(), unit_type=unit_type)
+        param = self.add_param(value=desvar.value(), name=desvar.name(), unit_type=unit_type, point=copy(desvar.point))
 
         # Replace the corresponding x() or y() in parameter with the new parameter
         self.replace_geo_objs(tool=desvar, target=param)
@@ -834,12 +836,18 @@ class GeometryCollection(DualRep):
         geo_col = cls(gui_obj=gui_obj)
         geo_col.canvas = canvas
         geo_col.tree = tree
-        for name, desvar_dict in d["desvar"].items():
-            geo_col.add_desvar(**desvar_dict, name=name, assign_unique_name=False)
-        for name, param_dict in d["params"].items():
-            geo_col.add_param(**param_dict, name=name, assign_unique_name=False)
         for name, point_dict in d["points"].items():
             geo_col.add_point(**point_dict, name=name, assign_unique_name=False)
+        for name, desvar_dict in d["desvar"].items():
+            point = None
+            if ".x" in name or ".y" in name:
+                point = geo_col.container()["points"][name.split(".")[0]]
+            geo_col.add_desvar(**desvar_dict, name=name, assign_unique_name=False, point=point)
+        for name, param_dict in d["params"].items():
+            point = None
+            if ".x" in name or ".y" in name:
+                point = geo_col.container()["points"][name.split(".")[0]]
+            geo_col.add_param(**param_dict, name=name, assign_unique_name=False, point=point)
         for name, line_dict in d["lines"].items():
             geo_col.add_line(point_sequence=PointSequence(
                 points=[geo_col.container()["points"][k] for k in line_dict["points"]]),

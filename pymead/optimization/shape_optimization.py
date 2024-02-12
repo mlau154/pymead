@@ -76,7 +76,6 @@ def shape_optimization(conn: mp.connection.Connection or None, param_dict: dict,
     forces = []
     ref_dirs = get_reference_directions("energy", param_dict['n_obj'], param_dict['n_ref_dirs'],
                                         seed=param_dict['seed'])
-    # mea_object = MEA.generate_from_param_dict(mea)
     geo_col = GeometryCollection.set_from_dict_rep(deepcopy(geo_col_dict))
     airfoil_name, mea_name = None, None
     if param_dict["tool"] == "XFOIL":

@@ -602,7 +602,7 @@ class GUI(QMainWindow):
         else:
             last_saved_state = self.geo_col.get_dict_rep()
             save_data(last_saved_state, self.current_save_name)
-            self.last_saved_state = self.get_geo_col_state(geo_col_dict=last_saved_state)
+            self.last_saved_state = self.get_geo_col_state()
             self.setWindowTitle(f"pymead - {os.path.split(self.current_save_name)[-1]}")
             self.save_attempts = 0
             return True
