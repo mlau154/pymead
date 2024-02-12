@@ -352,15 +352,9 @@ class AngleParam(Param):
         return self._value
 
     def set_lower(self, lower: float):
-        if lower < 0.0:
-            lower = 0.0
-
         return super().set_lower(UNITS.convert_angle_to_base(lower, self.unit()))
 
     def set_upper(self, upper: float):
-        if upper > UNITS.convert_angle_from_base(2 * np.pi, self.unit()):
-            upper = UNITS.convert_angle_from_base(2 * np.pi, self.unit())
-
         return super().set_upper(UNITS.convert_angle_to_base(upper, self.unit()))
 
     def set_value(self, value: float, updated_objs: typing.List[PymeadObj] = None, bounds_normalized: bool = False):

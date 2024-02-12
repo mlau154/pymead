@@ -174,16 +174,8 @@ class LowerSpin(QDoubleSpinBox):
         self.setDecimals(6)
         self.setSingleStep(0.01)
         self.param = param
-        if (isinstance(param, LengthParam) and self.param.point is None) or isinstance(param, AngleParam):
-            self.setMinimum(0.0)
-        else:
-            self.setMinimum(-1e9)
-
-        if isinstance(param, AngleParam):
-            self.setMaximum(UNITS.convert_angle_to_base(2 * np.pi, self.param.unit()))
-        else:
-            self.setMaximum(1e9)
-
+        self.setMinimum(-1e9)
+        self.setMaximum(1e9)
         self.setValue(self.param.lower())
         self.valueChanged.connect(self.onValueChanged)
 

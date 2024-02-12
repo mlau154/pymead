@@ -29,7 +29,7 @@ class BoundsValuesTable(TableWidget):
             dv = self.geo_col.container()["desvar"][self.item(item.row(), 0).data(0)]
 
             # Check if the string input is castable to a float. If not, set the float_val to None
-            if item.data(0).strip().replace(".", "").isnumeric():
+            if item.data(0).strip().replace(".", "").replace("-", "").isnumeric():
                 float_val = float(item.data(0).strip())
             else:
                 float_val = None
