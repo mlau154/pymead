@@ -129,6 +129,15 @@ class Bezier(ParametricCurve):
         self.point_sequence().insert_point(idx, point)
         self.degree += 1
 
+    def insert_point_after_point(self, point_to_add: Point, preceding_point: Point):
+        idx = self.point_sequence().point_idx_from_ref(preceding_point) + 1
+        self.insert_point(idx, point_to_add)
+        if self not in point_to_add.curves:
+            point_to_add.curves.append(self)
+        if self.canvas_item is not None:
+            self.canvas_item.point_items.insert(idx, point_to_add.canvas_item)
+            self.canvas_item.updateCurveItem(self.evaluate())
+
     def point_removal_deletes_curve(self):
         return len(self.point_sequence()) <= 3
 

@@ -48,7 +48,6 @@ class AirfoilCanvas(pg.PlotWidget):
         self.airfoil_text_items = {}
         self.drawing_object = None
         self.creating_collinear_constraint = None
-        self.adding_point_to_curve = None
         self.curve_hovered_item = None
         self.point_hovered_item = None
         self.constraint_hovered_item = None
@@ -438,20 +437,18 @@ class AirfoilCanvas(pg.PlotWidget):
         constraint = ROCurvatureConstraint(*self.geo_col.selected_objects["points"], value=R_param)
         self.geo_col.add_constraint(constraint)
 
+    @runSelectionEventLoop(drawing_object="BezierAddPoint",
+                           starting_message="First, click the point to add to the curve")
     def addPointToCurve(self, curve_item: HoverableCurve):
-        self.adding_point_to_curve = curve_item
-        self.sigStatusBarUpdate.emit("First, click the point to add to the curve", 0)
-        loop = QEventLoop()
-        self.sigEnterPressed.connect(loop.quit)
-        loop.exec()
+        if len(self.geo_col.selected_objects["points"]) != 2:
+            msg = (f"Choose exactly two points (the point to add, then the preceding point in the curve) to add"
+                   f" a point to a Bezier curve")
+            self.sigStatusBarUpdate.emit(msg, 4000)
+            return
+        bezier_curve = curve_item.parametric_curve
         point_to_add = self.geo_col.selected_objects["points"][0]
         preceding_point = self.geo_col.selected_objects["points"][1]
-        prev_item_index = curve_item.point_items.index(preceding_point)
-        curve_item.point_items.insert(prev_item_index + 1, point_to_add)
-        point_to_add.curveOwners.append(curve_item)
-        curve_item.updateCurveItem()
-        self.clearSelectedObjects()
-        self.adding_point_to_curve = None
+        bezier_curve.insert_point_after_point(point_to_add, preceding_point)
 
     def appendSelectedPoint(self, plot_data_item: pg.PlotDataItem):
         self.geo_col.selected_objects["points"].append(plot_data_item.point)
@@ -502,7 +499,7 @@ class AirfoilCanvas(pg.PlotWidget):
                 self.geo_col.add_line(point_sequence=point_sequence)
                 self.clearSelectedObjects()
                 self.sigStatusBarUpdate.emit("Choose the next line's start point", 0)
-        elif self.adding_point_to_curve is not None:
+        elif self.drawing_object == "BezierAddPoint":
             if len(self.geo_col.selected_objects["points"]) < 2:
                 self.geo_col.select_object(point_item.point)
             if len(self.geo_col.selected_objects["points"]) == 1:

@@ -1113,6 +1113,7 @@ class ParameterTree(QTreeWidget):
             demoteAction = None
             exposeAction = None
             coverAction = None
+            addBezierPointAction = None
 
             pymead_obj_type = type(pymead_objs[0])
 
@@ -1127,6 +1128,8 @@ class ParameterTree(QTreeWidget):
                     coverAction = menu.addAction("Cover x and y Parameters")
             elif pymead_obj_type is Point:
                 exposeAction = menu.addAction("Expose x and y Parameters")
+            elif pymead_obj_type is Bezier:
+                addBezierPointAction = menu.addAction("Insert Control Point")
             removeObjectAction = menu.addAction("Delete")
 
             res = menu.exec_(a0.globalPos())
@@ -1153,5 +1156,7 @@ class ParameterTree(QTreeWidget):
                 points_to_cover = list(set([pymead_obj.point for pymead_obj in pymead_objs]))
                 for point_to_cover in points_to_cover:
                     self.geo_col.cover_point_xy(point_to_cover)
+            elif res is addBezierPointAction:
+                self.gui_obj.airfoil_canvas.addPointToCurve(pymead_objs[0].canvas_item)
 
             self.geo_col.clear_selected_objects()
