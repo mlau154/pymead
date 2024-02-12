@@ -192,8 +192,6 @@ class GUI(QMainWindow):
 
         self.parameter_tree = ParameterTree(geo_col=self.geo_col, parent=self, gui_obj=self)
 
-        self.geo_col.add_param(value=0.5, name="test_param")
-
         self.add_new_tab_widget(self.parameter_tree, "Tree")
         self.add_new_tab_widget(self.airfoil_canvas, "Geometry")
         self.add_new_tab_widget(self.text_area, "Console")
@@ -650,7 +648,6 @@ class GUI(QMainWindow):
             self.setWindowTitle(f"pymead")
 
         if self.changes_made():
-            print("Changes made!")
             dialog = NewGeoColDialog(theme=self.themes[self.current_theme], parent=self)
             if dialog.exec_():
                 load_blank_geo_col()

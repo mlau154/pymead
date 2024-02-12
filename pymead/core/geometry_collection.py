@@ -327,8 +327,11 @@ class GeometryCollection(DualRep):
             The modified pymead object
         """
         if pymead_obj.geo_col is not None:
-            raise ValueError("Can only add a pymead object by reference if it has not yet been added to a "
-                             "geometry collection")
+            if isinstance(pymead_obj, Param) and pymead_obj.point is not None:
+                pass
+            else:
+                raise ValueError("Can only add a pymead object by reference if it has not yet been added to a "
+                                 "geometry collection")
 
         pymead_obj.geo_col = self
 
@@ -650,6 +653,14 @@ class GeometryCollection(DualRep):
         self.remove_pymead_obj(desvar, promotion_demotion=True)
 
         return param
+
+    def expose_point_xy(self, point: Point):
+        self.add_pymead_obj_by_ref(point.x(), assign_unique_name=False)
+        self.add_pymead_obj_by_ref(point.y(), assign_unique_name=False)
+
+    def cover_point_xy(self, point: Point):
+        self.remove_pymead_obj(point.x())
+        self.remove_pymead_obj(point.y())
 
     def extract_design_variable_values(self, bounds_normalized: bool = False):
         """

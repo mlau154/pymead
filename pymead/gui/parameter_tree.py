@@ -1111,20 +1111,23 @@ class ParameterTree(QTreeWidget):
 
             promoteAction = None
             demoteAction = None
+            exposeAction = None
+            coverAction = None
 
             pymead_obj_type = type(pymead_objs[0])
 
+            menu = QMenu(self)
             if pymead_obj_type in [Param, LengthParam, AngleParam]:
-                menu = QMenu(self)
                 promoteAction = menu.addAction("Promote to Design Variable")
-                removeObjectAction = menu.addAction("Delete")
+                if all([pymead_obj.point for pymead_obj in pymead_objs]):
+                    coverAction = menu.addAction("Cover x and y Parameters")
             elif pymead_obj_type in [DesVar, LengthDesVar, AngleDesVar]:
-                menu = QMenu(self)
                 demoteAction = menu.addAction("Demote to Parameter")
-                removeObjectAction = menu.addAction("Delete")
-            else:
-                menu = QMenu(self)
-                removeObjectAction = menu.addAction("Delete")
+                if all([pymead_obj.point for pymead_obj in pymead_objs]):
+                    coverAction = menu.addAction("Cover x and y Parameters")
+            elif pymead_obj_type is Point:
+                exposeAction = menu.addAction("Expose x and y Parameters")
+            removeObjectAction = menu.addAction("Delete")
 
             res = menu.exec_(a0.globalPos())
 
@@ -1143,5 +1146,12 @@ class ParameterTree(QTreeWidget):
             elif res is demoteAction:
                 for pymead_obj in pymead_objs:
                     self.geo_col.demote_desvar_to_param(pymead_obj)
+            elif res is exposeAction:
+                for pymead_obj in pymead_objs:
+                    self.geo_col.expose_point_xy(pymead_obj)
+            elif res is coverAction:
+                points_to_cover = list(set([pymead_obj.point for pymead_obj in pymead_objs]))
+                for point_to_cover in points_to_cover:
+                    self.geo_col.cover_point_xy(point_to_cover)
 
             self.geo_col.clear_selected_objects()
