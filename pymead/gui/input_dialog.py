@@ -1923,16 +1923,18 @@ class GeneticAlgorithmDialogWidget(PymeadDialogWidget):
         general_settings = self.parent().findChild(GAGeneralSettingsDialogWidget).valuesFromWidgets()
         starting_value = ws_widget.value()
         use_current_mea = bool(general_settings["use_current_mea"])
-        mea_file = general_settings["mea_file"]
+        jmea_file = general_settings["mea_file"]
         gui_obj = get_parent(self, depth=4)
         background_color = gui_obj.themes[gui_obj.current_theme]["graph-background-color"]
-        if use_current_mea or len(mea_file) == 0 or not os.path.exists(mea_file):
-            jmea_dict = gui_obj.mea.copy_as_param_dict(deactivate_airfoil_graphs=True)
+        theme = gui_obj.themes[gui_obj.current_theme]
+        if use_current_mea or len(jmea_file) == 0 or not os.path.exists(jmea_file):
+            geo_col_dict = gui_obj.geo_col.get_dict_rep()
         else:
-            jmea_dict = load_data(mea_file)
+            geo_col_dict = load_data(jmea_file)
 
-        dialog = SamplingVisualizationDialog(jmea_dict=jmea_dict, initial_sampling_width=starting_value,
-                                             initial_n_samples=20, background_color=background_color, parent=self)
+        dialog = SamplingVisualizationDialog(geo_col_dict=geo_col_dict, initial_sampling_width=starting_value,
+                                             initial_n_samples=20, background_color=background_color, theme=theme,
+                                             parent=self)
         dialog.exec_()
 
     def select_directory(self, line_edit: QLineEdit):
@@ -2003,28 +2005,6 @@ class GeneticAlgorithmDialogWidget(PymeadDialogWidget):
                 v = float(text_split[1])
                 data_dict[k] = v
         return data_dict
-
-
-class SamplingVisualizationDialog(QDialog):
-    def __init__(self, jmea_dict: dict, initial_sampling_width: float, initial_n_samples: int, background_color: str,
-                 parent=None):
-        super().__init__(parent=parent)
-        self.setWindowTitle("Visualize Sampling")
-        self.setFont(self.parent().font())
-        buttonBox = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel, self)
-        layout = QFormLayout(self)
-
-        self.sampling_widget = SamplingVisualizationWidget(self, jmea_dict,
-                                                           initial_sampling_width=initial_sampling_width,
-                                                           initial_n_samples=initial_n_samples,
-                                                           background_color=background_color)
-
-        layout.addWidget(self.sampling_widget)
-
-        layout.addWidget(buttonBox)
-
-        buttonBox.accepted.connect(self.accept)
-        buttonBox.rejected.connect(self.reject)
 
 
 class PymeadDialogVTabWidget(VerticalTabWidget):
@@ -2306,6 +2286,17 @@ class BoundsDialog(QDialog):
         elif event.type() == QEvent.LeaveWhatsThisMode:
             pass
         return super().event(event)
+
+
+class SamplingVisualizationDialog(PymeadDialog):
+    def __init__(self, geo_col_dict: dict, initial_sampling_width: float, initial_n_samples: int, background_color: str,
+                 theme: dict, parent=None):
+        self.sampling_widget = SamplingVisualizationWidget(None, geo_col_dict,
+                                                           initial_sampling_width=initial_sampling_width,
+                                                           initial_n_samples=initial_n_samples,
+                                                           background_color=background_color)
+
+        super().__init__(parent=parent, window_title="Sampling Visualization", widget=self.sampling_widget, theme=theme)
 
 
 class LoadDialog(QFileDialog):

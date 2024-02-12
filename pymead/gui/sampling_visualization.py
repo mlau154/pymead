@@ -1,23 +1,22 @@
 from copy import deepcopy
 
 import pyqtgraph as pg
-import numpy as np
 from PyQt5.QtWidgets import QWidget, QDoubleSpinBox, QSpinBox, QLabel
 from PyQt5.QtWidgets import QGridLayout
 
-# from pymead.core.mea import MEA
+from pymead.core.geometry_collection import GeometryCollection
 from pymead.optimization.sampling import ConstrictedRandomSampling
 
 
 class SamplingVisualizationWidget(QWidget):
-    def __init__(self, parent, jmea_dict: dict, initial_sampling_width: float, initial_n_samples: int,
+    def __init__(self, parent, geo_col_dict: dict, initial_sampling_width: float, initial_n_samples: int,
                  background_color: str):
         super().__init__(parent=parent)
 
-        self.jmea_dict = deepcopy(jmea_dict)
-        self.jmea_dict["airfoil_graphs_active"] = False
-        self.mea = MEA.generate_from_param_dict(self.jmea_dict)
-        norm_param_list, _ = self.mea.extract_parameters()
+        self.geo_col_dict = deepcopy(geo_col_dict)
+        self.geo_col_dict["airfoil_graphs_active"] = False
+        self.geo_col = GeometryCollection.set_from_dict_rep(self.geo_col_dict)
+        norm_param_list = self.geo_col.extract_design_variable_values(bounds_normalized=True)
         self.norm_param_list = deepcopy(norm_param_list)
 
         self.w = pg.GraphicsLayoutWidget(show=True, size=(800, 300))
@@ -27,6 +26,7 @@ class SamplingVisualizationWidget(QWidget):
         self.v = self.w.addPlot()
         self.v.setLabel(axis="bottom", text="x")
         self.v.setLabel(axis="left", text="y")
+        self.v.setAspectLocked(True)
 
         layout = QGridLayout(self)
         layout.addWidget(self.w, 0, 0, 1, 4)
@@ -60,6 +60,7 @@ class SamplingVisualizationWidget(QWidget):
         self.current_ns = initial_n_samples
 
         self.setLayout(layout)
+        self.setMinimumSize(800, 300)
 
     def spinbox_ws_value_changed(self, new_ws):
         self.current_ws = new_ws
@@ -75,11 +76,8 @@ class SamplingVisualizationWidget(QWidget):
                                              max_sampling_width=sampling_width)
         X_list = sampling.sample()
         for idx, individual in enumerate(X_list):
-            self.mea.update_parameters(individual)
-            # extra_get_coords_kwargs = dict(downsample=2, ds_max_points=100, ds_curve_exp=2.0)
-            extra_get_coords_kwargs = {}
-            for a in self.mea.airfoils.values():
-                coords = np.array(a.get_coords(body_fixed_csys=False, **extra_get_coords_kwargs))
+            self.geo_col.assign_design_variable_values(individual, bounds_normalized=True)
+            for a in self.geo_col.container()["airfoils"].values():
+                coords = a.get_coords_selig_format()
                 plot_handle = self.v.plot(pen=pg.mkPen(color="cornflowerblue"))
                 plot_handle.setData(coords[:, 0], coords[:, 1])
-            pass
