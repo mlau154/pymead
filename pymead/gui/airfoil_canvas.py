@@ -115,10 +115,16 @@ class AirfoilCanvas(pg.PlotWidget):
         """
         point_seq = PointSequence(points=[pt for pt in self.geo_col.container()["points"].values()])
         pseq_arr = point_seq.as_array()
-        min_x = pseq_arr[:, 0].min()
-        max_x = pseq_arr[:, 0].max()
-        min_y = pseq_arr[:, 1].min()
-        max_y = pseq_arr[:, 1].max()
+        if len(pseq_arr) > 0:
+            min_x = pseq_arr[:, 0].min()
+            max_x = pseq_arr[:, 0].max()
+            min_y = pseq_arr[:, 1].min()
+            max_y = pseq_arr[:, 1].max()
+        else:
+            min_x = -0.05
+            max_x = 1.05
+            min_y = -0.25
+            max_y = 0.25
         return [min_x, max_x], [min_y, max_y]
 
     def drawPoint(self, x, y):

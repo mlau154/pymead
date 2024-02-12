@@ -522,7 +522,7 @@ class GCS(networkx.DiGraph):
     def _remove_distance_constraint_from_directed_edge(self, constraint: DistanceConstraint):
         edges_removed = None
         edge_data_12 = self.get_edge_data(constraint.p1, constraint.p2)
-        if edge_data_12 is not None and "distance" in edge_data_12.keys():
+        if edge_data_12 is not None and "distance" in edge_data_12.keys() and edge_data_12["distance"] is constraint:
             angle_constraint_present = False
             for geo_con in constraint.p2.geo_cons:
                 if (isinstance(geo_con, RelAngle3Constraint) or
@@ -539,7 +539,7 @@ class GCS(networkx.DiGraph):
             return edges_removed
 
         edge_data_21 = self.get_edge_data(constraint.p2, constraint.p1)
-        if edge_data_21 is not None and "distance" in edge_data_21.keys():
+        if edge_data_21 is not None and "distance" in edge_data_21.keys() and edge_data_21["distance"] is constraint:
             angle_constraint_present = False
             for geo_con in constraint.p1.geo_cons:
                 if (isinstance(geo_con, RelAngle3Constraint) or
@@ -561,7 +561,7 @@ class GCS(networkx.DiGraph):
             self, constraint: RelAngle3Constraint or AntiParallel3Constraint or Perp3Constraint):
         edges_removed = None
         edge_data_21 = self.get_edge_data(constraint.p2, constraint.p1)
-        if edge_data_21 is not None and "angle" in edge_data_21.keys():
+        if edge_data_21 is not None and "angle" in edge_data_21.keys() and edge_data_21["angle"] is constraint:
             if "distance" in edge_data_21.keys():
                 edge_data_21.pop("angle")
             else:
@@ -577,7 +577,7 @@ class GCS(networkx.DiGraph):
             return edges_removed
 
         edge_data_23 = self.get_edge_data(constraint.p2, constraint.p3)
-        if edge_data_23 is not None and "angle" in edge_data_23.keys():
+        if edge_data_23 is not None and "angle" in edge_data_23.keys() and edge_data_23["angle"] is constraint:
             if "distance" in edge_data_23.keys():
                 edge_data_23.pop("angle")
             else:

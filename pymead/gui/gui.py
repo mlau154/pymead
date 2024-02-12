@@ -214,7 +214,7 @@ class GUI(QMainWindow):
         else:
             raise ValueError(f"Current theme options are 'dark' and 'light'. Theme chosen was {theme}")
 
-        # self.auto_range_geometry()
+        self.auto_range_geometry()
         self.statusBar().clearMessage()
         self.permanent_widget = PermanentWidget(self)
         self.statusBar().addPermanentWidget(self.permanent_widget)
@@ -647,8 +647,7 @@ class GUI(QMainWindow):
     def new_geo_col(self):
         dialog = NewGeoColDialog(self)
         if dialog.exec_():
-            self.load_geo_col_no_dialog(os.path.join(GUI_DEFAULT_AIRFOIL_DIR, "default_airfoil.jmea"))
-            self.mea.file_name = None
+            self.load_geo_col_no_dialog()
             self.setWindowTitle(f"pymead")
 
     def edit_bounds(self):
@@ -936,34 +935,34 @@ class GUI(QMainWindow):
         self.cbar.getAxis("right").setWidth(20 + 2 * get_setting("axis-label-point-size") +
                                             2 * get_setting("cbar-tick-point-size"))
 
-    def load_geo_col_no_dialog(self, file_name):
-        self.permanent_widget.progress_bar.setValue(0)
-        self.permanent_widget.progress_bar.show()
-        self.statusBar().showMessage("Loading MEA...")
-        n_func_strs = count_func_strs(file_name)
+    def load_geo_col_no_dialog(self, file_name: str = None):
+        # self.permanent_widget.progress_bar.setValue(0)
+        # self.permanent_widget.progress_bar.show()
+        # self.statusBar().showMessage("Loading MEA...")
 
         self.airfoil_canvas.clear()
         self.parameter_tree.clear()
         self.parameter_tree.addContainers()
 
-        self.permanent_widget.progress_bar.setValue(10)
-        self.statusBar().showMessage("Adding airfoils...")
+        # self.permanent_widget.progress_bar.setValue(10)
+        # self.statusBar().showMessage("Adding airfoils...")
         # for a in self.mea.airfoils.values():
         #     a.update()
         # self.v.clear()
         # self.param_tree_instance.t.clear()
-        geo_col_dict = load_data(file_name)
+        if file_name is not None:
+            geo_col_dict = load_data(file_name)
+        else:
+            geo_col_dict = GeometryCollection().get_dict_rep()
         self.geo_col = GeometryCollection.set_from_dict_rep(geo_col_dict, canvas=self.airfoil_canvas,
                                                             tree=self.parameter_tree, gui_obj=self)
 
-        self.permanent_widget.progress_bar.setValue(20)
+        # self.permanent_widget.progress_bar.setValue(20)
         # for idx, airfoil in enumerate(self.mea.airfoils.values()):
         #     self.mea.add_airfoil_graph_to_airfoil(airfoil, idx, None, w=self.w, v=self.v, gui_obj=self)
-        self.permanent_widget.progress_bar.setValue(25)
-        ProgressInfo = namedtuple("ProgressInfo", ("start", "end", "n"))
-        progress_info = ProgressInfo(25, 85, n_func_strs)
+        # self.permanent_widget.progress_bar.setValue(25)
         # self.param_tree_instance = MEAParamTree(self.mea, self.statusBar(), parent=self, progress_info=progress_info)
-        self.permanent_widget.progress_bar.setValue(85)
+        # self.permanent_widget.progress_bar.setValue(85)
         # for a in self.mea.airfoils.values():
         #     a.airfoil_graph.param_tree = self.param_tree_instance
         #     a.airfoil_graph.airfoil_parameters = a.airfoil_graph.param_tree.p.param('Airfoil Parameters')
@@ -982,9 +981,9 @@ class GUI(QMainWindow):
         # self.main_layout.replaceWidget(widget0, self.design_tree_widget)
         # widget0.deleteLater()
         # self.mea_start_dict = self.copy_mea_dict()
-        self.permanent_widget.progress_bar.setValue(100)
-        self.statusBar().showMessage("Airfoil system load complete.", 2000)
-        self.permanent_widget.progress_bar.hide()
+        # self.permanent_widget.progress_bar.setValue(100)
+        # self.statusBar().showMessage("Airfoil system load complete.", 2000)
+        # self.permanent_widget.progress_bar.hide()
         self.geo_col.tree.geo_col = self.geo_col
         self.geo_col.canvas.geo_col = self.geo_col
         self.auto_range_geometry()
