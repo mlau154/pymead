@@ -2470,33 +2470,29 @@ class SaveAsDialog(QFileDialog):
         self.setViewMode(QFileDialog.Detail)
 
 
-class NewGeoColDialog(QDialog):
-    def __init__(self, parent=None, window_title: str or None = None, message: str or None = None):
-        super().__init__(parent=parent)
+class NewGeoColDialog(PymeadDialog):
+    def __init__(self, theme: dict, parent=None, window_title: str or None = None, message: str or None = None):
+        w = QWidget() if message is None else QLabel(message)
         window_title = window_title if window_title is not None else "Save Changes?"
-        self.setWindowTitle(window_title)
-        self.setFont(self.parent().font())
+        super().__init__(parent=parent, window_title=window_title, widget=w, theme=theme)
         self.reject_changes = False
         self.save_successful = False
+
+    def create_button_box(self):
+
         buttonBox = QDialogButtonBox(QDialogButtonBox.Yes | QDialogButtonBox.No | QDialogButtonBox.Cancel, self)
-        layout = QFormLayout(self)
-
-        if message is not None:
-            label = QLabel(message, parent=self)
-            layout.addWidget(label)
-
-        layout.addWidget(buttonBox)
-
         buttonBox.button(QDialogButtonBox.Yes).clicked.connect(self.yes)
         buttonBox.button(QDialogButtonBox.Yes).clicked.connect(self.accept)
         buttonBox.button(QDialogButtonBox.No).clicked.connect(self.no)
         buttonBox.button(QDialogButtonBox.No).clicked.connect(self.accept)
         buttonBox.rejected.connect(self.reject)
 
+        return buttonBox
+
     @pyqtSlot()
     def yes(self):
         try:
-            save_successful = self.parent().save_mea()
+            save_successful = self.parent().save_geo_col()
             self.save_successful = save_successful
         except:
             self.save_successful = False
@@ -2506,23 +2502,18 @@ class NewGeoColDialog(QDialog):
         self.reject_changes = True
 
 
-class ExitDialog(QDialog):
-    def __init__(self, parent=None, window_title: str or None = None, message: str or None = None):
-        super().__init__(parent=parent)
+class ExitDialog(PymeadDialog):
+    def __init__(self, theme: dict, parent=None, window_title: str or None = None, message: str or None = None):
         window_title = window_title if window_title is not None else "Exit?"
-        self.setWindowTitle(window_title)
-        self.setFont(self.parent().font())
-        buttonBox = QDialogButtonBox(QDialogButtonBox.Yes | QDialogButtonBox.No, self)
-        layout = QFormLayout(self)
-
         message = message if message is not None else "Airfoil not saved.\nAre you sure you want to exit?"
-        label = QLabel(message, parent=self)
+        w = QLabel(message)
+        super().__init__(parent=parent, window_title=window_title, widget=w, theme=theme)
 
-        layout.addWidget(label)
-        layout.addWidget(buttonBox)
-
+    def create_button_box(self):
+        buttonBox = QDialogButtonBox(QDialogButtonBox.Yes | QDialogButtonBox.No, self)
         buttonBox.button(QDialogButtonBox.Yes).clicked.connect(self.accept)
         buttonBox.button(QDialogButtonBox.No).clicked.connect(self.reject)
+        return buttonBox
 
 
 class EditBoundsDialog(PymeadDialog):

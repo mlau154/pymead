@@ -60,6 +60,7 @@ from pymead.optimization.opt_setup import read_stencil_from_array, convert_opt_s
 from pymead.optimization.shape_optimization import shape_optimization as shape_optimization_static
 from pymead.post.mses_field import flow_var_label
 from pymead.utils.airfoil_matching import match_airfoil
+from pymead.utils.dict_recursion import compare_dicts_floating_precision
 from pymead.utils.get_airfoil import extract_data_from_airfoiltools
 from pymead.utils.misc import count_func_strs, get_setting
 from pymead.utils.misc import make_ga_opt_dir
@@ -99,7 +100,6 @@ class GUI(QMainWindow):
 
         self.design_tree = None
         self.dialog = None
-        self.save_attempts = 0
         self.opt_settings = None
         self.multi_airfoil_analysis_settings = None
         self.xfoil_settings = None
@@ -149,6 +149,9 @@ class GUI(QMainWindow):
             ('deeppink', Qt.DashLine)
         ]
 
+        # Save/load variables
+        self.save_attempts = 0
+        self.last_saved_state = None
         self.current_save_name = None
 
         # mandatory for cursor updates
@@ -224,11 +227,10 @@ class GUI(QMainWindow):
         self.parameter_tree.setMaximumWidth(800)
 
         # Load the airfoil system from the system argument variable if necessary
-        # self.mea_start_dict = None
-        # if self.path is not None:
-        #     self.load_mea_no_dialog(self.path)
-        # else:
-        #     self.mea_start_dict = self.copy_mea_dict()
+        if self.path is not None:
+            self.load_geo_col_no_dialog(self.path)
+        else:
+            self.last_saved_state = self.get_geo_col_state()
 
         # Check if we are using the most recent release of pymead (notify if not)
         self.check_for_new_version()
@@ -310,9 +312,9 @@ class GUI(QMainWindow):
                 a0.ignore()
                 return
 
-        if self.mea_start_dict != self.copy_mea_dict():  # Only run this code if changes have been made
-            save_dialog = NewGeoColDialog(parent=self)
-            exit_dialog = ExitDialog(parent=self)
+        if self.changes_made():  # Only run this code if changes have been made
+            save_dialog = NewGeoColDialog(theme=self.themes[self.current_theme], parent=self)
+            exit_dialog = ExitDialog(theme=self.themes[self.current_theme], parent=self)
             while True:
                 if save_dialog.exec_():  # If "Yes" to "Save Changes,"
                     if save_dialog.save_successful:  # If the changes were saved successfully, close the program.
@@ -600,7 +602,9 @@ class GUI(QMainWindow):
                 self.disp_message_box('No file name specified. File not saved.', message_mode='warn')
                 return False
         else:
-            save_data(self.geo_col.get_dict_rep(), self.current_save_name)
+            last_saved_state = self.geo_col.get_dict_rep()
+            save_data(last_saved_state, self.current_save_name)
+            self.last_saved_state = self.get_geo_col_state(geo_col_dict=last_saved_state)
             self.setWindowTitle(f"pymead - {os.path.split(self.current_save_name)[-1]}")
             self.save_attempts = 0
             return True
@@ -608,29 +612,24 @@ class GUI(QMainWindow):
     def deepcopy_geo_col(self):
         return deepcopy(self.geo_col)
 
-    def copy_mea_dict(self, deactivate_airfoil_graphs: bool = False):
-        return self.mea.copy_as_param_dict(deactivate_airfoil_graphs=deactivate_airfoil_graphs)
-
     def load_geo_col(self):
 
-        # if self.mea_start_dict is not None:
-        #     if self.mea_start_dict != self.copy_mea_dict():
-        #         save_dialog = NewMEADialog(parent=self, message="Airfoil has changes. Save?")
-        #         exit_dialog = ExitDialog(parent=self, window_title="Load anyway?",
-        #                                  message="Airfoil not saved.\nAre you sure you want to load a new one?")
-        #         while True:
-        #             if save_dialog.exec_():  # If "Yes" to "Save Changes,"
-        #                 if save_dialog.save_successful:  # If the changes were saved successfully, close the program.
-        #                     break
-        #                 else:
-        #                     if exit_dialog.exec_():  # Otherwise, If "Yes" to "Exit the Program Anyway," close the program.
-        #                         break
-        #                 if save_dialog.reject_changes:  # If "No" to "Save Changes," do not load an MEA.
-        #                     return
-        #             else:  # If "Cancel" to "Save Changes," do not load an MEA
-        #                 return
-
-        # TODO: reimplement this logic
+        if self.changes_made():
+            save_dialog = NewGeoColDialog(theme=self.themes[self.current_theme], parent=self,
+                                          message="Airfoil has changes. Save?")
+            exit_dialog = ExitDialog(theme=self.themes[self.current_theme], parent=self, window_title="Load anyway?",
+                                     message="Airfoil not saved.\nAre you sure you want to load a new one?")
+            while True:
+                if save_dialog.exec_():  # If "Yes" to "Save Changes,"
+                    if save_dialog.save_successful:  # If the changes were saved successfully, close the program.
+                        break
+                    else:
+                        if exit_dialog.exec_():  # Otherwise, If "Yes" to "Exit the Program Anyway," close the program.
+                            break
+                    if save_dialog.reject_changes:  # If "No" to "Save Changes," do not load an MEA.
+                        return
+                else:  # If "Cancel" to "Save Changes," do not load an MEA
+                        return
 
         dialog = LoadDialog(self, settings_var="jmea_default_open_location")
 
@@ -645,10 +644,18 @@ class GUI(QMainWindow):
             self.setWindowTitle(f"pymead - {os.path.split(file_name)[-1]}")
 
     def new_geo_col(self):
-        dialog = NewGeoColDialog(self)
-        if dialog.exec_():
+
+        def load_blank_geo_col():
             self.load_geo_col_no_dialog()
             self.setWindowTitle(f"pymead")
+
+        if self.changes_made():
+            print("Changes made!")
+            dialog = NewGeoColDialog(theme=self.themes[self.current_theme], parent=self)
+            if dialog.exec_():
+                load_blank_geo_col()
+        else:
+            load_blank_geo_col()
 
     def edit_bounds(self):
         bv_dialog = EditBoundsDialog(geo_col=self.geo_col, theme=self.themes[self.current_theme], parent=self)
@@ -936,57 +943,29 @@ class GUI(QMainWindow):
                                             2 * get_setting("cbar-tick-point-size"))
 
     def load_geo_col_no_dialog(self, file_name: str = None):
-        # self.permanent_widget.progress_bar.setValue(0)
-        # self.permanent_widget.progress_bar.show()
-        # self.statusBar().showMessage("Loading MEA...")
 
+        # Clear the canvas and the tree, and add the high-level containers back to the tree
         self.airfoil_canvas.clear()
         self.parameter_tree.clear()
         self.parameter_tree.addContainers()
 
-        # self.permanent_widget.progress_bar.setValue(10)
-        # self.statusBar().showMessage("Adding airfoils...")
-        # for a in self.mea.airfoils.values():
-        #     a.update()
-        # self.v.clear()
-        # self.param_tree_instance.t.clear()
         if file_name is not None:
             geo_col_dict = load_data(file_name)
         else:
             geo_col_dict = GeometryCollection().get_dict_rep()
         self.geo_col = GeometryCollection.set_from_dict_rep(geo_col_dict, canvas=self.airfoil_canvas,
                                                             tree=self.parameter_tree, gui_obj=self)
+        self.last_saved_state = self.get_geo_col_state()
 
-        # self.permanent_widget.progress_bar.setValue(20)
-        # for idx, airfoil in enumerate(self.mea.airfoils.values()):
-        #     self.mea.add_airfoil_graph_to_airfoil(airfoil, idx, None, w=self.w, v=self.v, gui_obj=self)
-        # self.permanent_widget.progress_bar.setValue(25)
-        # self.param_tree_instance = MEAParamTree(self.mea, self.statusBar(), parent=self, progress_info=progress_info)
-        # self.permanent_widget.progress_bar.setValue(85)
-        # for a in self.mea.airfoils.values():
-        #     a.airfoil_graph.param_tree = self.param_tree_instance
-        #     a.airfoil_graph.airfoil_parameters = a.airfoil_graph.param_tree.p.param('Airfoil Parameters')
-        # dben = benedict.benedict(self.mea.param_dict)
-        # self.progress_bar.setValue(90)
-        # for k in dben.keypaths():
-        #     param = dben[k]
-        #     if isinstance(param, Param):
-        #         if param.mea is None:
-        #             param.mea = self.mea
-        #         if param.mea.param_tree is None:
-        #             param.mea.param_tree = self.param_tree_instance
-        # self.mea.param_tree = self.param_tree_instance
-        # self.design_tree_widget = self.param_tree_instance.t
-        # widget0 = self.main_layout.itemAt(0).widget()
-        # self.main_layout.replaceWidget(widget0, self.design_tree_widget)
-        # widget0.deleteLater()
-        # self.mea_start_dict = self.copy_mea_dict()
-        # self.permanent_widget.progress_bar.setValue(100)
-        # self.statusBar().showMessage("Airfoil system load complete.", 2000)
-        # self.permanent_widget.progress_bar.hide()
         self.geo_col.tree.geo_col = self.geo_col
         self.geo_col.canvas.geo_col = self.geo_col
         self.auto_range_geometry()
+
+    def get_geo_col_state(self):
+        return {k: v for k, v in self.geo_col.get_dict_rep().items() if k != "metadata"}
+
+    def changes_made(self, atol: float = 1e-15) -> bool:
+        return not compare_dicts_floating_precision(self.last_saved_state, self.get_geo_col_state(), atol=atol)
 
     def disp_message_box(self, message: str, message_mode: str = "error", rich_text: bool = False):
         disp_message_box(message, self, message_mode=message_mode, rich_text=rich_text,

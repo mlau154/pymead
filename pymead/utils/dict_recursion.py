@@ -4,6 +4,62 @@ import numpy as np
 import benedict
 
 
+class DictValueNotEqualException(Exception):
+    """
+    Exception used to break out of the dictionary comparison loop immediately if two values do not match
+    """
+    pass
+
+
+def compare_dicts_floating_precision(dict_1: dict, dict_2: dict, atol: float) -> bool:
+    """
+    Compares two dictionaries recursively. Early return ``False`` if any nested dictionary is found to have a different
+    length, and keys are found not to match, any float values found to not match by the floating-point precision
+    specified by ``atol``, or any non-float values found not to match.
+
+    Parameters
+    ----------
+    dict_1: dict
+        First dictionary to compare
+
+    dict_2: dict
+        Second dictionary to compare
+
+    atol: float
+        Floating-point precision used to compare float values
+
+    Returns
+    -------
+    bool
+        ``True`` if the dictionaries match, ``False`` otherwise
+    """
+    def compare(d1: dict, d2: dict):
+        for (k1, v1), (k2, v2) in zip(d1.items(), d2.items()):
+            if k1 != k2:
+                # Found non-matching keys
+                raise DictValueNotEqualException
+            if isinstance(v1, dict) and isinstance(v2, dict):
+                if len(v1) != len(v2):
+                    # Found dictionaries of different length
+                    raise DictValueNotEqualException
+                compare(v1, v2)
+            else:
+                if isinstance(v1, float) and isinstance(v2, float):
+                    if abs(v1 - v2) > atol:
+                        # Found float values not equal
+                        raise DictValueNotEqualException
+                else:
+                    if v1 != v2:
+                        # Found non-float values not equal
+                        raise DictValueNotEqualException
+
+    try:
+        compare(dict_1, dict_2)
+        return True
+    except DictValueNotEqualException:
+        return False
+
+
 def set_all_dict_values(d: dict):
     for k, v in d.items():
         if isinstance(v, dict):
