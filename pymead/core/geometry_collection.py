@@ -450,8 +450,7 @@ class GeometryCollection(DualRep):
             else:
                 self.canvas.removeItem(pymead_obj.canvas_item)
 
-    def add_point(self, x: float, y: float, name: str or None = None, fixed: bool = False,
-                  assign_unique_name: bool = True):
+    def add_point(self, x: float, y: float, name: str or None = None, assign_unique_name: bool = True):
         """
         Adds a point by value to the geometry collection
 
@@ -471,7 +470,7 @@ class GeometryCollection(DualRep):
         Point
             Object reference
         """
-        point = Point(x=x, y=y, name=name, fixed=fixed)
+        point = Point(x=x, y=y, name=name)
         point.x().geo_col = self
         point.y().geo_col = self
         self.add_pymead_obj_by_ref(point, assign_unique_name=assign_unique_name)

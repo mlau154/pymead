@@ -9,6 +9,11 @@ from pymead.core.pymead_obj import PymeadObj
 
 
 class Point(PymeadObj):
+    """
+    The ``Point`` is the lowest-level geometry object in `pymead`. All curves in `pymead` are tied directly to ``Point``
+    objects. For example, instances of this class are used to define the endpoints of finite lines and control points of
+    Bézier curves.
+    """
     def __init__(self, x: float, y: float, name: str or None = None, setting_from_geo_col: bool = False):
         super().__init__(sub_container="points")
         self._x = None
@@ -26,9 +31,25 @@ class Point(PymeadObj):
         self.set_y(y)
 
     def x(self):
+        """
+        Getter for the point's ``x`` parameter.
+
+        Returns
+        -------
+        LengthParam
+            The point's ``x`` parameter
+        """
         return self._x
 
     def y(self):
+        """
+        Getter for the point's ``y`` parameter.
+
+        Returns
+        -------
+        LengthParam
+            The point's ``y`` parameter
+        """
         return self._y
 
     def set_x(self, x: LengthParam or float):
@@ -46,6 +67,14 @@ class Point(PymeadObj):
         self._y.point = self
 
     def set_name(self, name: str):
+        """
+        Extends the base ``set_name()`` by also renaming the point's ``x`` and ``y`` parameters.
+
+        Parameters
+        ----------
+        name: str
+            Name for the point
+        """
         # Rename the x and y parameters of the Point
         if self.x() is not None:
             self.x().set_name(f"{name}.x")
@@ -55,6 +84,14 @@ class Point(PymeadObj):
         super().set_name(name)
 
     def as_array(self):
+        """
+        Gives a one-dimensional, two-element array representation of the point (:math:`x` and :math:`y` values)
+
+        Returns
+        -------
+        np.ndarray
+            One-dimensional array containing the point's :math:`x` and :math:`y` values
+        """
         return np.array([self.x().value(), self.y().value()])
 
     @classmethod
