@@ -89,13 +89,13 @@ class Point(PymeadObj):
 
     def is_movement_allowed(self) -> bool:
         """
-        This method determines if movement is allowed for the point. These cases are:
+        This method determines if movement is allowed for the point. Movement is allowed in these cases:
 
         - Where the constraint solver has not been set or there are no geometric constraints attached
         - Where the point is a root or rotation handle of a constraint cluster. If a rotation handle, movement is
-          allowed, but the movement gets translated to a rotation about the root point with a fixed distance to the
+          allowed, but the movement gets accepted as a rotation about the root point with a fixed distance to the
           root point
-        - Where the point is one of the first three out of the four points in a symmetry constraint, and edges are
+        - Where the point is one of the first three out of the four points in a symmetry constraint, and no edges are
           attached to this point in the constraint graph
 
         Returns
