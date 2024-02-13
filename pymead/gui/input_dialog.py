@@ -1,74 +1,49 @@
-import sys
 import os
-from copy import deepcopy
-from functools import partial
+import sys
+import tempfile
 import typing
 from abc import abstractmethod
+from copy import deepcopy
+from functools import partial
 from typing import List
 
 import PyQt5.QtWidgets
 import numpy as np
 import pyqtgraph as pg
-from PyQt5.QtWidgets import (QDialog, QDialogButtonBox, QFormLayout, QDoubleSpinBox, QComboBox, QSpinBox, \
-    QTabWidget, QLabel, QMessageBox, QCheckBox, QVBoxLayout, QWidget, QGridLayout, QPushButton, QListView, QRadioButton,
-                             QSizeGrip)
-from PyQt5.QtCore import QEvent, Qt, QObject, QRect
-from PyQt5.QtGui import QStandardItem, QStandardItemModel, QFont
-import tempfile
-from PyQt5.QtCore import pyqtSlot, pyqtSignal, QStandardPaths
+from PyQt5.QtCore import QEvent
+from PyQt5.QtCore import Qt, pyqtSignal, QObject, QRect
+from PyQt5.QtCore import pyqtSlot, QStandardPaths
+from PyQt5.QtGui import QFont
+from PyQt5.QtWidgets import (QWidget, QGridLayout, QLabel, QPushButton, QCheckBox, QTabWidget, QSpinBox,
+                             QDoubleSpinBox, QComboBox, QDialog, QVBoxLayout, QSizeGrip, QDialogButtonBox, QMessageBox,
+                             QFormLayout, QRadioButton)
 
+from pymead import GUI_DEFAULTS_DIR, q_settings, GUI_DIALOG_WIDGETS_DIR
+from pymead.analysis import cfd_output_templates
+from pymead.analysis.utils import viscosity_calculator
 from pymead.core.geometry_collection import GeometryCollection
 from pymead.core.mea import MEA
-from pymead.gui.sampling_visualization import SamplingVisualizationWidget
+from pymead.gui.bounds_values_table import BoundsValuesTable
+from pymead.gui.default_settings import xfoil_settings_default
+from pymead.gui.file_selection import *
 from pymead.gui.infty_doublespinbox import InftyDoubleSpinBox
 from pymead.gui.pyqt_vertical_tab_widget.pyqt_vertical_tab_widget import VerticalTabWidget
+from pymead.gui.sampling_visualization import SamplingVisualizationWidget
 from pymead.gui.scientificspinbox_master.ScientificDoubleSpinBox import ScientificDoubleSpinBox
-from pymead.gui.file_selection import *
 from pymead.gui.separation_lines import QHSeperationLine
 from pymead.gui.side_grip import SideGrip
 from pymead.gui.title_bar import DialogTitleBar
-from pymead.utils.widget_recursion import get_parent
-from pymead.utils.read_write_files import load_data, save_data, load_documents_path
+from pymead.optimization.objectives_and_constraints import Objective, Constraint, FunctionCompileError
 from pymead.utils.dict_recursion import recursive_get
 from pymead.utils.misc import get_setting, set_setting
-from pymead.gui.default_settings import xfoil_settings_default
-from pymead.gui.bounds_values_table import BoundsValuesTable
-from pymead.optimization.objectives_and_constraints import Objective, Constraint, FunctionCompileError
-from pymead.analysis import cfd_output_templates
-from pymead.analysis.utils import viscosity_calculator
-from pymead import GUI_DEFAULTS_DIR, q_settings, GUI_DIALOG_WIDGETS_DIR
-
+from pymead.utils.read_write_files import load_data, save_data, load_documents_path
+from pymead.utils.widget_recursion import get_parent
 
 mses_settings_json = load_data(os.path.join(GUI_DEFAULTS_DIR, 'mses_settings.json'))
 
 
 ISMOM_CONVERSION = {item: idx + 1 for idx, item in enumerate(mses_settings_json['ISMOM']['addItems'])}
 IFFBC_CONVERSION = {item: idx + 1 for idx, item in enumerate(mses_settings_json['IFFBC']['addItems'])}
-
-
-get_set_value_names = {'QSpinBox': ('value', 'setValue', 'valueChanged'),
-                       'QDoubleSpinBox': ('value', 'setValue', 'valueChanged'),
-                       'ScientificDoubleSpinBox': ('value', 'setValue', 'valueChanged'),
-                       'QTextArea': ('text', 'setText', 'textChanged'),
-                       'QPlainTextArea': ('text', 'setText', 'textChanged'),
-                       'QLineEdit': ('text', 'setText', 'textChanged'),
-                       'QComboBox': ('currentText', 'setCurrentText', 'currentTextChanged'),
-                       'QCheckBox': ('checkState', 'setCheckState', 'stateChanged'),
-                       'QPlainTextEdit': ('toPlainText', 'setPlainText', 'textChanged'),
-                       'GridBounds': ('value', 'setValue', 'boundsChanged'),
-                       'MSETMultiGridWidget': ('value', 'setValue', 'multiGridChanged'),
-                       'XTRSWidget': ('values', 'setValues', 'XTRSChanged'),
-                       'ADWidget': ('values', 'setValues', 'ADChanged'),
-                       'OptConstraintsHTabWidget': ('values', 'setValues', 'OptConstraintsChanged')}
-grid_names = {'label': ['label.row', 'label.column', 'label.rowSpan', 'label.columnSpan', 'label.alignment'],
-              'widget': ['row', 'column', 'rowSpan', 'columnSpan', 'alignment'],
-              'push_button': ['push.row', 'push.column', 'push.rowSpan', 'push.columnSpan', 'push.alignment'],
-              'checkbox': ['check.row', 'check.column', 'check.rowSpan', 'check.columnSpan', 'check.alignment']}
-# sum(<ragged list>, []) flattens a ragged (or uniform) 2-D list into a 1-D list
-reserved_names = ['label', 'widget_type', 'push_button', 'push_button_action', 'clicked_connect', 'active_checkbox',
-                  *sum([v for v in grid_names.values()], [])]
-msg_modes = {'info': QMessageBox.Information, 'warn': QMessageBox.Warning, 'question': QMessageBox.Question,
-             "error": QMessageBox.Critical}
 
 
 def convert_dialog_to_mset_settings(dialog_input: dict):
@@ -133,6 +108,598 @@ def convert_dialog_to_mplot_settings(dialog_input: dict):
         'epma': dialog_input['epma']
     }
     return mplot_settings
+
+
+get_set_value_names = {'QSpinBox': ('value', 'setValue', 'valueChanged'),
+                       'QDoubleSpinBox': ('value', 'setValue', 'valueChanged'),
+                       'ScientificDoubleSpinBox': ('value', 'setValue', 'valueChanged'),
+                       'QTextArea': ('text', 'setText', 'textChanged'),
+                       'QPlainTextArea': ('text', 'setText', 'textChanged'),
+                       'QLineEdit': ('text', 'setText', 'textChanged'),
+                       'QComboBox': ('currentText', 'setCurrentText', 'currentTextChanged'),
+                       'QCheckBox': ('checkState', 'setCheckState', 'stateChanged'),
+                       'QPlainTextEdit': ('toPlainText', 'setPlainText', 'textChanged'),
+                       'GridBounds': ('value', 'setValue', 'boundsChanged'),
+                       'MSETMultiGridWidget': ('value', 'setValue', 'multiGridChanged'),
+                       'XTRSWidget': ('values', 'setValues', 'XTRSChanged'),
+                       'ADWidget': ('values', 'setValues', 'ADChanged'),
+                       'OptConstraintsHTabWidget': ('values', 'setValues', 'OptConstraintsChanged')}
+grid_names = {'label': ['label.row', 'label.column', 'label.rowSpan', 'label.columnSpan', 'label.alignment'],
+              'widget': ['row', 'column', 'rowSpan', 'columnSpan', 'alignment'],
+              'push_button': ['push.row', 'push.column', 'push.rowSpan', 'push.columnSpan', 'push.alignment'],
+              'checkbox': ['check.row', 'check.column', 'check.rowSpan', 'check.columnSpan', 'check.alignment']}
+# sum(<ragged list>, []) flattens a ragged (or uniform) 2-D list into a 1-D list
+reserved_names = ['label', 'widget_type', 'push_button', 'push_button_action', 'clicked_connect', 'active_checkbox',
+                  *sum([v for v in grid_names.values()], [])]
+msg_modes = {'info': QMessageBox.Information, 'warn': QMessageBox.Warning, 'question': QMessageBox.Question,
+             "error": QMessageBox.Critical}
+
+
+class PymeadDialogWidget(QWidget):
+    def __init__(self, settings_file, **kwargs):
+        super().__init__()
+        self.settings = load_data(settings_file)
+        self.widget_dict = {}
+        self.layout = QGridLayout()
+        self.setLayout(self.layout)
+        self.kwargs = {**kwargs}
+        self.setInputs()
+
+    def setInputs(self):
+        """This method is used to add Widgets to the Layout"""
+        grid_counter = 0
+        for w_name, w_dict in self.settings.items():
+            self.widget_dict[w_name] = {'label': None, 'widget': None, 'push_button': None, 'checkbox': None}
+
+            # Restart the grid_counter if necessary:
+            if 'restart_grid_counter' in w_dict.keys() and w_dict['restart_grid_counter']:
+                grid_counter = 0
+
+            # Add the label if necessary:
+            if 'label' in w_dict.keys():
+                label = QLabel(w_dict['label'], parent=self)
+                grid_params_label = {'row': grid_counter, 'column': 0, 'rowSpan': 1, 'columnSpan': 1,
+                                     'alignment': Qt.Alignment()}
+                for k, v in w_dict.items():
+                    if k in grid_names['label']:
+                        grid_params_label[k.split('.')[-1]] = v
+                self.layout.addWidget(label, *[v for v in grid_params_label.values()])
+                self.widget_dict[w_name]['label'] = label
+
+            # Add the main widget:
+            if hasattr(PyQt5.QtWidgets, w_dict['widget_type']):
+                # First check if the widget type is found in PyQt5.QtWidgets:
+                widget = getattr(PyQt5.QtWidgets, w_dict['widget_type'])(parent=self)
+            elif hasattr(sys.modules[__name__], w_dict['widget_type']):
+                # If not in PyQt5.QtWidgets, check the modules loaded into this file:
+                kwargs = {}
+                if w_dict['widget_type'] in ['ADWidget', 'OptConstraintsHTabWidget']:
+                    kwargs = self.kwargs
+                    if "initial_mea" in kwargs:
+                        kwargs.pop("initial_mea")
+                elif w_dict["widget_type"] == "XTRSWidget":
+                    kwargs = {"initial_mea": self.kwargs.get("initial_mea")}
+                if w_dict["widget_type"] != "ADWidget":
+                    if "param_list" in kwargs.keys():
+                        kwargs.pop("param_list")
+                if w_dict["widget_type"] not in ["ADWidget", "OptConstraintsHTabWidget"]:
+                    if "geo_col" in kwargs.keys():
+                        kwargs.pop("geo_col")
+                widget = getattr(sys.modules[__name__], w_dict['widget_type'])(parent=self, **kwargs)
+            else:
+                raise ValueError(f"Widget type {w_dict['widget_type']} not found in PyQt5.QtWidgets or system modules")
+            grid_params_widget = {'row': grid_counter, 'column': 1, 'rowSpan': 1,
+                                  'columnSpan': 2 if 'push_button' in w_dict.keys() else 3, 'alignment': Qt.Alignment()}
+            for k, v in w_dict.items():
+                if k in grid_names['widget']:
+                    grid_params_widget[k] = v
+                    if k == 'alignment':
+                        grid_params_widget[k] = {'l': Qt.AlignLeft, 'c': Qt.AlignCenter, 'r': Qt.AlignRight}[v]
+            self.layout.addWidget(widget, *[v for v in grid_params_widget.values()])
+            self.widget_dict[w_name]['widget'] = widget
+
+            # Add the push button:
+            if 'push_button' in w_dict.keys():
+                push_button = QPushButton(w_dict['push_button'], parent=self)
+                grid_params_push = {'row': grid_counter, 'column': grid_params_widget['column'] + 2, 'rowSpan': 1,
+                                    'columnSpan': 1, 'alignment': Qt.Alignment()}
+                for k, v in w_dict.items():
+                    if k in grid_names['push_button']:
+                        grid_params_push[k.split('.')[-1]] = v
+                push_button.clicked.connect(partial(getattr(self, w_dict['push_button_action']), widget))
+                self.layout.addWidget(push_button, *[v for v in grid_params_push.values()])
+                self.widget_dict[w_name]['push_button'] = push_button
+
+            if 'active_checkbox' in w_dict.keys():
+                checkbox = QCheckBox('Active?', parent=self)
+                grid_params_check = {'row': grid_counter, 'column': grid_params_widget['column'] + 2, 'rowSpan': 1,
+                                     'columnSpan': 1, 'alignment': Qt.Alignment()}
+                for k, v in w_dict.items():
+                    if k in grid_names['checkbox']:
+                        grid_params_check[k.split('.')[-1]] = v
+                checkbox.stateChanged.connect(partial(self.activate_deactivate_from_checkbox, widget))
+                self.layout.addWidget(checkbox, *[v for v in grid_params_check.values()])
+                self.widget_dict[w_name]['checkbox'] = checkbox
+
+            # Connect the button if there is one
+            if 'clicked_connect' in w_dict.keys() and isinstance(widget, QPushButton):
+                widget.clicked.connect(getattr(self, w_dict['clicked_connect']))
+
+            # Loop through the individual settings of each widget and execute:
+            for s_name, s_value in w_dict.items():
+                if s_name not in reserved_names and hasattr(widget, s_name):
+                    getattr(widget, s_name)(s_value)
+
+            # Increment the counter
+            grid_counter += 1 if 'rowSpan' not in w_dict.keys() else w_dict['rowSpan']
+
+        # Add connections for all widgets to dialogChanged (do this in a separate loop so the signals do not get
+        # triggered during initialization):
+        for w_name, w_dict in self.settings.items():
+            widget = self.widget_dict[w_name]['widget']
+            if w_dict['widget_type'] in get_set_value_names.keys():
+                getattr(widget, get_set_value_names[w_dict['widget_type']][2]).connect(
+                    partial(self.dialogChanged, w_name=w_name))
+
+    def valuesFromWidgets(self):
+        """This method is used to extract the data from the Dialog"""
+        output_dict = {w_name: None for w_name in self.widget_dict.keys()}
+        for w_name, w in self.widget_dict.items():
+            if self.settings[w_name]['widget_type'] in get_set_value_names.keys():
+                output_dict[w_name] = getattr(w['widget'],
+                                              get_set_value_names[self.settings[w_name]['widget_type']][0]
+                                              )()
+                if w['checkbox'] is not None:
+                    state = w['checkbox'].checkState()
+                    output_dict[w_name] = (output_dict[w_name], state)
+            else:
+                output_dict[w_name] = None
+        return output_dict
+
+    @staticmethod
+    def activate_deactivate_from_checkbox(widget, state):
+        widget.setReadOnly(not state)
+
+    def setWidgetValuesFromDict(self, new_values: dict):
+        for k, v in new_values.items():
+            if v is not None:
+                if self.widget_dict[k]['checkbox'] is not None:
+                    self.widget_dict[k]['checkbox'].setCheckState(v[1])
+                    getattr(self.widget_dict[k]['widget'], get_set_value_names[self.settings[k]['widget_type']][1])(v[0])
+                else:
+                    getattr(self.widget_dict[k]['widget'], get_set_value_names[self.settings[k]['widget_type']][1])(v)
+
+    def dialogChanged(self, *_, w_name: str):
+        new_inputs = self.valuesFromWidgets()
+        self.updateDialog(new_inputs, w_name)
+
+    @abstractmethod
+    def updateDialog(self, new_inputs: dict, w_name: str):
+        """Required method which reacts to changes in the dialog inputs. Use the :code:`setWidgetValuesFromDict` method to
+        update the dialog at the end of this method if necessary."""
+        pass
+
+
+class PymeadDialogHTabWidget(QTabWidget):
+
+    sigTabsChanged = pyqtSignal(object)
+
+    def __init__(self, parent, widgets: dict, settings_override: dict = None):
+        super().__init__()
+        self.w_dict = widgets
+        self.generateWidgets()
+        if settings_override is not None:
+            self.setWidgetValuesFromDict(settings_override)
+
+    def generateWidgets(self):
+        for k, v in self.w_dict.items():
+            self.addTab(v, k)
+
+    def regenerateWidgets(self):
+        self.clear()
+        self.generateWidgets()
+        self.sigTabsChanged.emit([k for k in self.w_dict.keys()])
+
+    def setWidgetValuesFromDict(self, new_values: dict):
+        for k, v in new_values.items():
+            self.w_dict[k].setWidgetValuesFromDict(new_values=v)
+
+    def valuesFromWidgets(self):
+        return {k: v.valuesFromWidgets() for k, v in self.w_dict.items()}
+
+
+class PymeadLabeledSpinBox(QObject):
+
+    sigValueChanged = pyqtSignal(int)
+
+    def __init__(self, label: str = "", tool_tip: str = "", minimum: int = None, maximum: int = None,
+                 value: int = None, read_only: bool = None):
+        self.label = QLabel(label)
+        self.widget = QSpinBox()
+        self.label.setToolTip(tool_tip)
+        self.widget.setToolTip(tool_tip)
+        if minimum is not None:
+            self.widget.setMinimum(minimum)
+        if maximum is not None:
+            self.widget.setMaximum(maximum)
+        if value is not None:
+            self.widget.setValue(value)
+        if read_only is not None:
+            self.widget.setReadOnly(read_only)
+        self.push = None
+
+        super().__init__()
+        self.widget.valueChanged.connect(self.sigValueChanged)
+
+    def setValue(self, value: int):
+        self.widget.setValue(value)
+
+    def value(self):
+        return self.widget.value()
+
+    def setReadOnly(self, read_only: bool):
+        self.widget.setReadOnly(read_only)
+
+    def setActive(self, active: int):
+        self.widget.setReadOnly(not active)
+
+
+class PymeadLabeledDoubleSpinBox(QObject):
+
+    sigValueChanged = pyqtSignal(float)
+
+    def __init__(self, label: str = "", tool_tip: str = "", minimum: float = None, maximum: float = None,
+                 value: float = None, decimals: int = None, single_step: float = None, read_only: bool = None):
+        self.label = QLabel(label)
+        self.widget = QDoubleSpinBox()
+        self.label.setToolTip(tool_tip)
+        self.widget.setToolTip(tool_tip)
+        if minimum is not None:
+            self.widget.setMinimum(minimum)
+        if maximum is not None:
+            self.widget.setMaximum(maximum)
+        if decimals is not None:
+            self.widget.setDecimals(decimals)
+        if value is not None:
+            self.widget.setValue(value)
+        if single_step is not None:
+            self.widget.setSingleStep(single_step)
+        if read_only is not None:
+            self.widget.setReadOnly(read_only)
+        self.push = None
+        super().__init__()
+        self.widget.valueChanged.connect(self.sigValueChanged)
+
+    def setValue(self, value: float):
+        self.widget.setValue(value)
+
+    def value(self):
+        return self.widget.value()
+
+    def setReadOnly(self, read_only: bool):
+        self.widget.setReadOnly(read_only)
+
+    def setActive(self, active: bool):
+        self.widget.setReadOnly(not active)
+
+
+class PymeadLabeledLineEdit(QObject):
+
+    sigValueChanged = pyqtSignal(str)
+
+    def __init__(self, label: str = "", tool_tip: str = "", text: str = "", push_label: str = None):
+        self.label = QLabel(label)
+        self.widget = QLineEdit(text)
+        self.label.setToolTip(tool_tip)
+        self.widget.setToolTip(tool_tip)
+        self.push = None
+
+        if push_label is not None:
+            self.push = QPushButton(push_label)
+
+        super().__init__()
+        self.widget.textChanged.connect(self.sigValueChanged)
+
+    def setValue(self, text: str):
+        self.widget.setText(text)
+
+    def value(self):
+        return self.widget.text()
+
+    def setReadOnly(self, read_only: bool):
+        self.widget.setReadOnly(read_only)
+
+
+class PymeadLabeledComboBox(QObject):
+
+    sigValueChanged = pyqtSignal(str)
+
+    def __init__(self, label: str = "", tool_tip: str = "", items: typing.List[str] = None,
+                 current_item: str = None):
+        self.label = QLabel(label)
+        self.widget = QComboBox()
+        self.label.setToolTip(tool_tip)
+        self.widget.setToolTip(tool_tip)
+        self.push = None
+
+        if items is not None:
+            self.widget.addItems(items)
+        if current_item is not None:
+            self.widget.setCurrentText(current_item)
+
+        super().__init__()
+        self.widget.currentTextChanged.connect(self.sigValueChanged)
+
+    def setValue(self, text: str):
+        self.widget.setCurrentText(text)
+
+    def value(self):
+        return self.widget.currentText()
+
+    def setReadOnly(self, read_only: bool):
+        self.widget.setEnabled(not read_only)
+
+
+class PymeadLabeledCheckbox(QObject):
+
+    sigValueChanged = pyqtSignal(int)
+
+    def __init__(self, label: str = "", tool_tip: str = "", initial_state: int = 0,
+                 push_label: str = None):
+        self.label = QLabel(label)
+        self.widget = QCheckBox()
+        self.widget.setCheckState(initial_state)
+        self.label.setToolTip(tool_tip)
+        self.widget.setToolTip(tool_tip)
+        self.push = None
+
+        if push_label is not None:
+            self.push = QPushButton(push_label)
+
+        super().__init__()
+        self.widget.stateChanged.connect(self.sigValueChanged)
+
+    def setValue(self, state: int):
+        self.widget.setCheckState(state)
+
+    def value(self):
+        return self.widget.checkState()
+
+
+class PymeadLabeledPushButton:
+
+    def __init__(self, label: str = "", text: str = "", tool_tip: str = ""):
+        self.label = QLabel(label)
+        self.widget = QPushButton(text)
+        self.label.setToolTip(tool_tip)
+        self.widget.setToolTip(tool_tip)
+        self.push = None
+
+    def setValue(self, _):
+        pass
+
+    @staticmethod
+    def value():
+        return None
+
+
+class PymeadDialogWidget2(QWidget):
+    def __init__(self, parent=None):
+        super().__init__(parent=parent)
+
+    @abstractmethod
+    def initializeWidgets(self, *args, **kwargs):
+        pass
+
+    @abstractmethod
+    def setWidgetValuesFromDict(self, *args, **kwargs):
+        pass
+
+    @abstractmethod
+    def valuesFromWidgets(self) -> dict:
+        pass
+
+
+class PymeadDialogVTabWidget(VerticalTabWidget):
+    def __init__(self, parent, widgets: dict, settings_override: dict = None):
+        super().__init__()
+        self.w_dict = widgets
+        for k, v in self.w_dict.items():
+            self.addTab(v, k)
+        if settings_override is not None:
+            self.setWidgetValuesFromDict(settings_override)
+
+    def setWidgetValuesFromDict(self, new_values: dict):
+        for k, v in new_values.items():
+            self.w_dict[k].setWidgetValuesFromDict(v)
+
+    def valuesFromWidgets(self):
+        return {k: v.valuesFromWidgets() for k, v in self.w_dict.items()}
+
+
+class PymeadDialog(QDialog):
+
+    _gripSize = 2
+
+    """This subclass of QDialog forces the selection of a WindowTitle and matches the visual format of the GUI"""
+    def __init__(self, parent, window_title: str, widget: PymeadDialogWidget or PymeadDialogVTabWidget,
+                 theme: dict):
+        super().__init__(parent=parent)
+        self.setWindowTitle(" " + window_title)
+        self.setWindowFlags(self.windowFlags() | Qt.FramelessWindowHint)
+        if self.parent() is not None:
+            self.setFont(self.parent().font())
+
+        self.layout = QVBoxLayout()
+        self.setLayout(self.layout)
+        self.w = widget
+
+        self.layout.addWidget(widget)
+        self.layout.addWidget(self.create_button_box())
+
+        # mandatory for cursor updates
+        self.setMouseTracking(True)
+
+        self.theme = theme
+
+        self.title_bar = DialogTitleBar(self, theme=theme)
+
+        self.sideGrips = [
+            SideGrip(self, Qt.LeftEdge),
+            SideGrip(self, Qt.TopEdge),
+            SideGrip(self, Qt.RightEdge),
+            SideGrip(self, Qt.BottomEdge),
+        ]
+        # corner grips should be "on top" of everything, otherwise the side grips
+        # will take precedence on mouse events, so we are adding them *after*;
+        # alternatively, widget.raise_() can be used
+        self.cornerGrips = [QSizeGrip(self) for _ in range(4)]
+
+        self.resize(self.width(), self.title_bar.height() + self.height())
+
+        self.title_bar.title.setStyleSheet(
+            f"""background-color: qlineargradient(x1: 0.0, y1: 0.5, x2: 1.0, y2: 0.5, 
+                    stop: 0 {theme['title-gradient-color']}, 
+                    stop: 0.6 {theme['background-color']})""")
+
+    # def setInputs(self):
+    #     self.w.setInputs()
+
+    def setWidgetValuesFromDict(self, new_inputs):
+        self.w.setWidgetValuesFromDict(new_values=new_inputs)
+
+    def valuesFromWidgets(self):
+        return self.w.valuesFromWidgets()
+
+    def create_button_box(self):
+        """Creates a ButtonBox to add to the Layout. Can be overridden to add additional functionality.
+
+        Returns
+        =======
+        QDialogButtonBox
+        """
+        buttonBox = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel, self)
+        buttonBox.accepted.connect(self.accept)
+        buttonBox.rejected.connect(self.reject)
+        return buttonBox
+
+    @property
+    def gripSize(self):
+        return self._gripSize
+
+    def setGripSize(self, size):
+        if size == self._gripSize:
+            return
+        self._gripSize = max(2, size)
+        self.updateGrips()
+
+    def updateGrips(self):
+        self.setContentsMargins(self.gripSize, self.gripSize + self.title_bar.height(), self.gripSize, self.gripSize)
+
+        outRect = self.rect()
+        # an "inner" rect used for reference to set the geometries of size grips
+        inRect = outRect.adjusted(self.gripSize, self.gripSize, -self.gripSize, -self.gripSize)
+
+        # top left
+        self.cornerGrips[0].setGeometry(QRect(outRect.topLeft(), inRect.topLeft()))
+        # top right
+        self.cornerGrips[1].setGeometry(QRect(outRect.topRight(), inRect.topRight()).normalized())
+        # bottom right
+        self.cornerGrips[2].setGeometry(QRect(inRect.bottomRight(), outRect.bottomRight()))
+        # bottom left
+        self.cornerGrips[3].setGeometry(QRect(outRect.bottomLeft(), inRect.bottomLeft()).normalized())
+
+        # left edge
+        self.sideGrips[0].setGeometry(0, inRect.top(), self.gripSize, inRect.height())
+        # top edge
+        self.sideGrips[1].setGeometry(inRect.left(), 0, inRect.width(), self.gripSize)
+        # right edge
+        self.sideGrips[2].setGeometry(inRect.left() + inRect.width(), inRect.top(), self.gripSize, inRect.height())
+        # bottom edge
+        self.sideGrips[3].setGeometry(self.gripSize, inRect.top() + inRect.height(), inRect.width(), self.gripSize)
+
+    def resizeEvent(self, event):
+        self.title_bar.resize(self.width(), self.title_bar.height())
+        super().resizeEvent(event)
+        self.updateGrips()
+
+
+class PymeadMessageBox(QMessageBox):
+
+    _gripSize = 2
+
+    def __init__(self, parent, msg: str, window_title: str, msg_mode: str, theme: dict):
+        super().__init__(parent=parent)
+        self.setText(msg)
+        self.setWindowTitle(window_title)
+        self.setWindowFlags(self.windowFlags() | Qt.FramelessWindowHint)
+        self.setIcon(msg_modes[msg_mode])
+        self.setFont(self.parent().font())
+
+        # mandatory for cursor updates
+        self.setMouseTracking(True)
+
+        self.theme = theme
+
+        self.title_bar = DialogTitleBar(self, theme=theme)
+
+        self.sideGrips = [
+            SideGrip(self, Qt.LeftEdge),
+            SideGrip(self, Qt.TopEdge),
+            SideGrip(self, Qt.RightEdge),
+            SideGrip(self, Qt.BottomEdge),
+        ]
+        # corner grips should be "on top" of everything, otherwise the side grips
+        # will take precedence on mouse events, so we are adding them *after*;
+        # alternatively, widget.raise_() can be used
+        self.cornerGrips = [QSizeGrip(self) for _ in range(4)]
+
+        self.resize(self.width(), self.title_bar.height() + self.height())
+
+        self.title_bar.title.setStyleSheet(
+            f"""background-color: qlineargradient(x1: 0.0, y1: 0.5, x2: 1.0, y2: 0.5, 
+                            stop: 0 {theme['title-gradient-color']}, 
+                            stop: 0.6 {theme['background-color']})""")
+
+    @property
+    def gripSize(self):
+        return self._gripSize
+
+    def setGripSize(self, size):
+        if size == self._gripSize:
+            return
+        self._gripSize = max(2, size)
+        self.updateGrips()
+
+    def updateGrips(self):
+        self.setContentsMargins(self.gripSize, self.gripSize + self.title_bar.height(), self.gripSize, self.gripSize)
+
+        outRect = self.rect()
+        # an "inner" rect used for reference to set the geometries of size grips
+        inRect = outRect.adjusted(self.gripSize, self.gripSize, -self.gripSize, -self.gripSize)
+
+        # top left
+        self.cornerGrips[0].setGeometry(QRect(outRect.topLeft(), inRect.topLeft()))
+        # top right
+        self.cornerGrips[1].setGeometry(QRect(outRect.topRight(), inRect.topRight()).normalized())
+        # bottom right
+        self.cornerGrips[2].setGeometry(QRect(inRect.bottomRight(), outRect.bottomRight()))
+        # bottom left
+        self.cornerGrips[3].setGeometry(QRect(outRect.bottomLeft(), inRect.bottomLeft()).normalized())
+
+        # left edge
+        self.sideGrips[0].setGeometry(0, inRect.top(), self.gripSize, inRect.height())
+        # top edge
+        self.sideGrips[1].setGeometry(inRect.left(), 0, inRect.width(), self.gripSize)
+        # right edge
+        self.sideGrips[2].setGeometry(inRect.left() + inRect.width(), inRect.top(), self.gripSize, inRect.height())
+        # bottom edge
+        self.sideGrips[3].setGeometry(self.gripSize, inRect.top() + inRect.height(), inRect.width(), self.gripSize)
+
+    def resizeEvent(self, event):
+        self.title_bar.resize(self.width(), self.title_bar.height())
+        super().resizeEvent(event)
+        self.updateGrips()
 
 
 class MSETMultiGridWidget(QTabWidget):
@@ -398,179 +965,6 @@ class ADWidget(QTabWidget):
         for ad_idx, widget_set in self.widget_dict.items():
             for key, widget in widget_set.items():
                 widget.setReadOnly(not active)
-
-
-class PymeadDialogWidget(QWidget):
-    def __init__(self, settings_file, **kwargs):
-        super().__init__()
-        self.settings = load_data(settings_file)
-        self.widget_dict = {}
-        self.layout = QGridLayout()
-        self.setLayout(self.layout)
-        self.kwargs = {**kwargs}
-        self.setInputs()
-
-    def setInputs(self):
-        """This method is used to add Widgets to the Layout"""
-        grid_counter = 0
-        for w_name, w_dict in self.settings.items():
-            self.widget_dict[w_name] = {'label': None, 'widget': None, 'push_button': None, 'checkbox': None}
-
-            # Restart the grid_counter if necessary:
-            if 'restart_grid_counter' in w_dict.keys() and w_dict['restart_grid_counter']:
-                grid_counter = 0
-
-            # Add the label if necessary:
-            if 'label' in w_dict.keys():
-                label = QLabel(w_dict['label'], parent=self)
-                grid_params_label = {'row': grid_counter, 'column': 0, 'rowSpan': 1, 'columnSpan': 1,
-                                     'alignment': Qt.Alignment()}
-                for k, v in w_dict.items():
-                    if k in grid_names['label']:
-                        grid_params_label[k.split('.')[-1]] = v
-                self.layout.addWidget(label, *[v for v in grid_params_label.values()])
-                self.widget_dict[w_name]['label'] = label
-
-            # Add the main widget:
-            if hasattr(PyQt5.QtWidgets, w_dict['widget_type']):
-                # First check if the widget type is found in PyQt5.QtWidgets:
-                widget = getattr(PyQt5.QtWidgets, w_dict['widget_type'])(parent=self)
-            elif hasattr(sys.modules[__name__], w_dict['widget_type']):
-                # If not in PyQt5.QtWidgets, check the modules loaded into this file:
-                kwargs = {}
-                if w_dict['widget_type'] in ['ADWidget', 'OptConstraintsHTabWidget']:
-                    kwargs = self.kwargs
-                    if "initial_mea" in kwargs:
-                        kwargs.pop("initial_mea")
-                elif w_dict["widget_type"] == "XTRSWidget":
-                    kwargs = {"initial_mea": self.kwargs.get("initial_mea")}
-                if w_dict["widget_type"] != "ADWidget":
-                    if "param_list" in kwargs.keys():
-                        kwargs.pop("param_list")
-                if w_dict["widget_type"] not in ["ADWidget", "OptConstraintsHTabWidget"]:
-                    if "geo_col" in kwargs.keys():
-                        kwargs.pop("geo_col")
-                widget = getattr(sys.modules[__name__], w_dict['widget_type'])(parent=self, **kwargs)
-            else:
-                raise ValueError(f"Widget type {w_dict['widget_type']} not found in PyQt5.QtWidgets or system modules")
-            grid_params_widget = {'row': grid_counter, 'column': 1, 'rowSpan': 1,
-                                  'columnSpan': 2 if 'push_button' in w_dict.keys() else 3, 'alignment': Qt.Alignment()}
-            for k, v in w_dict.items():
-                if k in grid_names['widget']:
-                    grid_params_widget[k] = v
-                    if k == 'alignment':
-                        grid_params_widget[k] = {'l': Qt.AlignLeft, 'c': Qt.AlignCenter, 'r': Qt.AlignRight}[v]
-            self.layout.addWidget(widget, *[v for v in grid_params_widget.values()])
-            self.widget_dict[w_name]['widget'] = widget
-
-            # Add the push button:
-            if 'push_button' in w_dict.keys():
-                push_button = QPushButton(w_dict['push_button'], parent=self)
-                grid_params_push = {'row': grid_counter, 'column': grid_params_widget['column'] + 2, 'rowSpan': 1,
-                                    'columnSpan': 1, 'alignment': Qt.Alignment()}
-                for k, v in w_dict.items():
-                    if k in grid_names['push_button']:
-                        grid_params_push[k.split('.')[-1]] = v
-                push_button.clicked.connect(partial(getattr(self, w_dict['push_button_action']), widget))
-                self.layout.addWidget(push_button, *[v for v in grid_params_push.values()])
-                self.widget_dict[w_name]['push_button'] = push_button
-
-            if 'active_checkbox' in w_dict.keys():
-                checkbox = QCheckBox('Active?', parent=self)
-                grid_params_check = {'row': grid_counter, 'column': grid_params_widget['column'] + 2, 'rowSpan': 1,
-                                     'columnSpan': 1, 'alignment': Qt.Alignment()}
-                for k, v in w_dict.items():
-                    if k in grid_names['checkbox']:
-                        grid_params_check[k.split('.')[-1]] = v
-                checkbox.stateChanged.connect(partial(self.activate_deactivate_from_checkbox, widget))
-                self.layout.addWidget(checkbox, *[v for v in grid_params_check.values()])
-                self.widget_dict[w_name]['checkbox'] = checkbox
-
-            # Connect the button if there is one
-            if 'clicked_connect' in w_dict.keys() and isinstance(widget, QPushButton):
-                widget.clicked.connect(getattr(self, w_dict['clicked_connect']))
-
-            # Loop through the individual settings of each widget and execute:
-            for s_name, s_value in w_dict.items():
-                if s_name not in reserved_names and hasattr(widget, s_name):
-                    getattr(widget, s_name)(s_value)
-
-            # Increment the counter
-            grid_counter += 1 if 'rowSpan' not in w_dict.keys() else w_dict['rowSpan']
-
-        # Add connections for all widgets to dialogChanged (do this in a separate loop so the signals do not get
-        # triggered during initialization):
-        for w_name, w_dict in self.settings.items():
-            widget = self.widget_dict[w_name]['widget']
-            if w_dict['widget_type'] in get_set_value_names.keys():
-                getattr(widget, get_set_value_names[w_dict['widget_type']][2]).connect(
-                    partial(self.dialogChanged, w_name=w_name))
-
-    def valuesFromWidgets(self):
-        """This method is used to extract the data from the Dialog"""
-        output_dict = {w_name: None for w_name in self.widget_dict.keys()}
-        for w_name, w in self.widget_dict.items():
-            if self.settings[w_name]['widget_type'] in get_set_value_names.keys():
-                output_dict[w_name] = getattr(w['widget'],
-                                              get_set_value_names[self.settings[w_name]['widget_type']][0]
-                                              )()
-                if w['checkbox'] is not None:
-                    state = w['checkbox'].checkState()
-                    output_dict[w_name] = (output_dict[w_name], state)
-            else:
-                output_dict[w_name] = None
-        return output_dict
-
-    @staticmethod
-    def activate_deactivate_from_checkbox(widget, state):
-        widget.setReadOnly(not state)
-
-    def setWidgetValuesFromDict(self, new_values: dict):
-        for k, v in new_values.items():
-            if v is not None:
-                if self.widget_dict[k]['checkbox'] is not None:
-                    self.widget_dict[k]['checkbox'].setCheckState(v[1])
-                    getattr(self.widget_dict[k]['widget'], get_set_value_names[self.settings[k]['widget_type']][1])(v[0])
-                else:
-                    getattr(self.widget_dict[k]['widget'], get_set_value_names[self.settings[k]['widget_type']][1])(v)
-
-    def dialogChanged(self, *_, w_name: str):
-        new_inputs = self.valuesFromWidgets()
-        self.updateDialog(new_inputs, w_name)
-
-    @abstractmethod
-    def updateDialog(self, new_inputs: dict, w_name: str):
-        """Required method which reacts to changes in the dialog inputs. Use the :code:`setWidgetValuesFromDict` method to
-        update the dialog at the end of this method if necessary."""
-        pass
-
-
-class PymeadDialogHTabWidget(QTabWidget):
-
-    sigTabsChanged = pyqtSignal(object)
-
-    def __init__(self, parent, widgets: dict, settings_override: dict = None):
-        super().__init__()
-        self.w_dict = widgets
-        self.generateWidgets()
-        if settings_override is not None:
-            self.setWidgetValuesFromDict(settings_override)
-
-    def generateWidgets(self):
-        for k, v in self.w_dict.items():
-            self.addTab(v, k)
-
-    def regenerateWidgets(self):
-        self.clear()
-        self.generateWidgets()
-        self.sigTabsChanged.emit([k for k in self.w_dict.keys()])
-
-    def setWidgetValuesFromDict(self, new_values: dict):
-        for k, v in new_values.items():
-            self.w_dict[k].setWidgetValuesFromDict(new_values=v)
-
-    def valuesFromWidgets(self):
-        return {k: v.valuesFromWidgets() for k, v in self.w_dict.items()}
 
 
 class SingleAirfoilInviscidDialog(QDialog):
@@ -844,25 +1238,21 @@ class SingleAirfoilViscousDialog(QDialog):
         return self.inputs
 
 
-class DownsamplingPreviewDialog(QDialog):
-    def __init__(self, use_downsampling: bool, downsampling_max_pts: int, downsampling_curve_exp: float,
+class DownsamplingPreviewDialog(PymeadDialog):
+    def __init__(self, theme: dict, mea_name: str, max_airfoil_points: int = None, curvature_exp: float = 2.0,
                  parent: QWidget or None = None):
-        super().__init__(parent=parent)
+        w = QWidget()
 
-        self.setWindowTitle("Airfoil Coordinates Preview")
-        self.setFont(self.parent().font())
+        super().__init__(parent=parent, window_title="Airfoil Coordinates Preview", widget=w, theme=theme)
+
         self.setGeometry(300, 300, 700, 250)
 
         self.grid_widget = {}
-
-        # buttonBox = QDialogButtonBox(self)
-        # buttonBox.addButton(QDialogButtonBox.Ok)
-        # buttonBox.addButton(QDialogButtonBox.Cancel)
         self.grid_layout = QGridLayout(self)
+        w.setLayout(self.grid_layout)
 
         # Add pyqtgraph widget
         self.w = pg.GraphicsLayoutWidget(parent=self, size=(700, 250))
-        # self.w.setBackground('#2a2a2b')
         self.v = self.w.addPlot()
         self.v.setAspectLocked()
 
@@ -872,29 +1262,18 @@ class DownsamplingPreviewDialog(QDialog):
         self.w.setBackground(theme["graph-background-color"])
 
         # Make a copy of the MEA
-        mea = gui_object.mea.deepcopy()
+        geo_col = GeometryCollection.set_from_dict_rep(gui_object.geo_col.get_dict_rep())
+        mea = geo_col.container()["mea"][mea_name]
         if not isinstance(mea, MEA):
             raise TypeError(f"Generated mea was of type {type(mea)} instead of type pymead.core.mea.MEA")
 
         # Update the curves, using downsampling if specified
-        for a in mea.airfoils.values():
-            new_param_vec_list = None
-            if use_downsampling:
-                new_param_vec_list = a.downsample(max_airfoil_points=downsampling_max_pts,
-                                                  curvature_exp=downsampling_curve_exp)
-            for c_idx, curve in enumerate(a.curve_list):
-                if new_param_vec_list is not None:
-                    curve.update(curve.P, t=new_param_vec_list[c_idx])
+        coords_list = mea.get_coords_list(max_airfoil_points, curvature_exp)
 
-        for a in mea.airfoils.values():
-            for c in a.curve_list:
-                self.v.plot(x=c.x, y=c.y, symbol="o")
+        for coords in coords_list:
+            self.v.plot(x=coords[:, 0], y=coords[:, 1], symbol="o")
 
         self.grid_layout.addWidget(self.w, 0, 0, 3, 3)
-        # self.grid_layout.addWidget(buttonBox, 1, 1, 1, 2)
-        #
-        # buttonBox.accepted.connect(self.accept)
-        # buttonBox.rejected.connect(self.reject)
 
 
 class MSETDialogWidget(PymeadDialogWidget):
@@ -977,205 +1356,14 @@ class MSETDialogWidget(PymeadDialogWidget):
         preview_dialog.exec_()
 
 
-class PymeadLabeledSpinBox(QObject):
-
-    sigValueChanged = pyqtSignal(int)
-
-    def __init__(self, label: str = "", tool_tip: str = "", minimum: int = None, maximum: int = None,
-                 value: int = None, read_only: bool = None):
-        self.label = QLabel(label)
-        self.widget = QSpinBox()
-        self.label.setToolTip(tool_tip)
-        self.widget.setToolTip(tool_tip)
-        if minimum is not None:
-            self.widget.setMinimum(minimum)
-        if maximum is not None:
-            self.widget.setMaximum(maximum)
-        if value is not None:
-            self.widget.setValue(value)
-        if read_only is not None:
-            self.widget.setReadOnly(read_only)
-        self.push = None
-
-        super().__init__()
-        self.widget.valueChanged.connect(self.sigValueChanged)
-
-    def setValue(self, value: int):
-        self.widget.setValue(value)
-
-    def value(self):
-        return self.widget.value()
-
-    def setReadOnly(self, read_only: bool):
-        self.widget.setReadOnly(read_only)
-
-    def setActive(self, active: int):
-        self.widget.setReadOnly(not active)
-
-
-class PymeadLabeledDoubleSpinBox(QObject):
-
-    sigValueChanged = pyqtSignal(float)
-
-    def __init__(self, label: str = "", tool_tip: str = "", minimum: float = None, maximum: float = None,
-                 value: float = None, decimals: int = None, single_step: float = None, read_only: bool = None):
-        self.label = QLabel(label)
-        self.widget = QDoubleSpinBox()
-        self.label.setToolTip(tool_tip)
-        self.widget.setToolTip(tool_tip)
-        if minimum is not None:
-            self.widget.setMinimum(minimum)
-        if maximum is not None:
-            self.widget.setMaximum(maximum)
-        if decimals is not None:
-            self.widget.setDecimals(decimals)
-        if value is not None:
-            self.widget.setValue(value)
-        if single_step is not None:
-            self.widget.setSingleStep(single_step)
-        if read_only is not None:
-            self.widget.setReadOnly(read_only)
-        self.push = None
-        super().__init__()
-        self.widget.valueChanged.connect(self.sigValueChanged)
-
-    def setValue(self, value: float):
-        self.widget.setValue(value)
-
-    def value(self):
-        return self.widget.value()
-
-    def setReadOnly(self, read_only: bool):
-        self.widget.setReadOnly(read_only)
-
-    def setActive(self, active: bool):
-        self.widget.setReadOnly(not active)
-
-
-class PymeadLabeledLineEdit(QObject):
-
-    sigValueChanged = pyqtSignal(str)
-
-    def __init__(self, label: str = "", tool_tip: str = "", text: str = "", push_label: str = None):
-        self.label = QLabel(label)
-        self.widget = QLineEdit(text)
-        self.label.setToolTip(tool_tip)
-        self.widget.setToolTip(tool_tip)
-        self.push = None
-
-        if push_label is not None:
-            self.push = QPushButton(push_label)
-
-        super().__init__()
-        self.widget.textChanged.connect(self.sigValueChanged)
-
-    def setValue(self, text: str):
-        self.widget.setText(text)
-
-    def value(self):
-        return self.widget.text()
-
-    def setReadOnly(self, read_only: bool):
-        self.widget.setReadOnly(read_only)
-
-
-class PymeadLabeledComboBox(QObject):
-
-    sigValueChanged = pyqtSignal(str)
-
-    def __init__(self, label: str = "", tool_tip: str = "", items: typing.List[str] = None,
-                 current_item: str = None):
-        self.label = QLabel(label)
-        self.widget = QComboBox()
-        self.label.setToolTip(tool_tip)
-        self.widget.setToolTip(tool_tip)
-        self.push = None
-
-        if items is not None:
-            self.widget.addItems(items)
-        if current_item is not None:
-            self.widget.setCurrentText(current_item)
-
-        super().__init__()
-        self.widget.currentTextChanged.connect(self.sigValueChanged)
-
-    def setValue(self, text: str):
-        self.widget.setCurrentText(text)
-
-    def value(self):
-        return self.widget.currentText()
-
-    def setReadOnly(self, read_only: bool):
-        self.widget.setEnabled(not read_only)
-
-
-class PymeadLabeledCheckbox(QObject):
-
-    sigValueChanged = pyqtSignal(int)
-
-    def __init__(self, label: str = "", tool_tip: str = "", initial_state: int = 0,
-                 push_label: str = None):
-        self.label = QLabel(label)
-        self.widget = QCheckBox()
-        self.widget.setCheckState(initial_state)
-        self.label.setToolTip(tool_tip)
-        self.widget.setToolTip(tool_tip)
-        self.push = None
-
-        if push_label is not None:
-            self.push = QPushButton(push_label)
-
-        super().__init__()
-        self.widget.stateChanged.connect(self.sigValueChanged)
-
-    def setValue(self, state: int):
-        self.widget.setCheckState(state)
-
-    def value(self):
-        return self.widget.checkState()
-
-
-class PymeadLabeledPushButton:
-
-    def __init__(self, label: str = "", text: str = "", tool_tip: str = ""):
-        self.label = QLabel(label)
-        self.widget = QPushButton(text)
-        self.label.setToolTip(tool_tip)
-        self.widget.setToolTip(tool_tip)
-        self.push = None
-
-    def setValue(self, _):
-        pass
-
-    @staticmethod
-    def value():
-        return None
-
-
-class PymeadDialogWidget2(QWidget):
-    def __init__(self, parent=None):
-        super().__init__(parent=parent)
-
-    @abstractmethod
-    def initializeWidgets(self, *args, **kwargs):
-        pass
-
-    @abstractmethod
-    def setWidgetValuesFromDict(self, *args, **kwargs):
-        pass
-
-    @abstractmethod
-    def valuesFromWidgets(self) -> dict:
-        pass
-
-
 class MSETDialogWidget2(PymeadDialogWidget2):
 
     sigMEAChanged = pyqtSignal(MEA)
 
-    def __init__(self, geo_col: GeometryCollection, parent=None):
+    def __init__(self, geo_col: GeometryCollection, theme: dict, parent=None):
         super().__init__(parent=parent)
         self.geo_col = geo_col
+        self.theme = theme
         self.widget_dict = None
         self.lay = QGridLayout()
         self.setLayout(self.lay)
@@ -1309,9 +1497,9 @@ class MSETDialogWidget2(PymeadDialogWidget2):
     def showAirfoilCoordinatesPreview(self):
         mset_settings = self.valuesFromWidgets()
         preview_dialog = DownsamplingPreviewDialog(
-            use_downsampling=bool(mset_settings["use_downsampling"]),
-            downsampling_max_pts=mset_settings["downsampling_max_pts"],
-            downsampling_curve_exp=mset_settings["downsampling_curve_exp"],
+            theme=self.theme, mea_name=self.widget_dict["mea"].widget.currentText(),
+            max_airfoil_points=mset_settings["downsampling_max_pts"] if bool(mset_settings["use_downsampling"]) else None,
+            curvature_exp=mset_settings["downsampling_curve_exp"],
             parent=self)
         preview_dialog.exec_()
 
@@ -2007,130 +2195,6 @@ class GeneticAlgorithmDialogWidget(PymeadDialogWidget):
         return data_dict
 
 
-class PymeadDialogVTabWidget(VerticalTabWidget):
-    def __init__(self, parent, widgets: dict, settings_override: dict = None):
-        super().__init__()
-        self.w_dict = widgets
-        for k, v in self.w_dict.items():
-            self.addTab(v, k)
-        if settings_override is not None:
-            self.setWidgetValuesFromDict(settings_override)
-
-    def setWidgetValuesFromDict(self, new_values: dict):
-        for k, v in new_values.items():
-            self.w_dict[k].setWidgetValuesFromDict(v)
-
-    def valuesFromWidgets(self):
-        return {k: v.valuesFromWidgets() for k, v in self.w_dict.items()}
-
-
-class PymeadDialog(QDialog):
-
-    _gripSize = 2
-
-    """This subclass of QDialog forces the selection of a WindowTitle and matches the visual format of the GUI"""
-    def __init__(self, parent, window_title: str, widget: PymeadDialogWidget or PymeadDialogVTabWidget,
-                 theme: dict):
-        super().__init__(parent=parent)
-        self.setWindowTitle(" " + window_title)
-        self.setWindowFlags(self.windowFlags() | Qt.FramelessWindowHint)
-        if self.parent() is not None:
-            self.setFont(self.parent().font())
-
-        self.layout = QVBoxLayout()
-        self.setLayout(self.layout)
-        self.w = widget
-
-        self.layout.addWidget(widget)
-        self.layout.addWidget(self.create_button_box())
-
-        # mandatory for cursor updates
-        self.setMouseTracking(True)
-
-        self.theme = theme
-
-        self.title_bar = DialogTitleBar(self, theme=theme)
-
-        self.sideGrips = [
-            SideGrip(self, Qt.LeftEdge),
-            SideGrip(self, Qt.TopEdge),
-            SideGrip(self, Qt.RightEdge),
-            SideGrip(self, Qt.BottomEdge),
-        ]
-        # corner grips should be "on top" of everything, otherwise the side grips
-        # will take precedence on mouse events, so we are adding them *after*;
-        # alternatively, widget.raise_() can be used
-        self.cornerGrips = [QSizeGrip(self) for _ in range(4)]
-
-        self.resize(self.width(), self.title_bar.height() + self.height())
-
-        self.title_bar.title.setStyleSheet(
-            f"""background-color: qlineargradient(x1: 0.0, y1: 0.5, x2: 1.0, y2: 0.5, 
-                    stop: 0 {theme['title-gradient-color']}, 
-                    stop: 0.6 {theme['background-color']})""")
-
-    # def setInputs(self):
-    #     self.w.setInputs()
-
-    def setWidgetValuesFromDict(self, new_inputs):
-        self.w.setWidgetValuesFromDict(new_values=new_inputs)
-
-    def valuesFromWidgets(self):
-        return self.w.valuesFromWidgets()
-
-    def create_button_box(self):
-        """Creates a ButtonBox to add to the Layout. Can be overridden to add additional functionality.
-
-        Returns
-        =======
-        QDialogButtonBox
-        """
-        buttonBox = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel, self)
-        buttonBox.accepted.connect(self.accept)
-        buttonBox.rejected.connect(self.reject)
-        return buttonBox
-
-    @property
-    def gripSize(self):
-        return self._gripSize
-
-    def setGripSize(self, size):
-        if size == self._gripSize:
-            return
-        self._gripSize = max(2, size)
-        self.updateGrips()
-
-    def updateGrips(self):
-        self.setContentsMargins(self.gripSize, self.gripSize + self.title_bar.height(), self.gripSize, self.gripSize)
-
-        outRect = self.rect()
-        # an "inner" rect used for reference to set the geometries of size grips
-        inRect = outRect.adjusted(self.gripSize, self.gripSize, -self.gripSize, -self.gripSize)
-
-        # top left
-        self.cornerGrips[0].setGeometry(QRect(outRect.topLeft(), inRect.topLeft()))
-        # top right
-        self.cornerGrips[1].setGeometry(QRect(outRect.topRight(), inRect.topRight()).normalized())
-        # bottom right
-        self.cornerGrips[2].setGeometry(QRect(inRect.bottomRight(), outRect.bottomRight()))
-        # bottom left
-        self.cornerGrips[3].setGeometry(QRect(outRect.bottomLeft(), inRect.bottomLeft()).normalized())
-
-        # left edge
-        self.sideGrips[0].setGeometry(0, inRect.top(), self.gripSize, inRect.height())
-        # top edge
-        self.sideGrips[1].setGeometry(inRect.left(), 0, inRect.width(), self.gripSize)
-        # right edge
-        self.sideGrips[2].setGeometry(inRect.left() + inRect.width(), inRect.top(), self.gripSize, inRect.height())
-        # bottom edge
-        self.sideGrips[3].setGeometry(self.gripSize, inRect.top() + inRect.height(), inRect.width(), self.gripSize)
-
-    def resizeEvent(self, event):
-        self.title_bar.resize(self.width(), self.title_bar.height())
-        super().resizeEvent(event)
-        self.updateGrips()
-
-
 class XFOILDialog(PymeadDialog):
     def __init__(self, parent: QWidget, current_airfoils: typing.List[str], theme: dict,
                  settings_override: dict = None):
@@ -2141,7 +2205,7 @@ class XFOILDialog(PymeadDialog):
 
 class MultiAirfoilDialog(PymeadDialog):
     def __init__(self, parent: QWidget, geo_col: GeometryCollection, theme: dict, settings_override: dict = None):
-        mset_dialog_widget = MSETDialogWidget2(geo_col=geo_col)
+        mset_dialog_widget = MSETDialogWidget2(geo_col=geo_col, theme=theme)
         mses_dialog_widget = MSESDialogWidget2(geo_col=geo_col)
         mset_dialog_widget.sigMEAChanged.connect(mses_dialog_widget.widget_dict["xtrs"].onMEAChanged)
         mplot_dialog_widget = MPLOTDialogWidget()
@@ -2525,7 +2589,7 @@ class OptimizationSetupDialog(PymeadDialog):
     def __init__(self, parent, geo_col: GeometryCollection, theme: dict, settings_override: dict = None):
         w0 = GAGeneralSettingsDialogWidget()
         w3 = XFOILDialogWidget(current_airfoils=[k for k in geo_col.container()["airfoils"]])
-        w4 = MSETDialogWidget2(geo_col=geo_col)
+        w4 = MSETDialogWidget2(geo_col=geo_col, theme=theme)
         w2 = GAConstraintsTerminationDialogWidget(geo_col=geo_col, mset_dialog_widget=w4)
         w7 = MultiPointOptDialogWidget()
         w5 = MSESDialogWidget2(geo_col=geo_col)
@@ -2545,35 +2609,24 @@ class OptimizationSetupDialog(PymeadDialog):
         w1.update_objectives_and_constraints()  # IMPORTANT: makes sure that the objectives/constraints get stored
 
 
-class ExportCoordinatesDialog(QDialog):
-    def __init__(self, parent):
-        super().__init__(parent=parent)
-
-        self.setWindowTitle("Export Airfoil Coordinates")
-        self.setFont(self.parent().font())
-
+class ExportCoordinatesDialog(PymeadDialog):
+    def __init__(self, parent, theme: dict):
+        w = QWidget()
         self.grid_widget = {}
-
-        buttonBox = QDialogButtonBox(self)
-        buttonBox.addButton(QDialogButtonBox.Ok)
-        buttonBox.addButton(QDialogButtonBox.Cancel)
-        self.grid_layout = QGridLayout(self)
-
+        self.grid_layout = QGridLayout()
         self.setInputs()
-
-        self.grid_widget['airfoil_order']['line'].setText(','.join([k for k in self.parent().mea.airfoils.keys()]))
-
-        self.grid_layout.addWidget(buttonBox, 10, 1, 1, 2)
-
-        buttonBox.accepted.connect(self.accept)
-        buttonBox.rejected.connect(self.reject)
+        w.setLayout(self.grid_layout)
+        w.setMinimumWidth(600)
+        super().__init__(parent=parent, window_title="Export Airfoil Coordinates", widget=w, theme=theme)
+        self.grid_widget["airfoil_order"]["line"].setText(
+            ",".join([k for k in self.parent().geo_col.container()["airfoils"].keys()]))
 
     def setInputs(self):
-        widget_dict = load_data(os.path.join(GUI_DIALOG_WIDGETS_DIR, 'export_coordinates_dialog.json'))
+        widget_dict = load_data(os.path.join(GUI_DIALOG_WIDGETS_DIR, "export_coordinates_dialog.json"))
         for row_name, row_dict in widget_dict.items():
             self.grid_widget[row_name] = {}
             for w_name, w_dict in row_dict.items():
-                widget = getattr(sys.modules[__name__], w_dict["w"])(self)
+                widget = getattr(sys.modules[__name__], w_dict["w"])()
                 self.grid_widget[row_name][w_name] = widget
                 if "text" in w_dict.keys() and isinstance(widget, (QLabel, QLineEdit, QPushButton)):
                     widget.setText(w_dict["text"])
@@ -2628,35 +2681,24 @@ class ExportCoordinatesDialog(QDialog):
         self.grid_widget["file_name"]["line"].setText("blade.airfoil_name")
 
 
-class ExportControlPointsDialog(QDialog):
-    def __init__(self, parent):
-        super().__init__(parent=parent)
-
-        self.setWindowTitle("Export Control Points")
-        self.setFont(self.parent().font())
-
+class ExportControlPointsDialog(PymeadDialog):
+    def __init__(self, parent, theme: dict):
+        w = QWidget()
         self.grid_widget = {}
-
-        buttonBox = QDialogButtonBox(self)
-        buttonBox.addButton(QDialogButtonBox.Ok)
-        buttonBox.addButton(QDialogButtonBox.Cancel)
-        self.grid_layout = QGridLayout(self)
-
+        self.grid_layout = QGridLayout()
         self.setInputs()
-
-        self.grid_widget['airfoil_order']['line'].setText(','.join([k for k in self.parent().mea.airfoils.keys()]))
-
-        self.grid_layout.addWidget(buttonBox, 7, 1, 1, 2)
-
-        buttonBox.accepted.connect(self.accept)
-        buttonBox.rejected.connect(self.reject)
+        w.setLayout(self.grid_layout)
+        w.setMinimumWidth(400)
+        super().__init__(parent=parent, window_title="Export Control Points", widget=w, theme=theme)
+        self.grid_widget["airfoil_order"]["line"].setText(
+            ",".join([k for k in self.parent().geo_col.container()["airfoils"].keys()]))
 
     def setInputs(self):
         widget_dict = load_data(os.path.join('dialog_widgets', 'export_control_points_dialog.json'))
         for row_name, row_dict in widget_dict.items():
             self.grid_widget[row_name] = {}
             for w_name, w_dict in row_dict.items():
-                widget = getattr(sys.modules[__name__], w_dict["w"])(self)
+                widget = getattr(sys.modules[__name__], w_dict["w"])()
                 self.grid_widget[row_name][w_name] = widget
                 if "text" in w_dict.keys() and isinstance(widget, (QLabel, QLineEdit, QPushButton)):
                     widget.setText(w_dict["text"])
@@ -2819,84 +2861,6 @@ class MSESFieldPlotDialog(PymeadDialog):
         w = MSESFieldPlotDialogWidget(default_field_dir=default_field_dir)
         super().__init__(parent=parent, window_title="MSES Field Plot Settings", widget=w, theme=theme)
         self.setMinimumWidth(450)
-
-
-class PymeadMessageBox(QMessageBox):
-
-    _gripSize = 2
-
-    def __init__(self, parent, msg: str, window_title: str, msg_mode: str, theme: dict):
-        super().__init__(parent=parent)
-        self.setText(msg)
-        self.setWindowTitle(window_title)
-        self.setWindowFlags(self.windowFlags() | Qt.FramelessWindowHint)
-        self.setIcon(msg_modes[msg_mode])
-        self.setFont(self.parent().font())
-
-        # mandatory for cursor updates
-        self.setMouseTracking(True)
-
-        self.theme = theme
-
-        self.title_bar = DialogTitleBar(self, theme=theme)
-
-        self.sideGrips = [
-            SideGrip(self, Qt.LeftEdge),
-            SideGrip(self, Qt.TopEdge),
-            SideGrip(self, Qt.RightEdge),
-            SideGrip(self, Qt.BottomEdge),
-        ]
-        # corner grips should be "on top" of everything, otherwise the side grips
-        # will take precedence on mouse events, so we are adding them *after*;
-        # alternatively, widget.raise_() can be used
-        self.cornerGrips = [QSizeGrip(self) for _ in range(4)]
-
-        self.resize(self.width(), self.title_bar.height() + self.height())
-
-        self.title_bar.title.setStyleSheet(
-            f"""background-color: qlineargradient(x1: 0.0, y1: 0.5, x2: 1.0, y2: 0.5, 
-                            stop: 0 {theme['title-gradient-color']}, 
-                            stop: 0.6 {theme['background-color']})""")
-
-    @property
-    def gripSize(self):
-        return self._gripSize
-
-    def setGripSize(self, size):
-        if size == self._gripSize:
-            return
-        self._gripSize = max(2, size)
-        self.updateGrips()
-
-    def updateGrips(self):
-        self.setContentsMargins(self.gripSize, self.gripSize + self.title_bar.height(), self.gripSize, self.gripSize)
-
-        outRect = self.rect()
-        # an "inner" rect used for reference to set the geometries of size grips
-        inRect = outRect.adjusted(self.gripSize, self.gripSize, -self.gripSize, -self.gripSize)
-
-        # top left
-        self.cornerGrips[0].setGeometry(QRect(outRect.topLeft(), inRect.topLeft()))
-        # top right
-        self.cornerGrips[1].setGeometry(QRect(outRect.topRight(), inRect.topRight()).normalized())
-        # bottom right
-        self.cornerGrips[2].setGeometry(QRect(inRect.bottomRight(), outRect.bottomRight()))
-        # bottom left
-        self.cornerGrips[3].setGeometry(QRect(outRect.bottomLeft(), inRect.bottomLeft()).normalized())
-
-        # left edge
-        self.sideGrips[0].setGeometry(0, inRect.top(), self.gripSize, inRect.height())
-        # top edge
-        self.sideGrips[1].setGeometry(inRect.left(), 0, inRect.width(), self.gripSize)
-        # right edge
-        self.sideGrips[2].setGeometry(inRect.left() + inRect.width(), inRect.top(), self.gripSize, inRect.height())
-        # bottom edge
-        self.sideGrips[3].setGeometry(self.gripSize, inRect.top() + inRect.height(), inRect.width(), self.gripSize)
-
-    def resizeEvent(self, event):
-        self.title_bar.resize(self.width(), self.title_bar.height())
-        super().resizeEvent(event)
-        self.updateGrips()
 
 
 class GridBounds(QWidget):

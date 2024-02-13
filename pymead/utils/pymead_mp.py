@@ -26,4 +26,7 @@ def kill_child_processes(parent_pid: int, sig: int = signal.SIGTERM):
         return
     children = parent.children(recursive=True)
     for process in children:
-        process.send_signal(sig)
+        try:
+            process.send_signal(sig)
+        except psutil.NoSuchProcess:
+            continue

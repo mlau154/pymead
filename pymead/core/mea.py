@@ -1,14 +1,13 @@
 import itertools
-import typing
 import os
+import typing
 
 import numpy as np
-from pymead.plugins.IGES.iges_generator import IGESGenerator
-
-from pymead.plugins.IGES.curves import BezierIGES
 
 from pymead.core.airfoil import Airfoil
 from pymead.core.pymead_obj import PymeadObj
+from pymead.plugins.IGES.curves import BezierIGES
+from pymead.plugins.IGES.iges_generator import IGESGenerator
 
 
 class MEA(PymeadObj):
@@ -28,19 +27,23 @@ class MEA(PymeadObj):
     def remove_airfoil(self, airfoil: Airfoil):
         self.airfoils.remove(airfoil)
 
-    def get_coords_list(self, downsample: bool = False, ds_max_points: int = 100, ds_curve_exp: float = 2.0):
-        # TODO: implement downsampling here
-        return [airfoil.get_coords_selig_format() for airfoil in self.airfoils]
+    def get_coords_list(self, max_airfoil_points: int = None, curvature_exp: float = 2.0):
+        mea_coords_list = [
+            airfoil.get_coords_selig_format(max_airfoil_points, curvature_exp) for airfoil in self.airfoils]
+        max_y = [np.max(coords[:, 1]) for coords in mea_coords_list]
+        airfoil_order = np.argsort(max_y)[::-1]
+        return [mea_coords_list[a_idx] for a_idx in airfoil_order]
 
     def write_mses_blade_file(self,
                               airfoil_sys_name: str,
                               blade_file_dir: str,
                               mea_coords_list: typing.List[np.ndarray] or None = None,
-                              grid_bounds: typing.List[float] or None = None) -> (str, typing.List[str]):
+                              grid_bounds: typing.List[float] or None = None,
+                              max_airfoil_points: int = None, curvature_exp: float = 2.0) -> (str, typing.List[str]):
 
         # Get the MEA coordinates list if not provided
         if mea_coords_list is None:
-            mea_coords_list = self.get_coords_list()
+            mea_coords_list = self.get_coords_list(max_airfoil_points=max_airfoil_points, curvature_exp=curvature_exp)
 
         # Set the default grid bounds value
         if grid_bounds is None:

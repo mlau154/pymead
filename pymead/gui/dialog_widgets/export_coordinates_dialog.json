@@ -4,7 +4,7 @@
       "w": "QLabel",
       "text": "Airfoil Order",
       "grid": [0, 0, 1, 1],
-      "tool_tip": "Order of airfoils in which to write the coordinates, separated by commas"
+      "tool_tip": "Order of airfoils in which to write the coordinates, separated by commas.\nNote that for MSES, the order of the airfoils must be from top to bottom."
     },
     "line": {
       "w": "QLineEdit",

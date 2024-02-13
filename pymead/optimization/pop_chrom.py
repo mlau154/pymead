@@ -112,9 +112,9 @@ class Chromosome:
             coords = self.airfoil.get_coords_selig_format()
         else:
             coords = self.mea.get_coords_list(
-                downsample=self.param_dict['mset_settings']["use_downsampling"],
-                ds_max_points=self.param_dict['mset_settings']["downsampling_max_pts"],
-                ds_curve_exp=self.param_dict['mset_settings']["downsampling_curve_exp"]
+                max_airfoil_points=self.param_dict['mset_settings']["downsampling_max_pts"] if bool(
+                    self.param_dict['mset_settings']["use_downsampling"]) else None,
+                curvature_exp=self.param_dict['mset_settings']["downsampling_curve_exp"]
             )
         return coords
 

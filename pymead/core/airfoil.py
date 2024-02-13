@@ -4,6 +4,7 @@ from copy import deepcopy
 import numpy as np
 from shapely.geometry import Polygon, LineString
 
+from pymead.core.parametric_curve import INTERMEDIATE_NT
 from pymead.core.point import Point
 from pymead.core.pymead_obj import PymeadObj
 from pymead.core.transformation import Transformation2D
@@ -149,12 +150,22 @@ class Airfoil(PymeadObj):
         if not closed:
             raise ClosureError("Curve loop not closed")
 
-    def get_coords_selig_format(self) -> np.ndarray:
+    def get_coords_selig_format(self, max_airfoil_points: int = None, curvature_exp: float = 2.0) -> np.ndarray:
         r"""
         Gets the coordinates of the airfoil in the Selig file format (coordinate array of size :math:`N \times 2`,
         where :math:`N` is the number of airfoil coordinates, and the columns represent :math:`x` and :math:`y`). The
         order of the points is counter-clockwise, with the start and end at the upper surface trailing edge point and
         lower surface trailing edge point, respectively.
+
+        Parameters
+        ----------
+        max_airfoil_points: int
+            Optional value specifying the maximum number of airfoil points. If this value is left as ``None``,
+            no downsampling will be performed. Default: ``None``
+
+        curvature_exp: float
+            Optional value specifying the curvature exponent used in the ``downsample`` method. If
+            ``max_airfoil_points`` is left as ``None``, this value will be ignored. Default: 2
 
         Returns
         -------
@@ -162,9 +173,14 @@ class Airfoil(PymeadObj):
             Coordinate array (size :math:`N \times 2`)
 
         """
+        if max_airfoil_points is not None:
+            t_vec_list = self.downsample(max_airfoil_points=max_airfoil_points, curvature_exp=curvature_exp)
+        else:
+            t_vec_list = [None for _ in self.curves]
+
         coords = None
-        for curve in self.curves:
-            p_curve_data = curve.evaluate()
+        for curve, t_vec in zip(self.curves, t_vec_list):
+            p_curve_data = curve.evaluate(t_vec)
             arr = p_curve_data.xy
             if curve in self.curves_to_reverse:
                 arr = np.flipud(arr)
@@ -224,7 +240,8 @@ class Airfoil(PymeadObj):
         """
         return -self.leading_edge.measure_angle(self.trailing_edge)
 
-    def get_chord_relative_coords(self, coords: np.ndarray = None) -> np.ndarray:
+    def get_chord_relative_coords(self, coords: np.ndarray = None, max_airfoil_points: int = None,
+                                  curvature_exp: float = 2.0) -> np.ndarray:
         """
         Gets the chord-relative values of the airfoil coordinates. The airfoil is transformed such that the leading
         edge is at :math:`(0,0)` and the trailing edge is at :math:`(1,0)`.
@@ -234,6 +251,14 @@ class Airfoil(PymeadObj):
         coords: np.ndarray or None
             Optional Selig format airfoil coordinates (only specified if computational speed is important).
             If the coordinates are not specified, they are calculated.
+
+        max_airfoil_points: int
+            Optional value specifying the maximum number of airfoil points. If this value is left as ``None``,
+            no downsampling will be performed. Default: ``None``
+
+        curvature_exp: float
+            Optional value specifying the curvature exponent used in the ``downsample`` method. If
+            ``max_airfoil_points`` is left as ``None``, this value will be ignored. Default: 2
 
         Returns
         -------
@@ -255,7 +280,7 @@ class Airfoil(PymeadObj):
             order="t,s,r"
         )
 
-        coords = self.get_coords_selig_format() if coords is None else coords
+        coords = self.get_coords_selig_format(max_airfoil_points, curvature_exp) if coords is None else coords
         return transformation.transform(coords)
 
     @staticmethod
@@ -584,7 +609,7 @@ class Airfoil(PymeadObj):
         for the airfoil.
 
         Parameters
-        ==========
+        ----------
         max_airfoil_points: int
             Maximum number of points in the airfoil (the actual number in the final airfoil may be slightly less)
 
@@ -593,22 +618,23 @@ class Airfoil(PymeadObj):
             curvature, while values close to :math:`\infty` place low emphasis on curvature (creating nearly
             uniform spacing)
 
-
         Returns
-        =======
+        -------
         list[np.ndarray]
             List of parameter vectors (one for each Bézier curve)
         """
 
-        if max_airfoil_points > sum([len(curve.t) for curve in self.curves]):
-            for curve in self.curves:
-                curve.update(P=curve.P, nt=np.ceil(max_airfoil_points / len(self.curves)).astype(int))
+        if max_airfoil_points > sum([INTERMEDIATE_NT for _ in self.curves]):
+            return [None for _ in self.curves]
+
+        nt = np.ceil(max_airfoil_points / len(self.curves)).astype(int)
+        curve_data_list = [curve.evaluate(t=np.linspace(0, 1, nt)) for curve in self.curves]
 
         new_param_vec_list = []
         new_t_concat = np.array([])
 
-        for c_idx, curve in enumerate(self.curves):
-            temp_R = deepcopy(curve.R)
+        for c_idx, curve_data in enumerate(curve_data_list):
+            temp_R = deepcopy(curve_data.R)
             for r_idx, r in enumerate(temp_R):
                 if np.isinf(r) and r > 0:
                     temp_R[r_idx] = 10000

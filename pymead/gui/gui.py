@@ -4,7 +4,6 @@ import shutil
 import sys
 import typing
 import warnings
-from collections import namedtuple
 from copy import deepcopy
 from functools import partial
 from threading import Thread
@@ -1044,9 +1043,9 @@ class GUI(QMainWindow):
 
     def export_coordinates(self):
         """Airfoil coordinate exporter"""
-        dialog = ExportCoordinatesDialog(self)
+        dialog = ExportCoordinatesDialog(self, theme=self.themes[self.current_theme])
         if dialog.exec_():
-            inputs = dialog.getInputs()
+            inputs = dialog.valuesFromWidgets()
             f_ = os.path.join(inputs['choose_dir'], inputs['file_name'])
 
             # Determine if output format should be JSON:
@@ -1057,16 +1056,15 @@ class GUI(QMainWindow):
 
             airfoils = inputs['airfoil_order'].split(',')
 
-            extra_get_coords_kwargs = dict(downsample=inputs["use_downsampling"],
-                                           ds_max_points=inputs["downsampling_max_pts"],
-                                           ds_curve_exp=inputs["downsampling_curve_exp"]) if inputs[
+            extra_get_coords_kwargs = dict(max_airfoil_points=inputs["downsampling_max_pts"],
+                                           curvature_exp=inputs["downsampling_curve_exp"]) if inputs[
                 "use_downsampling"] else {}
 
             if json:
                 coord_dict = {}
                 for a in airfoils:
-                    airfoil = self.mea.airfoils[a]
-                    coords = airfoil.get_coords(body_fixed_csys=False, **extra_get_coords_kwargs)
+                    airfoil = self.geo_col.container()["airfoils"][a]
+                    coords = airfoil.get_coords_selig_format(**extra_get_coords_kwargs)
                     coord_dict[a] = coords.tolist()
                 save_data(coord_dict, f_)
             else:
@@ -1076,8 +1074,8 @@ class GUI(QMainWindow):
                         new_line = '\n'
                     f.write(f"{inputs['header']}{new_line}")
                     for idx, a in enumerate(airfoils):
-                        airfoil = self.mea.airfoils[a]
-                        coords = airfoil.get_coords(body_fixed_csys=False, **extra_get_coords_kwargs)
+                        airfoil = self.geo_col.container()["airfoils"][a]
+                        coords = airfoil.get_coords_selig_format(**extra_get_coords_kwargs)
                         for coord in coords:
                             f.write(f"{coord[0]}{inputs['delimiter']}{coord[1]}\n")
                         if idx < len(airfoils) - 1:
@@ -1085,25 +1083,26 @@ class GUI(QMainWindow):
             self.disp_message_box(f"Airfoil coordinates saved to {f_}", message_mode='info')
 
     def export_control_points(self):
-        dialog = ExportControlPointsDialog(self)
+        dialog = ExportControlPointsDialog(self, theme=self.themes[self.current_theme])
         if dialog.exec_():
-            inputs = dialog.getInputs()
+            inputs = dialog.valuesFromWidgets()
             f_ = os.path.join(inputs['choose_dir'], inputs['file_name'])
 
             airfoils = inputs['airfoil_order'].split(',')
 
             control_point_dict = {}
             for a in airfoils:
-                airfoil = self.mea.airfoils[a]
+                airfoil = self.geo_col.container()["airfoils"][a]
                 control_points = []
-                for c in airfoil.curve_list:
-                    control_points.append(c.P.tolist())
+                for c in airfoil.curves:
+                    control_points.append(c.point_sequence().as_array().tolist())
                 control_point_dict[a] = control_points
             save_data(control_point_dict, f_)
             self.disp_message_box(f"Airfoil control points saved to {f_}", message_mode='info')
 
     def export_nx_macro(self):
-        self.mea.write_NX_macro('test_ctrlpts.py', {})
+        # self.mea.write_NX_macro('test_ctrlpts.py', {})
+        self.disp_message_box("Writing out NX macros is not yet supported in pymead", message_mode="info")
 
     def show_help(self):
         HelpBrowserWindow(parent=self)
@@ -1708,7 +1707,7 @@ class GUI(QMainWindow):
 
         # TODO: follow this same code architecture for XFOIL and MSES one-off analysis
 
-    def stop_optimization(self):
+    def stop_optimization(self, completed: bool = False):
 
         self.shape_opt_process.terminate()
 
@@ -1717,7 +1716,10 @@ class GUI(QMainWindow):
 
         self.shape_opt_process = None
 
-        print("Optimization terminated.")
+        if completed:
+            print("Optimization completed.")
+        else:
+            print("Optimization terminated.")
 
     @staticmethod
     def generate_output_folder_link_text(folder: str):

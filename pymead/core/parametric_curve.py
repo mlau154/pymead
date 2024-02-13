@@ -6,6 +6,11 @@ import matplotlib.pyplot as plt
 from pymead.core.pymead_obj import PymeadObj
 
 
+LOW_RES_NT = 100
+INTERMEDIATE_NT = 150
+HIGH_RES_NT = 200
+
+
 class PCurveData:
     def __init__(self, t: np.ndarray, xy: np.ndarray, xpyp: np.ndarray, xppypp: np.ndarray, k: np.ndarray,
                  R: np.ndarray):
@@ -50,7 +55,7 @@ class ParametricCurve(PymeadObj, ABC):
             self.canvas_item.updateCanvasItem(curve_data=p_curve_data)
 
     @staticmethod
-    def generate_t_vec(nt: int = 100, spacing: str = "linear", start: int = 0.0, end: int = 1.0):
+    def generate_t_vec(nt: int = INTERMEDIATE_NT, spacing: str = "linear", start: int = 0.0, end: int = 1.0):
         if spacing == "linear":
             return np.linspace(start, end, nt)
 

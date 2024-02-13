@@ -481,7 +481,9 @@ def run_mset(name: str, base_dir: str, mset_settings: dict, mea_airfoil_names: t
                                                                mea_airfoil_names=mea_airfoil_names)
     elif mea is not None:
         blade_file_path, airfoil_name_order = mea.write_mses_blade_file(
-            name, os.path.join(base_dir, name), grid_bounds=mset_settings["grid_bounds"])
+            name, os.path.join(base_dir, name), grid_bounds=mset_settings["grid_bounds"],
+            max_airfoil_points=mset_settings["downsampling_max_pts"] if bool(mset_settings["use_downsampling"]) else None,
+            curvature_exp=mset_settings["downsampling_curve_exp"])
     else:
         raise ValueError("At least one of either coords or mea must be specified to write the blade file")
 
