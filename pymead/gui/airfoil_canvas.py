@@ -205,7 +205,7 @@ class AirfoilCanvas(pg.PlotWidget):
 
         elif isinstance(pymead_obj, Airfoil):
 
-            pymead_obj.canvas_item = PolygonItem(data=pymead_obj.coords, airfoil=pymead_obj)
+            pymead_obj.canvas_item = PolygonItem(data=pymead_obj.coords, airfoil=pymead_obj, gui_obj=self.gui_obj)
             self.addItem(pymead_obj.canvas_item)
 
             # Connect signals
@@ -320,6 +320,7 @@ class AirfoilCanvas(pg.PlotWidget):
 
         self.geo_col.add_airfoil(leading_edge=le, trailing_edge=te, upper_surf_end=upper_surf_end,
                                  lower_surf_end=lower_surf_end)
+        self.gui_obj.permanent_widget.updateAirfoils()
 
     @runSelectionEventLoop(drawing_object="MEA", starting_message="Select the first airfoil")
     def generateMEA(self):

@@ -12,7 +12,7 @@ class PolygonItem(pg.GraphicsObject):
     sigPolyEnter = pyqtSignal(object, float, float)
     sigPolyExit = pyqtSignal(object)
 
-    def __init__(self, data, airfoil, pen=None, brush=None):
+    def __init__(self, data, airfoil, gui_obj, pen=None, brush=None):
         pg.GraphicsObject.__init__(self)
         self.data = data
         self.pen = pen
@@ -22,8 +22,9 @@ class PolygonItem(pg.GraphicsObject):
             self.brush = pg.mkBrush(66, 233, 245, 50)
         self.picture = None
         self.polygon = QPolygonF()
-        self.generatePicture()
+        self.gui_obj = gui_obj
         self.airfoil = airfoil
+        self.generatePicture()
 
     def update_polygon(self):
         """
@@ -45,6 +46,8 @@ class PolygonItem(pg.GraphicsObject):
         self.update_polygon()
         p.drawPolygon(self.polygon)
         p.end()
+        if self.gui_obj.permanent_widget.inviscid_cl_combo.currentText() == self.airfoil.name():
+            self.gui_obj.single_airfoil_inviscid_analysis(plot_cp=False)
 
     def shape(self):
         """

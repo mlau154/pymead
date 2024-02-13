@@ -141,6 +141,30 @@ class Airfoil(PymeadObj):
         coords = self.get_coords_selig_format()
         np.savetxt(file_name, coords)
 
+    def measure_chord(self):
+        """
+        Measures the chord length
+
+        Returns
+        -------
+        float
+            The airfoil's current chord length
+
+        """
+        return self.leading_edge.measure_distance(self.trailing_edge)
+
+    def measure_alpha(self):
+        """
+        Measures the angle of attack in radians
+
+        Returns
+        -------
+        float
+            The airfoil's current angle of attack
+
+        """
+        return -self.leading_edge.measure_angle(self.trailing_edge)
+
     def get_chord_relative_coords(self, coords: np.ndarray = None) -> np.ndarray:
         """
         Gets the chord-relative values of the airfoil coordinates. The airfoil is transformed such that the leading
@@ -158,14 +182,14 @@ class Airfoil(PymeadObj):
             An :math:`N \times 2` array of transformed airfoil coordinates
         """
         # Get the chord length and angle of attack
-        chord_length = self.leading_edge.measure_distance(self.trailing_edge)
-        neg_angle_of_attack = self.leading_edge.measure_angle(self.trailing_edge)
+        chord_length = self.measure_chord()
+        angle_of_attack = self.measure_alpha()
 
         # Get the transformation object
         transformation = Transformation2D(
             tx=[-self.leading_edge.x().value()],
             ty=[-self.leading_edge.y().value()],
-            r=[-neg_angle_of_attack],
+            r=[angle_of_attack],
             sx=[1 / chord_length],
             sy=[1 / chord_length],
             rotation_units="rad",

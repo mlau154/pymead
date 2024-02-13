@@ -217,8 +217,9 @@ class GUI(QMainWindow):
 
         self.auto_range_geometry()
         self.statusBar().clearMessage()
-        self.permanent_widget = PermanentWidget(self)
+        self.permanent_widget = PermanentWidget(self.geo_col, self)
         self.statusBar().addPermanentWidget(self.permanent_widget)
+        self.permanent_widget.updateAirfoils()
 
         self.parameter_tree.setMaximumWidth(300)
         self.resize(1000, self.title_bar.height() + 600)
@@ -952,10 +953,12 @@ class GUI(QMainWindow):
             geo_col_dict = GeometryCollection().get_dict_rep()
         self.geo_col = GeometryCollection.set_from_dict_rep(geo_col_dict, canvas=self.airfoil_canvas,
                                                             tree=self.parameter_tree, gui_obj=self)
+        self.permanent_widget.geo_col = self.geo_col
         self.last_saved_state = self.get_geo_col_state()
 
         self.geo_col.tree.geo_col = self.geo_col
         self.geo_col.canvas.geo_col = self.geo_col
+        self.permanent_widget.updateAirfoils()
         self.auto_range_geometry()
 
     def get_geo_col_state(self):
@@ -1009,13 +1012,42 @@ class GUI(QMainWindow):
         dialog = AirfoilStatisticsDialog(parent=self, airfoil_stats=airfoil_stats)
         dialog.exec()
 
-    def single_airfoil_inviscid_analysis(self):
-        """Inviscid analysis not yet implemented here"""
-        selected_airfoil = self.param_tree_instance.p.child('Analysis').child('Inviscid Cl Calc').value()
-        body_fixed_coords = self.mea.airfoils[selected_airfoil].get_coords(body_fixed_csys=True, as_tuple=False)
-        _, _, CL = single_element_inviscid(body_fixed_coords,
-                                           alpha=self.mea.airfoils[selected_airfoil].alf.value * 180 / np.pi)
-        print(f"{CL = }")
+    def single_airfoil_inviscid_analysis(self, plot_cp: bool):
+        selected_airfoil_name = self.permanent_widget.inviscid_cl_combo.currentText()
+
+        if selected_airfoil_name == "":
+            if plot_cp:
+                self.disp_message_box("Choose an airfoil in the bottom right-hand corner of the screen "
+                                      "to perform an incompressible, inviscid analysis", message_mode="info")
+            return
+
+        selected_airfoil = self.geo_col.container()["airfoils"][selected_airfoil_name]
+        body_fixed_coords = selected_airfoil.get_chord_relative_coords()
+        alpha = selected_airfoil.measure_alpha() * 180 / np.pi
+        xy, CP, CL = single_element_inviscid(body_fixed_coords,
+                                             alpha=selected_airfoil.measure_alpha() * 180 / np.pi)
+
+        if plot_cp:
+            self.output_area_text(
+                f"[{str(self.n_analyses).zfill(2)}] ")
+            self.output_area_text(f"PANEL ({selected_airfoil_name}, \u03b1 = {alpha:.3f}): "
+                                  f"Cl = {CL:+7.4f}".replace("-", "\u2212"), line_break=True)
+        else:
+            self.statusBar().showMessage(f"CL = {CL:.3f}", 4000)
+
+        if not plot_cp:
+            return
+
+        if self.analysis_graph is None:
+            self.analysis_graph = AnalysisGraph(
+                background_color=self.themes[self.current_theme]["graph-background-color"])
+            self.add_new_tab_widget(self.analysis_graph.w, "Analysis")
+        pg_plot_handle = self.analysis_graph.v.plot(pen=pg.mkPen(color=self.pens[self.n_converged_analyses][0],
+                                                                 style=self.pens[self.n_converged_analyses][1]),
+                                                    name=str(self.n_analyses))
+        pg_plot_handle.setData(xy[:, 0], CP)
+        self.n_converged_analyses += 1
+        self.n_analyses += 1
 
     def export_coordinates(self):
         """Airfoil coordinate exporter"""
@@ -1700,7 +1732,6 @@ class GUI(QMainWindow):
                f"color: #1FBBCC; font-size: 10pt;'>Open output folder</a><br>"
 
     def set_pool(self, pool_obj: object):
-        print(f"Setting pool! {pool_obj = }")
         self.pool = pool_obj
 
     @staticmethod

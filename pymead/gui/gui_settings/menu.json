@@ -30,7 +30,7 @@
   },
   "Analysis": {
     "Single Airfoil": {
-      "Inviscid": ["single_airfoil_inviscid_analysis", "Ctrl+Alt+I"],
+      "Inviscid": ["single_airfoil_inviscid_analysis", "Ctrl+Alt+I", null, [true]],
       "Viscous": ["single_airfoil_viscous_analysis", "Ctrl+Alt+V"]
     },
     "Multi-Element Airfoil": ["multi_airfoil_analysis_setup", "Ctrl+Alt+A"],
