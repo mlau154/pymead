@@ -11,7 +11,5 @@ python-benedict
 pandas
 PyQtWebEngine
 cmcrameri
-jax
-jaxopt
 networkx
 psutil

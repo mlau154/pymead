@@ -131,10 +131,6 @@ dependencies.
 - `PyQtWebEngine <https://pypi.org/project/PyQtWebEngine/>`_: Internal GUI web-based help browser
 - `cmcrameri <https://www.fabiocrameri.ch/colourmaps/>`_: Perceptually uniform, color-vision-deficiency friendly color
   maps by Fabio Crameri (used for flow visualization)
-- `JAX <https://jax.readthedocs.io/en/latest/>`_: Just-in-time compilation and automatic differentiation of non-linear
-  systems of geometric constraint equations for dynamic constraint editing
-- `jaxopt <https://jaxopt.github.io/stable/>`_: Root finding of non-linear systems of geometric constraint equations
-  using JAX's methods for just-in-time compilation and computation of the Jacobian using automatic differentiation
 - `networkx <https://networkx.org/documentation/stable/>`_: Analysis of the undirected graph describing the geometric
   constraint system
 - `psutil <https://pypi.org/project/psutil/>`_: Process management
