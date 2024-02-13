@@ -63,15 +63,52 @@ class Point(PymeadObj):
             raise ValueError("Points can only be generated from 1-dimensional arrays")
         return cls(x=arr[0], y=arr[1], name=name)
 
-    def measure_distance(self, other: "Point"):
+    def measure_distance(self, other: "Point") -> float:
+        """
+        Measures the distance from this point to another point.
+
+        Parameters
+        ----------
+        other: Point
+            Other point (the endpoint of the line whose distance is measured)
+
+        Returns
+        -------
+        float
+            The distance between ``self`` and ``other``
+        """
         # Note: the quotes around "Point" are necessary here because this type hint is a forward reference.
         # This means that an object of type <Class> is specified as a hint somewhere inside the definition for <Class>
         return np.hypot(other.x().value() - self.x().value(), other.y().value() - self.y().value())
 
     def measure_angle(self, other: "Point"):
+        """
+        Measures the angle (in radians) of the line starting at this point and ending at ``other``
+
+        Parameters
+        ----------
+        other: Point
+            Other point (the endpoint of the line whose angle is measured)'
+
+        Returns
+        -------
+        float
+            The angle of the line connecting ``self`` and ``other``
+        """
         return np.arctan2(other.y().value() - self.y().value(), other.x().value() - self.x().value())
 
-    def _is_symmetry_123_and_no_edges(self):
+    def _is_symmetry_123_and_no_edges(self) -> list or bool:
+        """
+        Checks if this point is a member of a symmetry constraint (but not the target of the symmetry constraint) and
+        has no attached edges in the constraint graph. Used to determine if the point is allowed to move in
+        ``request_move()``.
+
+        Returns
+        -------
+        list or bool
+            The list of symmetry constraints this point is a member of if the above conditions are met,
+            ``False`` otherwise
+        """
         if self.gcs is None:
             return False
         if len([edge for edge in self.gcs.in_edges(nbunch=self)]) != 0:
