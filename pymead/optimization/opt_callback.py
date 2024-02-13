@@ -1,15 +1,13 @@
 import typing
 from abc import abstractmethod
-from PyQt5.QtCore import QObject
-from PyQt5.QtGui import QFontDatabase
 
-from pymead.core.mea import MEA
+import numpy as np
+import pyqtgraph as pg
+from PyQt5.QtCore import QObject
+
+from pymead.gui.aero_forces_graphs import DragGraph, CpGraph
 from pymead.gui.opt_airfoil_graph import OptAirfoilGraph
 from pymead.gui.parallel_coords_graph import ParallelCoordsGraph
-from pymead.gui.aero_forces_graphs import DragGraph, CpGraph
-import pyqtgraph as pg
-import numpy as np
-from copy import deepcopy
 
 
 class OptCallback(QObject):

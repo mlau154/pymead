@@ -1,17 +1,17 @@
 
-from pymoo.core.problem import Problem
-from pymoo.util.termination.f_tol import MultiObjectiveSpaceToleranceTermination
-from pymoo.util.termination.default import MultiObjectiveDefaultTermination
-from pymoo.util.display import Display
-from pymoo.factory import get_decomposition
+import os
+import re
 from copy import deepcopy
+
+import numpy as np
+from pymoo.core.problem import Problem
+from pymoo.factory import get_decomposition
+from pymoo.util.display import Display
+from pymoo.util.termination.default import MultiObjectiveDefaultTermination
+from pymoo.util.termination.f_tol import MultiObjectiveSpaceToleranceTermination
 
 from pymead.gui.input_dialog import convert_dialog_to_mset_settings, convert_dialog_to_mses_settings, \
     convert_dialog_to_mplot_settings
-import os
-import numpy as np
-import re
-
 
 multi_point_keys_mses = {
     0: 'MACHIN',

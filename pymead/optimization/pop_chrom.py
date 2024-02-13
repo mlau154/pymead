@@ -1,14 +1,13 @@
 import typing
+from copy import deepcopy
 from multiprocessing import Pool, active_children
 from multiprocessing.connection import Connection
-from copy import deepcopy
 
 import numpy as np
 
+from pymead.analysis.calc_aero_data import calculate_aero_data
 from pymead.core.airfoil import Airfoil
 from pymead.core.geometry_collection import GeometryCollection
-
-from pymead.analysis.calc_aero_data import calculate_aero_data
 from pymead.utils.pymead_mp import kill_child_processes
 
 

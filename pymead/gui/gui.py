@@ -21,7 +21,7 @@ from cmcrameri import cm
 from pymoo.factory import get_decomposition
 from pyqtgraph.exporters import CSVExporter, SVGExporter
 
-from pymead import ICON_DIR, GUI_SETTINGS_DIR, GUI_THEMES_DIR, GUI_DEFAULT_AIRFOIL_DIR, q_settings
+from pymead import ICON_DIR, GUI_SETTINGS_DIR, GUI_THEMES_DIR, q_settings
 from pymead import RESOURCE_DIR
 from pymead.analysis.calc_aero_data import SVG_PLOTS, SVG_SETTINGS_TR
 from pymead.analysis.calc_aero_data import calculate_aero_data
@@ -62,11 +62,10 @@ from pymead.post.mses_field import flow_var_label
 from pymead.utils.airfoil_matching import match_airfoil
 from pymead.utils.dict_recursion import compare_dicts_floating_precision
 from pymead.utils.get_airfoil import extract_data_from_airfoiltools
-from pymead.utils.misc import count_func_strs, get_setting
+from pymead.utils.misc import get_setting
 from pymead.utils.misc import make_ga_opt_dir
 from pymead.utils.read_write_files import load_data, save_data
 from pymead.utils.version_check import using_latest
-
 
 # Suppress the following DeprecationWarning: sipPyTypeDict() is deprecated, the extension module
 # should use sipPyTypeDictRef() instead
