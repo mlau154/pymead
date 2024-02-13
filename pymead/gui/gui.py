@@ -3,6 +3,7 @@ import os
 import shutil
 import sys
 import typing
+import warnings
 from collections import namedtuple
 from copy import deepcopy
 from functools import partial
@@ -66,6 +67,11 @@ from pymead.utils.misc import count_func_strs, get_setting
 from pymead.utils.misc import make_ga_opt_dir
 from pymead.utils.read_write_files import load_data, save_data
 from pymead.utils.version_check import using_latest
+
+
+# Suppress the following DeprecationWarning: sipPyTypeDict() is deprecated, the extension module
+# should use sipPyTypeDictRef() instead
+warnings.filterwarnings("ignore", category=DeprecationWarning)
 
 
 class GUI(QMainWindow):

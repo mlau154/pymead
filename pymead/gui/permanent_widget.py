@@ -30,7 +30,7 @@ class PermanentWidget(QWidget):
         self.lay = QHBoxLayout(self)
         self.inviscid_cl_label = QLabel("Inviscid CL", self)
         self.inviscid_cl_combo = QComboBox(self)
-        self.inviscid_cl_combo.setMinimumWidth(40)
+        self.inviscid_cl_combo.setMinimumWidth(80)
         self.progress_bar = PymeadProgressBar(self)
         self.info_label = PymeadInfoLabel(self)
         self.lay.addWidget(self.inviscid_cl_label)
