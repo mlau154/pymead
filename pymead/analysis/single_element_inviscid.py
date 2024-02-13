@@ -1,12 +1,14 @@
-import numpy as np
-from numpy import zeros, pi, arctan2, sin, cos, sqrt, log, matmul, NaN, dot
-from numpy.linalg import inv
-import matplotlib.pyplot as plt
-import pandas as pd
-from pymead import DATA_DIR
 import os
 import time
+
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
 from numba import jit
+from numpy import zeros, pi, arctan2, sin, cos, sqrt, log, dot
+from numpy.linalg import inv
+
+from pymead import DATA_DIR
 
 
 @jit(nopython=True, cache=True)

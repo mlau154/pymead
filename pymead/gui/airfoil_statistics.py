@@ -1,7 +1,8 @@
 import pandas as pd
-from PyQt5.QtWidgets import QTextEdit, QDialog, QVBoxLayout
+from PyQt5.QtWidgets import QTextEdit
 
 from pymead.core.geometry_collection import GeometryCollection
+from pymead.gui.input_dialog import PymeadDialog
 
 
 class AirfoilStatistics:
@@ -42,12 +43,8 @@ class AirfoilStatistics:
         return text_edit
 
 
-class AirfoilStatisticsDialog(QDialog):
-    def __init__(self, parent, airfoil_stats: AirfoilStatistics):
-        super().__init__(parent=parent)
-        self.setWindowTitle("Airfoil Statistics")
-        self.setFont(self.parent().font())
-
-        layout = QVBoxLayout(self)
+class AirfoilStatisticsDialog(PymeadDialog):
+    def __init__(self, parent, airfoil_stats: AirfoilStatistics, theme: dict):
         self.stats_widget = airfoil_stats.generate_text_edit_widget(parent=parent, float_format="{:.8f}".format)
-        layout.addWidget(self.stats_widget)
+        super().__init__(parent=parent, window_title="Airfoil Statistics", widget=self.stats_widget,
+                         theme=theme)

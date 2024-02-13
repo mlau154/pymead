@@ -1000,7 +1000,8 @@ class GUI(QMainWindow):
 
     def display_airfoil_statistics(self):
         airfoil_stats = AirfoilStatistics(geo_col=self.geo_col)
-        dialog = AirfoilStatisticsDialog(parent=self, airfoil_stats=airfoil_stats)
+        dialog = AirfoilStatisticsDialog(parent=self, airfoil_stats=airfoil_stats,
+                                         theme=self.themes[self.current_theme])
         dialog.exec()
 
     def single_airfoil_inviscid_analysis(self, plot_cp: bool):
