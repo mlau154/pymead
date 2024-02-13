@@ -666,29 +666,16 @@ class GUI(QMainWindow):
         bv_dialog.exec_()
 
     def auto_range_geometry(self):
+        """
+        Adjusts the range of the airfoil canvas based on the rectangle that just encloses all the Points in the
+        geometry collection, plus an offset. If no points are present, default bounds are chosen.
+
+        Returns
+        -------
+
+        """
         x_data_range, y_data_range = self.airfoil_canvas.getPointRange()
         self.airfoil_canvas.plot.getViewBox().setRange(xRange=x_data_range, yRange=y_data_range)
-
-    def update_airfoil_parameters_from_vector(self, param_vec: np.ndarray):
-        for airfoil in self.mea.airfoils.values():
-            airfoil.airfoil_graph.airfoil_parameters = self.param_tree_instance.p.param('Airfoil Parameters')
-
-        N_dv = self.mea.count_design_variables()
-        if N_dv != len(param_vec):
-            self.disp_message_box("Number of parameters in parameter vector does not match number of design variables "
-                                  "found in the airfoil system. Check that the currently displayed airfoil system"
-                                  " matches the one used to generate the parameter vector.")
-            return
-
-        try:
-            self.mea.update_parameters(param_vec)
-        except:
-            self.disp_message_box("Could not load parameters into airfoil. Check that the current airfoil system"
-                                  " displayed matches the one used in the optimization.")
-            return
-
-        self.param_tree_instance.plot_change_recursive(
-            self.param_tree_instance.p.param('Airfoil Parameters').child('Custom').children())
 
     def import_design_variable_values(self):
         """This function imports a list of parameters normalized by their bounds"""
@@ -705,7 +692,7 @@ class GUI(QMainWindow):
     def import_algorithm_pkl_file(self):
         dialog = LoadAirfoilAlgFile(self)
         if dialog.exec_():
-            inputs = dialog.getInputs()
+            inputs = dialog.valuesFromWidgets()
             dialog.load_airfoil_alg_file_widget.assignQSettings(inputs)
 
             try:
@@ -749,7 +736,7 @@ class GUI(QMainWindow):
                 else:
                     raise ValueError("Either 'index' or 'weights' must be selected in the dialog")
 
-            self.update_airfoil_parameters_from_vector(x)
+            self.geo_col.assign_design_variable_values(x, bounds_normalized=True)
 
     def export_design_variable_values(self):
         """This function imports a list of parameters normalized by their bounds"""

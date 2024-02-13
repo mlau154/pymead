@@ -1,3 +1,4 @@
+import typing
 from copy import deepcopy
 
 import numpy as np
@@ -9,16 +10,45 @@ from pymead.core.transformation import Transformation2D
 
 
 class Airfoil(PymeadObj):
+    """
+    This a primary class in `pymead`, which defines an airfoil by a leading edge, a trailing edge,
+    and optionally an upper-surface endpoint and a lower-surface endpoint in the case of a blunt airfoil. For the
+    purposes of single-airfoil evaluation method (such as XFOIL or the built-in panel code), instances of this class
+    are sufficient. For multi-element airfoil evaluation (such as MSES), instances of this class are stored in the
+    container class, ``pymead.core.mea.MEA``, which adds some additional and necessary functionality. Coordinates
+    are stored in the ``coords`` attribute and can be updated using the ``update_coords`` method.
+    """
     def __init__(self, leading_edge: Point, trailing_edge: Point,
-                 upper_surf_end: Point, lower_surf_end: Point, name: str or None = None):
+                 upper_surf_end: Point = None, lower_surf_end: Point = None, name: str or None = None):
+        r"""
+
+        Parameters
+        ----------
+        leading_edge: Point
+            The airfoil's leading edge point (usually at :math:`(0,0)` for a typical single airfoil configuration)
+
+        trailing_edge: Point
+            The airfoil's trailing edge point (usually at :math:`(1,0)` for a typical single airfoil configuration)
+
+        upper_surf_end: Point
+            Optional specification of the upper surface endpoint (the first point in the Selig file format).
+            If this point is not specified, the trailing edge point is used instead. Default: ``None``
+
+        lower_surf_end: Point
+            Optional specification of the lower surface endpoint (the last point in the Selig file format).
+            If this point is not specified, the trailing edge point is used instead. Default: ``None``
+
+        name: str
+            Optional name for the airfoil. If ``None``, a default name is used. Default: ``None``
+        """
 
         super().__init__(sub_container="airfoils")
 
         # Point inputs
         self.leading_edge = leading_edge
         self.trailing_edge = trailing_edge
-        self.upper_surf_end = upper_surf_end
-        self.lower_surf_end = lower_surf_end
+        self.upper_surf_end = upper_surf_end if upper_surf_end is not None else trailing_edge
+        self.lower_surf_end = lower_surf_end if lower_surf_end is not None else trailing_edge
 
         # Name the airfoil
         name = "Airfoil-1" if name is None else name
@@ -41,6 +71,16 @@ class Airfoil(PymeadObj):
         self.coords = self.get_coords_selig_format()
 
     def check_closed(self):
+        """
+        This method checks if the airfoil is composed of a closed set of curves.
+        If the airfoil is closed, the method passes, but if the airfoil is not closed, a ``ClosureError`` is raised.
+        This method also determines which curves need to be evaluated in the opposite parametric direction of their
+        point sequences.
+
+        Returns
+        -------
+
+        """
         # Get the trailing edge upper curve
         if self.trailing_edge is self.upper_surf_end:
             self.upper_te_curve = None
@@ -110,6 +150,18 @@ class Airfoil(PymeadObj):
             raise ClosureError("Curve loop not closed")
 
     def get_coords_selig_format(self) -> np.ndarray:
+        r"""
+        Gets the coordinates of the airfoil in the Selig file format (coordinate array of size :math:`N \times 2`,
+        where :math:`N` is the number of airfoil coordinates, and the columns represent :math:`x` and :math:`y`). The
+        order of the points is counter-clockwise, with the start and end at the upper surface trailing edge point and
+        lower surface trailing edge point, respectively.
+
+        Returns
+        -------
+        np.ndarray
+            Coordinate array (size :math:`N \times 2`)
+
+        """
         coords = None
         for curve in self.curves:
             p_curve_data = curve.evaluate()
@@ -123,6 +175,13 @@ class Airfoil(PymeadObj):
         return coords
 
     def update_coords(self):
+        """
+        Updates the coordinates of the airfoil, and passes this data to the canvas item if it exists.
+
+        Returns
+        -------
+
+        """
         self.coords = self.get_coords_selig_format()
         if self.canvas_item is not None:
             self.canvas_item.data = self.coords
@@ -200,18 +259,63 @@ class Airfoil(PymeadObj):
         return transformation.transform(coords)
 
     @staticmethod
-    def convert_coords_to_shapely_format(coords: np.ndarray):
+    def convert_coords_to_shapely_format(coords: np.ndarray) -> typing.List[tuple]:
+        r"""
+        Converts a set of airfoil coordinates to the ``shapely`` native data format (list of tuples).
+
+        Parameters
+        ----------
+        coords: np.ndarray
+            Airfoil coordinates in the form of an :math:`N \times 2` array, where each row represents an :math:`(x,y)`
+            coordinate pair
+
+        Returns
+        -------
+        typing.List[tuple]
+            The airfoil coordinates in the ``shapely`` format (a list of tuples, where each tuple has two elements
+            representing :math:`x` and :math:`y`)
+
+        """
         return list(map(tuple, coords))
 
     @staticmethod
-    def create_line_string(coords_shapely_format: list):
+    def create_line_string(coords_shapely_format: typing.List[tuple]):
+        """
+        Creates an instance of the ``shapely.geometry.LineString`` class from an ordered sequence of points in the
+        ``shapely`` format.
+
+        Parameters
+        ----------
+        coords_shapely_format: typing.List[tuple]
+            Airfoil coordinates in the ``shapely`` format (list of tuples)
+
+        Returns
+        -------
+        LineString
+            A ``shapely.geometry.LineString`` used to represent the airfoil surface or any other sequence of points
+
+        """
         return LineString(coords_shapely_format)
 
     @staticmethod
-    def create_shapely_polygon(line_string: LineString):
+    def create_shapely_polygon(line_string: LineString) -> Polygon:
+        r"""
+        Creates an instance of the ``shapely.geometry.Polygon`` class from a line string.
+
+        Parameters
+        ----------
+        line_string: LineString
+            A ``shapely.geometry.LineString`` representing a sequence of lines
+
+        Returns
+        -------
+        Polygon
+            A ``shapely.geometry.Polygon`` used to represent the closed shape formed by the airfoil
+
+        """
         return Polygon(line_string)
 
-    def compute_area(self, airfoil_polygon: Polygon = None):
+    def compute_area(self, airfoil_polygon: Polygon = None) -> float:
         """Computes the area of the airfoil as the area of a many-sided polygon enclosed by the airfoil coordinates
         using the `shapely <https://shapely.readthedocs.io/en/stable/manual.html>`_ library.
 
@@ -237,7 +341,7 @@ class Airfoil(PymeadObj):
         ) if airfoil_polygon is None else airfoil_polygon
         return airfoil_polygon.area
 
-    def check_self_intersection(self, airfoil_line_string: LineString = None):
+    def check_self_intersection(self, airfoil_line_string: LineString = None) -> bool:
         """Determines whether the airfoil intersects itself using the `is_simple()` function of the
         `shapely <https://shapely.readthedocs.io/en/stable/manual.html>`_ library.
 
@@ -273,7 +377,7 @@ class Airfoil(PymeadObj):
         """
         return min([np.abs(curve.evaluate().R).min() for curve in self.curves])
 
-    def compute_thickness(self, airfoil_line_string: LineString = None, n_lines: int = 201):
+    def compute_thickness(self, airfoil_line_string: LineString = None, n_lines: int = 201) -> typing.Dict[str, float]:
         r"""Calculates the thickness distribution and maximum thickness of the airfoil.
 
         Parameters
@@ -322,7 +426,7 @@ class Airfoil(PymeadObj):
         }
 
     def compute_thickness_at_points(self, x_over_c: np.ndarray, airfoil_line_string: LineString = None,
-                                    start_y_over_c: float = -1.0, end_y_over_c: float = 1.0):
+                                    start_y_over_c: float = -1.0, end_y_over_c: float = 1.0) -> np.ndarray:
         """
         Calculates the thickness (t/c) at a set of x-locations (x/c)
 
@@ -368,7 +472,7 @@ class Airfoil(PymeadObj):
         return thickness  # Return an array of t/c values corresponding to the x/c locations
 
     def compute_camber_at_points(self, x_over_c: np.ndarray, airfoil_line_string: LineString = None,
-                                 start_y_over_c: float = -1.0, end_y_over_c: float = 1.0):
+                                 start_y_over_c: float = -1.0, end_y_over_c: float = 1.0) -> np.ndarray:
         """Calculates the thickness (t/c) at a set of x-locations (x/c)
 
         Parameters
@@ -410,7 +514,7 @@ class Airfoil(PymeadObj):
                 camber = np.append(camber, x_inters.convex_hull.centroid.xy[1])
         return camber  # Return an array of h/c values corresponding to the x/c locations
 
-    def contains_point(self, point: np.ndarray, airfoil_polygon: Polygon = None):
+    def contains_point(self, point: np.ndarray, airfoil_polygon: Polygon = None) -> bool:
         """Determines whether a point is contained inside the airfoil
 
         Parameters
