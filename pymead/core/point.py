@@ -9,13 +9,10 @@ from pymead.core.pymead_obj import PymeadObj
 
 
 class Point(PymeadObj):
-    def __init__(self, x: float, y: float, name: str or None = None, setting_from_geo_col: bool = False,
-                 fixed: bool = False):
+    def __init__(self, x: float, y: float, name: str or None = None, setting_from_geo_col: bool = False):
         super().__init__(sub_container="points")
         self._x = None
         self._y = None
-        self._fixed = fixed
-        self._fixed_weak = False
         self.gcs = None
         self.root = False
         self.rotation_handle = False
@@ -34,12 +31,6 @@ class Point(PymeadObj):
     def y(self):
         return self._y
 
-    def fixed(self):
-        return self._fixed
-
-    def fixed_weak(self):
-        return self._fixed_weak
-
     def set_x(self, x: LengthParam or float):
         self._x = x if isinstance(x, LengthParam) else LengthParam(
             value=x, name=self.name() + ".x", setting_from_geo_col=self.setting_from_geo_col, point=self)
@@ -53,12 +44,6 @@ class Point(PymeadObj):
         if self not in self._y.geo_objs:
             self._y.geo_objs.append(self)
         self._y.point = self
-
-    def set_fixed(self, fixed: bool):
-        self._fixed = fixed
-
-    def set_fixed_weak(self, fixed_weak: bool):
-        self._fixed_weak = fixed_weak
 
     def set_name(self, name: str):
         # Rename the x and y parameters of the Point
@@ -102,77 +87,126 @@ class Point(PymeadObj):
                 return False
         return symmetry_constraints
 
+    def is_movement_allowed(self) -> bool:
+        """
+        This method determines if movement is allowed for the point. These cases are:
+
+        - Where the constraint solver has not been set or there are no geometric constraints attached
+        - Where the point is a root or rotation handle of a constraint cluster. If a rotation handle, movement is
+          allowed, but the movement gets translated to a rotation about the root point with a fixed distance to the
+          root point
+        - Where the point is one of the first three out of the four points in a symmetry constraint, and edges are
+          attached to this point in the constraint graph
+
+        Returns
+        -------
+        bool
+            ``True`` if movement is allowed for this point, ``False`` otherwise
+        """
+        if self.gcs is None:
+            return True
+        if self.gcs is not None and len(self.geo_cons) == 0:
+            return True
+        if self.gcs is not None and self.root:
+            return True
+        if self.gcs is not None and self.rotation_handle:
+            # In this case, movement is allowed, but movements get translated to a rotation about the root point with
+            # a fixed distance to the root point
+            return True
+        if self._is_symmetry_123_and_no_edges():
+            return True
+        return False
+
     def request_move(self, xp: float, yp: float, force: bool = False):
+        """
+        Updates the location of the point and updates any curves and canvas items associated with the point movement.
 
-        if (self.gcs is None or (self.gcs is not None and len(self.geo_cons) == 0) or force or
-                (self.gcs is not None and self.root) or (self.gcs is not None and self.rotation_handle)
-                or self._is_symmetry_123_and_no_edges()):
+        Parameters
+        ----------
+        xp: float
+            New :math:`x`-value for the point
 
-            if self.root:
-                points_to_update = self.gcs.translate_cluster(self, dx=xp - self.x().value(), dy=yp - self.y().value())
-                constraints_to_update = []
-                for point in networkx.dfs_preorder_nodes(self.gcs, source=self):
-                    for geo_con in point.geo_cons:
-                        if geo_con not in constraints_to_update:
-                            constraints_to_update.append(geo_con)
+        yp: float
+            New :math:`y`-value for the point
 
-                for geo_con in constraints_to_update:
-                    if geo_con.canvas_item is not None:
-                        geo_con.canvas_item.update()
-            elif self.rotation_handle:
-                points_to_update, root = self.gcs.rotate_cluster(self, xp, yp)
-                constraints_to_update = []
-                for point in networkx.dfs_preorder_nodes(self.gcs, source=root):
-                    for geo_con in point.geo_cons:
-                        if geo_con not in constraints_to_update:
-                            constraints_to_update.append(geo_con)
+        force: bool
+            Force the movement of this point. Overrides ``is_movement_allowed``.
 
-                for geo_con in constraints_to_update:
-                    if geo_con.canvas_item is not None:
-                        geo_con.canvas_item.update()
-            else:
-                self.x().set_value(xp)
-                self.y().set_value(yp)
-                points_to_update = [self]
-                symmetry_constraints = self._is_symmetry_123_and_no_edges()
-                if symmetry_constraints:
-                    for symmetry_constraint in symmetry_constraints:
-                        self.gcs.solve_symmetry_constraint(symmetry_constraint)
-                        points_to_update.extend(symmetry_constraint.child_nodes)
-                    points_to_update = list(set(points_to_update))  # Get only the unique points
-                    for symmetry_constraint in symmetry_constraints:
-                        if symmetry_constraint.canvas_item is not None:
-                            symmetry_constraint.canvas_item.update()
+        Warning
+        -------
+        The ``force`` keyword argument should **never** be called directly from the API, or unexpected behavior
+        may result. This argument is used in the backend code for the constraint solver in the symmetry and curvature
+        constraints.
+        """
 
-            # Update the GUI object, if there is one
-            if self.canvas_item is not None:
-                self.canvas_item.updateCanvasItem(self.x().value(), self.y().value())
+        if not self.is_movement_allowed() and not force:
+            return
 
-            curves_to_update = []
-            for point in points_to_update:
-                if point.canvas_item is not None:
-                    point.canvas_item.updateCanvasItem(point.x().value(), point.y().value())
+        if self.root:
+            points_to_update = self.gcs.translate_cluster(self, dx=xp - self.x().value(), dy=yp - self.y().value())
+            constraints_to_update = []
+            for point in networkx.dfs_preorder_nodes(self.gcs, source=self):
+                for geo_con in point.geo_cons:
+                    if geo_con not in constraints_to_update:
+                        constraints_to_update.append(geo_con)
 
-                for curve in point.curves:
-                    if curve not in curves_to_update:
-                        curves_to_update.append(curve)
+            for geo_con in constraints_to_update:
+                if geo_con.canvas_item is not None:
+                    geo_con.canvas_item.update()
+        elif self.rotation_handle:
+            points_to_update, root = self.gcs.rotate_cluster(self, xp, yp)
+            constraints_to_update = []
+            for point in networkx.dfs_preorder_nodes(self.gcs, source=root):
+                for geo_con in point.geo_cons:
+                    if geo_con not in constraints_to_update:
+                        constraints_to_update.append(geo_con)
 
-            airfoils_to_update = []
-            for curve in curves_to_update:
-                if curve.airfoil is not None and curve.airfoil not in airfoils_to_update:
-                    airfoils_to_update.append(curve.airfoil)
-                curve.update()
+            for geo_con in constraints_to_update:
+                if geo_con.canvas_item is not None:
+                    geo_con.canvas_item.update()
+        else:
+            self.x().set_value(xp)
+            self.y().set_value(yp)
+            points_to_update = [self]
+            symmetry_constraints = self._is_symmetry_123_and_no_edges()
+            if symmetry_constraints:
+                for symmetry_constraint in symmetry_constraints:
+                    self.gcs.solve_symmetry_constraint(symmetry_constraint)
+                    points_to_update.extend(symmetry_constraint.child_nodes)
+                points_to_update = list(set(points_to_update))  # Get only the unique points
+                for symmetry_constraint in symmetry_constraints:
+                    if symmetry_constraint.canvas_item is not None:
+                        symmetry_constraint.canvas_item.update()
 
-            for airfoil in airfoils_to_update:
-                airfoil.update_coords()
-                if airfoil.canvas_item is not None:
-                    airfoil.canvas_item.generatePicture()
+        # Update the GUI object, if there is one
+        if self.canvas_item is not None:
+            self.canvas_item.updateCanvasItem(self.x().value(), self.y().value())
+
+        curves_to_update = []
+        for point in points_to_update:
+            if point.canvas_item is not None:
+                point.canvas_item.updateCanvasItem(point.x().value(), point.y().value())
+
+            for curve in point.curves:
+                if curve not in curves_to_update:
+                    curves_to_update.append(curve)
+
+        airfoils_to_update = []
+        for curve in curves_to_update:
+            if curve.airfoil is not None and curve.airfoil not in airfoils_to_update:
+                airfoils_to_update.append(curve.airfoil)
+            curve.update()
+
+        for airfoil in airfoils_to_update:
+            airfoil.update_coords()
+            if airfoil.canvas_item is not None:
+                airfoil.canvas_item.generatePicture()
 
     def __repr__(self):
         return f"Point {self.name()}<x={self.x().value():.6f}, y={self.y().value():.6f}>"
 
     def get_dict_rep(self):
-        return {"x": float(self.x().value()), "y": float(self.y().value()), "fixed": self.fixed()}
+        return {"x": float(self.x().value()), "y": float(self.y().value())}
 
 
 class PointSequence:

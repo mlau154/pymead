@@ -14,7 +14,7 @@
 
    .. autosummary::
    {% for item in methods %}
-   {%- if item not in inherited_members %}
+   {%- if item not in inherited_members and item != "__init__" %}
       ~{{ name }}.{{ item }}
    {%- endif %}
    {%- endfor %}

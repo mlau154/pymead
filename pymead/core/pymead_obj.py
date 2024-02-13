@@ -31,6 +31,12 @@ class PymeadObj(ABC, DualRep):
     """
 
     def __init__(self, sub_container: str):
+        """
+        Parameters
+        ----------
+        sub_container: str
+            Sub-container where this object will be stored in the ``GeometryCollection``
+        """
         self.sub_container = sub_container
         self._name = None
         self.geo_col = None
@@ -70,4 +76,13 @@ class PymeadObj(ABC, DualRep):
 
     @abstractmethod
     def get_dict_rep(self) -> dict:
+        """
+        Gets a dictionary representation of the pymead object. In general, this dictionary should consist of only
+        the required arguments for object instantiation. For example, the dictionary representation of a point looks
+        something like this: ``{"x": 0.3, "y": 0.5}``. If the argument requires a reference to a ``PymeadObj``
+        rather than a string or float value, the ``name()`` method should be the value that is stored. For
+        an example, see the overridden value of this method in ``pymead.core.airfoil.Airfoil``.
+        All subclasses of ``PymeadObj`` must implement this method, since it is the way pymead objects are stored in
+        saved instances of a ``GeometryCollection`` (``.jmea`` files).
+        """
         pass

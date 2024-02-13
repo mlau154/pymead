@@ -12,7 +12,7 @@ from pymead.core.transformation import Transformation2D
 
 class Airfoil(PymeadObj):
     """
-    This a primary class in `pymead`, which defines an airfoil by a leading edge, a trailing edge,
+    This is a primary class in `pymead`, which defines an airfoil by a leading edge, a trailing edge,
     and optionally an upper-surface endpoint and a lower-surface endpoint in the case of a blunt airfoil. For the
     purposes of single-airfoil evaluation method (such as XFOIL or the built-in panel code), instances of this class
     are sufficient. For multi-element airfoil evaluation (such as MSES), instances of this class are stored in the
