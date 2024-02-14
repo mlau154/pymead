@@ -1,19 +1,16 @@
 import os
-import unittest
 import tempfile
+import unittest
 
 import numpy as np
 
-from pymead.core import UNITS
+from pymead.core.airfoil import Airfoil, ClosureError, BranchError
 from pymead.core.bezier import Bezier
-from pymead.core.dimensions import LengthDimension, AngleDimension
 from pymead.core.geometry_collection import GeometryCollection
 from pymead.core.line import LineSegment
 from pymead.core.mea import MEA
-from pymead.core.param import Param, DesVar, LengthParam, AngleParam
+from pymead.core.param import Param, DesVar
 from pymead.core.point import Point, PointSequence
-from pymead.core.airfoil import Airfoil, ClosureError, BranchError
-
 
 temp_dir = tempfile.gettempdir()
 
@@ -80,11 +77,11 @@ class GeoColTests(unittest.TestCase):
         point = self.geo_col.add_point(4.0, 3.0)
         point2 = self.geo_col.add_point(1.5, 2.5)
 
+        self.geo_col.expose_point_xy(point2)
         self.geo_col.promote_param_to_desvar(point2.x(), lower=0.0, upper=10.0)
         self.geo_col.promote_param_to_desvar(point2.y(), lower=0.0, upper=10.0)
 
-        point2.x().set_value(-1.0)
-        point2.y().set_value(-2.0)
+        point2.request_move(-1.0, -2.0)
 
         dist = point2.measure_distance(point)
         self.assertAlmostEqual(dist, 5.0)
@@ -189,164 +186,6 @@ class ParamTests(unittest.TestCase):
         self.assertEqual(desvar_dict["value"], 0.5)
         self.assertEqual(desvar_dict["lower"], 0.1)
         self.assertEqual(desvar_dict["upper"], 0.9)
-
-
-class ConstraintTests(unittest.TestCase):
-
-    def test_curvature_constraint(self):
-        geo_col = GeometryCollection()
-        p1 = geo_col.add_point(0.0, 0.0)
-        p2 = geo_col.add_point(0.05, 0.12)
-        p3 = geo_col.add_point(0.12, 0.36)
-        p4 = geo_col.add_point(0.05, -0.12)
-        p5 = geo_col.add_point(0.35, -0.52)
-        b1 = geo_col.add_bezier(point_sequence=PointSequence(points=[p1, p2, p3]))
-        b2 = geo_col.add_bezier(point_sequence=PointSequence(points=[p1, p4, p5]))
-        curvature_con = geo_col.add_curvature_constraint(curve_joint=p1)
-
-        # Test the curvature data method
-        data = curvature_con.calculate_curvature_data()
-        self.assertIs(p2, curvature_con.g1_point_curve_1)
-        self.assertIs(p3, curvature_con.g2_point_curve_1)
-        self.assertIs(p4, curvature_con.g1_point_curve_2)
-        self.assertIs(p5, curvature_con.g2_point_curve_2)
-        self.assertAlmostEqual(0.13, data.Lt1)
-        self.assertAlmostEqual(0.13, data.Lt2)
-        self.assertAlmostEqual(0.25, data.Lc1)
-        self.assertAlmostEqual(0.5, data.Lc2)
-        self.assertAlmostEqual(np.arctan2(0.12, 0.05), data.phi1)
-        self.assertAlmostEqual(np.arctan2(-0.12, 0.05), data.phi2)
-        self.assertAlmostEqual(np.arctan2(0.24, 0.07), data.theta1)
-        self.assertAlmostEqual(np.arctan2(-0.4, 0.3), data.theta2)
-
-        curvature_con.enforce(p2)
-        data = curvature_con.calculate_curvature_data()
-        self.assertAlmostEqual(data.phi1 % (2 * np.pi), (data.phi2 + np.pi) % (2 * np.pi))
-        self.assertAlmostEqual(data.R1, data.R2)
-
-        old_psi1 = data.psi1
-        old_psi2 = data.psi2
-        p2.request_move(0.06, 0.13)
-        data = curvature_con.calculate_curvature_data()
-        self.assertAlmostEqual(data.psi1, old_psi1)
-        self.assertAlmostEqual(data.psi2, old_psi2)
-        self.assertAlmostEqual(data.phi1 % (2 * np.pi), (data.phi2 + np.pi) % (2 * np.pi))
-        self.assertAlmostEqual(data.R1, data.R2)
-
-        # Check that the evaluated curvature at the curve joint matches exactly between both curves
-        b1_data = b1.evaluate()
-        b2_data = b2.evaluate()
-        self.assertAlmostEqual(b1_data.R[0], b2_data.R[0])
-        self.assertAlmostEqual(b1_data.k[0], b2_data.k[0])
-
-    def test_length_dimension(self):
-        geo_col = GeometryCollection()
-        # First, test the case where a param is directly specified
-        param = geo_col.add_param(0.25, "LengthParam")
-        start_point = geo_col.add_point(0.0, 0.0)
-        end_point = geo_col.add_point(0.3, 0.4)
-        geo_col.add_length_dimension(tool_point=start_point, target_point=end_point, length_param=param)
-
-        # Make sure that the param length value gets changed to sqrt(0.3**2 + 0.4**2)
-        self.assertAlmostEqual(0.5, param.value())
-
-        # Now, test the case where a param is not directly specified
-        dimension = geo_col.add_length_dimension(tool_point=start_point, target_point=end_point)
-        end_point.request_move(8.0, 6.0)
-
-        # Make sure that the param length value gets changed to sqrt(8**2 + 6**2)
-        self.assertAlmostEqual(10.0, dimension.param().value())
-
-        # Change the length parameter value and make sure that the point is set to the appropriate position
-        print("Setting value to 5.0")
-        param.set_value(5.0)
-        new_length = start_point.measure_distance(end_point)
-        self.assertAlmostEqual(5.0, new_length)
-        self.assertAlmostEqual(0.0, start_point.x().value())
-        self.assertAlmostEqual(0.0, start_point.y().value())
-
-    def test_chained_length_dimension(self):
-        geo_col = GeometryCollection()
-        # First, test the case where a param is directly specified
-        param = geo_col.add_param(0.25, "LengthParam")
-        start_point = geo_col.add_point(0.0, 0.0)
-        end_point = geo_col.add_point(0.3, 0.4)
-        geo_col.add_length_dimension(tool_point=start_point, target_point=end_point, length_param=param)
-
-        # Make sure that the param length value gets changed to sqrt(0.3**2 + 0.4**2)
-        self.assertAlmostEqual(0.5, param.value())
-
-        # Now, test the case where a param is not directly specified
-        dimension = geo_col.add_length_dimension(tool_point=start_point, target_point=end_point)
-        end_point.request_move(8.0, 6.0)
-
-        # Make sure that the param length value gets changed to sqrt(8**2 + 6**2)
-        self.assertAlmostEqual(10.0, dimension.param().value())
-
-    def test_angle_dimension(self):
-        # Set the units to degrees
-        UNITS.set_current_angle_unit("deg")
-
-        # First, test the case where a param is directly specified
-        param = AngleParam(0.25, "AngleDim")
-        start_point = Point(0.0, 0.0, "p1", setting_from_geo_col=True)
-        end_point = Point(0.4, 0.4, "p3", setting_from_geo_col=True)
-        AngleDimension(tool_point=start_point, target_point=end_point, angle_param=param)
-
-        # Make sure that the param angle value gets changed to 45 degrees
-        self.assertAlmostEqual(45.0, param.value())
-
-        # Now, test the case where a param is not directly specified
-        dimension = AngleDimension(tool_point=start_point, target_point=end_point)
-        end_point.request_move(-4.0, 4.0)
-
-        # Make sure that the param length value gets changed to sqrt(8**2 + 6**2)
-        self.assertAlmostEqual(135.0, dimension.param().value())
-
-    def test_units(self):
-        start_point = Point(0.0, 0.0, "p1", setting_from_geo_col=True)
-        end_point = Point(0.3, 0.4, "p3", setting_from_geo_col=True)
-
-        dimension = LengthDimension(tool_point=start_point, target_point=end_point)
-
-        UNITS.set_current_length_unit("mm")
-        start_point.x().set_unit()
-        start_point.y().set_unit()
-        end_point.x().set_unit()
-        end_point.y().set_unit()
-        dimension.param().set_unit()
-
-        self.assertAlmostEqual(300.0, end_point.x().value())
-        self.assertAlmostEqual(400.0, end_point.y().value())
-        self.assertAlmostEqual(dimension.param().value(), 500.0)
-
-        end_point.request_move(8000.0, 6000.0)
-
-        UNITS.set_current_length_unit("m")
-        start_point.x().set_unit()
-        start_point.y().set_unit()
-        end_point.x().set_unit()
-        end_point.y().set_unit()
-        dimension.param().set_unit()
-
-        # Make sure that the points get moved to 8, 6 and param length value gets changed to sqrt(8**2 + 6**2)
-        self.assertAlmostEqual(8.0, end_point.x().value())
-        self.assertAlmostEqual(6.0, end_point.y().value())
-        self.assertAlmostEqual(10.0, dimension.param().value())
-
-        end_point.request_move(0.0762, 0.1016)
-
-        UNITS.set_current_length_unit("in")
-        start_point.x().set_unit()
-        start_point.y().set_unit()
-        end_point.x().set_unit()
-        end_point.y().set_unit()
-        dimension.param().set_unit()
-
-        # Make sure that the points get moved to 8, 6 and param length value gets changed to sqrt(8**2 + 6**2)
-        self.assertAlmostEqual(3.0, end_point.x().value())
-        self.assertAlmostEqual(4.0, end_point.y().value())
-        self.assertAlmostEqual(5.0, dimension.param().value())
 
 
 class AirfoilTests(unittest.TestCase):
@@ -581,7 +420,7 @@ class MEATests(unittest.TestCase):
         # Output the blade file
         blade_file_dir = temp_dir
         airfoil_sys_name = "testAirfoilSys"
-        blade_file = mea.write_mses_blade_file(airfoil_sys_name=airfoil_sys_name, blade_file_dir=blade_file_dir)
+        blade_file, _ = mea.write_mses_blade_file(airfoil_sys_name=airfoil_sys_name, blade_file_dir=blade_file_dir)
 
         # Load the coordinates from the created file
         blade = np.loadtxt(blade_file, skiprows=2)

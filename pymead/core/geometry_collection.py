@@ -9,7 +9,6 @@ from pymead.core.airfoil import Airfoil
 from pymead.core.bezier import Bezier
 from pymead.core.constraints import *
 from pymead.core.gcs import GCS
-from pymead.core.dimensions import LengthDimension, AngleDimension, Dimension
 from pymead.core.mea import MEA
 from pymead.core.pymead_obj import DualRep, PymeadObj
 from pymead.core.line import LineSegment
@@ -431,23 +430,6 @@ class GeometryCollection(DualRep):
 
             self.gcs._remove_point(pymead_obj)
 
-        elif isinstance(pymead_obj, Dimension):
-            # Remove the dimension references from the points
-            if isinstance(pymead_obj.target(), Point):
-                pymead_obj.target().dims.remove(pymead_obj)
-            elif isinstance(pymead_obj.target(), PointSequence):
-                for pt in pymead_obj.target().points():
-                    pt.dims.remove(pymead_obj)
-
-            if isinstance(pymead_obj.tool(), Point):
-                pymead_obj.tool().dims.remove(pymead_obj)
-            elif isinstance(pymead_obj.tool(), PointSequence):
-                for pt in pymead_obj.tool().points():
-                    pt.dims.remove(pymead_obj)
-
-            # Remove the parameter associated with the dimension
-            self.remove_pymead_obj(pymead_obj.param())
-
         elif isinstance(pymead_obj, GeoCon):
             # First, remove the parameter associated with the constraint if necessary (i.e., if that parameter is not
             # tied to any other constraints
@@ -813,31 +795,12 @@ class GeometryCollection(DualRep):
 
         return self.add_pymead_obj_by_ref(mea, assign_unique_name=assign_unique_name)
 
-    def add_length_dimension(self, tool_point: Point, target_point: Point, length_param: LengthParam or None = None,
-                             name: str or None = None, assign_unique_name: bool = True):
-        length_dim = LengthDimension(tool_point=tool_point, target_point=target_point, length_param=length_param,
-                                     name=name)
-
-        if length_dim.param().geo_col is None:
-            self.add_pymead_obj_by_ref(pymead_obj=length_dim.param(), assign_unique_name=assign_unique_name)
-
-        return self.add_pymead_obj_by_ref(length_dim, assign_unique_name=assign_unique_name)
-
-    def add_angle_dimension(self, tool_point: Point, target_point: Point, angle_param: AngleDimension or None = None,
-                            name: str or None = None, assign_unique_name: bool = True):
-        angle_dim = AngleDimension(tool_point=tool_point, target_point=target_point, angle_param=angle_param,
-                                   name=name)
-
-        if angle_dim.param().geo_col is None:
-            self.add_pymead_obj_by_ref(pymead_obj=angle_dim.param(), assign_unique_name=assign_unique_name)
-
-        return self.add_pymead_obj_by_ref(angle_dim, assign_unique_name=assign_unique_name)
-
     def add_constraint(self, constraint: GeoCon, assign_unique_name: bool = True, **constraint_kwargs):
         self.add_pymead_obj_by_ref(constraint, assign_unique_name=assign_unique_name)
         try:
             self.gcs.add_constraint(constraint)
-            if isinstance(constraint, AntiParallel3Constraint) or isinstance(constraint, Perp3Constraint):
+            if (isinstance(constraint, AntiParallel3Constraint) or isinstance(constraint, Perp3Constraint) or
+                    isinstance(constraint, RelAngle3Constraint) or isinstance(constraint, DistanceConstraint)):
                 points_solved = self.gcs.solve(constraint)
                 self.gcs.update_canvas_items(points_solved)
         except ValueError as e:
@@ -911,37 +874,6 @@ class GeometryCollection(DualRep):
             geo_col.add_constraint(constraint=constraint, assign_unique_name=False, compile=False,
                                    solve_and_update=False)
             constraints_added.append(constraint)
-
-        # geo_col.gcs.compile_and_solve_first_constraint_of_all_clusters(constraint_list=constraints_added)
-
-        for name, dim_dict in d["dims"].items():
-            if "length_param" in dim_dict.keys():
-                if dim_dict["length_param"] in geo_col.container()["desvar"].keys():
-                    param = geo_col.container()["desvar"][dim_dict["length_param"]]
-                elif dim_dict["length_param"] in geo_col.container()["params"].keys():
-                    param = geo_col.container()["params"][dim_dict["length_param"]]
-                else:
-                    raise ValueError(f"Could not find length_param named {dim_dict['length_param']} in either the "
-                                     f"desvar or params sub-containers")
-                geo_col.add_length_dimension(tool_point=geo_col.container()["points"][dim_dict["tool_point"]],
-                                             target_point=geo_col.container()["points"][dim_dict["target_point"]],
-                                             length_param=param,
-                                             name=name)
-            elif "angle_param" in dim_dict.keys():
-                if dim_dict["angle_param"] in geo_col.container()["desvar"].keys():
-                    param = geo_col.container()["desvar"][dim_dict["angle_param"]]
-                elif dim_dict["angle_param"] in geo_col.container()["params"].keys():
-                    param = geo_col.container()["params"][dim_dict["angle_param"]]
-                else:
-                    raise ValueError(f"Could not find angle_param named {dim_dict['angle_param']} in either the "
-                                     f"desvar or params sub-containers")
-                geo_col.add_angle_dimension(tool_point=geo_col.container()["points"][dim_dict["tool_point"]],
-                                            target_point=geo_col.container()["points"][dim_dict["target_point"]],
-                                            angle_param=param,
-                                            name=name)
-            else:
-                raise ValueError("Current valid load/save dimensions are LengthDimension and AngleDimension. Could "
-                                 "not find either length_param or angle_param in saved dictionary.")
         for name, airfoil_dict in d["airfoils"].items():
             geo_col.add_airfoil(leading_edge=geo_col.container()["points"][airfoil_dict["leading_edge"]],
                                 trailing_edge=geo_col.container()["points"][airfoil_dict["trailing_edge"]],

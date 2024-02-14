@@ -13,7 +13,6 @@ from PyQt5.QtCore import Qt, pyqtSignal, pyqtSlot, QRegularExpression
 from pymead.core.airfoil import Airfoil
 from pymead.core.constraints import *
 from pymead.core import UNITS
-from pymead.core.dimensions import LengthDimension, AngleDimension
 from pymead.core.mea import MEA
 from pymead.core.point import Point
 from pymead.core.bezier import Bezier
@@ -487,36 +486,6 @@ class MEAButton(TreeButton):
             self.tree.itemWidget(airfoil.tree_item, 0).setText(name)
 
 
-class LengthDimensionButton(TreeButton):
-
-    def __init__(self, length_dim: LengthDimension, tree, top_level: bool = False):
-        super().__init__(pymead_obj=length_dim, tree=tree, top_level=top_level)
-        self.length_dimension = length_dim
-
-    def modifyDialogInternals(self, dialog: QDialog, layout: QGridLayout) -> None:
-        name_label = QLabel("Name", self)
-        name_edit = NameEdit(self, self.length_dimension, self.tree)
-        name_edit.textChanged.connect(self.onNameChange)
-        layout.addWidget(name_label, 1, 0)
-        layout.addWidget(name_edit, 1, 1)
-        labels = ["Tool Point", "Target Point"]
-        points = [self.length_dimension.tool(), self.length_dimension.target()]
-        for label, point in zip(labels, points):
-            point_button = PointButton(point, self.tree)
-            point_button.sigNameChanged.connect(self.onPointNameChange)
-            q_label = QLabel(label, self)
-            row_count = layout.rowCount()
-            layout.addWidget(q_label, row_count, 0)
-            layout.addWidget(point_button, row_count, 1)
-        row_count = layout.rowCount()
-        layout.addWidget(QLabel("Length Param", self), row_count, 0)
-        layout.addWidget(LengthParamButton(self.length_dimension.param(), self.tree), row_count, 1)
-
-    def onPointNameChange(self, name: str, point: Point):
-        if point.tree_item is not None:
-            self.tree.itemWidget(point.tree_item, 0).setText(name)
-
-
 class DistanceConstraintButton(TreeButton):
 
     def __init__(self, distance_constraint: DistanceConstraint, tree, top_level: bool = False):
@@ -541,36 +510,6 @@ class DistanceConstraintButton(TreeButton):
         row_count = layout.rowCount()
         layout.addWidget(QLabel("Length Param", self), row_count, 0)
         layout.addWidget(LengthParamButton(self.distance_constraint.param(), self.tree), row_count, 1)
-
-    def onPointNameChange(self, name: str, point: Point):
-        if point.tree_item is not None:
-            self.tree.itemWidget(point.tree_item, 0).setText(name)
-
-
-class AngleDimensionButton(TreeButton):
-
-    def __init__(self, angle_dim: AngleDimension, tree, top_level: bool = False):
-        super().__init__(pymead_obj=angle_dim, tree=tree, top_level=top_level)
-        self.angle_dimension = angle_dim
-
-    def modifyDialogInternals(self, dialog: QDialog, layout: QGridLayout) -> None:
-        name_label = QLabel("Name", self)
-        name_edit = NameEdit(self, self.angle_dimension, self.tree)
-        name_edit.textChanged.connect(self.onNameChange)
-        layout.addWidget(name_label, 1, 0)
-        layout.addWidget(name_edit, 1, 1)
-        labels = ["Tool Point", "Target Point"]
-        points = [self.angle_dimension.tool(), self.angle_dimension.target()]
-        for label, point in zip(labels, points):
-            point_button = PointButton(point, self.tree)
-            point_button.sigNameChanged.connect(self.onPointNameChange)
-            q_label = QLabel(label, self)
-            row_count = layout.rowCount()
-            layout.addWidget(q_label, row_count, 0)
-            layout.addWidget(point_button, row_count, 1)
-        row_count = layout.rowCount()
-        layout.addWidget(QLabel("Angle Param", self), row_count, 0)
-        layout.addWidget(LengthParamButton(self.angle_dimension.param(), self.tree), row_count, 1)
 
     def onPointNameChange(self, name: str, point: Point):
         if point.tree_item is not None:

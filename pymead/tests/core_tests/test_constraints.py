@@ -14,8 +14,6 @@ class GCSTests(TestCase):
         p3 = geo_col.add_point(0.5, 0.5)
         d1 = RelAngle3Constraint(p1, p2, p3, value=3*np.pi/4)
         geo_col.add_constraint(d1)
-        geo_col.gcs.solve(d1)
-        geo_col.gcs.update_canvas_items(d1)
         a1 = p2.measure_angle(p1)
         a2 = p2.measure_angle(p3)
         ra1 = (a1 - a2) % (2 * np.pi)
@@ -31,8 +29,6 @@ class GCSTests(TestCase):
         d2 = DistanceConstraint(p2, p3, value=0.6)
         for cnstr in [ra1, d1, d2]:
             geo_col.add_constraint(cnstr)
-            geo_col.gcs.solve(cnstr)
-            geo_col.gcs.update_canvas_items(cnstr)
         a1 = p2.measure_angle(p1)
         a2 = p2.measure_angle(p3)
         ra_val = (a1 - a2) % (2 * np.pi)

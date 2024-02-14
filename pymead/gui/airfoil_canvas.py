@@ -331,20 +331,6 @@ class AirfoilCanvas(pg.PlotWidget):
 
         self.geo_col.add_mea(airfoils=self.geo_col.selected_objects["airfoils"].copy())
 
-    @runSelectionEventLoop(drawing_object="LengthDimension", starting_message="Select the tool point")
-    def addLengthDimension(self):
-        if len(self.geo_col.selected_objects["points"]) not in [2, 3]:
-            self.sigStatusBarUpdate.emit("Choose either 2 points (no length parameter) or 3 points "
-                                         "(specified length parameter)"
-                                         " to add a length dimension", 4000)
-            return
-
-        tool_point = self.geo_col.selected_objects["points"][0]
-        target_point = self.geo_col.selected_objects["points"][1]
-        length_param = None if len(self.geo_col.selected_objects["points"]) <= 2 else self.geo_col.selected_objects["points"][2]
-
-        self.geo_col.add_length_dimension(tool_point=tool_point, target_point=target_point, length_param=length_param)
-
     @runSelectionEventLoop(drawing_object="DistanceConstraint", starting_message="Select the first point")
     def addDistanceConstraint(self):
         if len(self.geo_col.selected_objects["points"]) != 2:
@@ -519,26 +505,6 @@ class AirfoilCanvas(pg.PlotWidget):
             elif len(self.geo_col.selected_objects["points"]) == 3:
                 self.sigStatusBarUpdate.emit("Now, select the lower surface endpoint.", 0)
             elif len(self.geo_col.selected_objects["points"]) == 4:
-                self.sigEnterPressed.emit()
-        elif self.drawing_object == "LengthDimension":
-            self.geo_col.select_object(point_item.point)
-            if len(self.geo_col.selected_objects["points"]) == 1:
-                self.sigStatusBarUpdate.emit("Now, choose the target point.", 0)
-            elif len(self.geo_col.selected_objects["points"]) == 2:
-                # TODO: implement the ability to select a parameter from the tree here
-                self.sigEnterPressed.emit()
-            elif len(self.geo_col.selected_objects["points"]) == 3:
-                # TODO: this currently will not be called until the above TODO is implemented
-                self.sigEnterPressed.emit()
-        elif self.drawing_object == "AngleDimension":
-            self.geo_col.select_object(point_item.point)
-            if len(self.geo_col.selected_objects["points"]) == 1:
-                self.sigStatusBarUpdate.emit("Now, choose the target point.", 0)
-            elif len(self.geo_col.selected_objects["points"]) == 2:
-                # TODO: implement the ability to select a parameter from the tree here
-                self.sigEnterPressed.emit()
-            elif len(self.geo_col.selected_objects["points"]) == 3:
-                # TODO: this currently will not be called until the above TODO is implemented
                 self.sigEnterPressed.emit()
         elif self.drawing_object == "DistanceConstraint":
             self.geo_col.select_object(point_item.point)
@@ -778,8 +744,6 @@ class AirfoilCanvas(pg.PlotWidget):
         addAntiParallel3ConstraintAction = add_constraint_menu.addAction("Add Anti-Parallel 3 Constraint")
         addSymmetryConstraintAction = add_constraint_menu.addAction("Add Symmetry Constraint")
         addROCurvatureConstraintAction = add_constraint_menu.addAction("Add Radius of Curvature Constraint")
-        addLengthDimensionAction = add_constraint_menu.addAction("Add Length Dimension")
-        addAngleDimensionAction = add_constraint_menu.addAction("Add Angle Dimension")
         addDistanceConstraintAction = add_constraint_menu.addAction("Add Distance Constraint")
         exportPlotAction = menu.addAction("Export Plot")
         view_pos = self.getPlotItem().getViewBox().mapSceneToView(event.pos())
@@ -804,10 +768,6 @@ class AirfoilCanvas(pg.PlotWidget):
             self.addSymmetryConstraint()
         elif res == addROCurvatureConstraintAction:
             self.addROCurvatureConstraint()
-        elif res == addLengthDimensionAction:
-            self.addLengthDimension()
-        elif res == addAngleDimensionAction:
-            self.addAngleDimension()
         elif res == addDistanceConstraintAction:
             self.addDistanceConstraint()
         elif res == removeCurveAction and curve_item is not None:
