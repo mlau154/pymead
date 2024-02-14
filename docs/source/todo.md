@@ -8,7 +8,6 @@ Installation upgrades
 
 Planned feature additions
 -------------------------
-- Add strong absolute angle constraints
 - Add the ability to flip/switch constraint reference points
 - Add variable constraint GUI object positioning (add keyword arguments that are stored in the `.jmea` files)
 - Add an undo/redo framework to the GUI
@@ -28,8 +27,6 @@ Refactoring
 
 Bug fixes
 ---------
-- May need to eliminate the use of modulo in constraint equations to make the variable 
-  space smooth
 - Fix loading bar for new version
 - Fix blank line in Objective/Constraint setup not reverting to background color after editing and erasing
 - Remove wave/viscous drag from XFOIL drag history plots (optimization)

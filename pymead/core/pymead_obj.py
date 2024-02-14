@@ -43,6 +43,9 @@ class PymeadObj(ABC, DualRep):
         self.gcs = None
         self.tree_item = None
         self.canvas_item = None
+        self.gui_obj = None
+        self.tree = None
+        self.canvas = None
 
     def name(self):
         """

@@ -340,10 +340,15 @@ class GeometryCollection(DualRep):
 
         self.add_to_subcontainer(pymead_obj, assign_unique_name=assign_unique_name)
 
+        if self.gui_obj is not None:
+            pymead_obj.gui_obj = self.gui_obj
+
         if self.tree is not None:
+            pymead_obj.tree = self.tree
             self.tree.addPymeadTreeItem(pymead_obj=pymead_obj)
 
         if self.canvas is not None:
+            pymead_obj.canvas = self.canvas
             self.canvas.addPymeadCanvasItem(pymead_obj=pymead_obj)
 
         return pymead_obj

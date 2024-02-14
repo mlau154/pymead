@@ -5,14 +5,14 @@ import numpy as np
 import pyqtgraph as pg
 from PyQt5.QtCore import pyqtSignal
 
+from pymead import q_settings, GUI_SETTINGS_DIR
 from pymead.core.bezier import Bezier
 from pymead.core.line import LineSegment
 from pymead.core.parametric_curve import PCurveData, ParametricCurve
 from pymead.core.point import PointSequence, Point
-from pymead import q_settings, GUI_SETTINGS_DIR
 from pymead.gui.draggable_point import DraggablePoint
-from pymead.utils.read_write_files import load_data
 from pymead.utils.misc import convert_str_to_Qt_dash_pattern
+from pymead.utils.read_write_files import load_data
 
 q_settings_descriptions = load_data(os.path.join(GUI_SETTINGS_DIR, "q_settings_descriptions.json"))
 
