@@ -87,24 +87,6 @@ class AbsAngleConstraint(GeoCon):
                 "constraint_type": self.__class__.__name__}
 
 
-class Parallel3Constraint(GeoCon):
-
-    default_name = "Par3Con-1"
-
-    def __init__(self, p1: Point, p2: Point, p3: Point, name: str = None):
-        self.p1 = p1
-        self.p2 = p2
-        self.p3 = p3
-        super().__init__(param=None, name=name, child_nodes=[self.p1, self.p2, self.p3], kind="a3")
-
-    def __repr__(self):
-        return f"{self.__class__.__name__} {self.name()}"
-
-    def get_dict_rep(self) -> dict:
-        return {"p1": self.p1.name(), "p2": self.p2.name(), "p3": self.p3.name(),
-                "constraint_type": self.__class__.__name__}
-
-
 class AntiParallel3Constraint(GeoCon):
 
     default_name = "AntiPar3Con-1"
@@ -120,44 +102,6 @@ class AntiParallel3Constraint(GeoCon):
 
     def get_dict_rep(self) -> dict:
         return {"p1": self.p1.name(), "p2": self.p2.name(), "p3": self.p3.name(),
-                "constraint_type": self.__class__.__name__}
-
-
-class Parallel4Constraint(GeoCon):
-
-    default_name = "Par4Con-1"
-
-    def __init__(self, p1: Point, p2: Point, p3: Point, p4: Point, name: str = None):
-        self.p1 = p1
-        self.p2 = p2
-        self.p3 = p3
-        self.p4 = p4
-        super().__init__(param=None, name=name, child_nodes=[self.p1, self.p2, self.p3, self.p4], kind="a4")
-
-    def __repr__(self):
-        return f"{self.__class__.__name__} {self.name()}"
-
-    def get_dict_rep(self) -> dict:
-        return {"p1": self.p1.name(), "p2": self.p2.name(), "p3": self.p3.name(), "p4": self.p4.name(),
-                "constraint_type": self.__class__.__name__}
-
-
-class AntiParallel4Constraint(GeoCon):
-
-    default_name = "AntiPar4Con-1"
-
-    def __init__(self, p1: Point, p2: Point, p3: Point, p4: Point, name: str = None):
-        self.p1 = p1
-        self.p2 = p2
-        self.p3 = p3
-        self.p4 = p4
-        super().__init__(param=None, name=name, child_nodes=[self.p1, self.p2, self.p3, self.p4], kind="a4")
-
-    def __repr__(self):
-        return f"{self.__class__.__name__} {self.name()}"
-
-    def get_dict_rep(self) -> dict:
-        return {"p1": self.p1.name(), "p2": self.p2.name(), "p3": self.p3.name(), "p4": self.p4.name(),
                 "constraint_type": self.__class__.__name__}
 
 
@@ -198,25 +142,6 @@ class Perp3Constraint(GeoCon):
                 "constraint_type": self.__class__.__name__}
 
 
-class Perp4Constraint(GeoCon):
-
-    default_name = "Perp4Con-1"
-
-    def __init__(self, p1: Point, p2: Point, p3: Point, p4: Point, name: str = None):
-        self.p1 = p1
-        self.p2 = p2
-        self.p3 = p3
-        self.p4 = p4
-        super().__init__(param=None, name=name, child_nodes=[self.p1, self.p2, self.p3, self.p4], kind="a4")
-
-    def __repr__(self):
-        return f"{self.__class__.__name__} {self.name()}"
-
-    def get_dict_rep(self) -> dict:
-        return {"p1": self.p1.name(), "p2": self.p2.name(), "p3": self.p3.name(), "p4": self.p4.name(),
-                "constraint_type": self.__class__.__name__}
-
-
 class RelAngle3Constraint(GeoCon):
 
     default_name = "RelAng3Con-1"
@@ -234,45 +159,6 @@ class RelAngle3Constraint(GeoCon):
     def get_dict_rep(self) -> dict:
         return {"p1": self.p1.name(), "p2": self.p2.name(),
                 "p3": self.p3.name(), "value": self.param().name(),
-                "constraint_type": self.__class__.__name__}
-
-
-class RelAngle4Constraint(GeoCon):
-
-    default_name = "RelAng4Con-1"
-
-    def __init__(self, p1: Point, p2: Point, p3: Point, p4: Point, value: float, name: str = None):
-        self.p1 = p1
-        self.p2 = p2
-        self.p3 = p3
-        self.p4 = p4
-        param = value if isinstance(value, Param) else AngleParam(value=value, name="unnamed")
-        super().__init__(param=param, name=name, child_nodes=[self.p1, self.p2, self.p3, self.p4], kind="a3")
-
-    def __repr__(self):
-        return f"{self.__class__.__name__} {self.name()}<v={self.param().value()}>"
-
-    def get_dict_rep(self) -> dict:
-        return {"p1": self.p1.name(), "p2": self.p2.name(),
-                "p3": self.p3.name(), "p4": self.p4.name(), "value": self.param().name(),
-                "constraint_type": self.__class__.__name__}
-
-
-class PointOnLineConstraint(GeoCon):
-
-    default_name = "POLCon-1"
-
-    def __init__(self, point: Point, line_start: Point, line_end: Point, name: str = None):
-        self.point = point
-        self.line_start = line_start
-        self.line_end = line_end
-        super().__init__(param=None, name=name, child_nodes=[self.point, self.line_start, self.line_end], kind="a3")
-
-    def __repr__(self):
-        return f"{self.__class__.__name__} {self.name()}"
-
-    def get_dict_rep(self) -> dict:
-        return {"point": self.point.name(), "line_start": self.line_start.name(), "line_end": self.line_end.name(),
                 "constraint_type": self.__class__.__name__}
 
 

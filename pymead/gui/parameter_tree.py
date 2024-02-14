@@ -1,24 +1,19 @@
 import sys
-import time
-import typing
 from abc import abstractmethod
 
-import numpy as np
-from PyQt5 import QtGui
-from PyQt5.QtGui import QValidator, QFont, QBrush, QColor
-from PyQt5.QtWidgets import QTreeWidget, QTreeWidgetItem, QPushButton, QHBoxLayout, QHeaderView, QDialog, QGridLayout, \
-    QDoubleSpinBox, QLineEdit, QLabel, QDialogButtonBox, QMenu, QAbstractItemView, QTreeWidgetItemIterator, QWidget
 from PyQt5.QtCore import Qt, pyqtSignal, pyqtSlot, QRegularExpression
+from PyQt5.QtGui import QValidator, QBrush, QColor
+from PyQt5.QtWidgets import QTreeWidget, QTreeWidgetItem, QPushButton, QHBoxLayout, QHeaderView, QDialog, QGridLayout, \
+    QDoubleSpinBox, QLineEdit, QLabel, QMenu, QAbstractItemView, QTreeWidgetItemIterator, QWidget
 
 from pymead.core.airfoil import Airfoil
-from pymead.core.constraints import *
-from pymead.core import UNITS
-from pymead.core.mea import MEA
-from pymead.core.point import Point
 from pymead.core.bezier import Bezier
-from pymead.core.line import LineSegment
+from pymead.core.constraints import *
 from pymead.core.geometry_collection import GeometryCollection
+from pymead.core.line import LineSegment
+from pymead.core.mea import MEA
 from pymead.core.param import Param, DesVar, LengthParam, AngleParam, LengthDesVar, AngleDesVar
+from pymead.core.point import Point
 from pymead.core.pymead_obj import PymeadObj
 from pymead.gui.input_dialog import PymeadDialog
 
@@ -516,35 +511,6 @@ class DistanceConstraintButton(TreeButton):
             self.tree.itemWidget(point.tree_item, 0).setText(name)
 
 
-class CollinearConstraintButton(TreeButton):
-
-    def __init__(self, collinear_constraint: AntiParallel3Constraint, tree, top_level: bool = False):
-        # TODO: either remove this constraint or create it (Collinear instead of AntiParallel3)
-        super().__init__(pymead_obj=collinear_constraint, tree=tree, top_level=top_level)
-        self.collinear_constraint = collinear_constraint
-
-    def modifyDialogInternals(self, dialog: QDialog, layout: QGridLayout) -> None:
-        name_label = QLabel("Name", self)
-        name_edit = NameEdit(self, self.collinear_constraint, self.tree)
-        name_edit.textChanged.connect(self.onNameChange)
-        layout.addWidget(name_label, 1, 0)
-        layout.addWidget(name_edit, 1, 1)
-        labels = ["Start Point", "Middle Point", "End Point"]
-        points = [self.collinear_constraint.target().points()[0], self.collinear_constraint.tool(),
-                  self.collinear_constraint.target().points()[1]]
-        for label, point in zip(labels, points):
-            point_button = PointButton(point, self.tree)
-            point_button.sigNameChanged.connect(self.onPointNameChange)
-            q_label = QLabel(label, self)
-            row_count = layout.rowCount()
-            layout.addWidget(q_label, row_count, 0)
-            layout.addWidget(point_button, row_count, 1)
-
-    def onPointNameChange(self, name: str, point: Point):
-        if point.tree_item is not None:
-            self.tree.itemWidget(point.tree_item, 0).setText(name)
-
-
 class RelAngle3ConstraintButton(TreeButton):
 
     def __init__(self, rel_angle_constraint: RelAngle3Constraint, tree, top_level: bool = False):
@@ -623,97 +589,6 @@ class AntiParallel3ConstraintButton(TreeButton):
         labels = ["Start", "Vertex", "End"]
         points = [self.antiparallel3_constraint.p1, self.antiparallel3_constraint.p2,
                   self.antiparallel3_constraint.p3]
-        for label, point in zip(labels, points):
-            point_button = PointButton(point, self.tree)
-            point_button.sigNameChanged.connect(self.onPointNameChange)
-            q_label = QLabel(label, self)
-            row_count = layout.rowCount()
-            layout.addWidget(q_label, row_count, 0)
-            layout.addWidget(point_button, row_count, 1)
-
-    def onPointNameChange(self, name: str, point: Point):
-        if point.tree_item is not None:
-            self.tree.itemWidget(point.tree_item, 0).setText(name)
-
-
-class RelAngle4ConstraintButton(TreeButton):
-
-    def __init__(self, rel_angle_constraint: RelAngle4Constraint, tree, top_level: bool = False):
-        super().__init__(pymead_obj=rel_angle_constraint, tree=tree, top_level=top_level)
-        self.rel_angle_constraint = rel_angle_constraint
-
-    def modifyDialogInternals(self, dialog: QDialog, layout: QGridLayout) -> None:
-        name_label = QLabel("Name", self)
-        name_edit = NameEdit(self, self.rel_angle_constraint, self.tree)
-        name_edit.textChanged.connect(self.onNameChange)
-        layout.addWidget(name_label, 1, 0)
-        layout.addWidget(name_edit, 1, 1)
-
-        row_count = layout.rowCount()
-        layout.addWidget(QLabel("Angle Param", self), row_count, 0)
-        layout.addWidget(AngleParamButton(self.rel_angle_constraint.param(), self.tree), row_count, 1)
-
-        labels = ["Tool Start", "Tool End", "Target Start", "Target End"]
-        points = [self.rel_angle_constraint.tool().points()[0], self.rel_angle_constraint.tool().points()[1],
-                  self.rel_angle_constraint.target().points()[0], self.rel_angle_constraint.target().points()[1]]
-        for label, point in zip(labels, points):
-            point_button = PointButton(point, self.tree)
-            point_button.sigNameChanged.connect(self.onPointNameChange)
-            q_label = QLabel(label, self)
-            row_count = layout.rowCount()
-            layout.addWidget(q_label, row_count, 0)
-            layout.addWidget(point_button, row_count, 1)
-
-    def onPointNameChange(self, name: str, point: Point):
-        if point.tree_item is not None:
-            self.tree.itemWidget(point.tree_item, 0).setText(name)
-
-
-class PerpendicularConstraintButton(TreeButton):
-
-    def __init__(self, perpendicular_constraint: Perp4Constraint, tree, top_level: bool = False):
-        super().__init__(pymead_obj=perpendicular_constraint, tree=tree, top_level=top_level)
-        self.perpendicular_constraint = perpendicular_constraint
-
-    def modifyDialogInternals(self, dialog: QDialog, layout: QGridLayout) -> None:
-        name_label = QLabel("Name", self)
-        name_edit = NameEdit(self, self.perpendicular_constraint, self.tree)
-        name_edit.textChanged.connect(self.onNameChange)
-        layout.addWidget(name_label, 1, 0)
-        layout.addWidget(name_edit, 1, 1)
-
-        labels = ["Tool Start", "Tool End", "Target Start", "Target End"]
-        points = [self.perpendicular_constraint.tool().points()[0], self.perpendicular_constraint.tool().points()[1],
-                  self.perpendicular_constraint.target().points()[0], self.perpendicular_constraint.target().points()[1]]
-        for label, point in zip(labels, points):
-            point_button = PointButton(point, self.tree)
-            point_button.sigNameChanged.connect(self.onPointNameChange)
-            q_label = QLabel(label, self)
-            row_count = layout.rowCount()
-            layout.addWidget(q_label, row_count, 0)
-            layout.addWidget(point_button, row_count, 1)
-
-    def onPointNameChange(self, name: str, point: Point):
-        if point.tree_item is not None:
-            self.tree.itemWidget(point.tree_item, 0).setText(name)
-
-
-class Parallel4ConstraintButton(TreeButton):
-
-    def __init__(self, parallel_constraint: Parallel4Constraint, tree, top_level: bool = False):
-        super().__init__(pymead_obj=parallel_constraint, tree=tree, top_level=top_level)
-        self.parallel_constraint = parallel_constraint
-
-    def modifyDialogInternals(self, dialog: QDialog, layout: QGridLayout) -> None:
-        name_label = QLabel("Name", self)
-        name_edit = NameEdit(self, self.parallel_constraint, self.tree)
-        name_edit.textChanged.connect(self.onNameChange)
-        layout.addWidget(name_label, 1, 0)
-        layout.addWidget(name_edit, 1, 1)
-
-        labels = ["Line 1 Start", "Line 1 End", "Line 2 Start", "Line 2 End"]
-        points = [self.parallel_constraint.p1, self.parallel_constraint.p2,
-                  self.parallel_constraint.p3, self.parallel_constraint.p4]
         for label, point in zip(labels, points):
             point_button = PointButton(point, self.tree)
             point_button.sigNameChanged.connect(self.onPointNameChange)

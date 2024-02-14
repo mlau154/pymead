@@ -349,19 +349,6 @@ class AirfoilCanvas(pg.PlotWidget):
         constraint = DistanceConstraint(*self.geo_col.selected_objects["points"], value=par)
         self.geo_col.add_constraint(constraint)
 
-    @runSelectionEventLoop(drawing_object="AngleDimension", starting_message="Select the tool point")
-    def addAngleDimension(self):
-        if len(self.geo_col.selected_objects["points"]) not in [2, 3]:
-            self.sigStatusBarUpdate.emit("Choose either 2 points (no angle parameter) or 3 points "
-                                         "(specified angle parameter)"
-                                         " to add an angle dimension", 4000)
-            return
-        tool_point = self.geo_col.selected_objects["points"][0]
-        target_point = self.geo_col.selected_objects["points"][1]
-        angle_param = None if len(self.geo_col.selected_objects["points"]) <= 2 else self.geo_col.selected_objects["points"][2]
-
-        self.geo_col.add_angle_dimension(tool_point=tool_point, target_point=target_point, angle_param=angle_param)
-
     @runSelectionEventLoop(drawing_object="RelAngle3Constraint", starting_message="Select any point other than "
                                                                                   "the vertex")
     def addRelAngle3Constraint(self):
@@ -512,14 +499,6 @@ class AirfoilCanvas(pg.PlotWidget):
                 self.sigStatusBarUpdate.emit("Now, choose the last point", 0)
             elif len(self.geo_col.selected_objects["points"]) == 2:
                 self.sigEnterPressed.emit()
-        elif self.drawing_object == "CollinearConstraint":
-            self.geo_col.select_object(point_item.point)
-            if len(self.geo_col.selected_objects["points"]) == 1:
-                self.sigStatusBarUpdate.emit("Now, choose the middle point", 0)
-            elif len(self.geo_col.selected_objects["points"]) == 2:
-                self.sigStatusBarUpdate.emit("Finally, choose the end point", 0)
-            elif len(self.geo_col.selected_objects["points"]) == 3:
-                self.sigEnterPressed.emit()
         elif self.drawing_object in ["RelAngle3Constraint", "Perp3Constraint", "AntiParallel3Constraint"]:
             self.geo_col.select_object(point_item.point)
             if len(self.geo_col.selected_objects["points"]) == 1:
@@ -539,20 +518,6 @@ class AirfoilCanvas(pg.PlotWidget):
             elif len(self.geo_col.selected_objects["points"]) == 4:
                 self.sigEnterPressed.emit()
         elif self.drawing_object == "ROCurvatureConstraint":
-            self.geo_col.select_object(point_item.point)
-            if len(self.geo_col.selected_objects["points"]) == 1:
-                self.sigEnterPressed.emit()
-        elif self.drawing_object in ["RelAngle4Constraint", "ParallelConstraint", "PerpendicularConstraint"]:
-            self.geo_col.select_object(point_item.point)
-            if len(self.geo_col.selected_objects["points"]) == 1:
-                self.sigStatusBarUpdate.emit("Now, choose the end point of the tool line", 0)
-            elif len(self.geo_col.selected_objects["points"]) == 2:
-                self.sigStatusBarUpdate.emit("Choose the start point of the target line", 0)
-            elif len(self.geo_col.selected_objects["points"]) == 3:
-                self.sigStatusBarUpdate.emit("Now, choose the end point of the target line", 0)
-            elif len(self.geo_col.selected_objects["points"]) == 4:
-                self.sigEnterPressed.emit()
-        elif self.drawing_object == "CurvatureConstraint":
             self.geo_col.select_object(point_item.point)
             if len(self.geo_col.selected_objects["points"]) == 1:
                 self.sigEnterPressed.emit()
