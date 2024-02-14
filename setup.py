@@ -30,7 +30,7 @@ setup(
         "License :: OSI Approved :: MIT License",
         "Programming Language :: Python :: 3",
     ],
-    package_data={"pymead": ["gui/gui_settings/defaults/*.json", "icons/*.png", "icons/*.jpg", "icons/*.svg",
+    package_data={"pymead": ["gui/gui_settings/defaults/*.json", "icons/*.png", "icons/*.svg",
                              "resources/*", "resources/dejavu-fonts-ttf-2.37/*",
                              "resources/dejavu-fonts-ttf-2.37/fontconfig/*", "resources/dejavu-fonts-ttf-2.37/ttf/*",
                              "gui/*.json", "gui/gui_settings/themes/*.json", "gui/gui_settings/*.json",

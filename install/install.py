@@ -143,7 +143,7 @@ def run(create_installer: bool = True):
         else:
             raise ValueError("iss setup install command failed")
 
-    elif system == "Linux":
+    elif system in ["Linux", "Darwin"]:
         print("Compressing app...")
         tarball_name = f"pymead-{__version__}.tar.gz"
         tarball_process = subprocess.run(["tar", "-czvf", tarball_name, "pymead"], cwd=dist_dir)

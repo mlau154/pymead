@@ -14,7 +14,6 @@ a = Analysis(
     ('default_airfoil/*.jmea', 'pymead/gui/default_airfoil/'),
     ('../icons/*.png', 'pymead/icons/'),
     ('../icons/*.ico', 'pymead/icons/'),
-    ('../icons/*.jpg', 'pymead/icons/'),
     ('../icons/*.svg', 'pymead/icons/'),
     ('dialog_widgets/*.json', 'pymead/gui/dialog_widgets/'),
     ('../resources', 'pymead/resources')],

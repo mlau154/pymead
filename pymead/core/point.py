@@ -214,7 +214,6 @@ class Point(PymeadObj):
         constraints.
         """
 
-        print(f"{self.is_movement_allowed() = }")
         if not self.is_movement_allowed() and not force:
             return
 

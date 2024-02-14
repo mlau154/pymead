@@ -3016,3 +3016,18 @@ class ExitOptimizationDialog(PymeadDialog):
     def __init__(self, parent, theme: dict):
         widget = QLabel("An optimization task is running. Quit?")
         super().__init__(parent=parent, window_title="Terminate Optimization?", widget=widget, theme=theme)
+
+
+class SettingsDialogWidget(PymeadDialogWidget2):
+
+    def __init__(self, parent):
+        super().__init__(parent)
+
+    def initializeWidgets(self, *args, **kwargs):
+        pass
+
+    def setWidgetValuesFromDict(self, *args, **kwargs):
+        pass
+
+    def valuesFromWidgets(self) -> dict:
+        pass
