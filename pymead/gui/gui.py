@@ -1378,7 +1378,7 @@ class GUI(QMainWindow):
         if dialog.exec_():
             airfoil_match_settings = dialog.valuesFromWidgets()
             # res = match_airfoil_ga(self.mea, target_airfoil, airfoil_name)
-            res = match_airfoil(self.geo_col.container()["airfoils"], airfoil_match_settings["tool_airfoil"],
+            res = match_airfoil(self.geo_col, airfoil_match_settings["tool_airfoil"],
                                 airfoil_match_settings["target_airfoil"])
             msg_mode = 'error'
             if hasattr(res, 'success') and res.success or hasattr(res, 'F') and res.F is not None:

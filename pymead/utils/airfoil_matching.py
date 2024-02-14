@@ -9,6 +9,7 @@ from scipy.interpolate import BSpline, splrep
 import scipy
 from shapely.geometry import Polygon
 
+from pymead.core.geometry_collection import GeometryCollection
 from pymead.utils.get_airfoil import extract_data_from_airfoiltools
 from pymead.core.mea import MEA
 
@@ -20,7 +21,8 @@ from pymoo.operators.sampling.lhs import LHS
 from pymoo.optimize import minimize
 
 
-def airfoil_symmetric_area_difference(parameters: list, mea: MEA, target_airfoil: str, airfoil_to_match_xy: np.ndarray):
+def airfoil_symmetric_area_difference(parameters: list, geo_col: GeometryCollection, target_airfoil: str,
+                                      airfoil_to_match_xy: np.ndarray):
     r"""
     This method uses the ``shapely`` package to convert the parametrized airfoil and the "discrete" airfoil to
     `Polygon <https://shapely.readthedocs.io/en/stable/manual.html#Polygon>`_
@@ -51,9 +53,9 @@ def airfoil_symmetric_area_difference(parameters: list, mea: MEA, target_airfoil
     """
 
     # Override airfoil parameters with supplied sequence of parameters
-    mea.update_parameters(parameters)
-    airfoil = mea.airfoils[target_airfoil]
-    coords = airfoil.get_coords(body_fixed_csys=False)
+    geo_col.assign_design_variable_values(parameters, bounds_normalized=True)
+    airfoil = geo_col.container()["airfoils"][target_airfoil]
+    coords = airfoil.get_coords_selig_format()
 
     # Calculate the boolean symmetric area difference. If there is a topological error, such as a self-intersection,
     # which prevents Polygon.area() from running, then make the symmetric area difference a large value to discourage
@@ -72,7 +74,7 @@ def airfoil_symmetric_area_difference(parameters: list, mea: MEA, target_airfoil
     return symmetric_area_difference
 
 
-def match_airfoil(mea: MEA, target_airfoil: str, airfoil_to_match: str or list or np.ndarray,
+def match_airfoil(geo_col: GeometryCollection, target_airfoil: str, airfoil_to_match: str or list or np.ndarray,
                   repair: typing.Callable or None = None):
     r"""
     This method uses the `sequential least-squares programming
@@ -123,16 +125,21 @@ def match_airfoil(mea: MEA, target_airfoil: str, airfoil_to_match: str or list o
     # plt.show()
 
     # mea.deactivate_airfoil_matching_params(target_airfoil)
-    new_mea = mea.deepcopy()
-    new_mea.remove_airfoil_graphs()
     # new_mea = MEA.generate_from_param_dict(mea_dict)
-    initial_guess = np.array(mea.extract_parameters()[0])
+    geo_col_deepcopy = deepcopy(geo_col)
+    initial_guess = np.array(geo_col.extract_design_variable_values())
     # initial_guess = np.array([param.value for param in parameter_list])
     # bounds = [param.bounds for param in parameter_list]
     bounds = np.repeat(np.array([[0.0, 1.0]]), len(initial_guess), axis=0)
     # try:
-    res = scipy.optimize.minimize(airfoil_symmetric_area_difference, initial_guess, method='SLSQP',
-                   bounds=bounds, args=(new_mea, target_airfoil, airfoil_to_match_xy), options={'disp': True})
+    res = scipy.optimize.minimize(
+        airfoil_symmetric_area_difference,
+        initial_guess,
+        method="SLSQP",
+        bounds=bounds,
+        args=(geo_col_deepcopy, target_airfoil, airfoil_to_match_xy),
+        options=dict(disp=True)
+    )
     # finally:
     #     mea.activate_airfoil_matching_params(target_airfoil)
     return res

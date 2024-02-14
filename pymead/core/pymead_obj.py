@@ -6,7 +6,7 @@ class DualRep:
 
     # These attributes are non-serializable because they contain references to PyQt5 graphics or signal/slot objects,
     # which are inherently non-serializable
-    non_serializable_attributes = ["tree", "tree_item", "canvas", "canvas_item"]
+    non_serializable_attributes = ["tree", "tree_item", "canvas", "canvas_item", "gui_obj"]
 
     def __deepcopy__(self, memo):
         """
