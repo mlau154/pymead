@@ -1,5 +1,6 @@
 import typing
 
+import networkx
 import numpy as np
 
 from pymead.core import UNITS
@@ -13,7 +14,8 @@ class Param(PymeadObj):
     """
 
     def __init__(self, value: float or int, name: str, lower: float or None = None, upper: float or None = None,
-                 sub_container: str = "params", setting_from_geo_col: bool = False, point=None):
+                 sub_container: str = "params", setting_from_geo_col: bool = False, point=None, root=None,
+                 rotation_handle=None):
         """
         Parameters
         ==========
@@ -37,6 +39,10 @@ class Param(PymeadObj):
         self._upper = None
         self.at_boundary = False
         self.point = point
+        self.root = root
+        self.rotation_handle = rotation_handle
+        if rotation_handle is not None:
+            self.rotation_handle.rotation_param = self
         self.geo_objs = []
         self.gcs = None
         self.geo_cons = []
@@ -105,6 +111,40 @@ class Param(PymeadObj):
             1 if the value is equal to the upper bound, or a float between 0.0 and 1.0 if the value is somewhere
             between the bounds). Default: ``False``
         """
+        def rotate_cluster(new_v):
+            if self.gcs is None:
+                return
+            points_to_update, root = self.gcs.rotate_cluster(self.rotation_handle, new_rotation_angle=new_v)
+            constraints_to_update = []
+            for point in networkx.dfs_preorder_nodes(self.gcs, source=root):
+                for geo_con in point.geo_cons:
+                    if geo_con not in constraints_to_update:
+                        constraints_to_update.append(geo_con)
+
+            for geo_con in constraints_to_update:
+                if geo_con.canvas_item is not None:
+                    geo_con.canvas_item.update()
+
+            curves_to_update = []
+            for point in points_to_update:
+                if point.canvas_item is not None:
+                    point.canvas_item.updateCanvasItem(point.x().value(), point.y().value())
+
+                for curve in point.curves:
+                    if curve not in curves_to_update:
+                        curves_to_update.append(curve)
+
+            airfoils_to_update = []
+            for curve in curves_to_update:
+                if curve.airfoil is not None and curve.airfoil not in airfoils_to_update:
+                    airfoils_to_update.append(curve.airfoil)
+                curve.update()
+
+            for airfoil in airfoils_to_update:
+                airfoil.update_coords()
+                if airfoil.canvas_item is not None:
+                    airfoil.canvas_item.generatePicture()
+
         if bounds_normalized:
             if self.lower() is None or self.upper() is None:
                 raise ValueError("Lower and upper bounds must be set to assign a bounds-normalized value.")
@@ -121,6 +161,9 @@ class Param(PymeadObj):
         else:  # Otherwise, use the default behavior for Param.
             self._value = value
             self.at_boundary = False
+
+        if self.rotation_handle is not None:
+            rotate_cluster(self._value)
 
         if self.at_boundary:
             return
@@ -255,13 +298,13 @@ class Param(PymeadObj):
 class LengthParam(Param):
     def __init__(self, value: float, name: str, lower: float or None = None, upper: float or None = None,
                  sub_container: str = "params",
-                 setting_from_geo_col: bool = False, point=None):
+                 setting_from_geo_col: bool = False, point=None, root=None, rotation_handle=None):
         self._unit = None
         self.set_unit(UNITS.current_length_unit())
         name = "Length-1" if name is None else name
         super().__init__(value=value, name=name, lower=lower, upper=upper, sub_container=sub_container,
                          setting_from_geo_col=setting_from_geo_col,
-                         point=point)
+                         point=point, root=root, rotation_handle=rotation_handle)
 
     def unit(self):
         return self._unit
@@ -311,12 +354,13 @@ class LengthParam(Param):
 class AngleParam(Param):
     def __init__(self, value: float, name: str, lower: float or None = None, upper: float or None = None,
                  sub_container: str = "params",
-                 setting_from_geo_col: bool = False, point=None):
+                 setting_from_geo_col: bool = False, point=None, root=None, rotation_handle=None):
         self._unit = None
         self.set_unit(UNITS.current_angle_unit())
         name = "Angle-1" if name is None else name
         super().__init__(value=value, name=name, lower=lower, upper=upper, sub_container=sub_container,
-                         setting_from_geo_col=setting_from_geo_col, point=point)
+                         setting_from_geo_col=setting_from_geo_col, point=point, root=root,
+                         rotation_handle=rotation_handle)
 
     def unit(self):
         return self._unit
@@ -426,7 +470,8 @@ class DesVar(Param):
     Design variable class; subclasses the base-level Param. Adds lower and upper bound default behavior.
     """
     def __init__(self, value: float, name: str, lower: float or None = None, upper: float or None = None,
-                 sub_container: str = "desvar", setting_from_geo_col: bool = False, point=None):
+                 sub_container: str = "desvar", setting_from_geo_col: bool = False, point=None, root=None,
+                 rotation_handle=None):
         """
         Parameters
         ==========
@@ -455,7 +500,8 @@ class DesVar(Param):
             upper = default_upper(value)
 
         super().__init__(value=value, name=name, lower=lower, upper=upper, sub_container=sub_container,
-                         setting_from_geo_col=setting_from_geo_col, point=point)
+                         setting_from_geo_col=setting_from_geo_col, point=point, root=root,
+                         rotation_handle=rotation_handle)
 
 
 class LengthDesVar(LengthParam):
@@ -464,7 +510,7 @@ class LengthDesVar(LengthParam):
     default behavior.
     """
     def __init__(self, value: float, name: str, lower: float or None = None, upper: float or None = None,
-                 setting_from_geo_col: bool = False, point=None):
+                 setting_from_geo_col: bool = False, point=None, root=None, rotation_handle=None):
         """
         Parameters
         ==========
@@ -493,7 +539,7 @@ class LengthDesVar(LengthParam):
             upper = default_upper(value)
 
         super().__init__(value=value, name=name, lower=lower, upper=upper, setting_from_geo_col=setting_from_geo_col,
-                         sub_container="desvar", point=point)
+                         sub_container="desvar", point=point, root=root, rotation_handle=rotation_handle)
 
     def get_dict_rep(self):
         return {"value": float(self.value()), "lower": self.lower(), "upper": self.upper(),
@@ -506,7 +552,7 @@ class AngleDesVar(AngleParam):
     default behavior.
     """
     def __init__(self, value: float, name: str, lower: float or None = None, upper: float or None = None,
-                 setting_from_geo_col: bool = False, point=None):
+                 setting_from_geo_col: bool = False, point=None, root=None, rotation_handle=None):
         """
         Parameters
         ==========
@@ -535,7 +581,18 @@ class AngleDesVar(AngleParam):
             upper = default_upper(value)
 
         super().__init__(value=value, name=name, lower=lower, upper=upper, sub_container="desvar",
-                         setting_from_geo_col=setting_from_geo_col, point=point)
+                         setting_from_geo_col=setting_from_geo_col, point=point, root=root,
+                         rotation_handle=rotation_handle)
+
+    def set_value(self, value: float, updated_objs: typing.List[PymeadObj] = None, bounds_normalized: bool = False):
+        r"""
+        In this special case of ``set_value`` for an ``AngleDesVar``, we skip over the call to the ``set_value``
+        method in ``AngleParam`` and directly call the ``set_value`` method in ``Param`` (the grandparent class).
+        The reason for this is that ``AngleParam`` always keeps the angle between 0 and :math:`2 \pi`, which is not
+        logical behavior for a bounded variable. This method eliminates that restriction.
+        """
+        new_value = UNITS.convert_angle_to_base(value, self.unit())
+        return Param.set_value(self, new_value, updated_objs=updated_objs, bounds_normalized=bounds_normalized)
 
     def get_dict_rep(self):
         return {"value": float(self.value()), "lower": self.lower(), "upper": self.upper(),

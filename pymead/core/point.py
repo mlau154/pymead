@@ -21,6 +21,7 @@ class Point(PymeadObj):
         self.gcs = None
         self.root = False
         self.rotation_handle = False
+        self.rotation_param = None
         self.geo_cons = []
         self.dims = []
         self.curves = []
@@ -216,6 +217,7 @@ class Point(PymeadObj):
         if not self.is_movement_allowed() and not force:
             return
 
+        points_to_update = None
         if self.root:
             points_to_update = self.gcs.translate_cluster(self, dx=xp - self.x().value(), dy=yp - self.y().value())
             constraints_to_update = []
@@ -228,16 +230,7 @@ class Point(PymeadObj):
                 if geo_con.canvas_item is not None:
                     geo_con.canvas_item.update()
         elif self.rotation_handle:
-            points_to_update, root = self.gcs.rotate_cluster(self, xp, yp)
-            constraints_to_update = []
-            for point in networkx.dfs_preorder_nodes(self.gcs, source=root):
-                for geo_con in point.geo_cons:
-                    if geo_con not in constraints_to_update:
-                        constraints_to_update.append(geo_con)
-
-            for geo_con in constraints_to_update:
-                if geo_con.canvas_item is not None:
-                    geo_con.canvas_item.update()
+            self.rotation_param.set_value(self.rotation_param.root.measure_angle(Point(xp, yp)))
         else:
             self.x().set_value(xp)
             self.y().set_value(yp)
@@ -255,6 +248,9 @@ class Point(PymeadObj):
         # Update the GUI object, if there is one
         if self.canvas_item is not None:
             self.canvas_item.updateCanvasItem(self.x().value(), self.y().value())
+
+        if points_to_update is None:
+            return
 
         curves_to_update = []
         for point in points_to_update:

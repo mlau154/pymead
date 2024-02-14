@@ -40,6 +40,7 @@ class GeometryCollection(DualRep):
             "dims": {},
         }
         self.gcs = GCS()
+        self.gcs.geo_col = self
         self.gui_obj = gui_obj
         self.canvas = None
         self.tree = None
@@ -174,7 +175,7 @@ class GeometryCollection(DualRep):
 
     def add_param(self, value: float, name: str or None = None, lower: float or None = None,
                   upper: float or None = None, unit_type: str or None = None, assign_unique_name: bool = True,
-                  point: Point = None):
+                  point: Point = None, root: Point = None, rotation_handle: Point = None):
         """
         Adds a parameter to the geometry collection sub-container ``"params"``, and modifies the name to make it
         unique if necessary.
@@ -201,7 +202,8 @@ class GeometryCollection(DualRep):
         Param
             The generated parameter
         """
-        kwargs = dict(value=value, name=name, lower=lower, upper=upper, setting_from_geo_col=True, point=point)
+        kwargs = dict(value=value, name=name, lower=lower, upper=upper, setting_from_geo_col=True, point=point,
+                      root=root, rotation_handle=rotation_handle)
         if unit_type is None:
             param = Param(**kwargs)
         elif unit_type == "length":
@@ -347,7 +349,8 @@ class GeometryCollection(DualRep):
 
         return pymead_obj
 
-    def remove_pymead_obj(self, pymead_obj: PymeadObj, promotion_demotion: bool = False):
+    def remove_pymead_obj(self, pymead_obj: PymeadObj, promotion_demotion: bool = False,
+                          constraint_removal: bool = False):
         """
         Removes a pymead object from the geometry collection.
 
@@ -359,12 +362,28 @@ class GeometryCollection(DualRep):
         promotion_demotion: bool
             When this flag is set to ``True``, the ``ValueError`` normally raised when directly deleting a ``Param``
             associated with a ``GeoCon`` is ignored. Default: ``False``
+
+        constraint_removal: bool
+            When this flag is set to ``True``, the ``ValueError`` normally raise when directly deleting a ``Param``
+            associated with a constraint cluster rotation is ignored. Default: ``False``
         """
         # Type-specific actions
         if isinstance(pymead_obj, Param):
             if len(pymead_obj.geo_cons) != 0 and not promotion_demotion:
-                raise ValueError(f"Please delete each constraint associated with this parameter ({pymead_obj.geo_cons})"
-                                 f" before deleting this parameter")
+                error_message = (f"Please delete each constraint associated with this parameter ({pymead_obj.geo_cons}) "
+                                 f"before deleting this parameter")
+                if self.gui_obj is None:
+                    raise ValueError(error_message)
+                else:
+                    self.gui_obj.disp_message_box(error_message, message_mode="error")
+                    return
+            if pymead_obj.rotation_handle and not constraint_removal and not promotion_demotion:
+                error_message = f"This parameter can only be removed by deleting its associated constraint cluster"
+                if self.gui_obj is None:
+                    raise ValueError(error_message)
+                else:
+                    self.gui_obj.disp_message_box(error_message, message_mode="error")
+                    return
 
         elif isinstance(pymead_obj, Bezier) or isinstance(pymead_obj, LineSegment):
             # Remove all the references to this curve in each of the curve's points
@@ -380,8 +399,13 @@ class GeometryCollection(DualRep):
         elif isinstance(pymead_obj, Point):
 
             if len(pymead_obj.geo_cons) != 0:
-                raise ValueError(f"Please delete each constraint associated with this point ({pymead_obj.geo_cons})"
+                error_message = (f"Please delete each constraint associated with this point ({pymead_obj.geo_cons})"
                                  f" before deleting this point")
+                if self.gui_obj is None:
+                    raise ValueError(error_message)
+                else:
+                    self.gui_obj.disp_message_box(error_message, message_mode="error")
+                    return
 
             # Loop through the curves associated with this point to see which ones need to be deleted if one point
             # is removed from their point sequence
@@ -431,6 +455,11 @@ class GeometryCollection(DualRep):
                 pymead_obj.param().geo_cons.remove(pymead_obj)
                 if len(pymead_obj.param().geo_cons) == 0:
                     self.remove_pymead_obj(pymead_obj.param())
+
+            if (isinstance(pymead_obj, DistanceConstraint) or isinstance(pymead_obj, RelAngle3Constraint) or
+                isinstance(pymead_obj, Perp3Constraint) or isinstance(pymead_obj, AntiParallel3Constraint)):
+                if pymead_obj.p2.rotation_handle:
+                    self.remove_pymead_obj(pymead_obj.p2.rotation_param, constraint_removal=True)
 
             # Remove the constraint from the ConstraintGraph
             self.gcs.remove_constraint(pymead_obj)
@@ -489,7 +518,8 @@ class GeometryCollection(DualRep):
         return self.add_pymead_obj_by_ref(line, assign_unique_name=assign_unique_name)
 
     def add_desvar(self, value: float, name: str, lower: float or None = None, upper: float or None = None,
-                   unit_type: str or None = None, assign_unique_name: bool = True, point: Point = None):
+                   unit_type: str or None = None, assign_unique_name: bool = True, point: Point = None,
+                   root: Point = None, rotation_handle: Point = None):
         """
         Directly adds a design variable value to the geometry collection.
 
@@ -517,7 +547,8 @@ class GeometryCollection(DualRep):
         DesVar
             The generated design variable
         """
-        kwargs = dict(value=value, name=name, lower=lower, upper=upper, setting_from_geo_col=True, point=point)
+        kwargs = dict(value=value, name=name, lower=lower, upper=upper, setting_from_geo_col=True, point=point,
+                      root=root, rotation_handle=rotation_handle)
         if unit_type is None:
             desvar = DesVar(**kwargs)
         elif unit_type == "length":
@@ -583,7 +614,8 @@ class GeometryCollection(DualRep):
             unit_type = None
 
         desvar = self.add_desvar(value=param.value(), name=param.name(), lower=lower, upper=upper, unit_type=unit_type,
-                                 point=copy(param.point))
+                                 point=copy(param.point), root=param.root,
+                                 rotation_handle=param.rotation_handle)
 
         # Replace the corresponding x() or y() in parameter with the new design variable
         self.replace_geo_objs(tool=param, target=desvar)
@@ -630,7 +662,8 @@ class GeometryCollection(DualRep):
         else:
             unit_type = None
 
-        param = self.add_param(value=desvar.value(), name=desvar.name(), unit_type=unit_type, point=copy(desvar.point))
+        param = self.add_param(value=desvar.value(), name=desvar.name(), unit_type=unit_type, point=copy(desvar.point),
+                               root=desvar.root, rotation_handle=desvar.rotation_handle)
 
         # Replace the corresponding x() or y() in parameter with the new parameter
         self.replace_geo_objs(tool=desvar, target=param)

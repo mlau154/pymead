@@ -31,6 +31,7 @@ class GCS(networkx.DiGraph):
         super().__init__()
         self.points = {}
         self.roots = []
+        self.geo_col = None
 
     def _add_point(self, point: Point):
         """
@@ -109,6 +110,9 @@ class GCS(networkx.DiGraph):
         v.rotation_handle = True
         if u not in [edge[0] for edge in self.roots]:
             self.roots.append((u, v))
+        param = self.geo_col.add_param(value=u.measure_angle(v), name="ClusterAngle-1", unit_type="angle", root=u,
+                                       rotation_handle=v)
+        param.gcs = self
 
     def _delete_root_status(self, root_node: Point, rotation_handle_node: Point = None):
         """
@@ -768,12 +772,17 @@ class GCS(networkx.DiGraph):
         self.solve_other_constraints(points_solved)
         return points_solved
 
-    def rotate_cluster(self, rotation_handle: Point, new_rotation_handle_x: float, new_rotation_handle_y: float):
+    def rotate_cluster(self, rotation_handle: Point, new_rotation_handle_x: float = None,
+                       new_rotation_handle_y: float = None,
+                       new_rotation_angle: float = None):
         root = self._identify_root_from_rotation_handle(rotation_handle)
         if not root.root:
             raise ValueError("Cannot move a point that is not a root of a constraint cluster")
         old_rotation_handle_angle = root.measure_angle(rotation_handle)
-        new_rotation_handle_angle = root.measure_angle(Point(new_rotation_handle_x, new_rotation_handle_y))
+        if new_rotation_angle is None:
+            new_rotation_handle_angle = root.measure_angle(Point(new_rotation_handle_x, new_rotation_handle_y))
+        else:
+            new_rotation_handle_angle = new_rotation_angle
         delta_angle = new_rotation_handle_angle - old_rotation_handle_angle
         root_x = root.x().value()
         root_y = root.y().value()
