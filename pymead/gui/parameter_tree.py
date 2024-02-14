@@ -116,6 +116,7 @@ class ValueSpin(QDoubleSpinBox):
     #         return f"{UNITS.convert_angle_from_base(2 * np.pi)} {suffix}"
 
     def onValueChanged(self, value: float):
+        print(f"Value changed! {value = }, {self.param = }, {self.param.point = }, {self.param is self.param.point.x() = }")
         if self.param.point is None:
             self.param.set_value(value)
         else:

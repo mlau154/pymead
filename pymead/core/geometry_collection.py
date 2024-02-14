@@ -839,15 +839,25 @@ class GeometryCollection(DualRep):
         for name, point_dict in d["points"].items():
             geo_col.add_point(**point_dict, name=name, assign_unique_name=False)
         for name, desvar_dict in d["desvar"].items():
-            point = None
-            if ".x" in name or ".y" in name:
+            if ".x" in name:
                 point = geo_col.container()["points"][name.split(".")[0]]
-            geo_col.add_desvar(**desvar_dict, name=name, assign_unique_name=False, point=point)
+                geo_col.add_pymead_obj_by_ref(point.x(), assign_unique_name=False)
+                geo_col.promote_param_to_desvar(point.x(), lower=desvar_dict["lower"], upper=desvar_dict["upper"])
+            elif ".y" in name:
+                point = geo_col.container()["points"][name.split(".")[0]]
+                geo_col.add_pymead_obj_by_ref(point.y(), assign_unique_name=False)
+                geo_col.promote_param_to_desvar(point.y(), lower=desvar_dict["lower"], upper=desvar_dict["upper"])
+            else:
+                geo_col.add_desvar(**desvar_dict, name=name, assign_unique_name=False)
         for name, param_dict in d["params"].items():
-            point = None
-            if ".x" in name or ".y" in name:
+            if ".x" in name:
                 point = geo_col.container()["points"][name.split(".")[0]]
-            geo_col.add_param(**param_dict, name=name, assign_unique_name=False, point=point)
+                geo_col.add_pymead_obj_by_ref(point.x(), assign_unique_name=False)
+            elif ".y" in name:
+                point = geo_col.container()["points"][name.split(".")[0]]
+                geo_col.add_pymead_obj_by_ref(point.y(), assign_unique_name=False)
+            else:
+                geo_col.add_param(**param_dict, name=name, assign_unique_name=False)
         for name, line_dict in d["lines"].items():
             geo_col.add_line(point_sequence=PointSequence(
                 points=[geo_col.container()["points"][k] for k in line_dict["points"]]),
