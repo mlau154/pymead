@@ -429,6 +429,8 @@ class GUI(QMainWindow):
                            QMenu::item:selected {{ background-color: {theme['menu-item-selected-color']}; }}
                     """)
         self.parameter_tree.setAutoFillBackground(True)
+        closed_arrow_image = os.path.join(ICON_DIR, f"closed-arrow-{self.current_theme}.png")
+        opened_arrow_image = os.path.join(ICON_DIR, f"opened-arrow-{self.current_theme}.png")
         self.parameter_tree.setStyleSheet(
             f"""QTreeWidget::item {{ background-color: {theme['tree-background-color']}; }} 
                 QTreeWidget::item:selected {{ background-color: {theme['menu-item-selected-color']}; color: {theme['main-color']} }}
@@ -436,11 +438,11 @@ class GUI(QMainWindow):
                 QTreeWidget {{ background-color: {theme['tree-background-color']} }}
                 QTreeWidget::branch {{ background: {theme['tree-background-color']} }}
                 QTreeWidget::branch::closed::has-children {{
-                    image: url(../icons/closed-arrow-{self.current_theme}.png);
+                    image: url({closed_arrow_image});
                 }}            
         
                 QTreeWidget::branch::open::has-children {{
-                    image: url(../icons/opened-arrow-{self.current_theme}.png);
+                    image: url({opened_arrow_image});
                 }}
              """)
         self.parameter_tree.setForegroundColorAllItems(theme['main-color'])
