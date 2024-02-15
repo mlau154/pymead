@@ -10,26 +10,41 @@ There are several easy ways to install pymead:
 Method 1: Windows Installer/Linux Tarball (GUI Only)
 ----------------------------------------------------
 
+For users merely wishing to use pymead rather than develop pymead, this is the recommended install method.
+
 **Windows**
 
-For users merely wishing to use pymead rather than develop pymead, this is the recommended install method.
 Go to the `release page on GitHub <https://github.com/mlau154/pymead/releases>`_ and download the ``.exe``
 file under the "Assets" dropdown menu. Click on the ``.exe`` and follow the self-contained instructions
 to install pymead. For this install method, neither Python nor any of the "required_" dependencies are
 necessary to run the pymead executable. Only the "optional_" dependencies are necessary to run
 some commands in pymead.
 
+You will be notified automatically at application startup if there is an update for pymead available.
+On Windows, the installation wizard will handle the uninstall/upgrade process for you automatically once
+it is downloaded and run.
+
 To run pymead, double-click on the pymead program created in the selected install location. Alternatively,
 type *pymead* in the Windows search bar and press enter.
 
 **Linux**
 
-Follow similar steps to the procedure for Windows, except download the ``.tar.gz`` file instead of the
-``.exe`` file. Then, move the tarball to the desired location and extract it in that location using
+Follow similar steps to the procedure for Windows, except download the ``-linux.tar.gz`` file instead of the
+``.exe`` file. Then, move the tarball to the desired location and extract it in that location by double-clicking
+the tarball in a file explorer or by navigating to the tarball's location and using
 
 .. code-block::
 
   tar -xvzf <pymead-tarball-name.tar.gz>
+
+in a terminal. The pymead application can then be run directly from inside that extracted folder. When downloading
+updates to pymead (you will be notified of these at application startup when they are available), you can
+simply replace the original extracted folder with the newly extracted folder. It is *very important* to not remove
+the pymead application from the folder that contains the ``_internals`` folder, since pymead needs these to run.
+
+**macOS**
+
+Follow the same steps as Linux, except make sure to download the ``-macOS.tar.gz`` file instead of the Linux version!
 
 
 Method 2: ``pip`` (GUI + API)
@@ -39,6 +54,8 @@ Use ``pip`` to install the latest stable version of pymead into the environment 
 .. code-block::
 
   pip install pymead
+
+.. important:: At the moment, you must have a Python version ``>=3.10`` to install pymead using pip.
 
 This method automatically installs all required dependencies that are not yet installed. It also
 allows the user to easily update pymead if desired when a new version is available. To update pymead, use

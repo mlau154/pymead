@@ -1,16 +1,53 @@
 """
-For uploading to TestPyPi:
+Release workflow (ADMINS ONLY):
+===============================
 
-Use py -m build from the root directory to build
-Use twine check dist/* to check the distribution
-Use twine upload --repository testpypi dist/* to upload to TestPyPi
-Use twine upload dist/* to upload to PyPi
-Use pip install --extra-index-url https://test.pypi.org/simple/ pymead==2.0.0a23 to test the install
+On base platform (can be Windows or Linux):
+1. Create a draft release on GitHub and enter the version notes
+2. Run tests
+3. Make sure version has been updated
+4. Make sure all changes are committed and pushed to dev branch
+5. Merge with main branch
+6. Make a test upload to TestPyPi using the instructions below
+7. If the test passes, execute the production upload to PyPi
+8. Generate the standalone executable/installer and copy to the GitHub draft release according to the instructions
+   below (if starting from Windows, the installation order should be Windows-->Linux-->macOS; if starting from Linux,
+   the installation order should be Linux-->macOS-->Windows)
+9. Publish the release on GitHub!
+
+Standalone executable/installer installation instructions:
+==========================================================
+
+Windows
+-------
+Right-click this file in PyCharm and run it. Then, copy the generated installation wizard to the draft release on
+GitHub.
+
+Linux
+-----
+Right-click this file in PyCharm and run it. Copy the output tarball to the draft release on GitHub.
+
+macOS
+-----
+From the Linux environment, open the macOS virtual machine by running ./basic.sh from ~/KVM/macOS.
+Navigate to Documents/pymead in a terminal and do git pull, do pip3.10 install . --upgrade.
+Then, navigate to the "install" directory and run python3.10 -m install. Copy the output tarball to the draft release
+on GitHub.
+
+For uploading to TestPyPi (test) or PyPi (prod):
+================================================
+
+- Use py -m build from the root directory to build
+- (Prod & Test) Use twine check dist/* to check the distribution
+- (Test Only) Use twine upload --repository testpypi dist/* to upload to TestPyPi
+- (Prod Only) Use twine upload dist/* to upload to PyPi
+- (Test Only) In a fresh, virtual environment, use
+  pip install --extra-index-url https://test.pypi.org/simple/ pymead==<short ver name> to test the installation
 """
 
 import os
-import shutil
 import platform
+import shutil
 import subprocess
 
 from pymead.version import __version__
@@ -143,9 +180,10 @@ def run(create_installer: bool = True):
         else:
             raise ValueError("iss setup install command failed")
 
-    elif system in ["Linux", "Darwin"]:
+    elif system in ["Linux", "Darwin"]:  # Note: "Darwin" is the platform system name for macOS
         print("Compressing app...")
-        tarball_name = f"pymead-{__version__}.tar.gz"
+        platform_descriptor = "linux" if system == "Linux" else "macOS"
+        tarball_name = f"pymead-{__version__}-{platform_descriptor}.tar.gz"
         tarball_process = subprocess.run(["tar", "-czvf", tarball_name, "pymead"], cwd=dist_dir)
 
         if tarball_process.returncode == 0:
