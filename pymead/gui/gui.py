@@ -487,6 +487,7 @@ class GUI(QMainWindow):
 
     def create_menu_bar(self):
         self.menu_bar = self.menuBar()
+        self.menu_bar.setNativeMenuBar(False)
         menu_data = load_data(os.path.join(GUI_SETTINGS_DIR, "menu.json"))
 
         def recursively_add_menus(menu: dict, menu_bar: QObject):
