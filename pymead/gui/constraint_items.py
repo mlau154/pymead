@@ -1,14 +1,10 @@
-import os
 from abc import abstractmethod
 
 import pyqtgraph as pg
-import numpy as np
 from PyQt5.QtCore import Qt, pyqtSignal, QObject
-from PyQt5.QtGui import QFont, QImage, QTransform, QPainterPath, QBrush, QPen, QColor
-import PIL
+from PyQt5.QtGui import QFont, QPen, QColor
 
 from pymead.core.constraints import *
-from pymead import ICON_DIR
 from pymead.utils.misc import get_setting
 
 
@@ -17,11 +13,12 @@ class ConstraintItem(QObject):
     sigItemHovered = pyqtSignal()
     sigItemLeaveHovered = pyqtSignal()
 
-    def __init__(self, constraint: GeoCon, canvas_items: list):
+    def __init__(self, constraint: GeoCon, canvas_items: list, theme: dict):
         super().__init__()
         self.constraint = constraint
         self.constraint.canvas_item = self
         self.canvas_items = canvas_items
+        self.setStyle(theme=theme, mode="default")
 
     def addItems(self, canvas):
         for item in self.canvas_items:
@@ -65,7 +62,7 @@ class ConstraintItem(QObject):
 
 
 class DistanceConstraintItem(ConstraintItem):
-    def __init__(self, constraint: DistanceConstraint):
+    def __init__(self, constraint: DistanceConstraint, theme: dict):
         self.arrow_style = {"headLen": 10}
         self.text_style = {"anchor": (0.5, 0.5)}
         canvas_items = [
@@ -76,7 +73,7 @@ class DistanceConstraintItem(ConstraintItem):
             pg.PlotCurveItem(),
             pg.PlotCurveItem(),
         ]
-        super().__init__(constraint=constraint, canvas_items=canvas_items)
+        super().__init__(constraint=constraint, canvas_items=canvas_items, theme=theme)
         self.canvas_items[2].setFont(QFont("DejaVu Sans Mono", 10))
         for item in canvas_items:
             if isinstance(item, pg.ArrowItem):
@@ -130,7 +127,7 @@ class DistanceConstraintItem(ConstraintItem):
 
 
 class SymmetryConstraintItem(ConstraintItem):
-    def __init__(self, constraint: SymmetryConstraint):
+    def __init__(self, constraint: SymmetryConstraint, theme: dict):
         canvas_items = [
             pg.TextItem("\u24c2"),
             pg.TextItem("\u24c2")
@@ -139,7 +136,7 @@ class SymmetryConstraintItem(ConstraintItem):
         canvas_items[1].setFont(QFont("DejaVu Sans", 10))
         for item in canvas_items:
             item.setZValue(-10)
-        super().__init__(constraint=constraint, canvas_items=canvas_items)
+        super().__init__(constraint=constraint, canvas_items=canvas_items, theme=theme)
         self.update()
 
     def update(self):
@@ -148,14 +145,14 @@ class SymmetryConstraintItem(ConstraintItem):
 
 
 class ROCurvatureConstraintItem(ConstraintItem):
-    def __init__(self, constraint: ROCurvatureConstraint):
+    def __init__(self, constraint: ROCurvatureConstraint, theme: dict):
         canvas_items = [
             pg.TextItem("\u24c7"),
         ]
         canvas_items[0].setFont(QFont("DejaVu Sans", 10))
         for item in canvas_items:
             item.setZValue(-10)
-        super().__init__(constraint=constraint, canvas_items=canvas_items)
+        super().__init__(constraint=constraint, canvas_items=canvas_items, theme=theme)
         self.update()
 
     def update(self):
@@ -164,7 +161,7 @@ class ROCurvatureConstraintItem(ConstraintItem):
 
 
 class AntiParallel3ConstraintItem(ConstraintItem):
-    def __init__(self, constraint: AntiParallel3Constraint):
+    def __init__(self, constraint: AntiParallel3Constraint, theme: dict):
         self.text_style = dict(anchor=(0.5, 0.5))
         pen = pg.mkPen(width=1, style=Qt.DashLine)
         canvas_items = [
@@ -177,7 +174,7 @@ class AntiParallel3ConstraintItem(ConstraintItem):
         canvas_items[1].setFont(QFont("DejaVu Sans", 10))
         for item in canvas_items:
             item.setZValue(-10)
-        super().__init__(constraint=constraint, canvas_items=canvas_items)
+        super().__init__(constraint=constraint, canvas_items=canvas_items, theme=theme)
         self.update()
 
     def update(self):
@@ -197,7 +194,7 @@ class AntiParallel3ConstraintItem(ConstraintItem):
 
 
 class RelAngle3ConstraintItem(ConstraintItem):
-    def __init__(self, constraint: RelAngle3Constraint):
+    def __init__(self, constraint: RelAngle3Constraint, theme: dict):
         pen = pg.mkPen(width=1, style=Qt.DashLine)
         canvas_items = [
             pg.PlotDataItem(),
@@ -206,7 +203,7 @@ class RelAngle3ConstraintItem(ConstraintItem):
             pg.TextItem(anchor=(0, 0.5)),
         ]
         canvas_items[3].setFont(QFont("DejaVu Sans Mono", 10))
-        super().__init__(constraint=constraint, canvas_items=canvas_items)
+        super().__init__(constraint=constraint, canvas_items=canvas_items, theme=theme)
         for item in canvas_items:
             item.setZValue(-10)
         self.update()
@@ -239,7 +236,7 @@ class RelAngle3ConstraintItem(ConstraintItem):
 
 
 class Perp3ConstraintItem(ConstraintItem):
-    def __init__(self, constraint: Perp3Constraint):
+    def __init__(self, constraint: Perp3Constraint, theme: dict):
         pen = pg.mkPen(width=1, style=Qt.DashLine)
         canvas_items = [
             pg.PlotDataItem(),
@@ -247,7 +244,7 @@ class Perp3ConstraintItem(ConstraintItem):
             pg.PlotDataItem(pen=pen),
             pg.PlotDataItem(pen=pen)
         ]
-        super().__init__(constraint=constraint, canvas_items=canvas_items)
+        super().__init__(constraint=constraint, canvas_items=canvas_items, theme=theme)
         for item in canvas_items:
             item.setZValue(-10)
         self.update()

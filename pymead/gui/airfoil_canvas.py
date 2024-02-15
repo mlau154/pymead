@@ -195,7 +195,9 @@ class AirfoilCanvas(pg.PlotWidget):
 
         elif isinstance(pymead_obj, GeoCon):
 
-            constraint_item = getattr(sys.modules[__name__], f"{type(pymead_obj).__name__}Item")(pymead_obj)
+            constraint_item = getattr(
+                sys.modules[__name__], f"{type(pymead_obj).__name__}Item")(
+                pymead_obj, self.gui_obj.themes[self.gui_obj.current_theme])
             # raise NotImplementedError(f"Constraint {pymead_obj.__class__.__name__} does not yet have a canvas item")
 
             constraint_item.addItems(self)
