@@ -10,6 +10,5 @@ pyqtgraph==0.13.1
 python-benedict
 pandas
 PyQtWebEngine
-cmcrameri
 networkx
 psutil

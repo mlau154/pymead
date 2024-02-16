@@ -17,7 +17,7 @@ from PyQt5.QtGui import QIcon, QFont, QFontDatabase, QPainter, QCloseEvent, QTex
 from PyQt5.QtSvg import QSvgWidget
 from PyQt5.QtWidgets import QMainWindow, QApplication, \
     QWidget, QMenu, QStatusBar, QAction, QGraphicsScene, QGridLayout, QDockWidget, QSizeGrip
-from cmcrameri import cm
+from pymead.resources.cmcrameri.cmaps import BERLIN, VIK
 from pymoo.factory import get_decomposition
 from pyqtgraph.exporters import CSVExporter, SVGExporter
 
@@ -880,9 +880,9 @@ class GUI(QMainWindow):
         # bar.setLabel(**self.cbar_label_attrs)
         # self.cbar = bar
         if self.current_theme == "dark":
-            col_data = cm.berlin.colors
+            col_data = BERLIN
         elif self.current_theme == "light":
-            col_data = cm.vik.colors
+            col_data = VIK
         else:
             raise ValueError("Could not find color map for the current theme")
 
@@ -909,8 +909,8 @@ class GUI(QMainWindow):
                 pos = np.append(pos, p)
 
         self.crameri_cmap = {
-            "dark": pg.ColorMap(name="berlin", pos=pos, color=255 * cm.berlin.colors[:, :3] + 0.5),
-            "light": pg.ColorMap(name="vik", pos=pos, color=255 * cm.vik.colors[:, :3] + 0.5)
+            "dark": pg.ColorMap(name="berlin", pos=pos, color=255 * BERLIN + 0.5),
+            "light": pg.ColorMap(name="vik", pos=pos, color=255 * VIK + 0.5)
         }
 
         self.cbar_label_attrs = {

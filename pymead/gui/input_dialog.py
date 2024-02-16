@@ -530,12 +530,12 @@ class PymeadDialog(QDialog):
         if self.parent() is not None:
             self.setFont(self.parent().font())
 
-        self.layout = QVBoxLayout()
-        self.setLayout(self.layout)
+        self.vbox_lay = QVBoxLayout()
+        self.setLayout(self.vbox_lay)
         self.w = widget
 
-        self.layout.addWidget(widget)
-        self.layout.addWidget(self.create_button_box())
+        self.vbox_lay.addWidget(widget)
+        self.vbox_lay.addWidget(self.create_button_box())
 
         # mandatory for cursor updates
         self.setMouseTracking(True)
@@ -2248,7 +2248,7 @@ class ScreenshotDialog(PymeadDialog):
         widget.setLayout(self.grid_layout)
 
     def setInputs(self):
-        widget_dict = load_data(os.path.join('dialog_widgets', 'screenshot_dialog.json'))
+        widget_dict = load_data(os.path.join(GUI_DIALOG_WIDGETS_DIR, "screenshot_dialog.json"))
         for row_name, row_dict in widget_dict.items():
             self.grid_widget[row_name] = {}
             for w_name, w_dict in row_dict.items():
@@ -2694,7 +2694,7 @@ class ExportControlPointsDialog(PymeadDialog):
             ",".join([k for k in self.parent().geo_col.container()["airfoils"].keys()]))
 
     def setInputs(self):
-        widget_dict = load_data(os.path.join('dialog_widgets', 'export_control_points_dialog.json'))
+        widget_dict = load_data(os.path.join(GUI_DIALOG_WIDGETS_DIR, "export_control_points_dialog.json"))
         for row_name, row_dict in widget_dict.items():
             self.grid_widget[row_name] = {}
             for w_name, w_dict in row_dict.items():
@@ -2736,7 +2736,7 @@ class ExportIGESDialog(PymeadDialog):
         super().__init__(parent=parent, window_title="Export IGES", widget=widget, theme=theme)
 
         self.grid_widget = {}
-        self.grid_layout = QGridLayout(self)
+        self.grid_layout = QGridLayout()
 
         self.setInputs()
         widget.setLayout(self.grid_layout)
@@ -2800,7 +2800,7 @@ class AirfoilMatchingDialog(PymeadDialog):
 
         self.airfoil_names = airfoil_names
 
-        self.lay = QFormLayout(self)
+        self.lay = QFormLayout()
 
         self.inputs = self.setInputs()
         for i in self.inputs:
@@ -2824,7 +2824,7 @@ class AirfoilPlotDialog(PymeadDialog):
     def __init__(self, parent, theme: dict):
         widget = QWidget()
         super().__init__(parent, window_title="Select Airfoil to Plot", widget=widget, theme=theme)
-        self.lay = QFormLayout(self)
+        self.lay = QFormLayout()
         widget.setLayout(self.lay)
 
         self.inputs = self.setInputs()

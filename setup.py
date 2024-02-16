@@ -33,18 +33,20 @@ setup(
     package_data={"pymead": ["gui/gui_settings/defaults/*.json", "icons/*.png", "icons/*.svg",
                              "resources/*", "resources/dejavu-fonts-ttf-2.37/*",
                              "resources/dejavu-fonts-ttf-2.37/fontconfig/*", "resources/dejavu-fonts-ttf-2.37/ttf/*",
+                             "resources/cmcrameri/*",
                              "gui/*.json", "gui/gui_settings/themes/*.json", "gui/gui_settings/*.json",
                              "gui/dialog_widgets/*.json"]},
     python_requires=">=3.10",
     packages=["pymead", "pymead/core", "pymead/examples", "pymead/utils", "pymead/gui",
-              "pymead/tests", "pymead/resources", "pymead/analysis", "pymead/data", "pymead/icons",
+              "pymead/tests", "pymead/resources", "pymead/resources/cmcrameri", "pymead/analysis", "pymead/data",
+              "pymead/icons",
               "pymead/optimization", "pymead/plugins", "pymead/plugins/IGES", "pymead/plugins/NX",
               "pymead/post", "pymead/gui/scientificspinbox_master",
               "pymead/gui/pyqt_vertical_tab_widget/pyqt_vertical_tab_widget"],
     include_package_data=True,
     install_requires=["scipy", "numpy", "shapely", "matplotlib", "requests>=2.31", "PyQt5==5.15.7",
                       "pyqtgraph==0.13.1", "python-benedict", "pandas", "pymoo==0.5.0", "numba", "PyQtWebEngine",
-                      "cmcrameri", "networkx", "psutil"],
+                      "networkx", "psutil"],
 )
 
 # TODO: fix relative file-pathing (like "menu.json") when calling the GUI main directly from a Python interpreter after
