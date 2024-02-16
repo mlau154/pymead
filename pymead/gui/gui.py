@@ -7,6 +7,7 @@ import warnings
 from copy import deepcopy
 from functools import partial
 from threading import Thread
+from pathlib import PureWindowsPath
 
 import numpy as np
 import pyqtgraph as pg
@@ -431,6 +432,9 @@ class GUI(QMainWindow):
         self.parameter_tree.setAutoFillBackground(True)
         closed_arrow_image = os.path.join(ICON_DIR, f"closed-arrow-{self.current_theme}.png")
         opened_arrow_image = os.path.join(ICON_DIR, f"opened-arrow-{self.current_theme}.png")
+        if os.path.sep == "\\":
+            closed_arrow_image = PureWindowsPath(closed_arrow_image).as_posix()
+            opened_arrow_image = PureWindowsPath(opened_arrow_image).as_posix()
         self.parameter_tree.setStyleSheet(
             f"""QTreeWidget::item {{ background-color: {theme['tree-background-color']}; }} 
                 QTreeWidget::item:selected {{ background-color: {theme['menu-item-selected-color']}; color: {theme['main-color']} }}
