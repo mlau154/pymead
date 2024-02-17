@@ -2842,6 +2842,28 @@ class AirfoilPlotDialog(PymeadDialog):
         return self.inputs[0][1].text()
 
 
+class WebAirfoilDialog(PymeadDialog):
+    def __init__(self, parent, theme: dict):
+        widget = QWidget()
+        super().__init__(parent, window_title="Select AirfoilTools airfoil", widget=widget, theme=theme)
+        self.lay = QFormLayout()
+        widget.setLayout(self.lay)
+        self.inputs = self.setInputs()
+
+        for i in self.inputs:
+            self.lay.addRow(i[0], i[1])
+
+        self.setMinimumWidth(300)
+
+    def setInputs(self):
+        r0 = ["Web airfoil", QLineEdit(self)]
+        r0[1].setText("n0012-il")
+        return [r0]
+
+    def valuesFromWidgets(self):
+        return self.inputs[0][1].text()
+
+
 class MSESFieldPlotDialogWidget(PymeadDialogWidget):
     def __init__(self, default_field_dir: str = None):
         super().__init__(settings_file=os.path.join(GUI_DEFAULTS_DIR, 'mses_field_plot_settings.json'))

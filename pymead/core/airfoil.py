@@ -1,6 +1,5 @@
 import typing
 from copy import deepcopy
-from abc import ABC, abstractmethod
 
 import numpy as np
 from shapely.geometry import Polygon, LineString
@@ -9,32 +8,9 @@ from pymead.core.parametric_curve import INTERMEDIATE_NT
 from pymead.core.point import Point
 from pymead.core.pymead_obj import PymeadObj
 from pymead.core.transformation import Transformation2D
-from pymead.utils.get_airfoil import extract_data_from_airfoiltools
 
 
-class AbstractAirfoil(ABC):
-
-    @abstractmethod
-    def get_coords_selig_format(self, *args, **kwargs) -> np.ndarray:
-        pass
-
-
-class WebAirfoil(PymeadObj, AbstractAirfoil):
-
-    def __init__(self, airfoil_tools_name: str):
-        super().__init__(sub_container="webair")
-        self.airfoil_tools_name = airfoil_tools_name
-        self.coords = self.get_coords_selig_format()
-
-    def get_coords_selig_format(self) -> np.ndarray:
-        coords = extract_data_from_airfoiltools(self.airfoil_tools_name)
-        return coords
-
-    def get_dict_rep(self) -> dict:
-        return dict(airfoil_tools_name=self.airfoil_tools_name)
-
-
-class Airfoil(PymeadObj, AbstractAirfoil):
+class Airfoil(PymeadObj):
     """
     This is a primary class in `pymead`, which defines an airfoil by a leading edge, a trailing edge,
     and optionally an upper-surface endpoint and a lower-surface endpoint in the case of a blunt airfoil. For the
@@ -77,7 +53,6 @@ class Airfoil(PymeadObj, AbstractAirfoil):
 
         # Name the airfoil
         name = "Airfoil-1" if name is None else name
-        self._name = None
         self.set_name(name)
 
         # Properties to set during closure check
@@ -513,7 +488,7 @@ class Airfoil(PymeadObj, AbstractAirfoil):
             line_string = LineString([(pt, start_y_over_c), (pt, end_y_over_c)])
             x_inters = line_string.intersection(airfoil_line_string)
             if pt == 1.0:
-                thickness = np.append(thickness, self.t_te.value)
+                thickness = np.append(thickness, self.lower_surf_end.measure_distance(self.upper_surf_end))
             elif x_inters.is_empty:  # If no intersection between line and airfoil LineString,
                 thickness = np.append(thickness, 0.0)
             else:

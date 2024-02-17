@@ -36,6 +36,12 @@
     "checkable": false,
     "function": "on_generate_airfoil_pressed"
   },
+  "generate-web-airfoil": {
+    "icon": "web_airfoil_dark.svg",
+    "status_tip": "Generate airfoil from http://www.airfoiltools.com/",
+    "checkable": false,
+    "function": "on_generate_web_airfoil_pressed"
+  },
   "generate-mea": {
     "icon": "mea_dark.svg",
     "status_tip": "Generate multi-element airfoil",

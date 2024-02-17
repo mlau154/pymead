@@ -33,7 +33,7 @@ class GCS(networkx.DiGraph):
         self.roots = []
         self.geo_col = None
 
-    def _add_point(self, point: Point):
+    def add_point(self, point: Point):
         """
         Adds a point (node) to the graph (and to the ``"points"`` attribute). Also assigns this graph to the point.
 
@@ -50,7 +50,7 @@ class GCS(networkx.DiGraph):
         self.add_node(point)
         self.points[point.name()] = point
 
-    def _remove_point(self, point: Point):
+    def remove_point(self, point: Point):
         """
         Removes a point (node) from the graph (and from the ``"points"`` attribute).
 

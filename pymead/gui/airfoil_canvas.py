@@ -11,7 +11,7 @@ from PyQt5.QtCore import pyqtSignal, QEventLoop, Qt
 from PyQt5.QtGui import QFont, QBrush, QColor
 from PyQt5.QtWidgets import QApplication
 
-from pymead.gui.input_dialog import PlotExportDialog
+from pymead.gui.input_dialog import PlotExportDialog, WebAirfoilDialog
 from pymead.gui.polygon_item import PolygonItem
 
 from pymead.core.airfoil import Airfoil
@@ -322,6 +322,12 @@ class AirfoilCanvas(pg.PlotWidget):
 
         self.geo_col.add_airfoil(leading_edge=le, trailing_edge=te, upper_surf_end=upper_surf_end,
                                  lower_surf_end=lower_surf_end)
+        self.gui_obj.permanent_widget.updateAirfoils()
+
+    def generateWebAirfoil(self):
+        dialog = WebAirfoilDialog(self, theme=self.gui_obj.themes[self.gui_obj.current_theme])
+        if dialog.exec_():
+            self.geo_col.add_polyline(web_airfoil_name=dialog.valuesFromWidgets())
         self.gui_obj.permanent_widget.updateAirfoils()
 
     @runSelectionEventLoop(drawing_object="MEA", starting_message="Select the first airfoil")
@@ -785,6 +791,7 @@ class AirfoilCanvas(pg.PlotWidget):
             Qt.Key_L: self.drawLines,
             Qt.Key_B: self.drawBeziers,
             Qt.Key_F: self.generateAirfoil,
+            Qt.Key_W: self.generateWebAirfoil,
             Qt.Key_M: self.generateMEA,
             Qt.Key_D: self.addDistanceConstraint,
             Qt.Key_A: self.addRelAngle3Constraint,

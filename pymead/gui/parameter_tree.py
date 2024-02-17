@@ -10,7 +10,7 @@ from pymead.core.airfoil import Airfoil
 from pymead.core.bezier import Bezier
 from pymead.core.constraints import *
 from pymead.core.geometry_collection import GeometryCollection
-from pymead.core.line import LineSegment
+from pymead.core.line import LineSegment, PolyLine
 from pymead.core.mea import MEA
 from pymead.core.param import Param, DesVar, LengthParam, AngleParam, LengthDesVar, AngleDesVar
 from pymead.core.point import Point
@@ -459,6 +459,19 @@ class AirfoilButton(TreeButton):
             self.tree.itemWidget(point.tree_item, 0).setText(name)
 
 
+class PolyLineButton(TreeButton):
+    def __init__(self, polyline: PolyLine, tree, top_level: bool = False):
+        super().__init__(pymead_obj=polyline, tree=tree, top_level=top_level)
+        self.polyline = polyline
+
+    def modifyDialogInternals(self, dialog: QDialog, layout: QGridLayout) -> None:
+        name_label = QLabel("Name", self)
+        name_edit = NameEdit(self, self.polyline, self.tree)
+        name_edit.setEnabled(False)
+        layout.addWidget(name_label, 1, 0)
+        layout.addWidget(name_edit, 1, 1)
+
+
 class MEAButton(TreeButton):
     def __init__(self, mea: MEA, tree, top_level: bool = False):
         super().__init__(pymead_obj=mea, tree=tree, top_level=top_level)
@@ -693,6 +706,7 @@ class ParameterTree(QTreeWidget):
             "lines": "Lines",
             "bezier": "Bézier Curves",
             "airfoils": "Airfoils",
+            "polylines": "Polylines",
             "mea": "Multi-Element Airfoils",
             "geocon": "Geometric Constraints",
             "dims": "Dimensions"

@@ -27,6 +27,7 @@ class HoverableCurve(pg.PlotCurveItem):
     sigRemove = pyqtSignal(object)
     sigBezierAdded = pyqtSignal(object)
     sigLineAdded = pyqtSignal(object)
+    sigPolyLineAdded = pyqtSignal(object)
     sigLineItemAdded = pyqtSignal(object)
 
     def __init__(self, curve_type: str, *args, **kwargs):
@@ -42,7 +43,7 @@ class HoverableCurve(pg.PlotCurveItem):
         kwargs
             Keyword arguments which are passed to ``pyqtgraph.PlotCurveItem``
         """
-        implemented_curve_types = ["Bezier", "LineSegment"]
+        implemented_curve_types = ["Bezier", "LineSegment", "PolyLine"]
         if curve_type not in implemented_curve_types:
             raise NotImplementedError(f"Curve type {curve_type} either incorrectly labeled or not yet implemented."
                                       f"Currently implemented curve types: {implemented_curve_types}.")
@@ -90,6 +91,12 @@ class HoverableCurve(pg.PlotCurveItem):
             if self.parametric_curve is None:
                 self.parametric_curve = LineSegment(point_sequence)
                 self.sigLineAdded.emit(self.parametric_curve)
+            else:
+                self.parametric_curve.set_point_sequence(point_sequence)
+        elif self.curve_type == "PolyLine":
+            if self.parametric_curve is None:
+                self.parametric_curve = PolyLine(point_sequence)
+                self.sigPolyLineAdded.emit(self.parametric_curve)
             else:
                 self.parametric_curve.set_point_sequence(point_sequence)
         curve_data = self.parametric_curve.evaluate()

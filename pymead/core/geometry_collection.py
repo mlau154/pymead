@@ -11,7 +11,7 @@ from pymead.core.constraints import *
 from pymead.core.gcs import GCS
 from pymead.core.mea import MEA
 from pymead.core.pymead_obj import DualRep, PymeadObj
-from pymead.core.line import LineSegment
+from pymead.core.line import LineSegment, PolyLine
 from pymead.core.param import Param, LengthParam, AngleParam, DesVar, LengthDesVar, AngleDesVar
 from pymead.core.point import Point, PointSequence
 from pymead.core.transformation import Transformation3D
@@ -32,6 +32,7 @@ class GeometryCollection(DualRep):
             "params": {},
             "points": {},
             "lines": {},
+            "polylines": {},
             "bezier": {},
             "airfoils": {},
             "mea": {},
@@ -351,6 +352,9 @@ class GeometryCollection(DualRep):
             pymead_obj.canvas = self.canvas
             self.canvas.addPymeadCanvasItem(pymead_obj=pymead_obj)
 
+        if isinstance(pymead_obj, Point):
+            self.gcs.add_point(pymead_obj)
+
         return pymead_obj
 
     def remove_pymead_obj(self, pymead_obj: PymeadObj, promotion_demotion: bool = False,
@@ -389,7 +393,7 @@ class GeometryCollection(DualRep):
                     self.gui_obj.disp_message_box(error_message, message_mode="error")
                     return
 
-        elif isinstance(pymead_obj, Bezier) or isinstance(pymead_obj, LineSegment):
+        elif isinstance(pymead_obj, Bezier) or isinstance(pymead_obj, LineSegment) or isinstance(pymead_obj, PolyLine):
             # Remove all the references to this curve in each of the curve's points
             for pt in pymead_obj.point_sequence().points():
                 pt.curves.remove(pymead_obj)
@@ -433,7 +437,7 @@ class GeometryCollection(DualRep):
             for geo_con in pymead_obj.geo_cons[::-1]:
                 self.remove_pymead_obj(geo_con)
 
-            self.gcs._remove_point(pymead_obj)
+            self.gcs.remove_point(pymead_obj)
 
         elif isinstance(pymead_obj, GeoCon):
             # First, remove the parameter associated with the constraint if necessary (i.e., if that parameter is not
@@ -450,6 +454,10 @@ class GeometryCollection(DualRep):
 
             # Remove the constraint from the ConstraintGraph
             self.gcs.remove_constraint(pymead_obj)
+
+        elif isinstance(pymead_obj, Airfoil):
+            for curve in pymead_obj.curves:
+                curve.airfoil = None
 
         # Remove the item from the geometry collection subcontainer
         self.remove_from_subcontainer(pymead_obj)
@@ -490,7 +498,6 @@ class GeometryCollection(DualRep):
         point.x().geo_col = self
         point.y().geo_col = self
         self.add_pymead_obj_by_ref(point, assign_unique_name=assign_unique_name)
-        self.gcs._add_point(point)
 
         return point
 
@@ -503,6 +510,24 @@ class GeometryCollection(DualRep):
         line = LineSegment(point_sequence=point_sequence, name=name)
 
         return self.add_pymead_obj_by_ref(line, assign_unique_name=assign_unique_name)
+
+    def add_polyline(self, point_sequence: PointSequence = None, te: Point = None, web_airfoil_name: str = None,
+                     breaks: typing.List[list] = None,
+                     name: str or None = None, assign_unique_name: bool = True):
+        polyline = PolyLine(point_sequence=point_sequence, te=te, web_airfoil_name=web_airfoil_name, breaks=breaks,
+                            name=name)
+        if point_sequence is None:
+            for point in polyline.point_sequence().points():
+                self.add_pymead_obj_by_ref(point)
+            self.add_pymead_obj_by_ref(polyline.te)
+            te = polyline.te
+            te_upper = polyline.point_sequence().points()[0]
+            te_lower = polyline.point_sequence().points()[-1]
+            le = polyline.point_sequence().points()[2]
+            self.add_line(point_sequence=PointSequence(points=[te, te_upper]))
+            self.add_line(point_sequence=PointSequence(points=[te, te_lower]))
+            self.add_airfoil(le, te, te_upper, te_lower)
+        return self.add_pymead_obj_by_ref(polyline, assign_unique_name=assign_unique_name)
 
     def add_desvar(self, value: float, name: str, lower: float or None = None, upper: float or None = None,
                    unit_type: str or None = None, assign_unique_name: bool = True, point: Point = None,
@@ -863,6 +888,12 @@ class GeometryCollection(DualRep):
                 points=[geo_col.container()["points"][k] for k in line_dict["points"]]),
                 name=name, assign_unique_name=False
             )
+        for name, polyline_dict in d["polylines"].items():
+            geo_col.add_polyline(point_sequence=PointSequence(
+                points=[geo_col.container()["points"][k] for k in polyline_dict["points"]]),
+                web_airfoil_name=polyline_dict["web_airfoil_name"],
+                te=geo_col.container()["points"][polyline_dict["te"]],
+                breaks=polyline_dict["breaks"], name=name, assign_unique_name=False)
         for name, bezier_dict in d["bezier"].items():
             geo_col.add_bezier(point_sequence=PointSequence(
                 points=[geo_col.container()["points"][k] for k in bezier_dict["points"]]),

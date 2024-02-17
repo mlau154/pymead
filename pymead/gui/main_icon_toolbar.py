@@ -87,6 +87,9 @@ class MainIconToolbar(QToolBar):
     def on_generate_airfoil_pressed(self):
         self.parent.airfoil_canvas.generateAirfoil()
 
+    def on_generate_web_airfoil_pressed(self):
+        self.parent.airfoil_canvas.generateWebAirfoil()
+
     def on_generate_mea_pressed(self):
         self.parent.airfoil_canvas.generateMEA()
 

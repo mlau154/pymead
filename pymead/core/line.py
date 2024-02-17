@@ -1,7 +1,10 @@
+import typing
+
 import numpy as np
 
 from pymead.core.point import PointSequence, Point
 from pymead.core.parametric_curve import ParametricCurve, PCurveData
+from pymead.utils.get_airfoil import extract_data_from_airfoiltools
 
 
 class LineSegment(ParametricCurve):
@@ -78,3 +81,98 @@ class LineSegment(ParametricCurve):
 
     def get_dict_rep(self):
         return {"points": [pt.name() for pt in self.point_sequence().points()]}
+
+
+class PolyLine(ParametricCurve):
+
+    def __init__(self, point_sequence: PointSequence = None, te: Point = None, web_airfoil_name: str = None,
+                 breaks: typing.List[list] = None, name: str or None = None, **kwargs):
+
+        if point_sequence is None and web_airfoil_name is None:
+            raise ValueError("Must specify at least one of either point_sequence or web_airfoil_name")
+
+        super().__init__(sub_container="polylines", **kwargs)
+        self._point_sequence = None
+        self.coords = None
+        self.te = te if te is not None else None
+        self.web_airfoil_name = web_airfoil_name
+        if web_airfoil_name is not None:
+            if point_sequence is None:
+                point_sequence, self.coords = self.convert_airfoil_tools_airfoil_to_sequence_and_coords(
+                    web_airfoil_name)
+            else:
+                _, self.coords = self.convert_airfoil_tools_airfoil_to_sequence_and_coords(web_airfoil_name)
+        self.set_point_sequence(point_sequence)
+        if name is None:
+            if web_airfoil_name:
+                name = f"{web_airfoil_name}-1"
+            else:
+                name = "PolyLine-1"
+        self.set_name(name)
+        self.breaks = breaks
+        self._add_references()
+
+    def convert_airfoil_tools_airfoil_to_sequence_and_coords(self, point_sequence: str):
+        # TODO: add breaks functionality here
+        coords = extract_data_from_airfoiltools(point_sequence)
+        coords_dist_from_origin = np.hypot(coords[:, 0], coords[:, 1])
+        le_row = np.argmin(coords_dist_from_origin)
+        point_sequence = PointSequence(points=[Point(coords[row, 0], coords[row, 1]) for row in [0, 1, le_row, -2, -1]])
+        self.te = Point(1.0, 0.0)
+        return point_sequence, coords
+
+    def _add_references(self):
+        for idx, point in enumerate(self.point_sequence().points()):
+            # Add the object reference to each point in the curve
+            if self not in point.curves:
+                point.curves.append(self)
+
+    def point_sequence(self):
+        return self._point_sequence
+
+    def set_point_sequence(self, point_sequence: PointSequence):
+        self._point_sequence = point_sequence
+
+    def reverse_point_sequence(self):
+        self.point_sequence().reverse()
+
+    def point_removal_deletes_curve(self):
+        return True
+
+    def remove_point(self, idx: int or None = None, point: Point or None = None):
+        if isinstance(point, Point):
+            idx = self.point_sequence().point_idx_from_ref(point)
+        self.point_sequence().remove_point(idx)
+
+        if len(self.point_sequence()) > 1:
+            delete_curve = False
+        else:
+            delete_curve = True
+
+        return delete_curve
+
+    def remove(self):
+        if self.canvas_item is not None:
+            self.canvas_item.sigRemove.emit(self.canvas_item)
+
+    def update(self):
+        p_curve_data = self.evaluate()
+        if self.canvas_item is not None:
+            self.canvas_item.updateCanvasItem(curve_data=p_curve_data)
+
+    def evaluate(self, t: np.ndarray or None = None, **kwargs):
+        xy = self.coords
+        t = np.linspace(0.0, 1.0, xy.shape[0])
+        xp = np.gradient(xy[:, 0], t)
+        yp = np.gradient(xy[:, 1], t)
+        xpyp = np.column_stack((xp, yp))
+        xpp = np.gradient(xp, t)
+        ypp = np.gradient(yp, t)
+        xppypp = np.column_stack((xpp, ypp))
+        k = np.true_divide(xpyp[:, 0] * xppypp[:, 1] - xpyp[:, 1] * xppypp[:, 0], np.hypot(xpyp[:, 0], xpyp[:, 1])**1.5)
+        R = np.true_divide(1, k)
+        return PCurveData(t=t, xy=xy, xpyp=xpyp, xppypp=xppypp, k=k, R=R)
+
+    def get_dict_rep(self):
+        return {"points": [pt.name() for pt in self.point_sequence().points()], "te": self.te.name(),
+                "web_airfoil_name": self.web_airfoil_name, "breaks": self.breaks}
