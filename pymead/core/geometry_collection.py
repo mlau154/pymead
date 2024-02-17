@@ -518,14 +518,18 @@ class GeometryCollection(DualRep):
                             name=name)
         if point_sequence is None:
             for point in polyline.point_sequence().points():
-                self.add_pymead_obj_by_ref(point)
-            self.add_pymead_obj_by_ref(polyline.te)
+                if point not in self.container()["points"].values():
+                    self.add_pymead_obj_by_ref(point)
+            if polyline.te not in self.container()["points"].values():
+                self.add_pymead_obj_by_ref(polyline.te)
             te = polyline.te
             te_upper = polyline.point_sequence().points()[0]
             te_lower = polyline.point_sequence().points()[-1]
             le = polyline.point_sequence().points()[2]
-            self.add_line(point_sequence=PointSequence(points=[te, te_upper]))
-            self.add_line(point_sequence=PointSequence(points=[te, te_lower]))
+            if te is not te_upper:
+                self.add_line(point_sequence=PointSequence(points=[te, te_upper]))
+            if te is not te_lower:
+                self.add_line(point_sequence=PointSequence(points=[te, te_lower]))
             self.add_airfoil(le, te, te_upper, te_lower)
         return self.add_pymead_obj_by_ref(polyline, assign_unique_name=assign_unique_name)
 
