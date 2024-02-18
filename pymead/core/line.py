@@ -114,9 +114,15 @@ class PolyLine(ParametricCurve):
 
     def convert_airfoil_tools_airfoil_to_sequence_and_coords(self, point_sequence: str):
         # TODO: add breaks functionality here
-        self.te = Point(1.0, 0.0)
         coords = extract_data_from_airfoiltools(point_sequence)
         coords_dist_from_origin = np.hypot(coords[:, 0], coords[:, 1])
+        if coords[0, 1] >= 0.0 >= coords[-1, 1]:
+            # For the usual case where the trailing edge upper point is at or above 0 and the trailing edge lower
+            # point is at or below 0, just use (1, 0) as the trailing edge
+            self.te = Point(1.0, 0.0)
+        else:
+            # Otherwise, use the mean of the upper and lower points as the trailing edge point
+            self.te = Point(0.5 * (coords[0, 0] + coords[-1, 0]), 0.5 * (coords[0, 1] + coords[-1, 1]))
         le_row = np.argmin(coords_dist_from_origin)
         if np.hypot(coords[0, 0] - coords[-1, 0], coords[0, 1] - coords[-1, 1]) < 1e-6:  # sharp trailing edge
             points = [self.te] + [Point(coords[row, 0], coords[row, 1]) for row in [1, le_row, -2]] + [self.te]
