@@ -150,6 +150,7 @@ class AirfoilCanvas(pg.PlotWidget):
                                                                   q_settings_descriptions["scatter_default_pen_color"][
                                                                       1])),
                               pxMode=True, hoverable=True, tip=None)
+            point_gui.setZValue(100)
 
             # Establish a two-way connection between the point data structure and the GUI representation
             pymead_obj.canvas_item = point_gui
