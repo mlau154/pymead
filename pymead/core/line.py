@@ -179,8 +179,10 @@ class PolyLine(ParametricCurve):
         xpp = np.gradient(xp, t)
         ypp = np.gradient(yp, t)
         xppypp = np.column_stack((xpp, ypp))
-        k = np.true_divide(xpyp[:, 0] * xppypp[:, 1] - xpyp[:, 1] * xppypp[:, 0], np.hypot(xpyp[:, 0], xpyp[:, 1])**1.5)
-        R = np.true_divide(1, k)
+        with np.errstate(divide="ignore"):
+            k = np.true_divide(xpyp[:, 0] * xppypp[:, 1] - xpyp[:, 1] * xppypp[:, 0],
+                               np.hypot(xpyp[:, 0], xpyp[:, 1])**1.5)
+            R = np.true_divide(1, k)
         return PCurveData(t=t, xy=xy, xpyp=xpyp, xppypp=xppypp, k=k, R=R)
 
     def get_dict_rep(self):

@@ -4,7 +4,6 @@ Developer To-Dos
 Installation upgrades
 ---------------------
 - Add `apt` package in Linux
-- Add macOS support?
 
 Planned feature additions
 -------------------------
