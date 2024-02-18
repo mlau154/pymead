@@ -178,6 +178,8 @@ class Point(PymeadObj):
         bool
             ``True`` if movement is allowed for this point, ``False`` otherwise
         """
+        if any([curve.__class__.__name__ == "PolyLine" for curve in self.curves]):
+            return False
         if self.gcs is None:
             return True
         if self.gcs is not None and len(self.geo_cons) == 0:
