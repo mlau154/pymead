@@ -2,6 +2,7 @@ import networkx
 
 from pymead.core.constraints import *
 from pymead.core.constraint_equations import *
+from pymead.core.line import PolyLine
 from pymead.core.point import Point
 
 

@@ -85,51 +85,67 @@ class LineSegment(ParametricCurve):
 
 class PolyLine(ParametricCurve):
 
-    def __init__(self, point_sequence: PointSequence = None, te: Point = None, web_airfoil_name: str = None,
-                 breaks: typing.List[list] = None, name: str or None = None, **kwargs):
+    AirfoilTools = 0
+    DatFile = 1
 
-        if point_sequence is None and web_airfoil_name is None:
-            raise ValueError("Must specify at least one of either point_sequence or web_airfoil_name")
+    def __init__(self, source: str, start: int or float = None, end: int or float = None,
+                 point_sequence: PointSequence = None, name: str or None = None, num_header_rows: int = 0,
+                 delimiter: str or None = None, **kwargs):
 
         super().__init__(sub_container="polylines", **kwargs)
         self._point_sequence = None
+        self.source = source
+        self.source_type = self.DatFile if ("/" in source or "\\" in source) else self.AirfoilTools
+        self.start = start
+        self.end = end
+        self.num_header_rows = num_header_rows
+        self.delimiter = delimiter
         self.coords = None
-        self.te = te if te is not None else None
-        self.web_airfoil_name = web_airfoil_name
-        if web_airfoil_name is not None:
-            if point_sequence is None:
-                point_sequence, self.coords = self.convert_airfoil_tools_airfoil_to_sequence_and_coords(
-                    web_airfoil_name)
-            else:
-                _, self.coords = self.convert_airfoil_tools_airfoil_to_sequence_and_coords(web_airfoil_name)
+        if self.source_type == self.AirfoilTools:
+            self.coords = self._load_coords_from_airfoil_tools()
+        elif self.source_type == self.DatFile:
+            self.coords = self._load_coords_from_dat_file(self.num_header_rows, self.delimiter)
+        if start is None and isinstance(end, int):
+            self.coords = self.coords[:end, :]
+        elif end is None and isinstance(start, int):
+            self.coords = self.coords[start:, :]
+        elif isinstance(start, int) and isinstance(end, int):
+            self.coords = self.coords[start:end, :]
+        point_sequence = self._extract_point_sequence_from_coords() if point_sequence is None else point_sequence
         self.set_point_sequence(point_sequence)
         if name is None:
-            if web_airfoil_name:
-                name = f"{web_airfoil_name}-1"
+            if self.source_type == self.AirfoilTools:
+                name = f"{self.source}-1"
             else:
                 name = "PolyLine-1"
         self.set_name(name)
-        self.breaks = breaks
         self._add_references()
 
-    def convert_airfoil_tools_airfoil_to_sequence_and_coords(self, point_sequence: str):
-        # TODO: add breaks functionality here
-        coords = extract_data_from_airfoiltools(point_sequence)
-        coords_dist_from_origin = np.hypot(coords[:, 0], coords[:, 1])
-        if coords[0, 1] >= 0.0 >= coords[-1, 1]:
-            # For the usual case where the trailing edge upper point is at or above 0 and the trailing edge lower
-            # point is at or below 0, just use (1, 0) as the trailing edge
-            self.te = Point(1.0, 0.0)
-        else:
-            # Otherwise, use the mean of the upper and lower points as the trailing edge point
-            self.te = Point(0.5 * (coords[0, 0] + coords[-1, 0]), 0.5 * (coords[0, 1] + coords[-1, 1]))
-        le_row = np.argmin(coords_dist_from_origin)
-        if np.hypot(coords[0, 0] - coords[-1, 0], coords[0, 1] - coords[-1, 1]) < 1e-6:  # sharp trailing edge
-            points = [self.te] + [Point(coords[row, 0], coords[row, 1]) for row in [1, le_row, -2]] + [self.te]
-        else:
-            points = [Point(coords[row, 0], coords[row, 1]) for row in [0, 1, le_row, -2, -1]]
-        point_sequence = PointSequence(points=points)
-        return point_sequence, coords
+    def split(self, split: int or Point):
+        if split < 3 or split > len(self.coords) - 3:
+            raise ValueError("Found split value out of bounds for PolyLine")
+        polyline1, polyline2 = None, None
+        if isinstance(split, int):
+            end_1 = self.start + split + 1 if self.start is not None else split + 1
+            start_2 = self.start + split if self.start is not None else split
+            polyline1 = PolyLine(source=self.source, start=self.start, end=end_1)
+            polyline2 = PolyLine(source=self.source, start=start_2, end=self.end)
+            polyline2.point_sequence().points()[0] = polyline1.point_sequence().points()[-1]
+            polyline2.point_sequence().points()[0].curves.append(polyline2)
+        return [polyline1, polyline2]
+
+    def _load_coords_from_dat_file(self, num_header_rows: int = 0, delimiter: str or None = None):
+        return np.loadtxt(self.source, skiprows=num_header_rows, delimiter=delimiter)
+
+    def _load_coords_from_airfoil_tools(self):
+        return extract_data_from_airfoiltools(self.source)
+
+    def _extract_point_sequence_from_coords(self):
+        return PointSequence(points=[Point(self.coords[row, 0], self.coords[row, 1]) for row in [0, -1]])
+
+    def convert_airfoil_tools_airfoil_to_sequence_and_coords(self):
+        points = [Point(self.coords[row, 0], self.coords[row, 1]) for row in [0, 1, -2, -1]]
+        return PointSequence(points=points)
 
     def _add_references(self):
         for idx, point in enumerate(self.point_sequence().points()):
@@ -186,5 +202,5 @@ class PolyLine(ParametricCurve):
         return PCurveData(t=t, xy=xy, xpyp=xpyp, xppypp=xppypp, k=k, R=R)
 
     def get_dict_rep(self):
-        return {"points": [pt.name() for pt in self.point_sequence().points()], "te": self.te.name(),
-                "web_airfoil_name": self.web_airfoil_name, "breaks": self.breaks}
+        return {"points": [pt.name() for pt in self.point_sequence().points()], "source": self.source,
+                "start": self.start, "end": self.end}

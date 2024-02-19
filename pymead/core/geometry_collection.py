@@ -396,7 +396,8 @@ class GeometryCollection(DualRep):
         elif isinstance(pymead_obj, Bezier) or isinstance(pymead_obj, LineSegment) or isinstance(pymead_obj, PolyLine):
             # Remove all the references to this curve in each of the curve's points
             for pt in pymead_obj.point_sequence().points():
-                pt.curves.remove(pymead_obj)
+                if pymead_obj in pt.curves:
+                    pt.curves.remove(pymead_obj)
 
             if pymead_obj.airfoil is not None:
                 for curve in pymead_obj.airfoil.curves:
@@ -511,27 +512,30 @@ class GeometryCollection(DualRep):
 
         return self.add_pymead_obj_by_ref(line, assign_unique_name=assign_unique_name)
 
-    def add_polyline(self, point_sequence: PointSequence = None, te: Point = None, web_airfoil_name: str = None,
-                     breaks: typing.List[list] = None,
+    def add_polyline(self, source: str, start: int or float = None, end: int or float = None,
+                     point_sequence: PointSequence = None,
                      name: str or None = None, assign_unique_name: bool = True):
-        polyline = PolyLine(point_sequence=point_sequence, te=te, web_airfoil_name=web_airfoil_name, breaks=breaks,
+        polyline = PolyLine(source=source, start=start, end=end, point_sequence=point_sequence,
                             name=name)
         if point_sequence is None:
             for point in polyline.point_sequence().points():
                 if point not in self.container()["points"].values():
                     self.add_pymead_obj_by_ref(point)
-            if polyline.te not in self.container()["points"].values():
-                self.add_pymead_obj_by_ref(polyline.te)
-            te = polyline.te
-            te_upper = polyline.point_sequence().points()[0]
-            te_lower = polyline.point_sequence().points()[-1]
-            le = polyline.point_sequence().points()[2]
-            if te is not te_upper:
-                self.add_line(point_sequence=PointSequence(points=[te, te_upper]))
-            if te is not te_lower:
-                self.add_line(point_sequence=PointSequence(points=[te, te_lower]))
-            self.add_airfoil(le, te, te_upper, te_lower)
         return self.add_pymead_obj_by_ref(polyline, assign_unique_name=assign_unique_name)
+
+    def split_polyline(self, polyline: PolyLine, split: int or float):
+        new_polylines = polyline.split(split)
+
+        # Remove the old polyline and its dependent points
+        for point in polyline.point_sequence().points():
+            self.remove_pymead_obj(point)
+        polyline.point_sequence().points().clear()
+        # self.remove_pymead_obj(polyline)
+        for new_polyline in new_polylines:
+            for point in new_polyline.point_sequence().points():
+                if point not in self.container()["points"].values():
+                    self.add_pymead_obj_by_ref(point)
+            self.add_pymead_obj_by_ref(new_polyline)
 
     def add_desvar(self, value: float, name: str, lower: float or None = None, upper: float or None = None,
                    unit_type: str or None = None, assign_unique_name: bool = True, point: Point = None,
@@ -895,9 +899,8 @@ class GeometryCollection(DualRep):
         for name, polyline_dict in d["polylines"].items():
             geo_col.add_polyline(point_sequence=PointSequence(
                 points=[geo_col.container()["points"][k] for k in polyline_dict["points"]]),
-                web_airfoil_name=polyline_dict["web_airfoil_name"],
-                te=geo_col.container()["points"][polyline_dict["te"]],
-                breaks=polyline_dict["breaks"], name=name, assign_unique_name=False)
+                source=polyline_dict["source"], start=polyline_dict["start"], end=polyline_dict["end"], name=name,
+                assign_unique_name=False)
         for name, bezier_dict in d["bezier"].items():
             geo_col.add_bezier(point_sequence=PointSequence(
                 points=[geo_col.container()["points"][k] for k in bezier_dict["points"]]),

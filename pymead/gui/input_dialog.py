@@ -22,6 +22,7 @@ from pymead import GUI_DEFAULTS_DIR, q_settings, GUI_DIALOG_WIDGETS_DIR
 from pymead.analysis import cfd_output_templates
 from pymead.analysis.utils import viscosity_calculator
 from pymead.core.geometry_collection import GeometryCollection
+from pymead.core.line import PolyLine
 from pymead.core.mea import MEA
 from pymead.gui.bounds_values_table import BoundsValuesTable
 from pymead.gui.default_settings import xfoil_settings_default
@@ -3038,6 +3039,47 @@ class ExitOptimizationDialog(PymeadDialog):
     def __init__(self, parent, theme: dict):
         widget = QLabel("An optimization task is running. Quit?")
         super().__init__(parent=parent, window_title="Terminate Optimization?", widget=widget, theme=theme)
+
+
+class SplitPolylineDialog(PymeadDialog):
+    def __init__(self, parent, theme: dict, polyline: PolyLine, geo_col: GeometryCollection):
+        self.polyline = polyline
+        self.geo_col = geo_col
+        widget = QWidget()
+        super().__init__(parent=parent, window_title="Split PolyLine", widget=widget, theme=theme)
+        self.lay = QFormLayout()
+        self.spin = QSpinBox()
+        self.spin.setMinimum(3)
+        self.spin.setMaximum(len(polyline.coords) - 3)
+        self.lay.addRow("Split Index", self.spin)
+        widget.setLayout(self.lay)
+        self.split_point = None
+        self.spin.valueChanged.connect(self.onSpinValueChanged)
+
+    def removeSplitPoint(self):
+        if self.split_point is None:
+            return
+        self.geo_col.remove_pymead_obj(self.split_point)
+
+    def onSpinValueChanged(self, new_value: int):
+        self.removeSplitPoint()
+        self.split_point = self.geo_col.add_point(self.polyline.coords[new_value, 0],
+                                                  self.polyline.coords[new_value, 1])
+
+    def accept(self):
+        self.removeSplitPoint()
+        super().accept()
+
+    def reject(self):
+        self.removeSplitPoint()
+        super().reject()
+
+    def close(self):
+        self.removeSplitPoint()
+        super().close()
+
+    def valuesFromWidgets(self):
+        return self.spin.value()
 
 
 class SettingsDialogWidget(PymeadDialogWidget2):
