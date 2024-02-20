@@ -2971,11 +2971,16 @@ class PlotExportDialogWidget(PymeadDialogWidget2):
                                                        current_item=get_setting("axis-label-font-family")),
             "label_font_size": PymeadLabeledSpinBox(label="Label Point Size", minimum=1, maximum=100,
                                                     value=get_setting("axis-label-point-size")),
-            "min_level": PymeadLabeledDoubleSpinBox(label="Minimum Contour Level", minimum=-10000, maximum=10000,
-                                                    value=self.current_min_level, decimals=4, single_step=0.1),
-            "max_level": PymeadLabeledDoubleSpinBox(label="Maximum Contour Level", minimum=-10000, maximum=10000,
-                                                    value=self.current_max_level, decimals=4, single_step=0.1),
+
+
         }
+        if self.current_min_level is not None and self.current_max_level is not None:
+            self.widget_dict["min_level"] = PymeadLabeledDoubleSpinBox(
+                label="Minimum Contour Level", minimum=-10000, maximum=10000, value=self.current_min_level,
+                decimals=4, single_step=0.1),
+            self.widget_dict["max_level"] = PymeadLabeledDoubleSpinBox(
+                label="Maximum Contour Level", minimum=-10000, maximum=10000, value=self.current_max_level,
+                decimals=4, single_step=0.1),
 
         # Add all the widgets
         for widget_name, widget in self.widget_dict.items():
@@ -2993,8 +2998,9 @@ class PlotExportDialogWidget(PymeadDialogWidget2):
         self.widget_dict["label_font_family"].sigValueChanged.connect(self.labelFontChanged)
         self.widget_dict["label_font_size"].sigValueChanged.connect(self.labelFontChanged)
         self.widget_dict["save_dir"].sigValueChanged.connect(partial(set_setting, "plot-field-export-dir"))
-        self.widget_dict["min_level"].sigValueChanged.connect(self.minLevelChanged)
-        self.widget_dict["max_level"].sigValueChanged.connect(self.maxLevelChanged)
+        if "min_level" in self.widget_dict and "max_level" in self.widget_dict:
+            self.widget_dict["min_level"].sigValueChanged.connect(self.minLevelChanged)
+            self.widget_dict["max_level"].sigValueChanged.connect(self.maxLevelChanged)
 
     def tickFontChanged(self, _):
         widget_values = self.valuesFromWidgets()

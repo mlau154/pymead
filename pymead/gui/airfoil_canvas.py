@@ -417,9 +417,11 @@ class AirfoilCanvas(pg.PlotWidget):
             self.sigStatusBarUpdate.emit(msg, 4000)
             return
         curvature_data = ROCurvatureConstraint.calculate_curvature_data(self.geo_col.selected_objects["points"][0])
-        R = 0.5 * (curvature_data.R1 + curvature_data.R2)
-        # R = curvature_data.R1
-        R_param = self.geo_col.add_param(R, name="ROC-1", unit_type="length")
+        if curvature_data.R1 is not None and curvature_data.R2 is not None:
+            R = 0.5 * (curvature_data.R1 + curvature_data.R2)
+            R_param = self.geo_col.add_param(R, name="ROC-1", unit_type="length")
+        else:
+            R_param = None
         constraint = ROCurvatureConstraint(*self.geo_col.selected_objects["points"], value=R_param)
         self.geo_col.add_constraint(constraint)
 
@@ -712,9 +714,16 @@ class AirfoilCanvas(pg.PlotWidget):
         self.geo_col.remove_pymead_obj(item.parametric_curve)
 
     def exportPlot(self):
+        color_bar_data = self.color_bar_data
+        current_min_level, current_max_level = None, None
+        if color_bar_data is not None:
+            current_levels = color_bar_data["color_bar"].levels()
+            current_min_level = current_levels[0]
+            current_max_level = current_levels[1]
+
         dialog = PlotExportDialog(self, gui_obj=self.gui_obj, theme=self.gui_obj.themes[self.gui_obj.current_theme],
-                                  current_min_level=self.color_bar_data["color_bar"].levels()[0],
-                                  current_max_level=self.color_bar_data["color_bar"].levels()[1])
+                                  current_min_level=current_min_level,
+                                  current_max_level=current_max_level)
         if dialog.exec_():
             # Get the inputs from the dialog
             inputs = dialog.valuesFromWidgets()

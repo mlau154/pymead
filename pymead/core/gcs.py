@@ -840,8 +840,21 @@ class GCS(networkx.DiGraph):
             p_g2.request_move(p_g1.x().value() + Lc * np.cos(angle),
                               p_g1.y().value() + Lc * np.sin(angle), force=True)
 
-        solve_for_single_curve(constraint.g1_point_curve_1, constraint.g2_point_curve_1, constraint.curve_1.degree)
-        solve_for_single_curve(constraint.g1_point_curve_2, constraint.g2_point_curve_2, constraint.curve_2.degree)
+        def solve_for_single_curve_zero_curvature(p_g1: Point, p_g2: Point):
+            p_g2.request_move(p_g1.x().value(), p_g1.y().value(), force=True)
+
+        if constraint.curve_type_1 == "Bezier" and constraint.curve_type_2 == "LineSegment":
+            solve_for_single_curve_zero_curvature(constraint.g1_point_curve_1, constraint.g2_point_curve_1)
+            return constraint.child_nodes
+
+        if constraint.curve_type_2 == "Bezier" and constraint.curve_type_1 == "LineSegment":
+            solve_for_single_curve_zero_curvature(constraint.g1_point_curve_2, constraint.g2_point_curve_2)
+            return constraint.child_nodes
+
+        if constraint.curve_type_1 == "Bezier":
+            solve_for_single_curve(constraint.g1_point_curve_1, constraint.g2_point_curve_1, constraint.curve_1.degree)
+        if constraint.curve_type_2 == "Bezier":
+            solve_for_single_curve(constraint.g1_point_curve_2, constraint.g2_point_curve_2, constraint.curve_2.degree)
 
         return constraint.child_nodes
 

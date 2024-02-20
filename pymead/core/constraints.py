@@ -193,58 +193,113 @@ class ROCurvatureConstraint(GeoCon):
         self.curve_2 = curve_joint.curves[1]
         self.curve_type_1 = self.curve_1.__class__.__name__
         self.curve_type_2 = self.curve_2.__class__.__name__
-        curve_joint_index_curve_1 = self.curve_1.point_sequence().points().index(curve_joint)
-        curve_joint_index_curve_2 = self.curve_2.point_sequence().points().index(curve_joint)
-        self.curve_joint_index_curve_1 = -1 if curve_joint_index_curve_1 != 0 else 0
-        self.curve_joint_index_curve_2 = -1 if curve_joint_index_curve_2 != 0 else 0
-        self.g2_point_index_curve_1 = 2 if self.curve_joint_index_curve_1 == 0 else -3
-        self.g2_point_index_curve_2 = 2 if self.curve_joint_index_curve_2 == 0 else -3
-        self.g1_point_index_curve_1 = 1 if self.g2_point_index_curve_1 == 2 else -2
-        self.g1_point_index_curve_2 = 1 if self.g2_point_index_curve_2 == 2 else -2
-        self.g1_point_curve_1 = self.curve_1.point_sequence().points()[self.g1_point_index_curve_1]
-        self.g1_point_curve_2 = self.curve_2.point_sequence().points()[self.g1_point_index_curve_2]
-        self.g2_point_curve_1 = self.curve_1.point_sequence().points()[self.g2_point_index_curve_1]
-        self.g2_point_curve_2 = self.curve_2.point_sequence().points()[self.g2_point_index_curve_2]
 
-        points = [self.curve_joint, self.g2_point_curve_1, self.g1_point_curve_1,
-                  self.g1_point_curve_2, self.g2_point_curve_2]
+        if self.curve_type_1 == "Bezier":
+            curve_joint_index_curve_1 = self.curve_1.point_sequence().points().index(curve_joint)
+            self.curve_joint_index_curve_1 = -1 if curve_joint_index_curve_1 != 0 else 0
+            self.g2_point_index_curve_1 = 2 if self.curve_joint_index_curve_1 == 0 else -3
+            self.g1_point_index_curve_1 = 1 if self.g2_point_index_curve_1 == 2 else -2
+            self.g1_point_curve_1 = self.curve_1.point_sequence().points()[self.g1_point_index_curve_1]
+            self.g2_point_curve_1 = self.curve_1.point_sequence().points()[self.g2_point_index_curve_1]
+        else:
+            (curve_joint_index_curve_1, self.curve_joint_index_curve_1,
+             self.g2_point_index_curve_1, self.g1_point_index_curve_1,
+             self.g1_point_curve_1, self.g2_point_curve_1) = None, None, None, None, None, None
 
-        param = value if isinstance(value, Param) else LengthParam(value=value, name="ROC-1")
+        if self.curve_type_2 == "Bezier":
+            curve_joint_index_curve_2 = self.curve_2.point_sequence().points().index(curve_joint)
+            self.curve_joint_index_curve_2 = -1 if curve_joint_index_curve_2 != 0 else 0
+            self.g2_point_index_curve_2 = 2 if self.curve_joint_index_curve_2 == 0 else -3
+            self.g1_point_index_curve_2 = 1 if self.g2_point_index_curve_2 == 2 else -2
+            self.g1_point_curve_2 = self.curve_2.point_sequence().points()[self.g1_point_index_curve_2]
+            self.g2_point_curve_2 = self.curve_2.point_sequence().points()[self.g2_point_index_curve_2]
+        else:
+            (curve_joint_index_curve_2, self.curve_joint_index_curve_2,
+             self.g2_point_index_curve_2, self.g1_point_index_curve_2,
+             self.g1_point_curve_2, self.g2_point_curve_2) = None, None, None, None, None, None
+
+        points = [self.curve_joint]
+        for point in [self.g2_point_curve_1, self.g1_point_curve_1, self.g1_point_curve_2, self.g2_point_curve_2]:
+            if point is None:
+                continue
+            points.append(point)
+
+        secondary_params = []
+        if self.curve_type_1 == "Bezier":
+            secondary_params.append(Param(self.curve_1.degree, "n"))
+        if self.curve_type_2 == "Bezier":
+            secondary_params.append(Param(self.curve_2.degree, "n"))
+
+        if self.curve_type_1 == "LineSegment" or self.curve_type_2 == "LineSegment":
+            param = None
+        elif self.curve_type_1 == "PolyLine":
+            data = self.curve_1.evaluate()
+            if (np.isclose(data.xy[0, 0], self.curve_joint.x().value()) and
+                np.isclose(data.xy[0, 1], self.curve_joint.y().value())):
+                R = data.R[0]
+            else:
+                R = data.R[-1]
+
+            param = LengthParam(value=R, name="ROC-1")
+        elif self.curve_type_2 == "PolyLine":
+            data = self.curve_2.evaluate()
+            if (np.isclose(data.xy[0, 0], self.curve_joint.x().value()) and
+                    np.isclose(data.xy[0, 1], self.curve_joint.y().value())):
+                R = data.R[0]
+            else:
+                R = data.R[-1]
+            param = LengthParam(value=R, name="ROC-1")
+        else:
+            param = value if isinstance(value, Param) else LengthParam(value=value, name="ROC-1")
 
         super().__init__(param=param, child_nodes=points, kind="d", name=name,
-                         secondary_params=[Param(self.curve_1.degree, "n"),
-                                           Param(self.curve_2.degree, "n")])
+                         secondary_params=secondary_params)
 
     @staticmethod
     def calculate_curvature_data(curve_joint):
         curve_1 = curve_joint.curves[0]
+        if curve_1.__class__.__name__ == "Bezier":
+            curve_joint_index_curve_1 = curve_1.point_sequence().points().index(curve_joint)
+            curve_joint_index_curve_1 = -1 if curve_joint_index_curve_1 != 0 else 0
+            g2_point_index_curve_1 = 2 if curve_joint_index_curve_1 == 0 else -3
+            g1_point_index_curve_1 = 1 if g2_point_index_curve_1 == 2 else -2
+            g1_point_curve_1 = curve_1.point_sequence().points()[g1_point_index_curve_1]
+            g2_point_curve_1 = curve_1.point_sequence().points()[g2_point_index_curve_1]
+            Lt1 = g1_point_curve_1.measure_distance(curve_joint)
+            Lc1 = g1_point_curve_1.measure_distance(g2_point_curve_1)
+            n1 = curve_1.degree
+            phi1 = curve_joint.measure_angle(g1_point_curve_1)
+            theta1 = g1_point_curve_1.measure_angle(g2_point_curve_1)
+            psi1 = theta1 - phi1
+            R1 = np.abs(np.true_divide((Lt1 * Lt1), (Lc1 * (1 - 1 / n1) * np.sin(psi1))))
+        else:
+            Lt1, Lc1, n1, theta1, phi1, psi1, R1 = None, None, None, None, None, None, None
+
         curve_2 = curve_joint.curves[1]
-        curve_joint_index_curve_1 = curve_1.point_sequence().points().index(curve_joint)
-        curve_joint_index_curve_2 = curve_2.point_sequence().points().index(curve_joint)
-        curve_joint_index_curve_1 = -1 if curve_joint_index_curve_1 != 0 else 0
-        curve_joint_index_curve_2 = -1 if curve_joint_index_curve_2 != 0 else 0
-        g2_point_index_curve_1 = 2 if curve_joint_index_curve_1 == 0 else -3
-        g2_point_index_curve_2 = 2 if curve_joint_index_curve_2 == 0 else -3
-        g1_point_index_curve_1 = 1 if g2_point_index_curve_1 == 2 else -2
-        g1_point_index_curve_2 = 1 if g2_point_index_curve_2 == 2 else -2
-        g1_point_curve_1 = curve_1.point_sequence().points()[g1_point_index_curve_1]
-        g1_point_curve_2 = curve_2.point_sequence().points()[g1_point_index_curve_2]
-        g2_point_curve_1 = curve_1.point_sequence().points()[g2_point_index_curve_1]
-        g2_point_curve_2 = curve_2.point_sequence().points()[g2_point_index_curve_2]
-        Lt1 = g1_point_curve_1.measure_distance(curve_joint)
-        Lt2 = g1_point_curve_2.measure_distance(curve_joint)
-        Lc1 = g1_point_curve_1.measure_distance(g2_point_curve_1)
-        Lc2 = g1_point_curve_2.measure_distance(g2_point_curve_2)
-        n1 = curve_1.degree
-        n2 = curve_2.degree
-        phi1 = curve_joint.measure_angle(g1_point_curve_1)
-        phi2 = curve_joint.measure_angle(g1_point_curve_2)
-        theta1 = g1_point_curve_1.measure_angle(g2_point_curve_1)
-        theta2 = g1_point_curve_2.measure_angle(g2_point_curve_2)
-        psi1 = theta1 - phi1
-        psi2 = theta2 - phi2
-        R1 = np.abs(np.true_divide((Lt1 * Lt1), (Lc1 * (1 - 1 / n1) * np.sin(psi1))))
-        R2 = np.abs(np.true_divide((Lt2 * Lt2), (Lc2 * (1 - 1 / n2) * np.sin(psi2))))
+        if curve_2.__class__.__name__ == "Bezier":
+            curve_joint_index_curve_2 = curve_2.point_sequence().points().index(curve_joint)
+            curve_joint_index_curve_2 = -1 if curve_joint_index_curve_2 != 0 else 0
+            g2_point_index_curve_2 = 2 if curve_joint_index_curve_2 == 0 else -3
+            g1_point_index_curve_2 = 1 if g2_point_index_curve_2 == 2 else -2
+            g1_point_curve_2 = curve_2.point_sequence().points()[g1_point_index_curve_2]
+            g2_point_curve_2 = curve_2.point_sequence().points()[g2_point_index_curve_2]
+            Lt2 = g1_point_curve_2.measure_distance(curve_joint)
+            Lc2 = g1_point_curve_2.measure_distance(g2_point_curve_2)
+            n2 = curve_2.degree
+            phi2 = curve_joint.measure_angle(g1_point_curve_2)
+            theta2 = g1_point_curve_2.measure_angle(g2_point_curve_2)
+            psi2 = theta2 - phi2
+            R2 = np.abs(np.true_divide((Lt2 * Lt2), (Lc2 * (1 - 1 / n2) * np.sin(psi2))))
+        else:
+            Lt2, Lc2, n2, theta2, phi2, psi2, R2 = None, None, None, None, None, None, None
+
+        if curve_1.__class__.__name__ == "PolyLine":
+            data = curve_1.evaluate()
+            R1 = data.R[-1]  # TODO: check this
+        if curve_2.__class__.__name__ == "PolyLine":
+            data = curve_2.evaluate()
+            R2 = data.R[-1]  # TODO: check this
+
         data = CurvatureConstraintData(Lt1=Lt1, Lt2=Lt2, Lc1=Lc1, Lc2=Lc2, n1=n1, n2=n2, theta1=theta1, theta2=theta2,
                                        phi1=phi1, phi2=phi2, psi1=psi1, psi2=psi2, R1=R1, R2=R2)
         return data
@@ -253,7 +308,8 @@ class ROCurvatureConstraint(GeoCon):
         return f"{self.__class__.__name__} {self.name()} <C1={self.curve_1.name()}, C2={self.curve_2.name()}>"
 
     def get_dict_rep(self):
-        return {"curve_joint": self.curve_joint.name(), "value": self.param().name(),
+        value = self.param().name() if self.param() is not None else None
+        return {"curve_joint": self.curve_joint.name(), "value": value,
                 "constraint_type": self.__class__.__name__}
 
 
