@@ -295,10 +295,18 @@ class ROCurvatureConstraint(GeoCon):
 
         if curve_1.__class__.__name__ == "PolyLine":
             data = curve_1.evaluate()
-            R1 = data.R[-1]  # TODO: check this
+            if (np.isclose(data.xy[0, 0], curve_joint.x().value()) and
+                    np.isclose(data.xy[0, 1], curve_joint.y().value())):
+                R1 = data.R[0]
+            else:
+                R1 = data.R[-1]
         if curve_2.__class__.__name__ == "PolyLine":
             data = curve_2.evaluate()
-            R2 = data.R[-1]  # TODO: check this
+            if (np.isclose(data.xy[0, 0], curve_joint.x().value()) and
+                    np.isclose(data.xy[0, 1], curve_joint.y().value())):
+                R2 = data.R[0]
+            else:
+                R2 = data.R[-1]
 
         data = CurvatureConstraintData(Lt1=Lt1, Lt2=Lt2, Lc1=Lc1, Lc2=Lc2, n1=n1, n2=n2, theta1=theta1, theta2=theta2,
                                        phi1=phi1, phi2=phi2, psi1=psi1, psi2=psi2, R1=R1, R2=R2)
