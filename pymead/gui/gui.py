@@ -18,7 +18,7 @@ from PyQt5.QtGui import QIcon, QFont, QFontDatabase, QPainter, QCloseEvent, QTex
 from PyQt5.QtSvg import QSvgWidget
 from PyQt5.QtWidgets import QMainWindow, QApplication, \
     QWidget, QMenu, QStatusBar, QAction, QGraphicsScene, QGridLayout, QDockWidget, QSizeGrip
-from pymead.resources.cmcrameri.cmaps import BERLIN, VIK
+
 from pymoo.factory import get_decomposition
 from pyqtgraph.exporters import CSVExporter, SVGExporter
 
@@ -462,6 +462,7 @@ class GUI(QMainWindow):
             tick_font = QFont(get_setting("cbar-tick-font-family"), get_setting("cbar-tick-point-size"))
             self.cbar.axis.setStyle(tickFont=tick_font)
             self.cbar.axis.setTextPen(pg.mkPen(color=theme["cbar-color"]))
+            self.airfoil_canvas.color_bar_data["current_theme"] = self.current_theme
         # if self.analysis_graph is not None:
         #     self.analysis_graph.set_background(theme["graph-background-color"])
         # if self.param_tree_instance is not None:
@@ -850,7 +851,9 @@ class GUI(QMainWindow):
         for flow_section_idx in range(grid_stats["numel"] + 1):
             flow_var_section = flow_var[:, start_idx:end_idx]
 
-            pcmi = PymeadPColorMeshItem(edgecolors=edgecolors, antialiasing=antialiasing,
+            pcmi = PymeadPColorMeshItem(current_theme=self.current_theme,
+                                        flow_var=inputs["flow_variable"], edgecolors=edgecolors,
+                                        antialiasing=antialiasing,
                                         colorMap=pg.colormap.get('CET-R1'))
             pcmi_list.append(pcmi)
             vBox.addItem(pcmi)
@@ -883,39 +886,8 @@ class GUI(QMainWindow):
 
         # bar.setLabel(**self.cbar_label_attrs)
         # self.cbar = bar
-        if self.current_theme == "dark":
-            col_data = BERLIN
-        elif self.current_theme == "light":
-            col_data = VIK
-        else:
-            raise ValueError("Could not find color map for the current theme")
 
-        if inputs["flow_variable"] == "M":
-            Mach_stop = (1.0 - levels[0]) / (levels[1] - levels[0])
-            pos = np.linspace(0.0, Mach_stop, col_data.shape[0] // 2 + 1)
-            pos = pos[:-1]
-            pos2 = np.linspace(Mach_stop, 1.0, col_data.shape[0] // 2)
-            for p in pos2:
-                pos = np.append(pos, p)
-        elif inputs["flow_variable"] == "Cp":
-            Cp_stop = (0.0 - levels[0]) / (levels[1] - levels[0])
-            pos = np.linspace(0.0, Cp_stop, col_data.shape[0] // 2 + 1)
-            pos = pos[:-1]
-            pos2 = np.linspace(Cp_stop, 1.0, col_data.shape[0] // 2)
-            for p in pos2:
-                pos = np.append(pos, p)
-        else:
-            stop = (1.0 - levels[0]) / (levels[1] - levels[0])
-            pos = np.linspace(0.0, stop, col_data.shape[0] // 2 + 1)
-            pos = pos[:-1]
-            pos2 = np.linspace(stop, 1.0, col_data.shape[0] // 2)
-            for p in pos2:
-                pos = np.append(pos, p)
-
-        self.crameri_cmap = {
-            "dark": pg.ColorMap(name="berlin", pos=pos, color=255 * BERLIN + 0.5),
-            "light": pg.ColorMap(name="vik", pos=pos, color=255 * VIK + 0.5)
-        }
+        self.crameri_cmap = {}
 
         self.cbar_label_attrs = {
             "axis": "right",
@@ -926,11 +898,14 @@ class GUI(QMainWindow):
 
         theme = self.themes[self.current_theme]
 
-        self.cbar = self.airfoil_canvas.plot.addColorBar(pcmi_list, colorMap=self.crameri_cmap[self.current_theme])
+        self.cbar = self.airfoil_canvas.plot.addColorBar(pcmi_list)
         self.cbar_label_attrs["color"] = theme["cbar-color"]
 
         self.cbar.setLabel(**self.cbar_label_attrs)
-        self.cbar.setLevels(values=levels)
+        self.airfoil_canvas.setColorBarData(cmap_dict=self.crameri_cmap, color_bar=self.cbar,
+                                            current_theme=self.current_theme, flow_var=inputs["flow_variable"],
+                                            min_level_default=levels[0], max_level_default=levels[1])
+        self.airfoil_canvas.setColorBarLevels()
 
         tick_font = QFont(get_setting("cbar-tick-font-family"), get_setting("cbar-tick-point-size"))
         self.cbar.axis.setStyle(tickFont=tick_font)

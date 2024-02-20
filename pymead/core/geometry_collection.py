@@ -896,11 +896,12 @@ class GeometryCollection(DualRep):
                 points=[geo_col.container()["points"][k] for k in line_dict["points"]]),
                 name=name, assign_unique_name=False
             )
-        for name, polyline_dict in d["polylines"].items():
-            geo_col.add_polyline(point_sequence=PointSequence(
-                points=[geo_col.container()["points"][k] for k in polyline_dict["points"]]),
-                source=polyline_dict["source"], start=polyline_dict["start"], end=polyline_dict["end"], name=name,
-                assign_unique_name=False)
+        if "polylines" in d:
+            for name, polyline_dict in d["polylines"].items():
+                geo_col.add_polyline(point_sequence=PointSequence(
+                    points=[geo_col.container()["points"][k] for k in polyline_dict["points"]]),
+                    source=polyline_dict["source"], start=polyline_dict["start"], end=polyline_dict["end"], name=name,
+                    assign_unique_name=False)
         for name, bezier_dict in d["bezier"].items():
             geo_col.add_bezier(point_sequence=PointSequence(
                 points=[geo_col.container()["points"][k] for k in bezier_dict["points"]]),

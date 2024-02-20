@@ -2942,12 +2942,14 @@ class GridBounds(QWidget):
 
 
 class PlotExportDialogWidget(PymeadDialogWidget2):
-    def __init__(self, gui_obj, parent=None):
+    def __init__(self, gui_obj, current_min_level: float, current_max_level: float, parent=None):
         super().__init__(parent=parent)
         self.widget_dict = None
         self.lay = QGridLayout()
         self.setLayout(self.lay)
         self.gui_obj = gui_obj
+        self.current_min_level = current_min_level
+        self.current_max_level = current_max_level
         self.initializeWidgets()
 
     def initializeWidgets(self):
@@ -2969,6 +2971,10 @@ class PlotExportDialogWidget(PymeadDialogWidget2):
                                                        current_item=get_setting("axis-label-font-family")),
             "label_font_size": PymeadLabeledSpinBox(label="Label Point Size", minimum=1, maximum=100,
                                                     value=get_setting("axis-label-point-size")),
+            "min_level": PymeadLabeledDoubleSpinBox(label="Minimum Contour Level", minimum=-10000, maximum=10000,
+                                                    value=self.current_min_level, decimals=4, single_step=0.1),
+            "max_level": PymeadLabeledDoubleSpinBox(label="Maximum Contour Level", minimum=-10000, maximum=10000,
+                                                    value=self.current_max_level, decimals=4, single_step=0.1),
         }
 
         # Add all the widgets
@@ -2987,6 +2993,8 @@ class PlotExportDialogWidget(PymeadDialogWidget2):
         self.widget_dict["label_font_family"].sigValueChanged.connect(self.labelFontChanged)
         self.widget_dict["label_font_size"].sigValueChanged.connect(self.labelFontChanged)
         self.widget_dict["save_dir"].sigValueChanged.connect(partial(set_setting, "plot-field-export-dir"))
+        self.widget_dict["min_level"].sigValueChanged.connect(self.minLevelChanged)
+        self.widget_dict["max_level"].sigValueChanged.connect(self.maxLevelChanged)
 
     def tickFontChanged(self, _):
         widget_values = self.valuesFromWidgets()
@@ -3028,10 +3036,19 @@ class PlotExportDialogWidget(PymeadDialogWidget2):
     def valuesFromWidgets(self) -> dict:
         return {k: v.value() for k, v in self.widget_dict.items()}
 
+    def minLevelChanged(self, min_level: float):
+        self.widget_dict["max_level"].widget.setMinimum(min_level + 0.0001)
+        self.gui_obj.airfoil_canvas.setColorBarLevels(min_level, self.widget_dict["max_level"].widget.value())
+
+    def maxLevelChanged(self, max_level: float):
+        self.widget_dict["min_level"].widget.setMaximum(max_level - 0.0001)
+        self.gui_obj.airfoil_canvas.setColorBarLevels(self.widget_dict["min_level"].widget.value(), max_level)
+
 
 class PlotExportDialog(PymeadDialog):
-    def __init__(self, parent, gui_obj, theme: dict):
-        widget = PlotExportDialogWidget(gui_obj=gui_obj)
+    def __init__(self, parent, gui_obj, theme: dict, current_min_level: float, current_max_level: float):
+        widget = PlotExportDialogWidget(gui_obj=gui_obj, current_min_level=current_min_level,
+                                        current_max_level=current_max_level)
         super().__init__(parent, window_title="Plot Export", widget=widget, theme=theme)
 
 

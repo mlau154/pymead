@@ -31,6 +31,7 @@ from pymead.utils.read_write_files import load_data
 from pymead.utils.misc import get_setting
 from pymead.core import UNITS
 from pymead import q_settings, GUI_SETTINGS_DIR
+from pymead.resources.cmcrameri.cmaps import BERLIN, VIK
 
 q_settings_descriptions = load_data(os.path.join(GUI_SETTINGS_DIR, "q_settings_descriptions.json"))
 
@@ -54,6 +55,7 @@ class AirfoilCanvas(pg.PlotWidget):
         self.constraint_hovered_item = None
         self.point_text_item = None
         self.enter_connection = None
+        self.color_bar_data = None
         self.geo_col = geo_col
         self.geo_col.canvas = self
         self.gui_obj = gui_obj
@@ -444,6 +446,53 @@ class AirfoilCanvas(pg.PlotWidget):
     def appendSelectedPoint(self, plot_data_item: pg.PlotDataItem):
         self.geo_col.selected_objects["points"].append(plot_data_item.point)
 
+    def setColorBarData(self, cmap_dict, color_bar, current_theme: str, flow_var: str, min_level_default: float,
+                       max_level_default: float):
+        self.color_bar_data = dict(cmap_dict=cmap_dict, color_bar=color_bar, current_theme=current_theme,
+                                   flow_var=flow_var, min_level_default=min_level_default,
+                                   max_level_default=max_level_default)
+
+    def setColorBarLevels(self, min_level: float = None, max_level: float = None):
+
+        if self.color_bar_data["current_theme"] == "dark":
+            color_data = BERLIN
+        elif self.color_bar_data["current_theme"] == "light":
+            color_data = VIK
+        else:
+            raise ValueError("Could not find color map for the current theme")
+
+        levels = [self.color_bar_data["min_level_default"], self.color_bar_data["max_level_default"]]
+        if min_level is not None:
+            levels[0] = min_level
+        if max_level is not None:
+            levels[1] = max_level
+
+        if levels[0] >= levels[1]:
+            raise ValueError("Minimum value cannot be greater than or equal to the maximum value")
+        if levels[1] <= levels[0]:
+            raise ValueError("Maximum value cannot be less than or equal to the minimum value")
+
+        if self.color_bar_data["flow_var"] == "Cp":
+            Cp_stop = (0.0 - levels[0]) / (levels[1] - levels[0])
+            pos = np.linspace(0.0, Cp_stop, color_data.shape[0] // 2 + 1)
+            pos = pos[:-1]
+            pos2 = np.linspace(Cp_stop, 1.0, color_data.shape[0] // 2)
+            for p in pos2:
+                pos = np.append(pos, p)
+        else:
+            stop = (1.0 - levels[0]) / (levels[1] - levels[0])
+            pos = np.linspace(0.0, stop, color_data.shape[0] // 2 + 1)
+            pos = pos[:-1]
+            pos2 = np.linspace(stop, 1.0, color_data.shape[0] // 2)
+            for p in pos2:
+                pos = np.append(pos, p)
+
+        self.color_bar_data["cmap_dict"]["dark"] = pg.ColorMap(name="berlin", pos=pos, color=255 * BERLIN + 0.5)
+        self.color_bar_data["cmap_dict"]["light"] = pg.ColorMap(name="vik", pos=pos, color=255 * VIK + 0.5)
+
+        self.color_bar_data["color_bar"].setColorMap(self.color_bar_data["cmap_dict"][self.color_bar_data["current_theme"]])
+        self.color_bar_data["color_bar"].setLevels(values=tuple(levels))
+
     def pointClicked(self, scatter_item, spot, ev, point_item):
         if point_item in self.geo_col.selected_objects["points"]:
             return
@@ -663,7 +712,9 @@ class AirfoilCanvas(pg.PlotWidget):
         self.geo_col.remove_pymead_obj(item.parametric_curve)
 
     def exportPlot(self):
-        dialog = PlotExportDialog(self, gui_obj=self.gui_obj, theme=self.gui_obj.themes[self.gui_obj.current_theme])
+        dialog = PlotExportDialog(self, gui_obj=self.gui_obj, theme=self.gui_obj.themes[self.gui_obj.current_theme],
+                                  current_min_level=self.color_bar_data["color_bar"].levels()[0],
+                                  current_max_level=self.color_bar_data["color_bar"].levels()[1])
         if dialog.exec_():
             # Get the inputs from the dialog
             inputs = dialog.valuesFromWidgets()
