@@ -171,6 +171,8 @@ class GeometryCollection(DualRep):
         pymead_obj: PymeadObj
             Object to remove.
         """
+        if pymead_obj.name() not in self.container()[pymead_obj.sub_container]:
+            return
         self.container()[pymead_obj.sub_container].pop(pymead_obj.name())
 
     def add_param(self, value: float, name: str or None = None, lower: float or None = None,
@@ -377,14 +379,6 @@ class GeometryCollection(DualRep):
         """
         # Type-specific actions
         if isinstance(pymead_obj, Param):
-            if len(pymead_obj.geo_cons) != 0 and not promotion_demotion:
-                error_message = (f"Please delete each constraint associated with this parameter ({pymead_obj.geo_cons}) "
-                                 f"before deleting this parameter")
-                if self.gui_obj is None:
-                    raise ValueError(error_message)
-                else:
-                    self.gui_obj.disp_message_box(error_message, message_mode="error")
-                    return
             if pymead_obj.rotation_handle and not constraint_removal and not promotion_demotion:
                 error_message = f"This parameter can only be removed by deleting its associated constraint cluster"
                 if self.gui_obj is None:
@@ -392,6 +386,9 @@ class GeometryCollection(DualRep):
                 else:
                     self.gui_obj.disp_message_box(error_message, message_mode="error")
                     return
+
+            for geo_con in pymead_obj.geo_cons:
+                self.remove_pymead_obj(geo_con)
 
         elif isinstance(pymead_obj, Bezier) or isinstance(pymead_obj, LineSegment) or isinstance(pymead_obj, PolyLine):
             # Remove all the references to this curve in each of the curve's points
@@ -407,14 +404,8 @@ class GeometryCollection(DualRep):
 
         elif isinstance(pymead_obj, Point):
 
-            if len(pymead_obj.geo_cons) != 0:
-                error_message = (f"Please delete each constraint associated with this point ({pymead_obj.geo_cons})"
-                                 f" before deleting this point")
-                if self.gui_obj is None:
-                    raise ValueError(error_message)
-                else:
-                    self.gui_obj.disp_message_box(error_message, message_mode="error")
-                    return
+            for geo_con in pymead_obj.geo_cons:
+                self.remove_pymead_obj(geo_con)
 
             # Loop through the curves associated with this point to see which ones need to be deleted if one point
             # is removed from their point sequence
@@ -454,7 +445,7 @@ class GeometryCollection(DualRep):
 
             if (isinstance(pymead_obj, DistanceConstraint) or isinstance(pymead_obj, RelAngle3Constraint) or
                 isinstance(pymead_obj, Perp3Constraint) or isinstance(pymead_obj, AntiParallel3Constraint)):
-                if pymead_obj.p2.rotation_handle:
+                if pymead_obj.p2.rotation_handle and pymead_obj.p2.rotation_param is not None:
                     self.remove_pymead_obj(pymead_obj.p2.rotation_param, constraint_removal=True)
 
             # Remove the constraint from the ConstraintGraph
