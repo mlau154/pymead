@@ -3,6 +3,7 @@ from dataclasses import dataclass
 
 import numpy as np
 
+from pymead.core.line import PolyLine
 from pymead.core.param import Param, AngleParam, LengthParam
 from pymead.core.point import Point
 from pymead.core.pymead_obj import PymeadObj
@@ -91,8 +92,11 @@ class AntiParallel3Constraint(GeoCon):
 
     default_name = "AntiPar3Con-1"
 
-    def __init__(self, p1: Point, p2: Point, p3: Point, name: str = None):
+    def __init__(self, p1: Point, p2: Point, p3: Point, name: str = None, polyline: PolyLine = None):
         self.p1 = p1
+        self.polyline = polyline
+        if polyline and polyline not in p1.curves:
+            p1.curves.append(polyline)
         self.p2 = p2
         self.p3 = p3
         super().__init__(param=None, name=name, child_nodes=[self.p1, self.p2, self.p3], kind="a3")
@@ -102,7 +106,8 @@ class AntiParallel3Constraint(GeoCon):
 
     def get_dict_rep(self) -> dict:
         return {"p1": self.p1.name(), "p2": self.p2.name(), "p3": self.p3.name(),
-                "constraint_type": self.__class__.__name__}
+                "constraint_type": self.__class__.__name__,
+                "polyline": self.polyline.name() if self.polyline is not None else None}
 
 
 class SymmetryConstraint(GeoCon):

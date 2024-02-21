@@ -425,12 +425,16 @@ class GeometryCollection(DualRep):
 
             # Remove the curves that need to be removed due to insufficient points in the point sequence
             for curve in curves_to_delete:
-                self.remove_pymead_obj(curve)
+                try:
+                    self.remove_pymead_obj(curve)
+                except KeyError:
+                    pass
 
             # Update any remaining curves
             for curve in pymead_obj.curves:
-                curve.remove_point(point=pymead_obj)
-                curve.update()
+                if pymead_obj in curve.point_sequence().points():
+                    curve.remove_point(point=pymead_obj)
+                    curve.update()
 
             for dim in pymead_obj.dims:
                 self.remove_pymead_obj(dim)
@@ -837,6 +841,10 @@ class GeometryCollection(DualRep):
         self.add_pymead_obj_by_ref(constraint, assign_unique_name=assign_unique_name)
         try:
             self.gcs.add_constraint(constraint)
+            if isinstance(constraint, AntiParallel3Constraint):
+                if any([isinstance(curve, PolyLine) for curve in constraint.p1.curves]) and not constraint.p1.root:
+                    self.gcs.move_root(constraint.p1)
+
             if (isinstance(constraint, AntiParallel3Constraint) or isinstance(constraint, Perp3Constraint) or
                     isinstance(constraint, RelAngle3Constraint) or isinstance(constraint, DistanceConstraint)):
                 points_solved = self.gcs.solve(constraint)
@@ -881,7 +889,13 @@ class GeometryCollection(DualRep):
                 geo_col.add_pymead_obj_by_ref(point.y(), assign_unique_name=False)
                 geo_col.promote_param_to_desvar(point.y(), lower=desvar_dict["lower"], upper=desvar_dict["upper"])
             else:
-                geo_col.add_desvar(**desvar_dict, name=name, assign_unique_name=False)
+                root_name = desvar_dict.pop("root") if "root" in desvar_dict else None
+                root = geo_col.container()["points"][root_name] if root_name is not None else None
+                rotation_handle_name = desvar_dict.pop("rotation_handle") if "rotation_handle" in desvar_dict else None
+                rotation_handle = geo_col.container()["points"][rotation_handle_name] \
+                    if rotation_handle_name is not None else None
+                geo_col.add_desvar(**desvar_dict, name=name, assign_unique_name=False, rotation_handle=rotation_handle,
+                                   root=root)
         for name, param_dict in d["params"].items():
             if ".x" in name:
                 point = geo_col.container()["points"][name.split(".")[0]]
@@ -890,7 +904,13 @@ class GeometryCollection(DualRep):
                 point = geo_col.container()["points"][name.split(".")[0]]
                 geo_col.add_pymead_obj_by_ref(point.y(), assign_unique_name=False)
             else:
-                geo_col.add_param(**param_dict, name=name, assign_unique_name=False)
+                root_name = param_dict.pop("root") if "root" in param_dict else None
+                root = geo_col.container()["points"][root_name] if root_name is not None else None
+                rotation_handle_name = param_dict.pop("rotation_handle") if "rotation_handle" in param_dict else None
+                rotation_handle = geo_col.container()["points"][rotation_handle_name] \
+                    if rotation_handle_name is not None else None
+                geo_col.add_param(**param_dict, name=name, assign_unique_name=False, rotation_handle=rotation_handle,
+                                  root=root)
         for name, line_dict in d["lines"].items():
             geo_col.add_line(point_sequence=PointSequence(
                 points=[geo_col.container()["points"][k] for k in line_dict["points"]]),
@@ -919,6 +939,8 @@ class GeometryCollection(DualRep):
                     geocon_dict[k] = geo_col.container()["desvar"][v]
                 elif v in d["lines"].keys():
                     geocon_dict[k] = geo_col.container()["lines"][v]
+                elif v in d["polylines"].keys():
+                    geocon_dict[k] = geo_col.container()["polylines"][v]
                 elif v in d["bezier"].keys():
                     geocon_dict[k] = geo_col.container()["bezier"][v]
                 else:

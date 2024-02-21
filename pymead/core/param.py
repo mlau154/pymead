@@ -411,7 +411,9 @@ class AngleParam(Param):
 
     def get_dict_rep(self):
         return {"value": float(self.value()), "lower": self.lower(), "upper": self.upper(),
-                "unit_type": "angle"}
+                "unit_type": "angle",
+                "root": self.root.name() if self.root is not None else None,
+                "rotation_handle": self.rotation_handle.name() if self.rotation_handle is not None else None}
 
 
 # class ParamCollection:
@@ -596,4 +598,6 @@ class AngleDesVar(AngleParam):
 
     def get_dict_rep(self):
         return {"value": float(self.value()), "lower": self.lower(), "upper": self.upper(),
-                "unit_type": "angle"}
+                "unit_type": "angle",
+                "root": self.root.name() if self.root is not None else None,
+                "rotation_handle": self.rotation_handle.name() if self.rotation_handle is not None else None}

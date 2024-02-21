@@ -380,12 +380,26 @@ class AirfoilCanvas(pg.PlotWidget):
     @runSelectionEventLoop(drawing_object="AntiParallel3Constraint", starting_message="Select any point other than "
                                                                                       "the vertex")
     def addAntiParallel3Constraint(self):
-        if len(self.geo_col.selected_objects["points"]) != 3:
-            msg = (f"Choose exactly three points (start, vertex, and end) for an "
+        if len(self.geo_col.selected_objects["points"]) == 3:
+            case = 0
+        elif len(self.geo_col.selected_objects["points"]) == 2 and len(self.geo_col.selected_objects["polylines"]) == 1:
+            case = 1
+        else:
+            msg = (f"Choose exactly three points (start, vertex, and end) or a curve and two points for an "
                    f"anti-parallel 3 constraint")
             self.sigStatusBarUpdate.emit(msg, 4000)
             return
-        constraint = AntiParallel3Constraint(*self.geo_col.selected_objects["points"])
+        if case == 0:
+            constraint = AntiParallel3Constraint(*self.geo_col.selected_objects["points"])
+        else:
+            data = self.geo_col.selected_objects["polylines"][0].evaluate()
+            if (np.isclose(self.geo_col.selected_objects["points"][0].x().value(), data.xy[0, 0]) and
+                np.isclose(self.geo_col.selected_objects["points"][0].y().value(), data.xy[0, 1])):
+                point = self.geo_col.add_point(data.xy[1, 0], data.xy[1, 1])
+            else:
+                point = self.geo_col.add_point(data.xy[-1, 0], data.xy[-1, 1])
+            constraint = AntiParallel3Constraint(point, *self.geo_col.selected_objects["points"],
+                                                 polyline=self.geo_col.selected_objects["polylines"][0])
         self.geo_col.add_constraint(constraint)
 
     @runSelectionEventLoop(drawing_object="SymmetryConstraint", starting_message="Select the start point of the "

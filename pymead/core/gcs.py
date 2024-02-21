@@ -32,6 +32,7 @@ class GCS(networkx.DiGraph):
         super().__init__()
         self.points = {}
         self.roots = []
+        self.cluster_angle_params = {}
         self.geo_col = None
 
     def add_point(self, point: Point):
@@ -111,8 +112,19 @@ class GCS(networkx.DiGraph):
         v.rotation_handle = True
         if u not in [edge[0] for edge in self.roots]:
             self.roots.append((u, v))
-        param = self.geo_col.add_param(value=u.measure_angle(v), name="ClusterAngle-1", unit_type="angle", root=u,
-                                       rotation_handle=v)
+
+        # Do not add a cluster angle parameter if the root was created as part of an antiparallel constraint between
+        # a polyline and another curve
+        if any([isinstance(curve, PolyLine) for curve in u.curves]) and not all(
+                [u in curve.point_sequence().points() for curve in u.curves]):
+            return
+
+        if v.rotation_param is not None:
+            param = v.rotation_param
+        else:
+            param = self.geo_col.add_param(value=u.measure_angle(v), name="ClusterAngle-1", unit_type="angle", root=u,
+                                           rotation_handle=v)
+        self.cluster_angle_params[u] = param
         param.gcs = self
 
     def _delete_root_status(self, root_node: Point, rotation_handle_node: Point = None):
@@ -134,6 +146,11 @@ class GCS(networkx.DiGraph):
         root_node.root = False
         if rotation_handle_node is not None:
             rotation_handle_node.rotation_handle = False
+            rotation_handle_node.rotation_param = None
+            if root_node in self.cluster_angle_params:
+                cluster_angle_param = self.cluster_angle_params.pop(root_node)
+                if cluster_angle_param is not None:
+                    self.geo_col.remove_pymead_obj(cluster_angle_param, constraint_removal=True)
         root_idx = [r[0] for r in self.roots].index(root_node)
         self.roots.pop(root_idx)
 
@@ -285,6 +302,34 @@ class GCS(networkx.DiGraph):
             if len(constraints_to_flip) == 0:
                 break
         return list(set(constraints_needing_reassign))
+
+    def _check_if_root_flows_into_polyline(self, root_node: Point):
+        for point in networkx.dfs_preorder_nodes(self, source=root_node):
+            if point is root_node:
+                continue
+            if any([isinstance(curve, PolyLine) for curve in point.curves]):
+                return point
+        return False
+
+    def move_root(self, new_root: Point):
+        old_root = self._discover_root_from_node(new_root)
+        self._identify_and_delete_root(old_root)
+        needs_set_edge = False
+        for nbr in self.adj[new_root]:
+            self._set_edge_as_root(new_root, nbr)
+            break
+        else:
+            needs_set_edge = True
+        constraints_needing_reassign = self._orient_flow_away_from_root(new_root)
+        self._reassign_constraints(constraints_needing_reassign)
+        if not needs_set_edge:
+            return
+
+        for nbr in self.adj[new_root]:
+            self._set_edge_as_root(new_root, nbr)
+            break
+        else:
+            raise ValueError("Failed to move root")
 
     def _reassign_distance_constraint(self, dist_con: DistanceConstraint):
         """
@@ -517,6 +562,10 @@ class GCS(networkx.DiGraph):
                 raise ValueError("Detected a closed loop in the constraint graph. Closed loop sets of constraints "
                                  "are currently not supported in pymead")
 
+            new_root = self._check_if_root_flows_into_polyline(root)
+            if new_root:
+                self.move_root(new_root)
+
         elif isinstance(constraint, SymmetryConstraint):
             points_solved = self.solve_symmetry_constraint(constraint)
             self.update_canvas_items(points_solved)
@@ -564,7 +613,7 @@ class GCS(networkx.DiGraph):
 
     def _remove_angle_constraint_from_directed_edge(
             self, constraint: RelAngle3Constraint or AntiParallel3Constraint or Perp3Constraint):
-        edges_removed = None
+        edges_removed = []
         edge_data_21 = self.get_edge_data(constraint.p2, constraint.p1)
         if edge_data_21 is not None and "angle" in edge_data_21.keys() and edge_data_21["angle"] is constraint:
             if "distance" in edge_data_21.keys():
@@ -666,7 +715,6 @@ class GCS(networkx.DiGraph):
 
         if edge_data_p21 and "angle" in edge_data_p21 and edge_data_p21["angle"] is source:
             start = source.p1
-            # d_angle *= -1
         elif edge_data_p23 and "angle" in edge_data_p23 and edge_data_p23["angle"] is source:
             start = source.p3
             d_angle *= -1
