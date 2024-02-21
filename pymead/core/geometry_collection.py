@@ -454,6 +454,13 @@ class GeometryCollection(DualRep):
         elif isinstance(pymead_obj, Airfoil):
             for curve in pymead_obj.curves:
                 curve.airfoil = None
+            mea_to_delete = []
+            for mea in self.container()["mea"].values():
+                if pymead_obj not in mea.airfoils:
+                    continue
+                mea_to_delete.append(mea)
+            for mea in mea_to_delete:
+                self.remove_pymead_obj(mea)
 
         # Remove the item from the geometry collection subcontainer
         self.remove_from_subcontainer(pymead_obj)
