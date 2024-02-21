@@ -470,6 +470,9 @@ class GeometryCollection(DualRep):
             else:
                 self.canvas.removeItem(pymead_obj.canvas_item)
 
+        if isinstance(pymead_obj, Airfoil):
+            self.gui_obj.permanent_widget.updateAirfoils()
+
     def add_point(self, x: float, y: float, name: str or None = None, assign_unique_name: bool = True):
         """
         Adds a point by value to the geometry collection
