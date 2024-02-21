@@ -147,10 +147,10 @@ class GCS(networkx.DiGraph):
         if rotation_handle_node is not None:
             rotation_handle_node.rotation_handle = False
             rotation_handle_node.rotation_param = None
-            if root_node in self.cluster_angle_params:
-                cluster_angle_param = self.cluster_angle_params.pop(root_node)
-                if cluster_angle_param is not None:
-                    self.geo_col.remove_pymead_obj(cluster_angle_param, constraint_removal=True)
+        if root_node in self.cluster_angle_params:
+            cluster_angle_param = self.cluster_angle_params.pop(root_node)
+            if cluster_angle_param is not None:
+                self.geo_col.remove_pymead_obj(cluster_angle_param, constraint_removal=True)
         root_idx = [r[0] for r in self.roots].index(root_node)
         self.roots.pop(root_idx)
 
