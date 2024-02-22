@@ -1694,6 +1694,10 @@ class GUI(QMainWindow):
 
     def stop_optimization(self, completed: bool = False):
 
+        if self.shape_opt_process is None:
+            self.disp_message_box("No optimization to terminate")
+            return
+
         self.shape_opt_process.terminate()
 
         if self.opt_thread is not None:
