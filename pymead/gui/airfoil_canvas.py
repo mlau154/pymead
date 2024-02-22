@@ -391,7 +391,7 @@ class AirfoilCanvas(pg.PlotWidget):
                 np.isclose(self.geo_col.selected_objects["points"][0].y().value(), data.xy[0, 1])):
                 point = self.geo_col.add_point(data.xy[1, 0], data.xy[1, 1])
             else:
-                point = self.geo_col.add_point(data.xy[-1, 0], data.xy[-1, 1])
+                point = self.geo_col.add_point(data.xy[-2, 0], data.xy[-2, 1])
             constraint = AntiParallel3Constraint(point, *self.geo_col.selected_objects["points"],
                                                  polyline=self.geo_col.selected_objects["polylines"][0])
         self.geo_col.add_constraint(constraint)
