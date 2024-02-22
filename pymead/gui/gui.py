@@ -1135,6 +1135,9 @@ class GUI(QMainWindow):
             # coords = tuple(self.mea.deepcopy().airfoils[xfoil_settings['airfoil']].get_coords(
             #     body_fixed_csys=False, as_tuple=True))
 
+            if xfoil_settings["airfoil"] == "":
+                self.disp_message_box("An airfoil was not chosen for analysis")
+                return
             coords = self.geo_col.container()["airfoils"][xfoil_settings["airfoil"]].get_coords_selig_format()
 
             aero_data, _ = calculate_aero_data(xfoil_settings['airfoil_analysis_dir'],
