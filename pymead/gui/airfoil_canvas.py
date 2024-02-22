@@ -387,13 +387,25 @@ class AirfoilCanvas(pg.PlotWidget):
             constraint = AntiParallel3Constraint(*self.geo_col.selected_objects["points"])
         else:
             data = self.geo_col.selected_objects["polylines"][0].evaluate()
-            if (np.isclose(self.geo_col.selected_objects["points"][0].x().value(), data.xy[0, 0]) and
-                np.isclose(self.geo_col.selected_objects["points"][0].y().value(), data.xy[0, 1])):
+            # if (np.isclose(self.geo_col.selected_objects["points"][0].x().value(), data.xy[0, 0]) and
+            #     np.isclose(self.geo_col.selected_objects["points"][0].y().value(), data.xy[0, 1])):
+            if self.geo_col.selected_objects["points"][0].is_coincident(Point(*data.xy[0, :])):
                 point = self.geo_col.add_point(data.xy[1, 0], data.xy[1, 1])
+                point_is_first_arg = True
+            elif self.geo_col.selected_objects["points"][0].is_coincident(Point(*data.xy[-1, :])):
+                point = self.geo_col.add_point(data.xy[-2, 0], data.xy[-2, 1])
+                point_is_first_arg = True
+            elif self.geo_col.selected_objects["points"][1].is_coincident(Point(*data.xy[0, :])):
+                point = self.geo_col.add_point(data.xy[1, 0], data.xy[1, 1])
+                point_is_first_arg = False
             else:
                 point = self.geo_col.add_point(data.xy[-2, 0], data.xy[-2, 1])
-            constraint = AntiParallel3Constraint(point, *self.geo_col.selected_objects["points"],
-                                                 polyline=self.geo_col.selected_objects["polylines"][0])
+                point_is_first_arg = False
+
+            args = [point, *self.geo_col.selected_objects["points"]] if point_is_first_arg else \
+                [*self.geo_col.selected_objects["points"], point]
+            constraint = AntiParallel3Constraint(*args, polyline=self.geo_col.selected_objects["polylines"][0],
+                                                 point_on_curve=point)
         self.geo_col.add_constraint(constraint)
 
     @runSelectionEventLoop(drawing_object="SymmetryConstraint", starting_message="Select the start point of the "

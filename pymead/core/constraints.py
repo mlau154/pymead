@@ -76,13 +76,17 @@ class AntiParallel3Constraint(GeoCon):
 
     default_name = "AntiPar3Con-1"
 
-    def __init__(self, p1: Point, p2: Point, p3: Point, name: str = None, polyline: PolyLine = None):
+    def __init__(self, p1: Point, p2: Point, p3: Point, name: str = None, polyline: PolyLine = None,
+                 point_on_curve: Point = None):
         self.p1 = p1
         self.polyline = polyline
-        if polyline and polyline not in p1.curves:
+        self.point_on_curve = point_on_curve
+        if polyline and polyline not in p1.curves and point_on_curve is p1:
             p1.curves.append(polyline)
         self.p2 = p2
         self.p3 = p3
+        if polyline and polyline not in p3.curves and point_on_curve is p3:
+            p3.curves.append(polyline)
         super().__init__(param=None, name=name, child_nodes=[self.p1, self.p2, self.p3], kind="a3")
 
     def __repr__(self):
@@ -91,7 +95,8 @@ class AntiParallel3Constraint(GeoCon):
     def get_dict_rep(self) -> dict:
         return {"p1": self.p1.name(), "p2": self.p2.name(), "p3": self.p3.name(),
                 "constraint_type": self.__class__.__name__,
-                "polyline": self.polyline.name() if self.polyline is not None else None}
+                "polyline": self.polyline.name() if self.polyline is not None else None,
+                "point_on_curve": self.point_on_curve.name() if self.point_on_curve is not None else None}
 
 
 class SymmetryConstraint(GeoCon):

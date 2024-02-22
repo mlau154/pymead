@@ -851,6 +851,8 @@ class GeometryCollection(DualRep):
             if isinstance(constraint, AntiParallel3Constraint):
                 if any([isinstance(curve, PolyLine) for curve in constraint.p1.curves]) and not constraint.p1.root:
                     self.gcs.move_root(constraint.p1)
+                elif any([isinstance(curve, PolyLine) for curve in constraint.p3.curves]) and not constraint.p3.root:
+                    self.gcs.move_root(constraint.p3)
 
             if (isinstance(constraint, AntiParallel3Constraint) or isinstance(constraint, Perp3Constraint) or
                     isinstance(constraint, RelAngle3Constraint) or isinstance(constraint, DistanceConstraint)):
