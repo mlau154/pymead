@@ -331,7 +331,8 @@ class AirfoilCanvas(pg.PlotWidget):
     def generateWebAirfoil(self):
         dialog = WebAirfoilDialog(self, theme=self.gui_obj.themes[self.gui_obj.current_theme])
         if dialog.exec_():
-            self.geo_col.add_polyline(source=dialog.valuesFromWidgets())
+            polyline = self.geo_col.add_polyline(source=dialog.valuesFromWidgets())
+            polyline.add_polyline_airfoil()
         self.gui_obj.permanent_widget.updateAirfoils()
 
     @runSelectionEventLoop(drawing_object="MEA", starting_message="Select the first airfoil")

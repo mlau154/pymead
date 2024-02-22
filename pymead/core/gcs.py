@@ -305,6 +305,10 @@ class GCS(networkx.DiGraph):
 
     def _check_if_root_flows_into_polyline(self, root_node: Point):
         for point in networkx.dfs_preorder_nodes(self, source=root_node):
+            if any([isinstance(curve, PolyLine) and point not in curve.point_sequence().points()
+                    for curve in point.curves]):
+                # This is the case where the root is the newly created tangent point on the polyline
+                return False
             if point is root_node:
                 continue
             if any([isinstance(curve, PolyLine) for curve in point.curves]):
@@ -375,7 +379,6 @@ class GCS(networkx.DiGraph):
         if edge_data_23 is not None and "angle" not in edge_data_23.keys():
             networkx.set_edge_attributes(self, {(angle_con.p2, angle_con.p3): angle_con}, name="angle")
             return
-        raise ValueError(f"Could not reassign angle constraint {angle_con}")
 
     def _reassign_constraint(self, constraint: GeoCon):
         """
