@@ -110,7 +110,7 @@ class PolyLine(ParametricCurve):
 
     def split(self, split: int or Point):
         if split < 3 or split > len(self.coords) - 3:
-            raise ValueError("Found split value out of bounds for PolyLine")
+            raise ValueError("Split value out of bounds for PolyLine")
         polyline1, polyline2 = None, None
         if isinstance(split, int):
             end_1 = self.start + split + 1 if self.start is not None else split + 1
@@ -119,6 +119,19 @@ class PolyLine(ParametricCurve):
             polyline2 = PolyLine(source=self.source, start=start_2, end=self.end)
             polyline2.point_sequence().points()[0] = polyline1.point_sequence().points()[-1]
             polyline2.point_sequence().points()[0].curves.append(polyline2)
+
+            for new_polyline in [polyline1, polyline2]:
+                for point_idx, point in enumerate(new_polyline.point_sequence().points()):
+                    for original_point in self.point_sequence().points():
+                        if not point.is_coincident(original_point):
+                            continue
+                        new_polyline.point_sequence().points()[point_idx] = original_point
+                        if self in original_point.curves:
+                            original_point.curves.remove(self)
+                        if new_polyline not in original_point.curves:
+                            original_point.curves.append(new_polyline)
+                        break
+
         return [polyline1, polyline2]
 
     def add_polyline_airfoil(self):

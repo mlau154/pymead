@@ -532,10 +532,13 @@ class GeometryCollection(DualRep):
         new_polylines = polyline.split(split)
 
         # Remove the old polyline and its dependent points
-        for point in polyline.point_sequence().points():
-            self.remove_pymead_obj(point)
-        polyline.point_sequence().points().clear()
-        # self.remove_pymead_obj(polyline)
+        # if polyline.start is None and polyline.end is None:
+        #     for point in polyline.point_sequence().points():
+        #         self.remove_pymead_obj(point)
+        #     polyline.point_sequence().points().clear()
+        # else:
+        #     self.remove_pymead_obj(polyline)
+        self.remove_pymead_obj(polyline)
         for new_polyline in new_polylines:
             for point in new_polyline.point_sequence().points():
                 if point not in self.container()["points"].values():

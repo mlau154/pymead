@@ -126,7 +126,7 @@ class Point(PymeadObj):
         Parameters
         ----------
         other: Point
-            Other point (the endpoint of the line whose angle is measured)'
+            Other point (the endpoint of the line whose angle is measured)
 
         Returns
         -------
@@ -134,6 +134,28 @@ class Point(PymeadObj):
             The angle of the line connecting ``self`` and ``other``
         """
         return np.arctan2(other.y().value() - self.y().value(), other.x().value() - self.x().value())
+
+    def is_coincident(self, other: "Point", rtol: float = 1.0e-14) -> bool:
+        """
+        Determines whether this point is coincident with another point (within a tight tolerance)
+
+        Parameters
+        ----------
+        other: Point
+            Other point to test for coincidence with this point
+
+        rtol: float
+            Relative tolerance used for the coincidence test. Default: ``1e-14``
+
+        Returns
+        -------
+        bool
+            Whether the points are coincident
+        """
+        dist = self.measure_distance(other)
+        if np.isclose(dist, 0.0, rtol=rtol):
+            return True
+        return False
 
     def _is_symmetry_123_and_no_edges(self) -> list or bool:
         """
