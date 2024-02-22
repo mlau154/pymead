@@ -3,6 +3,7 @@ from dataclasses import dataclass
 
 import numpy as np
 
+from pymead.core.constraint_equations import measure_rel_angle3
 from pymead.core.line import PolyLine
 from pymead.core.param import Param, AngleParam, LengthParam
 from pymead.core.point import Point
@@ -56,29 +57,12 @@ class DistanceConstraint(GeoCon):
 
     default_name = "DistCon-1"
 
-    def __init__(self, p1: Point, p2: Point, value: float or LengthParam, name: str = None):
+    def __init__(self, p1: Point, p2: Point, value: float or LengthParam = None, name: str = None):
         self.p1 = p1
         self.p2 = p2
-        param = value if isinstance(value, Param) else LengthParam(value=value, name="unnamed")
+        value = self.p1.measure_distance(self.p2) if value is None else value
+        param = value if isinstance(value, Param) else LengthParam(value=value, name="Length-1")
         super().__init__(param=param, name=name, child_nodes=[self.p1, self.p2], kind="d")
-
-    def __repr__(self):
-        return f"{self.__class__.__name__} {self.name()}<v={self.param().value()}>"
-
-    def get_dict_rep(self) -> dict:
-        return {"p1": self.p1.name(), "p2": self.p2.name(), "value": self.param().name(),
-                "constraint_type": self.__class__.__name__}
-
-
-class AbsAngleConstraint(GeoCon):
-
-    default_name = "AbsAngleCon-1"
-
-    def __init__(self, p1: Point, p2: Point, value: float or AngleParam, name: str = None):
-        self.p1 = p1
-        self.p2 = p2
-        param = value if isinstance(value, Param) else AngleParam(value=value, name="unnamed")
-        super().__init__(param=param, name=name, child_nodes=[self.p1, self.p2], kind="a2")
 
     def __repr__(self):
         return f"{self.__class__.__name__} {self.name()}<v={self.param().value()}>"
@@ -151,11 +135,16 @@ class RelAngle3Constraint(GeoCon):
 
     default_name = "RelAng3Con-1"
 
-    def __init__(self, p1: Point, p2: Point, p3: Point, value: float or AngleParam, name: str = None):
+    def __init__(self, p1: Point, p2: Point, p3: Point, value: float or AngleParam = None, name: str = None):
         self.p1 = p1
         self.p2 = p2
         self.p3 = p3
-        param = value if isinstance(value, Param) else AngleParam(value=value, name="unnamed")
+        if value is None:
+            args = []
+            for point in [self.p1, self.p2, self.p3]:
+                args.extend([point.x().value(), point.y().value()])
+            value = measure_rel_angle3(*args)
+        param = value if isinstance(value, Param) else AngleParam(value=value, name="Angle-1")
         super().__init__(param=param, name=name, child_nodes=[self.p1, self.p2, self.p3], kind="a3")
 
     def __repr__(self):
@@ -189,7 +178,7 @@ class ROCurvatureConstraint(GeoCon):
 
     default_name = "ROCCon-1"
 
-    def __init__(self, curve_joint: Point, value: float or LengthParam, name: str = None):
+    def __init__(self, curve_joint: Point, value: float or LengthParam = None, name: str = None):
         if len(curve_joint.curves) != 2:
             raise ConstraintValidationError(f"There must be exactly two curves attached to the curve joint. Found "
                                             f"{len(curve_joint.curves)} curves")
@@ -245,7 +234,7 @@ class ROCurvatureConstraint(GeoCon):
             else:
                 R = data.R[-1]
 
-            param = LengthParam(value=R, name="ROC-1")
+            param = LengthParam(value=R, name="ROC-1", enabled=False) if not isinstance(value, Param) else value
         elif self.curve_type_2 == "PolyLine":
             data = self.curve_2.evaluate()
             if (np.isclose(data.xy[0, 0], self.curve_joint.x().value()) and
@@ -253,8 +242,11 @@ class ROCurvatureConstraint(GeoCon):
                 R = data.R[0]
             else:
                 R = data.R[-1]
-            param = LengthParam(value=R, name="ROC-1")
+            param = LengthParam(value=R, name="ROC-1", enabled=False) if not isinstance(value, Param) else value
         else:
+            if value is None:
+                curvature_data = self.calculate_curvature_data(self.curve_joint)
+                value = 0.5 * (curvature_data.R1 + curvature_data.R2)
             param = value if isinstance(value, Param) else LengthParam(value=value, name="ROC-1")
 
         super().__init__(param=param, child_nodes=points, kind="d", name=name,

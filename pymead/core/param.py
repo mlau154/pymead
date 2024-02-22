@@ -15,7 +15,7 @@ class Param(PymeadObj):
 
     def __init__(self, value: float or int, name: str, lower: float or None = None, upper: float or None = None,
                  sub_container: str = "params", setting_from_geo_col: bool = False, point=None, root=None,
-                 rotation_handle=None):
+                 rotation_handle=None, enabled: bool = True):
         """
         Parameters
         ==========
@@ -40,6 +40,7 @@ class Param(PymeadObj):
         self.at_boundary = False
         self.point = point
         self.root = root
+        self.enabled = enabled
         self.rotation_handle = rotation_handle
         if rotation_handle is not None:
             self.rotation_handle.rotation_param = self
@@ -245,7 +246,7 @@ class Param(PymeadObj):
     def get_dict_rep(self):
         return {"value": float(self.value()) if self.dtype == "float" else int(self.value()),
                 "lower": self.lower(), "upper": self.upper(),
-                "unit_type": None}
+                "unit_type": None, "enabled": self.enabled}
 
     @classmethod
     def set_from_dict_rep(cls, d: dict):
@@ -298,13 +299,13 @@ class Param(PymeadObj):
 class LengthParam(Param):
     def __init__(self, value: float, name: str, lower: float or None = None, upper: float or None = None,
                  sub_container: str = "params",
-                 setting_from_geo_col: bool = False, point=None, root=None, rotation_handle=None):
+                 setting_from_geo_col: bool = False, point=None, root=None, rotation_handle=None, enabled: bool = True):
         self._unit = None
         self.set_unit(UNITS.current_length_unit())
         name = "Length-1" if name is None else name
         super().__init__(value=value, name=name, lower=lower, upper=upper, sub_container=sub_container,
                          setting_from_geo_col=setting_from_geo_col,
-                         point=point, root=root, rotation_handle=rotation_handle)
+                         point=point, root=root, rotation_handle=rotation_handle, enabled=enabled)
 
     def unit(self):
         return self._unit
@@ -348,19 +349,20 @@ class LengthParam(Param):
 
     def get_dict_rep(self):
         return {"value": float(self.value()), "lower": self.lower(), "upper": self.upper(),
-                "unit_type": "length"}
+                "unit_type": "length", "enabled": self.enabled}
 
 
 class AngleParam(Param):
     def __init__(self, value: float, name: str, lower: float or None = None, upper: float or None = None,
                  sub_container: str = "params",
-                 setting_from_geo_col: bool = False, point=None, root=None, rotation_handle=None):
+                 setting_from_geo_col: bool = False, point=None, root=None, rotation_handle=None,
+                 enabled: bool = True):
         self._unit = None
         self.set_unit(UNITS.current_angle_unit())
         name = "Angle-1" if name is None else name
         super().__init__(value=value, name=name, lower=lower, upper=upper, sub_container=sub_container,
                          setting_from_geo_col=setting_from_geo_col, point=point, root=root,
-                         rotation_handle=rotation_handle)
+                         rotation_handle=rotation_handle, enabled=enabled)
 
     def unit(self):
         return self._unit
@@ -413,7 +415,8 @@ class AngleParam(Param):
         return {"value": float(self.value()), "lower": self.lower(), "upper": self.upper(),
                 "unit_type": "angle",
                 "root": self.root.name() if self.root is not None else None,
-                "rotation_handle": self.rotation_handle.name() if self.rotation_handle is not None else None}
+                "rotation_handle": self.rotation_handle.name() if self.rotation_handle is not None else None,
+                "enabled": self.enabled}
 
 
 # class ParamCollection:
@@ -473,7 +476,7 @@ class DesVar(Param):
     """
     def __init__(self, value: float, name: str, lower: float or None = None, upper: float or None = None,
                  sub_container: str = "desvar", setting_from_geo_col: bool = False, point=None, root=None,
-                 rotation_handle=None):
+                 rotation_handle=None, enabled: bool = True):
         """
         Parameters
         ==========
@@ -503,7 +506,7 @@ class DesVar(Param):
 
         super().__init__(value=value, name=name, lower=lower, upper=upper, sub_container=sub_container,
                          setting_from_geo_col=setting_from_geo_col, point=point, root=root,
-                         rotation_handle=rotation_handle)
+                         rotation_handle=rotation_handle, enabled=enabled)
 
 
 class LengthDesVar(LengthParam):
@@ -512,7 +515,8 @@ class LengthDesVar(LengthParam):
     default behavior.
     """
     def __init__(self, value: float, name: str, lower: float or None = None, upper: float or None = None,
-                 setting_from_geo_col: bool = False, point=None, root=None, rotation_handle=None):
+                 setting_from_geo_col: bool = False, point=None, root=None, rotation_handle=None,
+                 enabled: bool = True):
         """
         Parameters
         ==========
@@ -541,11 +545,12 @@ class LengthDesVar(LengthParam):
             upper = default_upper(value)
 
         super().__init__(value=value, name=name, lower=lower, upper=upper, setting_from_geo_col=setting_from_geo_col,
-                         sub_container="desvar", point=point, root=root, rotation_handle=rotation_handle)
+                         sub_container="desvar", point=point, root=root, rotation_handle=rotation_handle,
+                         enabled=enabled)
 
     def get_dict_rep(self):
         return {"value": float(self.value()), "lower": self.lower(), "upper": self.upper(),
-                "unit_type": "length"}
+                "unit_type": "length", "enabled": self.enabled}
 
 
 class AngleDesVar(AngleParam):
@@ -554,7 +559,7 @@ class AngleDesVar(AngleParam):
     default behavior.
     """
     def __init__(self, value: float, name: str, lower: float or None = None, upper: float or None = None,
-                 setting_from_geo_col: bool = False, point=None, root=None, rotation_handle=None):
+                 setting_from_geo_col: bool = False, point=None, root=None, rotation_handle=None, enabled: bool = True):
         """
         Parameters
         ==========
@@ -584,7 +589,7 @@ class AngleDesVar(AngleParam):
 
         super().__init__(value=value, name=name, lower=lower, upper=upper, sub_container="desvar",
                          setting_from_geo_col=setting_from_geo_col, point=point, root=root,
-                         rotation_handle=rotation_handle)
+                         rotation_handle=rotation_handle, enabled=enabled)
 
     def set_value(self, value: float, updated_objs: typing.List[PymeadObj] = None, bounds_normalized: bool = False):
         r"""
@@ -600,4 +605,5 @@ class AngleDesVar(AngleParam):
         return {"value": float(self.value()), "lower": self.lower(), "upper": self.upper(),
                 "unit_type": "angle",
                 "root": self.root.name() if self.root is not None else None,
-                "rotation_handle": self.rotation_handle.name() if self.rotation_handle is not None else None}
+                "rotation_handle": self.rotation_handle.name() if self.rotation_handle is not None else None,
+                "enabled": self.enabled}

@@ -356,10 +356,7 @@ class AirfoilCanvas(pg.PlotWidget):
         # cnstr = self.geo_col.add_distance_constraint(p1, p2)
         # cnstr.add_constraint_to_gcs()
 
-        distance = self.geo_col.selected_objects["points"][0].measure_distance(
-            self.geo_col.selected_objects["points"][1])
-        par = self.geo_col.add_param(value=distance, unit_type="length", assign_unique_name=True)
-        constraint = DistanceConstraint(*self.geo_col.selected_objects["points"], value=par)
+        constraint = DistanceConstraint(*self.geo_col.selected_objects["points"])
         self.geo_col.add_constraint(constraint)
 
     @runSelectionEventLoop(drawing_object="RelAngle3Constraint", starting_message="Select any point other than "
@@ -370,12 +367,8 @@ class AirfoilCanvas(pg.PlotWidget):
                    f"relative angle 3 constraint")
             self.sigStatusBarUpdate.emit(msg, 4000)
             return
-        args = []
-        for point in self.geo_col.selected_objects["points"]:
-            args.extend([point.x().value(), point.y().value()])
-        value = measure_rel_angle3(*args)
-        par = self.geo_col.add_param(value, unit_type="angle")
-        constraint = RelAngle3Constraint(*self.geo_col.selected_objects["points"], value=par)
+
+        constraint = RelAngle3Constraint(*self.geo_col.selected_objects["points"])
         self.geo_col.add_constraint(constraint)
 
     @runSelectionEventLoop(drawing_object="AntiParallel3Constraint", starting_message="Select any point other than "
@@ -431,13 +424,8 @@ class AirfoilCanvas(pg.PlotWidget):
                    f"radius of curvature constraint")
             self.sigStatusBarUpdate.emit(msg, 4000)
             return
-        curvature_data = ROCurvatureConstraint.calculate_curvature_data(self.geo_col.selected_objects["points"][0])
-        if curvature_data.R1 is not None and curvature_data.R2 is not None:
-            R = 0.5 * (curvature_data.R1 + curvature_data.R2)
-            R_param = self.geo_col.add_param(R, name="ROC-1", unit_type="length")
-        else:
-            R_param = None
-        constraint = ROCurvatureConstraint(*self.geo_col.selected_objects["points"], value=R_param)
+
+        constraint = ROCurvatureConstraint(*self.geo_col.selected_objects["points"])
         self.geo_col.add_constraint(constraint)
 
     @runSelectionEventLoop(drawing_object="BezierAddPoint",
