@@ -7,8 +7,8 @@ Installation methods
 
 There are several easy ways to install pymead:
 
-Method 1: Windows Installer/Linux Tarball (GUI Only)
-----------------------------------------------------
+Method 1: Windows/Linux/macOS Native Application (GUI Only)
+-----------------------------------------------------------
 
 For users merely wishing to use pymead rather than develop pymead, this is the recommended install method.
 
@@ -49,7 +49,8 @@ Follow the same steps as Linux, except make sure to download the ``-macOS.tar.gz
 
 Method 2: ``pip`` (GUI + API)
 -----------------------------
-Use ``pip`` to install the latest stable version of pymead into the environment from the Python Package Index (PyPi):
+Use ``pip`` to install the latest stable version of pymead into the environment from the
+`Python Package Index (PyPi) <https://pypi.org/project/pymead/>`_:
 
 .. code-block::
 

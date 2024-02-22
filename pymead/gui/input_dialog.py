@@ -2977,10 +2977,10 @@ class PlotExportDialogWidget(PymeadDialogWidget2):
         if self.current_min_level is not None and self.current_max_level is not None:
             self.widget_dict["min_level"] = PymeadLabeledDoubleSpinBox(
                 label="Minimum Contour Level", minimum=-10000, maximum=10000, value=self.current_min_level,
-                decimals=4, single_step=0.1),
+                decimals=4, single_step=0.1)
             self.widget_dict["max_level"] = PymeadLabeledDoubleSpinBox(
                 label="Maximum Contour Level", minimum=-10000, maximum=10000, value=self.current_max_level,
-                decimals=4, single_step=0.1),
+                decimals=4, single_step=0.1)
 
         # Add all the widgets
         for widget_name, widget in self.widget_dict.items():

@@ -495,7 +495,8 @@ class AirfoilCanvas(pg.PlotWidget):
         self.color_bar_data["cmap_dict"]["dark"] = pg.ColorMap(name="berlin", pos=pos, color=255 * BERLIN + 0.5)
         self.color_bar_data["cmap_dict"]["light"] = pg.ColorMap(name="vik", pos=pos, color=255 * VIK + 0.5)
 
-        self.color_bar_data["color_bar"].setColorMap(self.color_bar_data["cmap_dict"][self.color_bar_data["current_theme"]])
+        self.color_bar_data["color_bar"].setColorMap(
+            self.color_bar_data["cmap_dict"][self.color_bar_data["current_theme"]])
         self.color_bar_data["color_bar"].setLevels(values=tuple(levels))
 
     def pointClicked(self, scatter_item, spot, ev, point_item):

@@ -793,12 +793,13 @@ class GUI(QMainWindow):
 
     def clear_field(self):
         for child in self.airfoil_canvas.plot.allChildItems():
-            if isinstance(child, pg.PColorMeshItem) or isinstance(child, PymeadPColorMeshItem):
+            if isinstance(child, pg.PColorMeshItem) or isinstance(child, PymeadPColorMeshItem) or isinstance(
+                    child, pg.ColorBarItem):
                 self.airfoil_canvas.plot.getViewBox().removeItem(child)
-        if self.cbar is not None:
-            self.airfoil_canvas.plot.getViewBox().removeItem(self.cbar)
-            self.cbar = None
-            self.cbar_label_attrs = None
+        self.cbar = None
+        self.cbar_label_attrs = None
+        if self.airfoil_canvas.color_bar_data is not None:
+            self.airfoil_canvas.color_bar_data.clear()
 
     def plot_field(self):
         if self.last_analysis_dir is None and get_setting("plot-field-dir") != "":
@@ -912,6 +913,8 @@ class GUI(QMainWindow):
         self.cbar.axis.setTextPen(pg.mkPen(color=theme["cbar-color"]))
         self.cbar.getAxis("right").setWidth(20 + 2 * get_setting("axis-label-point-size") +
                                             2 * get_setting("cbar-tick-point-size"))
+
+
 
     def load_geo_col_no_dialog(self, file_name: str = None):
 

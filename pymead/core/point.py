@@ -232,6 +232,8 @@ class Point(PymeadObj):
                 if geo_con.canvas_item is not None:
                     geo_con.canvas_item.update()
         elif self.rotation_handle:
+            if self.rotation_param is None:
+                return
             self.rotation_param.set_value(self.rotation_param.root.measure_angle(Point(xp, yp)))
         else:
             self.x().set_value(xp)

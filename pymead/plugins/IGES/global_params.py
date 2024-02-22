@@ -32,7 +32,7 @@ class GlobalParams:
         self.max_power_sp = IGESParam(38, "int")  # single-precision
         self.sig_digits_sp = IGESParam(16, "int")  # single-precision
         self.max_power_dp = IGESParam(38, "int")  # double-precision
-        self.sig_digits_sp = IGESParam(16, "int")  # double-precision
+        self.sig_digits_dp = IGESParam(16, "int")  # double-precision
         self.product_id_receiver = IGESParam("bezier_curves", "string")
         self.model_space_scale = IGESParam(1.0, "real")
         self.units_flag = IGESParam(self.units_indicators["millimeters"][0], "int")
