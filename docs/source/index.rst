@@ -23,6 +23,15 @@ airfoils and airfoil systems.
    `pymead`
 
 
+Quick Links
+-----------
+
+- `GitHub page (source code) <https://github.com/mlau154/pymead>`_
+- `pymead releases page <https://github.com/mlau154/pymead/releases>`_
+- `PyPi project page <https://pypi.org/project/pymead/>`_
+- `pymead installation page (next tab) <https://pymead.readthedocs.io/en/latest/install.html>`_
+
+
 How to Use Pymead
 -----------------
 
