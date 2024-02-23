@@ -37,14 +37,36 @@ the tarball in a file explorer or by navigating to the tarball's location and us
 
   tar -xvzf <pymead-tarball-name.tar.gz>
 
-in a terminal. The pymead application can then be run directly from inside that extracted folder. When downloading
+in a terminal. In Linux, the recommended method for opening the GUI is through a terminal command. The location
+where pymead was extracted should be added to the system's path. This can be done temporarily using the ``export``
+command in a terminal (for example, if `pymead` was extracted to ``~/Documents/pymead``)...
+
+.. code-block::
+
+   export PATH="~/Documents/pymead:$PATH"
+
+
+...or by adding the previous command to the end of ``.bashrc`` file and sourcing it:
+
+.. code-block::
+
+   nano ~/.bashrc
+   source ~/.bashrc
+
+
+With this permanent save method, pymead can be opened from any terminal in any location simply by typing ``pymead``.
+Note that the directory used in the steps above should be the on containing both the `pymead` executable and the
+``_internals`` directory. When downloading
 updates to pymead (you will be notified of these at application startup when they are available), you can
 simply replace the original extracted folder with the newly extracted folder. It is *very important* to not remove
 the pymead application from the folder that contains the ``_internals`` folder, since pymead needs these to run.
 
 **macOS**
 
-Follow the same steps as Linux, except make sure to download the ``-macOS.tar.gz`` file instead of the Linux version!
+First download the ``-macOS.tar.gz`` file from the GitHub releases page.
+In macOS, extracting the tarball by double-clicking will automatically prompt the user to drag the extracted
+folder to a location (such as the desktop). `pymead` can then be run simply by double-clicking on the ``pymead``
+executable inside that folder.
 
 
 Method 2: ``pip`` (GUI + API)
@@ -66,13 +88,17 @@ allows the user to easily update pymead if desired when a new version is availab
   pip install pymead --upgrade
 
 The pymead GUI can be started from any directory where pymead is installed by running the following command in the
-terminal (use ``python3`` instead of ``py`` for Linux):
+terminal (use ``python3`` instead of ``py`` for Linux or macOS):
 
 .. code-block::
 
   py -m pymead.gui.gui
 
-Most of the API elements are stored in ``pymead.core``. For example, to create a geometry collection (the main
+The API is centered primarily around the ``GeometryCollection`` class. After instantiating this class, geometric
+objects and parameters/design variables can be added using the methods starting with ``add_`` (e.g., ``add_point()``).
+This removes the need to instantiate each type of ``PymeadObj`` individually. In fact, the ``set_from_dict_rep`` method
+in the ``GeometryCollection`` class be used to load in an airfoil system saved from either the GUI or the API.
+Most of the main API elements are stored in ``pymead.core``. For example, to create a geometry collection (the main
 container in the pymead API), and add a point at :math:`x=0.5`, :math:`y=0.3`, run the following lines in a ``.py``
 script or in a Python console:
 
