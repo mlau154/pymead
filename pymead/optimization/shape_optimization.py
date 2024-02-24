@@ -411,8 +411,7 @@ def shape_optimization(conn: mp.connection.Connection or None, param_dict: dict,
     res = algorithm.result()
     save_data(res, os.path.join(param_dict['opt_dir'], 'res.pkl'))
     write_force_dict_to_file(forces_dict, os.path.join(param_dict["opt_dir"], "force_history.json"))
-    if len(objectives) == 1:
-        np.savetxt(os.path.join(param_dict['opt_dir'], 'opt_X.dat'), res.X)
+    np.savetxt(os.path.join(param_dict['opt_dir'], 'opt_X.dat'), res.X)
 
     send_over_pipe(("finished", None))
     # self.save_opt_plots(param_dict['opt_dir'])  # not working at the moment

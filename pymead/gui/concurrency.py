@@ -41,7 +41,6 @@ class ProgressEmitter(QRunnable):
                     self.signals.progress.emit("terminated", None)
                     self.running = False
             except (BrokenPipeError, OSError, EOFError):
-                print("Terminating!")
                 self.signals.finished.emit(False)
                 self.running = False
 

@@ -74,12 +74,9 @@ class TextCallback(OptCallback):
             # self.parent.output_area_text("\n")
         t = f"{self.stringify_text_list()}"
         self.parent.output_area_text(t, line_break=True)
-        # self.parent.output_area_text("\n")
         self.parent.closer = self.generate_closer(len(t))
         if self.completed:
             self.parent.output_area_text(f"{self.generate_closer(len(t))}", line_break=True)
-            self.parent.stop_optimization(completed=True)
-            # self.parent.output_area_text("\n")
 
 
 class PlotAirfoilCallback(OptCallback):

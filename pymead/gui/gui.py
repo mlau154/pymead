@@ -1727,6 +1727,7 @@ class GUI(QMainWindow):
             progress_object.exec_callback()
 
     def shape_opt_finished_callback_fn(self, success: bool):
+        self.stop_optimization(completed=True)
         self.forces_dict = {}
         self.pool = None
         self.status_bar.showMessage("Optimization Complete!", 3000)
