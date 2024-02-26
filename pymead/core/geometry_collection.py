@@ -387,8 +387,9 @@ class GeometryCollection(DualRep):
                     self.gui_obj.disp_message_box(error_message, message_mode="error")
                     return
 
-            for geo_con in pymead_obj.geo_cons:
-                self.remove_pymead_obj(geo_con)
+            if not promotion_demotion:  # Do not remove the constraints if this is a promotion/demotion action
+                for geo_con in pymead_obj.geo_cons:
+                    self.remove_pymead_obj(geo_con)
 
         elif isinstance(pymead_obj, Bezier) or isinstance(pymead_obj, LineSegment) or isinstance(pymead_obj, PolyLine):
             # Remove all the references to this curve in each of the curve's points
@@ -547,7 +548,7 @@ class GeometryCollection(DualRep):
 
     def add_desvar(self, value: float, name: str, lower: float or None = None, upper: float or None = None,
                    unit_type: str or None = None, assign_unique_name: bool = True, point: Point = None,
-                   root: Point = None, rotation_handle: Point = None):
+                   root: Point = None, rotation_handle: Point = None, enabled: bool = True):
         """
         Directly adds a design variable value to the geometry collection.
 
@@ -576,7 +577,7 @@ class GeometryCollection(DualRep):
             The generated design variable
         """
         kwargs = dict(value=value, name=name, lower=lower, upper=upper, setting_from_geo_col=True, point=point,
-                      root=root, rotation_handle=rotation_handle)
+                      root=root, rotation_handle=rotation_handle, enabled=enabled)
         if unit_type is None:
             desvar = DesVar(**kwargs)
         elif unit_type == "length":
@@ -643,18 +644,13 @@ class GeometryCollection(DualRep):
 
         desvar = self.add_desvar(value=param.value(), name=param.name(), lower=lower, upper=upper, unit_type=unit_type,
                                  point=copy(param.point), root=param.root,
-                                 rotation_handle=param.rotation_handle)
+                                 rotation_handle=param.rotation_handle, assign_unique_name=False)
 
         # Replace the corresponding x() or y() in parameter with the new design variable
         self.replace_geo_objs(tool=param, target=desvar)
 
         # Make a copy of the geometry object reference lists in the new design variable
         desvar.geo_objs = param.geo_objs.copy()
-
-        # Copy dimension information
-        desvar.dims = param.dims.copy()
-        for dim in desvar.dims:
-            dim.set_param(desvar)
 
         # Copy constraint information
         desvar.geo_cons = param.geo_cons
@@ -691,18 +687,13 @@ class GeometryCollection(DualRep):
             unit_type = None
 
         param = self.add_param(value=desvar.value(), name=desvar.name(), unit_type=unit_type, point=copy(desvar.point),
-                               root=desvar.root, rotation_handle=desvar.rotation_handle)
+                               root=desvar.root, rotation_handle=desvar.rotation_handle, assign_unique_name=False)
 
         # Replace the corresponding x() or y() in parameter with the new parameter
         self.replace_geo_objs(tool=desvar, target=param)
 
         # Make a copy of the geometry object reference list in the new parameter
         param.geo_objs = desvar.geo_objs.copy()
-
-        # Copy dimension information
-        param.dims = desvar.dims.copy()
-        for dim in param.dims:
-            dim.set_param(param)
 
         # Copy constraint information
         param.geo_cons = desvar.geo_cons
