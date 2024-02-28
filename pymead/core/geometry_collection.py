@@ -5,6 +5,7 @@ import sys
 import typing
 from copy import copy
 
+from pymead.core import UNITS
 from pymead.core.airfoil import Airfoil
 from pymead.core.bezier import Bezier
 from pymead.core.constraints import *
@@ -869,7 +870,10 @@ class GeometryCollection(DualRep):
     def get_metadata():
         return {
             "pymead_version": __version__,
-            "save_datetime": str(datetime.datetime.now())
+            "save_datetime": str(datetime.datetime.now()),
+            "length_unit": UNITS.current_length_unit(),
+            "angle_unit": UNITS.current_angle_unit(),
+            "area_unit": UNITS.current_area_unit()
         }
 
     @classmethod
@@ -960,6 +964,44 @@ class GeometryCollection(DualRep):
             geo_col.add_mea(airfoils=[geo_col.container()["airfoils"][k] for k in mea_dict["airfoils"]],
                             name=name, assign_unique_name=False)
         return geo_col
+
+    def switch_units(self, unit_type: str, old_unit: str, new_unit: str):
+
+        if old_unit == new_unit:
+            return
+
+        if unit_type == "length":
+            UNITS.set_current_length_unit(new_unit)
+        elif unit_type == "angle":
+            UNITS.set_current_angle_unit(new_unit)
+
+        def switch_unit_for_param(p: Param):
+            if isinstance(p, LengthParam) and unit_type == "length":
+                p.set_unit(new_unit, old_unit)
+
+            elif isinstance(p, AngleParam) and unit_type == "angle":
+                p.set_unit(new_unit, old_unit)
+
+        def switch_unit_for_point(p: Point):
+            if unit_type != "length":
+                return
+
+            new_x = p.x().set_unit(new_unit, old_unit, modify_value=False)
+            new_y = p.y().set_unit(new_unit, old_unit, modify_value=False)
+            p.request_move(new_x, new_y)
+
+        for param in self.container()["params"].values():
+            if param.point is not None:
+                continue
+            switch_unit_for_param(param)
+
+        for desvar in self.container()["desvar"].values():
+            if desvar.point is not None:
+                continue
+            switch_unit_for_param(desvar)
+
+        for point in self.container()["points"].values():
+            switch_unit_for_point(point)
 
     def write_to_iges(self, base_dir: str, file_name: str, translation: typing.List[float] = None,
                       scaling: typing.List[float] = None, rotation: typing.List[float] = None,

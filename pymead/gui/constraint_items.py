@@ -232,7 +232,10 @@ class RelAngle3ConstraintItem(ConstraintItem):
         self.canvas_items[1].setData(x=line1_x, y=line1_y)
         self.canvas_items[2].setData(x=line2_x, y=line2_y)
         self.canvas_items[3].setPos(text_x, text_y)
-        self.canvas_items[3].setText(f"{np.rad2deg(self.constraint.param().rad()):.2f}\u00b0")
+        text = f"{self.constraint.param().value():.2f}"
+        if self.constraint.param().unit() == "deg":
+            text += "\u00b0"
+        self.canvas_items[3].setText(text)
 
 
 class Perp3ConstraintItem(ConstraintItem):

@@ -30,6 +30,7 @@ from pymead.analysis.read_aero_data import flow_var_idx
 from pymead.analysis.read_aero_data import read_grid_stats_from_mses, read_field_from_mses, \
     read_streamline_grid_from_mses
 from pymead.analysis.single_element_inviscid import single_element_inviscid
+from pymead.core import UNITS
 from pymead.core.geometry_collection import GeometryCollection
 from pymead.core.mea import MEA
 from pymead.gui.airfoil_canvas import AirfoilCanvas
@@ -960,6 +961,11 @@ class GUI(QMainWindow):
         self.geo_col.canvas.geo_col = self.geo_col
         self.permanent_widget.updateAirfoils()
         self.auto_range_geometry()
+
+        self.geo_col.switch_units("angle", old_unit=UNITS.current_angle_unit(),
+                                  new_unit=geo_col_dict["metadata"]["angle_unit"])
+        self.geo_col.switch_units("length", old_unit=UNITS.current_length_unit(),
+                                  new_unit=geo_col_dict["metadata"]["length_unit"])
 
     def get_geo_col_state(self):
         return {k: v for k, v in self.geo_col.get_dict_rep().items() if k != "metadata"}

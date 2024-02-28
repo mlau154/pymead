@@ -98,7 +98,7 @@ class Param(PymeadObj):
         else:
             return self._value
 
-    def set_value(self, value: float or int, updated_objs: typing.List[PymeadObj] = None, bounds_normalized: bool = False):
+    def set_value(self, value: float or int, bounds_normalized: bool = False):
         """
         Sets the design variable value, adjusting the value to fit inside the bounds if necessary.
 
@@ -169,15 +169,6 @@ class Param(PymeadObj):
         if self.at_boundary:
             return
 
-        updated_objs = [] if updated_objs is None else updated_objs
-
-        if self in updated_objs:
-            return
-        else:
-            updated_objs.append(self)
-            for dim in self.dims:
-                dim.update_points_from_param(updated_objs=updated_objs)
-
         if self.gcs is not None and self.geo_cons:
             points_solved = self.gcs.solve(self.geo_cons[0])
             self.gcs.update_canvas_items(points_solved)
@@ -207,7 +198,7 @@ class Param(PymeadObj):
         """
         return self._upper
 
-    def set_lower(self, lower: float):
+    def set_lower(self, lower: float, force: bool = False):
         """
         Sets the lower bound for the design variable. If called from outside ``DesVar.__init__()``, adjust the design
         variable value to fit inside the bounds if necessary.
@@ -216,8 +207,11 @@ class Param(PymeadObj):
         ==========
         lower: float
             Lower bound for the design variable
+
+        force: bool
+            Setting this argument to ``True`` ignores the check for lower bound greater than value. Default: ``False``
         """
-        if lower > self.value():
+        if lower > self.value() and not force:
             return
 
         self._lower = lower
@@ -225,7 +219,7 @@ class Param(PymeadObj):
         if self.tree_item is not None:
             self.tree_item.treeWidget().itemWidget(self.tree_item, 1).setMinimum(self.lower())
 
-    def set_upper(self, upper: float):
+    def set_upper(self, upper: float, force: bool = False):
         """
         Sets the upper bound for the design variable. If called from outside ``DesVar.__init__()``, adjust the design
         variable value to fit inside the bounds if necessary.
@@ -234,8 +228,11 @@ class Param(PymeadObj):
         ==========
         upper: float
             Upper bound for the design variable
+
+        force: bool
+            Setting this argument to ``True`` ignores the check for upper bound less than value. Default: ``False``
         """
-        if upper < self.value():
+        if upper < self.value() and not force:
             return
 
         self._upper = upper
@@ -289,12 +286,6 @@ class Param(PymeadObj):
     def __pow__(self, power, modulo=None):
         return self.__class__(value=self.value() ** power, name="power_result")
 
-    # def __eq__(self, other):
-    #     return self.value() == other.value()
-    #
-    # def __ne__(self, other):
-    #     return self.value() != other.value()
-
 
 class LengthParam(Param):
     def __init__(self, value: float, name: str, lower: float or None = None, upper: float or None = None,
@@ -310,42 +301,48 @@ class LengthParam(Param):
     def unit(self):
         return self._unit
 
-    def set_unit(self, unit: str or None = None):
+    def set_unit(self, unit: str or None = None, old_unit: str = None, modify_value: bool = True):
         if unit is not None:
             self._unit = unit
         else:
             self._unit = UNITS.current_length_unit()
 
-    def lower(self):
-        return UNITS.convert_length_from_base(self._lower, self.unit())
+        if old_unit is None:
+            return
 
-    def upper(self):
-        return UNITS.convert_length_from_base(self._upper, self.unit())
+        lower = self.lower()
+        upper = self.upper()
+        value = self.value()
+        if lower is not None:
+            base_lower = UNITS.convert_length_to_base(lower, old_unit)
+            self.set_lower(UNITS.convert_length_from_base(base_lower, unit), force=True)
+        if upper is not None:
+            base_upper = UNITS.convert_length_to_base(upper, old_unit)
+            self.set_upper(UNITS.convert_length_from_base(base_upper, unit), force=True)
 
-    def value(self, bounds_normalized: bool = False):
-        new_value = super().value(bounds_normalized=bounds_normalized)
-        if bounds_normalized:
-            return new_value
-        else:
-            return UNITS.convert_length_from_base(new_value, self.unit())
+        base_value = UNITS.convert_length_to_base(value, old_unit)
+        new_value = UNITS.convert_length_from_base(base_value, unit)
+        if modify_value:
+            self.set_value(new_value)
 
-    def set_lower(self, lower: float):
+        if self.tree_item is not None:
+            self.tree_item.treeWidget().itemWidget(self.tree_item, 1).setSuffix(f" {unit}")
+
+        return new_value
+
+    def set_lower(self, lower: float, force: bool = False):
         if self.point is None and lower < 0.0:
             lower = 0.0
 
-        return super().set_lower(UNITS.convert_length_to_base(lower, self.unit()))
+        return super().set_lower(lower, force=force)
 
-    def set_upper(self, upper: float):
-        return super().set_upper(UNITS.convert_length_to_base(upper, self.unit()))
-
-    def set_value(self, value: float, updated_objs: typing.List[PymeadObj] = None, bounds_normalized: bool = False):
+    def set_value(self, value: float, bounds_normalized: bool = False):
 
         # Negative lengths are prohibited unless this represents a point
         if self.point is None and value < 0.0:
             return
 
-        new_value = UNITS.convert_length_to_base(value, self.unit())
-        return super().set_value(new_value, updated_objs=updated_objs, bounds_normalized=bounds_normalized)
+        return super().set_value(value, bounds_normalized=bounds_normalized)
 
     def get_dict_rep(self):
         return {"value": float(self.value()), "lower": self.lower(), "upper": self.upper(),
@@ -367,24 +364,29 @@ class AngleParam(Param):
     def unit(self):
         return self._unit
 
-    def set_unit(self, unit: str or None = None):
+    def set_unit(self, unit: str or None = None, old_unit: str or None = None):
         if unit is not None:
             self._unit = unit
         else:
             self._unit = UNITS.current_angle_unit()
 
-    def lower(self):
-        return UNITS.convert_angle_from_base(self._lower, self.unit())
+        if old_unit is None:
+            return
 
-    def upper(self):
-        return UNITS.convert_angle_from_base(self._upper, self.unit())
+        lower = self.lower()
+        upper = self.upper()
+        value = self.value()
+        if lower is not None:
+            base_lower = UNITS.convert_angle_to_base(lower, old_unit)
+            self.set_lower(UNITS.convert_angle_from_base(base_lower, unit), force=True)
+        if upper is not None:
+            base_upper = UNITS.convert_angle_to_base(upper, old_unit)
+            self.set_upper(UNITS.convert_angle_from_base(base_upper, unit), force=True)
+        base_value = UNITS.convert_angle_to_base(value, old_unit)
+        self.set_value(UNITS.convert_angle_from_base(base_value, unit))
 
-    def value(self, bounds_normalized: bool = False):
-        new_value = super().value(bounds_normalized=bounds_normalized)
-        if bounds_normalized:
-            return new_value
-        else:
-            return UNITS.convert_angle_from_base(new_value, self.unit())
+        if self.tree_item is not None:
+            self.tree_item.treeWidget().itemWidget(self.tree_item, 1).setSuffix(f" {unit}")
 
     def rad(self):
         """
@@ -395,21 +397,15 @@ class AngleParam(Param):
         float
             Angle in radians
         """
-        return self._value
+        return UNITS.convert_angle_to_base(self._value, self.unit())
 
-    def set_lower(self, lower: float):
-        return super().set_lower(UNITS.convert_angle_to_base(lower, self.unit()))
-
-    def set_upper(self, upper: float):
-        return super().set_upper(UNITS.convert_angle_to_base(upper, self.unit()))
-
-    def set_value(self, value: float, updated_objs: typing.List[PymeadObj] = None, bounds_normalized: bool = False):
+    def set_value(self, value: float, bounds_normalized: bool = False):
 
         new_value = UNITS.convert_angle_to_base(value, self.unit())
-
         zero_to_2pi_value = new_value % (2 * np.pi)
+        new_value = UNITS.convert_angle_from_base(zero_to_2pi_value, self.unit())
 
-        return super().set_value(zero_to_2pi_value, updated_objs=updated_objs, bounds_normalized=bounds_normalized)
+        return super().set_value(new_value, bounds_normalized=bounds_normalized)
 
     def get_dict_rep(self):
         return {"value": float(self.value()), "lower": self.lower(), "upper": self.upper(),
@@ -417,37 +413,6 @@ class AngleParam(Param):
                 "root": self.root.name() if self.root is not None else None,
                 "rotation_handle": self.rotation_handle.name() if self.rotation_handle is not None else None,
                 "enabled": self.enabled}
-
-
-# class ParamCollection:
-#     """
-#     Collection (list) of Params. Allows for import from/export to array.
-#     """
-#     def __init__(self, params: typing.List[Param]):
-#         self._params = None
-#         self.set_params(params)
-#         self.shape = len(self.params())
-#
-#     def params(self):
-#         return self._params
-#
-#     def set_params(self, params: typing.List[Param]):
-#         self._params = params
-#
-#     def as_array(self):
-#         return np.array([[p.value()] for p in self.params()])
-#
-#     @classmethod
-#     def generate_from_array(cls, arr: np.ndarray):
-#         if arr.ndim == 1:
-#             return cls(params=[Param(value=v, name=f"FromArrayIndex{idx}") for idx, v in enumerate(arr)])
-#         elif arr.ndim == 2:
-#             if arr.shape[1] != 1:
-#                 raise ValueError(f"Shape of the input array must be Nx1 (found {arr.shape = })")
-#             return cls(params=[Param(value=v, name=f"FromArrayIndex{idx}") for idx, v in enumerate(arr[:, 0])])
-#
-#     def __len__(self):
-#         return len(self.params())
 
 
 def default_lower(value: float):
@@ -591,15 +556,14 @@ class AngleDesVar(AngleParam):
                          setting_from_geo_col=setting_from_geo_col, point=point, root=root,
                          rotation_handle=rotation_handle, enabled=enabled)
 
-    def set_value(self, value: float, updated_objs: typing.List[PymeadObj] = None, bounds_normalized: bool = False):
+    def set_value(self, value: float, bounds_normalized: bool = False):
         r"""
         In this special case of ``set_value`` for an ``AngleDesVar``, we skip over the call to the ``set_value``
         method in ``AngleParam`` and directly call the ``set_value`` method in ``Param`` (the grandparent class).
         The reason for this is that ``AngleParam`` always keeps the angle between 0 and :math:`2 \pi`, which is not
         logical behavior for a bounded variable. This method eliminates that restriction.
         """
-        new_value = UNITS.convert_angle_to_base(value, self.unit())
-        return Param.set_value(self, new_value, updated_objs=updated_objs, bounds_normalized=bounds_normalized)
+        return Param.set_value(self, value, bounds_normalized=bounds_normalized)
 
     def get_dict_rep(self):
         return {"value": float(self.value()), "lower": self.lower(), "upper": self.upper(),
