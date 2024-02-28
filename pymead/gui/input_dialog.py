@@ -1751,11 +1751,11 @@ class MSESDialogWidget2(PymeadDialogWidget2):
 
     def spec_Re_changed(self, state: int):
         if state:
-            for thermo_var in ("P", "T", "rho", "gam", "R", "MACHIN", "L", "spec_P_T_rho"):
+            for thermo_var in ("P", "T", "rho", "gam", "R", "L", "spec_P_T_rho"):
                 self.widget_dict[thermo_var].setReadOnly(True)
             self.widget_dict["REYNIN"].setReadOnly(False)
         else:
-            for thermo_var in ("P", "T", "rho", "gam", "R", "MACHIN", "L", "spec_P_T_rho"):
+            for thermo_var in ("P", "T", "rho", "gam", "R", "L", "spec_P_T_rho"):
                 self.widget_dict[thermo_var].setReadOnly(False)
             self.widget_dict["REYNIN"].setReadOnly(True)
             self.spec_P_T_rho_changed(self.widget_dict["spec_P_T_rho"].value())
@@ -1770,6 +1770,8 @@ class MSESDialogWidget2(PymeadDialogWidget2):
             self.widget_dict["CLIFIN"].setReadOnly(False)
 
     def recalculateThermoState(self, _):
+        if self.widget_dict["spec_Re"].value():
+            return
         spec_P_T_rho = self.widget_dict["spec_P_T_rho"].value()
         R = self.widget_dict["R"].value()
         gam = self.widget_dict["gam"].value()
