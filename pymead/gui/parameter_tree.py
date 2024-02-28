@@ -15,7 +15,7 @@ from pymead.core.mea import MEA
 from pymead.core.param import Param, DesVar, LengthParam, AngleParam, LengthDesVar, AngleDesVar
 from pymead.core.point import Point
 from pymead.core.pymead_obj import PymeadObj
-from pymead.gui.input_dialog import PymeadDialog
+from pymead.gui.dialogs import PymeadDialog
 
 
 class HeaderButtonRow(QHeaderView):

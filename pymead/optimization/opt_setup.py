@@ -10,7 +10,7 @@ from pymoo.util.display import Display
 from pymoo.util.termination.default import MultiObjectiveDefaultTermination
 from pymoo.util.termination.f_tol import MultiObjectiveSpaceToleranceTermination
 
-from pymead.gui.input_dialog import convert_dialog_to_mset_settings, convert_dialog_to_mses_settings, \
+from pymead.gui.dialogs import convert_dialog_to_mset_settings, convert_dialog_to_mses_settings, \
     convert_dialog_to_mplot_settings
 
 multi_point_keys_mses = {

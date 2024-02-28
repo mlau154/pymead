@@ -1,6 +1,6 @@
 from PyQt5.QtCore import Qt
 
-from pymead.gui.input_dialog import PymeadMessageBox
+from pymead.gui.dialogs import PymeadMessageBox
 
 
 def disp_message_box(message: str, parent, theme: dict, message_mode: str = 'error', rich_text: bool = False):

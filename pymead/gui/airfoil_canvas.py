@@ -12,7 +12,7 @@ from PyQt5.QtGui import QFont, QBrush, QColor
 from PyQt5.QtWidgets import QApplication
 
 from pymead.core.line import PolyLine
-from pymead.gui.input_dialog import PlotExportDialog, WebAirfoilDialog, SplitPolylineDialog
+from pymead.gui.dialogs import PlotExportDialog, WebAirfoilDialog, SplitPolylineDialog
 from pymead.gui.polygon_item import PolygonItem
 
 from pymead.core.airfoil import Airfoil
@@ -331,7 +331,7 @@ class AirfoilCanvas(pg.PlotWidget):
     def generateWebAirfoil(self):
         dialog = WebAirfoilDialog(self, theme=self.gui_obj.themes[self.gui_obj.current_theme])
         if dialog.exec_():
-            polyline = self.geo_col.add_polyline(source=dialog.valuesFromWidgets())
+            polyline = self.geo_col.add_polyline(source=dialog.value())
             polyline.add_polyline_airfoil()
         self.gui_obj.permanent_widget.updateAirfoils()
 
@@ -458,7 +458,7 @@ class AirfoilCanvas(pg.PlotWidget):
         dialog = SplitPolylineDialog(self, theme=self.gui_obj.themes[self.gui_obj.current_theme], polyline=polyline,
                                      geo_col=self.geo_col)
         if dialog.exec_():
-            self.geo_col.split_polyline(polyline, dialog.valuesFromWidgets())
+            self.geo_col.split_polyline(polyline, dialog.value())
 
     def appendSelectedPoint(self, plot_data_item: pg.PlotDataItem):
         self.geo_col.selected_objects["points"].append(plot_data_item.point)
@@ -742,7 +742,7 @@ class AirfoilCanvas(pg.PlotWidget):
                                   current_max_level=current_max_level)
         if dialog.exec_():
             # Get the inputs from the dialog
-            inputs = dialog.valuesFromWidgets()
+            inputs = dialog.value()
 
             # Create the pyqtgraph ImageExporter object from the airfoil canvas
             exporter = pg.exporters.ImageExporter(self.plot)

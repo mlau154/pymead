@@ -39,11 +39,11 @@ from pymead.gui.concurrency import CPUBoundProcess
 from pymead.gui.custom_graphics_view import CustomGraphicsView
 from pymead.gui.dockable_tab_widget import PymeadDockWidget
 from pymead.gui.help_browser import HelpBrowserWindow
-from pymead.gui.input_dialog import LoadDialog, SaveAsDialog, OptimizationSetupDialog, \
+from pymead.gui.dialogs import LoadDialog, SaveAsDialog, OptimizationSetupDialog, \
     MultiAirfoilDialog, ColorInputDialog, ExportCoordinatesDialog, ExportControlPointsDialog, AirfoilPlotDialog, \
     AirfoilMatchingDialog, MSESFieldPlotDialog, ExportIGESDialog, XFOILDialog, NewGeoColDialog, EditBoundsDialog, \
     ExitDialog, ScreenshotDialog, LoadAirfoilAlgFile, ExitOptimizationDialog
-from pymead.gui.input_dialog import convert_dialog_to_mset_settings, convert_dialog_to_mses_settings, \
+from pymead.gui.dialogs import convert_dialog_to_mset_settings, convert_dialog_to_mses_settings, \
     convert_dialog_to_mplot_settings
 from pymead.gui.main_icon_toolbar import MainIconToolbar
 from pymead.gui.message_box import disp_message_box
@@ -543,7 +543,7 @@ class GUI(QMainWindow):
 
         dialog = ScreenshotDialog(self, theme=self.themes[self.current_theme])
         if dialog.exec_():
-            inputs = dialog.getInputs()
+            inputs = dialog.value()
 
             # Take the screenshot
             screen = QApplication.primaryScreen()
@@ -623,7 +623,7 @@ class GUI(QMainWindow):
     def deepcopy_geo_col(self):
         return deepcopy(self.geo_col)
 
-    def load_geo_col(self):
+    def load_geo_col(self, file_name: str = None):
 
         if self.changes_made():
             save_dialog = NewGeoColDialog(theme=self.themes[self.current_theme], parent=self,
@@ -642,15 +642,15 @@ class GUI(QMainWindow):
                 else:  # If "Cancel" to "Save Changes," do not load an MEA
                         return
 
-        dialog = LoadDialog(self, settings_var="jmea_default_open_location")
-
-        if dialog.exec_():
-            file_name = dialog.selectedFiles()[0]
-            file_name_parent_dir = os.path.dirname(file_name)
-            q_settings.setValue(dialog.settings_var, file_name_parent_dir)
-        else:
-            file_name = None
-        if file_name is not None:
+        if not file_name:
+            dialog = LoadDialog(self, settings_var="jmea_default_open_location")
+            if dialog.exec_():
+                file_name = dialog.selectedFiles()[0]
+                file_name_parent_dir = os.path.dirname(file_name)
+                q_settings.setValue(dialog.settings_var, file_name_parent_dir)
+            else:
+                file_name = None
+        if file_name:
             self.load_geo_col_no_dialog(file_name)
             self.setWindowTitle(f"pymead - {os.path.split(file_name)[-1]}")
 
@@ -668,6 +668,9 @@ class GUI(QMainWindow):
             load_blank_geo_col()
 
     def edit_bounds(self):
+        if len(self.geo_col.container()["desvar"]) == 0:
+            self.disp_message_box("No design variables present", message_mode="info")
+            return
         bv_dialog = EditBoundsDialog(geo_col=self.geo_col, theme=self.themes[self.current_theme], parent=self)
         bv_dialog.exec_()
 
@@ -811,7 +814,7 @@ class GUI(QMainWindow):
         dlg = MSESFieldPlotDialog(parent=self, default_field_dir=default_field_dir,
                                   theme=self.themes[self.current_theme])
         if dlg.exec_():
-            inputs = dlg.valuesFromWidgets()
+            inputs = dlg.value()
         else:
             return
 
@@ -1030,7 +1033,7 @@ class GUI(QMainWindow):
         """Airfoil coordinate exporter"""
         dialog = ExportCoordinatesDialog(self, theme=self.themes[self.current_theme])
         if dialog.exec_():
-            inputs = dialog.valuesFromWidgets()
+            inputs = dialog.value()
             f_ = os.path.join(inputs['choose_dir'], inputs['file_name'])
 
             # Determine if output format should be JSON:
@@ -1070,7 +1073,7 @@ class GUI(QMainWindow):
     def export_control_points(self):
         dialog = ExportControlPointsDialog(self, theme=self.themes[self.current_theme])
         if dialog.exec_():
-            inputs = dialog.valuesFromWidgets()
+            inputs = dialog.value()
             f_ = os.path.join(inputs['choose_dir'], inputs['file_name'])
 
             airfoils = inputs['airfoil_order'].split(',')
@@ -1095,7 +1098,7 @@ class GUI(QMainWindow):
     def export_IGES(self):
         self.dialog = ExportIGESDialog(parent=self, theme=self.themes[self.current_theme])
         if self.dialog.exec_():
-            inputs = self.dialog.valuesFromWidgets()
+            inputs = self.dialog.value()
             iges_file_path = self.geo_col.write_to_iges(base_dir=inputs["dir"], file_name=inputs["file_name"],
                                                         translation=inputs["translation"], scaling=inputs["scaling"],
                                                         rotation=inputs["rotation"],
@@ -1108,7 +1111,7 @@ class GUI(QMainWindow):
         current_airfoils = [k for k in self.geo_col.container()["airfoils"].keys()]
         self.dialog.w.widget_dict["airfoil"]["widget"].addItems(current_airfoils)
         if self.dialog.exec():
-            inputs = self.dialog.valuesFromWidgets()
+            inputs = self.dialog.value()
         else:
             inputs = None
 
@@ -1211,7 +1214,7 @@ class GUI(QMainWindow):
 
     def multi_airfoil_analysis_accepted(self):
 
-        inputs = self.dialog.valuesFromWidgets()
+        inputs = self.dialog.value()
         self.multi_airfoil_analysis_settings = inputs
 
         if inputs is not None:
@@ -1221,7 +1224,7 @@ class GUI(QMainWindow):
             self.multi_airfoil_analysis(mset_settings, mses_settings, mplot_settings)
 
     def multi_airfoil_analysis_rejected(self):
-        self.multi_airfoil_analysis_settings = self.dialog.valuesFromWidgets()
+        self.multi_airfoil_analysis_settings = self.dialog.value()
 
     def display_mses_result(self, aero_data: dict, mset_settings: dict, mses_settings: dict):
 
@@ -1364,7 +1367,7 @@ class GUI(QMainWindow):
         airfoil_names = [a for a in self.geo_col.container()["airfoils"].keys()]
         dialog = AirfoilMatchingDialog(self, airfoil_names=airfoil_names, theme=self.themes[self.current_theme])
         if dialog.exec_():
-            airfoil_match_settings = dialog.valuesFromWidgets()
+            airfoil_match_settings = dialog.value()
             # res = match_airfoil_ga(self.mea, target_airfoil, airfoil_name)
             res = match_airfoil(self.geo_col, airfoil_match_settings["tool_airfoil"],
                                 airfoil_match_settings["target_airfoil"])
@@ -1384,7 +1387,7 @@ class GUI(QMainWindow):
     def plot_airfoil_from_airfoiltools(self):
         dialog = AirfoilPlotDialog(self, theme=self.themes[self.current_theme])
         if dialog.exec_():
-            airfoil_name = dialog.valuesFromWidgets()
+            airfoil_name = dialog.value()
             airfoil = extract_data_from_airfoiltools(airfoil_name)
             self.airfoil_canvas.plot.plot(airfoil[:, 0], airfoil[:, 1], pen=pg.mkPen(color='orange', width=1))
 
@@ -1403,7 +1406,7 @@ class GUI(QMainWindow):
         geo_col_dict_list = None
         files = None
         while not exit_the_dialog and not early_return:
-            self.opt_settings = self.dialog.valuesFromWidgets()
+            self.opt_settings = self.dialog.value()
 
             loop_through_settings = False
 
@@ -1602,7 +1605,7 @@ class GUI(QMainWindow):
         if not early_return:
             for (opt_settings, param_dict, geo_col_dict) in zip(opt_settings_list, param_dict_list, geo_col_dict_list):
                 # The next line is just to make sure any calls to the GUI are performed before the optimization
-                self.dialog.setWidgetValuesFromDict(new_inputs=opt_settings)
+                self.dialog.setValue(new_inputs=opt_settings)
 
                 # Need to regenerate the objectives and constraints here since they contain references to
                 # (non-serializable) modules which must be passed through a multiprocessing.Pipe
@@ -1617,7 +1620,7 @@ class GUI(QMainWindow):
                                             )
 
     def optimization_rejected(self):
-        self.opt_settings = self.dialog.valuesFromWidgets()
+        self.opt_settings = self.dialog.value()
         return
 
     @pyqtSlot(str, object)

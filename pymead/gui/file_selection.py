@@ -4,7 +4,9 @@ from PyQt5.QtWidgets import QFileDialog, QLineEdit, QPlainTextEdit
 def single_file_output_rule(dlg: QFileDialog, line_edit: QLineEdit = None):
     if line_edit is not None:
         if dlg.exec_():
-            line_edit.setText(dlg.selectedFiles()[0])
+            file_name = dlg.selectedFiles()[0]
+            line_edit.setText(file_name)
+            return file_name
     else:
         return dlg
 

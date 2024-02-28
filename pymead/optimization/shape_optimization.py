@@ -85,7 +85,7 @@ def shape_optimization(conn: mp.connection.Connection or None, param_dict: dict,
     parameter_list = geo_col.extract_design_variable_values(bounds_normalized=True)
     num_parameters = len(parameter_list)
 
-    send_over_pipe(("text", f"Number of active and unlinked design variables: {num_parameters}"))
+    send_over_pipe(("text", f"Number of design variables: {num_parameters}"))
 
     problem = TPAIOPT(n_var=param_dict['n_var'], n_obj=param_dict['n_obj'], n_constr=param_dict['n_constr'],
                       xl=param_dict['xl'], xu=param_dict['xu'], param_dict=param_dict)

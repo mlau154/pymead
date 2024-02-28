@@ -939,7 +939,7 @@ class GeometryCollection(DualRep):
                     geocon_dict[k] = geo_col.container()["desvar"][v]
                 elif v in d["lines"].keys():
                     geocon_dict[k] = geo_col.container()["lines"][v]
-                elif v in d["polylines"].keys():
+                elif "polylines" in d and v in d["polylines"].keys():
                     geocon_dict[k] = geo_col.container()["polylines"][v]
                 elif v in d["bezier"].keys():
                     geocon_dict[k] = geo_col.container()["bezier"][v]

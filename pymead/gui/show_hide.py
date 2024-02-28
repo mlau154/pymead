@@ -3,7 +3,7 @@ from functools import partial
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QGridLayout, QCheckBox, QLabel, QWidget
 
-from pymead.gui.input_dialog import PymeadDialog
+from pymead.gui.dialogs import PymeadDialog
 
 
 class ShowHideDialog(PymeadDialog):
