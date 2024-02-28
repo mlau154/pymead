@@ -11,6 +11,7 @@ from PyQt5.QtCore import pyqtSignal, QEventLoop, Qt
 from PyQt5.QtGui import QFont, QBrush, QColor
 from PyQt5.QtWidgets import QApplication
 
+from pymead.utils.get_airfoil import AirfoilNotFoundError
 from pymead.core.line import PolyLine
 from pymead.gui.dialogs import PlotExportDialog, WebAirfoilDialog, SplitPolylineDialog
 from pymead.gui.polygon_item import PolygonItem
@@ -331,7 +332,11 @@ class AirfoilCanvas(pg.PlotWidget):
     def generateWebAirfoil(self):
         dialog = WebAirfoilDialog(self, theme=self.gui_obj.themes[self.gui_obj.current_theme])
         if dialog.exec_():
-            polyline = self.geo_col.add_polyline(source=dialog.value())
+            try:
+                polyline = self.geo_col.add_polyline(source=dialog.value())
+            except AirfoilNotFoundError as e:
+                self.gui_obj.disp_message_box(f"{e}", message_mode="error")
+                return
             polyline.add_polyline_airfoil()
         self.gui_obj.permanent_widget.updateAirfoils()
 

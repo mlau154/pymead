@@ -28,6 +28,8 @@ def extract_data_from_airfoiltools(name: str, repair: typing.Callable or None = 
     """
     url = f'http://airfoiltools.com/airfoil/seligdatfile?airfoil={name}'
     data = requests.get(url)
+    if data.status_code == 404:
+        raise AirfoilNotFoundError(f"Airfoil {name} not found at http://airfoiltools.com/")
     text = deepcopy(data.text)
     coords_str = text.split('\n')
     xy_str_list = [coord_str.split() for coord_str in coords_str]
@@ -39,6 +41,10 @@ def extract_data_from_airfoiltools(name: str, repair: typing.Callable or None = 
     if repair is not None:
         xy = repair(xy)
     return xy
+
+
+class AirfoilNotFoundError(Exception):
+    pass
 
 
 def main():
