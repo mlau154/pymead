@@ -43,7 +43,7 @@ from pymead.gui.help_browser import HelpBrowserWindow
 from pymead.gui.dialogs import LoadDialog, SaveAsDialog, OptimizationSetupDialog, \
     MultiAirfoilDialog, ColorInputDialog, ExportCoordinatesDialog, ExportControlPointsDialog, AirfoilPlotDialog, \
     AirfoilMatchingDialog, MSESFieldPlotDialog, ExportIGESDialog, XFOILDialog, NewGeoColDialog, EditBoundsDialog, \
-    ExitDialog, ScreenshotDialog, LoadAirfoilAlgFile, ExitOptimizationDialog
+    ExitDialog, ScreenshotDialog, LoadAirfoilAlgFile, ExitOptimizationDialog, SettingsDialog
 from pymead.gui.dialogs import convert_dialog_to_mset_settings, convert_dialog_to_mses_settings, \
     convert_dialog_to_mplot_settings
 from pymead.gui.main_icon_toolbar import MainIconToolbar
@@ -84,6 +84,8 @@ class GUI(QMainWindow):
             pyi_splash.update_text("Initializing constants...")
         except:
             pass
+        UNITS.set_current_length_unit(q_settings.value("length_unit"))
+        UNITS.set_current_angle_unit(q_settings.value("angle_unit"))
         super().__init__(parent=parent)
         self.showHideState = None
         self.setWindowFlags(self.windowFlags() | Qt.FramelessWindowHint)
@@ -547,6 +549,11 @@ class GUI(QMainWindow):
 
         recursively_add_menus(menu_data, self.menu_bar)
 
+    def open_settings(self):
+        dialog = SettingsDialog(parent=self, geo_col=self.geo_col, theme=self.themes[self.current_theme],
+                                settings_override=None)
+        dialog.exec_()
+
     def take_screenshot(self):
 
         # if hasattr(self.dockable_tab_window, "current_dock_widget"):
@@ -952,6 +959,14 @@ class GUI(QMainWindow):
             geo_col_dict = load_data(file_name)
         else:
             geo_col_dict = GeometryCollection().get_dict_rep()
+
+        self.geo_col.switch_units("angle", old_unit=UNITS.current_angle_unit(),
+                                  new_unit=geo_col_dict["metadata"]["angle_unit"]
+                                  if "angle_unit" in geo_col_dict["metadata"] else "rad")
+        self.geo_col.switch_units("length", old_unit=UNITS.current_length_unit(),
+                                  new_unit=geo_col_dict["metadata"]["length_unit"]
+                                  if "length_unit" in geo_col_dict["metadata"] else "m")
+
         self.geo_col = GeometryCollection.set_from_dict_rep(geo_col_dict, canvas=self.airfoil_canvas,
                                                             tree=self.parameter_tree, gui_obj=self)
         self.permanent_widget.geo_col = self.geo_col
@@ -962,10 +977,10 @@ class GUI(QMainWindow):
         self.permanent_widget.updateAirfoils()
         self.auto_range_geometry()
 
-        self.geo_col.switch_units("angle", old_unit=UNITS.current_angle_unit(),
-                                  new_unit=geo_col_dict["metadata"]["angle_unit"])
-        self.geo_col.switch_units("length", old_unit=UNITS.current_length_unit(),
-                                  new_unit=geo_col_dict["metadata"]["length_unit"])
+        # self.geo_col.switch_units("angle", old_unit=UNITS.current_angle_unit(),
+        #                           new_unit=geo_col_dict["metadata"]["angle_unit"])
+        # self.geo_col.switch_units("length", old_unit=UNITS.current_length_unit(),
+        #                           new_unit=geo_col_dict["metadata"]["length_unit"])
 
     def get_geo_col_state(self):
         return {k: v for k, v in self.geo_col.get_dict_rep().items() if k != "metadata"}

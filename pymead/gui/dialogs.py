@@ -22,6 +22,7 @@ from pymead.core.airfoil import Airfoil
 from pymead import GUI_DEFAULTS_DIR, q_settings, GUI_DIALOG_WIDGETS_DIR
 from pymead.analysis import cfd_output_templates
 from pymead.analysis.utils import viscosity_calculator
+from pymead.core import UNITS
 from pymead.core.geometry_collection import GeometryCollection
 from pymead.core.line import PolyLine
 from pymead.core.mea import MEA
@@ -2305,22 +2306,6 @@ class MultiAirfoilDialog(PymeadDialog):
         super().__init__(parent=parent, window_title="Multi-Element-Airfoil Analysis", widget=widget, theme=theme)
 
 
-class SettingsDialog(QDialog):
-    def __init__(self, parent=None):
-        super().__init__(parent)
-
-        buttonBox = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel, self)
-        layout = QFormLayout(self)
-
-        self.tab_widget = QTabWidget()
-        layout.addWidget(self.tab_widget)
-
-        layout.addWidget(buttonBox)
-
-        buttonBox.accepted.connect(self.accept)
-        buttonBox.rejected.connect(self.reject)
-
-
 class InviscidCpCalcDialog(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -3227,16 +3212,37 @@ class SplitPolylineDialog(PymeadDialog):
         return self.spin.value()
 
 
-class SettingsDialogWidget(PymeadDialogWidget2):
-
-    def __init__(self, parent):
-        super().__init__(parent)
+class GeneralSettingsDialogWidget(PymeadDialogWidget2):
+    def __init__(self, geo_col: GeometryCollection, parent=None):
+        self.geo_col = geo_col
+        super().__init__(parent=parent)
 
     def initializeWidgets(self, *args, **kwargs):
-        pass
+        self.widget_dict = {
+            "length_unit": PymeadLabeledComboBox(label="Length Unit", items=["m", "mm", "in", "cm"],
+                                                 current_item=UNITS.current_length_unit()),
+            "angle_unit": PymeadLabeledComboBox(label="Angle Unit", items=["rad", "deg"],
+                                                current_item=UNITS.current_angle_unit())
+        }
 
-    def setValue(self, *args, **kwargs):
-        pass
+    def establishWidgetConnections(self):
+        self.widget_dict["length_unit"].sigValueChanged.connect(self.onLengthUnitChanged)
+        self.widget_dict["angle_unit"].sigValueChanged.connect(self.onAngleUnitChanged)
 
-    def value(self) -> dict:
-        pass
+    def onLengthUnitChanged(self, new_unit: str):
+        self.geo_col.switch_units("length", old_unit=UNITS.current_length_unit(), new_unit=new_unit)
+        q_settings.setValue("length_unit", new_unit)
+
+    def onAngleUnitChanged(self, new_unit: str):
+        self.geo_col.switch_units("angle", old_unit=UNITS.current_angle_unit(), new_unit=new_unit)
+        q_settings.setValue("angle_unit", new_unit)
+
+
+class SettingsDialog(PymeadDialog):
+
+    def __init__(self, parent, geo_col: GeometryCollection, theme: dict, settings_override: dict = None):
+        widgets = {
+            "General": GeneralSettingsDialogWidget(geo_col=geo_col)
+        }
+        w = PymeadDialogVTabWidget(parent=None, widgets=widgets, settings_override=settings_override)
+        super().__init__(parent=parent, window_title="Settings", widget=w, theme=theme)

@@ -4,6 +4,7 @@ import pyqtgraph as pg
 from PyQt5.QtCore import Qt, pyqtSignal, QObject
 from PyQt5.QtGui import QFont, QPen, QColor
 
+from pymead.core import UNITS
 from pymead.core.constraints import *
 from pymead.utils.misc import get_setting
 
@@ -87,13 +88,13 @@ class DistanceConstraintItem(ConstraintItem):
         dist = self.constraint.p1.measure_distance(self.constraint.p2)
 
         handle_angle = angle + np.pi / 2
-        arrow_offset = 0.04
+        arrow_offset = 0.04 * UNITS.convert_length_from_base(1.0, UNITS.current_length_unit())
         p1_arrow = (self.constraint.p1.x().value() + arrow_offset * np.cos(handle_angle),
                     self.constraint.p1.y().value() + arrow_offset * np.sin(handle_angle))
         p2_arrow = (self.constraint.p2.x().value() + arrow_offset * np.cos(handle_angle),
                     self.constraint.p2.y().value() + arrow_offset * np.sin(handle_angle))
 
-        text_offset = 0.06
+        text_offset = 0.06 * UNITS.convert_length_from_base(1.0, UNITS.current_length_unit())
         text_angle = np.rad2deg((angle + np.pi / 2) % np.pi - np.pi / 2)
         text_pos = (self.constraint.p1.x().value() + text_offset * np.cos(handle_angle) + 0.5 * dist * np.cos(angle),
                     self.constraint.p1.y().value() + text_offset * np.sin(handle_angle) + 0.5 * dist * np.sin(angle))
@@ -103,7 +104,7 @@ class DistanceConstraintItem(ConstraintItem):
         line_y = [self.constraint.p1.y().value() + arrow_offset * np.sin(handle_angle),
                   self.constraint.p1.y().value() + arrow_offset * np.sin(handle_angle) + dist * np.sin(angle)]
 
-        handle_offset = 0.05
+        handle_offset = 0.05 * UNITS.convert_length_from_base(1.0, UNITS.current_length_unit())
         handle1_x = [self.constraint.p1.x().value(),
                      self.constraint.p1.x().value() + handle_offset * np.cos(handle_angle)]
         handle1_y = [self.constraint.p1.y().value(),
@@ -140,8 +141,9 @@ class SymmetryConstraintItem(ConstraintItem):
         self.update()
 
     def update(self):
-        self.canvas_items[0].setPos(self.constraint.p3.x().value() + 0.01, self.constraint.p3.y().value() - 0.01)
-        self.canvas_items[1].setPos(self.constraint.p4.x().value() + 0.01, self.constraint.p4.y().value() - 0.01)
+        dist = 0.01 * UNITS.convert_length_from_base(1.0, UNITS.current_length_unit())
+        self.canvas_items[0].setPos(self.constraint.p3.x().value() + dist, self.constraint.p3.y().value() - dist)
+        self.canvas_items[1].setPos(self.constraint.p4.x().value() + dist, self.constraint.p4.y().value() - dist)
 
 
 class ROCurvatureConstraintItem(ConstraintItem):
@@ -156,8 +158,9 @@ class ROCurvatureConstraintItem(ConstraintItem):
         self.update()
 
     def update(self):
-        self.canvas_items[0].setPos(self.constraint.curve_joint.x().value() - 0.01,
-                                    self.constraint.curve_joint.y().value() - 0.01)
+        dist = 0.01 * UNITS.convert_length_from_base(1.0, UNITS.current_length_unit())
+        self.canvas_items[0].setPos(self.constraint.curve_joint.x().value() - dist,
+                                    self.constraint.curve_joint.y().value() - dist)
 
 
 class AntiParallel3ConstraintItem(ConstraintItem):
@@ -256,7 +259,7 @@ class Perp3ConstraintItem(ConstraintItem):
         angle1 = self.constraint.p2.measure_angle(self.constraint.p1)
         angle2 = angle1 - np.pi / 2
 
-        square_side = 0.05
+        square_side = 0.05 * UNITS.convert_length_from_base(1.0, UNITS.current_length_unit())
 
         x1 = [self.constraint.p2.x().value() + square_side * np.cos(angle1),
               self.constraint.p2.x().value() + square_side * np.cos(angle1) + square_side * np.cos(angle2)]

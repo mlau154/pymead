@@ -14,7 +14,8 @@
       "NXOpen Macro": "export_nx_macro",
       "Design Variable Values": "export_design_variable_values",
       "IGES": "export_IGES"
-    }
+    },
+    "Settings": "open_settings"
   },
   "Edit": {
     "Bounds": ["edit_bounds", "Ctrl+B"]

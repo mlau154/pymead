@@ -37,5 +37,7 @@
   "axis-tick-font-family": ["Default tick label font family for axes", "DejaVu Sans Mono"],
   "axis-tick-point-size": ["Default tick label font point size for axes", 8],
   "axis-label-font-family": ["Default axis label font family", "DejaVu Sans"],
-  "axis-label-point-size": ["Default axis label font point size", 12]
+  "axis-label-point-size": ["Default axis label font point size", 12],
+  "length_unit": ["Default length unit", "m"],
+  "angle_unit": ["Default angle unit", "deg"]
 }

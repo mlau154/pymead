@@ -1003,6 +1003,12 @@ class GeometryCollection(DualRep):
         for point in self.container()["points"].values():
             switch_unit_for_point(point)
 
+        if unit_type == "length" and self.canvas is not None:
+            x_data_range, y_data_range = self.canvas.getPointRange()
+            self.canvas.plot.getViewBox().setRange(xRange=x_data_range, yRange=y_data_range)
+            self.canvas.plot.setLabel(axis="bottom", text=f"x [{UNITS.current_length_unit()}]")
+            self.canvas.plot.setLabel(axis="left", text=f"y [{UNITS.current_length_unit()}]")
+
     def write_to_iges(self, base_dir: str, file_name: str, translation: typing.List[float] = None,
                       scaling: typing.List[float] = None, rotation: typing.List[float] = None,
                       transformation_order: str = None):
