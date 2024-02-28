@@ -269,8 +269,9 @@ class GUI(QMainWindow):
         if not using_latest_res:
             self.disp_message_box(f"A newer version of pymead ({latest_ver}) is available for download at "
                                   f"<a href='https://github.com/mlau154/pymead/releases' style='color:#45C5E6;'>"
-                                  f"https://github.com/mlau154/pymead/releases</a>", message_mode="info",
-                                  rich_text=True)
+                                  f"https://github.com/mlau154/pymead/releases</a>. If you are using pymead directly"
+                                  f" via Python, you can update with 'pip install pymead --upgrade' in the terminal.",
+                                  message_mode="info", rich_text=True)
 
     def add_new_tab_widget(self, widget, name):
         if not (name in self.dock_widget_names):
