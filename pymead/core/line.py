@@ -137,8 +137,8 @@ class PolyLine(ParametricCurve):
     def add_polyline_airfoil(self):
         le = self._add_le()
         te = self._add_te()
-        self._add_trailing_edge_lines(te)
-        self._add_airfoil(le, te)
+        blunt_trailing_edge = self._add_trailing_edge_lines(te)
+        self._add_airfoil(le, te, blunt_trailing_edge=blunt_trailing_edge)
 
     def _add_le(self):
         coords_dist_from_origin = np.hypot(self.coords[:, 0], self.coords[:, 1])
@@ -148,6 +148,8 @@ class PolyLine(ParametricCurve):
         return le
 
     def _add_te(self):
+        if len(self.point_sequence().points()) == 1:
+            return self.point_sequence().points()[0]
         if self.coords[0, 1] >= 0.0 >= self.coords[-1, 1]:
             te = self.geo_col.add_point(1.0, 0.0)
         else:
@@ -156,13 +158,19 @@ class PolyLine(ParametricCurve):
         return te
 
     def _add_trailing_edge_lines(self, te: Point):
+        if len(self.point_sequence().points()) == 1:
+            return False
         self.geo_col.add_line(PointSequence(points=[te, self.point_sequence().points()[0]]))
         self.geo_col.add_line(PointSequence(points=[te, self.point_sequence().points()[-1]]))
+        return True
 
-    def _add_airfoil(self, le: Point, te: Point):
-        self.geo_col.add_airfoil(le, te,
-                                 upper_surf_end=self.point_sequence().points()[0],
-                                 lower_surf_end=self.point_sequence().points()[-1])
+    def _add_airfoil(self, le: Point, te: Point, blunt_trailing_edge: bool):
+        if blunt_trailing_edge:
+            self.geo_col.add_airfoil(le, te,
+                                     upper_surf_end=self.point_sequence().points()[0],
+                                     lower_surf_end=self.point_sequence().points()[-1])
+        else:
+            self.geo_col.add_airfoil(le, te, upper_surf_end=te, lower_surf_end=te)
 
     def _get_default_name(self):
         if self.source_type == self.AirfoilTools:
@@ -194,11 +202,9 @@ class PolyLine(ParametricCurve):
         return extract_data_from_airfoiltools(self.source)
 
     def _extract_point_sequence_from_coords(self):
+        if Point(self.coords[0, 0], self.coords[0, 1]).is_coincident(Point(self.coords[-1, 0], self.coords[-1, 1])):
+            return PointSequence(points=[Point(self.coords[0, 0], self.coords[0, 1])])
         return PointSequence(points=[Point(self.coords[row, 0], self.coords[row, 1]) for row in [0, -1]])
-
-    def convert_airfoil_tools_airfoil_to_sequence_and_coords(self):
-        points = [Point(self.coords[row, 0], self.coords[row, 1]) for row in [0, 1, -2, -1]]
-        return PointSequence(points=points)
 
     def _add_references(self):
         for idx, point in enumerate(self.point_sequence().points()):
