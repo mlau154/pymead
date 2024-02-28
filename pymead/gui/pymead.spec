@@ -28,8 +28,16 @@ a = Analysis(
 )
 pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
 
+splash = Splash('../icons/pymead-splash.png',
+                binaries=a.binaries,
+                datas=a.datas,
+                text_pos=(40, 200),
+                text_size=14,
+                text_color='black')
+
 exe = EXE(
     pyz,
+    splash,
     a.scripts,
     [],
     exclude_binaries=True,
@@ -38,7 +46,8 @@ exe = EXE(
     bootloader_ignore_signals=False,
     strip=False,
     upx=True,
-    console=True,
+    console=False,
+    splash='../icons/pymead-logo.png',
     disable_windowed_traceback=False,
     argv_emulation=False,
     target_arch=None,
@@ -48,6 +57,7 @@ exe = EXE(
 )
 coll = COLLECT(
     exe,
+    splash.binaries,
     a.binaries,
     a.zipfiles,
     a.datas,
