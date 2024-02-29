@@ -906,7 +906,6 @@ class XTRSWidget(QTabWidget):
 
     def onMEAChanged(self, mea: MEA or None):
         # Updated the widget based on a new MEA
-        print(f"in XTRS, {mea = }")
         if mea:
             self.airfoil_names = [airfoil.name() for airfoil in mea.airfoils]
         else:
@@ -3232,6 +3231,8 @@ class GeneralSettingsDialogWidget(PymeadDialogWidget2):
     def onLengthUnitChanged(self, new_unit: str):
         self.geo_col.switch_units("length", old_unit=UNITS.current_length_unit(), new_unit=new_unit)
         q_settings.setValue("length_unit", new_unit)
+        if self.geo_col.gui_obj.field_plot_variable is not None:
+            self.geo_col.gui_obj.plot_field(show_dialog=False)
 
     def onAngleUnitChanged(self, new_unit: str):
         self.geo_col.switch_units("angle", old_unit=UNITS.current_angle_unit(), new_unit=new_unit)
