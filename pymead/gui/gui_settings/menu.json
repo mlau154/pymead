@@ -49,5 +49,8 @@
   },
   "Plot": {
     "Geometry From File": "plot_geometry"
+  },
+  "Dev": {
+    "Show Constraint Graph": "show_constraint_graph"
   }
 }

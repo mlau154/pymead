@@ -9,6 +9,7 @@ from functools import partial
 from threading import Thread
 from pathlib import PureWindowsPath
 
+import networkx
 import numpy as np
 import pyqtgraph as pg
 import requests
@@ -1000,6 +1001,12 @@ class GUI(QMainWindow):
         #                           new_unit=geo_col_dict["metadata"]["angle_unit"])
         # self.geo_col.switch_units("length", old_unit=UNITS.current_length_unit(),
         #                           new_unit=geo_col_dict["metadata"]["length_unit"])
+
+    def show_constraint_graph(self):
+
+        networkx.draw_circular(self.geo_col.gcs, labels={point: point.name() for point in self.geo_col.gcs.nodes})
+        from matplotlib import pyplot as plt
+        plt.show()
 
     def get_geo_col_state(self):
         return {k: v for k, v in self.geo_col.get_dict_rep().items() if k != "metadata"}
