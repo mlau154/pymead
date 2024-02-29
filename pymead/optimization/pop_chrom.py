@@ -108,9 +108,9 @@ class Chromosome:
 
     def get_coords(self):
         if self.airfoil is not None:
-            coords = self.airfoil.get_coords_selig_format()
+            coords = self.airfoil.get_scaled_coords()
         else:
-            coords = self.mea.get_coords_list(
+            coords = self.mea.get_coords_list_chord_relative(
                 max_airfoil_points=self.param_dict['mset_settings']["downsampling_max_pts"] if bool(
                     self.param_dict['mset_settings']["use_downsampling"]) else None,
                 curvature_exp=self.param_dict['mset_settings']["downsampling_curve_exp"]
@@ -321,17 +321,6 @@ class Population:
                                                        mses_settings=mses_settings,
                                                        mplot_settings=mplot_settings,
                                                        export_Cp=True)
-
-            # Here, we remove the data attribute from the chromosome, since "data" includes a non-serializable
-            # JIT-compiled equation set. Without these two lines, an error is raised when trying to send data across
-            # the pipe
-            # chromosome.geo_col = None
-            # if chromosome.mea is not None:
-            #     chromosome.mea.geo_col = None
-            #     for airfoil in chromosome.mea.airfoils:
-            #         airfoil.geo_col = None
-            for cnstr in chromosome.geo_col.container()["geocon"].values():
-                cnstr.data = None
 
             if (xfoil_settings is not None and xfoil_settings["multi_point_stencil"] is None) or (
                     mses_settings is not None and mses_settings['multi_point_stencil'] is None):

@@ -126,6 +126,7 @@ class GUI(QMainWindow):
         self.constraints = []
         self.airfoil_name_list = []
         self.last_analysis_dir = None
+        self.field_plot_variable = None
         self.analysis_graph = None
         self.opt_airfoil_graph = None
         self.parallel_coords_graph = None
@@ -833,19 +834,26 @@ class GUI(QMainWindow):
         if self.airfoil_canvas.color_bar_data is not None:
             self.airfoil_canvas.color_bar_data.clear()
 
-    def plot_field(self):
-        if self.last_analysis_dir is None and get_setting("plot-field-dir") != "":
-            default_field_dir = get_setting("plot-field-dir")
-        elif self.last_analysis_dir is not None:
-            default_field_dir = self.last_analysis_dir
+    def plot_field(self, **kwargs):
+        if ("show_dialog" in kwargs and kwargs["show_dialog"]) or "show_dialog" not in kwargs:
+            if self.last_analysis_dir is None and get_setting("plot-field-dir") != "":
+                default_field_dir = get_setting("plot-field-dir")
+            elif self.last_analysis_dir is not None:
+                default_field_dir = self.last_analysis_dir
+            else:
+                default_field_dir = ""
+            dlg = MSESFieldPlotDialog(parent=self, default_field_dir=default_field_dir,
+                                      theme=self.themes[self.current_theme])
+            if dlg.exec_():
+                inputs = dlg.value()
+                self.field_plot_variable = inputs["flow_variable"]
+            else:
+                return
         else:
-            default_field_dir = ""
-        dlg = MSESFieldPlotDialog(parent=self, default_field_dir=default_field_dir,
-                                  theme=self.themes[self.current_theme])
-        if dlg.exec_():
-            inputs = dlg.value()
-        else:
-            return
+            inputs = {
+                "analysis_dir": self.last_analysis_dir,
+                "flow_variable": self.field_plot_variable
+            }
 
         self.clear_field()
 
@@ -858,6 +866,7 @@ class GUI(QMainWindow):
         field_file = os.path.join(analysis_dir, f'field.{os.path.split(analysis_dir)[-1]}')
         grid_stats_file = os.path.join(analysis_dir, 'mplot_grid_stats.log')
         grid_file = os.path.join(analysis_dir, f'grid.{os.path.split(analysis_dir)[-1]}')
+        transformation_file = os.path.join(analysis_dir, "transformation.json")
         if not os.path.exists(field_file):
             self.disp_message_box(message=f"Field file {field_file} not found", message_mode='error')
             return
@@ -871,6 +880,16 @@ class GUI(QMainWindow):
         field = read_field_from_mses(field_file)
         grid_stats = read_grid_stats_from_mses(grid_stats_file)
         x_grid, y_grid = read_streamline_grid_from_mses(grid_file, grid_stats)
+        try:
+            transformation = load_data(transformation_file)
+            x_grid = [x_grid_section / transformation["sx"][0] /
+                      UNITS.convert_length_from_base(1, transformation["length_unit"]) *
+                      UNITS.convert_length_from_base(1, UNITS.current_length_unit()) for x_grid_section in x_grid]
+            y_grid = [y_grid_section / transformation["sy"][0] /
+                      UNITS.convert_length_from_base(1, transformation["length_unit"]) *
+                      UNITS.convert_length_from_base(1, UNITS.current_length_unit()) for y_grid_section in y_grid]
+        except OSError:
+            pass
         flow_var = field[flow_var_idx[inputs['flow_variable']]]
 
         edgecolors = None
@@ -1183,7 +1202,7 @@ class GUI(QMainWindow):
             if xfoil_settings["airfoil"] == "":
                 self.disp_message_box("An airfoil was not chosen for analysis")
                 return
-            coords = self.geo_col.container()["airfoils"][xfoil_settings["airfoil"]].get_coords_selig_format()
+            coords = self.geo_col.container()["airfoils"][xfoil_settings["airfoil"]].get_scaled_coords()
 
             aero_data, _ = calculate_aero_data(xfoil_settings['airfoil_analysis_dir'],
                                                xfoil_settings['airfoil_coord_file_name'],
