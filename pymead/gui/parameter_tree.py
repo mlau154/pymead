@@ -936,6 +936,7 @@ class ParameterTree(QTreeWidget):
             exposeAction = None
             coverAction = None
             addBezierPointAction = None
+            equateConstraintsAction = None
 
             pymead_obj_type = type(pymead_objs[0])
 
@@ -952,6 +953,8 @@ class ParameterTree(QTreeWidget):
                 exposeAction = menu.addAction("Expose x and y Parameters")
             elif pymead_obj_type is Bezier:
                 addBezierPointAction = menu.addAction("Insert Control Point")
+            elif pymead_obj_type in [DistanceConstraint, RelAngle3Constraint]:
+                equateConstraintsAction = menu.addAction("Equate Constraints")
             removeObjectAction = menu.addAction("Delete")
 
             res = menu.exec_(a0.globalPos())
@@ -980,5 +983,8 @@ class ParameterTree(QTreeWidget):
                     self.geo_col.cover_point_xy(point_to_cover)
             elif res is addBezierPointAction:
                 self.gui_obj.airfoil_canvas.addPointToCurve(pymead_objs[0].canvas_item)
+            elif res is equateConstraintsAction:
+                for pymead_obj in pymead_objs[1:]:
+                    self.geo_col.equate_constraints(pymead_objs[0], pymead_obj)
 
             self.geo_col.clear_selected_objects()

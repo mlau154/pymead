@@ -361,7 +361,7 @@ class GeometryCollection(DualRep):
         return pymead_obj
 
     def remove_pymead_obj(self, pymead_obj: PymeadObj, promotion_demotion: bool = False,
-                          constraint_removal: bool = False):
+                          constraint_removal: bool = False, equating_constraints: bool = False):
         """
         Removes a pymead object from the geometry collection.
 
@@ -377,6 +377,10 @@ class GeometryCollection(DualRep):
         constraint_removal: bool
             When this flag is set to ``True``, the ``ValueError`` normally raise when directly deleting a ``Param``
             associated with a constraint cluster rotation is ignored. Default: ``False``
+
+        equating_constraints: bool
+            When this flag is set to ``True`` and the ``pymead_obj`` is a ``Param``, the associated constraints are
+            not deleted
         """
         # Type-specific actions
         if isinstance(pymead_obj, Param):
@@ -388,7 +392,8 @@ class GeometryCollection(DualRep):
                     self.gui_obj.disp_message_box(error_message, message_mode="error")
                     return
 
-            if not promotion_demotion:  # Do not remove the constraints if this is a promotion/demotion action
+            if not promotion_demotion and not equating_constraints:  # Do not remove the constraints if this is a
+                # promotion/demotion action or an equating constraints action
                 for geo_con in pymead_obj.geo_cons:
                     self.remove_pymead_obj(geo_con)
 
@@ -859,6 +864,17 @@ class GeometryCollection(DualRep):
                 self.gui_obj.disp_message_box(str(e), message_mode="error")
             return
         return constraint
+
+    def equate_constraints(self, constraint1: GeoCon, constraint2: GeoCon):
+        if constraint1.__class__.__name__ != constraint2.__class__.__name__:
+            raise ValueError("Constraints must be of the same type to equate")
+
+        self.remove_pymead_obj(constraint2.param(), equating_constraints=True)
+        constraint2.set_param(constraint1.param())
+        constraint1.param().geo_cons.append(constraint2)
+
+        # Manually trigger an update by setting the value to the current value
+        constraint1.param().set_value(constraint1.param().value())
 
     def get_dict_rep(self):
         dict_rep = {k_outer: {k: v.get_dict_rep() for k, v in self.container()[k_outer].items()}
