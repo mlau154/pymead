@@ -3,10 +3,7 @@ import os
 import typing
 
 import numpy as np
-from pymead.utils.read_write_files import save_data
 
-from pymead.core import UNITS
-from pymead.core.transformation import Transformation2D
 from pymead.core.airfoil import Airfoil
 from pymead.core.pymead_obj import PymeadObj
 from pymead.plugins.IGES.curves import BezierIGES
@@ -17,7 +14,6 @@ class MEA(PymeadObj):
 
     def __init__(self, airfoils: typing.List[Airfoil], name: str or None = None):
         self.airfoils = airfoils
-        self.reference_airfoil = self.airfoils[0]
         super().__init__(sub_container="mea")
 
         # Name the MEA
@@ -38,21 +34,6 @@ class MEA(PymeadObj):
         airfoil_order = np.argsort(max_y)[::-1]
         return [mea_coords_list[a_idx] for a_idx in airfoil_order]
 
-    def get_coords_list_chord_relative(self, max_airfoil_points: int = None,
-                                       curvature_exp: float = 2.0):
-        coords_list = self.get_coords_list(max_airfoil_points=max_airfoil_points, curvature_exp=curvature_exp)
-
-        # Get the transformation object
-        chord_length = self.reference_airfoil.measure_chord()
-        transformation_kwargs = dict(
-            tx=[0.0], ty=[0.0], r=[0.0], sx=[1 / chord_length], sy=[1 / chord_length],
-            rotation_units="rad", order="t,s,r"
-        )
-        transformation = Transformation2D(**transformation_kwargs)
-        transformation_kwargs["length_unit"] = UNITS.current_length_unit()
-
-        return [transformation.transform(coords) for coords in coords_list], transformation_kwargs
-
     def write_mses_blade_file(self,
                               airfoil_sys_name: str,
                               blade_file_dir: str,
@@ -62,9 +43,7 @@ class MEA(PymeadObj):
 
         # Get the MEA coordinates list if not provided
         if mea_coords_list is None:
-            mea_coords_list, transformation_kwargs = self.get_coords_list_chord_relative(
-                max_airfoil_points=max_airfoil_points, curvature_exp=curvature_exp)
-            save_data(transformation_kwargs, os.path.join(blade_file_dir, "transformation.json"))
+            mea_coords_list = self.get_coords_list(max_airfoil_points=max_airfoil_points, curvature_exp=curvature_exp)
 
         # Set the default grid bounds value
         if grid_bounds is None:
@@ -115,9 +94,7 @@ class MEA(PymeadObj):
         iges_generator.generate(file_name)
 
     def get_max_x_extent(self):
-        coords_list, _ = self.get_coords_list_chord_relative()
-        max_x_list = [max(coords[:, 0]) for coords in coords_list]
-        return max(max_x_list)
+        return max([airfoil.get_coords_selig_format()[:, 0].max() for airfoil in self.airfoils])
 
     def get_dict_rep(self):
         return {"airfoils": [a.name() for a in self.airfoils]}

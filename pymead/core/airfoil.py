@@ -282,48 +282,6 @@ class Airfoil(PymeadObj):
         coords = self.get_coords_selig_format(max_airfoil_points, curvature_exp) if coords is None else coords
         return transformation.transform(coords)
 
-    def get_scaled_coords(self, coords: np.ndarray = None, max_airfoil_points: int = None,
-                                curvature_exp: float = 2.0) -> np.ndarray:
-        """
-        Gets the chord-relative values of the airfoil coordinates. The airfoil is transformed such that the leading
-        edge is at :math:`(0,0)` and the trailing edge is at :math:`(1,0)`.
-
-        Parameters
-        ----------
-        coords: np.ndarray or None
-            Optional Selig format airfoil coordinates (only specified if computational speed is important).
-            If the coordinates are not specified, they are calculated.
-
-        max_airfoil_points: int
-            Optional value specifying the maximum number of airfoil points. If this value is left as ``None``,
-            no downsampling will be performed. Default: ``None``
-
-        curvature_exp: float
-            Optional value specifying the curvature exponent used in the ``downsample`` method. If
-            ``max_airfoil_points`` is left as ``None``, this value will be ignored. Default: 2
-
-        Returns
-        -------
-        np.ndarray
-            An :math:`N \times 2` array of transformed airfoil coordinates
-        """
-        # Get the chord length and angle of attack
-        chord_length = self.measure_chord()
-
-        # Get the transformation object
-        transformation = Transformation2D(
-            tx=[0.0],
-            ty=[0.0],
-            r=[0.0],
-            sx=[1 / chord_length],
-            sy=[1 / chord_length],
-            rotation_units="rad",
-            order="t,s,r"
-        )
-
-        coords = self.get_coords_selig_format(max_airfoil_points, curvature_exp) if coords is None else coords
-        return transformation.transform(coords)
-
     @staticmethod
     def convert_coords_to_shapely_format(coords: np.ndarray) -> typing.List[tuple]:
         r"""
