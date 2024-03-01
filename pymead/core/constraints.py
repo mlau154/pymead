@@ -1,8 +1,8 @@
 import typing
 from dataclasses import dataclass
-from abc import ABC
 
 import numpy as np
+from pymead.core.bezier import Bezier
 
 from pymead.core.constraint_equations import measure_rel_angle3
 from pymead.core.line import PolyLine
@@ -11,7 +11,7 @@ from pymead.core.point import Point
 from pymead.core.pymead_obj import PymeadObj
 
 
-class GeoCon(ABC, PymeadObj):
+class GeoCon(PymeadObj):
 
     default_name: str = ""
 
@@ -250,10 +250,20 @@ class ROCurvatureConstraint(GeoCon):
                 R = data.R[-1]
             param = LengthParam(value=R, name="ROC-1", enabled=False) if not isinstance(value, Param) else value
         else:
+            enabled = True
             if value is None:
                 curvature_data = self.calculate_curvature_data(self.curve_joint)
-                value = 0.5 * (curvature_data.R1 + curvature_data.R2)
+
+                if not self.is_solving_allowed(self.g2_point_curve_1):
+                    value = curvature_data.R1
+                    enabled = False
+                elif not self.is_solving_allowed(self.g2_point_curve_2):
+                    value = curvature_data.R2
+                    enabled = False
+                else:
+                    value = 0.5 * (curvature_data.R1 + curvature_data.R2)
             param = value if isinstance(value, Param) else LengthParam(value=value, name="ROC-1")
+            param.set_enabled(enabled)
 
         super().__init__(param=param, child_nodes=points, kind="d", name=name,
                          secondary_params=secondary_params)
@@ -314,6 +324,15 @@ class ROCurvatureConstraint(GeoCon):
         data = CurvatureConstraintData(Lt1=Lt1, Lt2=Lt2, Lc1=Lc1, Lc2=Lc2, n1=n1, n2=n2, theta1=theta1, theta2=theta2,
                                        phi1=phi1, phi2=phi2, psi1=psi1, psi2=psi2, R1=R1, R2=R2)
         return data
+
+    @staticmethod
+    def is_solving_allowed(g2_point: Point):
+        symmetry_constraints = [geo_con for geo_con in g2_point.geo_cons if
+                                isinstance(geo_con, SymmetryConstraint)]
+        # Check if the point is the symmetry target point
+        if any([symmetry_constraint.child_nodes[-1] is g2_point for symmetry_constraint in symmetry_constraints]):
+            return False
+        return True
 
     def __repr__(self):
         return f"{self.__class__.__name__} {self.name()} <C1={self.curve_1.name()}, C2={self.curve_2.name()}>"

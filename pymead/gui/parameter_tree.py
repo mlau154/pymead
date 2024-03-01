@@ -69,6 +69,7 @@ class ValueSpin(QDoubleSpinBox):
             self.setMaximum(1.0e9)
         self.setValue(self.param.value())
         self.valueChanged.connect(self.onValueChanged)
+        self.setEnabled(self.param.enabled())
 
     # def setValue(self, val):
     #
@@ -853,8 +854,6 @@ class ParameterTree(QTreeWidget):
 
         if isinstance(pymead_obj, Param):
             right_column_widget = ValueSpin(self, pymead_obj)
-            if not pymead_obj.enabled:
-                right_column_widget.setEnabled(False)
             self.setItemWidget(child_item, 1, right_column_widget)
 
     def removePymeadTreeItem(self, pymead_obj: PymeadObj):

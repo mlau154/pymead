@@ -37,10 +37,11 @@ class Param(PymeadObj):
         self._value = None
         self._lower = None
         self._upper = None
+        self._enabled = None
         self.at_boundary = False
         self.point = point
         self.root = root
-        self.enabled = enabled
+        self.set_enabled(enabled)
         self.rotation_handle = rotation_handle
         if rotation_handle is not None:
             self.rotation_handle.rotation_param = self
@@ -239,6 +240,14 @@ class Param(PymeadObj):
 
         if self.tree_item is not None:
             self.tree_item.treeWidget().itemWidget(self.tree_item, 1).setMaximum(self.upper())
+
+    def enabled(self):
+        return self._enabled
+
+    def set_enabled(self, enabled: bool):
+        self._enabled = enabled
+        if self.tree_item is not None:
+            self.tree_item.treeWidget().itemWidget(self.tree_item, 1).setEnabled(enabled)
 
     def get_dict_rep(self):
         return {"value": float(self.value()) if self.dtype == "float" else int(self.value()),

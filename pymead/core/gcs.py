@@ -1,4 +1,5 @@
 import networkx
+from pymead.core.bezier import Bezier
 
 from pymead.core.constraints import *
 from pymead.core.constraint_equations import *
@@ -903,9 +904,11 @@ class GCS(networkx.DiGraph):
             return constraint.child_nodes
 
         if constraint.curve_type_1 == "Bezier":
-            solve_for_single_curve(constraint.g1_point_curve_1, constraint.g2_point_curve_1, constraint.curve_1.degree)
+            if constraint.is_solving_allowed(constraint.g2_point_curve_1):
+                solve_for_single_curve(constraint.g1_point_curve_1, constraint.g2_point_curve_1, constraint.curve_1.degree)
         if constraint.curve_type_2 == "Bezier":
-            solve_for_single_curve(constraint.g1_point_curve_2, constraint.g2_point_curve_2, constraint.curve_2.degree)
+            if constraint.is_solving_allowed(constraint.g2_point_curve_2):
+                solve_for_single_curve(constraint.g1_point_curve_2, constraint.g2_point_curve_2, constraint.curve_2.degree)
 
         return constraint.child_nodes
 

@@ -358,6 +358,9 @@ class GeometryCollection(DualRep):
         if isinstance(pymead_obj, Point):
             self.gcs.add_point(pymead_obj)
 
+        if isinstance(pymead_obj, Param):
+            pymead_obj.set_enabled(pymead_obj.enabled())
+
         return pymead_obj
 
     def remove_pymead_obj(self, pymead_obj: PymeadObj, promotion_demotion: bool = False,
