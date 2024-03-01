@@ -2,7 +2,6 @@ import typing
 from dataclasses import dataclass
 
 import numpy as np
-from pymead.core.bezier import Bezier
 
 from pymead.core.constraint_equations import measure_rel_angle3
 from pymead.core.line import PolyLine

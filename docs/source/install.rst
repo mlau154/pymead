@@ -120,11 +120,13 @@ Method 4: Local Install (DEV: GUI+API)
 -----------------------------------------
 This method is recommended for those wishing to contribute to pymead in any capacity.
 The pymead package can be installed in a local location using `Git <https://gitforwindows.org/>`_.
-To accomplish this, first clone the directory using
+To accomplish this, clone the repository, fetch all the branches, and checkout the ``dev`` branch:
 
 .. code-block::
 
   git clone https://github.com/mlau154/pymead.git
+  git fetch
+  git checkout dev
 
 To pull the latest changes from the repository at some point after installation, use
 
