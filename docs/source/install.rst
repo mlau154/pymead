@@ -7,8 +7,8 @@ Installation methods
 
 There are several easy ways to install pymead:
 
-Method 1: Windows/Linux/macOS Native Application (GUI Only)
------------------------------------------------------------
+Method 1: Windows/Linux Native Application (GUI Only)
+-----------------------------------------------------
 
 For users merely wishing to use pymead rather than develop pymead, this is the recommended install method.
 
@@ -60,13 +60,6 @@ Note that the directory used in the steps above should be the on containing both
 updates to pymead (you will be notified of these at application startup when they are available), you can
 simply replace the original extracted folder with the newly extracted folder. It is *very important* to not remove
 the pymead application from the folder that contains the ``_internals`` folder, since pymead needs these to run.
-
-**macOS**
-
-First download the ``-macOS.tar.gz`` file from the GitHub releases page.
-In macOS, extracting the tarball by double-clicking will automatically prompt the user to drag the extracted
-folder to a location (such as the desktop). `pymead` can then be run simply by double-clicking on the ``pymead``
-executable inside that folder.
 
 
 Method 2: ``pip`` (GUI + API)
