@@ -1,5 +1,6 @@
 import typing
 from dataclasses import dataclass
+from abc import ABC
 
 import numpy as np
 
@@ -10,7 +11,7 @@ from pymead.core.point import Point
 from pymead.core.pymead_obj import PymeadObj
 
 
-class GeoCon(PymeadObj):
+class GeoCon(ABC, PymeadObj):
 
     default_name: str = ""
 
