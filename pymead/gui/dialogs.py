@@ -2199,17 +2199,11 @@ class GeneticAlgorithmDialogWidget(PymeadDialogWidget):
         self.constraints_changed(self.widget_dict['G']['widget'], inputs['G'])
 
     def visualize_sampling(self, ws_widget, _):
-        general_settings = self.parent().findChild(GAGeneralSettingsDialogWidget).value()
         starting_value = ws_widget.value()
-        use_current_mea = bool(general_settings["use_current_mea"])
-        jmea_file = general_settings["mea_file"]
         gui_obj = get_parent(self, depth=4)
         background_color = gui_obj.themes[gui_obj.current_theme]["graph-background-color"]
         theme = gui_obj.themes[gui_obj.current_theme]
-        if use_current_mea or len(jmea_file) == 0 or not os.path.exists(jmea_file):
-            geo_col_dict = gui_obj.geo_col.get_dict_rep()
-        else:
-            geo_col_dict = load_data(jmea_file)
+        geo_col_dict = gui_obj.geo_col.get_dict_rep()
 
         dialog = SamplingVisualizationDialog(geo_col_dict=geo_col_dict, initial_sampling_width=starting_value,
                                              initial_n_samples=20, background_color=background_color, theme=theme,

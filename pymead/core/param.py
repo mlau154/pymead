@@ -99,7 +99,7 @@ class Param(PymeadObj):
         else:
             return self._value
 
-    def set_value(self, value: float or int, bounds_normalized: bool = False):
+    def set_value(self, value: float or int, bounds_normalized: bool = False, force: bool = False):
         """
         Sets the design variable value, adjusting the value to fit inside the bounds if necessary.
 
@@ -112,6 +112,10 @@ class Param(PymeadObj):
             Whether the specified value is normalized by the bounds (e.g., 0 if the value is equal to the lower bound,
             1 if the value is equal to the upper bound, or a float between 0.0 and 1.0 if the value is somewhere
             between the bounds). Default: ``False``
+
+        force: bool
+            Whether to force the change in value. This keyword argument should never be set to ``True`` when using
+            the API. Default: ``False``
         """
         def rotate_cluster(new_v):
             if self.gcs is None:
@@ -147,32 +151,39 @@ class Param(PymeadObj):
                 if airfoil.canvas_item is not None:
                     airfoil.canvas_item.generatePicture()
 
-        if bounds_normalized:
-            if self.lower() is None or self.upper() is None:
-                raise ValueError("Lower and upper bounds must be set to assign a bounds-normalized value.")
-            value = value * (self._upper - self._lower) + self._lower
+        if not force:
 
-        if self._lower is not None and value < self._lower:  # If below the lower bound,
-            # set the value equal to the lower bound
-            self._value = self._lower
-            self.at_boundary = True
-        elif self._upper is not None and value > self._upper:  # If above the upper bound,
-            # set the value equal to the upper bound
-            self._value = self._upper
-            self.at_boundary = True
-        else:  # Otherwise, use the default behavior for Param.
+            if bounds_normalized:
+                if self.lower() is None or self.upper() is None:
+                    raise ValueError("Lower and upper bounds must be set to assign a bounds-normalized value.")
+                value = value * (self._upper - self._lower) + self._lower
+
+            if self._lower is not None and value < self._lower:  # If below the lower bound,
+                # set the value equal to the lower bound
+                self._value = self._lower
+                self.at_boundary = True
+            elif self._upper is not None and value > self._upper:  # If above the upper bound,
+                # set the value equal to the upper bound
+                self._value = self._upper
+                self.at_boundary = True
+            else:  # Otherwise, use the default behavior for Param.
+                self._value = value
+                self.at_boundary = False
+
+            if self.rotation_handle is not None:
+                rotate_cluster(self._value)
+
+            if self.at_boundary:
+                return
+
+            if self.gcs is not None and self.geo_cons:
+                points_solved = []
+                for gc in self.geo_cons:
+                    points_solved.extend(self.gcs.solve(gc))
+                self.gcs.update_canvas_items(list(set(points_solved)))
+
+        else:
             self._value = value
-            self.at_boundary = False
-
-        if self.rotation_handle is not None:
-            rotate_cluster(self._value)
-
-        if self.at_boundary:
-            return
-
-        if self.gcs is not None and self.geo_cons:
-            points_solved = self.gcs.solve(self.geo_cons[0])
-            self.gcs.update_canvas_items(points_solved)
 
         if self.tree_item is not None:
             self.tree_item.treeWidget().itemWidget(self.tree_item, 1).setValue(self.value())
@@ -252,7 +263,7 @@ class Param(PymeadObj):
     def get_dict_rep(self):
         return {"value": float(self.value()) if self.dtype == "float" else int(self.value()),
                 "lower": self.lower(), "upper": self.upper(),
-                "unit_type": None, "enabled": self.enabled}
+                "unit_type": None, "enabled": self.enabled()}
 
     @classmethod
     def set_from_dict_rep(cls, d: dict):
@@ -345,17 +356,17 @@ class LengthParam(Param):
 
         return super().set_lower(lower, force=force)
 
-    def set_value(self, value: float, bounds_normalized: bool = False):
+    def set_value(self, value: float, bounds_normalized: bool = False, force: bool = False):
 
         # Negative lengths are prohibited unless this represents a point
         if self.point is None and value < 0.0:
             return
 
-        return super().set_value(value, bounds_normalized=bounds_normalized)
+        return super().set_value(value, bounds_normalized=bounds_normalized, force=force)
 
     def get_dict_rep(self):
         return {"value": float(self.value()), "lower": self.lower(), "upper": self.upper(),
-                "unit_type": "length", "enabled": self.enabled}
+                "unit_type": "length", "enabled": self.enabled()}
 
 
 class AngleParam(Param):
@@ -408,20 +419,20 @@ class AngleParam(Param):
         """
         return UNITS.convert_angle_to_base(self._value, self.unit())
 
-    def set_value(self, value: float, bounds_normalized: bool = False):
+    def set_value(self, value: float, bounds_normalized: bool = False, force: bool = False):
 
         new_value = UNITS.convert_angle_to_base(value, self.unit())
         zero_to_2pi_value = new_value % (2 * np.pi)
         new_value = UNITS.convert_angle_from_base(zero_to_2pi_value, self.unit())
 
-        return super().set_value(new_value, bounds_normalized=bounds_normalized)
+        return super().set_value(new_value, bounds_normalized=bounds_normalized, force=force)
 
     def get_dict_rep(self):
         return {"value": float(self.value()), "lower": self.lower(), "upper": self.upper(),
                 "unit_type": "angle",
                 "root": self.root.name() if self.root is not None else None,
                 "rotation_handle": self.rotation_handle.name() if self.rotation_handle is not None else None,
-                "enabled": self.enabled}
+                "enabled": self.enabled()}
 
 
 def default_lower(value: float):
@@ -524,7 +535,7 @@ class LengthDesVar(LengthParam):
 
     def get_dict_rep(self):
         return {"value": float(self.value()), "lower": self.lower(), "upper": self.upper(),
-                "unit_type": "length", "enabled": self.enabled}
+                "unit_type": "length", "enabled": self.enabled()}
 
 
 class AngleDesVar(AngleParam):
@@ -565,18 +576,18 @@ class AngleDesVar(AngleParam):
                          setting_from_geo_col=setting_from_geo_col, point=point, root=root,
                          rotation_handle=rotation_handle, enabled=enabled)
 
-    def set_value(self, value: float, bounds_normalized: bool = False):
+    def set_value(self, value: float, bounds_normalized: bool = False, force: bool = False):
         r"""
         In this special case of ``set_value`` for an ``AngleDesVar``, we skip over the call to the ``set_value``
         method in ``AngleParam`` and directly call the ``set_value`` method in ``Param`` (the grandparent class).
         The reason for this is that ``AngleParam`` always keeps the angle between 0 and :math:`2 \pi`, which is not
         logical behavior for a bounded variable. This method eliminates that restriction.
         """
-        return Param.set_value(self, value, bounds_normalized=bounds_normalized)
+        return Param.set_value(self, value, bounds_normalized=bounds_normalized, force=force)
 
     def get_dict_rep(self):
         return {"value": float(self.value()), "lower": self.lower(), "upper": self.upper(),
                 "unit_type": "angle",
                 "root": self.root.name() if self.root is not None else None,
                 "rotation_handle": self.rotation_handle.name() if self.rotation_handle is not None else None,
-                "enabled": self.enabled}
+                "enabled": self.enabled()}

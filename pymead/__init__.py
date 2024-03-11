@@ -76,16 +76,18 @@ import os
 
 from PyQt5.QtCore import QCoreApplication, QSettings
 
-DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")
-RESOURCE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "resources")
-ICON_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "icons")
-PLUGINS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "plugins")
-INCLUDE_FILES = [os.path.join(os.path.dirname(os.path.abspath(__file__)), "core", "symmetry.py")]
-GUI_DEFAULTS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "gui", "gui_settings", "defaults")
-GUI_SETTINGS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "gui", "gui_settings")
-GUI_THEMES_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "gui", "gui_settings", "themes")
-GUI_DEFAULT_AIRFOIL_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "gui", "default_airfoil")
-GUI_DIALOG_WIDGETS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "gui", "dialog_widgets")
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+DATA_DIR = os.path.join(BASE_DIR, "data")
+RESOURCE_DIR = os.path.join(BASE_DIR, "resources")
+ICON_DIR = os.path.join(BASE_DIR, "icons")
+PLUGINS_DIR = os.path.join(BASE_DIR, "plugins")
+INCLUDE_FILES = [os.path.join(BASE_DIR, "core", "symmetry.py")]
+GUI_DEFAULTS_DIR = os.path.join(BASE_DIR, "gui", "gui_settings", "defaults")
+GUI_SETTINGS_DIR = os.path.join(BASE_DIR, "gui", "gui_settings")
+GUI_THEMES_DIR = os.path.join(BASE_DIR, "gui", "gui_settings", "themes")
+GUI_DEFAULT_AIRFOIL_DIR = os.path.join(BASE_DIR, "gui", "default_airfoil")
+GUI_DIALOG_WIDGETS_DIR = os.path.join(BASE_DIR, "gui", "dialog_widgets")
+TEST_DIR = os.path.join(BASE_DIR, "tests")
 
 QCoreApplication.setOrganizationName("mlaero")
 QCoreApplication.setApplicationName("pymead")

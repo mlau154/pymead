@@ -1,0 +1,94 @@
+{
+    "desvar": {},
+    "params": {
+        "Length-1": {
+            "value": 0.5405169778175817,
+            "lower": null,
+            "upper": null,
+            "unit_type": "length",
+            "enabled": true
+        },
+        "ClusterAngle-1": {
+            "value": 0.199079,
+            "lower": null,
+            "upper": null,
+            "unit_type": "angle",
+            "root": "Point-1",
+            "rotation_handle": "Point-2",
+            "enabled": true
+        }
+    },
+    "points": {
+        "Point-1": {
+            "x": 0.10832228311943823,
+            "y": -0.036579935804046504
+        },
+        "Point-2": {
+            "x": 0.6381635839442349,
+            "y": 0.07031627203013774
+        },
+        "Point-3": {
+            "x": 0.2970591859381889,
+            "y": -0.12608403404799007
+        },
+        "Point-4": {
+            "x": 0.5461140680082927,
+            "y": -0.1377584816450262
+        },
+        "Point-5": {
+            "x": 0.24759294366952758,
+            "y": 0.11910013741670267
+        },
+        "Point-6": {
+            "x": 0.47263951132341275,
+            "y": 0.2264252015762666
+        },
+        "Point-7": {
+            "x": 0.142166861547427,
+            "y": 0.06882227205841905
+        }
+    },
+    "lines": {},
+    "polylines": {},
+    "bezier": {},
+    "airfoils": {},
+    "mea": {},
+    "geocon": {
+        "DistCon-1": {
+            "p1": "Point-1",
+            "p2": "Point-2",
+            "value": "Length-1",
+            "constraint_type": "DistanceConstraint"
+        },
+        "SymCon-1": {
+            "p1": "Point-1",
+            "p2": "Point-2",
+            "p3": "Point-3",
+            "p4": "Point-5",
+            "constraint_type": "SymmetryConstraint"
+        },
+        "SymCon-2": {
+            "p1": "Point-1",
+            "p2": "Point-2",
+            "p3": "Point-4",
+            "p4": "Point-6",
+            "constraint_type": "SymmetryConstraint"
+        },
+        "AntiPar3Con-1": {
+            "p1": "Point-6",
+            "p2": "Point-5",
+            "p3": "Point-7",
+            "constraint_type": "AntiParallel3Constraint",
+            "polyline": null,
+            "point_on_curve": null
+        }
+    },
+    "dims": {},
+    "metadata": {
+        "pymead_version": "2.0.0-beta.4",
+        "save_datetime": "2024-03-06 13:55:59.781799",
+        "length_unit": "m",
+        "angle_unit": "rad",
+        "area_unit": "m2"
+    }
+}

@@ -60,12 +60,15 @@ def measure_radius_of_curvature_bezier(Lt: float, Lc: float, n: int, psi: float)
 def measure_curvature_length_bezier(x1: float, y1: float, x2: float, y2: float, x3: float, y3: float, R: float, n: int):
     Lt = measure_distance(x1, y1, x2, y2)
     psi = measure_rel_angle3(x1, y1, x2, y2, x3, y3)
-    Lc = np.abs(np.true_divide(Lt ** 2, R * (1 - 1 / n) * np.sin(psi)))
+    with np.errstate(divide="ignore"):
+        Lc = np.abs(np.true_divide(Lt ** 2, R * (1 - 1 / n) * np.sin(psi)))
     return Lc
 
 
 def measure_curvature_bezier(Lt: float, Lc: float, n: int, psi: float):
-    return np.abs(np.true_divide(Lc * (1 - 1 / n) * np.sin(psi), Lt ** 2))
+    with np.errstate(divide="ignore"):
+        kappa = np.abs(np.true_divide(Lc * (1 - 1 / n) * np.sin(psi), Lt ** 2))
+    return kappa
 
 
 def measure_data_bezier_curve_joint(xy: np.ndarray, n: np.ndarray):
@@ -82,8 +85,9 @@ def measure_data_bezier_curve_joint(xy: np.ndarray, n: np.ndarray):
     Lc2 = measure_distance(xy[3, 0], xy[3, 1], xy[4, 0], xy[4, 1])
     kappa1 = measure_curvature_bezier(Lt1, Lc1, n[0], psi1)
     kappa2 = measure_curvature_bezier(Lt2, Lc2, n[1], psi2)
-    R1 = np.true_divide(1, kappa1)
-    R2 = np.true_divide(1, kappa2)
+    with np.errstate(divide="ignore"):
+        R1 = np.true_divide(1, kappa1)
+        R2 = np.true_divide(1, kappa2)
     n1 = n[0]
     n2 = n[1]
     field_names = ["phi1", "phi2", "theta1", "theta2", "psi1", "psi2", "phi_rel", "Lt1", "Lt2", "Lc1", "Lc2",

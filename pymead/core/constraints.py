@@ -1,9 +1,10 @@
 import typing
 from dataclasses import dataclass
+from abc import abstractmethod
 
 import numpy as np
 
-from pymead.core.constraint_equations import measure_rel_angle3
+from pymead.core.constraint_equations import measure_rel_angle3, measure_point_line_distance_unsigned
 from pymead.core.line import PolyLine
 from pymead.core.param import Param, AngleParam, LengthParam
 from pymead.core.point import Point
@@ -52,6 +53,10 @@ class GeoCon(PymeadObj):
 
             child_node.geo_cons.remove(self)
 
+    @abstractmethod
+    def verify(self) -> bool:
+        pass
+
 
 class DistanceConstraint(GeoCon):
 
@@ -70,6 +75,10 @@ class DistanceConstraint(GeoCon):
     def get_dict_rep(self) -> dict:
         return {"p1": self.p1.name(), "p2": self.p2.name(), "value": self.param().name(),
                 "constraint_type": self.__class__.__name__}
+
+    def verify(self) -> bool:
+        measured_distance = self.p1.measure_distance(self.p2)
+        return np.isclose(measured_distance, self.param().value(), rtol=1e-14)
 
 
 class AntiParallel3Constraint(GeoCon):
@@ -98,17 +107,30 @@ class AntiParallel3Constraint(GeoCon):
                 "polyline": self.polyline.name() if self.polyline is not None else None,
                 "point_on_curve": self.point_on_curve.name() if self.point_on_curve is not None else None}
 
+    def verify(self) -> bool:
+        a1 = self.p2.measure_angle(self.p1)
+        a2 = self.p2.measure_angle(self.p3)
+        measured_angle = (a1 - a2) % (2 * np.pi)
+        return np.isclose(measured_angle, np.pi, rtol=1e-14)
+
 
 class SymmetryConstraint(GeoCon):
 
     default_name = "SymCon-1"
 
     def __init__(self, p1: Point, p2: Point, p3: Point, p4: Point, name: str = None):
-        self.p1 = p1
-        self.p2 = p2
-        self.p3 = p3
-        self.p4 = p4
+        self.p1 = p1  # Line start point
+        self.p2 = p2  # Line end point
+        self.p3 = p3  # Tool point
+        self.p4 = p4  # Target point
         super().__init__(param=None, name=name, child_nodes=[self.p1, self.p2, self.p3, self.p4], kind="a4|d")
+
+    @staticmethod
+    def check_if_point_is_symmetric_target(p: Point):
+        for geo_con in p.geo_cons:
+            if isinstance(geo_con, SymmetryConstraint) and geo_con.child_nodes[-1] is p:
+                return True
+        return False
 
     def __repr__(self):
         return f"{self.__class__.__name__} {self.name()}"
@@ -116,6 +138,29 @@ class SymmetryConstraint(GeoCon):
     def get_dict_rep(self) -> dict:
         return {"p1": self.p1.name(), "p2": self.p2.name(), "p3": self.p3.name(), "p4": self.p4.name(),
                 "constraint_type": self.__class__.__name__}
+
+    def verify(self) -> bool:
+        tool_angle = measure_rel_angle3(self.p3.x().value(), self.p3.y().value(),
+                                        self.p2.x().value(), self.p2.y().value(),
+                                        self.p1.x().value(), self.p1.y().value())
+        target_angle = measure_rel_angle3(self.p1.x().value(), self.p1.y().value(),
+                                          self.p2.x().value(), self.p2.y().value(),
+                                          self.p4.x().value(), self.p4.y().value())
+        if not np.isclose(tool_angle, target_angle, rtol=1e-14):
+            return False
+
+        tool_distance_to_line = measure_point_line_distance_unsigned(
+            self.p1.x().value(), self.p1.y().value(),
+            self.p2.x().value(), self.p2.y().value(),
+            self.p3.x().value(), self.p3.y().value()
+        )
+        target_distance_to_line = measure_point_line_distance_unsigned(
+            self.p1.x().value(), self.p1.y().value(),
+            self.p2.x().value(), self.p2.y().value(),
+            self.p4.x().value(), self.p4.y().value()
+        )
+
+        return np.isclose(tool_distance_to_line, target_distance_to_line, rtol=1e-14)
 
 
 class Perp3Constraint(GeoCon):
@@ -134,6 +179,12 @@ class Perp3Constraint(GeoCon):
     def get_dict_rep(self) -> dict:
         return {"p1": self.p1.name(), "p2": self.p2.name(), "p3": self.p3.name(),
                 "constraint_type": self.__class__.__name__}
+
+    def verify(self) -> bool:
+        a1 = self.p2.measure_angle(self.p1)
+        a2 = self.p2.measure_angle(self.p3)
+        measured_angle = (a1 - a2) % (2 * np.pi)
+        return np.isclose(measured_angle, 0.5 * np.pi, rtol=1e-14)
 
 
 class RelAngle3Constraint(GeoCon):
@@ -159,6 +210,12 @@ class RelAngle3Constraint(GeoCon):
         return {"p1": self.p1.name(), "p2": self.p2.name(),
                 "p3": self.p3.name(), "value": self.param().name(),
                 "constraint_type": self.__class__.__name__}
+
+    def verify(self) -> bool:
+        a1 = self.p2.measure_angle(self.p1)
+        a2 = self.p2.measure_angle(self.p3)
+        measured_angle = (a1 - a2) % (2 * np.pi)
+        return np.isclose(measured_angle, self.param().rad(), rtol=1e-14)
 
 
 @dataclass
@@ -340,6 +397,10 @@ class ROCurvatureConstraint(GeoCon):
         value = self.param().name() if self.param() is not None else None
         return {"curve_joint": self.curve_joint.name(), "value": value,
                 "constraint_type": self.__class__.__name__}
+
+    def verify(self) -> bool:
+        data = self.calculate_curvature_data(self.curve_joint)
+        return np.isclose(data.R1, data.R2, rtol=1e-14)
 
 
 class ConstraintValidationError(Exception):

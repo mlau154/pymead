@@ -184,6 +184,22 @@ class Point(PymeadObj):
                 return False
         return symmetry_constraints
 
+    def _is_symmetry_target_and_has_edges(self) -> bool:
+        if self.gcs is None:
+            return False
+        if (not [edge for edge in self.gcs.in_edges(nbunch=self)] and
+            not [edge for edge in self.gcs.out_edges(nbunch=self)]):
+            return False
+        symmetry_constraints = []
+        for geo_con in self.geo_cons:
+            if geo_con.__class__.__name__ == "SymmetryConstraint":
+                symmetry_constraints.append(geo_con)
+        if not symmetry_constraints:
+            return False
+        if not any([self is symmetry_constraint.p4 for symmetry_constraint in symmetry_constraints]):
+            return False
+        return True
+
     def is_movement_allowed(self) -> bool:
         """
         This method determines if movement is allowed for the point. Movement is allowed in these cases:
@@ -270,6 +286,12 @@ class Point(PymeadObj):
                 for symmetry_constraint in symmetry_constraints:
                     if symmetry_constraint.canvas_item is not None:
                         symmetry_constraint.canvas_item.update()
+
+        if self._is_symmetry_target_and_has_edges():
+            points_solved = []
+            for gc in self.geo_cons:
+                points_solved.extend(self.gcs.solve(gc))
+            self.gcs.update_canvas_items(list(set(points_solved)))
 
         # Update the GUI object, if there is one
         if self.canvas_item is not None:

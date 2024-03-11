@@ -684,6 +684,7 @@ class GUI(QMainWindow):
         if file_name:
             self.load_geo_col_no_dialog(file_name)
             self.setWindowTitle(f"pymead - {os.path.split(file_name)[-1]}")
+            self.current_save_name = file_name
 
     def new_geo_col(self):
 
