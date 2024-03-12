@@ -57,35 +57,7 @@ class GCSTests(TestCase):
                 os.path.join(TEST_DIR, "core_tests", "baseline_joa_complete.jmea")
             )
         )
-        print(f"Verifying initial constraint validity of the aeropropulsive airfoil system...")
-        for geo_con in geo_col.container()["geocon"].values():
-            self.assertTrue(geo_con.verify())
-
-        print(f"Perturbing design variable values and verifying that validity is maintained...")
-        for desvar in geo_col.container()["desvar"].values():
-            print(f"{desvar = }")
-            if isinstance(desvar, LengthParam) and np.isclose(desvar.lower(), 0.0):
-                desvar.set_lower(0.0001)
-            desvar.set_value(desvar.lower())
-            for geo_con in geo_col.container()["geocon"].values():
-                # print(f"{desvar = }, {geo_con = }")
-                self.assertTrue(geo_con.verify())
-
-            desvar.set_value(desvar.upper())
-            for geo_con in geo_col.container()["geocon"].values():
-                self.assertTrue(geo_con.verify())
-
-        print(f"Perturbing points and verifying that validity is maintained...")
-        random.seed(1)
-        for point in geo_col.container()["points"].values():
-            old_xy = [point.x().value(), point.y().value()]
-            random_xy = [random.uniform(-5.0, 5.0), random.uniform(-5.0, 5.0)]
-            point.request_move(random_xy[0], random_xy[1])
-
-            for geo_con in geo_col.container()["geocon"].values():
-                self.assertTrue(geo_con.verify())
-
-            point.request_move(old_xy[0], old_xy[1])
+        self.assertTrue(geo_col.verify_all())
 
     def test_mirror_ap3_constraint(self):
         geo_col = GeometryCollection.set_from_dict_rep(
@@ -93,18 +65,4 @@ class GCSTests(TestCase):
                 os.path.join(TEST_DIR, "core_tests", "mirror_ap3_constraint.jmea")
             )
         )
-        print(f"Verifying initial constraint validity of the system...")
-        for geo_con in geo_col.container()["geocon"].values():
-            self.assertTrue(geo_con.verify())
-
-        print(f"Perturbing points and verifying that validity is maintained...")
-        random.seed(1)
-        for point in geo_col.container()["points"].values():
-            old_xy = [point.x().value(), point.y().value()]
-            random_xy = [random.uniform(-5.0, 5.0), random.uniform(-5.0, 5.0)]
-            point.request_move(random_xy[0], random_xy[1])
-
-            for geo_con in geo_col.container()["geocon"].values():
-                self.assertTrue(geo_con.verify())
-
-            point.request_move(old_xy[0], old_xy[1])
+        self.assertTrue(geo_col.verify_all())

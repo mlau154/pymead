@@ -1,5 +1,6 @@
 import datetime
 import os
+import random
 import re
 import sys
 import typing
@@ -1094,3 +1095,74 @@ class GeometryCollection(DualRep):
         iges_generator.generate(full_file)
 
         return full_file
+
+    def verify_constraints(self):
+        for geo_con in self.container()["geocon"].values():
+            assert geo_con.verify()
+
+        return True
+
+    def verify_point_movement(self):
+        random.seed(1)
+        for point in self.container()["points"].values():
+            # Record the starting xy position of the point
+            old_xy = [point.x().value(), point.y().value()]
+            random_xy = [random.uniform(-5.0, 5.0), random.uniform(-5.0, 5.0)]
+            point.request_move(random_xy[0], random_xy[1])
+
+            self.verify_constraints()
+
+            # Return the point to its original position
+            point.request_move(old_xy[0], old_xy[1])
+
+        return True
+
+    def verify_desvar(self):
+        for desvar in self.container()["desvar"].values():
+
+            # Record the starting value of the design variable
+            old_value = desvar.value()
+
+            # To avoid issues with setting a length of 0, set the value close to 0 if the lower bound is 0
+            if isinstance(desvar, LengthParam) and np.isclose(desvar.lower(), 0.0):
+                desvar.set_value(0.0001)
+            else:
+                desvar.set_value(desvar.lower())
+
+            self.verify_constraints()
+
+            desvar.set_value(desvar.upper())
+
+            self.verify_constraints()
+
+            # Set the design variable to its original value
+            desvar.set_value(old_value)
+
+        return True
+
+    def verify_params(self):
+        random.seed(1)
+        for param in self.container()["params"].values():
+            # Record the starting value of the param
+            old_value = param.value()
+
+            if isinstance(param, LengthParam):
+                param.set_value(random.uniform(0.0001, 10.0))
+            elif isinstance(param, AngleParam):
+                param.set_value(random.uniform(0.0, 2 * np.pi))
+            else:
+                param.set_value(random.uniform(-10.0, 10.0))
+
+            self.verify_constraints()
+
+            param.set_value(old_value)
+
+        return True
+
+    def verify_all(self):
+        self.verify_constraints()
+        self.verify_point_movement()
+        self.verify_desvar()
+        self.verify_params()
+
+        return True
