@@ -674,23 +674,34 @@ def run_mplot(name: str, base_dir: str, mplot_settings: dict, mode: str = "force
         raise Exception("Invalid MPLOT mode!")
     mplot_input_file = os.path.join(base_dir, name, mplot_input_name)
     write_input_file(mplot_input_file, mplot_input_list)
-    with open(mplot_log, 'wb') as f:
-        with open(mplot_input_file, 'r') as g:
-            process = subprocess.Popen(['mplot', name], stdin=g, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                                       cwd=os.path.join(base_dir, name))
+
+    mplot_attempts = 0
+    mplot_max_attempts = 100
+    while mplot_attempts < mplot_max_attempts:
         try:
-            outs, errs = process.communicate(timeout=mplot_settings['timeout'])
-            f.write('Output:\n'.encode('utf-8'))
-            f.write(outs)
-            f.write('\nErrors:\n'.encode('utf-8'))
-            f.write(errs)
-        except subprocess.TimeoutExpired:
-            process.kill()
-            outs, errs = process.communicate()
-            f.write('After timeout, \nOutput: \n'.encode('utf-8'))
-            f.write(outs)
-            f.write('\nErrors:\n'.encode('utf-8'))
-            f.write(errs)
+            with open(mplot_log, 'wb') as f:
+                with open(mplot_input_file, 'r') as g:
+                    process = subprocess.Popen(['mplot', name], stdin=g, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                               cwd=os.path.join(base_dir, name))
+                try:
+                    outs, errs = process.communicate(timeout=mplot_settings['timeout'])
+                    f.write('Output:\n'.encode('utf-8'))
+                    f.write(outs)
+                    f.write('\nErrors:\n'.encode('utf-8'))
+                    f.write(errs)
+                except subprocess.TimeoutExpired:
+                    process.kill()
+                    outs, errs = process.communicate()
+                    f.write('After timeout, \nOutput: \n'.encode('utf-8'))
+                    f.write(outs)
+                    f.write('\nErrors:\n'.encode('utf-8'))
+                    f.write(errs)
+            break
+        except OSError:
+            # In case any of the log files cannot be created/read temporarily, wait a short period of time and try again
+            time.sleep(0.01)
+            mplot_attempts += 1
+
     if mode in ["Mach", "mach", "M", "m", "Mach contours", "Mach Contours", "mach contours"]:
         convert_ps_to_svg(os.path.join(base_dir, name),
                           'plot.ps',

@@ -110,7 +110,7 @@ class Chromosome:
         if self.airfoil is not None:
             coords = self.airfoil.get_scaled_coords()
         else:
-            coords = self.mea.get_coords_list_chord_relative(
+            coords, transformation_kwargs = self.mea.get_coords_list_chord_relative(
                 max_airfoil_points=self.param_dict['mset_settings']["downsampling_max_pts"] if bool(
                     self.param_dict['mset_settings']["use_downsampling"]) else None,
                 curvature_exp=self.param_dict['mset_settings']["downsampling_curve_exp"]

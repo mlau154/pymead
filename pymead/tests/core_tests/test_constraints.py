@@ -1,6 +1,5 @@
 import os
 from unittest import TestCase
-import random
 
 from pymead import TEST_DIR
 from pymead.utils.read_write_files import load_data
@@ -52,17 +51,11 @@ class GCSTests(TestCase):
         self.assertAlmostEqual(p4.y().value(), -0.28)
 
     def test_tpai_system(self):
-        geo_col = GeometryCollection.set_from_dict_rep(
-            load_data(
-                os.path.join(TEST_DIR, "core_tests", "baseline_joa_complete.jmea")
-            )
-        )
+        geo_col_file = os.path.join(TEST_DIR, "core_tests", "baseline_joa_complete.jmea")
+        geo_col = GeometryCollection.set_from_dict_rep(load_data(geo_col_file))
         self.assertTrue(geo_col.verify_all())
 
     def test_mirror_ap3_constraint(self):
-        geo_col = GeometryCollection.set_from_dict_rep(
-            load_data(
-                os.path.join(TEST_DIR, "core_tests", "mirror_ap3_constraint.jmea")
-            )
-        )
+        geo_col_file = os.path.join(TEST_DIR, "core_tests", "mirror_ap3_constraint.jmea")
+        geo_col = GeometryCollection.set_from_dict_rep(load_data(geo_col_file))
         self.assertTrue(geo_col.verify_all())

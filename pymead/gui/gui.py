@@ -1539,19 +1539,20 @@ class GUI(QMainWindow):
                     return
 
                 # print(f"{opt_settings['General Settings']['use_current_mea'] = }")
-                if opt_settings['General Settings']['use_current_mea']:
-                    # mea_dict = self.mea.copy_as_param_dict(deactivate_airfoil_graphs=True)
-                    geo_col = self.geo_col.get_dict_rep()
-                else:
-                    mea_file = opt_settings['General Settings']['mea_file']
-                    if not os.path.exists(mea_file):
-                        self.disp_message_box('JMEA parametrization file not found', message_mode='error')
-                        exit_the_dialog = True
-                        early_return = True
-                        continue
-                    else:
-                        # mea_dict = load_data(mea_file)
-                        geo_col = load_data(mea_file)
+                # if opt_settings['General Settings']['use_current_mea']:
+                #     # mea_dict = self.mea.copy_as_param_dict(deactivate_airfoil_graphs=True)
+                #     geo_col = self.geo_col.get_dict_rep()
+                # else:
+                #     mea_file = opt_settings['General Settings']['mea_file']
+                #     if not os.path.exists(mea_file):
+                #         self.disp_message_box('JMEA parametrization file not found', message_mode='error')
+                #         exit_the_dialog = True
+                #         early_return = True
+                #         continue
+                #     else:
+                #         # mea_dict = load_data(mea_file)
+                #         geo_col = load_data(mea_file)
+                geo_col = self.geo_col.get_dict_rep()
 
                 # # Generate the multi-element airfoil from the dictionary
                 # mea = MEA.generate_from_param_dict(mea_dict)
