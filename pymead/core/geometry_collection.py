@@ -6,6 +6,7 @@ import sys
 import typing
 from copy import copy
 
+from pymead.core.param_graph import ParamGraph
 from pymead.core import UNITS
 from pymead.core.airfoil import Airfoil
 from pymead.core.bezier import Bezier
@@ -42,6 +43,7 @@ class GeometryCollection(DualRep):
             "dims": {},
         }
         self.gcs = GCS()
+        self.param_graph = ParamGraph()
         self.gcs.geo_col = self
         self.gui_obj = gui_obj
         self.canvas = None
@@ -179,7 +181,8 @@ class GeometryCollection(DualRep):
 
     def add_param(self, value: float, name: str or None = None, lower: float or None = None,
                   upper: float or None = None, unit_type: str or None = None, assign_unique_name: bool = True,
-                  point: Point = None, root: Point = None, rotation_handle: Point = None, enabled: bool = True):
+                  point: Point = None, root: Point = None, rotation_handle: Point = None, enabled: bool = True,
+                  equation_str: str = None):
         """
         Adds a parameter to the geometry collection sub-container ``"params"``, and modifies the name to make it
         unique if necessary.
@@ -207,7 +210,7 @@ class GeometryCollection(DualRep):
             The generated parameter
         """
         kwargs = dict(value=value, name=name, lower=lower, upper=upper, setting_from_geo_col=True, point=point,
-                      root=root, rotation_handle=rotation_handle, enabled=enabled)
+                      root=root, rotation_handle=rotation_handle, enabled=enabled, equation_str=equation_str)
         if unit_type is None:
             param = Param(**kwargs)
         elif unit_type == "length":
@@ -358,8 +361,17 @@ class GeometryCollection(DualRep):
 
         if isinstance(pymead_obj, Point):
             self.gcs.add_point(pymead_obj)
+            for param in [pymead_obj.x(), pymead_obj.y()]:
+                param.param_graph = self.param_graph
+                if param not in param.param_graph.param_list:
+                    param.param_graph.param_list.append(param)
+                param.update_equation(param.equation_str)
 
         if isinstance(pymead_obj, Param):
+            pymead_obj.param_graph = self.param_graph
+            if pymead_obj not in pymead_obj.param_graph.param_list:
+                pymead_obj.param_graph.param_list.append(pymead_obj)
+            pymead_obj.update_equation(pymead_obj.equation_str)
             pymead_obj.set_enabled(pymead_obj.enabled())
 
         return pymead_obj
@@ -388,6 +400,7 @@ class GeometryCollection(DualRep):
         """
         # Type-specific actions
         if isinstance(pymead_obj, Param):
+
             if pymead_obj.rotation_handle and not constraint_removal and not promotion_demotion:
                 error_message = f"This parameter can only be removed by deleting its associated constraint cluster"
                 if self.gui_obj is None:
@@ -400,6 +413,10 @@ class GeometryCollection(DualRep):
                 # promotion/demotion action or an equating constraints action
                 for geo_con in pymead_obj.geo_cons:
                     self.remove_pymead_obj(geo_con)
+
+            self.param_graph.param_list.remove(pymead_obj)
+            if pymead_obj in self.param_graph.nodes:
+                self.param_graph.remove_node(pymead_obj)
 
         elif isinstance(pymead_obj, Bezier) or isinstance(pymead_obj, LineSegment) or isinstance(pymead_obj, PolyLine):
             # Remove all the references to this curve in each of the curve's points
@@ -414,6 +431,11 @@ class GeometryCollection(DualRep):
                 self.remove_pymead_obj(pymead_obj.airfoil)
 
         elif isinstance(pymead_obj, Point):
+
+            for param in [pymead_obj.x(), pymead_obj.y()]:
+                param.param_graph.param_list.remove(param)
+                if param in param.param_graph.nodes:
+                    param.param_graph.remove_node(param)
 
             for geo_con in pymead_obj.geo_cons:
                 self.remove_pymead_obj(geo_con)
@@ -437,9 +459,6 @@ class GeometryCollection(DualRep):
                 if pymead_obj in curve.point_sequence().points():
                     curve.remove_point(point=pymead_obj)
                     curve.update()
-
-            for dim in pymead_obj.dims:
-                self.remove_pymead_obj(dim)
 
             for geo_con in pymead_obj.geo_cons[::-1]:
                 self.remove_pymead_obj(geo_con)
@@ -558,7 +577,7 @@ class GeometryCollection(DualRep):
 
     def add_desvar(self, value: float, name: str, lower: float or None = None, upper: float or None = None,
                    unit_type: str or None = None, assign_unique_name: bool = True, point: Point = None,
-                   root: Point = None, rotation_handle: Point = None, enabled: bool = True):
+                   root: Point = None, rotation_handle: Point = None, enabled: bool = True, equation_str: str = None):
         """
         Directly adds a design variable value to the geometry collection.
 
@@ -587,7 +606,7 @@ class GeometryCollection(DualRep):
             The generated design variable
         """
         kwargs = dict(value=value, name=name, lower=lower, upper=upper, setting_from_geo_col=True, point=point,
-                      root=root, rotation_handle=rotation_handle, enabled=enabled)
+                      root=root, rotation_handle=rotation_handle, enabled=enabled, equation_str=equation_str)
         if unit_type is None:
             desvar = DesVar(**kwargs)
         elif unit_type == "length":

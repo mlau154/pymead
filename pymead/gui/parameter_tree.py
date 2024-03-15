@@ -1,10 +1,10 @@
 import sys
 from abc import abstractmethod
 
-from PyQt5.QtCore import Qt, pyqtSignal, pyqtSlot, QRegularExpression
+from PyQt5.QtCore import Qt, pyqtSignal, pyqtSlot, QRegularExpression, QStringListModel
 from PyQt5.QtGui import QValidator, QBrush, QColor
 from PyQt5.QtWidgets import QTreeWidget, QTreeWidgetItem, QPushButton, QHBoxLayout, QHeaderView, QDialog, QGridLayout, \
-    QDoubleSpinBox, QLineEdit, QLabel, QMenu, QAbstractItemView, QTreeWidgetItemIterator, QWidget
+    QDoubleSpinBox, QLineEdit, QLabel, QMenu, QAbstractItemView, QTreeWidgetItemIterator, QWidget, QCompleter
 
 from pymead.core.airfoil import Airfoil
 from pymead.core.bezier import Bezier
@@ -12,7 +12,7 @@ from pymead.core.constraints import *
 from pymead.core.geometry_collection import GeometryCollection
 from pymead.core.line import LineSegment, PolyLine
 from pymead.core.mea import MEA
-from pymead.core.param import Param, DesVar, LengthParam, AngleParam, LengthDesVar, AngleDesVar
+from pymead.core.param import Param, DesVar, LengthParam, AngleParam, LengthDesVar, AngleDesVar, EquationCompileError
 from pymead.core.point import Point
 from pymead.core.pymead_obj import PymeadObj
 from pymead.gui.dialogs import PymeadDialog
@@ -237,6 +237,67 @@ class TreeButton(QPushButton):
         pass
 
 
+class Completer(QCompleter):
+    """
+    From https://gitter.im/baudren/NoteOrganiser?at=55afbefdcce129d570a3c188
+    """
+
+    def __init__(self, model=None, parent=None):
+        if model is None:
+            super().__init__(parent)
+        else:
+            super().__init__(model, parent)
+
+        self.setCaseSensitivity(Qt.CaseInsensitive)
+        self.setCompletionMode(QCompleter.PopupCompletion)
+        self.setWrapAround(False)
+
+    # Add texts instead of replace
+    def pathFromIndex(self, index):
+        path = QCompleter.pathFromIndex(self, index)
+
+        print(f"At the start, {path = }")
+
+        lst = str(self.widget().text()).split('$')
+
+        if len(lst) > 1:
+            # path = "$".join(lst[:-1]) + path
+            path = "$" + path
+
+        print(f"{lst = }, {path = }, {self.widget().text() = }")
+
+        return path
+
+    # Add operator to separate between texts
+    def splitPath(self, path):
+        for ch in [" ", "+", " - ", "*", "/", "(", "$"]:
+            path = str(path.split(ch)[-1])
+            print(f"{path = }")
+        return [path]
+
+
+class ParamEquationEdit(QLineEdit):
+    def __init__(self, param: Param, parent=None):
+        super().__init__(parent=parent)
+        self.param = param
+        completer = Completer([p.name() for p in self.param.param_graph.param_list], self)
+        # self.setCompleter(completer)  # TODO: fix autocomplete (removed for now)
+        self.editingFinished.connect(self.updateEquation)
+        self.setPlaceholderText("$")
+        if self.param.equation_str is not None:
+            self.setText(self.param.equation_str)
+
+    def updateEquation(self):
+        try:
+            self.param.update_equation(self.text())
+        except EquationCompileError as e:
+            if self.param.geo_col and self.param.geo_col.gui_obj:
+                self.param.geo_col.gui_obj.disp_message_box(str(e))
+                return
+            else:
+                raise e
+
+
 class ParamButton(TreeButton):
     sigValueChanged = pyqtSignal(float)  # value
 
@@ -270,6 +331,9 @@ class ParamButton(TreeButton):
             row_count = layout.rowCount()
             layout.addWidget(upper_label, row_count, 0)
             layout.addWidget(upper_spin, row_count, 1)
+        row_count = layout.rowCount()
+        layout.addWidget(QLabel("Equation"), row_count, 0)
+        layout.addWidget(ParamEquationEdit(param=self.param, parent=self), row_count, 1)
 
     def onValueChange(self, value: float):
         self.sigValueChanged.emit(value)
@@ -314,6 +378,9 @@ class DesVarButton(TreeButton):
         row_count = layout.rowCount()
         layout.addWidget(upper_label, row_count, 0)
         layout.addWidget(upper_spin, row_count, 1)
+        row_count = layout.rowCount()
+        layout.addWidget(QLabel("Equation"), row_count, 0)
+        layout.addWidget(ParamEquationEdit(param=self.desvar, parent=self), row_count, 1)
 
     def onValueChange(self, value: float):
         self.sigValueChanged.emit(value)

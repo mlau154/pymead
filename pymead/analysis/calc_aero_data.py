@@ -309,12 +309,12 @@ def calculate_aero_data(airfoil_coord_dir: str, airfoil_name: str,
 
                 if mplot_settings["CPK"]:
                     try:
-                        # outputs_CPK = calculate_CPK_power_consumption(os.path.join(airfoil_coord_dir, airfoil_name))
-                        outputs_CPK = calculate_CPK_mses_inviscid_only(os.path.join(airfoil_coord_dir, airfoil_name))
+                        outputs_CPK = calculate_CPK_power_consumption(os.path.join(airfoil_coord_dir, airfoil_name))
+                        # outputs_CPK = calculate_CPK_mses_inviscid_only(os.path.join(airfoil_coord_dir, airfoil_name))
                     except Exception as e:
                         print(f"{e = }")
-                        # outputs_CPK = {"CPK": 1e9, "diss_shock": 1e9, "diss_surf": 1e9, "Edot": 1e9, "Cd": 1e9}
-                        outputs_CPK = {"CPK": 1e9}
+                        outputs_CPK = {"CPK": 1e9, "diss_shock": 1e9, "diss_surf": 1e9, "Edot": 1e9, "Cd": 1e9}
+                        # outputs_CPK = {"CPK": 1e9}
                     aero_data = {**aero_data, **outputs_CPK}
 
             t2 = time.time()
@@ -1802,8 +1802,8 @@ def calculate_CPK_mses_inviscid_only(analysis_subdir: str):
     """
     Calculates the mechanical flower power coefficient input to the control volume across the airfoil system control
     surface. Assumes that the control surface wraps just around the actuator disk and that the normal vectors point
-    into the propulsor. Also assumes that there is no change in the kinetic defect across the actuator disk (and thus
-    no change in CPK due to the boundary layer).
+    into the propulsor. Also assumes that there is no change in the kinetic energy defect across the actuator disk
+    (and thus no change in CPK due to the boundary layer).
     """
 
     airfoil_system_name = os.path.split(analysis_subdir)[-1]

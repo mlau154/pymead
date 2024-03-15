@@ -1,5 +1,3 @@
-import typing
-
 import networkx
 import numpy as np
 
@@ -15,7 +13,7 @@ class Param(PymeadObj):
 
     def __init__(self, value: float or int, name: str, lower: float or None = None, upper: float or None = None,
                  sub_container: str = "params", setting_from_geo_col: bool = False, point=None, root=None,
-                 rotation_handle=None, enabled: bool = True):
+                 rotation_handle=None, enabled: bool = True, equation_str: str = None):
         """
         Parameters
         ==========
@@ -46,7 +44,10 @@ class Param(PymeadObj):
         if rotation_handle is not None:
             self.rotation_handle.rotation_param = self
         self.geo_objs = []
-        self.gcs = None
+        self.param_graph = None
+        self.equation_str = equation_str
+        self.equation = None
+        self.equation_dict = None
         self.geo_cons = []
         self.dims = []
         self.setting_from_geo_col = setting_from_geo_col
@@ -99,7 +100,8 @@ class Param(PymeadObj):
         else:
             return self._value
 
-    def set_value(self, value: float or int, bounds_normalized: bool = False, force: bool = False):
+    def set_value(self, value: float or int, bounds_normalized: bool = False, force: bool = False,
+                  param_graph_update: bool = False):
         """
         Sets the design variable value, adjusting the value to fit inside the bounds if necessary.
 
@@ -116,6 +118,11 @@ class Param(PymeadObj):
         force: bool
             Whether to force the change in value. This keyword argument should never be set to ``True`` when using
             the API. Default: ``False``
+
+        param_graph_update: bool
+            Whether this value is being set as part of a parameter graph update. Used to prevent the parameter graph
+            from triggering multiple updates for the same parameter. This keyword argument should never
+            be set to ``True`` when using the API. Default: ``False``
         """
         def rotate_cluster(new_v):
             if self.gcs is None:
@@ -181,6 +188,12 @@ class Param(PymeadObj):
                 for gc in self.geo_cons:
                     points_solved.extend(self.gcs.solve(gc))
                 self.gcs.update_canvas_items(list(set(points_solved)))
+
+            if self.param_graph is not None and not param_graph_update and self in self.param_graph.nodes:
+                for node in networkx.dfs_preorder_nodes(self.param_graph, source=self):
+                    if not node.equation_str:
+                        continue
+                    node.evaluate_equation()
 
         else:
             self._value = value
@@ -260,10 +273,51 @@ class Param(PymeadObj):
         if self.tree_item is not None:
             self.tree_item.treeWidget().itemWidget(self.tree_item, 1).setEnabled(enabled)
 
+    def update_equation(self, equation_str: str = None):
+        if not equation_str:  # Handles both the None and empty-string cases
+            self.equation_str = equation_str
+            self.equation = None
+            self.equation_dict = None
+            return
+        if self.param_graph is None:
+            return
+        self.equation = "def f(): return "
+        self.equation_dict = {"p": {}}
+        equation_split = equation_str.split()
+        param_names = [param.name() for param in self.param_graph.param_list]
+        for idx, sub_str in enumerate(equation_split):
+            if sub_str[0] != "$":
+                self.equation += sub_str
+                continue
+            param_name = sub_str.strip("$")
+            if param_name in param_names:
+                self.equation_dict["p"][param_name] = self.param_graph.param_list[param_names.index(param_name)]
+            else:
+                raise EquationCompileError("Failed to compile")
+            self.equation += f"p['{param_name}'].value()"
+
+        for param in self.equation_dict["p"].values():
+            self.param_graph.add_edge(param, self)
+        if len(self.param_graph.nodes) != 0 and not networkx.is_forest(self.param_graph):
+            # Revert to the original equation string
+            self.update_equation(self.equation_str)
+            raise EquationCompileError("The dependencies for this equation create a closed loop")
+
+        self.evaluate_equation()
+
+        self.equation_str = equation_str
+
+    def evaluate_equation(self):
+        try:
+            exec(self.equation, self.equation_dict)
+            self.set_value(self.equation_dict["f"](), param_graph_update=True)
+        except (NameError, SyntaxError) as e:
+            raise EquationCompileError(str(e))
+
     def get_dict_rep(self):
         return {"value": float(self.value()) if self.dtype == "float" else int(self.value()),
                 "lower": self.lower(), "upper": self.upper(),
-                "unit_type": None, "enabled": self.enabled()}
+                "unit_type": None, "enabled": self.enabled(), "equation_str": self.equation_str}
 
     @classmethod
     def set_from_dict_rep(cls, d: dict):
@@ -310,13 +364,15 @@ class Param(PymeadObj):
 class LengthParam(Param):
     def __init__(self, value: float, name: str, lower: float or None = None, upper: float or None = None,
                  sub_container: str = "params",
-                 setting_from_geo_col: bool = False, point=None, root=None, rotation_handle=None, enabled: bool = True):
+                 setting_from_geo_col: bool = False, point=None, root=None, rotation_handle=None, enabled: bool = True,
+                 equation_str: str = None):
         self._unit = None
         self.set_unit(UNITS.current_length_unit())
         name = "Length-1" if name is None else name
         super().__init__(value=value, name=name, lower=lower, upper=upper, sub_container=sub_container,
                          setting_from_geo_col=setting_from_geo_col,
-                         point=point, root=root, rotation_handle=rotation_handle, enabled=enabled)
+                         point=point, root=root, rotation_handle=rotation_handle, enabled=enabled,
+                         equation_str=equation_str)
 
     def unit(self):
         return self._unit
@@ -356,30 +412,32 @@ class LengthParam(Param):
 
         return super().set_lower(lower, force=force)
 
-    def set_value(self, value: float, bounds_normalized: bool = False, force: bool = False):
+    def set_value(self, value: float, bounds_normalized: bool = False, force: bool = False,
+                  param_graph_update: bool = False):
 
         # Negative lengths are prohibited unless this represents a point
         if self.point is None and value < 0.0:
             return
 
-        return super().set_value(value, bounds_normalized=bounds_normalized, force=force)
+        return super().set_value(value, bounds_normalized=bounds_normalized, force=force,
+                                 param_graph_update=param_graph_update)
 
     def get_dict_rep(self):
         return {"value": float(self.value()), "lower": self.lower(), "upper": self.upper(),
-                "unit_type": "length", "enabled": self.enabled()}
+                "unit_type": "length", "enabled": self.enabled(), "equation_str": self.equation_str}
 
 
 class AngleParam(Param):
     def __init__(self, value: float, name: str, lower: float or None = None, upper: float or None = None,
                  sub_container: str = "params",
                  setting_from_geo_col: bool = False, point=None, root=None, rotation_handle=None,
-                 enabled: bool = True):
+                 enabled: bool = True, equation_str: str = None):
         self._unit = None
         self.set_unit(UNITS.current_angle_unit())
         name = "Angle-1" if name is None else name
         super().__init__(value=value, name=name, lower=lower, upper=upper, sub_container=sub_container,
                          setting_from_geo_col=setting_from_geo_col, point=point, root=root,
-                         rotation_handle=rotation_handle, enabled=enabled)
+                         rotation_handle=rotation_handle, enabled=enabled, equation_str=equation_str)
 
     def unit(self):
         return self._unit
@@ -419,20 +477,22 @@ class AngleParam(Param):
         """
         return UNITS.convert_angle_to_base(self._value, self.unit())
 
-    def set_value(self, value: float, bounds_normalized: bool = False, force: bool = False):
+    def set_value(self, value: float, bounds_normalized: bool = False, force: bool = False,
+                  param_graph_update: bool = False):
 
         new_value = UNITS.convert_angle_to_base(value, self.unit())
         zero_to_2pi_value = new_value % (2 * np.pi)
         new_value = UNITS.convert_angle_from_base(zero_to_2pi_value, self.unit())
 
-        return super().set_value(new_value, bounds_normalized=bounds_normalized, force=force)
+        return super().set_value(new_value, bounds_normalized=bounds_normalized, force=force,
+                                 param_graph_update=param_graph_update)
 
     def get_dict_rep(self):
         return {"value": float(self.value()), "lower": self.lower(), "upper": self.upper(),
                 "unit_type": "angle",
                 "root": self.root.name() if self.root is not None else None,
                 "rotation_handle": self.rotation_handle.name() if self.rotation_handle is not None else None,
-                "enabled": self.enabled()}
+                "enabled": self.enabled(), "equation_str": self.equation_str}
 
 
 def default_lower(value: float):
@@ -461,7 +521,7 @@ class DesVar(Param):
     """
     def __init__(self, value: float, name: str, lower: float or None = None, upper: float or None = None,
                  sub_container: str = "desvar", setting_from_geo_col: bool = False, point=None, root=None,
-                 rotation_handle=None, enabled: bool = True):
+                 rotation_handle=None, enabled: bool = True, equation_str: str = None):
         """
         Parameters
         ==========
@@ -491,7 +551,7 @@ class DesVar(Param):
 
         super().__init__(value=value, name=name, lower=lower, upper=upper, sub_container=sub_container,
                          setting_from_geo_col=setting_from_geo_col, point=point, root=root,
-                         rotation_handle=rotation_handle, enabled=enabled)
+                         rotation_handle=rotation_handle, enabled=enabled, equation_str=equation_str)
 
 
 class LengthDesVar(LengthParam):
@@ -501,7 +561,7 @@ class LengthDesVar(LengthParam):
     """
     def __init__(self, value: float, name: str, lower: float or None = None, upper: float or None = None,
                  setting_from_geo_col: bool = False, point=None, root=None, rotation_handle=None,
-                 enabled: bool = True):
+                 enabled: bool = True, equation_str: str = None):
         """
         Parameters
         ==========
@@ -531,11 +591,11 @@ class LengthDesVar(LengthParam):
 
         super().__init__(value=value, name=name, lower=lower, upper=upper, setting_from_geo_col=setting_from_geo_col,
                          sub_container="desvar", point=point, root=root, rotation_handle=rotation_handle,
-                         enabled=enabled)
+                         enabled=enabled, equation_str=equation_str)
 
     def get_dict_rep(self):
         return {"value": float(self.value()), "lower": self.lower(), "upper": self.upper(),
-                "unit_type": "length", "enabled": self.enabled()}
+                "unit_type": "length", "enabled": self.enabled(), "equation_str": self.equation_str}
 
 
 class AngleDesVar(AngleParam):
@@ -544,7 +604,8 @@ class AngleDesVar(AngleParam):
     default behavior.
     """
     def __init__(self, value: float, name: str, lower: float or None = None, upper: float or None = None,
-                 setting_from_geo_col: bool = False, point=None, root=None, rotation_handle=None, enabled: bool = True):
+                 setting_from_geo_col: bool = False, point=None, root=None, rotation_handle=None, enabled: bool = True,
+                 equation_str: str = None):
         """
         Parameters
         ==========
@@ -574,20 +635,26 @@ class AngleDesVar(AngleParam):
 
         super().__init__(value=value, name=name, lower=lower, upper=upper, sub_container="desvar",
                          setting_from_geo_col=setting_from_geo_col, point=point, root=root,
-                         rotation_handle=rotation_handle, enabled=enabled)
+                         rotation_handle=rotation_handle, enabled=enabled, equation_str=equation_str)
 
-    def set_value(self, value: float, bounds_normalized: bool = False, force: bool = False):
+    def set_value(self, value: float, bounds_normalized: bool = False, force: bool = False,
+                  param_graph_update: bool = False):
         r"""
         In this special case of ``set_value`` for an ``AngleDesVar``, we skip over the call to the ``set_value``
         method in ``AngleParam`` and directly call the ``set_value`` method in ``Param`` (the grandparent class).
         The reason for this is that ``AngleParam`` always keeps the angle between 0 and :math:`2 \pi`, which is not
         logical behavior for a bounded variable. This method eliminates that restriction.
         """
-        return Param.set_value(self, value, bounds_normalized=bounds_normalized, force=force)
+        return Param.set_value(self, value, bounds_normalized=bounds_normalized, force=force,
+                               param_graph_update=param_graph_update)
 
     def get_dict_rep(self):
         return {"value": float(self.value()), "lower": self.lower(), "upper": self.upper(),
                 "unit_type": "angle",
                 "root": self.root.name() if self.root is not None else None,
                 "rotation_handle": self.rotation_handle.name() if self.rotation_handle is not None else None,
-                "enabled": self.enabled()}
+                "enabled": self.enabled(), "equation_str": self.equation_str}
+
+
+class EquationCompileError(Exception):
+    pass

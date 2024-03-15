@@ -51,6 +51,7 @@
     "Geometry From File": "plot_geometry"
   },
   "Dev": {
-    "Show Constraint Graph": "show_constraint_graph"
+    "Show Constraint Graph": "show_constraint_graph",
+    "Show Param Graph": "show_param_graph"
   }
 }

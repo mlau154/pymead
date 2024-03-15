@@ -1009,6 +1009,13 @@ class GUI(QMainWindow):
         from matplotlib import pyplot as plt
         plt.show()
 
+    def show_param_graph(self):
+
+        networkx.draw_circular(self.geo_col.param_graph,
+                               labels={param: param.name() for param in self.geo_col.param_graph.nodes})
+        from matplotlib import pyplot as plt
+        plt.show()
+
     def get_geo_col_state(self):
         return {k: v for k, v in self.geo_col.get_dict_rep().items() if k != "metadata"}
 
