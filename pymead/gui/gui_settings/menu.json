@@ -48,7 +48,7 @@
     "Take Screenshot": ["take_screenshot", "Ctrl+Shift+S"]
   },
   "Plot": {
-    "Geometry From File": "plot_geometry"
+    "Reference Geometry From File": "plot_geometry"
   },
   "Dev": {
     "Show Constraint Graph": "show_constraint_graph",
