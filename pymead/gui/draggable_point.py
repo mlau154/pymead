@@ -14,7 +14,9 @@ class DraggablePoint(pg.GraphItem):
     sigPointClicked = pyqtSignal(object, object, object, object)
     sigPointHovered = pyqtSignal(object, object, object, object)
     sigPointLeaveHovered = pyqtSignal(object, object, object, object)
-    sigPointMoved = pyqtSignal(object)
+    sigPointStartedMoving = pyqtSignal(object)
+    sigPointMoving = pyqtSignal(object)
+    sigPointFinishedMoving = pyqtSignal(object)
 
     def __init__(self):
         self.point = None
@@ -45,7 +47,7 @@ class DraggablePoint(pg.GraphItem):
         pg.GraphItem.setData(self, **self.data)
         for i, item in enumerate(self.textItems):
             item.setPos(*self.data['pos'][i])
-        self.sigPointMoved.emit(self)
+        self.sigPointMoving.emit(self)
 
     def setTexts(self, text):
         for i in self.textItems:
@@ -62,6 +64,7 @@ class DraggablePoint(pg.GraphItem):
             return
 
         if ev.isStart():
+            self.sigPointStartedMoving.emit(self)
             # While dragging, disable hovering for curves
             self.hoverable = False
             for curve in self.curveOwners:
@@ -79,6 +82,7 @@ class DraggablePoint(pg.GraphItem):
             ind = pts[0].data()[0]
             self.dragOffset = self.data['pos'][ind] - pos
         elif ev.isFinish():
+            self.sigPointFinishedMoving.emit(self)
             # Re-enable hovering for curves
             self.hoverable = True
             for curve in self.curveOwners:

@@ -167,7 +167,9 @@ class AirfoilCanvas(pg.PlotWidget):
             point_gui.sigPointClicked.connect(self.pointClicked)
             point_gui.sigPointHovered.connect(self.pointHovered)
             point_gui.sigPointLeaveHovered.connect(self.pointLeaveHovered)
-            point_gui.sigPointMoved.connect(self.pointMoved)
+            point_gui.sigPointStartedMoving.connect(self.pointStartedMoving)
+            point_gui.sigPointMoving.connect(self.pointMoving)
+            point_gui.sigPointFinishedMoving.connect(self.pointFinishedMoving)
 
             # Add the point to the plot
             self.addItem(point_gui)
@@ -642,12 +644,19 @@ class AirfoilCanvas(pg.PlotWidget):
         else:
             self.geo_col.select_object(point_item.point)
 
-    def pointMoved(self, point: DraggablePoint):
+    def pointMoving(self, point: DraggablePoint):
         if self.point_text_item is not None:
             self.removeItem(self.point_text_item)
             self.point_text_item = None
         for curve in point.curveOwners:
             curve.updateCurveItem()
+
+    @undoRedoAction
+    def pointStartedMoving(self, point: DraggablePoint):
+        pass
+
+    def pointFinishedMoving(self, point: DraggablePoint):
+        pass
 
     def setItemStyle(self, item, style: str):
         valid_styles = ["default", "hovered", "selected"]
