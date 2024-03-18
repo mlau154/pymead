@@ -281,7 +281,7 @@ class ParamEquationEdit(QLineEdit):
     def __init__(self, param: Param, parent=None):
         super().__init__(parent=parent)
         self.param = param
-        completer = Completer([p.name() for p in self.param.param_graph.param_list], self)
+        # completer = Completer([p.name() for p in self.param.param_graph.param_list], self)
         # self.setCompleter(completer)  # TODO: fix autocomplete (removed for now)
         self.editingFinished.connect(self.updateEquation)
         self.setPlaceholderText("$")
