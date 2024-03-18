@@ -244,7 +244,12 @@ class AirfoilCanvas(pg.PlotWidget):
                 self.sigEscapePressed.connect(loop.quit)
                 loop.exec()
                 # if len(self.geo_col.selected_objects["points"]) > 0:
-                action(self, *args, **kwargs)
+
+                try:
+                    action(self, *args, **kwargs)
+                except ValueError as e:
+                    self.gui_obj.disp_message_box(str(e))
+
                 self.clearSelectedObjects()
                 # elif len(self.geo_col.selected_objects["airfoils"]) > 0:
                 #     action(self, *args, **kwargs)
@@ -494,11 +499,11 @@ class AirfoilCanvas(pg.PlotWidget):
         if levels[1] <= levels[0]:
             raise ValueError("Maximum value cannot be less than or equal to the minimum value")
 
-        if self.color_bar_data["flow_var"] == "Cp":
-            Cp_stop = (0.0 - levels[0]) / (levels[1] - levels[0])
-            pos = np.linspace(0.0, Cp_stop, color_data.shape[0] // 2 + 1)
+        if self.color_bar_data["flow_var"] in ["Cp", "v"]:
+            stop = (0.0 - levels[0]) / (levels[1] - levels[0])
+            pos = np.linspace(0.0, stop, color_data.shape[0] // 2 + 1)
             pos = pos[:-1]
-            pos2 = np.linspace(Cp_stop, 1.0, color_data.shape[0] // 2)
+            pos2 = np.linspace(stop, 1.0, color_data.shape[0] // 2)
             for p in pos2:
                 pos = np.append(pos, p)
         else:

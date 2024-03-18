@@ -436,6 +436,34 @@ class GCS(networkx.DiGraph):
                     isinstance(constraint, Perp3Constraint) or isinstance(constraint, AntiParallel3Constraint)):
                 self._reassign_constraint(constraint)
 
+    def _check_distance_constraint_for_duplicates(self, dist_con: DistanceConstraint):
+        for gc in self.geo_col.container()["geocon"].values():
+            if gc is dist_con:
+                continue
+            if not isinstance(gc, DistanceConstraint):
+                continue
+            if (dist_con.p1 is gc.p1 and dist_con.p2 is gc.p2) or (dist_con.p1 is gc.p2 and dist_con.p2 is gc.p1):
+                raise ValueError("A distance constraint already exists between these two points")
+
+    def _check_angle_constraint_for_duplicates(self, angle_con: RelAngle3Constraint or AntiParallel3Constraint or
+                                                                Perp3Constraint):
+        for gc in self.geo_col.container()["geocon"].values():
+            if gc is angle_con:
+                continue
+            if not isinstance(gc, RelAngle3Constraint) and not isinstance(
+                    gc, AntiParallel3Constraint) and not isinstance(gc, Perp3Constraint):
+                continue
+            if (gc.p1 is angle_con.p1 and gc.p3 is angle_con.p3) or (
+                    gc.p1 is angle_con.p3 and gc.p3 is angle_con.p1):
+                raise ValueError("An angle constraint already exists between these three points")
+
+    def check_constraint_for_duplicates(self, geo_con: GeoCon):
+        if isinstance(geo_con, DistanceConstraint):
+            self._check_distance_constraint_for_duplicates(geo_con)
+        elif isinstance(geo_con, RelAngle3Constraint) or isinstance(
+                geo_con, AntiParallel3Constraint) or isinstance(geo_con, Perp3Constraint):
+            self._check_angle_constraint_for_duplicates(geo_con)
+
     def _assign_distance_constraint(self, dist_con: DistanceConstraint):
         """
         Assigns a distance constraint by first adding an edge from ``p1`` to ``p2`` with no data and subsequently
@@ -710,12 +738,10 @@ class GCS(networkx.DiGraph):
     def _update_roots_based_on_constraint_removal(self, edges_removed: typing.List[tuple]):
         for edge_removed in edges_removed:
             if edge_removed[1].rotation_handle:
-                edge_removed[1].rotation_handle = False
+                self._delete_root_status(edge_removed[0], edge_removed[1])
                 for out_edge in self.out_edges(nbunch=edge_removed[0]):
-                    out_edge[1].rotation_handle = True
+                    self._set_edge_as_root(out_edge[0], out_edge[1])
                     break
-                else:  # In this case, no more edges were attached to the root, so the root should be deleted
-                    self._identify_and_delete_root(edge_removed[0])
             self._assign_new_root_if_required(edge_removed[1])
 
     def remove_constraint(self, constraint: GeoCon):

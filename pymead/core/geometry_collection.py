@@ -414,7 +414,8 @@ class GeometryCollection(DualRep):
                 for geo_con in pymead_obj.geo_cons:
                     self.remove_pymead_obj(geo_con)
 
-            self.param_graph.param_list.remove(pymead_obj)
+            if pymead_obj in self.param_graph.param_list:
+                self.param_graph.param_list.remove(pymead_obj)
             if pymead_obj in self.param_graph.nodes:
                 self.param_graph.remove_node(pymead_obj)
 
@@ -473,10 +474,10 @@ class GeometryCollection(DualRep):
                 if len(pymead_obj.param().geo_cons) == 0:
                     self.remove_pymead_obj(pymead_obj.param())
 
-            if (isinstance(pymead_obj, DistanceConstraint) or isinstance(pymead_obj, RelAngle3Constraint) or
-                isinstance(pymead_obj, Perp3Constraint) or isinstance(pymead_obj, AntiParallel3Constraint)):
-                if pymead_obj.p2.rotation_handle and pymead_obj.p2.rotation_param is not None:
-                    self.remove_pymead_obj(pymead_obj.p2.rotation_param, constraint_removal=True)
+            # if (isinstance(pymead_obj, DistanceConstraint) or isinstance(pymead_obj, RelAngle3Constraint) or
+            #     isinstance(pymead_obj, Perp3Constraint) or isinstance(pymead_obj, AntiParallel3Constraint)):
+            #     if pymead_obj.p2.rotation_handle and pymead_obj.p2.rotation_param is not None:
+            #         self.remove_pymead_obj(pymead_obj.p2.rotation_param, constraint_removal=True)
 
             # Remove the constraint from the ConstraintGraph
             self.gcs.remove_constraint(pymead_obj)
@@ -862,6 +863,7 @@ class GeometryCollection(DualRep):
         return self.add_pymead_obj_by_ref(mea, assign_unique_name=assign_unique_name)
 
     def add_constraint(self, constraint: GeoCon, assign_unique_name: bool = True, **constraint_kwargs):
+        self.gcs.check_constraint_for_duplicates(constraint)
         self.add_pymead_obj_by_ref(constraint, assign_unique_name=assign_unique_name)
         if (constraint.param() is not None and constraint.param() not in self.container()["params"].values() and
                 constraint.param() not in self.container()["desvar"].values()):

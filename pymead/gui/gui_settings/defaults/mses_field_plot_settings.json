@@ -9,7 +9,7 @@
   "flow_variable": {
     "label": "Flow Variable",
     "widget_type": "QComboBox",
-    "addItems": ["M", "Cp", "p", "rho", "u", "v", "q", "V"],
+    "addItems": ["M", "Cp", "p", "rho", "u", "v", "V"],
     "setCurrentItem": "M"
   }
 }

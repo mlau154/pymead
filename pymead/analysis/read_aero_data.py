@@ -6,7 +6,7 @@ import pandas as pd
 import numpy as np
 
 
-flow_var_idx = {'M': 7, 'Cp': 8, 'p': 3, 'rho': 2, 'u': 4, 'v': 5, 'q': 6, "Cpt": 9, "dCpt": 10, "dCp": 11}
+flow_var_idx = {"M": 7, "Cp": 8, "p": 3, "rho": 2, "u": 4, "v": 5, "V": 6, "Cpt": 9, "dCpt": 10, "dCp": 11}
 
 
 def read_Cp_from_file_xfoil(fname: str):
@@ -357,7 +357,7 @@ def read_field_from_mses(src_file: str, M_inf: float or None = None, gam: float 
     * 3: :math:`p/p_\infty` (pressure)
     * 4: :math:`u/V_\infty` (:math:`x`-velocity)
     * 5: :math:`v/V_\infty` (:math:`y`-velocity)
-    * 6: :math:`q/V_\infty` (velocity magnitude)
+    * 6: :math:`|V|/V_\infty` (velocity magnitude)
     * 7: :math:`M` (Mach number)
     * 8: :math:`C_p` (pressure coefficient)
     * 9: :math:`C_{p_t}` (total pressure coefficient)
