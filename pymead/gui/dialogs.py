@@ -453,6 +453,8 @@ class PymeadLabeledLineEdit(QObject):
 
     def setReadOnly(self, read_only: bool):
         self.widget.setReadOnly(read_only)
+        if self.push is not None:
+            self.push.setEnabled(not read_only)
 
 
 class PymeadLabeledPlainTextEdit(QObject):
@@ -2948,23 +2950,54 @@ class AirfoilPlotDialog(PymeadDialog):
 class WebAirfoilDialog(PymeadDialog):
     def __init__(self, parent, theme: dict):
         widget = QWidget()
-        super().__init__(parent, window_title="Select AirfoilTools airfoil", widget=widget, theme=theme)
-        self.lay = QFormLayout()
+        super().__init__(parent, window_title="Load Airfoil from Coordinates", widget=widget, theme=theme)
+        self.lay = QGridLayout()
         widget.setLayout(self.lay)
-        self.inputs = self.setInputs()
+        self.setInputs()
 
         for i in self.inputs:
-            self.lay.addRow(i[0], i[1])
+            row_count = self.lay.rowCount()
+            self.lay.addWidget(i.label, row_count, 0)
+            if i.push is None:
+                self.lay.addWidget(i.widget, row_count, 1, 1, 2)
+            else:
+                self.lay.addWidget(i.widget, row_count, 1, 1, 1)
+                self.lay.addWidget(i.push, row_count, 2, 1, 1)
 
         self.setMinimumWidth(300)
 
     def setInputs(self):
-        r0 = ["Web airfoil", QLineEdit(self)]
-        r0[1].setText("n0012-il")
-        return [r0]
+        self.inputs = [
+            PymeadLabeledComboBox(label="Airfoil type", tool_tip="Choose whether to use an AirfoilTools airfoil or a "
+                                                                 "coordinate-file airfoil",
+                                  items=["AirfoilTools", "Coordinate File"]),
+            PymeadLabeledLineEdit(label="Web Airfoil", tool_tip="URL-name of the AirfoilTools airfoil (name in the "
+                                                                "parentheses on airfoiltools.com)", text="n0012-il"),
+            PymeadLabeledLineEdit(label="Airfoil from File", tool_tip="Absolute file path of a Selig-format "
+                                                                      "(counter-clockwise starting with upper trailing "
+                                                                      "edge, space-delimited, airfoil coordinates file",
+                                  text="", push_label="Select Airfoil", read_only=True)
+        ]
+        self.inputs[0].sigValueChanged.connect(self.airfoilTypeChanged)
+        self.inputs[2].push.clicked.connect(self.selectDatFile)
+        return self.inputs
+
+    def airfoilTypeChanged(self, airfoil_type: str):
+        if airfoil_type == "AirfoilTools":
+            self.inputs[1].setReadOnly(False)
+            self.inputs[2].setReadOnly(True)
+        else:
+            self.inputs[1].setReadOnly(True)
+            self.inputs[2].setReadOnly(False)
+
+    def selectDatFile(self):
+        select_data_file(parent=self, line_edit=self.inputs[2].widget)
 
     def value(self):
-        return self.inputs[0][1].text()
+        if self.inputs[0].value() == "AirfoilTools":
+            return self.inputs[1].value()
+        else:
+            return self.inputs[2].value()
 
 
 class MSESFieldPlotDialogWidget(PymeadDialogWidget):

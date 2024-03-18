@@ -181,7 +181,11 @@ class PolyLine(ParametricCurve):
         if self.source_type == self.AirfoilTools:
             return self._load_coords_from_airfoil_tools()
         elif self.source_type == self.DatFile:
-            return self._load_coords_from_dat_file(self.num_header_rows, self.delimiter)
+            try:
+                return self._load_coords_from_dat_file(self.num_header_rows, self.delimiter)
+            except:
+                self.num_header_rows = 1
+                return self._load_coords_from_dat_file(self.num_header_rows, self.delimiter)
         else:
             raise ValueError("Invalid polyline source type")
 
