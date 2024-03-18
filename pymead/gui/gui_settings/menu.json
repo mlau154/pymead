@@ -18,6 +18,8 @@
     "Settings": "open_settings"
   },
   "Edit": {
+    "Undo": ["undo", "Ctrl+Z"],
+    "Redo": ["redo", "Ctrl+Y"],
     "Bounds": ["edit_bounds", "Ctrl+B"]
   },
   "View": {

@@ -227,6 +227,14 @@ class AirfoilCanvas(pg.PlotWidget):
         self.enter_connection = None
 
     @staticmethod
+    def undoRedoAction(action: typing.Callable):
+        def wrapped(self, *args, **kwargs):
+            self.gui_obj.undo_stack.append(deepcopy(self.geo_col.get_dict_rep()))
+            action(self, *args, **kwargs)
+
+        return wrapped
+
+    @staticmethod
     def runSelectionEventLoop(drawing_object: str, starting_message: str, enter_callback: typing.Callable = None):
         drawing_object = drawing_object
         starting_message = starting_message
@@ -261,11 +269,13 @@ class AirfoilCanvas(pg.PlotWidget):
             return wrapped
         return decorator
 
+    @undoRedoAction
     @runSelectionEventLoop(drawing_object="Points", starting_message="Left click on the canvas to draw a point. "
                                                                      "Press Escape to stop drawing points.")
     def drawPoints(self):
         pass
 
+    @undoRedoAction
     def drawBezierNoEvent(self):
         if len(self.geo_col.selected_objects["points"]) < 2:
             msg = f"Choose at least 2 points to define a curve"
@@ -278,6 +288,7 @@ class AirfoilCanvas(pg.PlotWidget):
         self.clearSelectedObjects()
         self.sigStatusBarUpdate.emit("Select the first Bezier control point of the next curve", 0)
 
+    @undoRedoAction
     @runSelectionEventLoop(drawing_object="Bezier", starting_message="Select the first Bezier control point")
     def drawBezier(self):
         if len(self.geo_col.selected_objects["points"]) < 2:
@@ -296,6 +307,7 @@ class AirfoilCanvas(pg.PlotWidget):
             self.sigStatusBarUpdate.emit(msg, 2000)
             return
 
+    @undoRedoAction
     @runSelectionEventLoop(drawing_object="LineSegment", starting_message="Select the first line endpoint")
     def drawLineSegment(self):
         if len(self.geo_col.selected_objects["points"]) < 2:
@@ -306,6 +318,7 @@ class AirfoilCanvas(pg.PlotWidget):
         point_sequence = PointSequence([pt for pt in self.geo_col.selected_objects["points"]])
         self.geo_col.add_line(point_sequence=point_sequence)
 
+    @undoRedoAction
     @runSelectionEventLoop(drawing_object="LineSegments", starting_message="Select the first line endpoint")
     def drawLines(self):
         if len(self.geo_col.selected_objects["points"]) < 2:
@@ -313,6 +326,7 @@ class AirfoilCanvas(pg.PlotWidget):
             self.sigStatusBarUpdate.emit(msg, 2000)
             return
 
+    @undoRedoAction
     @runSelectionEventLoop(drawing_object="Airfoil", starting_message="Select the leading edge point")
     def generateAirfoil(self):
         if len(self.geo_col.selected_objects["points"]) not in [2, 4]:
@@ -334,6 +348,7 @@ class AirfoilCanvas(pg.PlotWidget):
                                  lower_surf_end=lower_surf_end)
         self.gui_obj.permanent_widget.updateAirfoils()
 
+    @undoRedoAction
     def generateWebAirfoil(self):
         dialog = WebAirfoilDialog(self, theme=self.gui_obj.themes[self.gui_obj.current_theme])
         if dialog.exec_():
@@ -345,6 +360,7 @@ class AirfoilCanvas(pg.PlotWidget):
             polyline.add_polyline_airfoil()
         self.gui_obj.permanent_widget.updateAirfoils()
 
+    @undoRedoAction
     @runSelectionEventLoop(drawing_object="MEA", starting_message="Select the first airfoil")
     def generateMEA(self):
         if len(self.geo_col.selected_objects["airfoils"]) == 0:
@@ -354,6 +370,7 @@ class AirfoilCanvas(pg.PlotWidget):
 
         self.geo_col.add_mea(airfoils=self.geo_col.selected_objects["airfoils"].copy())
 
+    @undoRedoAction
     @runSelectionEventLoop(drawing_object="DistanceConstraint", starting_message="Select the first point")
     def addDistanceConstraint(self):
         if len(self.geo_col.selected_objects["points"]) != 2:
@@ -369,6 +386,7 @@ class AirfoilCanvas(pg.PlotWidget):
         constraint = DistanceConstraint(*self.geo_col.selected_objects["points"])
         self.geo_col.add_constraint(constraint)
 
+    @undoRedoAction
     @runSelectionEventLoop(drawing_object="RelAngle3Constraint", starting_message="Select any point other than "
                                                                                   "the vertex")
     def addRelAngle3Constraint(self):
@@ -381,6 +399,7 @@ class AirfoilCanvas(pg.PlotWidget):
         constraint = RelAngle3Constraint(*self.geo_col.selected_objects["points"])
         self.geo_col.add_constraint(constraint)
 
+    @undoRedoAction
     @runSelectionEventLoop(drawing_object="AntiParallel3Constraint", starting_message="Select any point other than "
                                                                                       "the vertex")
     def addAntiParallel3Constraint(self):
@@ -418,6 +437,7 @@ class AirfoilCanvas(pg.PlotWidget):
                                                  point_on_curve=point)
         self.geo_col.add_constraint(constraint)
 
+    @undoRedoAction
     @runSelectionEventLoop(drawing_object="SymmetryConstraint", starting_message="Select the start point of the "
                                                                                  "mirror axis")
     def addSymmetryConstraint(self):
@@ -430,6 +450,7 @@ class AirfoilCanvas(pg.PlotWidget):
         constraint = SymmetryConstraint(*self.geo_col.selected_objects["points"])
         self.geo_col.add_constraint(constraint)
 
+    @undoRedoAction
     @runSelectionEventLoop(drawing_object="Perp3Constraint", starting_message="Select the first point (not the vertex)")
     def addPerp3Constraint(self):
         if len(self.geo_col.selected_objects["points"]) != 3:
@@ -439,6 +460,7 @@ class AirfoilCanvas(pg.PlotWidget):
         constraint = Perp3Constraint(*self.geo_col.selected_objects["points"])
         self.geo_col.add_constraint(constraint)
 
+    @undoRedoAction
     @runSelectionEventLoop(drawing_object="ROCurvatureConstraint", starting_message="Select the curve joint")
     def addROCurvatureConstraint(self):
         if len(self.geo_col.selected_objects["points"]) != 1:
@@ -450,6 +472,7 @@ class AirfoilCanvas(pg.PlotWidget):
         constraint = ROCurvatureConstraint(*self.geo_col.selected_objects["points"])
         self.geo_col.add_constraint(constraint)
 
+    @undoRedoAction
     @runSelectionEventLoop(drawing_object="BezierAddPoint",
                            starting_message="First, click the point to add to the curve")
     def addPointToCurve(self, curve_item: HoverableCurve):
@@ -463,6 +486,7 @@ class AirfoilCanvas(pg.PlotWidget):
         preceding_point = self.geo_col.selected_objects["points"][1]
         bezier_curve.insert_point_after_point(point_to_add, preceding_point)
 
+    @undoRedoAction
     def splitPoly(self, curve_item: HoverableCurve):
         polyline = curve_item.parametric_curve
         dialog = SplitPolylineDialog(self, theme=self.gui_obj.themes[self.gui_obj.current_theme], polyline=polyline,
@@ -849,6 +873,7 @@ class AirfoilCanvas(pg.PlotWidget):
         elif res == exportPlotAction:
             self.exportPlot()
 
+    @undoRedoAction
     def removeSelectedPoints(self):
         self.geo_col.remove_selected_objects()
 
@@ -884,6 +909,10 @@ class AirfoilCanvas(pg.PlotWidget):
         view_pos = self.getPlotItem().getViewBox().mapSceneToView(ev.pos())
         self.geo_col.add_point(view_pos.x(), view_pos.y())
 
+    @undoRedoAction
+    def removeSelectedObjects(self):
+        self.geo_col.remove_selected_objects()
+
     def canvasShortcuts(self):
         return {
             Qt.Key_P: self.drawPoints,
@@ -910,7 +939,7 @@ class AirfoilCanvas(pg.PlotWidget):
             self.geo_col.clear_selected_objects()
             self.sigStatusBarUpdate.emit("", 0)
         elif key == Qt.Key_Delete:
-            self.geo_col.remove_selected_objects()
+            self.removeSelectedObjects()
             self.sigStatusBarUpdate.emit("", 0)
         elif key in (Qt.Key_Left, Qt.Key_Right, Qt.Key_Down, Qt.Key_Up) and len(self.geo_col.selected_objects["points"]) > 0:
             self.arrowKeyPointMove(ev.key(), mods)

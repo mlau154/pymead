@@ -112,6 +112,9 @@ class GUI(QMainWindow):
             "light": load_data(os.path.join(GUI_THEMES_DIR, "light_theme.json")),
         }
 
+        self.undo_stack = []
+        self.redo_stack = []
+
         self.design_tree = None
         self.dialog = None
         self.opt_settings = None
@@ -556,6 +559,21 @@ class GUI(QMainWindow):
                                 settings_override=None)
         dialog.exec_()
 
+
+    def undo(self):
+        if not self.undo_stack:
+            return
+        self.redo_stack.append(deepcopy(self.geo_col.get_dict_rep()))
+        self.load_geo_col_from_memory(self.undo_stack[-1])
+        self.undo_stack.pop()
+
+    def redo(self):
+        if not self.redo_stack:
+            return
+        self.undo_stack.append(deepcopy(self.geo_col.get_dict_rep()))
+        self.load_geo_col_from_memory(self.redo_stack[-1])
+        self.redo_stack.pop()
+
     def take_screenshot(self):
 
         # if hasattr(self.dockable_tab_window, "current_dock_widget"):
@@ -967,7 +985,28 @@ class GUI(QMainWindow):
         self.cbar.getAxis("right").setWidth(20 + 2 * get_setting("axis-label-point-size") +
                                             2 * get_setting("cbar-tick-point-size"))
 
+    def load_geo_col_from_memory(self, dict_rep: dict):
 
+        # Clear the canvas and the tree, and add the high-level containers back to the tree
+        self.airfoil_canvas.clear()
+        self.parameter_tree.clear()
+        self.parameter_tree.addContainers()
+
+        self.geo_col.switch_units("angle", old_unit=UNITS.current_angle_unit(),
+                                  new_unit=dict_rep["metadata"]["angle_unit"]
+                                  if "angle_unit" in dict_rep["metadata"] else "rad")
+        self.geo_col.switch_units("length", old_unit=UNITS.current_length_unit(),
+                                  new_unit=dict_rep["metadata"]["length_unit"]
+                                  if "length_unit" in dict_rep["metadata"] else "m")
+
+        self.geo_col = GeometryCollection.set_from_dict_rep(dict_rep, canvas=self.airfoil_canvas,
+                                                            tree=self.parameter_tree, gui_obj=self)
+        self.permanent_widget.geo_col = self.geo_col
+        self.last_saved_state = self.get_geo_col_state()
+
+        self.geo_col.tree.geo_col = self.geo_col
+        self.geo_col.canvas.geo_col = self.geo_col
+        self.permanent_widget.updateAirfoils()
 
     def load_geo_col_no_dialog(self, file_name: str = None):
 
@@ -1880,7 +1919,7 @@ class GUI(QMainWindow):
             self.geo_col.clear_selected_objects()
             self.status_bar.clearMessage()
         if a0.key() == Qt.Key_Delete:
-            self.geo_col.remove_selected_objects()
+            self.airfoil_canvas.removeSelectedObjects()
             self.status_bar.clearMessage()
 
 

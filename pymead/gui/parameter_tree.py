@@ -1,5 +1,6 @@
 import sys
 from abc import abstractmethod
+from copy import deepcopy
 
 from PyQt5.QtCore import Qt, pyqtSignal, pyqtSlot, QRegularExpression, QStringListModel
 from PyQt5.QtGui import QValidator, QBrush, QColor
@@ -960,6 +961,45 @@ class ParameterTree(QTreeWidget):
             it.value().setForeground(0, QBrush(QColor(color)))
             it += 1
 
+    @staticmethod
+    def undoRedoAction(action: typing.Callable):
+        def wrapped(self, *args, **kwargs):
+            self.gui_obj.undo_stack.append(deepcopy(self.geo_col.get_dict_rep()))
+            action(self, *args, **kwargs)
+
+        return wrapped
+
+    @undoRedoAction
+    def removeObjects(self, pymead_objs: typing.List[PymeadObj]):
+        for pymead_obj in pymead_objs:
+            self.geo_col.remove_pymead_obj(pymead_obj)
+
+    @undoRedoAction
+    def promoteParamsToDesvar(self, pymead_objs: typing.List[Param]):
+        for pymead_obj in pymead_objs:
+            self.geo_col.promote_param_to_desvar(pymead_obj)
+
+    @undoRedoAction
+    def demoteDesvarsToParam(self, pymead_objs: typing.List[DesVar]):
+        for pymead_obj in pymead_objs:
+            self.geo_col.demote_desvar_to_param(pymead_obj)
+
+    @undoRedoAction
+    def exposePointXY(self, pymead_objs: typing.List[Point]):
+        for pymead_obj in pymead_objs:
+            self.geo_col.expose_point_xy(pymead_obj)
+
+    @undoRedoAction
+    def coverPointXY(self, pymead_objs: typing.List[Param]):
+        points_to_cover = list(set([pymead_obj.point for pymead_obj in pymead_objs]))
+        for point_to_cover in points_to_cover:
+            self.geo_col.cover_point_xy(point_to_cover)
+
+    @undoRedoAction
+    def equateConstraints(self, pymead_objs: typing.List[GeoCon]):
+        for pymead_obj in pymead_objs[1:]:
+            self.geo_col.equate_constraints(pymead_objs[0], pymead_obj)
+
     def contextMenuEvent(self, a0):
         # item = self.itemAt(a0.x(), a0.y())
         # if item is None:
@@ -1029,28 +1069,18 @@ class ParameterTree(QTreeWidget):
                 return
 
             if res is removeObjectAction:
-                for pymead_obj in pymead_objs:
-                    # If the object is a Point, set the style to default first so that the text item gets removed
-                    # if isinstance(pymead_obj, Point):
-                    #     self.geo_col.canvas.setItemStyle(pymead_obj.canvas_item, "default")
-                    self.geo_col.remove_pymead_obj(pymead_obj)
+                self.removeObjects(pymead_objs)
             elif res is promoteAction:
-                for pymead_obj in pymead_objs:
-                    self.geo_col.promote_param_to_desvar(pymead_obj)
+                self.promoteParamsToDesvar(pymead_objs)
             elif res is demoteAction:
-                for pymead_obj in pymead_objs:
-                    self.geo_col.demote_desvar_to_param(pymead_obj)
+                self.demoteDesvarsToParam(pymead_objs)
             elif res is exposeAction:
-                for pymead_obj in pymead_objs:
-                    self.geo_col.expose_point_xy(pymead_obj)
+                self.exposePointXY(pymead_objs)
             elif res is coverAction:
-                points_to_cover = list(set([pymead_obj.point for pymead_obj in pymead_objs]))
-                for point_to_cover in points_to_cover:
-                    self.geo_col.cover_point_xy(point_to_cover)
+                self.coverPointXY(pymead_objs)
             elif res is addBezierPointAction:
                 self.gui_obj.airfoil_canvas.addPointToCurve(pymead_objs[0].canvas_item)
             elif res is equateConstraintsAction:
-                for pymead_obj in pymead_objs[1:]:
-                    self.geo_col.equate_constraints(pymead_objs[0], pymead_obj)
+                self.equateConstraints(pymead_objs)
 
             self.geo_col.clear_selected_objects()
