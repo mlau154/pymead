@@ -70,6 +70,8 @@ from pymead.utils.misc import make_ga_opt_dir
 from pymead.utils.read_write_files import load_data, save_data
 from pymead.utils.version_check import using_latest
 
+q_settings_descriptions = load_data(os.path.join(GUI_SETTINGS_DIR, "q_settings_descriptions.json"))
+
 # Suppress the following DeprecationWarning: sipPyTypeDict() is deprecated, the extension module
 # should use sipPyTypeDictRef() instead
 warnings.filterwarnings("ignore", category=DeprecationWarning)
@@ -85,8 +87,8 @@ class GUI(QMainWindow):
             pyi_splash.update_text("Initializing constants...")
         except:
             pass
-        UNITS.set_current_length_unit(q_settings.value("length_unit"))
-        UNITS.set_current_angle_unit(q_settings.value("angle_unit"))
+        UNITS.set_current_length_unit(q_settings.value("length_unit", q_settings_descriptions["length_unit"][1]))
+        UNITS.set_current_angle_unit(q_settings.value("angle_unit", q_settings_descriptions["angle_unit"][1]))
         super().__init__(parent=parent)
         self.showHideState = None
         self.setWindowFlags(self.windowFlags() | Qt.FramelessWindowHint)
