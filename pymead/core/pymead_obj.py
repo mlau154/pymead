@@ -21,6 +21,9 @@ class DualRep:
             if k in self.non_serializable_attributes:
                 v = None
 
+            if k == "equation_dict" and isinstance(v, dict) and "__builtins__" in v:
+                v["__builtins__"] = None
+
             setattr(result, k, deepcopy(v, memo))
         return result
 

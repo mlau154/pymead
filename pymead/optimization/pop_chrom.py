@@ -101,10 +101,12 @@ class Chromosome:
                         self.check_if_inside_points(airfoil_name=airfoil_name)
                     else:
                         raise ValueError('External geometry timing after aerodynamic evaluation not yet implemented')
-        # self.control_points = [[c.P.tolist() for c in self.mea_object.airfoils[k].curve_list]
-        #                        for k in self.mea_object.airfoils.keys()]
-        # self.airfoil_state = {k: {p: getattr(a, p).value for p in ['c', 'alf', 'dx', 'dy']} for k, a in self.mea_object.airfoils.items()}
-        # self.mea_object = None
+
+        # Set the equation_dict to None because it contains the unpicklable __builtins__ module
+        for param in self.geo_col.container()["params"].values():
+            param.equation_dict = None
+        for desvar in self.geo_col.container()["desvar"].values():
+            desvar.equation_dict = None
 
     def get_coords(self):
         if self.airfoil is not None:
@@ -132,10 +134,15 @@ class Chromosome:
     def update_param_dict(self):
         if self.param_dict["tool"] != "MSES":
             return
-        # dben = benedict(self.param_dict)
-        # for idx, from_geometry in enumerate(self.param_dict['mses_settings']['from_geometry']):
-        #     for k, v in from_geometry.items():
-        #         self.param_dict['mses_settings'][k][idx] = dben[v.replace('$', '')].value
+        xcdelh_params = self.param_dict["mses_settings"]["XCDELH-Param"]
+        for idx, xcdelh_param in enumerate(xcdelh_params):
+            if xcdelh_param:
+                if xcdelh_param in self.geo_col.container()["params"]:
+                    self.param_dict["mses_settings"]["XCDELH"][idx] = self.geo_col.container()["params"][xcdelh_param].value()
+                elif xcdelh_param in self.geo_col.container()["desvar"]:
+                    self.param_dict["mses_settings"]["XCDELH"][idx] = self.geo_col.container()["desvar"][xcdelh_param].value()
+                else:
+                    raise ValueError(f"Could not find XCDELH parameter {xcdelh_param}")
 
     def get_airfoil_line_strings(self):
         line_strings = {}

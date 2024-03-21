@@ -2057,16 +2057,21 @@ class GAGeneralSettingsDialogWidget(PymeadDialogWidget2):
                 great_great_grandparent.current_settings_save_file = load_file
             else:
                 self.current_save_file = load_file
-            get_parent(self, 3).setWindowTitle(f"Optimization Setup - {os.path.split(load_file)[-1]}")
-            get_parent(self, 2).setValue(new_inputs)  # Overrides the inputs for the whole PymeadDialogVTabWidget
-            get_parent(self, 2).setStatusTip(f"Loaded {load_file}")
 
             gui_obj = get_parent(self, 4)
             gui_obj.load_geo_col(file_name=new_inputs["General Settings"]["mea_file"])
+
+            # Pass the new GeometryCollection reference to the actuator disk
+            get_parent(self, 3).mses_widget.widget_dict["AD"].geo_col = deepcopy(gui_obj.geo_col)
+
             self.sigMEAFileChanged.emit([airfoil for airfoil in gui_obj.geo_col.container()["airfoils"].values()],
                                         [mea for mea in gui_obj.geo_col.container()["mea"].values()],
                                         new_inputs["XFOIL"]["airfoil"],
                                         new_inputs["MSET"]["mea"])
+
+            get_parent(self, 3).setWindowTitle(f"Optimization Setup - {os.path.split(load_file)[-1]}")
+            get_parent(self, 2).setValue(new_inputs)  # Overrides the inputs for the whole PymeadDialogVTabWidget
+            get_parent(self, 2).setStatusTip(f"Loaded {load_file}")
 
     def saveas_opt_settings(self):
         inputs_to_save = get_parent(self, 2).value()
@@ -2664,7 +2669,6 @@ class OptimizationSetupDialog(PymeadDialog):
         w2 = GAConstraintsTerminationDialogWidget2(geo_col=geo_col)
         w7 = MultiPointOptDialogWidget()
         w5 = MSESDialogWidget2(geo_col=geo_col)
-        # w4.sigMEAChanged.connect(w5.widget_dict["xtrs"].widget.onMEAChanged)
         w1 = GeneticAlgorithmDialogWidget(multi_point_dialog_widget=w7)
         w6 = PymeadDialogWidget(os.path.join(GUI_DEFAULTS_DIR, 'mplot_settings.json'))
         w = OptimizationDialogVTabWidget(parent=self, widgets={'General Settings': w0,
@@ -2695,6 +2699,16 @@ class OptimizationSetupDialog(PymeadDialog):
         self.constraints_widget.geo_col = self.geo_col
         self.xfoil_widget.widget_dict["airfoil"]["widget"].clear()
         self.mset_widget.widget_dict["mea"].widget.clear()
+
+        # Add the new list of parameters to the actuator disk MSES widget
+        param_list = [param for param in self.geo_col.container()["params"]]
+        dv_list = [dv + " (DV)" for dv in self.geo_col.container()["desvar"]]
+        AD_widget = self.mses_widget.widget_dict["AD"]
+        AD_widget.param_list = [""] + param_list + dv_list
+        for ad in AD_widget.widget_dict.values():
+            ad["XCDELH-Param"].widget.clear()
+            ad["XCDELH-Param"].widget.addItems(AD_widget.param_list)
+
         airfoil_names = [airfoil.name() for airfoil in airfoil_objs]
         mea_names = [mea.name() for mea in mea_objs]
         self.xfoil_widget.widget_dict["airfoil"]["widget"].addItems(airfoil_names)
