@@ -1,0 +1,124 @@
+{
+    "desvar": {},
+    "params": {
+        "Length-1": {
+            "value": 0.43011885898370267,
+            "lower": null,
+            "upper": null,
+            "unit_type": "length",
+            "enabled": true,
+            "equation_str": null
+        },
+        "ClusterAngle-1": {
+            "value": 0.022620575355313737,
+            "lower": null,
+            "upper": null,
+            "unit_type": "angle",
+            "root": "Point-1",
+            "rotation_handle": "Point-2",
+            "enabled": true,
+            "equation_str": null
+        },
+        "Length-2": {
+            "value": 0.12096503037836748,
+            "lower": null,
+            "upper": null,
+            "unit_type": "length",
+            "enabled": true,
+            "equation_str": null
+        },
+        "Length-3": {
+            "value": 0.25501090207937965,
+            "lower": null,
+            "upper": null,
+            "unit_type": "length",
+            "enabled": true,
+            "equation_str": null
+        },
+        "Angle-1": {
+            "value": 1.0989156388277024,
+            "lower": null,
+            "upper": null,
+            "unit_type": "angle",
+            "root": null,
+            "rotation_handle": null,
+            "enabled": true,
+            "equation_str": null
+        },
+        "Angle-2": {
+            "value": 0.46150198766966066,
+            "lower": null,
+            "upper": null,
+            "unit_type": "angle",
+            "root": null,
+            "rotation_handle": null,
+            "enabled": true,
+            "equation_str": null
+        }
+    },
+    "points": {
+        "Point-1": {
+            "x": 0.10443080058709286,
+            "y": -0.06771179606280947
+        },
+        "Point-2": {
+            "x": 0.5344396204112566,
+            "y": -0.05798308973194605
+        },
+        "Point-3": {
+            "x": 0.1569658147737554,
+            "y": 0.04124971484286094
+        },
+        "Point-4": {
+            "x": 0.33013678746312447,
+            "y": 0.050978421173724364
+        }
+    },
+    "lines": {},
+    "polylines": {},
+    "bezier": {},
+    "airfoils": {},
+    "mea": {},
+    "geocon": {
+        "DistCon-1": {
+            "p1": "Point-1",
+            "p2": "Point-2",
+            "value": "Length-1",
+            "constraint_type": "DistanceConstraint"
+        },
+        "DistCon-2": {
+            "p1": "Point-1",
+            "p2": "Point-3",
+            "value": "Length-2",
+            "constraint_type": "DistanceConstraint"
+        },
+        "DistCon-3": {
+            "p1": "Point-1",
+            "p2": "Point-4",
+            "value": "Length-3",
+            "constraint_type": "DistanceConstraint"
+        },
+        "RelAng3Con-1": {
+            "p1": "Point-3",
+            "p2": "Point-1",
+            "p3": "Point-2",
+            "value": "Angle-1",
+            "constraint_type": "RelAngle3Constraint"
+        },
+        "RelAng3Con-2": {
+            "p1": "Point-4",
+            "p2": "Point-1",
+            "p3": "Point-2",
+            "value": "Angle-2",
+            "constraint_type": "RelAngle3Constraint"
+        }
+    },
+    "dims": {},
+    "metadata": {
+        "pymead_version": "2.0.0-beta.4",
+        "save_datetime": "2024-03-21 12:29:09.350925",
+        "length_unit": "m",
+        "angle_unit": "rad",
+        "area_unit": "m2"
+    }
+}

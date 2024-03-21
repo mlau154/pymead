@@ -59,3 +59,13 @@ class GCSTests(TestCase):
         geo_col_file = os.path.join(TEST_DIR, "core_tests", "mirror_ap3_constraint.jmea")
         geo_col = GeometryCollection.set_from_dict_rep(load_data(geo_col_file))
         self.assertTrue(geo_col.verify_all())
+
+    def test_double_angle_constraint(self):
+        geo_col_file = os.path.join(TEST_DIR, "core_tests", "double_angle.jmea")
+        geo_col = GeometryCollection.set_from_dict_rep(load_data(geo_col_file))
+        self.assertTrue(geo_col.verify_all())
+
+    def test_connected_angles_constraint(self):
+        geo_col_file = os.path.join(TEST_DIR, "core_tests", "connected_angles.jmea")
+        geo_col = GeometryCollection.set_from_dict_rep(load_data(geo_col_file))
+        self.assertTrue(geo_col.verify_all())

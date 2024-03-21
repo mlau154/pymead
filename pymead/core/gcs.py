@@ -801,11 +801,13 @@ class GCS(networkx.DiGraph):
         rotation_point = source.p2
 
         if edge_data_p21 and "angle" in edge_data_p21 and edge_data_p21["angle"] is source:
-            start = source.p1 if not source.p2.root else source.p2
+            # start = source.p1 if not source.p2.root else source.p2
             # start = source.p2
+            start = source.p1
         elif edge_data_p23 and "angle" in edge_data_p23 and edge_data_p23["angle"] is source:
-            start = source.p3 if not source.p2.root else source.p2
+            # start = source.p3 if not source.p2.root else source.p2
             # start = source.p2
+            start = source.p3
             d_angle *= -1
         else:
             raise ValueError("Somehow no angle constraint found between the three points")
@@ -824,6 +826,8 @@ class GCS(networkx.DiGraph):
                     continue
                 if geo_con.p2 is not source.p2:
                     continue
+                # if not geo_con.p1 in self.adj[source.p2] or not geo_con.p3 in self.adj[source.p2]:
+                #     continue
                 if start is source.p3 and geo_con.p3 is source.p3:
                     additional_branch_starting_points.append(geo_con.p1)
                 elif start is source.p3 and geo_con.p1 is source.p3:

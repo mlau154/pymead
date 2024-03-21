@@ -7,7 +7,8 @@ from pymead.utils.nchoosek import nchoosek
 
 class Bezier(ParametricCurve):
 
-    def __init__(self, point_sequence: PointSequence, name: str or None = None, **kwargs):
+    def __init__(self, point_sequence: PointSequence, name: str or None = None, t_start: float = None,
+                 t_end: float = None, **kwargs):
         r"""
         Computes the Bézier curve through the control points ``P`` according to
 
@@ -62,36 +63,27 @@ class Bezier(ParametricCurve):
         connected Bézier curves).
 
         Parameters
-        ==========
-        P: numpy.ndarray
-          Array of ``shape=(n+1, 2)``, where ``n`` is the degree of the Bézier curve and ``n+1`` is
-          the number of control points in the Bézier curve. The two columns represent the :math:`x`-
-          and :math:`y`-components of the control points.
+        ----------
+        point_sequence: PointSequence
+            Sequence of points defining the control points for the Bézier curve
 
-        nt: int
-          The number of points in the :math:`t` vector (defines the resolution of the curve). Default: ``100``.
+        name: str or ``None``
+            Optional name for the curve. Default: ``None``
 
-        t: numpy.ndarray
-          Parameter vector describing where the Bézier curve should be evaluated. This vector should be a 1-D array
-          beginning and should monotonically increase from 0 to 1. If not specified, ``numpy.linspace(0, 1, nt)`` will
-          be used.
+        t_start: float or ``None``
+            Optional starting parameter vector value for the Bézier curve. Not specifying this value automatically
+            gives a value of ``0.0``. Default: ``None``
 
-        Returns
-        =======
-        dict
-            A dictionary of ``numpy`` arrays of ``shape=nt`` containing information related to the created Bézier curve:
-
-            .. math::
-
-                C_x(t), C_y(t), C'_x(t), C'_y(t), C''_x(t), C''_y(t), \kappa(t)
-
-            where the :math:`x` and :math:`y` subscripts represent the :math:`x` and :math:`y` components of the
-            vector-valued functions :math:`\vec{C}(t)`, :math:`\vec{C}'(t)`, and :math:`\vec{C}''(t)`.
+        t_end: float or ``None``
+            Optional ending parameter vector value for the Bézier curve. Not specifying this value automatically
+            gives a value of ``1.0``. Default: ``None``
         """
         super().__init__(sub_container="bezier", **kwargs)
         self._point_sequence = None
         self.degree = None
         self.set_point_sequence(point_sequence)
+        self.t_start = t_start
+        self.t_end = t_end
         name = "Bezier-1" if name is None else name
         self.set_name(name)
         self.curve_connections = []
@@ -233,10 +225,42 @@ class Bezier(ParametricCurve):
                                 for i in range(degree + 1 - order)]), axis=0).T
 
     def evaluate(self, t: np.array or None = None, **kwargs):
+        """
+        Parameters
+        ----------
+        t: np.ndarray or ``None``
+            Optional direct specification of the parameter vector for the curve. Not specifying this value
+            gives a linearly spaced parameter vector from ``t_start`` or ``t_end`` with the default size.
+            Default: ``None``
+
+        Returns
+        -------
+        PCurveData
+            Data class specifying the following information about the Bézier curve:
+
+            .. math::
+
+                    C_x(t), C_y(t), C'_x(t), C'_y(t), C''_x(t), C''_y(t), \kappa(t)
+
+                where the :math:`x` and :math:`y` subscripts represent the :math:`x` and :math:`y` components of the
+                vector-valued functions :math:`\vec{C}(t)`, :math:`\vec{C}'(t)`, and :math:`\vec{C}''(t)`.
+        """
+        # Pass the starting and ending parameter vector values to the parameter vector generator if they were
+        # specified directly
+        if self.t_start is not None:
+            kwargs["start"] = self.t_start
+        if self.t_end is not None:
+            kwargs["end"] = self.t_end
+
+        # Generate the parameter vector
         t = ParametricCurve.generate_t_vec(**kwargs) if t is None else t
+
+        # Number of control points, curve degree, control point array
         n_ctrl_points = len(self.point_sequence())
         degree = n_ctrl_points - 1
         P = self.point_sequence().as_array()
+
+        # Evaluate the curve
         x, y = np.zeros(t.shape), np.zeros(t.shape)
         for i in range(n_ctrl_points):
             # Calculate the x- and y-coordinates of the Bézier curve given the input vector t
@@ -244,23 +268,31 @@ class Bezier(ParametricCurve):
             y += P[i, 1] * self.bernstein_poly(degree, i, t)
         xy = np.column_stack((x, y))
 
+        # Calculate the first derivative
         first_deriv = self.derivative(P=P, t=t, degree=degree, order=1)
         xp = first_deriv[:, 0]
         yp = first_deriv[:, 1]
+
+        # Calculate the second derivative
         second_deriv = self.derivative(P=P, t=t, degree=degree, order=2)
         xpp = second_deriv[:, 0]
         ypp = second_deriv[:, 1]
+
+        # Combine the derivative x and y data
         xpyp = np.column_stack((xp, yp))
         xppypp = np.column_stack((xpp, ypp))
 
+        # Calculate the curvature
         with np.errstate(divide='ignore', invalid='ignore'):
             # Calculate the curvature of the Bézier curve (k = kappa = 1 / R, where R is the radius of curvature)
             k = np.true_divide((xp * ypp - yp * xpp), (xp ** 2 + yp ** 2) ** (3 / 2))
 
+        # Calculate the radius of curvature: R = 1 / kappa
         with np.errstate(divide='ignore', invalid='ignore'):
             R = np.true_divide(1, k)
 
         return PCurveData(t=t, xy=xy, xpyp=xpyp, xppypp=xppypp, k=k, R=R)
 
     def get_dict_rep(self):
-        return {"points": [pt.name() for pt in self.point_sequence().points()]}
+        return {"points": [pt.name() for pt in self.point_sequence().points()],
+                "t_start": self.t_start, "t_end": self.t_end}

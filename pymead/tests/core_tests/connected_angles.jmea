@@ -1,0 +1,96 @@
+{
+    "desvar": {},
+    "params": {
+        "Length-1": {
+            "value": 0.22624210636500924,
+            "lower": null,
+            "upper": null,
+            "unit_type": "length",
+            "enabled": true,
+            "equation_str": null
+        },
+        "ClusterAngle-1": {
+            "value": 1.283155,
+            "lower": null,
+            "upper": null,
+            "unit_type": "angle",
+            "root": "Point-1",
+            "rotation_handle": "Point-2",
+            "enabled": true,
+            "equation_str": null
+        },
+        "Angle-1": {
+            "value": 1.517187,
+            "lower": null,
+            "upper": null,
+            "unit_type": "angle",
+            "root": null,
+            "rotation_handle": null,
+            "enabled": true,
+            "equation_str": null
+        },
+        "Angle-2": {
+            "value": 1.75324,
+            "lower": null,
+            "upper": null,
+            "unit_type": "angle",
+            "root": null,
+            "rotation_handle": null,
+            "enabled": true,
+            "equation_str": null
+        }
+    },
+    "points": {
+        "Point-1": {
+            "x": 0.19588064009720918,
+            "y": -0.20196794342872498
+        },
+        "Point-2": {
+            "x": 0.26006354551678773,
+            "y": 0.014979159212397258
+        },
+        "Point-3": {
+            "x": 0.2899152160849354,
+            "y": 0.20137082741977744
+        },
+        "Point-4": {
+            "x": 0.43928247686842115,
+            "y": -0.04866948528732151
+        }
+    },
+    "lines": {},
+    "polylines": {},
+    "bezier": {},
+    "airfoils": {},
+    "mea": {},
+    "geocon": {
+        "DistCon-1": {
+            "p1": "Point-1",
+            "p2": "Point-2",
+            "value": "Length-1",
+            "constraint_type": "DistanceConstraint"
+        },
+        "RelAng3Con-1": {
+            "p1": "Point-4",
+            "p2": "Point-2",
+            "p3": "Point-1",
+            "value": "Angle-1",
+            "constraint_type": "RelAngle3Constraint"
+        },
+        "RelAng3Con-2": {
+            "p1": "Point-3",
+            "p2": "Point-2",
+            "p3": "Point-4",
+            "value": "Angle-2",
+            "constraint_type": "RelAngle3Constraint"
+        }
+    },
+    "dims": {},
+    "metadata": {
+        "pymead_version": "2.0.0-beta.4",
+        "save_datetime": "2024-03-21 13:03:33.209217",
+        "length_unit": "m",
+        "angle_unit": "rad",
+        "area_unit": "m2"
+    }
+}

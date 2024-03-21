@@ -7,7 +7,7 @@ from PyQt5.QtCore import pyqtSignal
 
 from pymead import q_settings, GUI_SETTINGS_DIR
 from pymead.core.bezier import Bezier
-from pymead.core.line import LineSegment
+from pymead.core.line import LineSegment, PolyLine
 from pymead.core.parametric_curve import PCurveData, ParametricCurve
 from pymead.core.point import PointSequence, Point
 from pymead.gui.draggable_point import DraggablePoint
