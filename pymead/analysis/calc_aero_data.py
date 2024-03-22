@@ -938,10 +938,18 @@ def write_input_file(input_file: str, input_list: typing.List[str]):
       List of inputs to write. For example, passing ``["1", "", "12", "13"]`` is equivalent to typing the command
       sequence ``1, RETURN, RETURN, 12, RETURN, 13, RETURN`` into the shell or terminal.
     """
-    with open(input_file, 'w') as f:
-        for input_ in input_list:
-            f.write(input_)
-            f.write('\n')
+    attempt = 0
+    max_attempts = 100
+    while attempt < max_attempts:
+        try:
+            with open(input_file, 'w') as f:
+                for input_ in input_list:
+                    f.write(input_)
+                    f.write('\n')
+            break
+        except OSError:
+            time.sleep(0.01)
+            attempt += 1
 
 
 def convert_xfoil_string_to_aero_data(line1: str, line2: str, aero_data: dict):
