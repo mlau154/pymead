@@ -447,8 +447,8 @@ class PointButton(TreeButton):
 class BezierButton(TreeButton):
 
     def __init__(self, bezier: Bezier, tree, top_level: bool = False):
-        super().__init__(pymead_obj=bezier, tree=tree, top_level=top_level)
         self.bezier = bezier
+        super().__init__(pymead_obj=bezier, tree=tree, top_level=top_level)
 
     def modifyDialogInternals(self, dialog: QDialog, layout: QGridLayout) -> None:
         name_label = QLabel("Name", self)
@@ -461,9 +461,47 @@ class BezierButton(TreeButton):
             point_button.sigNameChanged.connect(self.onPointNameChange)
             layout.addWidget(point_button, layout.rowCount(), 0)
 
+        # Add t start widget
+        row_count = layout.rowCount()
+        layout.addWidget(QLabel("t start", self), row_count, 0)
+        t_start_widget = QDoubleSpinBox(self)
+        t_start_widget.setMinimum(-np.inf)
+        t_start_widget.setMaximum(np.inf)
+        t_start_widget.setSingleStep(0.01)
+        t_start_widget.setDecimals(8)
+        if self.bezier.t_start is not None:
+            t_start_widget.setValue(self.bezier.t_start)
+        else:
+            t_start_widget.setValue(0.0)
+        t_start_widget.valueChanged.connect(self.onTStartChange)
+        layout.addWidget(t_start_widget, row_count, 1)
+
+        # Add t end widget
+        row_count = layout.rowCount()
+        layout.addWidget(QLabel("t end", self), row_count, 0)
+        t_end_widget = QDoubleSpinBox(self)
+        t_end_widget.setMinimum(-np.inf)
+        t_end_widget.setMaximum(np.inf)
+        t_end_widget.setSingleStep(0.01)
+        t_end_widget.setDecimals(8)
+        if self.bezier.t_end is not None:
+            t_end_widget.setValue(self.bezier.t_end)
+        else:
+            t_end_widget.setValue(1.0)
+        t_end_widget.valueChanged.connect(self.onTEndChange)
+        layout.addWidget(t_end_widget, row_count, 1)
+
     def onPointNameChange(self, name: str, point: Point):
         if point.tree_item is not None:
             self.tree.itemWidget(point.tree_item, 0).setText(name)
+
+    def onTStartChange(self, t_start: float):
+        self.bezier.t_start = t_start
+        self.bezier.canvas_item.updateCurveItem(self.bezier.evaluate())
+
+    def onTEndChange(self, t_end: float):
+        self.bezier.t_end = t_end
+        self.bezier.canvas_item.updateCurveItem(self.bezier.evaluate())
 
     def enterEvent(self, a0):
         self.bezier.canvas_item.setCurveStyle("hovered")
