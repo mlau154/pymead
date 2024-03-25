@@ -789,7 +789,15 @@ def write_blade_file(name: str, base_dir: str, grid_bounds: typing.Iterable, coo
     blade_file_path = os.path.join(base_dir, name, f"blade.{name}")
 
     # Save the coordinates to file
-    np.savetxt(blade_file_path, mea_coords, header=header, comments="")
+    attempt = 0
+    max_attempts = 100
+    while attempt < max_attempts:
+        try:
+            np.savetxt(blade_file_path, mea_coords, header=header, comments="")
+            break
+        except OSError:
+            time.sleep(0.01)
+            attempt += 1
 
     # Get the airfoil name order
     airfoil_name_order = [mea_airfoil_names[idx] for idx in airfoil_order]
@@ -820,29 +828,37 @@ def write_gridpar_file(name: str, base_folder: str, mset_settings: dict, airfoil
     if not os.path.exists(os.path.join(base_folder, name)):  # if specified directory doesn't exist,
         os.mkdir(os.path.join(base_folder, name))  # create it
     gridpar_file = os.path.join(base_folder, name, 'gridpar.' + name)
-    with open(gridpar_file, 'w') as f:  # Open the gridpar_file with write permission
-        f.write(f"{int(mset_settings['airfoil_side_points'])}\n")
-        f.write(f"{mset_settings['exp_side_points']}\n")
-        f.write(f"{int(mset_settings['inlet_pts_left_stream'])}\n")
-        f.write(f"{int(mset_settings['outlet_pts_right_stream'])}\n")
-        f.write(f"{int(mset_settings['num_streams_top'])}\n")
-        f.write(f"{int(mset_settings['num_streams_bot'])}\n")
-        f.write(f"{int(mset_settings['max_streams_between'])}\n")
-        f.write(f"{mset_settings['elliptic_param']}\n")
-        f.write(f"{mset_settings['stag_pt_aspect_ratio']}\n")
-        f.write(f"{mset_settings['x_spacing_param']}\n")
-        f.write(f"{mset_settings['alf0_stream_gen']}\n")
+    attempt = 0
+    max_attempts = 100
+    while attempt < max_attempts:
+        try:
+            with open(gridpar_file, 'w') as f:  # Open the gridpar_file with write permission
+                f.write(f"{int(mset_settings['airfoil_side_points'])}\n")
+                f.write(f"{mset_settings['exp_side_points']}\n")
+                f.write(f"{int(mset_settings['inlet_pts_left_stream'])}\n")
+                f.write(f"{int(mset_settings['outlet_pts_right_stream'])}\n")
+                f.write(f"{int(mset_settings['num_streams_top'])}\n")
+                f.write(f"{int(mset_settings['num_streams_bot'])}\n")
+                f.write(f"{int(mset_settings['max_streams_between'])}\n")
+                f.write(f"{mset_settings['elliptic_param']}\n")
+                f.write(f"{mset_settings['stag_pt_aspect_ratio']}\n")
+                f.write(f"{mset_settings['x_spacing_param']}\n")
+                f.write(f"{mset_settings['alf0_stream_gen']}\n")
 
-        multi_airfoil_grid = mset_settings['multi_airfoil_grid']
+                multi_airfoil_grid = mset_settings['multi_airfoil_grid']
 
-        for a in airfoil_name_order:
-            f.write(f"{multi_airfoil_grid[a]['dsLE_dsAvg']} {multi_airfoil_grid[a]['dsTE_dsAvg']} "
-                    f"{multi_airfoil_grid[a]['curvature_exp']}\n")
+                for a in airfoil_name_order:
+                    f.write(f"{multi_airfoil_grid[a]['dsLE_dsAvg']} {multi_airfoil_grid[a]['dsTE_dsAvg']} "
+                            f"{multi_airfoil_grid[a]['curvature_exp']}\n")
 
-        for a in airfoil_name_order:
-            f.write(f"{multi_airfoil_grid[a]['U_s_smax_min']} {multi_airfoil_grid[a]['U_s_smax_max']} "
-                    f"{multi_airfoil_grid[a]['L_s_smax_min']} {multi_airfoil_grid[a]['L_s_smax_max']} "
-                    f"{multi_airfoil_grid[a]['U_local_avg_spac_ratio']} {multi_airfoil_grid[a]['L_local_avg_spac_ratio']}\n")
+                for a in airfoil_name_order:
+                    f.write(f"{multi_airfoil_grid[a]['U_s_smax_min']} {multi_airfoil_grid[a]['U_s_smax_max']} "
+                            f"{multi_airfoil_grid[a]['L_s_smax_min']} {multi_airfoil_grid[a]['L_s_smax_max']} "
+                            f"{multi_airfoil_grid[a]['U_local_avg_spac_ratio']} {multi_airfoil_grid[a]['L_local_avg_spac_ratio']}\n")
+            break
+        except OSError:
+            time.sleep(0.01)
+            attempt += 1
 
     return gridpar_file
 
@@ -886,39 +902,47 @@ def write_mses_file(name: str, base_folder: str, mses_settings: dict, airfoil_na
         F['ISMOVE'] = 2
         F['ISPRES'] = 2
 
-    with open(mses_file, 'w') as f:
-        if F['target'] == 'alfa':
-            global_constraint_target = 5  # Tell MSES to specify the angle of attack in degrees given by 'ALFIN'
-        elif F['target'] == 'Cl':
-            global_constraint_target = 6  # Tell MSES to target the lift coefficient specified by 'CLIFIN'
-        else:
-            raise ValueError('Invalid value for \'target\' (must be either \'alfa\' or \'Cl\')')
+    attempt = 0
+    max_attempts = 100
+    while attempt < max_attempts:
+        try:
+            with open(mses_file, 'w') as f:
+                if F['target'] == 'alfa':
+                    global_constraint_target = 5  # Tell MSES to specify the angle of attack in degrees given by 'ALFIN'
+                elif F['target'] == 'Cl':
+                    global_constraint_target = 6  # Tell MSES to target the lift coefficient specified by 'CLIFIN'
+                else:
+                    raise ValueError('Invalid value for \'target\' (must be either \'alfa\' or \'Cl\')')
 
-        if not F['inverse_flag']:
-            f.write(f'3 4 5 7\n3 4 {global_constraint_target} 7\n')
-        else:
-            f.write(f'3 4 5 7 11 12\n3 4 {global_constraint_target} 7 11 12\n')
+                if not F['inverse_flag']:
+                    f.write(f'3 4 5 7\n3 4 {global_constraint_target} 7\n')
+                else:
+                    f.write(f'3 4 5 7 11 12\n3 4 {global_constraint_target} 7 11 12\n')
 
-        f.write(f"{F['MACHIN']} {F['CLIFIN']} {F['ALFAIN']}\n")
-        f.write(f"{int(F['ISMOM'])} {int(F['IFFBC'])}\n")
-        f.write(f"{F['REYNIN']} {F['ACRIT']}\n")
+                f.write(f"{F['MACHIN']} {F['CLIFIN']} {F['ALFAIN']}\n")
+                f.write(f"{int(F['ISMOM'])} {int(F['IFFBC'])}\n")
+                f.write(f"{F['REYNIN']} {F['ACRIT']}\n")
 
-        for idx, airfoil_name in enumerate(airfoil_name_order):
-            f.write(f"{F['XTRSupper'][airfoil_name]} {F['XTRSlower'][airfoil_name]}")
-            if idx == len(airfoil_name_order) - 1:
-                f.write("\n")
-            else:
-                f.write(" ")
+                for idx, airfoil_name in enumerate(airfoil_name_order):
+                    f.write(f"{F['XTRSupper'][airfoil_name]} {F['XTRSlower'][airfoil_name]}")
+                    if idx == len(airfoil_name_order) - 1:
+                        f.write("\n")
+                    else:
+                        f.write(" ")
 
-        f.write(f"{F['MCRIT']} {F['MUCON']}\n")
+                f.write(f"{F['MCRIT']} {F['MUCON']}\n")
 
-        if any([bool(flag) for flag in F['AD_flags']]) or bool(F['inverse_flag']):
-            f.write(f"{int(F['ISMOVE'])} {int(F['ISPRES'])}\n")
-            f.write(f"{int(F['NMODN'])} {int(F['NPOSN'])}\n")
+                if any([bool(flag) for flag in F['AD_flags']]) or bool(F['inverse_flag']):
+                    f.write(f"{int(F['ISMOVE'])} {int(F['ISPRES'])}\n")
+                    f.write(f"{int(F['NMODN'])} {int(F['NPOSN'])}\n")
 
-        for idx, flag in enumerate(F['AD_flags']):
-            if bool(flag):
-                f.write(f"{int(F['ISDELH'][idx])} {F['XCDELH'][idx]} {F['PTRHIN'][idx]} {F['ETAH'][idx]}\n")
+                for idx, flag in enumerate(F['AD_flags']):
+                    if bool(flag):
+                        f.write(f"{int(F['ISDELH'][idx])} {F['XCDELH'][idx]} {F['PTRHIN'][idx]} {F['ETAH'][idx]}\n")
+            break
+        except OSError:
+            time.sleep(0.01)
+            attempt += 1
 
     mses_settings = F
 
