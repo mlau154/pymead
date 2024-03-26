@@ -1,23 +1,3 @@
-import subprocess
-import os
-import typing
-from copy import deepcopy
-import time
-from collections import namedtuple
-
-import numpy as np
-from matplotlib import pyplot as plt
-from scipy.interpolate import CloughTocher2DInterpolator
-from shapely.geometry import MultiPoint
-
-from pymead.core.mea import MEA
-from pymead.analysis.read_aero_data import read_aero_data_from_xfoil, read_Cp_from_file_xfoil, read_bl_data_from_mses, \
-    read_forces_from_mses, read_grid_stats_from_mses, read_field_from_mses, read_streamline_grid_from_mses, \
-    flow_var_idx, convert_blade_file_to_3d_array, read_actuator_disk_data_mses, read_Mach_from_mses_file
-from pymead.analysis.compressible_flow import calculate_normal_shock_total_pressure_ratio
-from pymead.utils.file_conversion import convert_ps_to_svg
-from pymead.utils.geometry import convert_numpy_array_to_shapely_LineString
-from pymead.utils.read_write_files import save_data
 import os
 import subprocess
 import time

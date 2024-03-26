@@ -286,9 +286,13 @@ class ROCurvatureConstraint(GeoCon):
         if self.curve_type_2 == "Bezier":
             secondary_params.append(Param(self.curve_2.degree, "n"))
 
+        if self.curve_type_1 == "PolyLine" and self.curve_type_2 == "PolyLine":
+            raise ValueError("Cannot create radius of curvature constraint between two polylines")
+
         if self.curve_type_1 == "LineSegment" or self.curve_type_2 == "LineSegment":
             param = None
-        elif self.curve_type_1 == "PolyLine":
+        elif self.curve_type_1 == "PolyLine" or (self.curve_type_1 == "Bezier" and (
+                self.curve_1.t_start is not None or self.curve_1.t_end is not None)):
             data = self.curve_1.evaluate()
             if (np.isclose(data.xy[0, 0], self.curve_joint.x().value()) and
                 np.isclose(data.xy[0, 1], self.curve_joint.y().value())):
@@ -297,7 +301,8 @@ class ROCurvatureConstraint(GeoCon):
                 R = data.R[-1]
 
             param = LengthParam(value=R, name="ROC-1", enabled=False) if not isinstance(value, Param) else value
-        elif self.curve_type_2 == "PolyLine":
+        elif self.curve_type_2 == "PolyLine" or (self.curve_type_2 == "Bezier" and (
+                self.curve_2.t_start is not None or self.curve_2.t_end is not None)):
             data = self.curve_2.evaluate()
             if (np.isclose(data.xy[0, 0], self.curve_joint.x().value()) and
                     np.isclose(data.xy[0, 1], self.curve_joint.y().value())):

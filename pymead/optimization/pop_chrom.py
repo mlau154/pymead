@@ -72,7 +72,8 @@ class Chromosome:
         if self.verbose:
             print(f'Generating chromosome idx = {self.population_idx}, gen = {self.generation}')
         self.generate_airfoil_sys_from_genes()
-        line_strings = self.get_airfoil_line_strings()
+        line_strings = self.get_airfoil_line_strings(airfoil_frame_relative=False)
+        relative_line_strings = self.get_airfoil_line_strings(airfoil_frame_relative=True)
         airfoil_polygons = self.get_airfoil_polygons(line_strings)
         self.chk_self_intersection(line_strings)
         for airfoil in self.airfoil_list:
@@ -82,10 +83,10 @@ class Chromosome:
                     self.chk_min_radius(airfoil_name=airfoil_name)
             if self.valid_geometry:
                 if self.param_dict['constraints'][airfoil_name]['min_val_of_max_thickness'][1]:
-                    self.chk_max_thickness(line_strings[airfoil_name], airfoil_name=airfoil_name)
+                    self.chk_max_thickness(relative_line_strings[airfoil_name], airfoil_name=airfoil_name)
             if self.valid_geometry:
                 if self.param_dict['constraints'][airfoil_name]['thickness_at_points'] is not None:
-                    self.check_thickness_at_points(line_strings[airfoil_name], airfoil_name=airfoil_name)
+                    self.check_thickness_at_points(relative_line_strings[airfoil_name], airfoil_name=airfoil_name)
             if self.valid_geometry:
                 if self.param_dict['constraints'][airfoil_name]['min_area'][1]:
                     self.check_min_area(airfoil_polygons[airfoil_name], airfoil_name=airfoil_name)
@@ -144,11 +145,14 @@ class Chromosome:
                 else:
                     raise ValueError(f"Could not find XCDELH parameter {xcdelh_param}")
 
-    def get_airfoil_line_strings(self):
+    def get_airfoil_line_strings(self, airfoil_frame_relative: bool):
         line_strings = {}
         for airfoil in self.airfoil_list:
-            line_strings[airfoil.name()] = Airfoil.create_line_string(
-                Airfoil.convert_coords_to_shapely_format(airfoil.coords))
+            if airfoil_frame_relative:
+                coords = airfoil.get_chord_relative_coords(airfoil.coords)
+            else:
+                coords = airfoil.coords
+            line_strings[airfoil.name()] = Airfoil.create_line_string(Airfoil.convert_coords_to_shapely_format(coords))
         return line_strings
 
     @staticmethod
@@ -222,8 +226,8 @@ class Chromosome:
             thickness_array = np.array(self.param_dict['constraints'][airfoil_name]['thickness_at_points'])
             x_over_c_array = thickness_array[:, 0]
             t_over_c_array = thickness_array[:, 1]
-            thickness = self.geo_col.container()["airfoils"][airfoil_name].compute_thickness_at_points(
-                line_string, x_over_c_array)
+            airfoil = self.geo_col.container()["airfoils"][airfoil_name]
+            thickness = airfoil.compute_thickness_at_points(x_over_c_array, line_string)
             if np.any(thickness < t_over_c_array):
                 if self.verbose:
                     print(f"Minimum required thickness condition not met at some point. Trying again")
