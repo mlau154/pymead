@@ -312,7 +312,16 @@ class PostProcess:
 
             population = Population(param_dict=self.param_dict, generation=0, parents=self.chromosomes,
                                     verbose=True, skip_parent_assignment=False)
-            population.generate_chromosomes_parallel()
+
+            if evaluate:
+                population.eval_pop_fitness()
+                population_forces = {k: [c.forces[k] for c in population.population]
+                                     for k in population.population[0].forces.keys()}
+                post_process_file_split = os.path.splitext(self.post_process_force_file)
+                save_data(population_forces, post_process_file_split[0] + weight_str + post_process_file_split[1])
+            else:
+                population.generate_chromosomes_parallel()
+
             if save_coords:
                 if not os.path.exists(os.path.join(self.analysis_dir, f'coords{weight_str}')):
                     os.mkdir(os.path.join(self.analysis_dir, f'coords{weight_str}'))
@@ -330,13 +339,6 @@ class PostProcess:
                 for idx, c in enumerate(population.population):
                     save_data(c.airfoil_state, os.path.join(self.analysis_dir,
                                                             f'airfoil_state{weight_str}', f'airfoil_state_{index[idx]}.json'))
-
-            if evaluate:
-                population.eval_pop_fitness()
-                population_forces = {k: [c.forces[k] for c in population.population]
-                                     for k in population.population[0].forces.keys()}
-                post_process_file_split = os.path.splitext(self.post_process_force_file)
-                save_data(population_forces, post_process_file_split[0] + weight_str + post_process_file_split[1])
 
     def generate_objective_function_plot(self, index: int or typing.Iterable = None):
         obj_fun_label_dict = {

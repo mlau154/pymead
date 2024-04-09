@@ -942,10 +942,6 @@ class GeometryCollection(DualRep):
                     if rotation_handle_name is not None else None
                 geo_col.add_desvar(**desvar_dict, name=name, assign_unique_name=False, rotation_handle=rotation_handle,
                                    root=root)
-                if root_name is not None:
-                    desvar_dict["root"] = root_name
-                if rotation_handle_name is not None:
-                    desvar_dict["rotation_handle"] = rotation_handle_name
         for name, param_dict in d["params"].items():
             if ".x" in name:
                 point = geo_col.container()["points"][name.split(".")[0]]
@@ -961,10 +957,6 @@ class GeometryCollection(DualRep):
                     if rotation_handle_name is not None else None
                 geo_col.add_param(**param_dict, name=name, assign_unique_name=False, rotation_handle=rotation_handle,
                                   root=root)
-                if root_name is not None:
-                    param_dict["root"] = root_name
-                if rotation_handle_name is not None:
-                    param_dict["rotation_handle"] = rotation_handle_name
         for name, line_dict in d["lines"].items():
             geo_col.add_line(point_sequence=PointSequence(
                 points=[geo_col.container()["points"][k] for k in line_dict["points"]]),
@@ -1006,9 +998,6 @@ class GeometryCollection(DualRep):
             geo_col.add_constraint(constraint=constraint, assign_unique_name=False, compile=False,
                                    solve_and_update=False)
             constraints_added.append(constraint)
-
-            # Add the constraint type back to the dictionary
-            geocon_dict["constraint_type"] = constraint_type
         for name, airfoil_dict in d["airfoils"].items():
             geo_col.add_airfoil(leading_edge=geo_col.container()["points"][airfoil_dict["leading_edge"]],
                                 trailing_edge=geo_col.container()["points"][airfoil_dict["trailing_edge"]],
