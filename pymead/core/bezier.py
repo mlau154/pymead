@@ -229,14 +229,14 @@ class Bezier(ParametricCurve):
         Evaluates the curve using an optionally specified parameter vector.
 
         Parameters
-        ----------
+        ==========
         t: np.ndarray or ``None``
             Optional direct specification of the parameter vector for the curve. Not specifying this value
             gives a linearly spaced parameter vector from ``t_start`` or ``t_end`` with the default size.
             Default: ``None``
 
         Returns
-        -------
+        =======
         PCurveData
             Data class specifying the following information about the Bézier curve:
 
@@ -244,8 +244,8 @@ class Bezier(ParametricCurve):
 
                     C_x(t), C_y(t), C'_x(t), C'_y(t), C''_x(t), C''_y(t), \kappa(t)
 
-                where the :math:`x` and :math:`y` subscripts represent the :math:`x` and :math:`y` components of the
-                vector-valued functions :math:`\vec{C}(t)`, :math:`\vec{C}'(t)`, and :math:`\vec{C}''(t)`.
+            where the :math:`x` and :math:`y` subscripts represent the :math:`x` and :math:`y` components of the
+            vector-valued functions :math:`\vec{C}(t)`, :math:`\vec{C}'(t)`, and :math:`\vec{C}''(t)`.
         """
         # Pass the starting and ending parameter vector values to the parameter vector generator if they were
         # specified directly
