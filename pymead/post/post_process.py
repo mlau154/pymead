@@ -250,8 +250,14 @@ class PostProcess:
         param_set['base_folder'] = os.path.join(self.analysis_dir, 'analysis')
         param_set['name'] = [f"analysis_0"]
 
+        airfoil_name, mea_name = None, None
+        if param_set["tool"] == "XFOIL":
+            airfoil_name = param_set["xfoil_settings"]["airfoil"]
+        elif param_set["tool"] == "MSES":
+            mea_name = param_set["mset_settings"]["mea"]
+
         chromosome = Chromosome(param_dict=param_set, population_idx=0, geo_col_dict=self.geo_col_dict, genes=None,
-                                generation=0, mea_name=self.param_dict["mset_settings"]["mea"])
+                                generation=0, mea_name=mea_name, airfoil_name=airfoil_name)
 
         population = Population(param_dict=param_set, generation=0, parents=[chromosome],
                                 verbose=True, skip_parent_assignment=False)
@@ -292,10 +298,16 @@ class PostProcess:
                 param_set['base_folder'] = os.path.join(self.analysis_dir, 'analysis')
                 param_set['name'] = [f"analysis_{j}" + weight_str for j in index]
 
+                airfoil_name, mea_name = None, None
+                if param_set["tool"] == "XFOIL":
+                    airfoil_name = param_set["xfoil_settings"]["airfoil"]
+                elif param_set["tool"] == "MSES":
+                    mea_name = param_set["mset_settings"]["mea"]
+
                 # parent_chromosomes.append(Chromosome(param_set=param_set, population_idx=s, mea=mea, X=X))
                 X = X_list[idx]
                 self.chromosomes.append(Chromosome(param_dict=param_set, population_idx=i, geo_col_dict=self.geo_col_dict, genes=X,
-                                                   generation=0, mea_name=self.param_dict["mset_settings"]["mea"]))
+                                                   generation=0, mea_name=mea_name, airfoil_name=airfoil_name))
 
             population = Population(param_dict=self.param_dict, generation=0, parents=self.chromosomes,
                                     verbose=True, skip_parent_assignment=False)
