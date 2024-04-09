@@ -993,8 +993,6 @@ class GeometryCollection(DualRep):
                     geocon_dict[k] = geo_col.container()["bezier"][v]
                 else:
                     pass
-            if "constraint_type" not in geocon_dict.keys():
-                print(f"{geocon_dict = }")
             constraint_type = geocon_dict.pop("constraint_type")
             constraint = getattr(sys.modules[__name__], constraint_type)(**geocon_dict, name=name)
             geo_col.add_constraint(constraint=constraint, assign_unique_name=False, compile=False,
