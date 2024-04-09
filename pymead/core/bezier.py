@@ -225,7 +225,7 @@ class Bezier(ParametricCurve):
                                 for i in range(degree + 1 - order)]), axis=0).T
 
     def evaluate(self, t: np.array or None = None, **kwargs):
-        """
+        r"""
         Evaluates the curve using an optionally specified parameter vector.
 
         Parameters
