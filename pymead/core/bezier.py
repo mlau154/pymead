@@ -63,7 +63,7 @@ class Bezier(ParametricCurve):
         connected Bézier curves).
 
         Parameters
-        ----------
+        ==========
         point_sequence: PointSequence
             Sequence of points defining the control points for the Bézier curve
 
@@ -195,7 +195,7 @@ class Bezier(ParametricCurve):
         return finite_diff_recursive(k, i)
 
     def derivative(self, P: np.ndarray, t: np.ndarray, degree: int, order: int):
-        """
+        r"""
         Calculates an arbitrary-order derivative of the Bézier curve
 
         Parameters
@@ -210,14 +210,14 @@ class Bezier(ParametricCurve):
             The degree of the Bézier curve
 
         order: int
-          The derivative order. For example, ``order=2`` returns the second derivative.
+            The derivative order. For example, ``order=2`` returns the second derivative.
 
         Returns
         =======
         np.ndarray
-          An array of ``shape=(N,2)`` where ``N`` is the number of evaluated points specified by the :math:`t` vector.
-          The columns represent :math:`C^{(m)}_x(t)` and :math:`C^{(m)}_y(t)`, where :math:`m` is the
-          derivative order.
+            An array of ``shape=(N,2)`` where ``N`` is the number of evaluated points specified by the :math:`t` vector.
+            The columns represent :math:`C^{(m)}_x(t)` and :math:`C^{(m)}_y(t)`, where :math:`m` is the
+            derivative order.
         """
         return np.sum(np.array([np.prod(np.array([degree - idx for idx in range(order)])) *
                                 np.array([self.finite_diff_P(P, order, i)]).T *
@@ -226,6 +226,8 @@ class Bezier(ParametricCurve):
 
     def evaluate(self, t: np.array or None = None, **kwargs):
         """
+        Evaluates the curve using an optionally specified parameter vector.
+
         Parameters
         ----------
         t: np.ndarray or ``None``
