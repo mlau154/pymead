@@ -251,7 +251,7 @@ class PostProcess:
         param_set['name'] = [f"analysis_0"]
 
         chromosome = Chromosome(param_dict=param_set, population_idx=0, geo_col_dict=self.geo_col_dict, genes=None,
-                                generation=0)
+                                generation=0, mea_name=self.param_dict["mset_settings"]["mea"])
 
         population = Population(param_dict=param_set, generation=0, parents=[chromosome],
                                 verbose=True, skip_parent_assignment=False)
@@ -295,7 +295,7 @@ class PostProcess:
                 # parent_chromosomes.append(Chromosome(param_set=param_set, population_idx=s, mea=mea, X=X))
                 X = X_list[idx]
                 self.chromosomes.append(Chromosome(param_dict=param_set, population_idx=i, geo_col_dict=self.geo_col_dict, genes=X,
-                                                   generation=0))
+                                                   generation=0, mea_name=self.param_dict["mset_settings"]["mea"]))
 
             population = Population(param_dict=self.param_dict, generation=0, parents=self.chromosomes,
                                     verbose=True, skip_parent_assignment=False)
