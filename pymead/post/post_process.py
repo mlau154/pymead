@@ -7,11 +7,8 @@ import numpy
 from matplotlib import animation
 from matplotlib.lines import Line2D
 from matplotlib import ticker as mticker
-import scienceplots
-from mpl_toolkits.axes_grid1 import make_axes_locatable
-from matplotlib.ticker import MultipleLocator
 from cycler import cycler
-from matplotlib.patches import Polygon, Patch, Arrow
+from matplotlib.patches import Polygon, Patch
 import numpy as np
 from copy import deepcopy
 import PIL
@@ -20,12 +17,9 @@ from pymoo.decomposition.asf import ASF
 from pymead.optimization.objectives_and_constraints import Objective
 from pymead.utils.read_write_files import load_data, save_data
 from pymead.optimization.pop_chrom import Chromosome, Population
-from pymead.post.mses_field import generate_field_matplotlib, flow_var_label
+from pymead.post.mses_field import generate_field_matplotlib
 from pymead.analysis.read_aero_data import read_bl_data_from_mses
-from functools import partial
-from pymead.core.bezier import Bezier
-from pymead.core.mea import MEA
-from pymead.core.transformation import Transformation2D
+from pymead.core.geometry_collection import GeometryCollection
 from pymead.utils.transformations import rotate_matrix
 from pymead.post.fonts_and_colors import ILLINI_ORANGE, ILLINI_BLUE, font
 from pymead.post.plot_formatters import format_axis_scientific, show_save_fig, legend_entry_flip
@@ -102,8 +96,8 @@ class PostProcess:
             os.mkdir(self.image_dir)
         self.post_process_force_file = post_process_force_file
         self.jmea_file = jmea_file
-        self.mea = load_data(jmea_file)
-        self.mea['airfoil_graphs_active'] = False
+        self.geo_col_dict = load_data(jmea_file)
+        self.geo_col_dict['airfoil_graphs_active'] = False
         self.underwing = underwing
         self.param_dict = load_data(os.path.join(self.analysis_dir, 'param_dict.json'))
         self.pop_size = deepcopy(self.param_dict["population_size"])
@@ -219,7 +213,7 @@ class PostProcess:
         else:
             X = None
 
-        mea_object = MEA.generate_from_param_dict(self.mea)
+        mea_object = GeometryCollection.set_from_dict_rep(self.geo_col_dict)
 
         if X is not None:
             mea_object.update_parameters(X)
@@ -256,11 +250,11 @@ class PostProcess:
         param_set['base_folder'] = os.path.join(self.analysis_dir, 'analysis')
         param_set['name'] = [f"analysis_0"]
 
-        chromosome = Chromosome(param_dict=param_set, population_idx=0, mea=self.mea, genes=None,
+        chromosome = Chromosome(param_dict=param_set, population_idx=0, geo_col_dict=self.geo_col_dict, genes=None,
                                 generation=0)
 
         population = Population(param_dict=param_set, generation=0, parents=[chromosome],
-                                mea=self.mea, verbose=True, skip_parent_assignment=False)
+                                verbose=True, skip_parent_assignment=False)
 
         population.eval_pop_fitness()
         population_forces = population.population[0].forces
@@ -300,11 +294,11 @@ class PostProcess:
 
                 # parent_chromosomes.append(Chromosome(param_set=param_set, population_idx=s, mea=mea, X=X))
                 X = X_list[idx]
-                self.chromosomes.append(Chromosome(param_dict=param_set, population_idx=i, mea=self.mea, genes=X,
+                self.chromosomes.append(Chromosome(param_dict=param_set, population_idx=i, geo_col_dict=self.geo_col_dict, genes=X,
                                                    generation=0))
 
             population = Population(param_dict=self.param_dict, generation=0, parents=self.chromosomes,
-                                    mea=self.mea, verbose=True, skip_parent_assignment=False)
+                                    verbose=True, skip_parent_assignment=False)
             population.generate_chromosomes_parallel()
             if save_coords:
                 if not os.path.exists(os.path.join(self.analysis_dir, f'coords{weight_str}')):
