@@ -317,7 +317,7 @@ class PostProcess:
                 if not os.path.exists(os.path.join(self.analysis_dir, f'coords{weight_str}')):
                     os.mkdir(os.path.join(self.analysis_dir, f'coords{weight_str}'))
                 for idx, c in enumerate(population.population):
-                    save_data(c.coords.tolist(), os.path.join(self.analysis_dir, f'coords{weight_str}', f'coords_{index[idx]}.json'))
+                    save_data([a.tolist() for a in c.coords], os.path.join(self.analysis_dir, f'coords{weight_str}', f'coords_{index[idx]}.json'))
             if save_control_points:
                 if not os.path.exists(os.path.join(self.analysis_dir, f'control_points{weight_str}')):
                     os.mkdir(os.path.join(self.analysis_dir, f'control_points{weight_str}'))
