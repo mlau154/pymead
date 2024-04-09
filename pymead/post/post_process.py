@@ -256,8 +256,8 @@ class PostProcess:
         elif param_set["tool"] == "MSES":
             mea_name = param_set["mset_settings"]["mea"]
 
-        chromosome = Chromosome(param_dict=param_set, population_idx=0, geo_col_dict=self.geo_col_dict, genes=None,
-                                generation=0, mea_name=mea_name, airfoil_name=airfoil_name)
+        chromosome = Chromosome(param_dict=param_set, population_idx=0, geo_col_dict=deepcopy(self.geo_col_dict),
+                                genes=None, generation=0, mea_name=mea_name, airfoil_name=airfoil_name)
 
         population = Population(param_dict=param_set, generation=0, parents=[chromosome],
                                 verbose=True, skip_parent_assignment=False)
@@ -306,7 +306,8 @@ class PostProcess:
 
                 # parent_chromosomes.append(Chromosome(param_set=param_set, population_idx=s, mea=mea, X=X))
                 X = X_list[idx]
-                self.chromosomes.append(Chromosome(param_dict=param_set, population_idx=i, geo_col_dict=self.geo_col_dict, genes=X,
+                self.chromosomes.append(Chromosome(param_dict=param_set, population_idx=i,
+                                                   geo_col_dict=deepcopy(self.geo_col_dict), genes=X,
                                                    generation=0, mea_name=mea_name, airfoil_name=airfoil_name))
 
             population = Population(param_dict=self.param_dict, generation=0, parents=self.chromosomes,
