@@ -377,10 +377,15 @@ class PostProcess:
                 label = label_dict[label]
 
                 # Determine what ydata to plot
+                xdata = np.arange(F.shape[1])
                 ydata = F[:, obj_fun_idx]
+                for xy_idx, (x, y) in enumerate(zip(xdata[::-1], ydata[::-1])):
+                    if np.isclose(y, 1.0e9):
+                        xdata = np.delete(xdata, xy_idx)
+                        ydata = np.delete(ydata, xy_idx)
 
-                # Plot the ydata
-                axs.plot(ydata, label=label)
+                # Plot the data
+                axs.plot(xdata, ydata, label=label)
 
             fig.set_tight_layout('tight')
             if obj_fun_idx == 0 and self.pop_size == 150:
