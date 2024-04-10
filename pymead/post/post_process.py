@@ -745,7 +745,7 @@ class PostProcess:
         pai_props = {
             0: dict(title='Main', xlim=[-0.1, 1.1], ylim=[2.2, -1.6], xlabel=r'$x/c_{main}$', ylabel=bl_matplotlib_labels[var]),
             1: dict(title='Hub', xlim=[0.75, 1.4], ylim=[2.2, -1.6], xlabel=r'$x/c_{main}$', ylabel=''),
-            2: dict(title='Nacelle', xlim=[0.6, 1.1], ylim=[2.2, -1.6], xlabel=r'$x/c_{main}$', ylabel='')
+            2: dict(title='Nacelle', xlim=[0.55, 1.1], ylim=[2.2, -1.6], xlabel=r'$x/c_{main}$', ylabel='')
         }
 
         valid_modes = ['compare', 'standalone']
