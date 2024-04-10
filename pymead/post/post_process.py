@@ -377,7 +377,7 @@ class PostProcess:
                 label = label_dict[label]
 
                 # Determine what ydata to plot
-                xdata = np.arange(F.shape[1])
+                xdata = np.arange(F.shape[0])
                 ydata = F[:, obj_fun_idx]
                 for xy_idx, (x, y) in enumerate(zip(xdata[::-1], ydata[::-1])):
                     if np.isclose(y, 1.0e9):
