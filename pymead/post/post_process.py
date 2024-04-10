@@ -379,10 +379,8 @@ class PostProcess:
                 # Determine what ydata to plot
                 xdata = np.arange(F.shape[0])
                 ydata = F[:, obj_fun_idx]
-                for xy_idx, (x, y) in enumerate(zip(xdata[::-1], ydata[::-1])):
-                    if np.isclose(y, 1.0e9):
-                        xdata = np.delete(xdata, xy_idx)
-                        ydata = np.delete(ydata, xy_idx)
+                xdata = np.delete(xdata, np.argwhere(ydata == 1.0e9))
+                ydata = np.delete(ydata, np.argwhere(ydata == 1.0e9))
 
                 # Plot the data
                 axs.plot(xdata, ydata, label=label)
