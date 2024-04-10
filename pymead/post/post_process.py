@@ -554,6 +554,7 @@ class PostProcess:
         # axs_inset.set_yticklabels(y_labels)
         axs_inset.xaxis.set_major_locator(mticker.MaxNLocator(2))
         axs_inset.yaxis.set_major_locator(mticker.MaxNLocator(2, prune="lower"))
+        axs_inset.set_zorder(100)
 
         show_save_fig(fig, save_base_dir=self.image_dir, file_name_stub="pareto_front")
 
