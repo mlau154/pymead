@@ -331,7 +331,7 @@ class PostProcess:
                 if not os.path.exists(os.path.join(self.analysis_dir, f'control_points{weight_str}')):
                     os.mkdir(os.path.join(self.analysis_dir, f'control_points{weight_str}'))
                 for idx, c in enumerate(population.population):
-                    control_points = [[curve.P.tolist() for curve in a.curves] for a in c.mea.airfoils]
+                    control_points = [[curve.point_sequence().as_array().tolist() for curve in a.curves] for a in c.mea.airfoils]
                     save_data(control_points, os.path.join(self.analysis_dir,
                                                              f'control_points{weight_str}', f'control_points_{index[idx]}.json'))
             if save_airfoil_state:
