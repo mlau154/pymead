@@ -480,7 +480,8 @@ class PostProcess:
             format_axis_scientific(axs)
             show_save_fig(fig, save_base_dir=self.image_dir, file_name_stub=f'design_{v}')
 
-    def pareto_front(self, opt_start: int = 5, opt_end: int = None, opt_num: int = 10):
+    def pareto_front(self, main_axes_xlim: typing.List, inset_axes_xy_lim: typing.List,
+                     opt_start: int = 5, opt_end: int = None, opt_num: int = 10):
 
         fig, axs = plt.subplots(figsize=(8, 4.8))
 
@@ -531,7 +532,7 @@ class PostProcess:
                             opt_labeled = True
                         ax.plot(F[:, 0], F[:, 1], **gray_circle_kwargs, **extra_kwargs)
             # ax.set_xlim([0.058, 0.19])  # FOR POP50 input ga_opt_70
-            ax.set_xlim([0.17, 0.26])  # FOR POP50 consumption ga_opt_93
+            ax.set_xlim(main_axes_xlim)  # FOR POP50 consumption ga_opt_93
             # ax.set_xlim([0.17, 0.26])  # FOR POP150 consumption ga_opt_92
             ax.set_xlabel(r"$J_P$", fontdict=font)
             ax.set_ylabel(r"$J_F$", fontdict=font)
@@ -544,7 +545,7 @@ class PostProcess:
 
         axs_inset = axs.inset_axes([0.17, 0.53, 0.35, 0.4])
         generate_plots(axs_inset, opt_end)
-        x1, x2, y1, y2 = 0.17, 0.20, 0.012, 0.014
+        x1, x2, y1, y2 = inset_axes_xy_lim[0], inset_axes_xy_lim[1], inset_axes_xy_lim[2], inset_axes_xy_lim[3]
         axs_inset.set_xlim(x1, x2)
         axs_inset.set_ylim(y1, y2)
         # x_labels = [item if idx % 2 else "" for idx, item in enumerate(axs_inset.get_xticklabels())]
