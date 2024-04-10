@@ -480,7 +480,7 @@ class PostProcess:
             format_axis_scientific(axs)
             show_save_fig(fig, save_base_dir=self.image_dir, file_name_stub=f'design_{v}')
 
-    def pareto_front(self, main_axes_xlim: typing.List, inset_axes_xy_lim: typing.List,
+    def pareto_front(self, main_axes_xlim: typing.List, inset_axes_xy_lim: typing.List, axes_location: typing.List,
                      opt_start: int = 5, opt_end: int = None, opt_num: int = 10):
 
         fig, axs = plt.subplots(figsize=(8, 4.8))
@@ -543,7 +543,7 @@ class PostProcess:
         legend_font_dict["size"] = 12
         axs.legend(prop=legend_font_dict, loc="upper right", ncol=1)
 
-        axs_inset = axs.inset_axes([0.17, 0.53, 0.35, 0.4])
+        axs_inset = axs.inset_axes(axes_location)
         generate_plots(axs_inset, opt_end)
         x1, x2, y1, y2 = inset_axes_xy_lim[0], inset_axes_xy_lim[1], inset_axes_xy_lim[2], inset_axes_xy_lim[3]
         axs_inset.set_xlim(x1, x2)
