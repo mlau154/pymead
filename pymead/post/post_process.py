@@ -743,9 +743,9 @@ class PostProcess:
 
         save_filetypes = ['.svg', '.pdf']
         pai_props = {
-            0: dict(title='Main', xlim=[-0.1, 1.1], xlabel=r'$x/c_{main}$', ylabel=bl_matplotlib_labels[var]),
-            1: dict(title='Hub', xlim=[0.75, 1.4], xlabel=r'$x/c_{main}$', ylabel=''),
-            2: dict(title='Nacelle', xlim=[0.65, 1.1], xlabel=r'$x/c_{main}$', ylabel='')
+            0: dict(title='Main', xlim=[-0.1, 1.1], ylim=[-1.6, 2.2], xlabel=r'$x/c_{main}$', ylabel=bl_matplotlib_labels[var]),
+            1: dict(title='Hub', xlim=[0.75, 1.4], ylim=[-1.6, 2.2], xlabel=r'$x/c_{main}$', ylabel=''),
+            2: dict(title='Nacelle', xlim=[0.6, 1.1], ylim=[-1.6, 2.2], xlabel=r'$x/c_{main}$', ylabel='')
         }
 
         valid_modes = ['compare', 'standalone']
@@ -787,6 +787,7 @@ class PostProcess:
                                              ls=line_styles[side % 2])
                     for k, v_ in pai_props.items():
                         axs[k].set_xlim(v_["xlim"])
+                        axs[k].set_ylim(v_["ylim"])
                         axs[k].set_title(v_["title"], fontdict=font)
                         axs[k].set_xlabel(v_["xlabel"], fontdict=font)
                         axs[k].set_ylabel(v_["ylabel"], fontdict=font)
