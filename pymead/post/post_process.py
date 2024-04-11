@@ -386,8 +386,8 @@ class PostProcess:
                 axs.plot(xdata, ydata, label=label)
 
             fig.set_tight_layout('tight')
-            if obj_fun_idx == 0 and self.pop_size == 150:
-                axs.set_ylim([0.165, 0.235])
+            # if obj_fun_idx == 0 and self.pop_size == 150:
+            #     axs.set_ylim([0.165, 0.235])
             axs.set_xlabel("Generation", fontdict=font)
             axs.set_ylabel(obj_fun_label_dict[obj_fun_idx], fontdict=font)
             axs.grid("on", ls=":")
