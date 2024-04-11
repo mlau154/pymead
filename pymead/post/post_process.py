@@ -483,7 +483,7 @@ class PostProcess:
             format_axis_scientific(axs)
             show_save_fig(fig, save_base_dir=self.image_dir, file_name_stub=f'design_{v}')
 
-    def pareto_front(self, main_axes_xlim: typing.List, inset_axes_xy_lim: typing.List, axes_location: typing.List,
+    def pareto_front(self, main_axes_xy_lim: typing.List, inset_axes_xy_lim: typing.List, axes_location: typing.List,
                      opt_start: int = 5, opt_end: int = None, opt_num: int = 10):
 
         fig, axs = plt.subplots(figsize=(8, 4.8))
@@ -535,7 +535,8 @@ class PostProcess:
                             opt_labeled = True
                         ax.plot(F[:, 0], F[:, 1], **gray_circle_kwargs, **extra_kwargs)
             # ax.set_xlim([0.058, 0.19])  # FOR POP50 input ga_opt_70
-            ax.set_xlim(main_axes_xlim)  # FOR POP50 consumption ga_opt_93
+            ax.set_xlim(main_axes_xy_lim[:2])  # FOR POP50 consumption ga_opt_93
+            ax.set_ylim(main_axes_xy_lim[2:])
             # ax.set_xlim([0.17, 0.26])  # FOR POP150 consumption ga_opt_92
             ax.set_xlabel(r"$J_P$", fontdict=font)
             ax.set_ylabel(r"$J_F$", fontdict=font)
