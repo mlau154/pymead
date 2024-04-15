@@ -6,7 +6,8 @@
     "Save": ["save_geo_col", "Ctrl+S"],
     "Import": {
       "Design Variable Values": "import_design_variable_values",
-      "Optimized Airfoil": "import_algorithm_pkl_file"
+      "Optimized Airfoil": "import_algorithm_pkl_file",
+      "Points from File": "load_points"
     },
     "Export": {
       "Airfoil Coordinates": "export_coordinates",

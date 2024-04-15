@@ -44,7 +44,7 @@ from pymead.gui.help_browser import HelpBrowserWindow
 from pymead.gui.dialogs import LoadDialog, SaveAsDialog, OptimizationSetupDialog, \
     MultiAirfoilDialog, ColorInputDialog, ExportCoordinatesDialog, ExportControlPointsDialog, AirfoilPlotDialog, \
     AirfoilMatchingDialog, MSESFieldPlotDialog, ExportIGESDialog, XFOILDialog, NewGeoColDialog, EditBoundsDialog, \
-    ExitDialog, ScreenshotDialog, LoadAirfoilAlgFile, ExitOptimizationDialog, SettingsDialog
+    ExitDialog, ScreenshotDialog, LoadAirfoilAlgFile, ExitOptimizationDialog, SettingsDialog, LoadPointsDialog
 from pymead.gui.dialogs import convert_dialog_to_mset_settings, convert_dialog_to_mses_settings, \
     convert_dialog_to_mplot_settings
 from pymead.gui.main_icon_toolbar import MainIconToolbar
@@ -576,6 +576,26 @@ class GUI(QMainWindow):
         self.undo_stack.append(deepcopy(self.geo_col.get_dict_rep()))
         self.load_geo_col_from_memory(self.redo_stack[-1])
         self.redo_stack.pop()
+
+    def load_points(self):
+        """
+        Loads a set of :math:`x`-:math:`y` points from a .dat/.txt/.csv file.
+        """
+        dialog = LoadPointsDialog(self, theme=self.themes[self.current_theme])
+
+        if dialog.exec_():
+            # Load the points to an array
+            try:
+                points = np.loadtxt(dialog.value())
+            except ValueError:
+                points = np.loadtxt(dialog.value(), delimiter=",")
+
+            # Add each point from the array to the GeometryCollection
+            for point in points:
+                self.geo_col.add_point(point[0], point[1])
+
+            # Make sure that all the points are in view
+            self.auto_range_geometry()
 
     def take_screenshot(self):
 

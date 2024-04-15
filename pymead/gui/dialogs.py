@@ -13,7 +13,7 @@ import pyqtgraph as pg
 from PyQt5.QtCore import QEvent
 from PyQt5.QtCore import Qt, pyqtSignal, QObject, QRect
 from PyQt5.QtCore import pyqtSlot, QStandardPaths
-from PyQt5.QtGui import QFont
+from PyQt5.QtGui import QFont, QTextDocument
 from PyQt5.QtWidgets import (QWidget, QGridLayout, QLabel, QPushButton, QCheckBox, QTabWidget, QSpinBox,
                              QDoubleSpinBox, QComboBox, QDialog, QVBoxLayout, QSizeGrip, QDialogButtonBox, QMessageBox,
                              QFormLayout, QRadioButton)
@@ -2968,6 +2968,35 @@ class AirfoilPlotDialog(PymeadDialog):
 
     def value(self):
         return self.inputs[0][1].text()
+
+
+class LoadPointsDialog(PymeadDialog):
+    def __init__(self, parent, theme: dict):
+        self.grid_widget = QWidget()
+        super().__init__(parent, window_title="Load Points", widget=self.grid_widget, theme=theme)
+        self.lay = QGridLayout()
+        explanation = QPlainTextEdit("Load points from a .txt/.dat/.csv file in space- or comma-delimited format "
+                                     "with two columns: x and y")
+        explanation.setReadOnly(True)
+        self.lay.addWidget(explanation, 0, 0, 1, 3)
+        self.file_name_widget = QLineEdit()
+        self.lay.addWidget(QLabel("Data File"), 1, 0, 1, 1)
+        self.lay.addWidget(self.file_name_widget, 1, 1, 1, 1)
+        push = QPushButton("Choose File")
+        push.clicked.connect(self.select_data_file)
+        self.lay.addWidget(push, 1, 2, 1, 1)
+        self.grid_widget.setLayout(self.lay)
+        self.setMinimumWidth(450)
+
+    def select_data_file(self):
+        select_data_file(self, self.file_name_widget, starting_dir=get_setting("load_points_default_open_location"))
+        file_name = self.file_name_widget.text()
+        if file_name:
+            set_setting("load_points_default_open_location", file_name)
+
+    def value(self):
+        file_name = self.file_name_widget.text()
+        return file_name
 
 
 class WebAirfoilDialog(PymeadDialog):
