@@ -8,7 +8,7 @@
     },
     "combobox": {
       "w": "QComboBox",
-      "addItems": ["Full Window","Parameter Tree", "Geometry", "Analysis", "Console"],
+      "addItems": [],
       "grid": [0, 1, 1, 2]
     }
   },

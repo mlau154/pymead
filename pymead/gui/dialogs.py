@@ -2313,7 +2313,7 @@ class InviscidCpCalcDialog(QDialog):
 
 
 class ScreenshotDialog(PymeadDialog):
-    def __init__(self, parent: QWidget, theme: dict):
+    def __init__(self, parent: QWidget, theme: dict, windows: typing.List[str]):
 
         widget = QWidget()
         super().__init__(parent=parent, window_title="Screenshot", widget=widget, theme=theme)
@@ -2321,7 +2321,10 @@ class ScreenshotDialog(PymeadDialog):
         self.grid_layout = QGridLayout()
 
         self.setInputs()
+        self.grid_widget["window"]["combobox"].addItems(windows)
         widget.setLayout(self.grid_layout)
+        self.window_list = windows
+        self.setMinimumWidth(400)
 
     def setInputs(self):
         widget_dict = load_data(os.path.join(GUI_DIALOG_WIDGETS_DIR, "screenshot_dialog.json"))
@@ -2352,6 +2355,12 @@ class ScreenshotDialog(PymeadDialog):
             "window": self.grid_widget["window"]["combobox"].currentText()
         }
         return inputs
+
+    def setValue(self, new_inputs):
+        if new_inputs["window"] in self.window_list:
+            combo = self.grid_widget["window"]["combobox"]
+            combo.setCurrentIndex(combo.findText(new_inputs["window"]))
+        self.grid_widget["choose_image_file"]["line"].setText(new_inputs["image_file"])
 
     def select_jpg_file(self, line_edit: QLineEdit):
         select_jpg_file(parent=self.parent(), line_edit=line_edit)

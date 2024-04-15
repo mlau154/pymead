@@ -15,7 +15,7 @@ import pyqtgraph as pg
 import requests
 from PyQt5.QtCore import QEvent, QObject, Qt, QThreadPool, QRect
 from PyQt5.QtCore import pyqtSlot
-from PyQt5.QtGui import QIcon, QFont, QFontDatabase, QPainter, QCloseEvent, QTextCursor
+from PyQt5.QtGui import QIcon, QFont, QFontDatabase, QPainter, QCloseEvent, QTextCursor, QImage
 from PyQt5.QtSvg import QSvgWidget
 from PyQt5.QtWidgets import QMainWindow, QApplication, \
     QWidget, QMenu, QStatusBar, QAction, QGraphicsScene, QGridLayout, QDockWidget, QSizeGrip
@@ -87,8 +87,8 @@ class GUI(QMainWindow):
             pyi_splash.update_text("Initializing constants...")
         except:
             pass
-        UNITS.set_current_length_unit(q_settings.value("length_unit", q_settings_descriptions["length_unit"][1]))
-        UNITS.set_current_angle_unit(q_settings.value("angle_unit", q_settings_descriptions["angle_unit"][1]))
+        UNITS.set_current_length_unit(get_setting("length_unit"))
+        UNITS.set_current_angle_unit(get_setting("angle_unit"))
         super().__init__(parent=parent)
         self.showHideState = None
         self.setWindowFlags(self.windowFlags() | Qt.FramelessWindowHint)
@@ -122,6 +122,7 @@ class GUI(QMainWindow):
         self.opt_settings = None
         self.multi_airfoil_analysis_settings = None
         self.xfoil_settings = None
+        self.screenshot_settings = None
         self.current_settings_save_file = None
         self.current_theme = "dark"
         self.cbar = None
@@ -578,27 +579,27 @@ class GUI(QMainWindow):
 
     def take_screenshot(self):
 
-        # if hasattr(self.dockable_tab_window, "current_dock_widget"):
-        if self.current_dock_widget is not None:
-            analysis_id = self.current_dock_widget.winId()
-        else:
-            analysis_id = self.dock_widgets[-1].winId()
+        id_dict = {dw.windowTitle(): dw.winId() for dw in self.dock_widgets}
+        id_dict = {"Full Window": self.winId(), **id_dict}
 
-        id_dict = {
-            "Full Window": self.winId(),
-            # "Parameter Tree": self.param_tree_instance.t.winId(),
-            "Geometry": self.dock_widgets[0].winId(),
-            "Analysis": analysis_id,
-            "Console": self.text_area.winId()
-        }
+        window_widget_dict = {dw.windowTitle(): dw for dw in self.dock_widgets}
+        window_widget_dict = {"Full Window": self, **window_widget_dict}
 
-        dialog = ScreenshotDialog(self, theme=self.themes[self.current_theme])
+        dialog = ScreenshotDialog(self, theme=self.themes[self.current_theme], windows=[k for k in id_dict.keys()])
+        if self.screenshot_settings is not None:
+            dialog.setValue(self.screenshot_settings)
+
         if dialog.exec_():
             inputs = dialog.value()
+            self.screenshot_settings = inputs
 
             # Take the screenshot
-            screen = QApplication.primaryScreen()
-            screenshot = screen.grabWindow(id_dict[inputs["window"]])
+            ratio = 5  # Increased device-pixel ratio for better screenshot resolution
+            window_widget = window_widget_dict[inputs["window"]]
+            size = window_widget.size()
+            image = QImage(size.width() * ratio, size.height() * ratio, QImage.Format_ARGB32)
+            image.setDevicePixelRatio(ratio)
+            window_widget.render(image)
 
             # Handle improper directory names and file extensions
             file_path_split = os.path.split(inputs['image_file'])
@@ -611,8 +612,10 @@ class GUI(QMainWindow):
 
             final_file_name = os.path.join(dir_name, file_name_no_ext + file_ext)
 
+            # Save the image or raise an error if the file directory is not found
             if os.path.isdir(dir_name):
-                screenshot.save(final_file_name, "jpg")  # Save the screenshot
+                # screenshot.save(final_file_name, "jpg")  # Save the screenshot
+                image.save(final_file_name, "jpg")  # Save the screenshot
                 self.disp_message_box(f"{inputs['window']} window screenshot saved to {final_file_name}",
                                       message_mode="info")
             else:
