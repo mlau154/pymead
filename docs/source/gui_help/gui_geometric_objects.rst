@@ -355,6 +355,147 @@ If only two or fewer of the points associated with the curve are no longer neede
 deleting at least all but two points to which the curve is attached.
 
 
+Airfoils
+========
+
+An airfoil in *pymead* is simply defined as any closed set of curves containing a leading edge point, a trailing
+edge point, and, optionally, a trailing edge upper surface point and a trailing edge lower surface point. Airfoils can
+be created in several different ways in *pymead*.
+
+Creation
+--------
+
+The primary method which gives full control over the shape of the airfoil is started using the **F** key. This method
+creates an airfoil from any closed set of lines, polylines, or Bézier curves. After clicking the "Airfoil" button
+or pressing the **F** key, first left-click on the leading edge point for the airfoil (either in the geometry
+canvas or parameter tree). Ideally, this point is the endpoint of two of the curves in the airfoil. Then, left-click
+on the trailing edge point of the airfoil.
+
+For an airfoil with a thin trailing edge, this point must
+be the endpoint of the airfoil curves. For an airfoil with a blunt trailing edge, this is not the case. In either
+case, the trailing edge and leading edge points define the chord line for the airfoil, which also defines the angle of
+attack. If you are designing a thin airfoil, simply press the **Enter** key after selecting both the leading edge
+and trailing edge. If the points are selected properly and the airfoil is valid, the airfoil will now be shaded, and
+you can hover over the shaded region to see the name of the airfoil.
+
+For the case of a blunt trailing edge airfoil, select both the trailing edge upper surface point and trailing edge
+lower surface point, in that order. Note that there must be curves connecting the trailing edge point to both of
+these two points. These curves are normally lines, but they do not have to be. If the points are selected properly
+and the airfoil is valid, the airfoil will now be shaded (without having to press the **Enter** key), and
+you can hover over the shaded region to see the name of the airfoil.
+
+
+.. figure:: images/airfoil_dark.*
+   :width: 600px
+   :align: center
+   :class: only-dark
+
+   Adding an airfoil with a blunt trailing edge
+
+.. figure:: images/airfoil_light.*
+   :width: 600px
+   :align: center
+   :class: only-light
+
+   Adding an airfoil with a blunt trailing edge
+
+
+Airfoils can also be added as polylines from coordinates.
+These coordinates can originate from `Airfoil Tools <http://airfoiltools.com/>`_ or from a text/dat file.
+To access either of these methods for creating an airfoil, press the "Web Airfoil" button in the toolbar or press
+the **W** key. This will pop up a dialog window that looks like this:
+
+
+.. figure:: images/web_airfoil_dark.*
+   :width: 300px
+   :align: center
+   :class: only-dark
+
+   Adding an airfoil from the web
+
+.. figure:: images/web_airfoil_light.*
+   :width: 300px
+   :align: center
+   :class: only-light
+
+   Adding an airfoil from the web
+
+
+Type in the tag for the airfoil (the identifier of the airfoil as shown on `Airfoil Tools <http://airfoiltools.com/>`_,
+not the full name of the airfoil) in the "Web Airfoil" field. Then, press the **Enter** key. An Airfoil object
+should now be present in the geometry canvas representing this airfoil. This airfoil contains only a polyline
+(a series of lines connecting each subsequent pair of airfoil coordinates) and two Line objects if the airfoil
+has a blunt trailing edge.
+
+To load an airfoil from a ``.txt``, ``.dat``, or ``.csv`` file, press the "Web Airfoil" button in the toolbar or press
+the **W** key. Now, select the "Coordinate File" option from the drop-down menu. Then, press the "Select Airfoil"
+button to select a file. The file has to have one of the aforementioned extensions, and the coordinates should
+be listed row-wise, starting at the trailing edge upper surface point and moving counter-clockwise to the trailing
+edge lower surface point. The file must also be space-delimited.
+
+
+.. figure:: images/airfoil_from_file_dark.*
+   :width: 300px
+   :align: center
+   :class: only-dark
+
+   Adding an airfoil from a text file
+
+.. figure:: images/airfoil_from_file_light.*
+   :width: 300px
+   :align: center
+   :class: only-light
+
+   Adding an airfoil from a text file
+
+
+Deletion
+--------
+
+An airfoil can be deleted by left-clicking the airfoil's name in the parameter tree and pressing the **Delete** key or
+by right-clicking the airfoil's name in the parameter tree and clicking the **Delete** option from the context menu
+that appears. Alternatively, an airfoil can be deleted by deleting any of its associated points or curves.
+
+
+Multi-Element Airfoils
+======================
+
+Multi-element airfoils do not have any inherent geometric representation, but are simply unordered collections
+of Airfoil objects. These multi-element airfoils must be created, even in the case of a single airfoil, to run
+an MSES analysis or optimization.
+
+Creation
+--------
+
+To create an multi-element airfoil, select the "Multi-Element Airfoil" button from the toolbar or press the **M** key.
+Then, hold **Shift** or **Ctrl** while left-clicking each of the airfoil names from the parameter tree. Then,
+click anywhere on the geometry canvas and press the **Enter** key.
+
+
+.. figure:: images/mea_dark.*
+   :width: 600px
+   :align: center
+   :class: only-dark
+
+   Adding a multi-element airfoil
+
+.. figure:: images/mea_light.*
+   :width: 600px
+   :align: center
+   :class: only-light
+
+   Adding a multi-element airfoil
+
+
+Deletion
+--------
+
+A multi-element airfoil can be deleted by left-clicking the multi-element airfoil's name in the parameter tree and
+pressing the **Delete** key or
+by right-clicking the multi-element airfoil's name in the parameter tree and clicking the **Delete** option
+from the context menu that appears.
+
+
 .. raw:: html
 
    <script type="text/javascript">
