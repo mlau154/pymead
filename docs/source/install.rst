@@ -143,7 +143,14 @@ Python. To check that the installation succeeded, run the following lines of cod
 
   import pymead
 
-If the installation was successful, no errors will be thrown.
+If the installation was successful, no errors will be thrown. The pymead GUI can then be started from any directory
+by running the following command in the
+terminal (use ``python3`` instead of ``py`` for Linux or macOS):
+
+.. code-block::
+
+  py -m pymead.gui.gui
+
 
 Dependencies
 ============
