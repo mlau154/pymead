@@ -285,7 +285,8 @@ Creation
 --------
 
 To create a Bézier curve, first either press the **B** key or left-click on the "Bézier" button
-in the toolbar (see the image below). Then, left-click at least three different points in the geometry canvas to add a
+in the toolbar (see the image below). Then, left-click at least three different points in the geometry canvas to
+and press the **Enter** key to add a
 line between them. Continue to select sets of three or more points to add more Bézier curves, or press the **Esc** key
 to stop generating curves.
 
