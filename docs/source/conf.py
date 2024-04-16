@@ -44,7 +44,7 @@ html_theme = 'pydata_sphinx_theme'
 
 add_module_names = False
 
-numfig = True
+numfig = False
 
 navigation_depth = 2  # For the table of contents
 
