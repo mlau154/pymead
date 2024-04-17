@@ -467,7 +467,7 @@ an MSES analysis or optimization.
 Creation
 --------
 
-To create an multi-element airfoil, select the "Multi-Element Airfoil" button from the toolbar or press the **M** key.
+To create a multi-element airfoil, select the "Multi-Element Airfoil" button from the toolbar or press the **M** key.
 Then, hold **Shift** or **Ctrl** while left-clicking each of the airfoil names from the parameter tree. Then,
 click anywhere on the geometry canvas and press the **Enter** key.
 
