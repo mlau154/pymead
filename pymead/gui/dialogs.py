@@ -1879,10 +1879,12 @@ class OptConstraintsHTabWidget(PymeadDialogHTabWidget):
 
 
 class XFOILDialogWidget(PymeadDialogWidget):
-    def __init__(self, current_airfoils: typing.List[str]):
+    def __init__(self, current_airfoils: typing.List[str], settings_override: dict = None):
         super().__init__(settings_file=os.path.join(GUI_DEFAULTS_DIR, 'xfoil_settings.json'))
         self.widget_dict['airfoil_analysis_dir']['widget'].setText(tempfile.gettempdir())
         self.widget_dict["airfoil"]["widget"].addItems(current_airfoils)
+        if settings_override:
+            self.setValue(new_values=settings_override)
 
     def calculate_and_set_Reynolds_number(self, new_inputs: dict):
         Re_widget = self.widget_dict['Re']['widget']
@@ -2290,7 +2292,7 @@ class GeneticAlgorithmDialogWidget(PymeadDialogWidget):
 class XFOILDialog(PymeadDialog):
     def __init__(self, parent: QWidget, current_airfoils: typing.List[str], theme: dict,
                  settings_override: dict = None):
-        self.w = XFOILDialogWidget(current_airfoils=current_airfoils)
+        self.w = XFOILDialogWidget(current_airfoils=current_airfoils, settings_override=settings_override)
         super().__init__(parent=parent, window_title="Single Airfoil Viscous Analysis", widget=self.w,
                          theme=theme)
 

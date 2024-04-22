@@ -1247,11 +1247,12 @@ class GUI(QMainWindow):
 
     def single_airfoil_viscous_analysis(self):
         self.dialog = XFOILDialog(parent=self, current_airfoils=[k for k in self.geo_col.container()["airfoils"]],
-                                  theme=self.themes[self.current_theme])
+                                  theme=self.themes[self.current_theme], settings_override=self.xfoil_settings)
         current_airfoils = [k for k in self.geo_col.container()["airfoils"].keys()]
         self.dialog.w.widget_dict["airfoil"]["widget"].addItems(current_airfoils)
         if self.dialog.exec():
             inputs = self.dialog.value()
+            self.xfoil_settings = inputs
         else:
             inputs = None
 
