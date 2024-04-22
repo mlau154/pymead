@@ -118,6 +118,7 @@ To accomplish this, clone the repository, fetch all the branches, and checkout t
 .. code-block::
 
   git clone https://github.com/mlau154/pymead.git
+  cd pymead
   git fetch
   git checkout dev
 
@@ -139,9 +140,10 @@ location in the terminal (where the ``setup.py`` file is located), then type:
 This will install pymead and all of its dependencies into the ``Lib/site-packages`` folder of the current version of
 Python. To check that the installation succeeded, run the following lines of code in your Python interpreter:
 
-.. code-block:: python
+.. code-block::
 
-  import pymead
+  python
+  >>> import pymead
 
 If the installation was successful, no errors will be thrown. The pymead GUI can then be started from any directory
 by running the following command in the
@@ -149,6 +151,7 @@ terminal (use ``python3`` instead of ``py`` for Linux or macOS):
 
 .. code-block::
 
+  >>> quit()
   py -m pymead.gui.gui
 
 

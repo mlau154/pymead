@@ -1270,7 +1270,8 @@ class GUI(QMainWindow):
                               'N': inputs['N'],
                               'airfoil_analysis_dir': inputs['airfoil_analysis_dir'],
                               'airfoil_coord_file_name': inputs['airfoil_coord_file_name'],
-                              'airfoil': inputs['airfoil']}
+                              'airfoil': inputs['airfoil'],
+                              "visc": inputs["viscous_flag"]}
             if xfoil_settings['prescribe'] == 'Angle of Attack (deg)':
                 xfoil_settings['alfa'] = inputs['alfa']
             elif xfoil_settings['prescribe'] == 'Viscous Cl':
@@ -1311,11 +1312,17 @@ class GUI(QMainWindow):
                 self.output_area_text(
                     f"<a href='file:///{os.path.join(xfoil_settings['airfoil_analysis_dir'], xfoil_settings['airfoil_coord_file_name'])}'><font family='DejaVu Sans Mono' size='3'>XFOIL</font></a>",
                     mode="html")
-                self.output_area_text(f" ({xfoil_settings['airfoil']}, "
-                                      f"\u03b1 = {aero_data['alf']:.3f}, Re = {xfoil_settings['Re']:.3E}, "
-                                      f"Ma = {xfoil_settings['Ma']:.3f}): "
-                                      f"Cl = {aero_data['Cl']:+7.4f} | Cd = {aero_data['Cd']:+.5f} | Cm = {aero_data['Cm']:+7.4f} "
-                                      f"| L/D = {aero_data['L/D']:+8.4f}".replace("-", "\u2212"), line_break=True)
+                if xfoil_settings["visc"]:
+                    self.output_area_text(f" ({xfoil_settings['airfoil']}, "
+                                          f"\u03b1 = {aero_data['alf']:.3f}, Re = {xfoil_settings['Re']:.3E}, "
+                                          f"Ma = {xfoil_settings['Ma']:.3f}): "
+                                          f"Cl = {aero_data['Cl']:+7.4f} | Cd = {aero_data['Cd']:+.5f} | Cm = {aero_data['Cm']:+7.4f} "
+                                          f"| L/D = {aero_data['L/D']:+8.4f}".replace("-", "\u2212"), line_break=True)
+                else:
+                    self.output_area_text(f" ({xfoil_settings['airfoil']}, "
+                                          f"\u03b1 = {aero_data['alf']:.3f}, Re = {xfoil_settings['Re']:.3E}, "
+                                          f"Ma = {xfoil_settings['Ma']:.3f}): "
+                                          f"Cl = {aero_data['Cl']:+7.4f}".replace("-", "\u2212"), line_break=True)
             bar = self.text_area.verticalScrollBar()
             sb = bar
             sb.setValue(sb.maximum())

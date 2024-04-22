@@ -332,6 +332,37 @@ def calculate_aero_data(airfoil_coord_dir: str, airfoil_name: str,
         return aero_data, logs
 
 
+def calculate_Cl_integral_form(x: np.ndarray, y: np.ndarray, Cp: np.ndarray, alfa: float):
+    # Calculate the lift coefficient (integral from 0 to max arc length of Cp*(nhat dot jhat)*dl)
+    panel_length = np.hypot(x[1:] - x[:-1], y[1:] - y[:-1])  # length of the panels
+    panel_nhat_angle = np.arctan2(y[1:] - y[:-1], x[1:] - x[:-1]) + np.pi / 2  # angle of the panel normal vector
+    panel_nhat_jcomp = np.sin(panel_nhat_angle - alfa)  # j-component of the panel normal vector
+    panel_Cp = (Cp[1:] + Cp[:-1]) / 2  # average pressure coefficient of the panel
+    integrand = panel_Cp * panel_nhat_jcomp
+    arc_length = np.cumsum(panel_length)
+    import matplotlib.pyplot as plt
+    plt.plot(arc_length, panel_Cp)
+    Cl = np.trapz(y=integrand, x=arc_length)
+    plt.plot(integrand, panel_Cp)
+    plt.show()
+    return Cl
+
+
+def read_alfa_from_xfoil_cp_file(xfoil_cp_file: str):
+    with open(xfoil_cp_file, "r") as f:
+        lines = f.readlines()
+    return float(lines[1].split()[2])
+
+
+def calculate_Cl_alfa_xfoil_inviscid(airfoil_name: str, base_dir: str):
+    cp_file = os.path.join(base_dir, f"{airfoil_name}_Cp.dat")
+    alfa = read_alfa_from_xfoil_cp_file(cp_file)
+    data = np.loadtxt(cp_file, skiprows=3)
+    x, y, Cp = data[:, 0], data[:, 1], data[:, 2]
+    Cl = calculate_Cl_integral_form(x, y, Cp, np.deg2rad(alfa))
+    return Cl, alfa
+
+
 def run_xfoil(airfoil_name: str, base_dir: str, xfoil_settings: dict, coords: np.ndarray,
               export_Cp: bool = True):
     aero_data = {}
@@ -356,10 +387,14 @@ def run_xfoil(airfoil_name: str, base_dir: str, xfoil_settings: dict, coords: np
             time.sleep(0.01)
 
     xfoil_input_file = os.path.join(base_dir, 'xfoil_input.txt')
-    xfoil_input_list = ['', 'oper', f'iter {xfoil_settings["iter"]}', 'visc', str(xfoil_settings['Re']),
-                        f'M {xfoil_settings["Ma"]}',
-                        'vpar', f'xtr {xfoil_settings["xtr"][0]} {xfoil_settings["xtr"][1]}',
-                        f'N {xfoil_settings["N"]}', '']
+
+    if xfoil_settings["visc"]:
+        xfoil_input_list = ['', 'oper', f'iter {xfoil_settings["iter"]}', 'visc', str(xfoil_settings['Re']),
+                            f'M {xfoil_settings["Ma"]}',
+                            'vpar', f'xtr {xfoil_settings["xtr"][0]} {xfoil_settings["xtr"][1]}',
+                            f'N {xfoil_settings["N"]}', '']
+    else:
+        xfoil_input_list = ["", "oper", f"iter {xfoil_settings['iter']}", f"M {xfoil_settings['Ma']}"]
 
     # alpha/Cl input setup (must choose exactly one of alpha, Cl, or CLI)
     if len([0 for prescribed_xfoil_val in (
@@ -435,12 +470,19 @@ def run_xfoil(airfoil_name: str, base_dir: str, xfoil_settings: dict, coords: np
             aero_data['timed_out'] = True
             aero_data['converged'] = False
         finally:
-            if not aero_data['timed_out'] and aero_data["converged"]:
-                line1, line2 = read_aero_data_from_xfoil(xfoil_log, aero_data)
-                if line1 is not None:
-                    convert_xfoil_string_to_aero_data(line1, line2, aero_data)
+            if xfoil_settings["visc"]:
+                if not aero_data['timed_out'] and aero_data["converged"]:
+                    line1, line2 = read_aero_data_from_xfoil(xfoil_log, aero_data)
+                    if line1 is not None:
+                        convert_xfoil_string_to_aero_data(line1, line2, aero_data)
+                        if export_Cp:
+                            aero_data['Cp'] = read_Cp_from_file_xfoil(os.path.join(base_dir, f"{airfoil_name}_Cp.dat"))
+            else:
+                if not aero_data["timed_out"] and aero_data["converged"]:
+                    aero_data["Cl"], aero_data["alf"] = calculate_Cl_alfa_xfoil_inviscid(
+                        airfoil_name=airfoil_name, base_dir=base_dir)
                     if export_Cp:
-                        aero_data['Cp'] = read_Cp_from_file_xfoil(os.path.join(base_dir, f"{airfoil_name}_Cp.dat"))
+                        aero_data["Cp"] = read_Cp_from_file_xfoil(os.path.join(base_dir, f"{airfoil_name}_Cp.dat"))
 
     return aero_data, xfoil_log
 
