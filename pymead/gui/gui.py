@@ -153,22 +153,6 @@ class GUI(QMainWindow):
         self.n_converged_analyses = 0
         self.threadpool = QThreadPool().globalInstance()
         self.threadpool.setMaxThreadCount(4)
-        self.pens = [
-            ('#d4251c', Qt.SolidLine),
-            ('darkorange', Qt.SolidLine),
-            ('gold', Qt.SolidLine),
-            ('limegreen', Qt.SolidLine),
-            ('cyan', Qt.SolidLine),
-            ('mediumpurple', Qt.SolidLine),
-            ('deeppink', Qt.SolidLine),
-            ('#d4251c', Qt.DashLine),
-            ('darkorange', Qt.DashLine),
-            ('gold', Qt.DashLine),
-            ('limegreen', Qt.DashLine),
-            ('cyan', Qt.DashLine),
-            ('mediumpurple', Qt.DashLine),
-            ('deeppink', Qt.DashLine)
-        ]
 
         # Save/load variables
         self.save_attempts = 0
@@ -518,6 +502,26 @@ class GUI(QMainWindow):
         new_values = {} if new_values is None else new_values
         self.cbar.setLabel(axis="right", )
         self.cbar.getAxis("right").setWidth(25 + 1)
+
+    @staticmethod
+    def pen(n: int):
+        pens = [
+            ('#d4251c', Qt.SolidLine),
+            ('darkorange', Qt.SolidLine),
+            ('gold', Qt.SolidLine),
+            ('limegreen', Qt.SolidLine),
+            ('cyan', Qt.SolidLine),
+            ('mediumpurple', Qt.SolidLine),
+            ('deeppink', Qt.SolidLine),
+            ('#d4251c', Qt.DashLine),
+            ('darkorange', Qt.DashLine),
+            ('gold', Qt.DashLine),
+            ('limegreen', Qt.DashLine),
+            ('cyan', Qt.DashLine),
+            ('mediumpurple', Qt.DashLine),
+            ('deeppink', Qt.DashLine)
+        ]
+        return pens[n % len(pens)]
 
     def set_title_and_icon(self):
         self.setWindowTitle("pymead")
@@ -1162,8 +1166,8 @@ class GUI(QMainWindow):
             self.analysis_graph = AnalysisGraph(
                 background_color=self.themes[self.current_theme]["graph-background-color"])
             self.add_new_tab_widget(self.analysis_graph.w, "Analysis")
-        pg_plot_handle = self.analysis_graph.v.plot(pen=pg.mkPen(color=self.pens[self.n_converged_analyses][0],
-                                                                 style=self.pens[self.n_converged_analyses][1]),
+        pg_plot_handle = self.analysis_graph.v.plot(pen=pg.mkPen(color=self.pen(self.n_converged_analyses)[0],
+                                                                 style=self.pen(self.n_converged_analyses)[1]),
                                                     name=str(self.n_analyses))
         pg_plot_handle.setData(xy[:, 0], CP)
         self.n_converged_analyses += 1
@@ -1322,8 +1326,8 @@ class GUI(QMainWindow):
                     self.analysis_graph = AnalysisGraph(
                         background_color=self.themes[self.current_theme]["graph-background-color"])
                     self.add_new_tab_widget(self.analysis_graph.w, "Analysis")
-                pg_plot_handle = self.analysis_graph.v.plot(pen=pg.mkPen(color=self.pens[self.n_converged_analyses][0],
-                                                                         style=self.pens[self.n_converged_analyses][1]),
+                pg_plot_handle = self.analysis_graph.v.plot(pen=pg.mkPen(color=self.pen(self.n_converged_analyses)[0],
+                                                                         style=self.pen(self.n_converged_analyses)[1]),
                                                             name=str(self.n_analyses))
                 pg_plot_handle.setData(aero_data['Cp']['x'], aero_data['Cp']['Cp'])
                 # pen = pg.mkPen(color='green')
@@ -1454,9 +1458,6 @@ class GUI(QMainWindow):
                 background_color=self.themes[self.current_theme]["graph-background-color"])
             self.add_new_tab_widget(self.analysis_graph.w, "Analysis")
 
-        # Get the index of the pen to determine which style to use
-        pen_idx = self.n_converged_analyses % len(self.pens)
-
         # Get the maximum physical extent of the airfoil system in the x-direction (used to prevent showing
         # off-body pressure recovery)
         x_max = mea.get_max_x_extent()
@@ -1464,7 +1465,8 @@ class GUI(QMainWindow):
         # Plot the Cp distribution for each airfoil side
         for side in aero_data["BL"]:
             pg_plot_handle = self.analysis_graph.v.plot(
-                pen=pg.mkPen(color=self.pens[pen_idx][0], style=self.pens[pen_idx][1]), name=str(self.n_analyses)
+                pen=pg.mkPen(color=self.pen(self.n_converged_analyses)[0],
+                             style=self.pen(self.n_converged_analyses)[1]), name=str(self.n_analyses)
             )
             x = side["x"] if isinstance(side["x"], np.ndarray) else np.array(side["x"])
             Cp = side["Cp"] if isinstance(side["Cp"], np.ndarray) else np.array(side["Cp"])
