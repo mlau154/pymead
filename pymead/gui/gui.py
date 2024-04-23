@@ -1322,7 +1322,7 @@ class GUI(QMainWindow):
                     self.output_area_text(f" ({xfoil_settings['airfoil']}, "
                                           f"\u03b1 = {aero_data['alf']:.3f}, Re = {xfoil_settings['Re']:.3E}, "
                                           f"Ma = {xfoil_settings['Ma']:.3f}): "
-                                          f"Cl = {aero_data['Cl']:+7.4f}".replace("-", "\u2212"), line_break=True)
+                                          f"Cl = {aero_data['Cl']:+7.4f} | Cm = {aero_data['Cm']:+7.4f}".replace("-", "\u2212"), line_break=True)
             bar = self.text_area.verticalScrollBar()
             sb = bar
             sb.setValue(sb.maximum())

@@ -335,17 +335,22 @@ def calculate_aero_data(airfoil_coord_dir: str, airfoil_name: str,
 def calculate_Cl_integral_form(x: np.ndarray, y: np.ndarray, Cp: np.ndarray, alfa: float):
     # Calculate the lift coefficient (integral from 0 to max arc length of Cp*(nhat dot jhat)*dl)
     panel_length = np.hypot(x[1:] - x[:-1], y[1:] - y[:-1])  # length of the panels
-    panel_nhat_angle = np.arctan2(y[1:] - y[:-1], x[1:] - x[:-1]) + np.pi / 2  # angle of the panel normal vector
+    panel_nhat_angle = np.arctan2(y[1:] - y[:-1], x[1:] - x[:-1]) + np.pi / 2  # angle of the panel outward normal vector
+    panel_center_x = 0.5 * (x[1:] + x[:-1])
+    panel_center_y = 0.5 * (y[1:] + y[:-1])
+    quarter_chord_center_x = 0.25
+    quarter_chord_center_y = 0.0
     panel_nhat_jcomp = np.sin(panel_nhat_angle - alfa)  # j-component of the panel normal vector
+    # panel_nhat_icomp = np.cos(panel_nhat_angle - alfa)
     panel_Cp = (Cp[1:] + Cp[:-1]) / 2  # average pressure coefficient of the panel
-    integrand = panel_Cp * panel_nhat_jcomp
-    arc_length = np.cumsum(panel_length)
-    import matplotlib.pyplot as plt
-    plt.plot(arc_length, panel_Cp)
-    Cl = np.trapz(y=integrand, x=arc_length)
-    plt.plot(integrand, panel_Cp)
-    plt.show()
-    return Cl
+    panel_force = panel_Cp * np.array([np.cos(panel_nhat_angle - np.pi),
+                                       np.sin(panel_nhat_angle - np.pi)]) * panel_length
+    r_vec = np.array([panel_center_x - quarter_chord_center_x, panel_center_y - quarter_chord_center_y])
+    panel_Cm = np.cross(r_vec.T, panel_force.T)
+    Cm = np.sum(panel_Cm)
+    Cl = np.sum(panel_Cp * panel_nhat_jcomp * panel_length)
+    # Cdp = np.sum(panel_Cp * panel_nhat_icomp * panel_length)
+    return Cl, Cm
 
 
 def read_alfa_from_xfoil_cp_file(xfoil_cp_file: str):
@@ -359,8 +364,8 @@ def calculate_Cl_alfa_xfoil_inviscid(airfoil_name: str, base_dir: str):
     alfa = read_alfa_from_xfoil_cp_file(cp_file)
     data = np.loadtxt(cp_file, skiprows=3)
     x, y, Cp = data[:, 0], data[:, 1], data[:, 2]
-    Cl = calculate_Cl_integral_form(x, y, Cp, np.deg2rad(alfa))
-    return Cl, alfa
+    Cl, Cm = calculate_Cl_integral_form(x, y, Cp, np.deg2rad(alfa))
+    return Cl, Cm, alfa
 
 
 def run_xfoil(airfoil_name: str, base_dir: str, xfoil_settings: dict, coords: np.ndarray,
@@ -479,7 +484,7 @@ def run_xfoil(airfoil_name: str, base_dir: str, xfoil_settings: dict, coords: np
                             aero_data['Cp'] = read_Cp_from_file_xfoil(os.path.join(base_dir, f"{airfoil_name}_Cp.dat"))
             else:
                 if not aero_data["timed_out"] and aero_data["converged"]:
-                    aero_data["Cl"], aero_data["alf"] = calculate_Cl_alfa_xfoil_inviscid(
+                    aero_data["Cl"], aero_data["Cm"], aero_data["alf"] = calculate_Cl_alfa_xfoil_inviscid(
                         airfoil_name=airfoil_name, base_dir=base_dir)
                     if export_Cp:
                         aero_data["Cp"] = read_Cp_from_file_xfoil(os.path.join(base_dir, f"{airfoil_name}_Cp.dat"))
