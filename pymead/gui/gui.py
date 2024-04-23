@@ -1471,10 +1471,10 @@ class GUI(QMainWindow):
             if mplot_settings[SVG_SETTINGS_TR[svg_plot]]:
                 display_svg()
 
-    def plot_mses_pressure_coefficient_distribution(self, aero_data: dict, mea: MEA):
+    def plot_mses_pressure_coefficient_distribution(self, aero_data: dict, mea: MEA, mses_settings: dict):
         if self.analysis_graph is None:
             # Need to set analysis_graph to None if analysis window is closed
-            self.analysis_graph = AnalysisGraph(
+            self.analysis_graph = AnalysisGraph(theme=self.themes[self.current_theme],
                 background_color=self.themes[self.current_theme]["graph-background-color"])
             self.add_new_tab_widget(self.analysis_graph.w, "Analysis")
 
@@ -1483,14 +1483,19 @@ class GUI(QMainWindow):
         x_max = mea.get_max_x_extent()
 
         # Plot the Cp distribution for each airfoil side
-        for side in aero_data["BL"]:
+        name = (f"[{self.n_analyses}] M ({mea.name()}, \u03b1 = {aero_data['alf']:.1f}\u00b0, "
+                f"Re = {mses_settings['REYNIN']:.1E}, Ma = {mses_settings['MACHIN']:.2f})")
+
+        for side_idx, side in enumerate(aero_data["BL"]):
+            extra_opts = dict(name=name) if side_idx == 0 else {}
             pg_plot_handle = self.analysis_graph.v.plot(
                 pen=pg.mkPen(color=self.pen(self.n_converged_analyses)[0],
-                             style=self.pen(self.n_converged_analyses)[1]), name=str(self.n_analyses)
+                             style=self.pen(self.n_converged_analyses)[1]), **extra_opts
             )
             x = side["x"] if isinstance(side["x"], np.ndarray) else np.array(side["x"])
             Cp = side["Cp"] if isinstance(side["Cp"], np.ndarray) else np.array(side["Cp"])
             pg_plot_handle.setData(x[np.where(x <= x_max)[0]], Cp[np.where(x <= x_max)[0]])
+            self.analysis_graph.set_legend_label_format(self.themes[self.current_theme])
 
     def multi_airfoil_analysis(self, mset_settings: dict, mses_settings: dict,
                                mplot_settings: dict):
@@ -1513,7 +1518,7 @@ class GUI(QMainWindow):
         self.display_mses_result(aero_data, mset_settings, mses_settings)
 
         if aero_data['converged'] and not aero_data['errored_out'] and not aero_data['timed_out']:
-            self.plot_mses_pressure_coefficient_distribution(aero_data, mea)
+            self.plot_mses_pressure_coefficient_distribution(aero_data, mea, mses_settings)
             self.display_svgs(mset_settings, mplot_settings)
 
             # Update the last successful analysis directory (for easy access in field plotting)
