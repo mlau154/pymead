@@ -851,6 +851,8 @@ class AirfoilCanvas(pg.PlotWidget):
         exportPlotAction = menu.addAction("Export Plot")
         view_pos = self.getPlotItem().getViewBox().mapSceneToView(event.pos())
         res = menu.exec_(event.globalPos())
+        if res is None:
+            return
         if res == drawPointAction:
             self.drawPoint(x=[view_pos.x()], y=[view_pos.y()])
         elif res == drawBezierCurveThroughPointsAction:
