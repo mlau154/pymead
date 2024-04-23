@@ -483,6 +483,9 @@ class GUI(QMainWindow):
         #     self.analysis_graph.set_background(theme["graph-background-color"])
         # if self.param_tree_instance is not None:
         #     self.param_tree_instance.set_theme(theme)
+        if self.analysis_graph is not None:
+            self.analysis_graph.set_formatting(theme=self.themes[self.current_theme])
+            self.analysis_graph.set_legend_label_format(theme=self.themes[self.current_theme])
 
         for cnstr in self.geo_col.container()["geocon"].values():
             cnstr.canvas_item.setStyle(theme)
@@ -1314,13 +1317,13 @@ class GUI(QMainWindow):
                     mode="html")
                 if xfoil_settings["visc"]:
                     self.output_area_text(f" ({xfoil_settings['airfoil']}, "
-                                          f"\u03b1 = {aero_data['alf']:.3f}, Re = {xfoil_settings['Re']:.3E}, "
+                                          f"\u03b1 = {aero_data['alf']:.3f}\u00b0, Re = {xfoil_settings['Re']:.3E}, "
                                           f"Ma = {xfoil_settings['Ma']:.3f}): "
                                           f"Cl = {aero_data['Cl']:+7.4f} | Cd = {aero_data['Cd']:+.5f} | Cm = {aero_data['Cm']:+7.4f} "
                                           f"| L/D = {aero_data['L/D']:+8.4f}".replace("-", "\u2212"), line_break=True)
                 else:
                     self.output_area_text(f" ({xfoil_settings['airfoil']}, "
-                                          f"\u03b1 = {aero_data['alf']:.3f}, Re = {xfoil_settings['Re']:.3E}, "
+                                          f"\u03b1 = {aero_data['alf']:.3f}\u00b0, "
                                           f"Ma = {xfoil_settings['Ma']:.3f}): "
                                           f"Cl = {aero_data['Cl']:+7.4f} | Cm = {aero_data['Cm']:+7.4f}".replace("-", "\u2212"), line_break=True)
             bar = self.text_area.verticalScrollBar()
@@ -1330,12 +1333,22 @@ class GUI(QMainWindow):
             if aero_data['converged'] and not aero_data['errored_out'] and not aero_data['timed_out']:
                 if self.analysis_graph is None:
                     # Need to set analysis_graph to None if analysis window is closed! Might also not want to allow geometry docking window to be closed
-                    self.analysis_graph = AnalysisGraph(
+                    self.analysis_graph = AnalysisGraph(theme=self.themes[self.current_theme],
                         background_color=self.themes[self.current_theme]["graph-background-color"])
                     self.add_new_tab_widget(self.analysis_graph.w, "Analysis")
+
+                if xfoil_settings["visc"]:
+                    name = (f"[{str(self.n_analyses)}] X ({xfoil_settings['airfoil']}, \u03b1 = {aero_data['alf']:.1f}\u00b0,"
+                            f" Re = {xfoil_settings['Re']:.1E}, Ma = {xfoil_settings['Ma']:.2f})")
+                else:
+                    name = (f"[{str(self.n_analyses)}] X ({xfoil_settings['airfoil']}, \u03b1 = {aero_data['alf']:.1f}\u00b0,"
+                            f" Ma = {xfoil_settings['Ma']:.2f})")
+
                 pg_plot_handle = self.analysis_graph.v.plot(pen=pg.mkPen(color=self.pen(self.n_converged_analyses)[0],
                                                                          style=self.pen(self.n_converged_analyses)[1]),
-                                                            name=str(self.n_analyses))
+                                                            name=name)
+                self.analysis_graph.set_legend_label_format(self.themes[self.current_theme])
+
                 pg_plot_handle.setData(aero_data['Cp']['x'], aero_data['Cp']['Cp'])
                 # pen = pg.mkPen(color='green')
                 self.n_converged_analyses += 1
