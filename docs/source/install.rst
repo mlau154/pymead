@@ -138,14 +138,15 @@ location in the terminal (where the ``setup.py`` file is located), then type:
   pip install .
 
 This will install pymead and all of its dependencies into the ``Lib/site-packages`` folder of the current version of
-Python. To check that the installation succeeded, run the following lines of code in your Python interpreter:
+Python. To check that the installation succeeded, start a Python interpreter and import the *pymead* library:
 
 .. code-block::
 
   python
   >>> import pymead
 
-If the installation was successful, no errors will be thrown. The pymead GUI can then be started from any directory
+If the installation was successful, no errors will be thrown. After closing the interpreter,
+the pymead GUI can then be started from any directory
 by running the following command in the
 terminal (use ``python3`` instead of ``py`` for Linux or macOS):
 

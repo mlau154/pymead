@@ -44,7 +44,8 @@ from pymead.gui.help_browser import HelpBrowserWindow
 from pymead.gui.dialogs import LoadDialog, SaveAsDialog, OptimizationSetupDialog, \
     MultiAirfoilDialog, ColorInputDialog, ExportCoordinatesDialog, ExportControlPointsDialog, AirfoilPlotDialog, \
     AirfoilMatchingDialog, MSESFieldPlotDialog, ExportIGESDialog, XFOILDialog, NewGeoColDialog, EditBoundsDialog, \
-    ExitDialog, ScreenshotDialog, LoadAirfoilAlgFile, ExitOptimizationDialog, SettingsDialog, LoadPointsDialog
+    ExitDialog, ScreenshotDialog, LoadAirfoilAlgFile, ExitOptimizationDialog, SettingsDialog, LoadPointsDialog, \
+    PanelDialog
 from pymead.gui.dialogs import convert_dialog_to_mset_settings, convert_dialog_to_mses_settings, \
     convert_dialog_to_mplot_settings
 from pymead.gui.main_icon_toolbar import MainIconToolbar
@@ -122,6 +123,7 @@ class GUI(QMainWindow):
         self.opt_settings = None
         self.multi_airfoil_analysis_settings = None
         self.xfoil_settings = None
+        self.panel_settings = None
         self.screenshot_settings = None
         self.current_settings_save_file = None
         self.current_theme = "dark"
@@ -1148,16 +1150,23 @@ class GUI(QMainWindow):
                                       "to perform an incompressible, inviscid analysis", message_mode="info")
             return
 
+        dialog = PanelDialog(self, theme=self.themes[self.current_theme], settings_override=self.panel_settings)
+
+        if dialog.exec_():
+            alpha_add = dialog.value()["alfa"]
+            self.panel_settings = dialog.value()
+        else:
+            return
+
         selected_airfoil = self.geo_col.container()["airfoils"][selected_airfoil_name]
         body_fixed_coords = selected_airfoil.get_chord_relative_coords()
-        alpha = selected_airfoil.measure_alpha() * 180 / np.pi
-        xy, CP, CL = single_element_inviscid(body_fixed_coords,
-                                             alpha=selected_airfoil.measure_alpha() * 180 / np.pi)
+        alpha = selected_airfoil.measure_alpha() * 180 / np.pi + alpha_add
+        xy, CP, CL = single_element_inviscid(body_fixed_coords, alpha=alpha)
 
         if plot_cp:
             self.output_area_text(
                 f"[{str(self.n_analyses).zfill(2)}] ")
-            self.output_area_text(f"PANEL ({selected_airfoil_name}, \u03b1 = {alpha:.3f}): "
+            self.output_area_text(f"PANEL ({selected_airfoil_name}, \u03b1 = {alpha:.3f}\u00b0): "
                                   f"Cl = {CL:+7.4f}".replace("-", "\u2212"), line_break=True)
         else:
             self.statusBar().showMessage(f"CL = {CL:.3f}", 4000)
@@ -1166,13 +1175,16 @@ class GUI(QMainWindow):
             return
 
         if self.analysis_graph is None:
-            self.analysis_graph = AnalysisGraph(
+            self.analysis_graph = AnalysisGraph(theme=self.themes[self.current_theme],
                 background_color=self.themes[self.current_theme]["graph-background-color"])
             self.add_new_tab_widget(self.analysis_graph.w, "Analysis")
+        name = f"[{self.n_analyses}] P ({selected_airfoil_name}, \u03b1 = {alpha:.1f}\u00b0)"
         pg_plot_handle = self.analysis_graph.v.plot(pen=pg.mkPen(color=self.pen(self.n_converged_analyses)[0],
                                                                  style=self.pen(self.n_converged_analyses)[1]),
-                                                    name=str(self.n_analyses))
+                                                    name=name)
         pg_plot_handle.setData(xy[:, 0], CP)
+
+        self.analysis_graph.set_legend_label_format(self.themes[self.current_theme])
         self.n_converged_analyses += 1
         self.n_analyses += 1
 

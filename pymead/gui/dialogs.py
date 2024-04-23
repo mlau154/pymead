@@ -1614,6 +1614,22 @@ class MSETDialogWidget2(PymeadDialogWidget2):
         preview_dialog.exec_()
 
 
+class PanelDialogWidget(PymeadDialogWidget2):
+    def __init__(self, settings_override: dict, parent=None):
+        super().__init__(parent=parent)
+        if settings_override:
+            self.setValue(settings_override)
+        self.setMinimumWidth(250)
+
+    def initializeWidgets(self, *args, **kwargs):
+        self.widget_dict = {
+            "alfa": PymeadLabeledDoubleSpinBox(label="\u03b1 (\u00b0)", minimum=-np.inf, maximum=np.inf,
+                                               value=0.0, decimals=8, single_step=1.0,
+                                               tool_tip="Angle of attack (if the geometry is already at an angle"
+                                                        "of attack, this value will be added on)")
+        }
+
+
 class MSESDialogWidget2(PymeadDialogWidget2):
     def __init__(self, geo_col: GeometryCollection, parent=None):
         self.geo_col = geo_col
@@ -2287,6 +2303,12 @@ class GeneticAlgorithmDialogWidget(PymeadDialogWidget):
                 v = float(text_split[1])
                 data_dict[k] = v
         return data_dict
+
+
+class PanelDialog(PymeadDialog):
+    def __init__(self, parent: QWidget, theme: dict, settings_override: dict = None):
+        self.w = PanelDialogWidget(settings_override)
+        super().__init__(parent=parent, window_title="Basic Panel Code Analysis", widget=self.w, theme=theme)
 
 
 class XFOILDialog(PymeadDialog):
