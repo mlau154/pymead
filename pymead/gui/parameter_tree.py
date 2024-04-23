@@ -491,6 +491,8 @@ class BezierButton(TreeButton):
         t_end_widget.valueChanged.connect(self.onTEndChange)
         layout.addWidget(t_end_widget, row_count, 1)
 
+        dialog.setMinimumWidth(250)
+
     def onPointNameChange(self, name: str, point: Point):
         if point.tree_item is not None:
             self.tree.itemWidget(point.tree_item, 0).setText(name)
