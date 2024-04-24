@@ -434,7 +434,8 @@ class GeometryCollection(DualRep):
         elif isinstance(pymead_obj, Point):
 
             for param in [pymead_obj.x(), pymead_obj.y()]:
-                param.param_graph.param_list.remove(param)
+                if param in param.param_graph.param_list:
+                    param.param_graph.param_list.remove(param)
                 if param in param.param_graph.nodes:
                     param.param_graph.remove_node(param)
 
@@ -539,8 +540,10 @@ class GeometryCollection(DualRep):
         return point
 
     def add_bezier(self, point_sequence: PointSequence, name: str or None = None,
-                   t_start: float = None, t_end: float = None, assign_unique_name: bool = True):
-        bezier = Bezier(point_sequence=point_sequence, name=name, t_start=t_start, t_end=t_end)
+                   t_start: float = None, t_end: float = None, t_start_point: Point = None,
+                   t_end_point: Point = None, assign_unique_name: bool = True):
+        bezier = Bezier(point_sequence=point_sequence, name=name, t_start=t_start, t_end=t_end,
+                        t_start_point=t_start_point, t_end_point=t_end_point)
 
         return self.add_pymead_obj_by_ref(bezier, assign_unique_name=assign_unique_name)
 
@@ -881,7 +884,7 @@ class GeometryCollection(DualRep):
                     isinstance(constraint, RelAngle3Constraint) or isinstance(constraint, DistanceConstraint)):
                 points_solved = self.gcs.solve(constraint)
                 self.gcs.update_canvas_items(points_solved)
-        except ValueError as e:
+        except (ValueError, ConstraintValidationError) as e:
             self.remove_pymead_obj(constraint)
             self.clear_selected_objects()
             if self.gui_obj is not None:
@@ -971,9 +974,14 @@ class GeometryCollection(DualRep):
         for name, bezier_dict in d["bezier"].items():
             t_start = bezier_dict["t_start"] if "t_start" in bezier_dict else None
             t_end = bezier_dict["t_end"] if "t_end" in bezier_dict else None
+            t_start_point = geo_col.container()["points"][bezier_dict["t_start_point"]] \
+                if bezier_dict["t_start_point"] is not None else None
+            t_end_point = geo_col.container()["points"][bezier_dict["t_end_point"]] \
+                if bezier_dict["t_end_point"] is not None else None
             geo_col.add_bezier(point_sequence=PointSequence(
                 points=[geo_col.container()["points"][k] for k in bezier_dict["points"]]),
-                name=name, t_start=t_start, t_end=t_end, assign_unique_name=False
+                name=name, t_start=t_start, t_end=t_end, t_start_point=t_start_point,
+                t_end_point=t_end_point, assign_unique_name=False
             )
 
         constraints_added = []

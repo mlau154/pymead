@@ -8,7 +8,7 @@ from pymead.utils.nchoosek import nchoosek
 class Bezier(ParametricCurve):
 
     def __init__(self, point_sequence: PointSequence, name: str or None = None, t_start: float = None,
-                 t_end: float = None, **kwargs):
+                 t_end: float = None, t_start_point: Point = None, t_end_point: Point = None, **kwargs):
         r"""
         Computes the Bézier curve through the control points ``P`` according to
 
@@ -84,6 +84,8 @@ class Bezier(ParametricCurve):
         self.set_point_sequence(point_sequence)
         self.t_start = t_start
         self.t_end = t_end
+        self.t_start_point = t_start_point
+        self.t_end_point = t_end_point
         name = "Bezier-1" if name is None else name
         self.set_name(name)
         self.curve_connections = []
@@ -295,6 +297,49 @@ class Bezier(ParametricCurve):
 
         return PCurveData(t=t, xy=xy, xpyp=xpyp, xppypp=xppypp, k=k, R=R)
 
+    def update_t_start(self):
+        if self.t_start_point is not None:
+            self.geo_col.remove_pymead_obj(self.t_start_point)
+            self.t_start_point = None
+
+        if self.t_start is None or self.t_start == 0.0:
+            return
+
+        P_curve_data = self.evaluate(np.array([self.t_start]))
+        self.t_start_point = self.geo_col.add_point(
+            x=P_curve_data.xy[0, 0], y=P_curve_data.xy[0, 1], name="BezierStartPoint"
+        )
+        self.t_start_point.curves.append(self)
+
+    def update_t_end(self):
+
+        if self.t_end is None:
+            return
+
+        if self.t_end == 1.0 and self.t_end_point is not None:
+            self.geo_col.remove_pymead_obj(self.t_end_point)
+            self.t_end_point = None
+            return
+
+        P_curve_data = self.evaluate(np.array([self.t_end]))
+
+        if self.t_end_point is None:
+            self.t_end_point = self.geo_col.add_point(
+                x=P_curve_data.xy[0, 0], y=P_curve_data.xy[0, 1], name="BezierEndPoint"
+            )
+            self.t_end_point.curves.append(self)
+        else:
+            self.t_end_point.request_move(xp=P_curve_data.xy[0, 0], yp=P_curve_data.xy[0, 1], force=True,
+                                          update_curves=False)
+
+    def update(self):
+        super().update()
+        self.update_t_start()
+        self.update_t_end()
+
     def get_dict_rep(self):
         return {"points": [pt.name() for pt in self.point_sequence().points()],
-                "t_start": self.t_start, "t_end": self.t_end}
+                "t_start": self.t_start, "t_end": self.t_end,
+                "t_start_point": self.t_start_point.name() if self.t_start_point is not None else None,
+                "t_end_point": self.t_end_point.name() if self.t_end_point is not None else None
+                }

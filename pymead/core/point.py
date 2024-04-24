@@ -218,6 +218,9 @@ class Point(PymeadObj):
         """
         if any([curve.__class__.__name__ == "PolyLine" for curve in self.curves]):
             return False
+        if any([curve.__class__.__name__ == "Bezier" and (
+                self is curve.t_start_point or self is curve.t_end_point) for curve in self.curves]):
+            return False
         if self.gcs is None:
             return True
         if self.gcs is not None and len(self.geo_cons) == 0:
@@ -232,7 +235,7 @@ class Point(PymeadObj):
             return True
         return False
 
-    def request_move(self, xp: float, yp: float, force: bool = False):
+    def request_move(self, xp: float, yp: float, force: bool = False, update_curves: bool = True):
         """
         Updates the location of the point and updates any curves and canvas items associated with the point movement.
 
@@ -297,7 +300,7 @@ class Point(PymeadObj):
         if self.canvas_item is not None:
             self.canvas_item.updateCanvasItem(self.x().value(), self.y().value())
 
-        if points_to_update is None:
+        if points_to_update is None or not update_curves:
             return
 
         curves_to_update = []

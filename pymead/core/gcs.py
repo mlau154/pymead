@@ -1020,17 +1020,39 @@ class GCS(networkx.DiGraph):
             return constraint.child_nodes
 
         if constraint.curve_type_1 == "Bezier":
-            if constraint.is_solving_allowed(constraint.g2_point_curve_1):
-                solve_for_single_curve(constraint.g1_point_curve_1, constraint.g2_point_curve_1, constraint.curve_1.degree)
+            print(f"{constraint.curve_1 = }")
+            if constraint.curve_joint in [constraint.curve_1.t_start_point, constraint.curve_1.t_end_point]:
+                # t_val = constraint.curve_1.t_start \
+                #     if constraint.curve_joint is constraint.curve_1.t_start_point else constraint.curve_1.t_end
+                # data = constraint.curve_1.evaluate(np.array([t_val]))
+                # R1 = np.abs(data.R[0])
+                # constraint.param().set_value(R1, force=True)
+                pass
             else:
-                R1 = ROCurvatureConstraint.calculate_curvature_data(constraint.curve_joint).R1
-                constraint.param().set_value(R1, force=True)
+                if constraint.is_solving_allowed(constraint.g2_point_curve_1):
+                    solve_for_single_curve(constraint.g1_point_curve_1, constraint.g2_point_curve_1, constraint.curve_1.degree)
+                else:
+                    R1 = ROCurvatureConstraint.calculate_curvature_data(constraint.curve_joint).R1
+                    constraint.param().set_value(R1, force=True)
         if constraint.curve_type_2 == "Bezier":
-            if constraint.is_solving_allowed(constraint.g2_point_curve_2):
-                solve_for_single_curve(constraint.g1_point_curve_2, constraint.g2_point_curve_2, constraint.curve_2.degree)
+            print(f"Curve 2 is Bezier. {constraint.g1_point_curve_2 = }, {constraint.g2_point_curve_2 = }, {constraint.curve_joint = }, {constraint.is_solving_allowed(constraint.g2_point_curve_2) = }")
+            print(f"{constraint.curve_2.degree = }")
+            print(f"{constraint.curve_2.point_sequence().points() = }")
+            if constraint.curve_joint in [constraint.curve_2.t_start_point, constraint.curve_2.t_end_point]:
+                # t_val = constraint.curve_2.t_start \
+                #     if constraint.curve_joint is constraint.curve_2.t_start_point else constraint.curve_2.t_end
+                # data = constraint.curve_2.evaluate(np.array([t_val]))
+                # R2 = np.abs(data.R[0])
+                # print(f"{R2 = }")
+                # constraint.param().set_value(R2, force=True)
+                pass
             else:
-                R2 = ROCurvatureConstraint.calculate_curvature_data(constraint.curve_joint).R2
-                constraint.param().set_value(R2, force=True)
+                if constraint.is_solving_allowed(constraint.g2_point_curve_2):
+                    solve_for_single_curve(constraint.g1_point_curve_2, constraint.g2_point_curve_2, constraint.curve_2.degree)
+                else:
+                    R2 = ROCurvatureConstraint.calculate_curvature_data(constraint.curve_joint).R2
+                    constraint.param().set_value(R2, force=True)
+            print(f"Now, {constraint.curve_2.point_sequence().points() = }")
 
         return constraint.child_nodes
 

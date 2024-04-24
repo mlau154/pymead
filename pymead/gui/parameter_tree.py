@@ -499,11 +499,11 @@ class BezierButton(TreeButton):
 
     def onTStartChange(self, t_start: float):
         self.bezier.t_start = t_start
-        self.bezier.canvas_item.updateCurveItem(self.bezier.evaluate())
+        self.bezier.update()
 
     def onTEndChange(self, t_end: float):
         self.bezier.t_end = t_end
-        self.bezier.canvas_item.updateCurveItem(self.bezier.evaluate())
+        self.bezier.update()
 
     def enterEvent(self, a0):
         self.bezier.canvas_item.setCurveStyle("hovered")

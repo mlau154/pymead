@@ -243,14 +243,14 @@ class ROCurvatureConstraint(GeoCon):
     def __init__(self, curve_joint: Point, value: float or LengthParam = None, name: str = None):
         if len(curve_joint.curves) != 2:
             raise ConstraintValidationError(f"There must be exactly two curves attached to the curve joint. Found "
-                                            f"{len(curve_joint.curves)} curves")
+                                            f"{len(curve_joint.curves)} curve(s)")
         self.curve_joint = curve_joint
         self.curve_1 = curve_joint.curves[0]
         self.curve_2 = curve_joint.curves[1]
         self.curve_type_1 = self.curve_1.__class__.__name__
         self.curve_type_2 = self.curve_2.__class__.__name__
 
-        if self.curve_type_1 == "Bezier":
+        if self.curve_type_1 == "Bezier" and curve_joint in self.curve_1.point_sequence().points():
             curve_joint_index_curve_1 = self.curve_1.point_sequence().points().index(curve_joint)
             self.curve_joint_index_curve_1 = -1 if curve_joint_index_curve_1 != 0 else 0
             self.g2_point_index_curve_1 = 2 if self.curve_joint_index_curve_1 == 0 else -3
@@ -262,7 +262,7 @@ class ROCurvatureConstraint(GeoCon):
              self.g2_point_index_curve_1, self.g1_point_index_curve_1,
              self.g1_point_curve_1, self.g2_point_curve_1) = None, None, None, None, None, None
 
-        if self.curve_type_2 == "Bezier":
+        if self.curve_type_2 == "Bezier" and curve_joint in self.curve_2.point_sequence().points():
             curve_joint_index_curve_2 = self.curve_2.point_sequence().points().index(curve_joint)
             self.curve_joint_index_curve_2 = -1 if curve_joint_index_curve_2 != 0 else 0
             self.g2_point_index_curve_2 = 2 if self.curve_joint_index_curve_2 == 0 else -3
@@ -291,43 +291,60 @@ class ROCurvatureConstraint(GeoCon):
 
         if self.curve_type_1 == "LineSegment" or self.curve_type_2 == "LineSegment":
             param = None
-        elif self.curve_type_1 == "PolyLine" or (self.curve_type_1 == "Bezier" and (
-                self.curve_1.t_start is not None or self.curve_1.t_end is not None)):
-            data = self.curve_1.evaluate()
-            if (np.isclose(data.xy[0, 0], self.curve_joint.x().value()) and
-                np.isclose(data.xy[0, 1], self.curve_joint.y().value())):
-                R = data.R[0]
-            else:
-                R = data.R[-1]
-
-            param = LengthParam(value=R, name="ROC-1", enabled=False) if not isinstance(value, Param) else value
-        elif self.curve_type_2 == "PolyLine" or (self.curve_type_2 == "Bezier" and (
-                self.curve_2.t_start is not None or self.curve_2.t_end is not None)):
-            data = self.curve_2.evaluate()
-            if (np.isclose(data.xy[0, 0], self.curve_joint.x().value()) and
-                    np.isclose(data.xy[0, 1], self.curve_joint.y().value())):
-                R = data.R[0]
-            else:
-                R = data.R[-1]
-            param = LengthParam(value=R, name="ROC-1", enabled=False) if not isinstance(value, Param) else value
+        elif self.curve_type_1 == "PolyLine":
+            param = self.create_param_polyline(value, self.curve_1)
+        elif self.curve_type_2 == "PolyLine":
+            param = self.create_param_polyline(value, self.curve_2)
+        elif self.curve_type_1 == "Bezier" and (self.curve_joint is self.curve_1.t_start_point):
+            param = self.create_param_bezier_split(value, self.curve_1, start=True)
+        elif self.curve_type_1 == "Bezier" and (self.curve_joint is self.curve_1.t_end_point):
+            param = self.create_param_bezier_split(value, self.curve_1, start=False)
+        elif self.curve_type_2 == "Bezier" and (self.curve_joint is self.curve_2.t_start_point):
+            param = self.create_param_bezier_split(value, self.curve_2, start=True)
+        elif self.curve_type_2 == "Bezier" and (self.curve_joint is self.curve_2.t_end_point):
+            param = self.create_param_bezier_split(value, self.curve_2, start=False)
         else:
-            enabled = True
-            if value is None:
-                curvature_data = self.calculate_curvature_data(self.curve_joint)
+            param = self.create_param_bezier(value)
 
-                if not self.is_solving_allowed(self.g2_point_curve_1):
-                    value = curvature_data.R1
-                    enabled = False
-                elif not self.is_solving_allowed(self.g2_point_curve_2):
-                    value = curvature_data.R2
-                    enabled = False
-                else:
-                    value = 0.5 * (curvature_data.R1 + curvature_data.R2)
-            param = value if isinstance(value, Param) else LengthParam(value=value, name="ROC-1")
-            param.set_enabled(enabled)
+        print(f"{self.curve_1 = }, {self.curve_2 = }, {points = }")
 
         super().__init__(param=param, child_nodes=points, kind="d", name=name,
                          secondary_params=secondary_params)
+
+    def create_param_bezier(self, value):
+        enabled = True
+        if value is None:
+            curvature_data = self.calculate_curvature_data(self.curve_joint)
+
+            if not self.is_solving_allowed(self.g2_point_curve_1):
+                value = curvature_data.R1
+                enabled = False
+            elif not self.is_solving_allowed(self.g2_point_curve_2):
+                value = curvature_data.R2
+                enabled = False
+            else:
+                value = 0.5 * (curvature_data.R1 + curvature_data.R2)
+        param = value if isinstance(value, Param) else LengthParam(value=value, name="ROC-1")
+        param.set_enabled(enabled)
+        return param
+
+    @staticmethod
+    def create_param_bezier_split(value, curve_to_evaluate, start: bool):
+        t_val = curve_to_evaluate.t_start if start else curve_to_evaluate.t_end
+        data = curve_to_evaluate.evaluate(np.array([t_val]))
+        R = np.abs(data.R[0])
+        param = LengthParam(value=R, name="ROC-1", enabled=False) if not isinstance(value, Param) else value
+        return param
+
+    def create_param_polyline(self, value, curve_to_evaluate):
+        data = curve_to_evaluate.evaluate()
+        if (np.isclose(data.xy[0, 0], self.curve_joint.x().value()) and
+                np.isclose(data.xy[0, 1], self.curve_joint.y().value())):
+            R = data.R[0]
+        else:
+            R = data.R[-1]
+        param = LengthParam(value=R, name="ROC-1", enabled=False) if not isinstance(value, Param) else value
+        return param
 
     @staticmethod
     def calculate_curvature_data(curve_joint):
