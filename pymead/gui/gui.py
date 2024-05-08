@@ -98,7 +98,11 @@ class GUI(QMainWindow):
         self.pool = None
         self.current_opt_folder = None
 
-        # Set up optimization process (might want to also do this with analysis)
+        # Set up MSES process
+        self.mses_thread = None
+        self.mses_process = None
+
+        # Set up optimization process
         self.cpu_bound_process = None
         self.opt_thread = None
         self.shape_opt_process = None
@@ -1304,7 +1308,8 @@ class GUI(QMainWindow):
                 return
             coords = self.geo_col.container()["airfoils"][xfoil_settings["airfoil"]].get_scaled_coords()
 
-            aero_data, _ = calculate_aero_data(xfoil_settings['airfoil_analysis_dir'],
+            aero_data, _ = calculate_aero_data(None,
+                                               xfoil_settings['airfoil_analysis_dir'],
                                                xfoil_settings['airfoil_coord_file_name'],
                                                coords=coords,
                                                tool="XFOIL",
@@ -1398,7 +1403,8 @@ class GUI(QMainWindow):
             mset_settings = convert_dialog_to_mset_settings(inputs['MSET'])
             mses_settings = convert_dialog_to_mses_settings(inputs['MSES'])
             mplot_settings = convert_dialog_to_mplot_settings(inputs['MPLOT'])
-            self.multi_airfoil_analysis(mset_settings, mses_settings, mplot_settings)
+            # self.multi_airfoil_analysis(mset_settings, mses_settings, mplot_settings)
+            self.run_mses(mset_settings, mses_settings, mplot_settings)
 
     def multi_airfoil_analysis_rejected(self):
         self.multi_airfoil_analysis_settings = self.dialog.value()
@@ -1515,7 +1521,8 @@ class GUI(QMainWindow):
         mea = self.geo_col.container()["mea"][mset_settings["mea"]]
 
         try:
-            aero_data, _ = calculate_aero_data(mset_settings['airfoil_analysis_dir'],
+            aero_data, _ = calculate_aero_data(None,
+                                               mset_settings['airfoil_analysis_dir'],
                                                mset_settings['airfoil_coord_file_name'],
                                                mea=mea,
                                                tool="MSES",
@@ -1836,6 +1843,28 @@ class GUI(QMainWindow):
             callback = DragPlotCallbackMSES(parent=self, Cd=data[0], Cdp=data[1], Cdf=data[2], Cdv=data[3], Cdw=data[4],
                                             background_color=bcolor)
             callback.exec_callback()
+        elif status == "mses_analysis_complete" and isinstance(data, tuple):
+            aero_data = data[0]
+            mset_settings = data[1]
+            mses_settings = data[2]
+            mplot_settings = data[3]
+            mea_name = data[4]
+            self.display_mses_result(aero_data, mset_settings, mses_settings)
+
+            if aero_data['converged'] and not aero_data['errored_out'] and not aero_data['timed_out']:
+                self.plot_mses_pressure_coefficient_distribution(aero_data, self.geo_col.container()["mea"][mea_name],
+                                                                 mses_settings)
+                self.display_svgs(mset_settings, mplot_settings)
+
+                # Update the last successful analysis directory (for easy access in field plotting)
+                self.last_analysis_dir = os.path.join(mset_settings["airfoil_analysis_dir"],
+                                                      mset_settings["airfoil_coord_file_name"])
+
+                # Increment the number of converged analyses and the total number of analyses
+                self.n_converged_analyses += 1
+                self.n_analyses += 1
+            else:
+                self.n_analyses += 1
 
     def clear_opt_plots(self):
         def clear_handles(h_list: list):
@@ -1856,6 +1885,50 @@ class GUI(QMainWindow):
                 if hasattr(self.drag_graph, f"pg_plot_handle_{Cd_val}"):
                     handle = getattr(self.drag_graph, f"pg_plot_handle_{Cd_val}")
                     handle.clear()
+
+    def run_mses(self, mset_settings: dict, mses_settings: dict, mplot_settings: dict):
+
+        def remove_equations(geo_col: GeometryCollection):
+            """
+            Ensures that items in the geometry collection are picklable by the multiprocessing module
+            """
+            for param in geo_col.container()["params"].values():
+                param.equation_dict = None
+                param.equation = None
+                param.equation_str = None
+            for dv in geo_col.container()["desvar"].values():
+                dv.equation_dict = None
+                dv.equation = None
+                dv.equation_str = None
+
+        def run_cpu_bound_process():
+            geo_col_copy = deepcopy(self.geo_col)
+            remove_equations(geo_col_copy)
+            mea = geo_col_copy.container()["mea"][mset_settings["mea"]]
+
+            self.mses_process = CPUBoundProcess(
+                calculate_aero_data,
+                args=(
+                    mset_settings["airfoil_analysis_dir"],
+                    mset_settings["airfoil_coord_file_name"],
+                    None,
+                    mea,
+                    None,
+                    "MSES",
+                    None,
+                    mset_settings,
+                    mses_settings,
+                    mplot_settings,
+                    True,
+                    True,
+                )
+            )
+            self.mses_process.progress_emitter.signals.progress.connect(self.progress_update)
+            self.mses_process.start()
+
+        # Start running the CPU-bound process from a worker thread (separate from the main GUI thread)
+        self.mses_thread = Thread(target=run_cpu_bound_process)
+        self.mses_thread.start()
 
     def run_shape_optimization(self, param_dict: dict, opt_settings: dict, geo_col_dict: dict,
                                objectives, constraints):

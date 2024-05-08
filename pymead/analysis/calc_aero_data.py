@@ -9,6 +9,7 @@ import numpy as np
 from matplotlib import pyplot as plt
 from scipy.interpolate import CloughTocher2DInterpolator
 from shapely.geometry import MultiPoint
+import multiprocessing as mp
 
 from pymead.analysis.compressible_flow import calculate_normal_shock_total_pressure_ratio
 from pymead.analysis.read_aero_data import read_aero_data_from_xfoil, read_Cp_from_file_xfoil, read_bl_data_from_mses, \
@@ -89,11 +90,18 @@ def update_mses_settings_from_stencil(mses_settings: dict, stencil: typing.List[
     return mses_settings
 
 
-def calculate_aero_data(airfoil_coord_dir: str, airfoil_name: str,
+def calculate_aero_data(conn: mp.connection.Connection or None,
+                        airfoil_coord_dir: str,
+                        airfoil_name: str,
                         coords: typing.List[np.ndarray] = None,
-                        mea: MEA = None, mea_airfoil_names: typing.List[str] = None,
-                        tool: str = 'XFOIL', xfoil_settings: dict = None, mset_settings: dict = None,
-                        mses_settings: dict = None, mplot_settings: dict = None, export_Cp: bool = True,
+                        mea: MEA = None,
+                        mea_airfoil_names: typing.List[str] = None,
+                        tool: str = 'XFOIL',
+                        xfoil_settings: dict = None,
+                        mset_settings: dict = None,
+                        mses_settings: dict = None,
+                        mplot_settings: dict = None,
+                        export_Cp: bool = True,
                         save_aero_data: bool = True):
     r"""
     Convenience function calling either XFOIL or MSES depending on the ``tool`` specified
@@ -142,6 +150,13 @@ def calculate_aero_data(airfoil_coord_dir: str, airfoil_name: str,
     dict, str
         A dictionary containing the evaluated aerodynamic data and the path to the log file
     """
+
+    def send_over_pipe(data: object):
+        try:
+            if conn is not None:
+                conn.send(data)
+        except BrokenPipeError:
+            pass
 
     tool_list = ['XFOIL', 'MSES']
     if tool not in tool_list:
@@ -222,6 +237,8 @@ def calculate_aero_data(airfoil_coord_dir: str, airfoil_name: str,
         mset_success, mset_log, airfoil_name_order = run_mset(
             airfoil_name, airfoil_coord_dir, mset_settings, coords=coords, mea=mea, mea_airfoil_names=mea_airfoil_names)
 
+        send_over_pipe(("message", f"MSET success"))
+
         # Set up single-point or multipoint settings
         mset_mplot_loop_iterations = 1
         stencil = None
@@ -240,8 +257,11 @@ def calculate_aero_data(airfoil_coord_dir: str, airfoil_name: str,
                 # print(f"{mses_settings['XCDELH'] = }, {mses_settings['CLIFIN'] = }, {mses_settings['PTRHIN'] = }")
 
             if mset_success:
+                t_start = time.perf_counter()
                 converged, mses_log = run_mses(airfoil_name, airfoil_coord_dir, mses_settings,
                                                airfoil_name_order=airfoil_name_order)
+                t_end = time.perf_counter()
+                send_over_pipe(("message", f"MSES converged in {t_end-t_start:.2f} seconds"))
             if mset_success and converged:
                 mplot_log = run_mplot(airfoil_name, airfoil_coord_dir, mplot_settings, mode='forces')
                 aero_data = read_forces_from_mses(mplot_log)
@@ -292,8 +312,10 @@ def calculate_aero_data(airfoil_coord_dir: str, airfoil_name: str,
                         # outputs_CPK = calculate_CPK_power_consumption(os.path.join(airfoil_coord_dir, airfoil_name))
                         # outputs_CPK = calculate_CPK_power_consumption_old(os.path.join(airfoil_coord_dir, airfoil_name))
                         outputs_CPK = calculate_CPK_mses_inviscid_only(os.path.join(airfoil_coord_dir, airfoil_name))
+                        send_over_pipe(("message", "CPK calculation success"))
                     except Exception as e:
                         print(f"{e = }")
+                        send_over_pipe(("message", "CPK calculation failed"))
                         # outputs_CPK = {"CPK": 1e9, "diss_shock": 1e9, "diss_surf": 1e9, "Edot": 1e9, "Cd": 1e9,
                         #                "Edota": 1e9, "Edotp": 1e9}
                         outputs_CPK = {"CPK": 1e9}
@@ -326,8 +348,14 @@ def calculate_aero_data(airfoil_coord_dir: str, airfoil_name: str,
                 for k, v in aero_data_set.items():
                     aero_data[k].append(v)
 
+        send_over_pipe(
+            ("mses_analysis_complete", (aero_data, mset_settings, mses_settings, mplot_settings, mea.name()))
+        )
+
         if save_aero_data:
             save_data(aero_data, os.path.join(airfoil_coord_dir, airfoil_name, "aero_data.json"))
+
+        send_over_pipe(("message", "Post-processing successful"))
 
         return aero_data, logs
 

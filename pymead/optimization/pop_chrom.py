@@ -323,7 +323,8 @@ class Population:
             else:
                 raise ValueError('Only XFOIL and MSES are supported as tools in the optimization framework')
 
-            chromosome.forces, _ = calculate_aero_data(chromosome.param_dict['base_folder'],
+            chromosome.forces, _ = calculate_aero_data(None,
+                                                       chromosome.param_dict['base_folder'],
                                                        chromosome.param_dict['name'][chromosome.population_idx],
                                                        coords=chromosome.coords, tool=tool,
                                                        mea_airfoil_names=chromosome.mea_airfoil_names,
