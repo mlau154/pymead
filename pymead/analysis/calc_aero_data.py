@@ -108,6 +108,10 @@ def calculate_aero_data(conn: mp.connection.Connection or None,
 
     Parameters
     ==========
+    conn: multiprocessing.connection.Connection or None
+        If not ``None``, a connection established between the worker thread deployed by the GUI over which
+        data can be passed to update the user on the state of the analysis
+
     airfoil_coord_dir: str
       The directory containing the airfoil coordinate file
 
@@ -152,6 +156,20 @@ def calculate_aero_data(conn: mp.connection.Connection or None,
     """
 
     def send_over_pipe(data: object):
+        """
+        Connection to the GUI that is only used if ``calculate_aero_data`` is being called directly from the GUI
+
+        Parameters
+        ----------
+        data: object
+            The intermediate information to pass to the GUI, normally a two-element tuple where the first argument
+            is a string specifying the kind of data being sent, and the second argument being the actual data
+            itself (note that the data must be picklable by the multiprocessing module)
+
+        Returns
+        -------
+
+        """
         try:
             if conn is not None:
                 conn.send(data)
