@@ -36,7 +36,7 @@ from pymead.core.geometry_collection import GeometryCollection
 from pymead.core.mea import MEA
 from pymead.gui.airfoil_canvas import AirfoilCanvas
 from pymead.gui.airfoil_statistics import AirfoilStatisticsDialog, AirfoilStatistics
-from pymead.gui.analysis_graph import AnalysisGraph
+from pymead.gui.analysis_graph import AnalysisGraph, ResidualGraph
 from pymead.gui.concurrency import CPUBoundProcess
 from pymead.gui.custom_graphics_view import CustomGraphicsView
 from pymead.gui.dockable_tab_widget import PymeadDockWidget
@@ -141,6 +141,8 @@ class GUI(QMainWindow):
         self.last_analysis_dir = None
         self.field_plot_variable = None
         self.analysis_graph = None
+        self.residual_graph = None
+        self.residual_data = None
         self.opt_airfoil_graph = None
         self.parallel_coords_graph = None
         self.drag_graph = None
@@ -298,6 +300,12 @@ class GUI(QMainWindow):
             elif len(self.dock_widgets) > 4:
                 self.addDockWidget(Qt.RightDockWidgetArea, dw)
                 self.tabifyDockWidget(self.dock_widgets[-2], self.dock_widgets[-1])
+
+    def switch_to_tab(self, tab_name: str):
+        if tab_name not in self.dock_widget_names:
+            return
+        self.dock_widgets[self.dock_widget_names.index(tab_name)].show()
+        self.dock_widgets[self.dock_widget_names.index(tab_name)].raise_()
 
     def on_tab_closed(self, name: str, event: QCloseEvent):
         if name == "Analysis":
@@ -492,6 +500,10 @@ class GUI(QMainWindow):
         if self.analysis_graph is not None:
             self.analysis_graph.set_formatting(theme=self.themes[self.current_theme])
             self.analysis_graph.set_legend_label_format(theme=self.themes[self.current_theme])
+
+        if self.residual_graph is not None:
+            self.residual_graph.set_formatting(theme=self.themes[self.current_theme])
+            self.residual_graph.set_legend_label_format(theme=self.themes[self.current_theme])
 
         for cnstr in self.geo_col.container()["geocon"].values():
             cnstr.canvas_item.setStyle(theme)
@@ -1349,7 +1361,7 @@ class GUI(QMainWindow):
 
             if aero_data['converged'] and not aero_data['errored_out'] and not aero_data['timed_out']:
                 if self.analysis_graph is None:
-                    # Need to set analysis_graph to None if analysis window is closed! Might also not want to allow geometry docking window to be closed
+                    # TODO: Need to set analysis_graph to None if analysis window is closed! Might also not want to allow geometry docking window to be closed
                     self.analysis_graph = AnalysisGraph(theme=self.themes[self.current_theme],
                         background_color=self.themes[self.current_theme]["graph-background-color"])
                     self.add_new_tab_widget(self.analysis_graph.w, "Analysis")
@@ -1843,6 +1855,12 @@ class GUI(QMainWindow):
             callback = DragPlotCallbackMSES(parent=self, Cd=data[0], Cdp=data[1], Cdf=data[2], Cdv=data[3], Cdw=data[4],
                                             background_color=bcolor)
             callback.exec_callback()
+        elif status == "clear_residual_plots":
+            if self.residual_graph is not None:
+                for plot_item in self.residual_graph.plot_items:
+                    plot_item.setData([], [])
+            self.residual_data = []
+            self.switch_to_tab("Residuals")
         elif status == "mses_analysis_complete" and isinstance(data, tuple):
             aero_data = data[0]
             mset_settings = data[1]
@@ -1854,6 +1872,7 @@ class GUI(QMainWindow):
             if aero_data['converged'] and not aero_data['errored_out'] and not aero_data['timed_out']:
                 self.plot_mses_pressure_coefficient_distribution(aero_data, self.geo_col.container()["mea"][mea_name],
                                                                  mses_settings)
+                self.switch_to_tab("Analysis")
                 self.display_svgs(mset_settings, mplot_settings)
 
                 # Update the last successful analysis directory (for easy access in field plotting)
@@ -1865,6 +1884,24 @@ class GUI(QMainWindow):
                 self.n_analyses += 1
             else:
                 self.n_analyses += 1
+        elif status == "mses_residual" and isinstance(data, tuple):
+            if self.residual_graph is None:
+                self.residual_graph = ResidualGraph(theme=self.themes[self.current_theme])
+                self.add_new_tab_widget(self.residual_graph.w, "Residuals")
+                self.switch_to_tab("Residuals")
+            # current_data = self.residual_graph.plot_item.getData()
+            new_iteration = data[0]
+            new_rms_dR = data[1]
+            new_rms_dA = data[2]
+            new_rms_dV = data[3]
+            self.residual_data.append([new_iteration, new_rms_dR, new_rms_dA, new_rms_dV])
+            self.residual_graph.plot_items[0].setData([arr[0] for arr in self.residual_data],
+                                                      [arr[1] for arr in self.residual_data])
+            self.residual_graph.plot_items[1].setData([arr[0] for arr in self.residual_data],
+                                                      [arr[2] for arr in self.residual_data])
+            self.residual_graph.plot_items[2].setData([arr[0] for arr in self.residual_data],
+                                                      [arr[3] for arr in self.residual_data])
+            self.residual_graph.set_legend_label_format(self.themes[self.current_theme])
 
     def clear_opt_plots(self):
         def clear_handles(h_list: list):

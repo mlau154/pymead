@@ -277,7 +277,7 @@ def calculate_aero_data(conn: mp.connection.Connection or None,
             if mset_success:
                 t_start = time.perf_counter()
                 converged, mses_log = run_mses(airfoil_name, airfoil_coord_dir, mses_settings,
-                                               airfoil_name_order=airfoil_name_order)
+                                               airfoil_name_order=airfoil_name_order, conn=conn)
                 t_end = time.perf_counter()
                 send_over_pipe(("message", f"MSES converged in {t_end-t_start:.2f} seconds"))
             if mset_success and converged:
@@ -610,7 +610,7 @@ def run_mset(name: str, base_dir: str, mset_settings: dict, mea_airfoil_names: t
 
 
 def run_mses(name: str, base_folder: str, mses_settings: dict, airfoil_name_order: typing.List[str],
-             stencil: bool = False):
+             stencil: bool = False, conn: mp.connection.Connection = None):
     r"""
     A Python API for MSES
 
@@ -638,30 +638,78 @@ def run_mses(name: str, base_folder: str, mses_settings: dict, airfoil_name_orde
         A boolean describing whether the MSES solution is converged and a string containing the path to the MSES
         log file
     """
+
+    def send_over_pipe(data: object):
+        """
+        Connection to the GUI that is only used if ``calculate_aero_data`` is being called directly from the GUI
+
+        Parameters
+        ----------
+        data: object
+            The intermediate information to pass to the GUI, normally a two-element tuple where the first argument
+            is a string specifying the kind of data being sent, and the second argument being the actual data
+            itself (note that the data must be picklable by the multiprocessing module)
+
+        Returns
+        -------
+
+        """
+        try:
+            if conn is not None:
+                conn.send(data)
+        except BrokenPipeError:
+            pass
+
     write_mses_file(name, base_folder, mses_settings, airfoil_name_order=airfoil_name_order)
     mses_log = os.path.join(base_folder, name, 'mses.log')
     if stencil:
         read_write = 'ab'
     else:
         read_write = 'wb'
+    send_over_pipe(("clear_residual_plots", None))
     converged = False
     with open(mses_log, read_write) as f:
         process = subprocess.Popen(['mses', name, str(mses_settings['iter'])], stdout=subprocess.PIPE,
                                    stderr=subprocess.PIPE, cwd=os.path.join(base_folder, name))
         try:
+            if conn is not None:
+                iteration, rms_dR, rms_dA, rms_dV = None, None, None, None
+                for line in process.stdout:
+                    decoded_line = line.decode("utf-8")
+                    if "Converged" in decoded_line:
+                        converged = True
+                    if "Convergence failed." in decoded_line:
+                        raise ConvergenceFailedError
+                    f.write(line)
+                    if "rms(dR):" in decoded_line:
+                        decoded_line_split = decoded_line.split()
+                        iteration = decoded_line_split[0]
+                        rms_dR = decoded_line_split[decoded_line_split.index("rms(dR):") + 1]
+                        if rms_dR == "NaN":
+                            raise ConvergenceFailedError
+                    elif "rms(dA):" in decoded_line:
+                        decoded_line_split = decoded_line.split()
+                        rms_dA = decoded_line_split[decoded_line_split.index("rms(dA):") + 1]
+                    elif "rms(dV):" in decoded_line:
+                        decoded_line_split = decoded_line.split()
+                        rms_dV = decoded_line_split[decoded_line_split.index("rms(dV):") + 1]
+                        send_over_pipe(("message", f"Iteration {iteration}: rms(dR) = {rms_dR}, rms(dA) = {rms_dA}, rms(dV) = {rms_dV}"))
+                        send_over_pipe(("mses_residual", (int(iteration), float(rms_dR), float(rms_dA), float(rms_dV))))
             outs, errs = process.communicate(timeout=mses_settings['timeout'])
-            if 'Converged' in str(outs):
-                converged = True
-                if mses_settings['verbose']:
-                    print('Converged!')
-            else:
-                if mses_settings['verbose']:
-                    print('Not converged!')
-            f.write('Output:\n'.encode('utf-8'))
-            f.write(outs)
-            f.write('\nErrors:\n'.encode('utf-8'))
-            f.write(errs)
-        except subprocess.TimeoutExpired:
+
+            if conn is None:
+                if 'Converged' in str(outs):
+                    converged = True
+                    if mses_settings['verbose']:
+                        print('Converged!')
+                else:
+                    if mses_settings['verbose']:
+                        print('Not converged!')
+                f.write('Output:\n'.encode('utf-8'))
+                f.write(outs)
+                f.write('\nErrors:\n'.encode('utf-8'))
+                f.write(errs)
+        except (subprocess.TimeoutExpired, ConvergenceFailedError):
             process.kill()
             outs, errs = process.communicate()
             f.write('After timeout, \nOutput: \n'.encode('utf-8'))
@@ -2236,4 +2284,8 @@ def calculate_CPK_mses(analysis_subdir: str, configuration: str = "underwing_te"
 
 
 class GeometryError(Exception):
+    pass
+
+
+class ConvergenceFailedError(Exception):
     pass

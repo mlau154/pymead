@@ -26,5 +26,9 @@
   "normal-hover-color": "#00ca4e",
   "maximize-hover-color": "#00ca4e",
   "close-hover-color": "#ff605c",
-  "title-gradient-color": "#cfcfd4"
+  "title-gradient-color": "#cfcfd4",
+  "residual-color-1": "indianred",
+  "residual-color-2": "lightseagreen",
+  "residual-color-3": "goldenrod",
+  "residual-target-color": "#000000"
 }
