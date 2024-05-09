@@ -2,25 +2,9 @@
 Python Multi-Element Airfoil Design (pymead)
 ============================================
 
-Welcome to the documentation page for `pymead`, an object-oriented Python 3 library for
+Welcome to the documentation page for `pymead`, an object-oriented Python 3 library and GUI for
 generation, aerodynamic analysis, and aerodynamic shape optimization of parametric
 airfoils and airfoil systems.
-
-.. figure:: images/pymead_main_screenshot_dark.*
-   :width: 800px
-   :align: center
-   :class: only-dark
-
-   Screenshot of an aero-propulsive analysis of a multi-element airfoil optimized using
-   `pymead`
-
-.. figure:: images/pymead_main_screenshot_light.*
-   :width: 800px
-   :align: center
-   :class: only-light
-
-   Screenshot of an aero-propulsive analysis of a multi-element airfoil optimized using
-   `pymead`
 
 
 Quick Links
@@ -56,6 +40,7 @@ Contents
 .. toctree::
    :maxdepth: 2
 
+   gallery
    gui
    arch
 
