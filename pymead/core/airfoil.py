@@ -1,6 +1,7 @@
 import typing
 from copy import deepcopy
 
+import matplotlib.pyplot as plt
 import numpy as np
 from shapely.geometry import Polygon, LineString
 
@@ -8,6 +9,8 @@ from pymead.core.parametric_curve import INTERMEDIATE_NT
 from pymead.core.point import Point
 from pymead.core.pymead_obj import PymeadObj
 from pymead.core.transformation import Transformation2D
+from pymead.post.fonts_and_colors import font
+from pymead.post.plot_formatters import format_axis_scientific
 
 
 class Airfoil(PymeadObj):
@@ -712,6 +715,43 @@ class Airfoil(PymeadObj):
                 t_old = t
 
         return new_param_vec_list
+
+    def plot(self, show: bool = True, save_file: str or None = None, ax: plt.Axes or None = None):
+        """
+        Plots the airfoil to a ``matplotlib`` figure.
+
+        Parameters
+        ----------
+        show: bool
+            Whether to immediately show the airfoil plot. Default: ``True``
+
+        save_file: str or None
+            Name of the file to save. If ``None``, the airfoil image will not be saved to file. Default: ``None``
+
+        ax: plt.Axes or None
+            Matplotlib Axes object on which the airfoil will be plotted. Default: ``None``
+        """
+        if ax is not None:
+            fig = ax.figure
+        else:
+            fig, ax = plt.subplots(figsize=(10, 2))
+
+        # Plot the curves
+        for curve in self.curves:
+            curve_data = curve.evaluate()
+            ax.plot(curve_data.xy[:, 0], curve_data.xy[:, 1], color="steelblue")
+
+        # Plot settings
+        ax.set_aspect("equal")
+        ax.set_xlabel("x", fontdict=font)
+        ax.set_ylabel("y", fontdict=font)
+        format_axis_scientific(ax=ax)
+
+        # Save and/or show
+        if save_file is not None:
+            fig.savefig(save_file, bbox_inches="tight")
+        if show:
+            plt.show()
 
     def get_dict_rep(self):
         return {"leading_edge": self.leading_edge.name(), "trailing_edge": self.trailing_edge.name(),
