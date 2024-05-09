@@ -850,7 +850,11 @@ class GeometryCollection(DualRep):
 
         return sorted_list
 
-    def add_airfoil(self, leading_edge: Point, trailing_edge: Point, upper_surf_end: Point, lower_surf_end: Point,
+    def add_airfoil(self,
+                    leading_edge: Point,
+                    trailing_edge: Point,
+                    upper_surf_end: Point or None = None,
+                    lower_surf_end: Point or None = None,
                     name: str or None = None, assign_unique_name: bool = True):
         airfoil = Airfoil(leading_edge=leading_edge, trailing_edge=trailing_edge, upper_surf_end=upper_surf_end,
                           lower_surf_end=lower_surf_end, name=name)

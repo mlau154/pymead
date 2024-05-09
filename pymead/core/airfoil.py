@@ -284,7 +284,7 @@ class Airfoil(PymeadObj):
 
     def get_scaled_coords(self, coords: np.ndarray = None, max_airfoil_points: int = None,
                                 curvature_exp: float = 2.0) -> np.ndarray:
-        """
+        r"""
         Gets the chord-relative values of the airfoil coordinates. The airfoil is transformed such that the leading
         edge is at :math:`(0,0)` and the trailing edge is at :math:`(1,0)`.
 
