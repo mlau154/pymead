@@ -42,7 +42,7 @@ Contents
 
    gallery
    gui
-   arch
+   tutorials
 
 .. toctree::
    :maxdepth: 3
@@ -52,4 +52,4 @@ Contents
 .. toctree::
    :maxdepth: 2
 
-   tutorials
+   arch

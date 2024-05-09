@@ -11,6 +11,22 @@ found in the ``core`` module of `pymead` and can be instantiated with no argumen
    geo_col = GeometryCollection()
 
 
+It may be desirable in some circumstances to load in a geometry collection saved from the GUI (``.jmea`` files).
+In this case,
+first load the geometry collection into a Python dictionary, then pass that dictionary to the static method
+``GeometryCollection.set_from_dict_rep``:
+
+.. code-block:: python
+
+   from pymead.utils.read_write_files import load_data
+
+   my_pymead_data = load_data("my_jmea_file.jmea")
+   geo_col = GeometryCollection.set_from_dict_rep(my_pymead_data)
+
+
+This method is also how saved ``.jmea`` files are loaded in the GUI.
+
+
 Adding Points
 -------------
 
@@ -84,8 +100,8 @@ Line segments and Bézier curves are both added by passing a ``PointSequence`` o
    bez = geo_col.add_bezier(PointSequence([p1, p2, p3]))
 
 
-Adding Airfoil with Thin Trailing Edges
----------------------------------------
+Adding Airfoils with Thin Trailing Edges
+----------------------------------------
 
 Airfoils with thin trailing edges are added by specifying the leading edge point and trailing edge point.
 
@@ -116,16 +132,53 @@ Airfoils with thin trailing edges are added by specifying the leading edge point
                                  )
 
 
-An airfoil with a thin trailing edge can be created by simply making the upper and lower surface point sequences
-end at the same point object. In that case, the ``upper_surf_end`` and ``lower_surf_end`` keyword arguments can
-be omitted or set to ``None``. Note that in the above code, the same point (rather than a duplicate point)
+Note that in the above code, the same point (rather than a duplicate point)
 at :math:`(0,0)` is used for the leading edge. The same is true at :math:`(1,0)` (the trailing edge).
 If a duplicate point is used, a ``ClosureError`` will be raised when
-trying to create the airfoil because the curves are not connected by the same point object.
+trying to create the airfoil because the curves are not connected by the same point object. To visualize the airfoil,
+simply do
+
+.. code-block:: python
+
+   airfoil.plot()
 
 
-Adding Airfoil with Blunt Trailing Edges
-----------------------------------------
+See the API documentation for details on the possible keyword arguments for this method.
 
-Airfoils with thin trailing edges are added by specifying the leading edge point, the trailing edge point, and the
-trailing edge upper and lower surface points.
+
+Adding Airfoils with Blunt Trailing Edges
+-----------------------------------------
+
+Airfoils with blunt trailing edges are added by specifying the leading edge point, the trailing edge point, and the
+trailing edge upper and lower surface points. Note that for airfoils with blunt trailing edges, lines or curves
+connecting the upper surface point to the trailing edge and lower surface point to the trailing edge must be present.
+
+.. code-block:: python
+
+   upper_curve_array = np.array([
+       [0.0, 0.0],
+       [0.0, 0.05],
+       [0.05, 0.05],
+       [0.6, 0.04],
+       [1.0, 0.0025]
+   ])
+   lower_curve_array = np.array([
+       [0.0, -0.05],
+       [0.05, -0.05],
+       [0.7, 0.01],
+       [1.0, -0.0025]
+   ])
+   point_seq_upper = PointSequence([geo_col.add_point(xy[0], xy[1]) for xy in upper_curve_array])
+   point_seq_lower = PointSequence([point_seq_upper.points()[0],
+                                   *[geo_col.add_point(xy[0], xy[1]) for xy in lower_curve_array]])
+   bez_upper = geo_col.add_bezier(point_seq_upper)
+   bez_lower = geo_col.add_bezier(point_seq_lower)
+   te_point = geo_col.add_point(1.0, 0.0)
+   te_upper_line = geo_col.add_line(PointSequence([point_seq_upper.points()[-1], te_point]))
+   te_lower_line = geo_col.add_line(PointSequence([point_seq_lower.points()[-1], te_point]))
+   airfoil = geo_col.add_airfoil(leading_edge=point_seq_upper.points()[0],
+                                 trailing_edge=te_point,
+                                 upper_surf_end=point_seq_upper.points()[-1],
+                                 lower_surf_end=point_seq_lower.points()[-1]
+                                 )
+
