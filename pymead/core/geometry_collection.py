@@ -40,7 +40,6 @@ class GeometryCollection(DualRep):
             "airfoils": {},
             "mea": {},
             "geocon": {},
-            "dims": {},
         }
         self.gcs = GCS()
         self.param_graph = ParamGraph()
