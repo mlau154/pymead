@@ -4,7 +4,7 @@ from matplotlib.pyplot import show
 from matplotlib.lines import Line2D
 from copy import deepcopy
 
-from pymead.utils.airfoil_matching import match_airfoil
+from airfoil_matching import match_airfoil
 from pymead.utils.get_airfoil import extract_data_from_airfoiltools
 from pymead.core.airfoil import Airfoil
 from pymead.core.base_airfoil_params import BaseAirfoilParams

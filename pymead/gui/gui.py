@@ -63,7 +63,7 @@ from pymead.optimization.opt_setup import calculate_warm_start_index
 from pymead.optimization.opt_setup import read_stencil_from_array, convert_opt_settings_to_param_dict
 from pymead.optimization.shape_optimization import shape_optimization as shape_optimization_static
 from pymead.post.mses_field import flow_var_label
-from pymead.utils.airfoil_matching import match_airfoil
+from airfoil_matching import match_airfoil
 from pymead.utils.dict_recursion import compare_dicts_floating_precision
 from pymead.utils.get_airfoil import extract_data_from_airfoiltools
 from pymead.utils.misc import get_setting

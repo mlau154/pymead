@@ -1,24 +1,19 @@
 import typing
-
-import shapely.errors
-
-import numpy as np
-
-from scipy.optimize import minimize
-from scipy.interpolate import BSpline, splrep
-import scipy
-from shapely.geometry import Polygon
-
-from pymead.core.geometry_collection import GeometryCollection
-from pymead.utils.get_airfoil import extract_data_from_airfoiltools
-from pymead.core.mea import MEA
-
 from copy import deepcopy
 
+import numpy as np
+import scipy
+import shapely.errors
 from pymoo.algorithms.soo.nonconvex.de import DE
 from pymoo.core.problem import ElementwiseProblem
 from pymoo.operators.sampling.lhs import LHS
 from pymoo.optimize import minimize
+from scipy.optimize import minimize
+from shapely.geometry import Polygon
+
+from pymead.core.geometry_collection import GeometryCollection
+from pymead.core.mea import MEA
+from pymead.utils.get_airfoil import extract_data_from_airfoiltools
 
 
 def airfoil_symmetric_area_difference(parameters: list, geo_col: GeometryCollection, target_airfoil: str,
