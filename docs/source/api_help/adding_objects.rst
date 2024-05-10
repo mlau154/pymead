@@ -36,9 +36,9 @@ Almost all types of objects can be added using methods of ``GeometryCollection``
 .. code-block:: python
 
    p = geo_col.add_point(0.2, -0.1)
-   print(f"{p.name() = })
-   print(f"{p.x().value() = })
-   print(f"{p.y().value() = })
+   print(f"{p.name() = }")
+   print(f"{p.x().value() = }")
+   print(f"{p.y().value() = }")
 
 
 Notice that these object-add methods always return the object that is created. The above code block illustrates how to
@@ -182,3 +182,15 @@ connecting the upper surface point to the trailing edge and lower surface point 
                                  lower_surf_end=point_seq_lower.points()[-1]
                                  )
 
+
+Adding Multi-Element Airfoils
+-----------------------------
+
+For performing analysis or optimization using MSES, even if a single airfoil is being studied, it
+is necessary to place the airfoil(s) in a multi-element airfoil container. As an example, this can be done for three
+airfoil objects named ``"airfoil_1"``, ``"airfoil_2"``, and ``"airfoil-3"``, each created in a similar fashion to
+those in the above code:
+
+.. code-block:: python
+
+   mea = geo_col.add_mea([airfoil_1, airfoil_2, airfoil_3])
