@@ -8,7 +8,6 @@ import scipy.optimize
 from shapely.geometry import Polygon
 
 from pymead.core.geometry_collection import GeometryCollection
-from pymead.core.mea import MEA
 from pymead.utils.get_airfoil import extract_data_from_airfoiltools
 
 
