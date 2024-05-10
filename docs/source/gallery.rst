@@ -5,6 +5,7 @@ Click on any image to zoom. Press the "back" button to return to the gallery.
 
 .. list-table::
    :widths: 50 50
+   :class: no-border-table
 
    * - .. figure:: images/pymead_main_screenshot_dark.*
           :width: 100%
@@ -33,6 +34,7 @@ Click on any image to zoom. Press the "back" button to return to the gallery.
 
 .. list-table::
    :widths: 50 50
+   :class: no-border-table
 
    * - .. figure:: images/pymead_main_screenshot_light.*
           :width: 100%

@@ -21,3 +21,7 @@ figure {
     padding: 10px 10px 10px 10px;
 }
 */
+
+table.no-border-table td {
+    border: none;
+}
