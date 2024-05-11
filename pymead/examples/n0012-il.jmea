@@ -1,0 +1,71 @@
+{
+    "desvar": {},
+    "params": {},
+    "points": {
+        "Point-1": {
+            "x": 1.0,
+            "y": 0.00126
+        },
+        "Point-2": {
+            "x": 1.0,
+            "y": -0.00126
+        },
+        "Point-3": {
+            "x": 0.0,
+            "y": 0.0
+        },
+        "Point-4": {
+            "x": 1.0,
+            "y": 0.0
+        }
+    },
+    "lines": {
+        "Line-1": {
+            "points": [
+                "Point-4",
+                "Point-1"
+            ]
+        },
+        "Line-2": {
+            "points": [
+                "Point-4",
+                "Point-2"
+            ]
+        }
+    },
+    "polylines": {
+        "n0012-1": {
+            "points": [
+                "Point-1",
+                "Point-2"
+            ],
+            "source": "n0012-il",
+            "start": null,
+            "end": null
+        }
+    },
+    "bezier": {},
+    "airfoils": {
+        "Airfoil-1": {
+            "leading_edge": "Point-3",
+            "trailing_edge": "Point-4",
+            "upper_surf_end": "Point-1",
+            "lower_surf_end": "Point-2"
+        }
+    },
+    "mea": {
+        "MEA-1": {
+            "airfoils": [
+                "Airfoil-1"
+            ]
+        }
+    },
+    "geocon": {},
+    "metadata": {
+        "pymead_version": "2.0.0-beta.5",
+        "save_datetime": "2024-05-11 14:18:58.919117",
+        "length_unit": "m",
+        "angle_unit": "rad",
+        "area_unit": "m2"
+    }
+}

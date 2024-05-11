@@ -758,6 +758,7 @@ class GUI(QMainWindow):
         def load_blank_geo_col():
             self.load_geo_col_no_dialog()
             self.setWindowTitle(f"pymead")
+            self.current_save_name = None
 
         if self.changes_made():
             dialog = NewGeoColDialog(theme=self.themes[self.current_theme], parent=self)
@@ -2082,8 +2083,22 @@ class GUI(QMainWindow):
                 svg_exporter.export(os.path.join(opt_dir, f"{opt_plots[opt_plot]}.svg"))
                 csv_exporter.export(os.path.join(opt_dir, f"{opt_plots[opt_plot]}.csv"))
 
+    def load_example(self, example_name: str):
+        example_file = os.path.join(EXAMPLES_DIR, example_name)
+        self.load_geo_col_no_dialog(example_file)
+        self.setWindowTitle(f"pymead - {os.path.split(example_file)[-1]}")
+
     def load_example_sc20612_match(self):
-        self.load_geo_col_no_dialog(os.path.join(EXAMPLES_DIR, "match_sc20612-il.jmea"))
+        self.load_example("match_sc20612-il.jmea")
+
+    def load_example_underwing_propulsor(self):
+        self.load_example("underwing_propulsor.jmea")
+
+    def load_example_n0012(self):
+        self.load_example("n0012-il.jmea")
+
+    def load_example_sc20612(self):
+        self.load_example("sc20612-il.jmea")
 
     def toggle_full_screen(self):
         if not self.isMaximized():

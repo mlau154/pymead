@@ -3,8 +3,15 @@
     "New": ["new_geo_col", "Ctrl+N"],
     "Open": ["load_geo_col", "Ctrl+O"],
     "Load Example": {
+      "Aero-Propulsion": {
+        "Underwing Propulsor": "load_example_underwing_propulsor"
+      },
       "Airfoil Matching": {
         "NASA SC20612": "load_example_sc20612_match"
+      },
+      "Web Airfoils": {
+        "NACA 0012": "load_example_n0012",
+        "NASA SC20612": "load_example_sc20612"
       }
     },
     "Save As": "save_as_geo_col",
