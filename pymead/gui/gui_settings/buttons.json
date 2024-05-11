@@ -84,9 +84,9 @@
     "checkable": false,
     "function": "on_add_roc_constraint_pressed"
   },
-  "stop-optimization": {
+  "stop-process": {
     "icon": "stop.png",
-    "status_tip": "Terminate optimization",
+    "status_tip": "Terminate analysis or optimization",
     "checkable": false,
     "checked-by-default": false,
     "function": "on_stop_button_pressed"
