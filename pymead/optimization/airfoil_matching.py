@@ -112,6 +112,15 @@ def match_airfoil(geo_col: GeometryCollection, target_airfoil: str, airfoil_to_m
         raise TypeError(f'airfoil_to_match be of type str or np.ndarray, '
                         f'and type {type(airfoil_to_match)} was used')
 
+    if target_airfoil not in geo_col.container()["airfoils"]:
+        raise ValueError(f"Target airfoil {target_airfoil} not found in the specified geometry collection. Available"
+                         f" airfoils in this geometry collection: "
+                         f"{[k for k in geo_col.container()['airfoils'].keys()]}")
+
+    if len(geo_col.container()["desvar"]) == 0:
+        raise ValueError(f"No design variables were found in the geometry collection. Promote at least "
+                         f"one parameter to a design variable to run an airfoil matching optimization.")
+
     geo_col_deepcopy = deepcopy(geo_col)
     initial_guess = np.array(geo_col.extract_design_variable_values())
     bounds = np.repeat(np.array([[0.0, 1.0]]), len(initial_guess), axis=0)
