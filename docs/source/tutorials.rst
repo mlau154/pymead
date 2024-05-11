@@ -17,3 +17,4 @@ on airfoil generation, airfoil analysis, optimization, and plotting data. See
 
    api_help/adding_objects.rst
    api_help/renaming_objects.rst
+   api_help/airfoil_matching.rst

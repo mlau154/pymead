@@ -79,6 +79,7 @@ from PyQt5.QtCore import QCoreApplication, QSettings
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = os.path.join(BASE_DIR, "data")
 RESOURCE_DIR = os.path.join(BASE_DIR, "resources")
+EXAMPLES_DIR = os.path.join(BASE_DIR, "examples")
 ICON_DIR = os.path.join(BASE_DIR, "icons")
 PLUGINS_DIR = os.path.join(BASE_DIR, "plugins")
 INCLUDE_FILES = [os.path.join(BASE_DIR, "core", "symmetry.py")]
