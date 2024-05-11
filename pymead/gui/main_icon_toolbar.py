@@ -50,7 +50,7 @@ class MainIconToolbar(QToolBar):
             self.addWidget(button)
 
     def on_stop_button_pressed(self):
-        self.parent.stop_optimization()
+        self.parent.stop_process()
 
     def on_grid_button_pressed(self):
         self.parent.airfoil_canvas.toggleGrid()

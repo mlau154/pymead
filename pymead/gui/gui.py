@@ -340,7 +340,7 @@ class GUI(QMainWindow):
         if self.shape_opt_process is not None:
             dialog = ExitOptimizationDialog(self, theme=self.themes[self.current_theme])
             if dialog.exec_():
-                self.stop_optimization()
+                self.stop_process()
             else:
                 a0.ignore()
                 return
@@ -1989,23 +1989,24 @@ class GUI(QMainWindow):
 
         # TODO: follow this same code architecture for XFOIL and MSES one-off analysis
 
-    def stop_optimization(self, completed: bool = False):
+    def stop_process(self):
 
-        if self.shape_opt_process is None:
-            self.disp_message_box("No optimization to terminate")
+        if self.shape_opt_process is None and self.mses_process is None:
+            self.disp_message_box("No analysis or optimization to terminate")
             return
 
-        self.shape_opt_process.terminate()
+        if self.shape_opt_process is not None:
+            self.shape_opt_process.terminate()
+        if self.mses_process is not None:
+            self.mses_process.terminate()
 
         if self.opt_thread is not None:
             self.opt_thread.join()
+        if self.mses_thread is not None:
+            self.mses_thread.join()
 
         self.shape_opt_process = None
-
-        if completed:
-            print("Optimization completed.")
-        else:
-            print("Optimization terminated.")
+        self.mses_process = None
 
     @staticmethod
     def generate_output_folder_link_text(folder: str):
@@ -2021,7 +2022,7 @@ class GUI(QMainWindow):
             progress_object.exec_callback()
 
     def shape_opt_finished_callback_fn(self, success: bool):
-        self.stop_optimization(completed=True)
+        self.stop_process()
         self.forces_dict = {}
         self.pool = None
         self.status_bar.showMessage("Optimization Complete!", 3000)
