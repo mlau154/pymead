@@ -2,6 +2,11 @@
   "File": {
     "New": ["new_geo_col", "Ctrl+N"],
     "Open": ["load_geo_col", "Ctrl+O"],
+    "Load Example": {
+      "Airfoil Matching": {
+        "NASA SC20612": "load_example_sc20612_match"
+      }
+    },
     "Save As": "save_as_geo_col",
     "Save": ["save_geo_col", "Ctrl+S"],
     "Import": {

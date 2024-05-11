@@ -23,8 +23,7 @@ from PyQt5.QtWidgets import QMainWindow, QApplication, \
 from pymoo.factory import get_decomposition
 from pyqtgraph.exporters import CSVExporter, SVGExporter
 
-from pymead import ICON_DIR, GUI_SETTINGS_DIR, GUI_THEMES_DIR, q_settings
-from pymead import RESOURCE_DIR
+from pymead import ICON_DIR, GUI_SETTINGS_DIR, GUI_THEMES_DIR, RESOURCE_DIR, EXAMPLES_DIR, q_settings
 from pymead.analysis.calc_aero_data import SVG_PLOTS, SVG_SETTINGS_TR
 from pymead.analysis.calc_aero_data import calculate_aero_data
 from pymead.analysis.read_aero_data import flow_var_idx
@@ -2082,6 +2081,9 @@ class GUI(QMainWindow):
                 csv_exporter = CSVExporter(item=attr.v)
                 svg_exporter.export(os.path.join(opt_dir, f"{opt_plots[opt_plot]}.svg"))
                 csv_exporter.export(os.path.join(opt_dir, f"{opt_plots[opt_plot]}.csv"))
+
+    def load_example_sc20612_match(self):
+        self.load_geo_col_no_dialog(os.path.join(EXAMPLES_DIR, "match_sc20612-il.jmea"))
 
     def toggle_full_screen(self):
         if not self.isMaximized():
