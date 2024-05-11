@@ -310,6 +310,8 @@ class GUI(QMainWindow):
         if name == "Analysis":
             self.analysis_graph = None
             self.n_converged_analyses = 0
+        elif name == "Residuals":
+            self.residual_graph = None
         elif name == "Opt. Airfoil":
             self.opt_airfoil_graph = None
             self.opt_airfoil_plot_handles = []
@@ -1987,7 +1989,7 @@ class GUI(QMainWindow):
         self.opt_thread = thread
         self.opt_thread.start()
 
-        # TODO: follow this same code architecture for XFOIL and MSES one-off analysis
+        # TODO: follow this same code architecture for XFOIL one-off analysis
 
     def stop_process(self):
 
