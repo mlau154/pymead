@@ -107,6 +107,7 @@ Airfoils with thin trailing edges are added by specifying the leading edge point
 
 .. code-block:: python
 
+   # Define the array of control points for the airfoil's Bézier curves
    upper_curve_array = np.array([
        [0.0, 0.0],
        [0.0, 0.05],
@@ -119,12 +120,18 @@ Airfoils with thin trailing edges are added by specifying the leading edge point
        [0.05, -0.05],
        [0.7, 0.01]
    ])
+
+   # Generate the point sequences
    point_seq_upper = PointSequence([geo_col.add_point(xy[0], xy[1]) for xy in upper_curve_array])
    point_seq_lower = PointSequence([point_seq_upper.points()[0],
                                    *[geo_col.add_point(xy[0], xy[1]) for xy in lower_curve_array],
                                    point_seq_upper.points()[-1]])
+
+   # Add the Bézier curves
    bez_upper = geo_col.add_bezier(point_seq_upper)
    bez_lower = geo_col.add_bezier(point_seq_lower)
+
+   # Create the airfoil
    airfoil = geo_col.add_airfoil(point_seq_upper.points()[0],
                                  point_seq_upper.points()[-1],
                                  upper_surf_end=None,
@@ -155,6 +162,7 @@ connecting the upper surface point to the trailing edge and lower surface point 
 
 .. code-block:: python
 
+   # Define the array of control points for the airfoil's Bézier curves
    upper_curve_array = np.array([
        [0.0, 0.0],
        [0.0, 0.05],
@@ -168,14 +176,24 @@ connecting the upper surface point to the trailing edge and lower surface point 
        [0.7, 0.01],
        [1.0, -0.0025]
    ])
+
+   # Generate the point sequences
    point_seq_upper = PointSequence([geo_col.add_point(xy[0], xy[1]) for xy in upper_curve_array])
    point_seq_lower = PointSequence([point_seq_upper.points()[0],
                                    *[geo_col.add_point(xy[0], xy[1]) for xy in lower_curve_array]])
+
+   # Add the Bézier curves
    bez_upper = geo_col.add_bezier(point_seq_upper)
    bez_lower = geo_col.add_bezier(point_seq_lower)
+
+   # Add the trailing edge at (1, 0)
    te_point = geo_col.add_point(1.0, 0.0)
+
+   # Add lines connecting the trailing edge to the trailing edge upper and lower points
    te_upper_line = geo_col.add_line(PointSequence([point_seq_upper.points()[-1], te_point]))
    te_lower_line = geo_col.add_line(PointSequence([point_seq_lower.points()[-1], te_point]))
+
+   # Create the airfoil
    airfoil = geo_col.add_airfoil(leading_edge=point_seq_upper.points()[0],
                                  trailing_edge=te_point,
                                  upper_surf_end=point_seq_upper.points()[-1],
