@@ -152,8 +152,13 @@ class Bezier(ParametricCurve):
 
     @staticmethod
     def bernstein_poly(n: int, i: int, t: int or float or np.ndarray):
-        """
-        Calculates the Bernstein polynomial for a given Bézier curve order, index, and parameter vector
+        r"""
+        Calculates the Bernstein polynomial for a given Bézier curve order, index, and parameter vector. The
+        Bernstein polynomial is described by
+
+        .. math::
+
+            B_{i,n}(t)={n \choose i} t^i (1-t)^{n-i}
 
         Arguments
         =========
@@ -295,6 +300,95 @@ class Bezier(ParametricCurve):
 
         return PCurveData(t=t, xy=xy, xpyp=xpyp, xppypp=xppypp, k=k, R=R)
 
+    def split(self, t_split: float):
+
+        # Number of control points, curve degree, control point array
+        n_ctrl_points = len(self.point_sequence())
+        degree = n_ctrl_points - 1
+        P = self.point_sequence().as_array()
+
+        def de_casteljau(i: int, j: int) -> np.ndarray:
+            """
+            Based on https://en.wikipedia.org/wiki/De_Casteljau%27s_algorithm. Recursive algorithm where the
+            base case is just the value of the ith original control point.
+
+            Parameters
+            ----------
+            i: int
+                Lower index
+            j: int
+                Upper index
+
+            Returns
+            -------
+            np.ndarray
+                A one-dimensional array containing the :math:`x` and :math:`y` values of a control point evaluated
+                at :math:`(i,j)` for a Bézier curve split at the parameter value ``t_split``
+            """
+            if j == 0:
+                return P[i, :]
+            return de_casteljau(i, j - 1) * (1 - t_split) + de_casteljau(i + 1, j - 1) * t_split
+
+        bez_split_1_P = np.array([de_casteljau(i=0, j=i) for i in range(n_ctrl_points)])
+        bez_split_2_P = np.array([de_casteljau(i=i, j=degree - i) for i in range(n_ctrl_points)])
+
+        if self.geo_col is None:
+            bez_1_points = [self.point_sequence().points()[0]] + [Point(*xy.tolist()) for xy in bez_split_1_P[1:, :]]
+            bez_2_points = [bez_1_points[-1]] + [Point(*xy.tolist()) for xy in bez_split_2_P[1:-1, :]] + [
+                self.point_sequence().points()[-1]]
+        else:
+            bez_1_points = [self.point_sequence().points()[0]] + [
+                self.geo_col.add_point(*xy.tolist()) for xy in bez_split_1_P[1:, :]]
+            bez_2_points = [bez_1_points[-1]] + [
+                self.geo_col.add_point(*xy.tolist()) for xy in bez_split_2_P[1:-1, :]] + [
+                self.point_sequence().points()[-1]]
+
+        bez_1_point_seq = PointSequence(bez_1_points)
+        bez_2_point_seq = PointSequence(bez_2_points)
+
+        if self.geo_col is None:
+            return (
+                Bezier(point_sequence=bez_1_point_seq),
+                Bezier(point_sequence=bez_2_point_seq)
+            )
+        else:
+            for point in self.point_sequence().points()[1:-1]:
+                self.geo_col.remove_pymead_obj(point)
+            return (
+                self.geo_col.add_bezier(point_sequence=bez_1_point_seq, name="BezSplit"),
+                self.geo_col.add_bezier(point_sequence=bez_2_point_seq, name="BezSplit")
+            )
+
     def get_dict_rep(self):
-        return {"points": [pt.name() for pt in self.point_sequence().points()],
-                "t_start": self.t_start, "t_end": self.t_end}
+        return {"points": [pt.name() for pt in self.point_sequence().points()]}
+
+
+def main():
+    points = np.array([
+        [0.0, 0.0],
+        [0.1, -0.15],
+        [0.2, 0.13],
+        [0.4, 0.2],
+        [0.7, -0.1],
+        [0.9, -0.05],
+        [1.0, 0.0]
+    ])
+    original_point_seq = PointSequence.generate_from_array(points)
+    bez = Bezier(original_point_seq)
+    bez1, bez2 = bez.split(0.7)
+    bez_xy = bez.evaluate().xy
+    bez1_xy = bez1.evaluate().xy
+    bez2_xy = bez2.evaluate().xy
+
+    import matplotlib.pyplot as plt
+    plt.plot(bez_xy[:, 0], bez_xy[:, 1], color="steelblue", ls="solid", lw=4)
+    plt.plot(bez1_xy[:, 0], bez1_xy[:, 1], color="white", ls="dotted", lw=2)
+    plt.plot(bez2_xy[:, 0], bez2_xy[:, 1], color="indianred", ls="dashdot", lw=2)
+    plt.plot(original_point_seq.as_array()[:, 0], original_point_seq.as_array()[:, 1], color="grey", ls="dotted", marker="x")
+    plt.plot(bez1.point_sequence().as_array()[:, 0], bez1.point_sequence().as_array()[:, 1], color="black", ls="dotted", marker="s")
+    plt.plot(bez2.point_sequence().as_array()[:, 0], bez2.point_sequence().as_array()[:, 1], color="gold", ls="dotted", marker="d")
+    plt.show()
+
+
+if __name__ == "__main__":
+    main()

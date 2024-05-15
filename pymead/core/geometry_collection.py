@@ -972,11 +972,9 @@ class GeometryCollection(DualRep):
                     source=polyline_dict["source"], start=polyline_dict["start"], end=polyline_dict["end"], name=name,
                     assign_unique_name=False)
         for name, bezier_dict in d["bezier"].items():
-            t_start = bezier_dict["t_start"] if "t_start" in bezier_dict else None
-            t_end = bezier_dict["t_end"] if "t_end" in bezier_dict else None
             geo_col.add_bezier(point_sequence=PointSequence(
                 points=[geo_col.container()["points"][k] for k in bezier_dict["points"]]),
-                name=name, t_start=t_start, t_end=t_end, assign_unique_name=False
+                name=name, assign_unique_name=False
             )
 
         constraints_added = []

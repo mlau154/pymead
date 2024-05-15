@@ -447,8 +447,8 @@ class PointButton(TreeButton):
 class BezierButton(TreeButton):
 
     def __init__(self, bezier: Bezier, tree, top_level: bool = False):
-        self.bezier = bezier
         super().__init__(pymead_obj=bezier, tree=tree, top_level=top_level)
+        self.bezier = bezier
 
     def modifyDialogInternals(self, dialog: QDialog, layout: QGridLayout) -> None:
         name_label = QLabel("Name", self)
@@ -461,49 +461,9 @@ class BezierButton(TreeButton):
             point_button.sigNameChanged.connect(self.onPointNameChange)
             layout.addWidget(point_button, layout.rowCount(), 0)
 
-        # Add t start widget
-        row_count = layout.rowCount()
-        layout.addWidget(QLabel("t start", self), row_count, 0)
-        t_start_widget = QDoubleSpinBox(self)
-        t_start_widget.setMinimum(-np.inf)
-        t_start_widget.setMaximum(np.inf)
-        t_start_widget.setSingleStep(0.01)
-        t_start_widget.setDecimals(8)
-        if self.bezier.t_start is not None:
-            t_start_widget.setValue(self.bezier.t_start)
-        else:
-            t_start_widget.setValue(0.0)
-        t_start_widget.valueChanged.connect(self.onTStartChange)
-        layout.addWidget(t_start_widget, row_count, 1)
-
-        # Add t end widget
-        row_count = layout.rowCount()
-        layout.addWidget(QLabel("t end", self), row_count, 0)
-        t_end_widget = QDoubleSpinBox(self)
-        t_end_widget.setMinimum(-np.inf)
-        t_end_widget.setMaximum(np.inf)
-        t_end_widget.setSingleStep(0.01)
-        t_end_widget.setDecimals(8)
-        if self.bezier.t_end is not None:
-            t_end_widget.setValue(self.bezier.t_end)
-        else:
-            t_end_widget.setValue(1.0)
-        t_end_widget.valueChanged.connect(self.onTEndChange)
-        layout.addWidget(t_end_widget, row_count, 1)
-
-        dialog.setMinimumWidth(250)
-
     def onPointNameChange(self, name: str, point: Point):
         if point.tree_item is not None:
             self.tree.itemWidget(point.tree_item, 0).setText(name)
-
-    def onTStartChange(self, t_start: float):
-        self.bezier.t_start = t_start
-        self.bezier.canvas_item.updateCurveItem(self.bezier.evaluate())
-
-    def onTEndChange(self, t_end: float):
-        self.bezier.t_end = t_end
-        self.bezier.canvas_item.updateCurveItem(self.bezier.evaluate())
 
     def enterEvent(self, a0):
         self.bezier.canvas_item.setCurveStyle("hovered")
@@ -1040,6 +1000,13 @@ class ParameterTree(QTreeWidget):
         for pymead_obj in pymead_objs[1:]:
             self.geo_col.equate_constraints(pymead_objs[0], pymead_obj)
 
+    @undoRedoAction
+    def splitBezier(self, pymead_objs: typing.List[Bezier]):
+        for pymead_obj in pymead_objs:
+            if not isinstance(pymead_obj, Bezier):
+                continue
+            pymead_obj.split(0.5)
+
     def contextMenuEvent(self, a0):
         # item = self.itemAt(a0.x(), a0.y())
         # if item is None:
@@ -1082,6 +1049,7 @@ class ParameterTree(QTreeWidget):
             exposeAction = None
             coverAction = None
             addBezierPointAction = None
+            splitBezierAction = None
             equateConstraintsAction = None
 
             pymead_obj_type = type(pymead_objs[0])
@@ -1099,6 +1067,7 @@ class ParameterTree(QTreeWidget):
                 exposeAction = menu.addAction("Expose x and y Parameters")
             elif pymead_obj_type is Bezier:
                 addBezierPointAction = menu.addAction("Insert Control Point")
+                splitBezierAction = menu.addAction("Split Curve")
             elif pymead_obj_type in [DistanceConstraint, RelAngle3Constraint]:
                 equateConstraintsAction = menu.addAction("Equate Constraints")
             removeObjectAction = menu.addAction("Delete")
@@ -1120,6 +1089,8 @@ class ParameterTree(QTreeWidget):
                 self.coverPointXY(pymead_objs)
             elif res is addBezierPointAction:
                 self.gui_obj.airfoil_canvas.addPointToCurve(pymead_objs[0].canvas_item)
+            elif res is splitBezierAction:
+                self.splitBezier(pymead_objs)
             elif res is equateConstraintsAction:
                 self.equateConstraints(pymead_objs)
 
