@@ -252,13 +252,6 @@ class Bezier(ParametricCurve):
             where the :math:`x` and :math:`y` subscripts represent the :math:`x` and :math:`y` components of the
             vector-valued functions :math:`\vec{C}(t)`, :math:`\vec{C}'(t)`, and :math:`\vec{C}''(t)`.
         """
-        # Pass the starting and ending parameter vector values to the parameter vector generator if they were
-        # specified directly
-        if self.t_start is not None:
-            kwargs["start"] = self.t_start
-        if self.t_end is not None:
-            kwargs["end"] = self.t_end
-
         # Generate the parameter vector
         t = ParametricCurve.generate_t_vec(**kwargs) if t is None else t
 
