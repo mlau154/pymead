@@ -5,62 +5,122 @@ Install
 Installation methods
 ====================
 
-There are several easy ways to install pymead:
+There are several easy ways to install pymead.
 
-Method 1: Windows/Linux Native Application (GUI Only)
------------------------------------------------------
+- :ref:`Method 1<method-1>` is for users interested in
+  designing, analyzing, and optimizing airfoils or airfoil systems, but not for those
+  interested in using the pymead classes and functions in Python code.
+- Methods :ref:`2<method-2>` & :ref:`3<method-3>`
+  are designed for users interested in using the
+  various pymead classes and functions in their Python code and/or using the GUI
+  to develop airfoil systems.
+- :ref:`Method 4<method-4>` is for advanced users who wish to extend
+  and/or develop pymead in addition to using both the GUI and API.
+
+These installation methods are summarized in the table below and described in depth in the sections
+following the table.
+
+
+.. |check|   unicode:: U+02705 .. CHECK MARK
+.. |cross|   unicode:: U+0274C .. CROSS MARK
+
+
+.. list-table::
+   :widths: 20 38 14 14 14
+   :header-rows: 1
+   :class: max-width-table
+
+   * - Method #
+     - Description
+     - GUI
+     - API
+     - Develop
+   * - :ref:`1<method-1>`
+     - :ref:`Native Application<method-1>`
+     - |check|
+     - |cross|
+     - |cross|
+   * - :ref:`2<method-2>`
+     - :ref:`pip<method-2>`
+     - |check|
+     - |check|
+     - |cross|
+   * - :ref:`3<method-3>`
+     - :ref:`IDE + pip<method-3>`
+     - |check|
+     - |check|
+     - |cross|
+   * - :ref:`4<method-4>`
+     - :ref:`Git<method-4>`
+     - |check|
+     - |check|
+     - |check|
+
+
+.. _method-1:
+
+Method 1: Native Application (GUI Only)
+---------------------------------------
 
 For users merely wishing to use pymead rather than develop pymead, this is the recommended install method.
 
-**Windows**
+.. tab-set::
 
-Go to the `release page on GitHub <https://github.com/mlau154/pymead/releases>`_ and download the ``.exe``
-file under the "Assets" dropdown menu. Click on the ``.exe`` and follow the self-contained instructions
-to install pymead. For this install method, neither Python nor any of the "required_" dependencies are
-necessary to run the pymead executable. Only the "optional_" dependencies are necessary to run
-some commands in pymead.
+    .. tab-item:: Windows
 
-You will be notified automatically at application startup if there is an update for pymead available.
-On Windows, the installation wizard will handle the uninstall/upgrade process for you automatically once
-it is downloaded and run.
+        Go to the `release page on GitHub <https://github.com/mlau154/pymead/releases>`_ and download the ``.exe``
+        file under the "Assets" dropdown menu. Click on the ``.exe`` and follow the self-contained instructions
+        to install pymead. For this install method, neither Python nor any of the "required_" dependencies are
+        necessary to run the pymead executable. Only the "optional_" dependencies are necessary to run
+        some commands in pymead.
 
-To run pymead, double-click on the pymead program created in the selected install location. Alternatively,
-type *pymead* in the Windows search bar and press enter.
+        You will be notified automatically at application startup if there is an update for pymead available.
+        On Windows, the installation wizard will handle the uninstall/upgrade process for you automatically once
+        it is downloaded and run.
 
-**Linux**
+        To run pymead, double-click on the pymead program created in the selected install location. Alternatively,
+        type *pymead* in the Windows search bar and press enter.
 
-Follow similar steps to the procedure for Windows, except download the ``-linux.tar.gz`` file instead of the
-``.exe`` file. Then, move the tarball to the desired location and extract it in that location by double-clicking
-the tarball in a file explorer or by navigating to the tarball's location and using
+    .. tab-item:: Linux
 
-.. code-block::
+        Go to the `release page on GitHub <https://github.com/mlau154/pymead/releases>`_ and download the
+        ``-linux.tar.gz`` file. Then, move the tarball to the desired location and extract it in that location by
+        double-clicking the tarball in a file explorer or by navigating to the tarball's location and using
 
-  tar -xvzf <pymead-tarball-name.tar.gz>
+        .. code-block::
 
-in a terminal. In Linux, the recommended method for opening the GUI is through a terminal command. The location
-where pymead was extracted should be added to the system's path. This can be done temporarily using the ``export``
-command in a terminal (for example, if `pymead` was extracted to ``~/Documents/pymead``)...
+          tar -xvzf <pymead-tarball-name.tar.gz>
 
-.. code-block::
+        in a terminal. In Linux, the recommended method for opening the GUI is through a terminal command.
+        The location
+        where pymead was extracted should be added to the system's path. This can be done temporarily
+        using the ``export``
+        command in a terminal (for example, if `pymead` was extracted to ``~/Documents/pymead``)...
 
-   export PATH="~/Documents/pymead:$PATH"
+        .. code-block::
 
-
-...or by adding the previous command to the end of ``.bashrc`` file and sourcing it:
-
-.. code-block::
-
-   nano ~/.bashrc
-   source ~/.bashrc
+           export PATH="~/Documents/pymead:$PATH"
 
 
-With this permanent save method, pymead can be opened from any terminal in any location simply by typing ``pymead``.
-Note that the directory used in the steps above should be the on containing both the `pymead` executable and the
-``_internals`` directory. When downloading
-updates to pymead (you will be notified of these at application startup when they are available), you can
-simply replace the original extracted folder with the newly extracted folder. It is *very important* to not remove
-the pymead application from the folder that contains the ``_internals`` folder, since pymead needs these to run.
+        ...or by adding the previous command to the end of ``.bashrc`` file and sourcing it:
 
+        .. code-block::
+
+           nano ~/.bashrc
+           source ~/.bashrc
+
+
+        With this permanent save method, pymead can be opened from any terminal in any location simply by
+        typing ``pymead``.
+        Note that the directory used in the steps above should be the on containing both the `pymead` executable
+        and the ``_internals`` directory. When downloading
+        updates to pymead (you will be notified of these at application startup when they are available), you can
+        simply replace the original extracted folder with the newly extracted folder. It is *very important* to not
+        remove the pymead application from the folder that contains the ``_internals`` folder, since pymead needs
+        these to run.
+
+
+.. _method-2:
 
 Method 2: ``pip`` (GUI + API)
 -----------------------------
@@ -102,12 +162,16 @@ script or in a Python console:
   geo_col.add_point(0.5, 0.3)
 
 
+.. _method-3:
+
 Method 3: IDE (GUI + API)
 -------------------------
 Some IDEs, like `PyCharm <https://www.jetbrains.com/pycharm/>`_, have a plugin for ``pip``. In PyCharm,
 simply search for and install "pymead" in the "Python Packages" tab. Follow similar steps as Method 2 for
 accessing the GUI and the API. Alternatively, to start the GUI, it is possible to simply click on the
 file called ``gui.py`` inside ``pymead/gui``, right-click, and press run.
+
+.. _method-4:
 
 Method 4: Local Install (DEV: GUI+API)
 -----------------------------------------

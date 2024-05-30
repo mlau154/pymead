@@ -1,27 +1,21 @@
-/* anything related to the light theme */
-/*html[data-theme="light"] {
-
-    /* whatever you want to change */
-    /*--pst-color-primary: blue;
-/*}
-
-/*p[data-theme="light"]{
-    /*color: orange;
-/*}
-
-/* anything related to the dark theme */
 html[data-theme="dark"] {
     --bs-body-bg: 33,37,41;
 }
 
-/*
-figure {
-    margin: -15px 0px 0px 0px;
-    position: relative;
-    padding: 10px 10px 10px 10px;
+.sphinx-tabs-panel {
+    color: blue;
+    background-color: #060F1F;
 }
-*/
+
+.sphinx-tabs-tab {
+    color: orange;
+}
 
 table.no-border-table td {
     border: none;
+}
+
+table.max-width-table {
+    width: 500px;
+    max-width: 100%;
 }

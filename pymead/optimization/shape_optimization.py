@@ -1,5 +1,5 @@
 import logging
-import multiprocessing as mp
+import multiprocessing.connection
 import typing
 
 import numpy as np
@@ -29,7 +29,7 @@ from pymoo.factory import get_reference_directions, get_decomposition
 from pymoo.core.evaluator import set_cv
 
 
-def shape_optimization(conn: mp.connection.Connection or None, param_dict: dict, opt_settings: dict,
+def shape_optimization(conn: multiprocessing.connection.Connection or None, param_dict: dict, opt_settings: dict,
                        geo_col_dict: dict,
                        objectives: typing.List[str], constraints: typing.List[str]):
 

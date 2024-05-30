@@ -9,7 +9,7 @@ import numpy as np
 from matplotlib import pyplot as plt
 from scipy.interpolate import CloughTocher2DInterpolator
 from shapely.geometry import MultiPoint
-import multiprocessing as mp
+import multiprocessing.connection
 
 from pymead.analysis.compressible_flow import calculate_normal_shock_total_pressure_ratio
 from pymead.analysis.read_aero_data import read_aero_data_from_xfoil, read_Cp_from_file_xfoil, read_bl_data_from_mses, \
@@ -90,7 +90,7 @@ def update_mses_settings_from_stencil(mses_settings: dict, stencil: typing.List[
     return mses_settings
 
 
-def calculate_aero_data(conn: mp.connection.Connection or None,
+def calculate_aero_data(conn: multiprocessing.connection.Connection or None,
                         airfoil_coord_dir: str,
                         airfoil_name: str,
                         coords: typing.List[np.ndarray] = None,
@@ -610,7 +610,7 @@ def run_mset(name: str, base_dir: str, mset_settings: dict, mea_airfoil_names: t
 
 
 def run_mses(name: str, base_folder: str, mses_settings: dict, airfoil_name_order: typing.List[str],
-             stencil: bool = False, conn: mp.connection.Connection = None):
+             stencil: bool = False, conn: multiprocessing.connection.Connection = None):
     r"""
     A Python API for MSES
 

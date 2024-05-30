@@ -2094,6 +2094,12 @@ class GUI(QMainWindow):
     def load_example_sc20612_match(self):
         self.load_example("match_sc20612-il.jmea")
 
+    def load_example_basic_airfoil_sharp(self):
+        self.load_example("basic_airfoil_sharp.jmea")
+
+    def load_example_basic_airfoil_sharp_dv(self):
+        self.load_example("basic_airfoil_sharp_dv.jmea")
+
     def load_example_underwing_propulsor(self):
         self.load_example("underwing_propulsor.jmea")
 

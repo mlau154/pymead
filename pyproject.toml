@@ -1,0 +1,92 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pymead"
+authors = [
+    {name = "Matthew G Lauer", email = "mlauer2015@gmail.com"}
+]
+description = "Python GUI and API for generation, aerodynamic analysis, and shape optimization of parametric airfoil systems"
+readme = "README.md"
+requires-python = ">=3.8"
+keywords = [
+    "aerodynamic",
+    "aerodynamics",
+    "aero-propulsive",
+    "aero-propulsion",
+    "aeropropulsive",
+    "aeropropulsion",
+    "airfoil",
+    "shape optimization",
+    "MDAO",
+    "MDO",
+    "airfoil matching",
+    "analysis",
+    "parametric",
+    "airfoil system",
+    "XFOIL",
+    "MSES"
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Topic :: Scientific/Engineering",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12"
+]
+dependencies = [
+    "scipy",
+    "numpy",
+    "shapely",
+    "matplotlib",
+    "requests>=2.31",
+    "PyQt5==5.15.7",
+    "pyqtgraph==0.13.1",
+    "python-benedict",
+    "pandas",
+    "pymoo==0.5.0",
+    "numba",
+    "PyQtWebEngine",
+    "networkx",
+    "psutil"
+]
+dynamic = ["version"]
+
+[project.urls]
+Releases = "https://github.com/mlau154/pymead/releases"
+Documentation = "https://pymead.readthedocs.io/"
+Repository = "https://github.com/mlau154/pymead"
+Issues = "https://github.com/mlau154/pymead/issues"
+
+[project.scripts]
+pymead-gui = "pymead.gui.gui:main"
+
+[tool.setuptools]
+packages = [
+    "pymead",
+    "pymead.core",
+    "pymead.examples",
+    "pymead.utils",
+    "pymead.gui",
+    "pymead.tests",
+    "pymead.resources",
+    "pymead.resources.cmcrameri",
+    "pymead.analysis",
+    "pymead.data",
+    "pymead.icons",
+    "pymead.optimization",
+    "pymead.plugins",
+    "pymead.plugins.IGES",
+    "pymead.plugins.NX",
+    "pymead.post",
+    "pymead.gui.scientificspinbox_master",
+    "pymead.gui.pyqt_vertical_tab_widget.pyqt_vertical_tab_widget"
+]
+
+[tool.setuptools.dynamic]
+version = {attr = "pymead.version.__version__"}

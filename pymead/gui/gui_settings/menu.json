@@ -9,6 +9,12 @@
       "Airfoil Matching": {
         "NASA SC20612": "load_example_sc20612_match"
       },
+      "Basic": {
+        "Single Airfoil (Sharp TE)": "load_example_basic_airfoil_sharp"
+      },
+      "Shape Optimization": {
+        "Single Airfoil (Sharp TE)": "load_example_basic_airfoil_sharp_dv"
+      },
       "Web Airfoils": {
         "NACA 0012": "load_example_n0012",
         "NASA SC20612": "load_example_sc20612"

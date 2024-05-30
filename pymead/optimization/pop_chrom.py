@@ -1,7 +1,7 @@
 import typing
 from copy import deepcopy
 from multiprocessing import Pool, active_children
-from multiprocessing.connection import Connection
+import multiprocessing.connection
 
 import numpy as np
 
@@ -367,7 +367,7 @@ class Population:
             self.population = [chromosome if c.population_idx == chromosome.population_idx
                                else c for c in self.population]
 
-    def eval_pop_fitness(self, sig: Connection = None):
+    def eval_pop_fitness(self, sig: multiprocessing.connection.Connection = None):
         """
         Evaluates the fitness of the population using parallel processing
         """

@@ -19,7 +19,8 @@ extensions = [
     'sphinx.ext.viewcode',
     'sphinx.ext.mathjax',
     'matplotlib.sphinxext.plot_directive',
-    'sphinx.ext.autosectionlabel'
+    'sphinx.ext.autosectionlabel',
+    'sphinx_design',
 ]
 
 autodoc_mock_imports = ['PyQt5']
