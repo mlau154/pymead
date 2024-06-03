@@ -7,9 +7,9 @@ import requests
 
 def extract_data_from_airfoiltools(name: str, repair: typing.Callable or None = None) -> np.ndarray:
     r"""
-    Extracts the xy-coordinates of a specified airfoil from [Airfoil Tools](http://airfoiltools.com/) and
-    returns the xy-coordinates as a numpy array of `shape=(N,2)` where `N` is the number of airfoil coordinates, and the
-    columns represent `x` and `y`
+    Extracts the :math:`xy`-coordinates of a specified airfoil from `Airfoil Tools <http://airfoiltools.com/>`_ and
+    returns the :math:`xy`-coordinates as a numpy array of ``shape=(N,2)`` where ``N`` is the number of airfoil
+    coordinates, and the columns represent :math:`x` and :math:`y`.
 
     Parameters
     ----------
@@ -25,7 +25,7 @@ def extract_data_from_airfoiltools(name: str, repair: typing.Callable or None = 
 
     Returns
     -------
-    np.ndarray
+    numpy.ndarray
         The set of :math:`xy`-coordinates of type ``numpy.ndarray`` with ``shape=(N,2)``, where ``N`` is the number of
         airfoil coordinates and the columns represent :math:`x` and :math:`y`
     """

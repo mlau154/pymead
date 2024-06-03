@@ -5,7 +5,7 @@ Click on any image to zoom. Press the "back" button to return to the gallery.
 
 .. list-table::
    :widths: 50 50
-   :class: no-border-table
+   :class: only-dark
 
    * - .. figure:: images/pymead_main_screenshot_dark.*
           :width: 100%
@@ -34,11 +34,10 @@ Click on any image to zoom. Press the "back" button to return to the gallery.
 
 .. list-table::
    :widths: 50 50
-   :class: no-border-table
+   :class: only-light
 
    * - .. figure:: images/pymead_main_screenshot_light.*
           :width: 100%
-          :class: only-light
 
           Aero-propulsive analysis of an optimized multi-element airfoil
 
