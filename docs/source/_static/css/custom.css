@@ -2,15 +2,6 @@ html[data-theme="dark"] {
     --bs-body-bg: 33,37,41;
 }
 
-.sphinx-tabs-panel {
-    color: blue;
-    background-color: #060F1F;
-}
-
-.sphinx-tabs-tab {
-    color: orange;
-}
-
 table.no-border-table td {
     border: none;
 }
