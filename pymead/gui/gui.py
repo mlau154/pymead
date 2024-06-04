@@ -46,7 +46,7 @@ from pymead.gui.dialogs import LoadDialog, SaveAsDialog, OptimizationSetupDialog
     ExitDialog, ScreenshotDialog, LoadAirfoilAlgFile, ExitOptimizationDialog, SettingsDialog, LoadPointsDialog, \
     PanelDialog
 from pymead.gui.dialogs import convert_dialog_to_mset_settings, convert_dialog_to_mses_settings, \
-    convert_dialog_to_mplot_settings
+    convert_dialog_to_mplot_settings, convert_opt_settings_to_param_dict
 from pymead.gui.main_icon_toolbar import MainIconToolbar
 from pymead.gui.message_box import disp_message_box
 from pymead.gui.parameter_tree import ParameterTree
@@ -56,10 +56,10 @@ from pymead.gui.show_hide import ShowHideDialog
 from pymead.gui.side_grip import SideGrip
 from pymead.gui.text_area import ConsoleTextArea
 from pymead.gui.title_bar import TitleBar
-from pymead.optimization.opt_callback import PlotAirfoilCallback, ParallelCoordsCallback, OptCallback, \
+from pymead.gui.opt_callback import PlotAirfoilCallback, ParallelCoordsCallback, OptCallback, \
     DragPlotCallbackXFOIL, CpPlotCallbackXFOIL, DragPlotCallbackMSES, CpPlotCallbackMSES, TextCallback
 from pymead.optimization.opt_setup import calculate_warm_start_index
-from pymead.optimization.opt_setup import read_stencil_from_array, convert_opt_settings_to_param_dict
+from pymead.optimization.opt_setup import read_stencil_from_array
 from pymead.optimization.shape_optimization import shape_optimization as shape_optimization_static
 from pymead.post.mses_field import flow_var_label
 from pymead.optimization.airfoil_matching import match_airfoil

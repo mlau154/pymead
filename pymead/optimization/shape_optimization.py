@@ -10,12 +10,10 @@ import os
 import random
 
 from pymead.core.geometry_collection import GeometryCollection
-from pymead.core.mea import MEA
 from pymead.optimization.opt_setup import CustomDisplay, TPAIOPT
 from pymead.utils.read_write_files import load_data, save_data
 from pymead.optimization.pop_chrom import Chromosome, Population
 from pymead.optimization.objectives_and_constraints import Objective, Constraint
-
 from pymead.optimization.sampling import ConstrictedRandomSampling
 from pymead.optimization.opt_setup import termination_condition
 

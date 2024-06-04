@@ -55,7 +55,7 @@ class Bezier(ParametricCurve):
 
             Cubic Bézier curve
 
-        An example cubic Bézier curve (degree :math:`n=3`) is shown in :numref:`cubic-bezier`. Note that the curve passes
+        An example cubic Bézier curve (degree :math:`n=3`) is shown above. Note that the curve passes
         through the first and last control points and has a local slope at :math:`P_0` equal to the slope of the
         line passing through :math:`P_0` and :math:`P_1`. Similarly, the local slope at :math:`P_3` is equal to
         the slope of the line passing through :math:`P_2` and :math:`P_3`. These properties of Bézier curves allow us to
@@ -63,7 +63,7 @@ class Bezier(ParametricCurve):
         connected Bézier curves).
 
         Parameters
-        ==========
+        ----------
         point_sequence: PointSequence
             Sequence of points defining the control points for the Bézier curve
 

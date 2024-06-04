@@ -5,9 +5,10 @@ import numpy as np
 
 import pyqtgraph
 
-from pyqtgraph import colormap, Qt
+from pyqtgraph import colormap
+from PyQt5 import Qt, QtCore, QtGui
+from PyQt5.QtCore import pyqtSignal
 from pyqtgraph import functions as fn
-from pyqtgraph.Qt import QtCore, QtGui
 from pyqtgraph.graphicsItems.GradientEditorItem import Gradients  # List of colormaps
 from pyqtgraph.graphicsItems.GraphicsObject import GraphicsObject
 
@@ -53,7 +54,7 @@ class PymeadPColorMeshItem(GraphicsObject):
     **Bases:** :class:`GraphicsObject <pyqtgraph.GraphicsObject>`
     """
 
-    sigLevelsChanged = QtCore.Signal(object)  # emits tuple with levels (low,high) when color levels are changed.
+    sigLevelsChanged = pyqtSignal(object)  # emits tuple with levels (low,high) when color levels are changed.
 
     def __init__(self, *args, **kwargs):
         """
@@ -285,10 +286,7 @@ class PymeadPColorMeshItem(GraphicsObject):
         norm = fn.rescaleData(self.z, scale / rng, z_min,
                               dtype=int, clip=(0, len(lut) - 1))
 
-        if Qt.QT_LIB.startswith('PyQt'):
-            drawConvexPolygon = lambda x: painter.drawConvexPolygon(*x)
-        else:
-            drawConvexPolygon = painter.drawConvexPolygon
+        drawConvexPolygon = lambda x: painter.drawConvexPolygon(*x)
 
         memory = self.quads.array(self.z.shape[1])
         polys = self.quads.instances()

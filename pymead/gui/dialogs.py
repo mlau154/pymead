@@ -3350,3 +3350,54 @@ class SettingsDialog(PymeadDialog):
         }
         w = PymeadDialogVTabWidget(parent=None, widgets=widgets, settings_override=settings_override)
         super().__init__(parent=parent, window_title="Settings", widget=w, theme=theme)
+
+
+def convert_opt_settings_to_param_dict(opt_settings: dict) -> dict:
+    param_dict = {'tool': opt_settings['Genetic Algorithm']['tool'],
+                  'algorithm_save_frequency': opt_settings['Genetic Algorithm']['algorithm_save_frequency'],
+                  'n_obj': len(opt_settings['Genetic Algorithm']['J'].split(',')),
+                  'n_constr': len(opt_settings['Genetic Algorithm']['G'].split(',')) if opt_settings['Genetic Algorithm']['G'] != '' else 0,
+                  'population_size': opt_settings['Genetic Algorithm']['pop_size'],
+                  'n_ref_dirs': opt_settings['Genetic Algorithm']['pop_size'],
+                  'n_offsprings': opt_settings['Genetic Algorithm']['n_offspring'],
+                  'max_sampling_width': opt_settings['Genetic Algorithm']['max_sampling_width'],
+                  'xl': 0.0,
+                  'xu': 1.0,
+                  'seed': opt_settings['Genetic Algorithm']['random_seed'],
+                  'multi_point': opt_settings['Multi-Point Optimization']['multi_point_active'],
+                  'design_idx': opt_settings['Multi-Point Optimization']['design_idx'],
+                  'num_processors': opt_settings['Genetic Algorithm']['num_processors'],
+                  'x_tol': opt_settings['Constraints/Termination']['x_tol'],
+                  'cv_tol': opt_settings['Constraints/Termination']['cv_tol'],
+                  'f_tol': opt_settings['Constraints/Termination']['f_tol'],
+                  'nth_gen': opt_settings['Constraints/Termination']['nth_gen'],
+                  'n_last': opt_settings['Constraints/Termination']['n_last'],
+                  'n_max_gen': opt_settings['Constraints/Termination']['n_max_gen'],
+                  'n_max_evals': opt_settings['Constraints/Termination']['n_max_evals'],
+                  'xfoil_settings': {
+                      'Re': opt_settings['XFOIL']['Re'],
+                      'Ma': opt_settings['XFOIL']['Ma'],
+                      'xtr': [opt_settings['XFOIL']['xtr_upper'], opt_settings['XFOIL']['xtr_lower']],
+                      'N': opt_settings['XFOIL']['N'],
+                      'iter': opt_settings['XFOIL']['iter'],
+                      'timeout': opt_settings['XFOIL']['timeout'],
+                  },
+                  'mset_settings': convert_dialog_to_mset_settings(opt_settings['MSET']),
+                  'mses_settings': convert_dialog_to_mses_settings(opt_settings['MSES']),
+                  'mplot_settings': convert_dialog_to_mplot_settings(opt_settings['MPLOT']),
+                  'constraints': opt_settings['Constraints/Termination']['constraints'],
+                  'multi_point_active': opt_settings['Multi-Point Optimization']['multi_point_active'],
+                  'multi_point_stencil': opt_settings['Multi-Point Optimization']['multi_point_stencil'],
+                  'verbose': True,
+                  'eta_crossover': opt_settings['Genetic Algorithm']['eta_crossover'],
+                  'eta_mutation': opt_settings['Genetic Algorithm']['eta_mutation'],
+                  }
+
+    if opt_settings['XFOIL']['prescribe'] == 'Angle of Attack (deg)':
+        param_dict['xfoil_settings']['alfa'] = opt_settings['XFOIL']['alfa']
+    elif opt_settings['XFOIL']['prescribe'] == 'Viscous Cl':
+        param_dict['xfoil_settings']['Cl'] = opt_settings['XFOIL']['Cl']
+    elif opt_settings['XFOIL']['prescribe'] == 'Viscous Cl':
+        param_dict['xfoil_settings']['CLI'] = opt_settings['XFOIL']['CLI']
+    param_dict['mses_settings']['n_airfoils'] = param_dict['mset_settings']['n_airfoils']
+    return param_dict

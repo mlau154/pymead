@@ -2,9 +2,8 @@ import typing
 from copy import deepcopy
 
 import numpy as np
-import scipy
 import shapely.errors
-import scipy.optimize
+from scipy.optimize import minimize
 from shapely.geometry import Polygon
 
 from pymead.core.geometry_collection import GeometryCollection
@@ -124,7 +123,7 @@ def match_airfoil(geo_col: GeometryCollection, target_airfoil: str, airfoil_to_m
     geo_col_deepcopy = deepcopy(geo_col)
     initial_guess = np.array(geo_col.extract_design_variable_values())
     bounds = np.repeat(np.array([[0.0, 1.0]]), len(initial_guess), axis=0)
-    res = scipy.optimize.minimize(
+    res = minimize(
         airfoil_symmetric_area_difference,
         initial_guess,
         method="SLSQP",
