@@ -2,22 +2,16 @@ import os
 import subprocess
 import time
 import typing
-from collections import namedtuple
 from copy import deepcopy
 
 import numpy as np
-from matplotlib import pyplot as plt
-from scipy.interpolate import CloughTocher2DInterpolator
-from shapely.geometry import MultiPoint
 import multiprocessing.connection
 
-from pymead.analysis.compressible_flow import calculate_normal_shock_total_pressure_ratio
 from pymead.analysis.read_aero_data import read_aero_data_from_xfoil, read_Cp_from_file_xfoil, read_bl_data_from_mses, \
     read_forces_from_mses, read_grid_stats_from_mses, read_field_from_mses, read_streamline_grid_from_mses, \
-    flow_var_idx, convert_blade_file_to_3d_array, read_actuator_disk_data_mses, read_Mach_from_mses_file
+    flow_var_idx, read_actuator_disk_data_mses
 from pymead.core.mea import MEA
 from pymead.utils.file_conversion import convert_ps_to_svg
-from pymead.utils.geometry import convert_numpy_array_to_shapely_LineString
 from pymead.utils.read_write_files import save_data
 
 SVG_PLOTS = ['Mach_contours', 'grid', 'grid_zoom']
@@ -149,9 +143,92 @@ class XFOILSettings:
         }
 
 
+class AirfoilMSETMeshingParameters:
+    def __init__(self,
+                 dsLE_dsAvg: float = 0.35,
+                 dsTE_dsAvg: float = 0.35,
+                 curvature_exp: float = 1.3,
+                 U_s_smax_min: float = 1.0,
+                 U_s_smax_max: float = 1.0,
+                 L_s_smax_min: float = 1.0,
+                 L_s_smax_max: float = 1.0,
+                 U_local_avg_spac_ratio: float = 0.0,
+                 L_local_avg_spac_ratio: float = 0.0):
+        """
+        Defines a set of reasonable airfoil meshing parameters for a given airfoil in an MEA.
+
+        Parameters
+        ----------
+        dsLE_dsAvg: float
+            Leading edge spacing ratio. Default: ``0.35``
+
+        dsTE_dsAvg: float
+            Trailing edge spacing ratio. Default: ``0.35``
+
+        curvature_exp: float
+            Curvature exponent. Default: ``1.3``
+
+        U_s_smax_min: float
+            Normalized arc length location along the upper surface representing the start of the refinement region.
+            If ``1.0``, no additional refinement will be prescribed along the upper surface. Default: ``1.0``
+
+        U_s_smax_max: float
+            Normalized arc length location along the upper surface representing the end of the refinement region.
+            If ``1.0``, no additional refinement will be prescribed along the upper surface. Default: ``1.0``
+
+        L_s_smax_min: float
+            Normalized arc length location along the lower surface representing the start of the refinement region.
+            If ``1.0``, no additional refinement will be prescribed along the lower surface. Default: ``1.0``
+
+        L_s_smax_max: float
+            Normalized arc length location along the lower surface representing the end of the refinement region.
+            If ``1.0``, no additional refinement will be prescribed along the lower surface. Default: ``1.0``
+
+        U_local_avg_spac_ratio: float
+            Local-to-average spacing ratio in the refinement region along the upper surface defined by
+            ``U_s_smax_min`` and ``U_s_smax_max``. If ``0.0``, no additional refinement will be prescribed along
+            the upper surface. Default: ``0.0``
+
+        L_local_avg_spac_ratio: float
+            Local-to-average spacing ratio in the refinement region along the lower surface defined by
+            ``L_s_smax_min`` and ``L_s_smax_max``. If ``0.0``, no additional refinement will be prescribed along
+            the lower surface. Default: ``0.0``
+        """
+        self.dsLE_dsAvg = dsLE_dsAvg
+        self.dsTE_dsAvg = dsTE_dsAvg
+        self.curvature_exp = curvature_exp
+        self.U_s_smax_min = U_s_smax_min
+        self.U_s_smax_max = U_s_smax_max
+        self.L_s_smax_min = L_s_smax_min
+        self.L_s_smax_max = L_s_smax_max
+        self.U_local_avg_spac_ratio = U_local_avg_spac_ratio
+        self.L_local_avg_spac_ratio = L_local_avg_spac_ratio
+
+    def get_dict_rep(self) -> dict:
+        """
+        Gets a Python dictionary description of the airfoil meshing parameters. Used in ``MSETSettings``.
+
+        Returns
+        -------
+        dict
+            Airfoil meshing parameters
+        """
+        return {
+            "dsLE_dsAvg": self.dsLE_dsAvg,
+            "dsTE_dsAvg": self.dsTE_dsAvg,
+            "curvature_exp": self.curvature_exp,
+            "U_s_smax_min": self.U_s_smax_min,
+            "U_s_smax_max": self.U_s_smax_max,
+            "L_s_smax_min": self.L_s_smax_min,
+            "L_s_smax_max": self.L_s_smax_max,
+            "U_local_avg_spac_ratio": self.U_local_avg_spac_ratio,
+            "L_local_avg_spac_ratio": self.L_local_avg_spac_ratio
+        }
+
+
 class MSETSettings:
     def __init__(self,
-                 mea: str,
+                 multi_airfoil_grid: typing.Dict[str, AirfoilMSETMeshingParameters],
                  grid_bounds: typing.List[float] = None,
                  airfoil_side_points: int = 180,
                  exp_side_points: float = 0.9,
@@ -166,17 +243,376 @@ class MSETSettings:
                  alf0_stream_gen: float = 0.0,
                  timeout: float = 10.0
                  ):
+        """
+        Defines a set of reasonable default values for MSET, the grid meshing tool in the MSES suite.
+
+        Parameters
+        ----------
+        multi_airfoil_grid: typing.Dict[str, AirfoilMSETMeshingParameters]
+            Set of airfoil meshing parameters for each airfoil in the multi-element airfoil. The keys represent
+            the airfoil names as they appear in the ``MEA`` object, and the values must be
+            instances of the ``AirfoilMSETMeshingParameters`` class.
+
+        grid_bounds: typing.List[float] or None
+            Grid bounds to use for the airfoil system mesh. The values of the list are the :math:`x`-location
+            of the left side of the grid, the :math:`x`-location of the right side of the grid, the :math:`y`-location
+            of the bottom side of the grid, and the :math:`y`-location of the top side of the grid, in that order.
+            These values correspond to a pseudo-rectangular far-field boundary (the sides follow the streamwise or
+            stream-normal direction and may not be exactly linear). The sides will also be rotated relative to the
+            origin if any angle of attack other than ``0.0`` is specified. If ``None`` is specified,
+            a default value of ``[-5.0, 5.0, -5.0, 5.0]`` will be used. Default: ``None``
+
+        airfoil_side_points: int
+            Number of points along each airfoil to allocate. Default: ``180``
+
+        exp_side_points: float
+            Exponent to determine the initial distribution of the side points. Default: ``0.9``
+
+        inlet_pts_left_stream: int
+            Number of grid points to allocate along the streamlines (left of the airfoil system). Default: ``41``
+
+        outlet_pts_right_stream: int
+            Number of grid points to allocate along the streamlines (right of the airfoil system). Default: ``41``
+
+        num_streams_top: int
+            Number of streamlines to allocate above the airfoil system. Default: ``17``
+
+        num_streams_bot: int
+            Number of streamlines to allocate below the airfoil system. Default: ``23``
+
+        max_streams_between: int
+            Maximum number of streamlines to between each set of airfoils. Default: ``15``
+
+        elliptic_param: float
+            Elliptic parameter. Default: ``1.3``
+
+        stag_pt_aspect_ratio: float
+            Aspect ratio of cells at the stagnation points. Default: ``2.5``
+
+        x_spacing_param: float
+            :math:`x`-spacing parameter. Default: ``0.85``
+
+        alf0_stream_gen: float
+            Angle of attack (in degrees) used to generate the initial set of streamlines using an incompressible
+            flow solution. Default: ``0.0``
+
+        timeout: float
+            Maximum time MSET is allowed to run before premature termination. Useful to prevent a hanging process
+            in the case of a bad set of input parameters.
+        """
+        if grid_bounds is not None and len(grid_bounds) != 4:
+            raise ValueError("Grid bounds must contain exactly four values (")
         self.grid_bounds = grid_bounds if grid_bounds is not None else [-5.0, 5.0, -5.0, 5.0]
+        self.airfoil_side_points = airfoil_side_points
+        self.exp_side_points = exp_side_points
+        self.inlet_pts_left_stream = inlet_pts_left_stream
+        self.outlet_pts_right_stream = outlet_pts_right_stream
+        self.num_streams_top = num_streams_top
+        self.num_streams_bot = num_streams_bot
+        self.max_streams_between = max_streams_between
+        self.elliptic_param = elliptic_param
+        self.stag_pt_aspect_ratio = stag_pt_aspect_ratio
+        self.x_spacing_param = x_spacing_param
+        self.alf0_stream_gen = alf0_stream_gen
+        self.timeout = timeout
+        self.multi_airfoil_grid = multi_airfoil_grid
+
+    def get_dict_rep(self) -> dict:
+        """
+        Gets a Python dictionary description of the MSET meshing parameters. Used in ``run_mset``.
+
+        Returns
+        -------
+        dict
+            MSET meshing parameters
+        """
+        return {
+            "grid_bounds": self.grid_bounds,
+            "airfoil_side_points": self.airfoil_side_points,
+            "exp_side_points": self.exp_side_points,
+            "inlet_pts_left_stream": self.inlet_pts_left_stream,
+            "outlet_pts_right_stream": self.outlet_pts_right_stream,
+            "num_streams_top": self.num_streams_top,
+            "num_streams_bot": self.num_streams_bot,
+            "max_streams_between": self.max_streams_between,
+            "elliptic_param": self.elliptic_param,
+            "stag_pt_aspect_ratio": self.stag_pt_aspect_ratio,
+            "x_spacing_param": self.x_spacing_param,
+            "alf0_stream_gen": self.alf0_stream_gen,
+            "timeout": self.timeout,
+            "multi_airfoil_grid": {k: v.get_dict_rep() for k, v in self.multi_airfoil_grid.items()}
+        }
 
 
 class MSESSettings:
-    def __init__(self):
-        pass
+
+    momentum_isentropic_mode_mapping = {
+        1: "S-momentum equation",
+        2: "isentropic condition",
+        3: "S-momentum equation, isentropic @ LE",
+        4: "isentropic condition, S-mom. where diss. active"
+    }
+
+    boundary_condition_mode_mapping = {
+        1: "solid wall airfoil far-field BCs",
+        2: "vortex+source+doublet airfoil far-field BCs",
+        3: "freestream pressure airfoil far-field BCs",
+        4: "supersonic wave freestream BCs",
+        5: "supersonic solid wall far-field BCs"
+    }
+
+    def __init__(self,
+                 xtrs: typing.Dict[str, typing.List[float]],
+                 Re: float = 1.0e7,
+                 Ma: float = 0.7,
+                 alfa_Cl_mode: int = 0,
+                 momentum_isentropic_mode: int = 3,
+                 boundary_condition_mode: int = 2,
+                 alfa: float = 0.0,
+                 Cl: float = 0.0,
+                 visc: bool = True,
+                 N: float = 9.0,
+                 M_crit: float = 0.95,
+                 aritifical_dissipation: float = 1.05,
+                 timeout: float = 15.0,
+                 iterations: int = 100,
+                 verbose: bool = True,
+                 actuator_disk_side: typing.List[int] or None = None,
+                 actuator_disk_xc_location: typing.List[float] or None = None,
+                 actuator_disk_total_pressure_ratio: typing.List[float] or None = None,
+                 actuator_disk_thermal_efficiency: typing.List[float] or None = None
+                 ):
+        """
+        Defines a reasonable set of MSES flow parameters. Note that at most one actuator disk can be used except
+        if MSES 3.13b is installed.
+
+        Parameters
+        ----------
+        xtrs: typing.Dict[str, typing.List[float]]
+            :math:`x/c`-location of the transition point for each airfoil in the multi-element airfoil object. The
+            keys represent the name of each airfoil as it appears in the ``MEA`` (for example, ``"Airfoil-1"``,
+            ``"Airfoil-2"``, etc.). The values are two-element lists with the transition location for the upper and
+            lower surfaces. Use ``[1.0, 1.0]`` for free transition on both surfaces.
+
+        Re: float
+            Reynolds number for the analysis. Ignored if ``visc==False``. Default: 1.0e7
+
+        Ma: float
+            Mach number for the analysis. Default: ``0.7``
+
+        alfa_Cl_mode: int
+            To target an angle of attack, use ``mode==0``. To target a lift coefficient, use ``mode==1``. Default: ``0``
+
+        momentum_isentropic_mode: int
+            Which set of momentum/isentropic equations to use for the MSES solution.
+            If ``1``, use the S-momentum equation.
+            If ``2``, use the isentropic condition everywhere.
+            If ``3``, use the S-momentum equation everywhere, except use the isentropic condition at the leading edges.
+            If ``4``, use the isentropic condition everywhere, except use the S-momentum equation where dissipation
+            is active. Default: ``3``
+
+        boundary_condition_mode: int
+            Which set of boundary conditions to use for the MSES solution.
+            If ``1``, use the solid-wall airfoil far-field boundary condition.
+            If ``2``, use the vortex+source+doublet airfoil far-field boundary condition.
+            If ``3``, use the freestream pressure airfoil far-field boundary condition.
+            If ``4``, use the supersonic wave freestream boundary condition.
+            If ``5``, use the supersonic solid wall boundary condition.
+            Default: ``2``
+
+        alfa: float
+            Angle of attack in degrees. Ignored unless ``mode==0``. Default: ``0.0``
+
+        Cl: float
+            Lift coefficient. Ignored unless ``mode==1``. Default: ``0.0``
+
+        visc: bool
+            Whether to use a boundary layer model in the analysis. Default: ``True``
+
+        N: float
+            Envelope method exponent, 9.0 for an average wind tunnel. See the "Transition Criterion" section of the
+            `XFOIL user guide <https://web.mit.edu/drela/Public/web/xfoil/xfoil_doc.txt>`_
+            for more details and additional flow conditions. Default: ``9.0``
+
+        M_crit: float
+            Critical Mach number. Use values below 1.0 for cases with stronger shocks. Default: ``0.95``
+
+        aritifical_dissipation: float
+            Artificial dissipation constant. Use values above 1.0 for cases with strong shocks. Default: ``1.05``
+
+        timeout: float
+            Maximum time in seconds allotted to MSES before premature termination occurs. Default: ``15.0``
+
+        iterations: int
+            Maximum iterations allowed. Default: ``100``
+
+        verbose: bool
+            Whether to print verbose output. Default: ``True``
+
+        actuator_disk_side: typing.List[int] or None
+            Which airfoil side each actuator disk emanates from. The upper surface of the uppermost airfoil is side 1,
+            the lower surface of the uppermost airfoil is side 2, the upper surface of the airfoil immediately
+            below the uppermost airfoil is side 3, etc. Default: ``None``
+
+        actuator_disk_xc_location: typing.List[float] or None
+            The :math:`x/c`-location of each actuator disk on the airfoil sides given by ``actuator_disk_side``.
+            Default: ``None``
+
+        actuator_disk_total_pressure_ratio: typing.List[float] or None
+            Total pressure ratio across each actuator disk. Default: ``None``
+
+        actuator_disk_thermal_efficiency: typing.List[float] or None
+            Thermal efficiency of each actuator disk. A reasonable value for a modern fan is 0.95. Default: ``None``
+        """
+        self.xtrs = xtrs
+        if not 1 <= momentum_isentropic_mode <= 4:
+            raise ValueError("'momentum_isentropic_mode' must be 1, 2, 3, or 4")
+        if not 1 <= boundary_condition_mode <= 5:
+            raise ValueError("'boundary_condition_mode' must be 1, 2, 3, 4, or 5")
+        self.Re = Re
+        self.Ma = Ma
+        self.alfa_Cl_mode = alfa_Cl_mode
+        if alfa_Cl_mode == 0:
+            self.target = "alfa"
+        elif alfa_Cl_mode == 1:
+            self.target = "Cl"
+        else:
+            raise ValueError("'mode' must be either 0 (target angle of attack) or 1 (target lift coefficient)")
+        self.alfa = alfa
+        self.Cl = Cl
+        self.momentum_isentropic_mode = momentum_isentropic_mode
+        self.boundary_condition_mode = boundary_condition_mode
+        self.visc = visc
+        self.N = N
+        self.M_crit = M_crit
+        self.artificial_dissipation = aritifical_dissipation
+        self.timeout = timeout
+        self.iterations = iterations
+        self.verbose = verbose
+        self.actuator_disk_side = actuator_disk_side if actuator_disk_side is not None else []
+        self.actuator_disk_xc_location = actuator_disk_xc_location if actuator_disk_xc_location is not None else []
+        self.actuator_disk_total_pressure_ratio = actuator_disk_total_pressure_ratio \
+            if actuator_disk_total_pressure_ratio is not None else []
+        self.actuator_disk_thermal_efficiency = actuator_disk_thermal_efficiency \
+            if actuator_disk_thermal_efficiency is not None else []
+        if not len(self.actuator_disk_side) == len(self.actuator_disk_xc_location) == len(
+                self.actuator_disk_total_pressure_ratio) == len(self.actuator_disk_thermal_efficiency):
+            raise ValueError("There must be the same amount of list elements for each of the actuator disk parameters")
+
+    def get_dict_rep(self) -> dict:
+        """
+        Gets a Python dictionary representation of the MSES flow parameters. Used in ``run_mses``.
+
+        Returns
+        -------
+        dict
+            The MSES flow parameters in dictionary form
+        """
+        return {
+            "viscous_flag": int(self.visc),
+            "REYNIN": self.Re,
+            "MACHIN": self.Ma,
+            "target": self.target,
+            "ALFAIN": self.alfa,
+            "CLIFIN": self.Cl,
+            "ISMOM": self.momentum_isentropic_mode,
+            "IFFBC": self.boundary_condition_mode,
+            "ACRIT": self.N,
+            "MCRIT": self.M_crit,
+            "MUCON": self.artificial_dissipation,
+            "ISPRES": 0,
+            "ISMOVE": 0,
+            "inverse_flag": 0,
+            "NMODN": 0,
+            "NPOSN": 0,
+            "timeout": self.timeout,
+            "iter": self.iterations,
+            "verbose": self.verbose,
+            "xtrs": self.xtrs,
+            "AD_flags": [1 for _ in self.actuator_disk_side],
+            "ISDELH": self.actuator_disk_side,
+            "XCDELH": self.actuator_disk_xc_location,
+            "PTRHIN": self.actuator_disk_total_pressure_ratio,
+            "ETAH": self.actuator_disk_thermal_efficiency,
+        }
 
 
 class MPLOTSettings:
-    def __init__(self):
-        pass
+    def __init__(self,
+                 timeout: float = 15.0,
+                 grid_stats: bool = False,
+                 Mach: bool = False,
+                 streamline_grid: bool = False,
+                 Grid: bool = False,
+                 Grid_Zoom: bool = False,
+                 flow_field: bool = False,
+                 CPK: bool = False):
+        """
+        Defines the inputs for MPLOT. If directly running from ``run_mplot``, only the ``timeout`` argument is used.
+        If running from ``calculate_aero_data``, ``run_mplot`` is executed once for each of the other parameters
+        that is set to ``True``.
+
+        Parameters
+        ----------
+        timeout: float
+            The time in seconds allotted to MPLOT before premature termination. Default: ``15.0``
+
+        grid_stats: bool
+            Whether to output the grid statistics to the analysis directory.
+            Ignored if executing ``run_mplot`` directly instead of ``calculate_aero_data``. Default: ``False``
+
+        Mach: bool
+            Whether to output the Mach contour image in PDF format to the analysis directory.
+            Ignored if executing ``run_mplot`` directly instead of ``calculate_aero_data``. Default: ``False``
+
+        streamline_grid: bool
+            Whether to output the streamline grid data to the analysis directory.
+            Ignored if executing ``run_mplot`` directly instead of ``calculate_aero_data``. Default: ``False``
+
+        Grid: bool
+            Whether to output an image of the MSET grid in PDF format to the analysis directory.
+            Ignored if executing ``run_mplot`` directly instead of ``calculate_aero_data``. Default: ``False``
+
+        Grid_Zoom: bool
+            Whether to output a zoomed image of the MSET grid in PDF format to the analysis directory.
+            Ignored if executing ``run_mplot`` directly instead of ``calculate_aero_data``. Default: ``False``
+
+        flow_field: bool
+            Whether to dump the flow field data to the analysis directory.
+            Ignored if executing ``run_mplot`` directly instead of ``calculate_aero_data``. Default: ``False``
+
+        CPK: bool
+            Whether to calculate the mechanical flow power coefficient and append the data to ``aero_data.json``.
+            Ignored if executing ``run_mplot`` directly instead of ``calculate_aero_data``. Default: ``False``
+        """
+        self.timeout = timeout
+        self.grid_stats = grid_stats
+        self.Mach = Mach
+        self.streamline_grid = streamline_grid
+        self.Grid = Grid
+        self.Grid_Zoom = Grid_Zoom
+        self.flow_field = flow_field
+        self.CPK = CPK
+
+    def get_dict_rep(self) -> dict:
+        """
+        Gets a dictionary representation of the MPLOT settings. Used in ``run_mplot`` and ``calculate_aero-data``.
+
+        Returns
+        -------
+        dict
+            The MPLOT settings in dictionary form
+        """
+        return {
+            "timeout": self.timeout,
+            "grid_stats": self.grid_stats,
+            "Mach": self.Mach,
+            "streamline_grid": self.streamline_grid,
+            "Grid": self.Grid,
+            "Grid_Zoom": self.Grid_Zoom,
+            "flow_field": self.flow_field,
+            "CPK": self.CPK
+        }
 
 
 def update_xfoil_settings_from_stencil(xfoil_settings: dict, stencil: typing.List[dict], idx: int):
@@ -248,17 +684,17 @@ def calculate_aero_data(conn: multiprocessing.connection.Connection or None,
                         mea: MEA = None,
                         mea_airfoil_names: typing.List[str] = None,
                         tool: str = 'XFOIL',
-                        xfoil_settings: dict = None,
-                        mset_settings: dict = None,
-                        mses_settings: dict = None,
-                        mplot_settings: dict = None,
+                        xfoil_settings: dict or XFOILSettings = None,
+                        mset_settings: dict or MSETSettings = None,
+                        mses_settings: dict or MSESSettings = None,
+                        mplot_settings: dict or MPLOTSettings = None,
                         export_Cp: bool = True,
                         save_aero_data: bool = True):
     r"""
     Convenience function calling either XFOIL or MSES depending on the ``tool`` specified
 
     Parameters
-    ==========
+    ----------
     conn: multiprocessing.connection.Connection or None
         If not ``None``, a connection established between the worker thread deployed by the GUI over which
         data can be passed to update the user on the state of the analysis
@@ -269,10 +705,11 @@ def calculate_aero_data(conn: multiprocessing.connection.Connection or None,
     airfoil_name: str
         A string describing the airfoil
 
-    coords: typing.Tuple[tuple]
-        If using XFOIL: specify a 2-D nested tuple array of size :math:`N \times 2`, where :math:`N` is the number of
-        airfoil coordinates and the columns represent :math:`x` and :math:`y`. If using MSES, specify a 3-D nested
-        tuple array of size :math:`M \times N \times 2`, where :math:`M` is the number of airfoils.
+    coords: typing.List[numpy.ndarray] or numpy.ndarray
+        If using XFOIL: specify a 2-D numpy.ndarray of size :math:`N \times 2`, where :math:`N` is the number of
+        airfoil coordinates and the columns represent :math:`x` and :math:`y`. If using MSES, specify a list of
+        numpy.ndarray, where each list element is an array of airfoil coordinates of size :math:`N \times 2`.
+        If ``tool=="MSES"``, only specify a value for this argument if ``mea`` is not specified.
 
     mea: MEA or None
         Multi-element airfoil object to use if ``coords`` is not specified. Default: ``None``
@@ -283,21 +720,21 @@ def calculate_aero_data(conn: multiprocessing.connection.Connection or None,
     tool: str
         The airfoil flow analysis tool to be used. Must be either ``"XFOIL"`` or ``"MSES"``. Default: ``"XFOIL"``
 
-    xfoil_settings: dict
-        A dictionary containing the settings for XFOIL. Must be specified if the ``"XFOIL"`` tool is selected.
-        Default: ``None``
+    xfoil_settings: dict or XFOILSettings
+        A dictionary containing the settings for XFOIL or an instance of the ``XFOILSettings`` class.
+        Must be specified if the ``"XFOIL"`` tool is selected. Default: ``None``
 
-    mset_settings: dict
-      A dictionary containing the settings for MSET. Must be specified if the ``"MSES"`` tool is selected. Default:
-      ``None``
+    mset_settings: dict or MSETSettings
+      A dictionary containing the settings for MSET or an instance of the ``MSETSettings`` class.
+      Must be specified if the ``"MSES"`` tool is selected. Default: ``None``
 
-    mses_settings: dict
-      A dictionary containing the settings for MSES. Must be specified if the ``"MSES"`` tool is selected. Default:
-      ``None``
+    mses_settings: dict or MSESSettings
+      A dictionary containing the settings for MSES or an instance of the ``MSESSettings`` class.
+      Must be specified if the ``"MSES"`` tool is selected. Default: ``None``
 
-    mplot_settings: dict
-      A dictionary containing the settings for MPLOT. Must be specified if the ``"MSES"`` tool is selected. Default:
-      ``None``
+    mplot_settings: dict or MPLOTSettings
+      A dictionary containing the settings for MPLOT or an instance of the ``MPLOTSettings`` class.
+      Must be specified if the ``"MSES"`` tool is selected. Default: ``None``
 
     export_Cp: bool
       Whether to calculate and export the surface pressure coefficient distribution in the case of XFOIL, or the
@@ -307,7 +744,7 @@ def calculate_aero_data(conn: multiprocessing.connection.Connection or None,
         Whether to save the aerodynamic data as a JSON file to the analysis directory
 
     Returns
-    =======
+    -------
     dict, str
         A dictionary containing the evaluated aerodynamic data and the path to the log file
     """
@@ -392,7 +829,7 @@ def calculate_aero_data(conn: multiprocessing.connection.Connection or None,
                 for k, v in aero_data["Cp"].items():
                     if isinstance(v, np.ndarray):
                         aero_data["Cp"][k] = v.tolist()
-            save_data(aero_data, os.path.join(base_dir, "aero_data.json"))
+            save_data(aero_data, os.path.join(base_dir, airfoil_name, "aero_data.json"))
 
         return aero_data, xfoil_log
 
@@ -732,7 +1169,7 @@ def run_xfoil(xfoil_settings: dict or XFOILSettings, coords: np.ndarray, export_
     return aero_data, xfoil_log
 
 
-def run_mset(name: str, base_dir: str, mset_settings: dict, mea_airfoil_names: typing.List[str],
+def run_mset(name: str, base_dir: str, mset_settings: dict or MSETSettings, mea_airfoil_names: typing.List[str],
              coords: typing.List[np.ndarray] = None, mea: MEA = None) -> (bool, str, typing.List[str]):
     r"""
     A Python wrapper for MSET
@@ -748,10 +1185,16 @@ def run_mset(name: str, base_dir: str, mset_settings: dict, mea_airfoil_names: t
     mset_settings: dict
         Analysis parameter set (dictionary)
 
+    mea_airfoil_names: typing.List[str]
+        List of airfoil names for analysis contained in the multi-element airfoil object.
+
     coords: typing.List[numpy.ndarray]
         A list of coordinate sets to write as the airfoil geometry. The array of coordinates has size
         :math:`N \times 2` where :math:`N` is the number of airfoil
-        coordinates.
+        coordinates. Only specify if ``mea`` is not specified.
+
+    mea: MEA
+        Multi-element airfoil to analyze. Only specify if ``coords`` is not specified.
 
     Returns
     -------
@@ -759,6 +1202,9 @@ def run_mset(name: str, base_dir: str, mset_settings: dict, mea_airfoil_names: t
         A boolean describing whether the MSET call succeeded, a string containing the path to the MSET log file,
         and a list containing the order of the airfoil names determined by vertical position, descending order
     """
+    if isinstance(mset_settings, MSETSettings):
+        mset_settings = mset_settings.get_dict_rep()
+
     if coords is None and mea is None:
         raise ValueError("Must specify either coords or mea")
     if coords is not None and mea is not None:
@@ -803,7 +1249,7 @@ def run_mset(name: str, base_dir: str, mset_settings: dict, mea_airfoil_names: t
     return mset_success, mset_log, airfoil_name_order
 
 
-def run_mses(name: str, base_folder: str, mses_settings: dict, airfoil_name_order: typing.List[str],
+def run_mses(name: str, base_folder: str, mses_settings: dict or MSESSettings, airfoil_name_order: typing.List[str],
              stencil: bool = False, conn: multiprocessing.connection.Connection = None) -> (bool, str):
     r"""
     A Python wrapper for MSES
@@ -816,8 +1262,9 @@ def run_mses(name: str, base_folder: str, mses_settings: dict, airfoil_name_orde
     base_folder: str
         MSES files will be stored in ``base_folder/name``
 
-    mses_settings: dict
-        Flow parameter set (dictionary)
+    mses_settings: dict or MSESSettings
+        Flow parameter set (dictionary) or an instance of the MSESSettings class. If a dictionary is used, all the
+        keys found in MPLOTSettings.get_dict_rep must be present.
 
     airfoil_name_order: typing.List[str]
         List of the names of the airfoils (from top to bottom)
@@ -857,6 +1304,9 @@ def run_mses(name: str, base_folder: str, mses_settings: dict, airfoil_name_orde
                 conn.send(data)
         except BrokenPipeError:
             pass
+
+    if isinstance(mses_settings, MSESSettings):
+        mses_settings = mses_settings.get_dict_rep()
 
     write_mses_file(name, base_folder, mses_settings, airfoil_name_order=airfoil_name_order)
     mses_log = os.path.join(base_folder, name, 'mses.log')
@@ -918,8 +1368,8 @@ def run_mses(name: str, base_folder: str, mses_settings: dict, airfoil_name_orde
     return converged, mses_log
 
 
-def run_mplot(name: str, base_dir: str, mplot_settings: dict, mode: str = "forces", min_contour: float = 0.0,
-              max_contour: float = 1.5, n_intervals: int = 0) -> str:
+def run_mplot(name: str, base_dir: str, mplot_settings: dict or MPLOTSettings, mode: str = "forces",
+              min_contour: float = 0.0, max_contour: float = 1.5, n_intervals: int = 0) -> str:
     r"""
     A Python wrapper for MPLOT
 
@@ -931,15 +1381,16 @@ def run_mplot(name: str, base_dir: str, mplot_settings: dict, mode: str = "force
     base_dir: str
         MSES files will be stored in ``base_folder/name``
 
-    mplot_settings: dict
-        Flow parameter set (dictionary)
+    mplot_settings: dict or MPLOTSettings
+        Flow parameter set (dictionary) or an instance of the MPLOTSettings class. If a dictionary is used,
+        all the keys found in MPLOTSettings.get_dict_rep must be present.
 
     mode: str
         What type of data to output from MPLOT. Current choices are ``"forces"``, ``"Cp"``, ``"flowfield"``,
         ``"grid_zoom"``, ``"grid"``, ``"grid_stats"``, and ``"Mach contours"``. Default: ``"forces"``
 
     min_contour: float
-        inimum contour level (only affects the result if ``mode=="Mach contours"``). Default: ``0.0``
+        Minimum contour level (only affects the result if ``mode=="Mach contours"``). Default: ``0.0``
 
     max_contour: float
         Maximum contour level (only affects the result if ``mode=="Mach contours"``). Default: ``1.5``
@@ -953,6 +1404,9 @@ def run_mplot(name: str, base_dir: str, mplot_settings: dict, mode: str = "force
     str
         A string containing the path to the MPLOT log file
     """
+    if isinstance(mplot_settings, MPLOTSettings):
+        mplot_settings = mplot_settings.get_dict_rep()
+
     if mode in ["forces", "Forces"]:
         mplot_input_name = "mplot_forces_dump.txt"
         mplot_input_list = ['1', '12', '', '0']
@@ -1174,26 +1628,35 @@ def write_gridpar_file(name: str, base_folder: str, mset_settings: dict, airfoil
     return gridpar_file
 
 
-def write_mses_file(name: str, base_folder: str, mses_settings: dict, airfoil_name_order: typing.List[str]):
+def write_mses_file(name: str, base_folder: str, mses_settings: dict or MSESSettings,
+                    airfoil_name_order: typing.List[str]) -> (str, dict):
     """
     Writes MSES flow parameters to a file
 
     Parameters
-    ==========
+    ----------
     name: str
-      Name of the airfoil [system]
+        Name of the airfoil [system]
 
     base_folder: str
-      MSES flow parameter file will be stored as ``base_folder/name/mses.name``
+        MSES flow parameter file will be stored as ``base_folder/name/mses.name``
 
-    mses_settings: dict
-      Parameter set (dictionary)
+    mses_settings: dict or MSESSettings
+        Parameter set, either a dictionary or an instance of the ``MSESSettings`` class. If a dictionary is used,
+        it must contain all the keys found in ``MSESSettings.get_dict_rep``
+
+    airfoil_name_order: typing.List[str]
+        List of airfoil names found in the MEA, ordered by vertical position (descending order). This order is output
+        by ``write_blade_file``
 
     Returns
-    =======
-    str
-      Path of the created MSES flow parameter file
+    -------
+    str, dict
+        Path of the created MSES flow parameter file and a copy of the MSES settings dictionary
     """
+    if isinstance(mses_settings, MSESSettings):
+        mses_settings = mses_settings.get_dict_rep()
+
     F = deepcopy(mses_settings)
     if not os.path.exists(os.path.join(base_folder, name)):  # if specified directory doesn't exist,
         os.mkdir(os.path.join(base_folder, name))  # create it
