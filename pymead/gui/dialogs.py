@@ -1897,7 +1897,7 @@ class OptConstraintsHTabWidget(PymeadDialogHTabWidget):
 class XFOILDialogWidget(PymeadDialogWidget):
     def __init__(self, current_airfoils: typing.List[str], settings_override: dict = None):
         super().__init__(settings_file=os.path.join(GUI_DEFAULTS_DIR, 'xfoil_settings.json'))
-        self.widget_dict['airfoil_analysis_dir']['widget'].setText(tempfile.gettempdir())
+        self.widget_dict["base_dir"]["widget"].setText(tempfile.gettempdir())
         self.widget_dict["airfoil"]["widget"].addItems(current_airfoils)
         if settings_override:
             self.setValue(new_values=settings_override)

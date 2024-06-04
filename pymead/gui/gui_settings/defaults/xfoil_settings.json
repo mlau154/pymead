@@ -179,8 +179,8 @@
         "column": 5,
         "label.column": 4
     },
-    "airfoil_analysis_dir": {
-        "label": "Analysis Directory",
+    "base_dir": {
+        "label": "Analysis Base Directory",
         "widget_type": "QLineEdit",
         "push_button": "Choose folder",
         "push_button_action": "select_directory",
@@ -188,8 +188,8 @@
         "column": 5,
         "label.column": 4
     },
-    "airfoil_coord_file_name": {
-        "label": "Airfoil Coord. Filename",
+    "airfoil_name": {
+        "label": "Airfoil Name",
         "widget_type": "QLineEdit",
         "setText": "x_airfoil",
         "column": 5,

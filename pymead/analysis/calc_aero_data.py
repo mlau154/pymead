@@ -28,6 +28,127 @@ SVG_SETTINGS_TR = {
 }
 
 
+class XFOILSettings:
+
+    mode_prescribe_mapping = {0: "Angle of Attack (deg)", 1: "Viscous Cl", 2: "Inviscid Cl"}
+
+    def __init__(self,
+                 base_dir: str,
+                 airfoil_name: str,
+                 Re: float = 1.0e6,
+                 Ma: float = 0.1,
+                 mode: int = 0,
+                 timeout: float = 8.0,
+                 iterations: int = 150,
+                 xtr: typing.List[float] = None,
+                 N: float = 9.0,
+                 visc: bool = True,
+                 alfa: float = 0.0,
+                 Cl: float = 0.0,
+                 Cli: float = 0.0
+                 ):
+        """
+        Defines a set of reasonable default inputs to ``run_xfoil`` or ``calculate_aero_data`` with
+        ``tool="XFOIL"``.
+
+        Parameters
+        ----------
+        base_dir: str
+            Base directory for the airfoil analysis. All the files used in an XFOIL analysis
+            can be found in ``base_dir/airfoil_name``
+
+        airfoil_name: str
+            Used to name the end of the file path where the airfoil analysis will take place
+
+        Re: float
+            Reynolds number (ignored if ``visc==False``). Default: ``1.0e6``
+
+        Ma: float
+            Mach number. Values near or above ``1.0`` will produce highly inaccurate results due to
+            unmodeled shock waves. Default: ``0.1``
+
+        mode: int
+            If ``0``, the angle of attack defined by ``alfa`` is prescribed.
+            If ``1``, the viscous lift coefficient defined by ``Cl`` is prescribed.
+            If ``2``, the inviscid lift coefficient defined by ``Cli`` is prescribed.
+
+        timeout: float
+            If XFOIL runs longer than this time (in seconds), the run will
+            be terminated prior to convergence. Default: ``8.0``
+
+        iterations: int
+            Maximum number of iterations allowed by XFOIL in viscous mode. Default: ``150``
+
+        xtr: typing.List[float] or None
+            Two-element list consisting of :math:`x/c`-locations of the upper and lower airfoil surfaces. If
+            ``None`` is specified, a default value of ``[1.0, 1.0]`` will be used. This value corresponds
+            to free transition on both surfaces.
+
+        N: float
+            Envelope method exponent, 9.0 for an average wind tunnel. See the "Transition Criterion" section of the
+            `XFOIL user guide <https://web.mit.edu/drela/Public/web/xfoil/xfoil_doc.txt>`_
+            for more details and additional flow conditions. Default: ``9.0``
+
+        visc: bool
+            Whether to include a boundary layer model in the airfoil analysis. Default: ``True``
+
+        alfa: float
+            Angle of attack in degrees. Ignored unless ``mode==0``. Default: ``0.0``
+
+        Cl: float
+            Viscous lift coefficient to prescribe. Ignored unless ``mode==1``. Default: ``0.0``
+
+        Cli: float
+            Inviscid lift coefficient to prescribe. Ignored unless ``mode==2``. Default: ``0.0``
+        """
+        self.Re = Re
+        self.Ma = Ma
+        self.mode = mode
+        self.prescribe = self.mode_prescribe_mapping[self.mode]
+        self.timeout = timeout
+        self.iterations = iterations
+        self.xtr = [1.0, 1.0] if xtr is None else xtr
+        self.N = N
+        self.visc = visc
+        self.base_dir = base_dir
+        self.airfoil_name = airfoil_name
+        self.alfa = alfa
+        self.Cl = Cl
+        self.Cli = Cli
+        if len(self.xtr) != 2:
+            raise ValueError("'xtr' must be a list containing exactly two values: the x/c transition location for the "
+                             "upper surface and the x/c transition location for the lower surface")
+        if self.mode not in self.mode_prescribe_mapping.keys():
+            raise ValueError(f"'mode' must be an integer (either 0, 1, or 2) corresponding to the following prescribed "
+                             f"modes for XFOIL: {self.mode_prescribe_mapping}")
+
+    def get_dict_rep(self) -> dict:
+        """
+        Gets a Python dictionary description of the XFOIL analysis parameters. Used in ``run_xfoil`` and
+        ``calculate_aero_data``.
+
+        Returns
+        -------
+        dict
+            XFOIL analysis parameters
+        """
+        return {
+            "Re": self.Re,
+            "Ma": self.Ma,
+            "prescribe": self.prescribe,
+            "timeout": self.timeout,
+            "iter": self.iterations,
+            "xtr": self.xtr,
+            "N": self.N,
+            "base_dir": self.base_dir,
+            "airfoil_name": self.airfoil_name,
+            "visc": self.visc,
+            "alfa": self.alfa,
+            "Cl": self.Cl,
+            "CLI": self.Cli
+        }
+
+
 def update_xfoil_settings_from_stencil(xfoil_settings: dict, stencil: typing.List[dict], idx: int):
     """
     Updates the XFOIL settings dictionary from a given multipoint stencil and multipoint index
@@ -93,7 +214,7 @@ def update_mses_settings_from_stencil(mses_settings: dict, stencil: typing.List[
 def calculate_aero_data(conn: multiprocessing.connection.Connection or None,
                         airfoil_coord_dir: str,
                         airfoil_name: str,
-                        coords: typing.List[np.ndarray] = None,
+                        coords: typing.List[np.ndarray] or np.ndarray = None,
                         mea: MEA = None,
                         mea_airfoil_names: typing.List[str] = None,
                         tool: str = 'XFOIL',
@@ -113,22 +234,28 @@ def calculate_aero_data(conn: multiprocessing.connection.Connection or None,
         data can be passed to update the user on the state of the analysis
 
     airfoil_coord_dir: str
-      The directory containing the airfoil coordinate file
+        The directory containing the airfoil coordinate file
 
     airfoil_name: str
-      A string describing the airfoil
+        A string describing the airfoil
 
     coords: typing.Tuple[tuple]
-      If using XFOIL: specify a 2-D nested tuple array of size :math:`N \times 2`, where :math:`N` is the number of
-      airfoil coordinates and the columns represent :math:`x` and :math:`y`. If using MSES, specify a 3-D nested
-      tuple array of size :math:`M \times N \times 2`, where :math:`M` is the number of airfoils.
+        If using XFOIL: specify a 2-D nested tuple array of size :math:`N \times 2`, where :math:`N` is the number of
+        airfoil coordinates and the columns represent :math:`x` and :math:`y`. If using MSES, specify a 3-D nested
+        tuple array of size :math:`M \times N \times 2`, where :math:`M` is the number of airfoils.
+
+    mea: MEA or None
+        Multi-element airfoil object to use if ``coords`` is not specified. Default: ``None``
+
+    mea_airfoil_names: typing.List[str] or None
+        Names of the airfoils contained in the ``mea`` to analyze
 
     tool: str
-      The airfoil flow analysis tool to be used. Must be either ``"XFOIL"`` or ``"MSES"``. Default: ``"XFOIL"``
+        The airfoil flow analysis tool to be used. Must be either ``"XFOIL"`` or ``"MSES"``. Default: ``"XFOIL"``
 
     xfoil_settings: dict
-      A dictionary containing the settings for XFOIL. Must be specified if the ``"XFOIL"`` tool is selected.
-      Default: ``None``
+        A dictionary containing the settings for XFOIL. Must be specified if the ``"XFOIL"`` tool is selected.
+        Default: ``None``
 
     mset_settings: dict
       A dictionary containing the settings for MSET. Must be specified if the ``"MSES"`` tool is selected. Default:
@@ -214,7 +341,7 @@ def calculate_aero_data(conn: multiprocessing.connection.Connection or None,
                 xfoil_settings = update_xfoil_settings_from_stencil(xfoil_settings=xfoil_settings, stencil=stencil, idx=i)
                 # print(f"{mses_settings['XCDELH'] = }, {mses_settings['CLIFIN'] = }, {mses_settings['PTRHIN'] = }")
 
-            aero_data, xfoil_log = run_xfoil(airfoil_name, base_dir, xfoil_settings, coords, export_Cp=export_Cp)
+            aero_data, xfoil_log = run_xfoil(xfoil_settings, coords, export_Cp=export_Cp)
 
             if aero_data["converged"]:
                 if aero_data_list is not None:
@@ -414,15 +541,46 @@ def calculate_Cl_alfa_xfoil_inviscid(airfoil_name: str, base_dir: str):
     return Cl, Cm, alfa
 
 
-def run_xfoil(airfoil_name: str, base_dir: str, xfoil_settings: dict, coords: np.ndarray,
-              export_Cp: bool = True):
+def run_xfoil(xfoil_settings: dict or XFOILSettings, coords: np.ndarray, export_Cp: bool = True) -> (dict, str):
+    """
+    Python wrapper for `XFOIL <https://web.mit.edu/drela/Public/web/xfoil/>`_
+
+    Parameters
+    ----------
+    xfoil_settings: dict or XFOILSettings
+        Analysis parameters for XFOIL. If a ``dict`` is used, the keys found in ``XFOILSettings.get_dict_rep``
+        must be specified
+
+    coords: numpy.ndarray
+        Airfoil coordinates in Selig format (counter-clockwise starting from the trailing edge upper surface).
+
+    export_Cp: bool
+        Whether to export the surface pressure coefficient distribution. Default: ``True``
+
+    Returns
+    -------
+    (dict, str)
+        A dictionary containing the aerodynamic performance data (:math:`C_l`, :math:`C_p` distribution, etc.)
+        and the path to the XFOIL log file.
+    """
+
     aero_data = {}
+
+    if isinstance(xfoil_settings, XFOILSettings):
+        xfoil_settings = xfoil_settings.get_dict_rep()
+
+    airfoil_name = xfoil_settings["airfoil_name"]
+    base_dir = xfoil_settings["base_dir"]
+    analysis_dir = os.path.join(base_dir, airfoil_name)
+
+    if not os.path.exists(analysis_dir):
+        os.mkdir(analysis_dir)
 
     if "xtr" not in xfoil_settings.keys():
         xfoil_settings["xtr"] = [1.0, 1.0]
     if 'N' not in xfoil_settings.keys():
         xfoil_settings['N'] = 9.0
-    f = os.path.join(base_dir, airfoil_name + ".dat")
+    f = os.path.join(analysis_dir, airfoil_name + ".dat")
 
     # Attempt to save the file
     save_attempts = 0
@@ -437,7 +595,7 @@ def run_xfoil(airfoil_name: str, base_dir: str, xfoil_settings: dict, coords: np
         except OSError:
             time.sleep(0.01)
 
-    xfoil_input_file = os.path.join(base_dir, 'xfoil_input.txt')
+    xfoil_input_file = os.path.join(analysis_dir, 'xfoil_input.txt')
 
     if xfoil_settings["visc"]:
         xfoil_input_list = ['', 'oper', f'iter {xfoil_settings["iter"]}', 'visc', str(xfoil_settings['Re']),
@@ -448,19 +606,15 @@ def run_xfoil(airfoil_name: str, base_dir: str, xfoil_settings: dict, coords: np
         xfoil_input_list = ["", "oper", f"iter {xfoil_settings['iter']}", f"M {xfoil_settings['Ma']}"]
 
     # alpha/Cl input setup (must choose exactly one of alpha, Cl, or CLI)
-    if len([0 for prescribed_xfoil_val in (
-            'alfa', 'Cl', 'CLI') if prescribed_xfoil_val in xfoil_settings.keys()]) != 1:
-        raise ValueError('Either none or more than one of alpha, Cl, or CLI was set. '
-                         'Choose exactly one for XFOIL analysis.')
     alpha = None
     Cl = None
     CLI = None
-    if 'alfa' in xfoil_settings.keys():
-        alpha = xfoil_settings['alfa']
-    elif 'Cl' in xfoil_settings.keys():
-        Cl = xfoil_settings['Cl']
-    elif 'CLI' in xfoil_settings.keys():
-        CLI = xfoil_settings['CLI']
+    if xfoil_settings["prescribe"] == "Angle of Attack (deg)":
+        alpha = xfoil_settings["alfa"]
+    elif xfoil_settings["prescribe"] == "Viscous Cl":
+        Cl = xfoil_settings["Cl"]
+    elif xfoil_settings["prescribe"] == "Inviscid Cl":
+        CLI = xfoil_settings["CLI"]
     if alpha is not None:
         if not isinstance(alpha, list):
             alpha = [alpha]
@@ -484,10 +638,10 @@ def run_xfoil(airfoil_name: str, base_dir: str, xfoil_settings: dict, coords: np
     xfoil_input_list.append('')
     xfoil_input_list.append('quit')
     write_input_file(xfoil_input_file, xfoil_input_list)
-    xfoil_log = os.path.join(base_dir, 'xfoil.log')
+    xfoil_log = os.path.join(analysis_dir, 'xfoil.log')
     with open(xfoil_input_file, 'r') as g:
         process = subprocess.Popen(['xfoil', f"{airfoil_name}.dat"], stdin=g, stdout=subprocess.PIPE,
-                                   stderr=subprocess.PIPE, cwd=base_dir, shell=False)
+                                   stderr=subprocess.PIPE, cwd=analysis_dir, shell=False)
         aero_data['converged'] = False
         aero_data['timed_out'] = False
         aero_data['errored_out'] = False
@@ -527,13 +681,17 @@ def run_xfoil(airfoil_name: str, base_dir: str, xfoil_settings: dict, coords: np
                     if line1 is not None:
                         convert_xfoil_string_to_aero_data(line1, line2, aero_data)
                         if export_Cp:
-                            aero_data['Cp'] = read_Cp_from_file_xfoil(os.path.join(base_dir, f"{airfoil_name}_Cp.dat"))
+                            aero_data['Cp'] = read_Cp_from_file_xfoil(
+                                os.path.join(analysis_dir, f"{airfoil_name}_Cp.dat")
+                            )
             else:
                 if not aero_data["timed_out"] and aero_data["converged"]:
                     aero_data["Cl"], aero_data["Cm"], aero_data["alf"] = calculate_Cl_alfa_xfoil_inviscid(
-                        airfoil_name=airfoil_name, base_dir=base_dir)
+                        airfoil_name=airfoil_name, base_dir=analysis_dir)
                     if export_Cp:
-                        aero_data["Cp"] = read_Cp_from_file_xfoil(os.path.join(base_dir, f"{airfoil_name}_Cp.dat"))
+                        aero_data["Cp"] = read_Cp_from_file_xfoil(
+                            os.path.join(analysis_dir, f"{airfoil_name}_Cp.dat")
+                        )
 
     return aero_data, xfoil_log
 

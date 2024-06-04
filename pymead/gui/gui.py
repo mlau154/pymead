@@ -1301,8 +1301,8 @@ class GUI(QMainWindow):
                               'iter': inputs['iter'],
                               'xtr': [inputs['xtr_lower'], inputs['xtr_upper']],
                               'N': inputs['N'],
-                              'airfoil_analysis_dir': inputs['airfoil_analysis_dir'],
-                              'airfoil_coord_file_name': inputs['airfoil_coord_file_name'],
+                              'base_dir': inputs['base_dir'],
+                              'airfoil_name': inputs['airfoil_name'],
                               'airfoil': inputs['airfoil'],
                               "visc": inputs["viscous_flag"]}
             if xfoil_settings['prescribe'] == 'Angle of Attack (deg)':
@@ -1323,8 +1323,8 @@ class GUI(QMainWindow):
             coords = self.geo_col.container()["airfoils"][xfoil_settings["airfoil"]].get_scaled_coords()
 
             aero_data, _ = calculate_aero_data(None,
-                                               xfoil_settings['airfoil_analysis_dir'],
-                                               xfoil_settings['airfoil_coord_file_name'],
+                                               xfoil_settings['base_dir'],
+                                               xfoil_settings['airfoil_name'],
                                                coords=coords,
                                                tool="XFOIL",
                                                xfoil_settings=xfoil_settings,
@@ -1335,7 +1335,7 @@ class GUI(QMainWindow):
                 self.output_area_text(
                     f"[{str(self.n_analyses).zfill(2)}] ")
                 self.output_area_text(
-                    f"<a href='file:///{os.path.join(xfoil_settings['airfoil_analysis_dir'], xfoil_settings['airfoil_coord_file_name'])}'><font family='DejaVu Sans Mono' size='3'>XFOIL</font></a>",
+                    f"<a href='file:///{os.path.join(xfoil_settings['base_dir'], xfoil_settings['airfoil_name'])}'><font family='DejaVu Sans Mono' size='3'>XFOIL</font></a>",
                     mode="html")
                 self.output_area_text(
                     f" Converged = {aero_data['converged']} | Errored out = "
@@ -1344,7 +1344,7 @@ class GUI(QMainWindow):
                 self.output_area_text(
                     f"[{str(self.n_analyses).zfill(2)}] ")
                 self.output_area_text(
-                    f"<a href='file:///{os.path.join(xfoil_settings['airfoil_analysis_dir'], xfoil_settings['airfoil_coord_file_name'])}'><font family='DejaVu Sans Mono' size='3'>XFOIL</font></a>",
+                    f"<a href='file:///{os.path.join(xfoil_settings['base_dir'], xfoil_settings['airfoil_name'])}'><font family='DejaVu Sans Mono' size='3'>XFOIL</font></a>",
                     mode="html")
                 if xfoil_settings["visc"]:
                     self.output_area_text(f" ({xfoil_settings['airfoil']}, "
