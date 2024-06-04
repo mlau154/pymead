@@ -149,6 +149,36 @@ class XFOILSettings:
         }
 
 
+class MSETSettings:
+    def __init__(self,
+                 mea: str,
+                 grid_bounds: typing.List[float] = None,
+                 airfoil_side_points: int = 180,
+                 exp_side_points: float = 0.9,
+                 inlet_pts_left_stream: int = 41,
+                 outlet_pts_right_stream: int = 41,
+                 num_streams_top: int = 17,
+                 num_streams_bot: int = 23,
+                 max_streams_between: int = 15,
+                 elliptic_param: float = 1.3,
+                 stag_pt_aspect_ratio: float = 2.5,
+                 x_spacing_param: float = 0.85,
+                 alf0_stream_gen: float = 0.0,
+                 timeout: float = 10.0
+                 ):
+        self.grid_bounds = grid_bounds if grid_bounds is not None else [-5.0, 5.0, -5.0, 5.0]
+
+
+class MSESSettings:
+    def __init__(self):
+        pass
+
+
+class MPLOTSettings:
+    def __init__(self):
+        pass
+
+
 def update_xfoil_settings_from_stencil(xfoil_settings: dict, stencil: typing.List[dict], idx: int):
     """
     Updates the XFOIL settings dictionary from a given multipoint stencil and multipoint index
@@ -559,9 +589,15 @@ def run_xfoil(xfoil_settings: dict or XFOILSettings, coords: np.ndarray, export_
 
     Returns
     -------
-    (dict, str)
-        A dictionary containing the aerodynamic performance data (:math:`C_l`, :math:`C_p` distribution, etc.)
-        and the path to the XFOIL log file.
+    dict, str
+        A dictionary containing the aerodynamic performance data and the path to the XFOIL log file.
+        The dictionary will have at least the following keys: ``"converged"``, ``"timed_out"``, ``"errored_out"``,
+        ``"Cl"`` (lift coefficient), ``"Cm"`` (pitching moment coefficient), and ``"alf"`` (angle of attack in degrees).
+        If run in viscous mode (``visc==True``), the following keys will also be included: ``"Cd"`` (drag coefficient),
+        ``"Cdf"`` (friction drag coefficient), ``"Cdp"`` (pressure drag coefficient), and ``"L/D"``
+        (lift-to-drag ratio). If ``export_Cp==True``, the key ``"Cp"`` (surface pressure coefficient distribution)
+        will also be included. The :math:`C_p` distribution is a dictionary containing the following keys, where each
+        of the values is a one-dimensional ``numpy.ndarray``: ``"x"``, ``"y"``, and ``"Cp"``.
     """
 
     aero_data = {}
@@ -697,31 +733,31 @@ def run_xfoil(xfoil_settings: dict or XFOILSettings, coords: np.ndarray, export_
 
 
 def run_mset(name: str, base_dir: str, mset_settings: dict, mea_airfoil_names: typing.List[str],
-             coords: typing.List[np.ndarray] = None, mea: MEA = None):
+             coords: typing.List[np.ndarray] = None, mea: MEA = None) -> (bool, str, typing.List[str]):
     r"""
-    A Python API for MSET
+    A Python wrapper for MSET
 
     Parameters
-    ==========
+    ----------
     name: str
-      Name of the airfoil [system]
+        Name of the airfoil [system]
 
     base_dir: str
-      MSET files will be stored in ``base_dir/name``
+        MSET files will be stored in ``base_dir/name``
 
     mset_settings: dict
-      Parameter set (dictionary)
+        Analysis parameter set (dictionary)
 
-    coords: typing.Tuple[tuple]
-      A 3-D set of coordinates to write as the airfoil geometry. The array of coordinates has size
-      :math:`M \times N \times 2` where :math:`M` is the number of airfoils and :math:`N` is the number of airfoil
-      coordinates. The coordinates can be input as a ragged array, where :math:`N` changes with each 3-D slice (i.e.,
-      the number of airfoil coordinates can be different for each airfoil).
+    coords: typing.List[numpy.ndarray]
+        A list of coordinate sets to write as the airfoil geometry. The array of coordinates has size
+        :math:`N \times 2` where :math:`N` is the number of airfoil
+        coordinates.
 
     Returns
-    =======
-    bool, str
-      A boolean describing whether the MSET call succeeded and a string containing the path to the MSET log file
+    -------
+    bool, str, typing.List[str]
+        A boolean describing whether the MSET call succeeded, a string containing the path to the MSET log file,
+        and a list containing the order of the airfoil names determined by vertical position, descending order
     """
     if coords is None and mea is None:
         raise ValueError("Must specify either coords or mea")
@@ -768,9 +804,9 @@ def run_mset(name: str, base_dir: str, mset_settings: dict, mea_airfoil_names: t
 
 
 def run_mses(name: str, base_folder: str, mses_settings: dict, airfoil_name_order: typing.List[str],
-             stencil: bool = False, conn: multiprocessing.connection.Connection = None):
+             stencil: bool = False, conn: multiprocessing.connection.Connection = None) -> (bool, str):
     r"""
-    A Python API for MSES
+    A Python wrapper for MSES
 
     Parameters
     ----------
@@ -789,6 +825,10 @@ def run_mses(name: str, base_folder: str, mses_settings: dict, airfoil_name_orde
     stencil: bool
         Whether a multipoint stencil is to be used. This variable is only used here to determine whether to overwrite or
         append to the log file. Default: ``False``
+
+    conn: multiprocessing.connection.Connection
+        Pipe used to transfer intermediate and final results to the GUI when this function is run from the GUI.
+        This keyword argument should not be set if using this function directly.
 
     Returns
     -------
@@ -879,39 +919,39 @@ def run_mses(name: str, base_folder: str, mses_settings: dict, airfoil_name_orde
 
 
 def run_mplot(name: str, base_dir: str, mplot_settings: dict, mode: str = "forces", min_contour: float = 0.0,
-              max_contour: float = 1.5, n_intervals: int = 0):
+              max_contour: float = 1.5, n_intervals: int = 0) -> str:
     r"""
-    A Python API for MPLOT
+    A Python wrapper for MPLOT
 
     Parameters
-    ==========
+    ----------
     name: str
-      Name of the airfoil [system]
+        Name of the airfoil [system]
 
     base_dir: str
-      MSES files will be stored in ``base_folder/name``
+        MSES files will be stored in ``base_folder/name``
 
     mplot_settings: dict
-      Flow parameter set (dictionary)
+        Flow parameter set (dictionary)
 
     mode: str
-      What type of data to output from MPLOT. Current choices are ``"forces"``, ``"Cp"``, ``"flowfield"``,
-      ``"grid_zoom"``, ``"grid"``, ``"grid_stats"``, and ``"Mach contours"``. Default: ``"forces"``
+        What type of data to output from MPLOT. Current choices are ``"forces"``, ``"Cp"``, ``"flowfield"``,
+        ``"grid_zoom"``, ``"grid"``, ``"grid_stats"``, and ``"Mach contours"``. Default: ``"forces"``
 
     min_contour: float
-      Minimum contour level (only affects the result if ``mode=="Mach contours"``). Default: ``0.0``
+        inimum contour level (only affects the result if ``mode=="Mach contours"``). Default: ``0.0``
 
     max_contour: float
-      Maximum contour level (only affects the result if ``mode=="Mach contours"``). Default: ``1.5``
+        Maximum contour level (only affects the result if ``mode=="Mach contours"``). Default: ``1.5``
 
     n_intervals: int
-      Number of contour levels (only affects the result if ``mode=="Mach contours"``). A value of ``0`` results in
-      MPLOT automatically setting a "nice" value for the number of contour levels. Default: ``0``
+        Number of contour levels (only affects the result if ``mode=="Mach contours"``). A value of ``0`` results in
+        MPLOT automatically setting a "nice" value for the number of contour levels. Default: ``0``
 
     Returns
-    =======
+    -------
     str
-      A string containing the path to the MPLOT log file
+        A string containing the path to the MPLOT log file
     """
     if mode in ["forces", "Forces"]:
         mplot_input_name = "mplot_forces_dump.txt"
@@ -995,53 +1035,41 @@ def run_mplot(name: str, base_dir: str, mplot_settings: dict, mode: str = "force
     return mplot_log
 
 
-def write_blade_file(name: str, base_dir: str, grid_bounds: typing.Iterable, coords: typing.List[np.ndarray],
-                     mea_airfoil_names: typing.List[str]):
+def write_blade_file(name: str, base_dir: str, grid_bounds: typing.List[float], coords: typing.List[np.ndarray],
+                     mea_airfoil_names: typing.List[str]) -> (str, typing.List[str]):
     r"""
     Writes airfoil geometry to an MSES blade file
 
     Parameters
-    ==========
+    ----------
     name: str
-      Name of the airfoil [system]
+        Name of the airfoil [system]
 
     base_dir: str
-      Blade file will be stored as ``base_dir/name/blade.name``
+        Blade file will be stored as ``base_dir/name/blade.name``
 
-    grid_bounds: typing.Iterable
-      Iterable object containing the far-field boundary locations for MSES, of the form
-      ``[x_lower, x_upper, y_lower, y_upper]``. For example, ``[-6, 6, -5, 5]`` will produce a pseudo-rectangular
-      far-field boundary with :math:`x` going from -6 to 6 and :math:`y` going from -5 to 5. The boundary is not
-      perfectly rectangular because MSES produces far-field boundaries that follow the streamlines close to the
-      specified :math:`x` and :math:`y`-locations for the grid.
+    grid_bounds: typing.List[float]
+        The far-field boundary locations for MSES, of the form
+        ``[x_lower, x_upper, y_lower, y_upper]``. For example, ``[-6, 6, -5, 5]`` will produce a pseudo-rectangular
+        far-field boundary with :math:`x` going from -6 to 6 and :math:`y` going from -5 to 5. The boundary is not
+        perfectly rectangular because MSES produces far-field boundaries that follow the streamlines close to the
+        specified :math:`x` and :math:`y`-locations for the grid.
 
     coords: typing.List[np.ndarray]
-      A 3-D set of coordinates to write as the airfoil geometry. The array of coordinates has size
-      :math:`M \times N \times 2` where :math:`M` is the number of airfoils and :math:`N` is the number of airfoil
-      coordinates. The coordinates can be input as a ragged array, where :math:`N` changes with each 3-D slice (i.e.,
-      the number of airfoil coordinates can be different for each airfoil).
+        A 3-D set of coordinates to write as the airfoil geometry. The array of coordinates has size
+        :math:`M \times N \times 2` where :math:`M` is the number of airfoils and :math:`N` is the number of airfoil
+        coordinates. The coordinates can be input as a ragged array, where :math:`N` changes with each 3-D slice (i.e.,
+        the number of airfoil coordinates can be different for each airfoil).
+
+    mea_airfoil_names: typing.List[str]
+        List of airfoil names contained in the MEA
 
     Returns
-    =======
-    str
-        Absolute path to the generated MSES blade file
+    -------
+    str, typing.List[str]
+        Absolute path to the generated MSES blade file and a list of the airfoil names found in the MEA, ordered
+        by vertical position (descending order)
     """
-    # if not os.path.exists(os.path.join(base_dir, name)):  # if specified directory doesn't exist,
-    #     os.mkdir(os.path.join(base_dir, name))  # create it
-    # blade_file = os.path.join(base_dir, name, 'blade.' + name)  # blade file stored as
-    # # <base_dir>\<name>\blade.<name>
-    # with open(blade_file, 'w') as f:  # Open the blade_file with write permission
-    #     f.write(name + '\n')  # Write the name of the airfoil on the first line
-    #     for gb in grid_bounds[0:-1]:  # For each of the entries in grid_bounds except the last (type: list),
-    #         f.write(str(gb) + " ")  # write the grid_bound at the specified index with a space after it in blade_file
-    #     f.write(str(grid_bounds[-1]) + "\n")
-    #     for idx, airfoil_coords in enumerate(coords):
-    #         for xy in airfoil_coords:
-    #             f.write(f"{str(xy[0])} {str(xy[1])}\n")
-    #         if idx != len(coords) - 1:
-    #             f.write('999.0 999.0\n')  # Write 999.0 999.0 with a carriage return to indicate to MSES that another
-    #             # airfoil follows
-    # return blade_file
 
     # Set the default grid bounds value
     if grid_bounds is None:
@@ -1084,25 +1112,29 @@ def write_blade_file(name: str, base_dir: str, grid_bounds: typing.Iterable, coo
     return blade_file_path, airfoil_name_order
 
 
-def write_gridpar_file(name: str, base_folder: str, mset_settings: dict, airfoil_name_order: typing.List[str]):
+def write_gridpar_file(name: str, base_folder: str, mset_settings: dict, airfoil_name_order: typing.List[str]) -> str:
     """
     Writes grid parameters to a file readable by MSES
 
     Parameters
-    ==========
+    ----------
     name: str
-      Name of the airfoil [system]
+        Name of the airfoil [system]
 
     base_folder: str
-      Grid parameter file will be stored as ``base_folder/name/gridpar.name``
+        Grid parameter file will be stored as ``base_folder/name/gridpar.name``
 
     mset_settings: dict
-      Parameter set (dictionary)
+        Parameter set (dictionary)
+
+    airfoil_name_order: typing.List[str]
+        List of airfoil names found in the MEA, ordered by vertical position (descending order). This order is output
+        by ``write_blade_file``
 
     Returns
-    =======
+    -------
     str
-      Path of the created grid parameter file
+        Path of the created grid parameter file
     """
     if not os.path.exists(os.path.join(base_folder, name)):  # if specified directory doesn't exist,
         os.mkdir(os.path.join(base_folder, name))  # create it
@@ -1295,531 +1327,74 @@ def convert_xfoil_string_to_aero_data(line1: str, line2: str, aero_data: dict):
     return aero_data
 
 
-def convert_cell_centered_to_edge_centered(grid_shape: np.ndarray, flow_var_cell_centered: np.ndarray):
-    flow_var_edge_centered = np.zeros(grid_shape)
-    i_max = flow_var_edge_centered.shape[0]
-    j_max = flow_var_edge_centered.shape[1]
-
-    import time
-
-    t1 = time.time()
-
-    for i in range(i_max):
-        for j in range(j_max):
-            # Corner cases
-            if i == 0 and j == 0:
-                flow_var_edge_centered[i, j] = flow_var_cell_centered[i, j]
-            elif i == 0 and j == j_max - 1:
-                flow_var_edge_centered[i, j] = flow_var_cell_centered[i, j - 1]
-            elif i == i_max - 1 and j == 0:
-                flow_var_edge_centered[i, j] = flow_var_cell_centered[i - 1, j]
-            elif i == i_max - 1 and j == j_max - 1:
-                flow_var_edge_centered[i, j] = flow_var_cell_centered[i - 1, j - 1]
-
-            # Edge cases
-            elif i == 0:
-                flow_var_edge_centered[i, j] = np.mean([flow_var_cell_centered[i, j],
-                                                        flow_var_cell_centered[i, j - 1]])
-            elif i == i_max - 1:
-                flow_var_edge_centered[i, j] = np.mean([flow_var_cell_centered[i - 1, j],
-                                                        flow_var_cell_centered[i - 1, j - 1]])
-            elif j == 0:
-                flow_var_edge_centered[i, j] = np.mean([flow_var_cell_centered[i, j],
-                                                        flow_var_cell_centered[i - 1, j]])
-            elif j == j_max - 1:
-                flow_var_edge_centered[i, j] = np.mean([flow_var_cell_centered[i, j - 1],
-                                                        flow_var_cell_centered[i - 1, j - 1]])
-
-            # Normal case
-            else:
-                flow_var_edge_centered[i, j] = np.mean([flow_var_cell_centered[i, j],
-                                                        flow_var_cell_centered[i - 1, j],
-                                                        flow_var_cell_centered[i, j - 1],
-                                                        flow_var_cell_centered[i - 1, j - 1]
-                                                        ])
-
-    t2 = time.time()
-    # print(f"Elapsed time = {t2 - t1} seconds")
-
-    return flow_var_edge_centered
-
-
-def extrapolate_data_line_mses_field(flow_vars_edge_centered: typing.List[np.ndarray],
-                                     x_grid_section: np.ndarray, y_grid_section: np.ndarray, point: np.ndarray,
-                                     angle: float, bl_data_lower: dict, bl_data_upper: dict,
-                                     line_extend: float = 10.0, n_points: int = 30):
-    lower_streamline = np.column_stack((x_grid_section[:, 0], y_grid_section[:, 0]))
-    upper_streamline = np.column_stack((x_grid_section[:, -1], y_grid_section[:, -1]))
-    lower_bl = np.column_stack((np.array(bl_data_lower["x"]), np.array(bl_data_lower["y"])))
-    upper_bl = np.column_stack((np.array(bl_data_upper["x"]), np.array(bl_data_upper["y"])))
-    lower_streamline_shapely = convert_numpy_array_to_shapely_LineString(lower_streamline)
-    upper_streamline_shapely = convert_numpy_array_to_shapely_LineString(upper_streamline)
-    lower_bl_shapely = convert_numpy_array_to_shapely_LineString(lower_bl)
-    upper_bl_shapely = convert_numpy_array_to_shapely_LineString(upper_bl)
-    upper_point = point + line_extend * np.array([np.cos(angle), np.sin(angle)])
-    lower_point = point - line_extend * np.array([np.cos(angle), np.sin(angle)])
-    long_line = np.row_stack((upper_point, lower_point))
-    long_line_shapely = convert_numpy_array_to_shapely_LineString(long_line)
-    upper_inters = long_line_shapely.intersection(upper_streamline_shapely)
-    lower_inters = long_line_shapely.intersection(lower_streamline_shapely)
-    upper_bl_inters = long_line_shapely.intersection(upper_bl_shapely)
-    lower_bl_inters = long_line_shapely.intersection(lower_bl_shapely)
-    if isinstance(upper_inters, MultiPoint):
-        upper_inters = upper_inters.geoms[0]
-    if isinstance(lower_inters, MultiPoint):
-        lower_inters = lower_inters.geoms[0]
-    if isinstance(upper_bl_inters, MultiPoint):
-        upper_bl_inters = upper_bl_inters.geoms[0]
-    if isinstance(lower_bl_inters, MultiPoint):
-        lower_bl_inters = lower_bl_inters.geoms[0]
-
-    # import matplotlib.pyplot as plt
-    # plt.plot(lower_bl[:, 0], lower_bl[:, 1], color="red")
-    # plt.plot(upper_bl[:, 0], upper_bl[:, 1], color="green")
-    # plt.plot(long_line[:, 0], long_line[:, 1], color="blue")
-    # plt.show()
-
-    def evaluate_bl_at_point(bl_data_dict: dict, x_point: float):
-        x_array = np.array(bl_data_dict["x"])
-        K_array = np.array(bl_data_dict["K"])
-        bl_at_point = {
-            "x": x_point,
-            "K": np.interp(x_point, x_array, K_array),
-        }
-        return bl_at_point
-
-    # Approximate the boundary layer thickness by taking the distance from the intersection point on the airfoil surface
-    # to the intersection point on the boundary layer edge along the extraction line (the true value would be taking it
-    # as the perpendicular distance from the surface. For small surface angles, this is a good approximation.)
-    if hasattr(lower_bl_inters, "x") and hasattr(lower_bl_inters, "y"):
-        bl_at_point_lower = evaluate_bl_at_point(bl_data_lower, lower_bl_inters.x)
-    else:
-        bl_at_point_lower = None
-
-    if hasattr(upper_bl_inters, "x") and hasattr(upper_bl_inters, "y"):
-        bl_at_point_upper = evaluate_bl_at_point(bl_data_upper, upper_bl_inters.x)
-    else:
-        bl_at_point_upper = None
-
-    line_to_extract = np.linspace(np.array([lower_inters.x, lower_inters.y]),
-                                  np.array([upper_inters.x, upper_inters.y]), n_points)
-
-    x_interp = x_grid_section.flatten()
-    y_interp = y_grid_section.flatten()
-    xy_interp = np.column_stack((x_interp, y_interp))
-    output_value_list = []
-    for flow_var in flow_vars_edge_centered:
-        values = flow_var.flatten()
-        interp = CloughTocher2DInterpolator(xy_interp, values)
-        output_values = interp(line_to_extract)
-        output_value_list.append(output_values)
-    return np.column_stack((line_to_extract, *output_value_list)), bl_at_point_upper, bl_at_point_lower
-
-
-def line_integral_CPK_inviscid_old(Cp: np.ndarray, rho: np.ndarray, u: np.ndarray,
-                               v: np.ndarray, V: np.ndarray, x: np.ndarray, y: np.ndarray, n_hat_right: bool):
-    """
-    Computes the mechanical flow power line integral in the inviscid streamtube only according to
-    Drela's "Power Balance in Aerodynamic Flows", a 2009 AIAA Journal article
-
-    Parameters
-    ==========
-    Cp: np.ndarray
-        Node-centered pressure coefficient field
-
-    rho: np.ndarray
-        Node-centered density field
-
-    u: np.ndarray
-        Node-centered x-velocity field
-
-    v: np.ndarray
-        Node-centered y-velocity field
-
-    V: np.ndarray
-        Node-centered velocity magnitude field
-
-    x: np.ndarray
-        1-d array of x-coordinates of the line along which to compute the line integral
-
-    y: np.ndarray
-        1-d array of y-coordinates of the line along which to compute the line integral
-
-    n_hat_right: bool
-        Whether the perpendicular n_hat vector points to the right of the line (If ``True``, computed as the sum of
-        the arctan of the value of dx/dy of the line less 90 degrees. If ``False``, 90 degrees is added instead).
-    """
-    # Calculate the direction of n_hat
-    dx_dy = np.gradient(y, x)
-    angle = np.arctan2(dx_dy, 1)
-    perp_angle = -np.pi / 2 if n_hat_right else np.pi / 2
-    n_hat = np.column_stack((np.cos(angle + perp_angle), np.sin(angle + perp_angle)))
-    V_vec = np.column_stack((u, v))
-
-    # Compute the dot product V_vec * n_hat
-    dot_product = np.array([np.dot(V_vec_i, n_hat_i) for V_vec_i, n_hat_i in zip(V_vec, n_hat)])
-    # integrand = (-Cp - rho * V**2 + rho) * dot_product.flatten()
-    integrand = (rho * (1 - V**2) - Cp) * dot_product.flatten()
-
-    # Build the length increment vector (dl)
-    dl = np.array([0.0])
-    dl = np.append(dl, np.hypot(x[1:] - x[:-1], y[1:] - y[:-1]))  # compute incremental length along x and y
-    # print(f"Before cumulative summation, {dl = }")
-    # print(f"{x = }")
-    # print(f"{y = }")
-    dl = np.cumsum(dl)
-
-    # Integrate
-    integral = np.trapz(integrand, dl)
-    return integral
-
-
-def line_integral_Edot_inviscid(Cp: np.ndarray, rho: np.ndarray, u: np.ndarray,
-                                v: np.ndarray, V: np.ndarray, x: np.ndarray, y: np.ndarray, n_hat_dir: str):
-    """
-    ... according to
-    Drela's "Power Balance in Aerodynamic Flows", a 2009 AIAA Journal article
-
-    Parameters
-    ==========
-    Cp: np.ndarray
-        Node-centered pressure coefficient field
-
-    rho: np.ndarray
-        Node-centered density field
-
-    u: np.ndarray
-        Node-centered x-velocity field
-
-    v: np.ndarray
-        Node-centered y-velocity field
-
-    V: np.ndarray
-        Node-centered velocity magnitude field
-
-    x: np.ndarray
-        1-d array of x-coordinates of the line along which to compute the line integral
-
-    y: np.ndarray
-        1-d array of y-coordinates of the line along which to compute the line integral
-
-    n_hat_right: bool
-        Whether the perpendicular n_hat vector points to the right of the line (If ``True``, computed as the sum of
-        the arctan of the value of dx/dy of the line less 90 degrees. If ``False``, 90 degrees is added instead).
-    """
-    if n_hat_dir not in ["up", "down", "left", "right"]:
-        raise ValueError("Invalid direction for n_hat")
-
-    perp_angle_dict = {
-        "right": -np.pi / 2,
-        "left": np.pi / 2,
-        "up": -np.pi / 2,
-        "down": np.pi / 2
-    }
-
-    # Calculate the direction of n_hat
-    with np.errstate(divide="ignore", invalid="ignore"):
-        # if n_hat_dir in ["right", "left"]:
-            # angle = np.arctan2(np.gradient(y, x), 1)
-        # angle = np.arctan2(y[1:] - y[:-1], x[1:] - x[:-1])
-        # else:
-        angle = np.arctan2(1, np.gradient(x, y))
-
-        # temp_angle = np.zeros(angle.shape)
-        # for idx, a in enumerate(angle):
-        #     if np.isnan(a):
-        #         if idx == 0:
-        #             temp_angle[idx] = angle[idx + 1]
-        #         else:
-        #             temp_angle[idx] = angle[idx - 1]
-        #     else:
-        #         temp_angle[idx] = angle[idx]
-        # angle = temp_angle
-
-    perp_angle = perp_angle_dict[n_hat_dir]
-    n_hat = np.column_stack((np.cos(angle + perp_angle), np.sin(angle + perp_angle)))
-    V_vec = np.column_stack((u, v))
-
-    # Compute the dot product V_vec * n_hat
-    dot_product = np.array([np.dot(V_vec_i, n_hat_i) for V_vec_i, n_hat_i in zip(V_vec, n_hat)])
-    # integrand = (-Cp - rho * V**2 + rho) * dot_product.flatten()
-    integrand = (Cp + rho * (V**2 - 1)) * dot_product.flatten()
-
-    # Build the length increment vector (dl)
-    dl = np.array([0.0])
-    dl = np.append(dl, np.hypot(x[1:] - x[:-1], y[1:] - y[:-1]))  # compute incremental length along x and y
-    # print(f"Before cumulative summation, {dl = }")
-    # print(f"{x = }")
-    # print(f"{y = }")
-    dl = np.cumsum(dl)
-
-    # Integrate
-    integral = np.trapz(integrand, dl)
-    return integral
-
-
-def line_integral_Edota_inviscid_TP(rho: np.ndarray, u: np.ndarray, v: np.ndarray, x: np.ndarray, y: np.ndarray):
-    """
-    ... according to
-    Drela's "Power Balance in Aerodynamic Flows", a 2009 AIAA Journal article
-
-    Parameters
-    ==========
-    rho: np.ndarray
-        Node-centered density field
-
-    u: np.ndarray
-        Node-centered x-velocity field
-
-    v: np.ndarray
-        Node-centered y-velocity field
-
-    x: np.ndarray
-        1-d array of x-coordinates of the line along which to compute the line integral
-
-    y: np.ndarray
-        1-d array of y-coordinates of the line along which to compute the line integral
-    """
-    # Calculate the direction of n_hat
-    with np.errstate(divide="ignore", invalid="ignore"):
-        angle = np.arctan2(1, np.gradient(x, y))
-
-    perp_angle = -np.pi / 2
-    n_hat = np.column_stack((np.cos(angle + perp_angle), np.sin(angle + perp_angle)))
-    V_vec = np.column_stack((u, v))
-
-    # Compute the dot product V_vec * n_hat
-    dot_product = np.array([np.dot(V_vec_i, n_hat_i) for V_vec_i, n_hat_i in zip(V_vec, n_hat)])
-    u_perturb = dot_product.flatten() - 1
-    # print(f"{u_perturb = }")
-    integrand = rho * u_perturb ** 2 * (1 + u_perturb)
-
-    # Build the length increment vector (dl)
-    dl = np.array([0.0])
-    dl = np.append(dl, np.hypot(x[1:] - x[:-1], y[1:] - y[:-1]))  # compute incremental length along x and y
-    dl = np.cumsum(dl)
-
-    # Integrate
-    integral = np.trapz(integrand, dl)
-    return integral
-
-
-def line_integral_Edotp_inviscid_TP(Cp: np.ndarray, u: np.ndarray, v: np.ndarray, x: np.ndarray,
-                                    y: np.ndarray):
-    """
-    ... according to
-    Drela's "Power Balance in Aerodynamic Flows", a 2009 AIAA Journal article
-
-    Parameters
-    ==========
-    Cp: np.ndarray
-        Node-centered pressure coefficient field
-
-    u: np.ndarray
-        Node-centered x-velocity field
-
-    v: np.ndarray
-        Node-centered y-velocity field
-
-    x: np.ndarray
-        1-d array of x-coordinates of the line along which to compute the line integral
-
-    y: np.ndarray
-        1-d array of y-coordinates of the line along which to compute the line integral
-    """
-    # Calculate the direction of n_hat
-    with np.errstate(divide="ignore", invalid="ignore"):
-        angle = np.arctan2(1, np.gradient(x, y))
-
-    perp_angle = -np.pi / 2
-    n_hat = np.column_stack((np.cos(angle + perp_angle), np.sin(angle + perp_angle)))
-    V_vec = np.column_stack((u, v))
-
-    # Compute the dot product V_vec * n_hat
-    dot_product = np.array([np.dot(V_vec_i, n_hat_i) for V_vec_i, n_hat_i in zip(V_vec, n_hat)])
-    u_perturb = dot_product.flatten() - 1
-    integrand = Cp * u_perturb
-
-    # Build the length increment vector (dl)
-    dl = np.array([0.0])
-    dl = np.append(dl, np.hypot(x[1:] - x[:-1], y[1:] - y[:-1]))  # compute incremental length along x and y
-    dl = np.cumsum(dl)
-
-    # Integrate
-    integral = np.trapz(integrand, dl)
-    return integral
-
-
-def viscous_Edot(last_BL_point: typing.Dict[str, np.ndarray]):
-    """
-    Eq. (75) of Drela's Power Balance in Aerodynamic Flows in 2-D form
-    """
-    if any([k not in last_BL_point.keys() for k in ("rhoe/rhoinf", "Ue/Uinf", "theta", "theta*")]):
-        raise ValueError(f"Missing a boundary layer key in the Edot calculation. {last_BL_point.keys() = }")
-
-    delta_K = 2 * last_BL_point["theta"] - last_BL_point["theta*"]
-    Edot_visc = np.sum(last_BL_point["rhoe/rhoinf"] * last_BL_point["Ue/Uinf"]**3 * delta_K)
-    return Edot_visc
-
-
-def surface_dissipation(last_BL_point: typing.Dict[str, np.ndarray]):
-    """
-    Eq. (73) of Drela's Power Balance in Aerodynamic Flows
-    """
-    if any([k not in last_BL_point.keys() for k in ("K",)]):
-        raise ValueError(f"Missing a boundary layer key in the Edot calculation. {last_BL_point.keys() = }")
-
-    diss = np.sum(2 * last_BL_point["K"])
-    return diss
-
-
-def shock_dissipation(x_edge: typing.List[np.ndarray], y_edge: typing.List[np.ndarray], u: np.ndarray,
-                      v: np.ndarray, M: np.ndarray, Cpt: np.ndarray, dCpt: np.ndarray, dCp: np.ndarray, gam: float):
-    Shock = namedtuple("Shock", ("j", "i_start", "i_end"))
-    shock_indices = np.argwhere(dCpt < -0.002)
-    shock_indices = np.fliplr(shock_indices)
-    shock_indices = shock_indices[shock_indices[:, 1].argsort()]
-    shock_indices = shock_indices[shock_indices[:, 0].argsort(kind="mergesort")]
-    shocks = {k: [] for k in np.unique(shock_indices[:, 0])}
-
-    i_start = 0
-    for idx, row in enumerate(shock_indices):
-        j = row[0]
-        if idx == 0:
-            i_start = row[1]
-            continue
-        if row[0] == shock_indices[idx, 0] and row[1] == shock_indices[idx - 1, 1] + 1:
-            pass
-        else:
-            i_end = shock_indices[idx - 1, 1] + 1
-            shocks[j].append(Shock(j=j, i_start=i_start, i_end=i_end))
-            i_start = row[1]
-
-    i1 = 0
-    edge_split_i = []
-    for _idx, edge_array in enumerate(x_edge):
-        i2 = i1 + edge_array.shape[1] - 2
-        edge_split_i.append([i1, i2])
-        i1 = i2 + 1
-
-    # print(f"{edge_split_i = }")
-
-    def integral(s: Shock):
-
-        _dCp = dCp[s.i_start:s.i_end, s.j]
-
-        if np.max(_dCp) < 0.1:  # If the static pressure rise is too small, do not consider this to be a shock wave
-            return 0.0, 0.0
-
-        # print(f"{_dCp = }, {s.i_start = }, {s.i_end = }")
-        #
-        # M_temp = M[s.i_start:s.i_end, s.j]
-        # print(f"{M_temp = }")
-
-        upstream_shock_cell_index = np.arange(s.i_start, s.i_end)[np.argwhere(_dCp > 0.0).flatten()[0]]
-        # print(f"{upstream_shock_cell_index = }, {s.j = }")
-
-        # max_Mach_number_search_iter = 7
-        # iter_count = 0
-        # old_M = M[upstream_shock_cell_index, s.j]
-        # while True:
-        #     print(f"{iter_count = }")
-        #     if iter_count > max_Mach_number_search_iter:
-        #         break
-        #     upstream_shock_cell_index -= 1
-        #     current_M = M[upstream_shock_cell_index, s.j]
-        #     print(f"{old_M = }, {current_M = }")
-        #     if current_M < old_M:
-        #         upstream_shock_cell_index += 1
-        #         break
-        #
-        #     old_M = current_M
-        #     iter_count += 1
-
-        _u = u[upstream_shock_cell_index, s.j]
-        _v = v[upstream_shock_cell_index, s.j]
-        _M = M[upstream_shock_cell_index, s.j]
-        _Cpt = Cpt[upstream_shock_cell_index, s.j]
-
-        j_flow = 0
-        j_grid = 0
-        for flow_idx, split_idx in enumerate(edge_split_i):
-            if split_idx[0] <= s.j <= split_idx[1]:
-                j_flow = flow_idx
-                j_grid = s.j - split_idx[0]
-                break
-
-        x1 = x_edge[j_flow][upstream_shock_cell_index + 1, j_grid]
-        x2 = x_edge[j_flow][upstream_shock_cell_index + 1, j_grid + 1]
-        y1 = y_edge[j_flow][upstream_shock_cell_index + 1, j_grid]
-        y2 = y_edge[j_flow][upstream_shock_cell_index + 1, j_grid + 1]
-        n_hat_angle = np.arctan2(y2 - y1, x2 - x1) - np.pi / 2
-        n_hat = np.array([np.cos(n_hat_angle), np.sin(n_hat_angle)])
-
-        V_dir = np.array([_u, _v]) / np.hypot(_u, _v)
-        M_vec = _M * V_dir
-        M_normal_up = np.dot(M_vec, n_hat)
-
-        if isinstance(M_normal_up, np.ndarray):
-            M_normal_up = M_normal_up[0]
-
-        if M_normal_up <= 1.0:
-            return 0.0, 0.0
-        else:
-            # print(f"{M_normal_up = }, {x1 = }, {y1 = }, {s.j = }, {upstream_shock_cell_index = }")
-            Cpt2_Cpt1 = calculate_normal_shock_total_pressure_ratio(M_normal_up, gam)
-            _dCpt = _Cpt * Cpt2_Cpt1 - _Cpt
-
-        dot_product = np.dot(np.array([_u, _v]), n_hat)
-        dl = np.hypot(x2 - x1, y2 - y1)
-        shock_int = np.abs(_dCpt) * dot_product * dl
-        return shock_int, dl
-
-    # print(f"{shock_indices = }")
-
-    shock_diss = 0.0
-    dl_total = 0.0
-    for shock_list in shocks.values():
-        for shock in shock_list:
-            s_int, incremental_dl = integral(shock)
-            shock_diss += s_int
-            dl_total += incremental_dl
-
-    # print(f"{dl_total = }")
-
-    return shock_diss
-
-
 def line_integral_CPK_inviscid(Cp_up: np.ndarray, Cp_down: np.ndarray, rho_up: np.ndarray, rho_down: np.ndarray,
                                u_up: np.ndarray, u_down: np.ndarray,
                                v_up: np.ndarray, v_down: np.ndarray, V_up: np.ndarray, V_down: np.ndarray,
-                               x: np.ndarray, y: np.ndarray):
-    """
-    Computes the mechanical flow power line integral in the inviscid streamtube only according to
-    Drela's "Power Balance in Aerodynamic Flows", a 2009 AIAA Journal article
+                               x: np.ndarray, y: np.ndarray) -> float:
+    r"""
+    Computes the mechanical flow power coefficient line integral in the inviscid streamtube only according to
+    a normalized version of Eq. (33) in Drela's "Power Balance in Aerodynamic Flows", a 2009 AIAA Journal article
 
     Parameters
-    ==========
-    Cp: np.ndarray
-        Node-centered pressure coefficient field
+    ----------
+    Cp_up: np.ndarray
+        1-D array of pressure coefficient values at the cell-centers of the column of cells immediately
+        upstream of the actuator disk
 
-    rho: np.ndarray
-        Node-centered density field
+    Cp_down: np.ndarray
+        1-D array of pressure coefficient values at the cell-centers of the column of cells immediately
+        downstream of the actuator disk
 
-    u: np.ndarray
-        Node-centered x-velocity field
+    rho_up: np.ndarray
+        1-D array of density values (:math:`\rho/\rho_\infty`) at the cell-centers of the column of cells immediately
+        upstream of the actuator disk
 
-    v: np.ndarray
-        Node-centered y-velocity field
+    rho_down: np.ndarray
+        1-D array of density values (:math:`\rho/\rho_\infty`) at the cell-centers of the column of cells immediately
+        downstream of the actuator disk
 
-    V: np.ndarray
-        Node-centered velocity magnitude field
+    u_up: np.ndarray
+        1-D array of :math:`x`-velocity values (:math:`u/V_\infty`) at the cell-centers of the column of cells
+        immediately upstream of the actuator disk
+
+    u_down: np.ndarray
+        1-D array of :math:`x`-velocity values (:math:`u/V_\infty`) at the cell-centers of the column of cells
+        immediately downstream of the actuator disk
+
+    v_up: np.ndarray
+        1-D array of :math:`y`-velocity values (:math:`v/V_\infty`) at the cell-centers of the column of cells
+        immediately upstream of the actuator disk
+
+    v_down: np.ndarray
+        1-D array of :math:`y`-velocity values (:math:`v/V_\infty`) at the cell-centers of the column of cells
+        immediately downstream of the actuator disk
+
+    V_up: np.ndarray
+        1-D array of velocity values (:math:`V/V_\infty`) at the cell-centers of the column of cells
+        immediately upstream of the actuator disk
+
+    V_down: np.ndarray
+        1-D array of velocity values (:math:`V/V_\infty`) at the cell-centers of the column of cells
+        immediately downstream of the actuator disk
 
     x: np.ndarray
-        1-d array of x-coordinates of the line along which to compute the line integral
+        2-d array of :math:`x`-coordinates of size :math:`3 \times N`, where :math:`N` is the number of streamlines
+        captured by this actuator disk. The middle row (``x[1, :]``) represents the grid points spanning the actuator
+        disk. The first row (``x[0, :]``) represents the column of grid points immediately upstream of the actuator
+        disk, and the last row (``x[2, :]``) represents the column of grid points immediately downstream of the actuator
+        disk.
 
     y: np.ndarray
-        1-d array of y-coordinates of the line along which to compute the line integral
+        2-d array of :math:`y`-coordinates of size :math:`3 \times N`, where :math:`N` is the number of streamlines
+        captured by this actuator disk. The middle row (``x[1, :]``) represents the grid points spanning the actuator
+        disk. The first row (``x[0, :]``) represents the column of grid points immediately upstream of the actuator
+        disk, and the last row (``x[2, :]``) represents the column of grid points immediately downstream of the actuator
+        disk.
+
+    Returns
+    -------
+    float
+        The contribution of this actuator disk to the mechanical flow power coefficient, :math:`C_{P_K}`
     """
     # Calculate edge center locations
     x_edge_center_up = np.array([(x1 + x2) / 2 for x1, x2 in zip(x[0, :], x[1, :])])
@@ -1883,445 +1458,24 @@ def line_integral_CPK_inviscid(Cp_up: np.ndarray, Cp_down: np.ndarray, rho_up: n
     return integral
 
 
-def line_integral_CPK_bl(rhoe_rhoinf, ue_uinf, Cp, deltastar, outlet: bool):
+def calculate_CPK_mses_inviscid_only(analysis_subdir: str) -> typing.Dict[str, float]:
     r"""
-    Computes CPK at a given boundary layer location
-
-    Parameters
-    ==========
-    K: float
-        Non-dimensional kinetic energy thickness, :math:`0.5 \frac{\rho_e}{\rho_\infty} \left( \frac{u_e}{V_\infty} \right)^3 \theta^*`
-
-    outlet: bool
-        Whether this boundary layer is part of an outlet
-    """
-    # 7/8 * edge velocity is an approximate average velocity based on a 1/7 power law velocity profile
-    dot_product = -7/8 * ue_uinf if outlet else 7/8 * ue_uinf
-    integrand = (rhoe_rhoinf * (1 - (ue_uinf * 7/8) ** 2) - Cp) * dot_product
-    dl = deltastar
-    integral = integrand * dl
-    return integral
-
-
-def calculate_CPK_mses_old(analysis_subdir: str, configuration: str = "underwing_te", calculate_capSS: bool = False,
-                           calculate_exit_plane_Mach_array: bool = False):
-    """
-    A specialized function that calculates the mechanical flow power coefficient for an underwing trailing edge
-    aero-propulsive configuration.
-    """
-    if configuration != "underwing_te":
-        raise NotImplementedError("Only the underwing trailing edge configuration is currently implemented")
-
-    airfoil_system_name = os.path.split(analysis_subdir)[-1]
-    field_file = os.path.join(analysis_subdir, f'field.{airfoil_system_name}')
-    grid_stats_file = os.path.join(analysis_subdir, 'mplot_grid_stats.log')
-    grid_file = os.path.join(analysis_subdir, f'grid.{airfoil_system_name}')
-    blade_file = os.path.join(analysis_subdir, f"blade.{airfoil_system_name}")
-    bl_file = os.path.join(analysis_subdir, f"bl.{airfoil_system_name}")
-    mses_log_file = os.path.join(analysis_subdir, "mses.log")
-    coords = convert_blade_file_to_3d_array(blade_file)
-
-    field = read_field_from_mses(field_file)
-    bl_data = read_bl_data_from_mses(bl_file)
-    grid_stats = read_grid_stats_from_mses(grid_stats_file)
-    x_grid, y_grid = read_streamline_grid_from_mses(grid_file, grid_stats)
-
-    nacelle_le = coords[2][150 + 2 * 149, :]
-    nacelle_te = (coords[2][0, :] + coords[2][-1, :]) / 2
-    dydx = (nacelle_te[1] - nacelle_le[1]) / (nacelle_te[0] - nacelle_le[0])
-    nacelle_chord = np.hypot(nacelle_te[0] - nacelle_le[0], nacelle_te[1] - nacelle_le[1])
-    chord_5perc = nacelle_le + 0.05 * nacelle_chord * np.array([1 / np.sqrt(dydx**2 + 1), dydx / np.sqrt(dydx**2 + 1)])
-
-    main_te_lower = coords[0][-1, :]
-    nacelle_te_upper = coords[2][0, :]
-
-    hub_te_upper = coords[1][0, :]
-    hub_te_lower = coords[1][-1, :]
-
-    angle = np.arctan2(main_te_lower[1] - nacelle_te_upper[1], main_te_lower[0] - nacelle_te_upper[0])
-
-    plot_planes = False
-    # PLOT INLET AND OUTLET PLANES
-    if plot_planes:
-        for c_set in coords:
-            plt.plot(c_set[:, 0], c_set[:, 1])
-        plt.plot(np.array([chord_5perc[0], chord_5perc[0] + 0.3 * np.cos(angle)]),
-                 np.array([chord_5perc[1], chord_5perc[1] + 0.3 * np.sin(angle)]))
-        plt.plot(np.array([hub_te_upper[0], hub_te_upper[0] + 0.3 * np.cos(angle)]),
-                 np.array([hub_te_upper[1], hub_te_upper[1] + 0.3 * np.sin(angle)]))
-        plt.plot(np.array([hub_te_lower[0], hub_te_lower[0] - 0.3 * np.cos(angle)]),
-                 np.array([hub_te_lower[1], hub_te_lower[1] - 0.3 * np.sin(angle)]))
-        plt.gca().set_aspect("equal")
-
-        plt.show()
-
-    CPK = 0.0
-
-    flow_sections = [1, 2]
-
-    # inlet, outlet = {"p": [], "rho": [], "u": [], "v": []}, {"p": [], "rho": [], "u": [], "v": []}
-
-    underwing_flow_section_bl_map = {
-        1: (4, 3),
-        2: (2, 1)
-    }
-
-    start_idx, end_idx = 0, x_grid[0].shape[1] - 1
-
-    capSS = None
-    epma = []  # Exit plane Mach array
-
-    for flow_section_idx in range(grid_stats["numel"] + 1):
-        if flow_section_idx in flow_sections:
-            Cp = convert_cell_centered_to_edge_centered(x_grid[flow_section_idx].shape,
-                                                       field[flow_var_idx["Cp"]][:, start_idx:end_idx])
-            rho = convert_cell_centered_to_edge_centered(x_grid[flow_section_idx].shape,
-                                                         field[flow_var_idx["rho"]][:, start_idx:end_idx])
-            u = convert_cell_centered_to_edge_centered(x_grid[flow_section_idx].shape,
-                                                       field[flow_var_idx["u"]][:, start_idx:end_idx])
-            v = convert_cell_centered_to_edge_centered(x_grid[flow_section_idx].shape,
-                                                       field[flow_var_idx["v"]][:, start_idx:end_idx])
-            V = convert_cell_centered_to_edge_centered(x_grid[flow_section_idx].shape,
-                                                       field[flow_var_idx["V"]][:, start_idx:end_idx])
-            M = convert_cell_centered_to_edge_centered(x_grid[flow_section_idx].shape,
-                                                       field[flow_var_idx["M"]][:, start_idx:end_idx])
-
-            if calculate_capSS or calculate_exit_plane_Mach_array:
-                if capSS in [None, -1]:
-                    capSS = -1
-                    if np.any(M > 1.0):
-                        capSS = np.sum((M[M > 1.0]) ** 2) ** 0.5
-
-            bl_data_lower = bl_data[underwing_flow_section_bl_map[flow_section_idx][0]]
-            bl_data_upper = bl_data[underwing_flow_section_bl_map[flow_section_idx][1]]
-
-            inlet_point = chord_5perc
-            outlet_point = nacelle_te_upper
-            # outlet_point = hub_te_upper
-
-            xyCprhouvVM_out, bl_at_point_upper_out, bl_at_point_lower_out = extrapolate_data_line_mses_field(
-                [Cp, rho, u, v, V, M], x_grid[flow_section_idx], y_grid[flow_section_idx],
-                bl_data_lower=bl_data_lower, bl_data_upper=bl_data_upper, point=outlet_point, angle=angle
-            )
-
-            xyCprhouvV_in, bl_at_point_upper_in, bl_at_point_lower_in = extrapolate_data_line_mses_field(
-                [Cp, rho, u, v, V], x_grid[flow_section_idx], y_grid[flow_section_idx],
-                bl_data_lower=bl_data_lower, bl_data_upper=bl_data_upper, point=inlet_point, angle=angle
-            )
-
-            # Integrate over the propulsor outlet for the given flow section
-            Cp_out, rho_out, u_out, v_out, V_out, M_out = \
-                xyCprhouvVM_out[:, 2], xyCprhouvVM_out[:, 3], xyCprhouvVM_out[:, 4], xyCprhouvVM_out[:, 5], \
-                xyCprhouvVM_out[:, 6], xyCprhouvVM_out[:, 7]
-            x_out = xyCprhouvVM_out[:, 0]
-            y_out = xyCprhouvVM_out[:, 1]
-            outlet_integral = line_integral_CPK_inviscid_old(Cp_out, rho_out, u_out, v_out, V_out, x_out, y_out,
-                                                         n_hat_right=False)  # n_hat points into the propulsor
-            CPK += outlet_integral
-            # print(f"{outlet_integral = }")
-            epma.extend(M_out.tolist())
-
-            if bl_at_point_upper_out is not None:
-                # print(f"{bl_at_point_upper_out['K'] = }")
-                CPK += line_integral_CPK_bl(bl_at_point_upper_out["K"], outlet=True)
-
-            if bl_at_point_lower_out is not None:
-                # print(f"{bl_at_point_lower_out['K'] = }")
-                CPK += line_integral_CPK_bl(bl_at_point_lower_out["K"], outlet=True)
-
-            # print(f"After adding the BL CPK, {CPK - outlet_integral = }")
-
-            # Integrate over the propulsor inlet for the given flow section
-            Cp_in, rho_in, u_in, v_in, V_in = \
-                xyCprhouvV_in[:, 2], xyCprhouvV_in[:, 3], xyCprhouvV_in[:, 4], xyCprhouvV_in[:, 5], xyCprhouvV_in[:, 6]
-            x_in = xyCprhouvV_in[:, 0]
-            y_in = xyCprhouvV_in[:, 1]
-            inlet_integral = line_integral_CPK_inviscid_old(Cp_in, rho_in, u_in, v_in, V_in, x_in, y_in,
-                                                        n_hat_right=True)  # n_hat points into the propulsor
-            CPK += inlet_integral
-            # CPK_temp = CPK
-            # print(f"{inlet_integral = }, {CPK = }")
-
-            if bl_at_point_upper_in is not None:
-                # print(f"{bl_at_point_upper_in['K'] = }")
-                CPK += line_integral_CPK_bl(bl_at_point_upper_in["K"], outlet=False)
-
-            if bl_at_point_lower_in is not None:
-                # print(f"{bl_at_point_lower_in['K'] = }")
-                CPK += line_integral_CPK_bl(bl_at_point_lower_in["K"], outlet=False)
-
-            # print(f"After adding the inlet BL contributions, {CPK - CPK_temp = }")
-
-        if flow_section_idx < grid_stats["numel"]:
-            start_idx = end_idx
-            end_idx += x_grid[flow_section_idx + 1].shape[1] - 1
-
-    if np.isnan(CPK):
-        CPK = 1e9
-
-    # print(f"{CPK = }, {inlet_integral = }, {outlet_integral = }")
-
-    # if calculate_capSS:
-    #     return CPK, capSS
-    # else:
-    #     return CPK
-
-    return {"CPK": CPK, "capSS": capSS, "epma": epma}
-
-
-def calculate_CPK_power_consumption_old(analysis_subdir: str):
-    """
-    A specialized function that calculates the mechanical flow power coefficient for an underwing trailing edge
-    aero-propulsive configuration.
-    """
-    airfoil_system_name = os.path.split(analysis_subdir)[-1]
-    field_file = os.path.join(analysis_subdir, f'field.{airfoil_system_name}')
-    grid_stats_file = os.path.join(analysis_subdir, 'mplot_grid_stats.log')
-    grid_file = os.path.join(analysis_subdir, f'grid.{airfoil_system_name}')
-    blade_file = os.path.join(analysis_subdir, f"blade.{airfoil_system_name}")
-    bl_file = os.path.join(analysis_subdir, f"bl.{airfoil_system_name}")
-    mses_file = os.path.join(analysis_subdir, f"mses.{airfoil_system_name}")
-    mses_log_file = os.path.join(analysis_subdir, "mses.log")
-    coords = convert_blade_file_to_3d_array(blade_file)
-    mplot_log_file = os.path.join(analysis_subdir, "mplot.log")
-
-    M_inf = read_Mach_from_mses_file(mses_file)
-    gam = 1.4  # Hard-coded specific heat ratio
-    forces = read_forces_from_mses(mplot_log_file)
-    field = read_field_from_mses(field_file, M_inf=M_inf, gam=gam)
-    bl_data = read_bl_data_from_mses(bl_file)
-    grid_stats = read_grid_stats_from_mses(grid_stats_file)
-    x_grid, y_grid = read_streamline_grid_from_mses(grid_file, grid_stats)
-
-    Edot = 0.0
-
-    start_idx, end_idx = 0, x_grid[0].shape[1] - 1
-
-    for flow_section_idx in range(grid_stats["numel"] + 1):
-        Cp = convert_cell_centered_to_edge_centered(x_grid[flow_section_idx].shape,
-                                                   field[flow_var_idx["Cp"]][:, start_idx:end_idx])
-        rho = convert_cell_centered_to_edge_centered(x_grid[flow_section_idx].shape,
-                                                     field[flow_var_idx["rho"]][:, start_idx:end_idx])
-        u = convert_cell_centered_to_edge_centered(x_grid[flow_section_idx].shape,
-                                                   field[flow_var_idx["u"]][:, start_idx:end_idx])
-        v = convert_cell_centered_to_edge_centered(x_grid[flow_section_idx].shape,
-                                                   field[flow_var_idx["v"]][:, start_idx:end_idx])
-        V = convert_cell_centered_to_edge_centered(x_grid[flow_section_idx].shape,
-                                                   field[flow_var_idx["V"]][:, start_idx:end_idx])
-        x = x_grid[flow_section_idx]
-        y = y_grid[flow_section_idx]
-
-        # Integrate over the propulsor outlet for the given flow section
-
-        outlet_integral = line_integral_Edot_inviscid(Cp[-1, :], rho[-1, :], u[-1, :], v[-1, :], V[-1, :], x[-1, :],
-                                             y[-1, :], n_hat_dir="right")
-        Edot += outlet_integral
-
-        # print(f"{outlet_integral = }")
-
-        # The side cylinder contributions are negligible
-        # if flow_section_idx == len(x_grid) - 1:
-        #
-        #     top_integral = line_integral_Edot_inviscid(Cp[:, -1], rho[:, -1], u[:, -1], v[:, -1], V[:, -1], x[:, -1],
-        #                                         y[:, -1], n_hat_dir="up")
-        #     CPK += top_integral
-        #     print(f"{top_integral = }")
-        #
-        # elif flow_section_idx == 0:
-        #     bottom_integral = line_integral_Edot_inviscid(Cp[:, 0], rho[:, 0], u[:, 0], v[:, 0], V[:, 0], x[:, 0],
-        #                                          y[:, 0], n_hat_dir="down")
-        #     CPK += bottom_integral
-        #     print(f"{bottom_integral = }")
-
-        # print(f"{outlet_integral = }, {inlet_integral = }, {Edot = }")
-
-        # print(f"After adding the inlet BL contributions, {CPK - CPK_temp = }")
-
-        if flow_section_idx < grid_stats["numel"]:
-            start_idx = end_idx
-            end_idx += x_grid[flow_section_idx + 1].shape[1] - 1
-
-    end_point_counter = 0
-    last_point_idx = -1
-    max_end_point_attempts = 10
-
-    while True:
-        if end_point_counter > max_end_point_attempts:
-            raise ValueError("Reached maximum attempts for setting the boundary layer end point.")
-
-        last_BL_point = {}
-        for side in bl_data:
-            for k in ("rhoe/rhoinf", "Ue/Uinf", "theta", "theta*", "K"):
-                if k not in last_BL_point.keys():
-                    last_BL_point[k] = []
-                val = side[k][last_point_idx]
-                if val <= 1e-12 and k == "K":
-                    end_point_counter += 1
-                    # print(f"Decrementing last_point_idx...")
-                    last_point_idx -= 1
-                    continue
-                last_BL_point[k].append(val)
-
-        for k, v in last_BL_point.items():
-            last_BL_point[k] = np.array(v)
-        break
-
-    # print(f"{Edot = }")
-
-    Edot_visc = viscous_Edot(last_BL_point=last_BL_point)
-
-    Edot += Edot_visc
-
-    # print(f"{Edot_visc = }")
-
-    surface_diss = surface_dissipation(last_BL_point=last_BL_point)
-
-    # print(f"{surface_diss = }")
-
-    shock_diss = shock_dissipation(x_edge=x_grid, y_edge=y_grid, u=field[flow_var_idx["u"]][:, :],
-                                   v=field[flow_var_idx["v"]][:, :], M=field[flow_var_idx["M"]][:, :],
-                                   Cpt=field[flow_var_idx["Cpt"]][:, :], dCpt=field[flow_var_idx["dCpt"]][:, :],
-                                   dCp=field[flow_var_idx["dCp"]][:, :], gam=gam)
-
-    # print(f"{shock_diss = }")
-    # print(f"{forces['Cdw'] = }, {forces['Cd'] = }")
-
-    CPK = Edot + surface_diss + shock_diss - forces["Cd"]
-
-    # print(f"{CPK = }")
-
-    if np.isnan(CPK):
-        CPK = 1e9
-
-    # print(f"{CPK = }, {inlet_integral = }, {outlet_integral = }")
-
-    # if calculate_capSS:
-    #     return CPK, capSS
-    # else:
-    #     return CPK
-
-    return {"CPK": CPK, "Edot": Edot, "diss_surf": surface_diss, "diss_shock": shock_diss, "Cd": forces["Cd"]}
-
-
-def calculate_CPK_power_consumption(analysis_subdir: str):
-    """
-    A specialized function that calculates the mechanical flow power coefficient
-    """
-    airfoil_system_name = os.path.split(analysis_subdir)[-1]
-    field_file = os.path.join(analysis_subdir, f'field.{airfoil_system_name}')
-    grid_stats_file = os.path.join(analysis_subdir, 'mplot_grid_stats.log')
-    grid_file = os.path.join(analysis_subdir, f'grid.{airfoil_system_name}')
-    blade_file = os.path.join(analysis_subdir, f"blade.{airfoil_system_name}")
-    bl_file = os.path.join(analysis_subdir, f"bl.{airfoil_system_name}")
-    mses_file = os.path.join(analysis_subdir, f"mses.{airfoil_system_name}")
-    mses_log_file = os.path.join(analysis_subdir, "mses.log")
-    coords = convert_blade_file_to_3d_array(blade_file)
-    mplot_log_file = os.path.join(analysis_subdir, "mplot.log")
-
-    M_inf = read_Mach_from_mses_file(mses_file)
-    gam = 1.4  # Hard-coded specific heat ratio
-    forces = read_forces_from_mses(mplot_log_file)
-    field = read_field_from_mses(field_file, M_inf=M_inf, gam=gam)
-    bl_data = read_bl_data_from_mses(bl_file)
-    grid_stats = read_grid_stats_from_mses(grid_stats_file)
-    x_grid, y_grid = read_streamline_grid_from_mses(grid_file, grid_stats)
-
-    Edot = 0.0
-    Edota = 0.0
-    Edotp = 0.0
-
-    start_idx, end_idx = 0, x_grid[0].shape[1] - 1
-
-    for flow_section_idx in range(grid_stats["numel"] + 1):
-        Cp = convert_cell_centered_to_edge_centered(x_grid[flow_section_idx].shape,
-                                                   field[flow_var_idx["Cp"]][:, start_idx:end_idx])
-        rho = convert_cell_centered_to_edge_centered(x_grid[flow_section_idx].shape,
-                                                     field[flow_var_idx["rho"]][:, start_idx:end_idx])
-        u = convert_cell_centered_to_edge_centered(x_grid[flow_section_idx].shape,
-                                                   field[flow_var_idx["u"]][:, start_idx:end_idx])
-        v = convert_cell_centered_to_edge_centered(x_grid[flow_section_idx].shape,
-                                                   field[flow_var_idx["v"]][:, start_idx:end_idx])
-        V = convert_cell_centered_to_edge_centered(x_grid[flow_section_idx].shape,
-                                                   field[flow_var_idx["V"]][:, start_idx:end_idx])
-        x = x_grid[flow_section_idx]
-        y = y_grid[flow_section_idx]
-
-        # Integrate over the propulsor outlet for the given flow section
-
-        # outlet_integral = line_integral_Edot_inviscid(Cp[-1, :], rho[-1, :], u[-1, :], v[-1, :], V[-1, :], x[-1, :],
-        #                                      y[-1, :], n_hat_dir="right")
-        #
-        # Edot += outlet_integral
-
-        Edota += line_integral_Edota_inviscid_TP(rho[-1, :], u[-1, :], v[-1, :], x[-1, :], y[-1, :])
-        Edotp += line_integral_Edotp_inviscid_TP(Cp[-1, :], u[-1, :], v[-1, :], x[-1, :], y[-1, :])
-        # print(f"{Edota = }, {Edotp = }, {np.mean(rho[-1, :]) = }, {np.max(rho[-1, :]) = }, {np.min(rho[-1, :]) = }")
-        # print(f"{np.mean(Cp[-1, :]) = }, {np.max(Cp[-1, :]) = }, {np.min(Cp[-1, :]) = }")
-        # print(f"{np.mean(u[-1, :]) = }, {np.max(u[-1, :]) = }, {np.min(u[-1, :]) = }")
-        # print(f"{np.mean(v[-1, :]) = }, {np.max(v[-1, :]) = }, {np.min(v[-1, :]) = }")
-        # print(f"{np.mean(x[-1, :]) = }, {np.max(x[-1, :]) = }, {np.min(x[-1, :]) = }")
-        # print(f"{np.mean(y[-1, :]) = }, {np.max(y[-1, :]) = }, {np.min(y[-1, :]) = }")
-
-        if flow_section_idx < grid_stats["numel"]:
-            start_idx = end_idx
-            end_idx += x_grid[flow_section_idx + 1].shape[1] - 1
-
-    end_point_counter = 0
-    last_point_idx = -1
-    max_end_point_attempts = 10
-
-    while True:
-        if end_point_counter > max_end_point_attempts:
-            raise ValueError("Reached maximum attempts for setting the boundary layer end point.")
-
-        last_BL_point = {}
-        for side in bl_data:
-            for k in ("rhoe/rhoinf", "Ue/Uinf", "theta", "theta*", "K"):
-                if k not in last_BL_point.keys():
-                    last_BL_point[k] = []
-                val = side[k][last_point_idx]
-                if val <= 1e-12 and k == "K":
-                    end_point_counter += 1
-                    # print(f"Decrementing last_point_idx...")
-                    last_point_idx -= 1
-                    continue
-                last_BL_point[k].append(val)
-
-        for k, v in last_BL_point.items():
-            last_BL_point[k] = np.array(v)
-        break
-
-    Edota_visc = viscous_Edot(last_BL_point=last_BL_point)
-
-    Edota += Edota_visc
-
-    # TODO: need to find a way to add the pressure component from the boundary layer region (Edotp_visc)
-
-    surface_diss = surface_dissipation(last_BL_point=last_BL_point)
-
-    shock_diss = shock_dissipation(x_edge=x_grid, y_edge=y_grid, u=field[flow_var_idx["u"]][:, :],
-                                   v=field[flow_var_idx["v"]][:, :], M=field[flow_var_idx["M"]][:, :],
-                                   Cpt=field[flow_var_idx["Cpt"]][:, :], dCpt=field[flow_var_idx["dCpt"]][:, :],
-                                   dCp=field[flow_var_idx["dCp"]][:, :], gam=gam)
-
-    # CPK = Edot + surface_diss + shock_diss - forces["Cd"]
-    CPK = Edota + Edotp + surface_diss + shock_diss - forces["Cd"]
-
-    if np.isnan(CPK):
-        CPK = 1e9
-
-    return {"CPK": CPK, "Edota": Edota, "Edotp": Edotp, "diss_surf": surface_diss, "diss_shock": shock_diss,
-            "Cd": forces["Cd"]}
-
-
-def calculate_CPK_mses_inviscid_only(analysis_subdir: str):
-    """
     Calculates the mechanical flower power coefficient input to the control volume across the airfoil system control
     surface. Assumes that the control surface wraps just around the actuator disk and that the normal vectors point
     into the propulsor. Also assumes that there is no change in the kinetic energy defect across the actuator disk
-    (and thus no change in CPK due to the boundary layer).
-    """
+    (and thus no change in CPK due to the boundary layer). The contribution of all actuator disks specified in the
+    analysis (``.mses`` file) are summed to produce the total :math:`C_{P_K}`.
 
+    Parameters
+    ----------
+    analysis_subdir: str
+        Directory where the MSES analysis was performed
+
+    Returns
+    -------
+    typing.Dict[str, float]
+        A dictionary with one key (``"CPK"``) and one value (the value of the mechanical flow power coefficient)
+    """
     airfoil_system_name = os.path.split(analysis_subdir)[-1]
     field_file = os.path.join(analysis_subdir, f'field.{airfoil_system_name}')
     grid_stats_file = os.path.join(analysis_subdir, 'mplot_grid_stats.log')
@@ -2350,90 +1504,6 @@ def calculate_CPK_mses_inviscid_only(analysis_subdir: str):
         y = y_grid[data["flow_section_idx"]][data["field_i_up"]:data["field_i_up"] + 3, :]
         CPK += line_integral_CPK_inviscid(Cp_up, Cp_down, rho_up, rho_down, u_up, u_down,
                                           v_up, v_down, V_up, V_down, x, y)
-
-    if np.isnan(CPK):
-        CPK = 1e9
-
-    return {"CPK": CPK}
-
-
-def calculate_CPK_mses(analysis_subdir: str, configuration: str = "underwing_te"):
-    """
-    A specialized function that calculates the mechanical flow power coefficient for an underwing trailing edge
-    aero-propulsive configuration.
-    """
-    if configuration != "underwing_te":
-        raise NotImplementedError("Only the underwing trailing edge configuration is currently implemented")
-
-    airfoil_system_name = os.path.split(analysis_subdir)[-1]
-    field_file = os.path.join(analysis_subdir, f'field.{airfoil_system_name}')
-    grid_stats_file = os.path.join(analysis_subdir, 'mplot_grid_stats.log')
-    grid_file = os.path.join(analysis_subdir, f'grid.{airfoil_system_name}')
-    mses_log_file = os.path.join(analysis_subdir, "mses.log")
-    bl_file = os.path.join(analysis_subdir, f"bl.{airfoil_system_name}")
-
-    field = read_field_from_mses(field_file)
-    grid_stats = read_grid_stats_from_mses(grid_stats_file)
-    x_grid, y_grid = read_streamline_grid_from_mses(grid_file, grid_stats)
-    data_AD = read_actuator_disk_data_mses(mses_log_file, grid_stats)
-    bl_data = read_bl_data_from_mses(bl_file)
-
-    CPK = 0.0
-
-    for data in data_AD:
-        Cp_up = field[flow_var_idx["Cp"]][data["field_i_up"], data["field_j_start"]:data["field_j_end"] + 1]
-        Cp_down = field[flow_var_idx["Cp"]][data["field_i_down"], data["field_j_start"]:data["field_j_end"] + 1]
-        rho_up = field[flow_var_idx["rho"]][data["field_i_up"], data["field_j_start"]:data["field_j_end"] + 1]
-        rho_down = field[flow_var_idx["rho"]][data["field_i_down"], data["field_j_start"]:data["field_j_end"] + 1]
-        u_up = field[flow_var_idx["u"]][data["field_i_up"], data["field_j_start"]:data["field_j_end"] + 1]
-        u_down = field[flow_var_idx["u"]][data["field_i_down"], data["field_j_start"]:data["field_j_end"] + 1]
-        v_up = field[flow_var_idx["v"]][data["field_i_up"], data["field_j_start"]:data["field_j_end"] + 1]
-        v_down = field[flow_var_idx["v"]][data["field_i_down"], data["field_j_start"]:data["field_j_end"] + 1]
-        V_up = field[flow_var_idx["V"]][data["field_i_up"], data["field_j_start"]:data["field_j_end"] + 1]
-        V_down = field[flow_var_idx["V"]][data["field_i_down"], data["field_j_start"]:data["field_j_end"] + 1]
-        x = x_grid[data["flow_section_idx"]][data["field_i_up"]:data["field_i_up"] + 3, :]
-        y = y_grid[data["flow_section_idx"]][data["field_i_up"]:data["field_i_up"] + 3, :]
-        CPK += line_integral_CPK_inviscid(Cp_up, Cp_down, rho_up, rho_down, u_up, u_down,
-                                          v_up, v_down, V_up, V_down, x, y)
-
-        # Calculate the bounding boundary layer sides corresponding to the given flow section index
-        n_airfoils = len(x_grid) - 1
-        side_lower = (n_airfoils - data["flow_section_idx"]) * 2
-        side_upper = side_lower - 1
-
-        # Retrieve the boundary layer data for each boundary layer side
-        bl_data_dict = {
-            "upstream_lower": bl_data[side_lower],
-            "downstream_lower": bl_data[side_lower],
-            "upstream_upper": bl_data[side_upper],
-            "downstream_upper": bl_data[side_upper]
-        }
-
-        # Calculate edge center locations
-        xe = {
-            "upstream_lower": (x[0, 0] + x[1, 0]) / 2,
-            "downstream_lower": (x[1, 0] + x[2, 0]) / 2,
-            "upstream_upper": (x[0, -1] + x[1, -1]) / 2,
-            "downstream_upper": (x[1, -1] + x[2, -1]) / 2
-        }
-
-        outlet_bool = {
-            "upstream_lower": False,
-            "downstream_lower": True,
-            "upstream_upper": False,
-            "downstream_upper": True,
-        }
-
-        # Interpolate the boundary layer data for each edge center location and calculate the CPK value
-        for xe_k, xe_v in xe.items():
-            bl = bl_data_dict[xe_k]
-            rhoe_rhoinf = np.interp(xe_v, bl["x"], bl["rhoe/rhoinf"])
-            ue_uinf = np.interp(xe_v, bl["x"], bl["Ue/Uinf"])
-            Cp = np.interp(xe_v, bl["x"], bl["Cp"])
-            deltastar = np.interp(xe_v, bl["x"], bl["delta*"])
-            CPK_bl = line_integral_CPK_bl(rhoe_rhoinf=rhoe_rhoinf, ue_uinf=ue_uinf, Cp=Cp, deltastar=deltastar,
-                                          outlet=outlet_bool[xe_k])
-            CPK += CPK_bl
 
     if np.isnan(CPK):
         CPK = 1e9

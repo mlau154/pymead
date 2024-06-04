@@ -3,8 +3,7 @@ from matplotlib import colors as mpl_colors
 import numpy as np
 import os
 from pymead.analysis.read_aero_data import read_grid_stats_from_mses, read_field_from_mses, \
-    read_streamline_grid_from_mses, read_bl_data_from_mses, read_Mach_from_mses_file
-from pymead.analysis.calc_aero_data import convert_cell_centered_to_edge_centered, extrapolate_data_line_mses_field
+    read_streamline_grid_from_mses, read_Mach_from_mses_file
 from pymead.analysis.read_aero_data import flow_var_idx
 
 
