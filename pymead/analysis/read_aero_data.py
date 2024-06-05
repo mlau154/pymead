@@ -484,7 +484,27 @@ def convert_blade_file_to_3d_array(src_file: str):
     return new_airfoils
 
 
-if __name__ == '__main__':
-    f_ = os.path.join(os.path.dirname(os.getcwd()), 'data', 'test_airfoil', 'mplot.log')
-    forces_ = read_forces_from_mses(f_)
-    print(f"forces = {forces_}")
+def read_polar(airfoil_name: str, base_dir: str) -> typing.Dict[str, typing.List[float]]:
+    """
+    Reads the ``polar.xxx`` file produced by MPOLAR and converts the data to a dictionary of lists
+
+    Parameters
+    ----------
+    airfoil_name: str
+        Name of the airfoil provided to MSES (also the name of the sub-folder inside ``base_dir`` containing the
+        analysis files)
+
+    base_dir: str
+        Base directory of the analysis. The file being read should have the form
+        ``base_dir/airfoil_name/polar.airfoil_name``
+
+    Returns
+    -------
+    typing.Dict[str, typing.List[float]]
+        Dictionary where each key is a string corresponding to an aerodynamic performance variable and each
+        value is a list of the evaluation of that performance variable at every point along the polar.
+        For example, the dictionary might look something like ``{"alf": [-1.0, 0.0, 1.0], "Cl": [0.2, 0.3, 0.4], ...}``
+    """
+    data = np.loadtxt(os.path.join(base_dir, airfoil_name, f"polar.{airfoil_name}"), skiprows=13)
+    keys = ["alf", "Cl", "Cd", "Cm", "Cdw", "Cdv", "Cdp", "Ma", "Re", "top_xtr", "bot_xtr"]
+    return {k: v.tolist() for (k, v) in zip(keys, data.T)}

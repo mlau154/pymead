@@ -1,9 +1,14 @@
 import os
 import unittest
 
+import numpy as np
+
 from pymead.utils.get_airfoil import extract_data_from_airfoiltools
-from pymead.analysis.calc_aero_data import run_xfoil, XFOILSettings
-from pymead import TEST_DIR
+from pymead.utils.read_write_files import load_data
+from pymead.analysis.calc_aero_data import (run_xfoil, XFOILSettings, MSETSettings, MSESSettings, MPOLARSettings,
+                                            AirfoilMSETMeshingParameters, calculate_aero_data)
+from pymead.core.geometry_collection import GeometryCollection
+from pymead import TEST_DIR, EXAMPLES_DIR
 
 
 class CalcAeroData(unittest.TestCase):
@@ -44,3 +49,26 @@ class CalcAeroData(unittest.TestCase):
 
         self.assertAlmostEqual(aero_data["Cl"], 0.3649, places=4)
         self.assertAlmostEqual(aero_data["Cm"], -0.0043, places=4)
+
+    def test_run_mpolar(self):
+        geo_col = GeometryCollection.set_from_dict_rep(
+            load_data(os.path.join(EXAMPLES_DIR, "basic_airfoil_sharp.jmea"))
+        )
+        mea = geo_col.add_mea([geo_col.container()["airfoils"]["Airfoil-1"]])
+        mset_settings = MSETSettings(multi_airfoil_grid={"Airfoil-1": AirfoilMSETMeshingParameters()})
+        mses_settings = MSESSettings({"Airfoil-1": [0.1, 0.1]}, Re=5.0e6, Ma=0.3)
+        mpolar_settings = MPOLARSettings()
+        aero_data, logs = calculate_aero_data(
+            conn=None,
+            airfoil_coord_dir=os.path.join(TEST_DIR, "aero_tests"),
+            airfoil_name="mpolar_test",
+            mea=mea,
+            mea_airfoil_names=["Airfoil-1"],
+            tool="MSES",
+            mset_settings=mset_settings,
+            mses_settings=mses_settings,
+            mpolar_settings=mpolar_settings,
+            alfa_array=np.linspace(-1.0, 1.0, 11)
+        )
+
+        self.assertTrue(len(aero_data["Cd"]) == 11)
