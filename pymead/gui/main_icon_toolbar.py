@@ -1,12 +1,11 @@
-from PyQt5.QtWidgets import QToolBar, QToolButton, QApplication
-from PyQt5.QtGui import QIcon
-from PyQt5.QtCore import pyqtSlot
 import os
+
 import pyqtgraph as pg
-from pymead.utils.read_write_files import load_data
-# from pymead.core.symmetry import symmetry
+from PyQt5.QtGui import QIcon
+from PyQt5.QtWidgets import QToolBar, QToolButton
+
 from pymead import ICON_DIR, GUI_SETTINGS_DIR, q_settings
-# from functools import partial
+from pymead.utils.read_write_files import load_data
 
 
 class MainIconToolbar(QToolBar):
@@ -63,6 +62,8 @@ class MainIconToolbar(QToolBar):
                     v.showGrid(x=False, y=False)
                 else:
                     v.showGrid(x=True, y=True)
+            elif hasattr(dw.widget(), "toggle_grid"):
+                dw.widget().toggle_grid()
 
     def change_background_color_button_toggled(self, checked):
 

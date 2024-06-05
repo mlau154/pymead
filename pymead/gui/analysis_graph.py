@@ -150,13 +150,13 @@ class PolarGraphCollection(QWidget):
     def __init__(self, theme: dict):
         self.polar_graphs = [
             SinglePolarGraph(theme=theme, graph_color_key="polar-color-1",
-                             x_axis_label="Angle of Attack (deg)", y_axis_label="Lift Coefficient"),
+                             x_axis_label="&alpha; (&deg;)", y_axis_label="C<sub>l</sub>"),
             SinglePolarGraph(theme=theme, graph_color_key="polar-color-2",
-                             x_axis_label="Drag Coefficient", y_axis_label="Lift Coefficient"),
+                             x_axis_label="C<sub>d</sub>", y_axis_label="C<sub>l</sub>"),
             SinglePolarGraph(theme=theme, graph_color_key="polar-color-3",
-                             x_axis_label="Angle of Attack (deg)", y_axis_label="Lift-to-Drag Ratio"),
+                             x_axis_label="&alpha; (&deg;)", y_axis_label="L/D"),
             SinglePolarGraph(theme=theme, graph_color_key="polar-color-4",
-                             x_axis_label="Angle of Attack (deg)", y_axis_label="Pitching Moment Coefficient")
+                             x_axis_label="&alpha; (&deg;)", y_axis_label="C<sub>m</sub>")
         ]
         super().__init__(parent=None)
         self.lay = QGridLayout()
@@ -184,3 +184,12 @@ class PolarGraphCollection(QWidget):
     def clear_data(self):
         for polar_graph in self.polar_graphs:
             polar_graph.plot_items[0].setData([], [])
+
+    def toggle_grid(self):
+        for polar_graph in self.polar_graphs:
+            x_state = polar_graph.v.ctrl.xGridCheck.checkState()
+            y_state = polar_graph.v.ctrl.yGridCheck.checkState()
+            if x_state or y_state:
+                polar_graph.v.showGrid(x=False, y=False)
+            else:
+                polar_graph.v.showGrid(x=True, y=True)
