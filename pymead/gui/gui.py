@@ -35,7 +35,7 @@ from pymead.core.geometry_collection import GeometryCollection
 from pymead.core.mea import MEA
 from pymead.gui.airfoil_canvas import AirfoilCanvas
 from pymead.gui.airfoil_statistics import AirfoilStatisticsDialog, AirfoilStatistics
-from pymead.gui.analysis_graph import AnalysisGraph, ResidualGraph
+from pymead.gui.analysis_graph import AnalysisGraph, ResidualGraph, PolarGraphCollection
 from pymead.gui.concurrency import CPUBoundProcess
 from pymead.gui.custom_graphics_view import CustomGraphicsView
 from pymead.gui.dockable_tab_widget import PymeadDockWidget
@@ -46,7 +46,7 @@ from pymead.gui.dialogs import LoadDialog, SaveAsDialog, OptimizationSetupDialog
     ExitDialog, ScreenshotDialog, LoadAirfoilAlgFile, ExitOptimizationDialog, SettingsDialog, LoadPointsDialog, \
     PanelDialog
 from pymead.gui.dialogs import convert_dialog_to_mset_settings, convert_dialog_to_mses_settings, \
-    convert_dialog_to_mplot_settings, convert_opt_settings_to_param_dict
+    convert_dialog_to_mplot_settings, convert_dialog_to_mpolar_settings, convert_opt_settings_to_param_dict
 from pymead.gui.main_icon_toolbar import MainIconToolbar
 from pymead.gui.message_box import disp_message_box
 from pymead.gui.parameter_tree import ParameterTree
@@ -142,6 +142,7 @@ class GUI(QMainWindow):
         self.analysis_graph = None
         self.residual_graph = None
         self.residual_data = None
+        self.polar_graph_collection = None
         self.opt_airfoil_graph = None
         self.parallel_coords_graph = None
         self.drag_graph = None
@@ -1417,8 +1418,9 @@ class GUI(QMainWindow):
             mset_settings = convert_dialog_to_mset_settings(inputs['MSET'])
             mses_settings = convert_dialog_to_mses_settings(inputs['MSES'])
             mplot_settings = convert_dialog_to_mplot_settings(inputs['MPLOT'])
-            # self.multi_airfoil_analysis(mset_settings, mses_settings, mplot_settings)
-            self.run_mses(mset_settings, mses_settings, mplot_settings)
+            mpolar_settings = None if inputs["MPOLAR"]["alfa_array"] == "" \
+                else convert_dialog_to_mpolar_settings(inputs["MPOLAR"])
+            self.run_mses(mset_settings, mses_settings, mplot_settings, mpolar_settings)
 
     def multi_airfoil_analysis_rejected(self):
         self.multi_airfoil_analysis_settings = self.dialog.value()
@@ -1904,6 +1906,16 @@ class GUI(QMainWindow):
             self.residual_graph.plot_items[2].setData([arr[0] for arr in self.residual_data],
                                                       [arr[3] for arr in self.residual_data])
             self.residual_graph.set_legend_label_format(self.themes[self.current_theme])
+        elif status == "clear_polar_plots":
+            if self.polar_graph_collection is not None:
+                self.polar_graph_collection.clear_data()
+            self.switch_to_tab("Polars")
+        elif status == "plot_polars" and isinstance(data, dict):
+            if self.polar_graph_collection is None:
+                self.polar_graph_collection = PolarGraphCollection(theme=self.themes[self.current_theme])
+                self.add_new_tab_widget(self.polar_graph_collection, "Polars")
+                self.switch_to_tab("Polars")
+            self.polar_graph_collection.set_data(data)
 
     def clear_opt_plots(self):
         def clear_handles(h_list: list):
@@ -1925,7 +1937,7 @@ class GUI(QMainWindow):
                     handle = getattr(self.drag_graph, f"pg_plot_handle_{Cd_val}")
                     handle.clear()
 
-    def run_mses(self, mset_settings: dict, mses_settings: dict, mplot_settings: dict):
+    def run_mses(self, mset_settings: dict, mses_settings: dict, mplot_settings: dict, mpolar_settings: dict):
 
         def remove_equations(geo_col: GeometryCollection):
             """
@@ -1944,6 +1956,7 @@ class GUI(QMainWindow):
             geo_col_copy = deepcopy(self.geo_col)
             remove_equations(geo_col_copy)
             mea = geo_col_copy.container()["mea"][mset_settings["mea"]]
+            alfa_array = mpolar_settings["alfa_array"] if mpolar_settings is not None else None
 
             self.mses_process = CPUBoundProcess(
                 calculate_aero_data,
@@ -1958,8 +1971,10 @@ class GUI(QMainWindow):
                     mset_settings,
                     mses_settings,
                     mplot_settings,
+                    mpolar_settings,
                     True,
                     True,
+                    alfa_array
                 )
             )
             self.mses_process.progress_emitter.signals.progress.connect(self.progress_update)

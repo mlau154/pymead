@@ -926,12 +926,19 @@ def calculate_aero_data(conn: multiprocessing.connection.Connection or None,
             if os.path.exists(polarx_file):
                 os.remove(polarx_file)
 
+            send_over_pipe(("clear_polar_plots", None))
+
             # Run mpolar
+            t_start = time.perf_counter()
             mpolar_log = run_mpolar(airfoil_name, airfoil_coord_dir, alfa_array=alfa_array,
                                     mpolar_settings=mpolar_settings)
+            t_end = time.perf_counter()
+            send_over_pipe(("message", f"MPOLAR converged in {t_end - t_start:.2f} seconds"))
 
             # Read the mpolar data
             aero_data = read_polar(airfoil_name, airfoil_coord_dir)
+            send_over_pipe(("plot_polars", aero_data))
+
             return aero_data, {"mset_log": mset_log, "mpolar_log": mpolar_log}
 
         # Set up single-point or multipoint settings
@@ -945,24 +952,22 @@ def calculate_aero_data(conn: multiprocessing.connection.Connection or None,
 
         # Multipoint Loop
         for i in range(mset_mplot_loop_iterations):
-            t1 = time.time()
 
             if stencil is not None:
                 mses_settings = update_mses_settings_from_stencil(mses_settings=mses_settings, stencil=stencil, idx=i)
-                # print(f"{mses_settings['XCDELH'] = }, {mses_settings['CLIFIN'] = }, {mses_settings['PTRHIN'] = }")
 
             if mset_success:
                 t_start = time.perf_counter()
                 converged, mses_log = run_mses(airfoil_name, airfoil_coord_dir, mses_settings,
                                                airfoil_name_order=airfoil_name_order, conn=conn)
                 t_end = time.perf_counter()
-                send_over_pipe(("message", f"MSES converged in {t_end-t_start:.2f} seconds"))
+                send_over_pipe(("message", f"MSES completed in {t_end-t_start:.2f} seconds"))
             if mset_success and converged:
                 mplot_log = run_mplot(airfoil_name, airfoil_coord_dir, mplot_settings, mode='forces')
                 aero_data = read_forces_from_mses(mplot_log)
 
                 # This is error is triggered in read_aero_data() in the rare case that there is an error reading the
-                # force file. If this error is triggered, break out of them multipoint loop.
+                # force file. If this error is triggered, break out of the multipoint loop.
                 errored_out = np.isclose(aero_data["Cd"], 1000.0)
                 if errored_out:
                     aero_data["converged"] = True
@@ -1004,20 +1009,13 @@ def calculate_aero_data(conn: multiprocessing.connection.Connection or None,
 
                 if mplot_settings["CPK"]:
                     try:
-                        # outputs_CPK = calculate_CPK_power_consumption(os.path.join(airfoil_coord_dir, airfoil_name))
-                        # outputs_CPK = calculate_CPK_power_consumption_old(os.path.join(airfoil_coord_dir, airfoil_name))
                         outputs_CPK = calculate_CPK_mses_inviscid_only(os.path.join(airfoil_coord_dir, airfoil_name))
                         send_over_pipe(("message", "CPK calculation success"))
                     except Exception as e:
                         print(f"{e = }")
                         send_over_pipe(("message", "CPK calculation failed"))
-                        # outputs_CPK = {"CPK": 1e9, "diss_shock": 1e9, "diss_surf": 1e9, "Edot": 1e9, "Cd": 1e9,
-                        #                "Edota": 1e9, "Edotp": 1e9}
                         outputs_CPK = {"CPK": 1e9}
                     aero_data = {**aero_data, **outputs_CPK}
-
-            t2 = time.time()
-            # print(f"Time for stencil point {i}: {t2 - t1} seconds")
 
             if converged:
                 aero_data['converged'] = True
@@ -1032,8 +1030,6 @@ def calculate_aero_data(conn: multiprocessing.connection.Connection or None,
                 if aero_data_list is not None:
                     aero_data_list.append(aero_data)
                 break
-
-            # print(f"{aero_data = }")
 
         logs = {'mset': mset_log, 'mses': mses_log, 'mplot': mplot_log}
 

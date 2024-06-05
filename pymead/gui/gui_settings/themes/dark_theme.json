@@ -30,5 +30,9 @@
   "residual-color-1": "lightcoral",
   "residual-color-2": "aqua",
   "residual-color-3": "yellow",
-  "residual-target-color": "#dce1e6"
+  "residual-target-color": "#dce1e6",
+  "polar-color-1": "lightcoral",
+  "polar-color-2": "aqua",
+  "polar-color-3": "yellow",
+  "polar-color-4": "violet"
 }
