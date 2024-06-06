@@ -931,7 +931,7 @@ def calculate_aero_data(conn: multiprocessing.connection.Connection or None,
             # Run mpolar
             t_start = time.perf_counter()
             mpolar_log = run_mpolar(airfoil_name, airfoil_coord_dir, alfa_array=alfa_array,
-                                    mpolar_settings=mpolar_settings)
+                                    mpolar_settings=mpolar_settings, conn=conn)
             t_end = time.perf_counter()
             send_over_pipe(("message", f"MPOLAR converged in {t_end - t_start:.2f} seconds"))
 
@@ -1420,7 +1420,8 @@ def run_mses(name: str, base_folder: str, mses_settings: dict or MSESSettings, a
                     elif "rms(dV):" in decoded_line:
                         decoded_line_split = decoded_line.split()
                         rms_dV = decoded_line_split[decoded_line_split.index("rms(dV):") + 1]
-                        send_over_pipe(("message", f"Iteration {iteration}: rms(dR) = {rms_dR}, rms(dA) = {rms_dA}, rms(dV) = {rms_dV}"))
+                        send_over_pipe(("message", f"Iteration {iteration}: rms(dR) = {rms_dR}, rms(dA) = {rms_dA}, "
+                                                   f"rms(dV) = {rms_dV}"))
                         send_over_pipe(("mses_residual", (int(iteration), float(rms_dR), float(rms_dA), float(rms_dV))))
             outs, errs = process.communicate(timeout=mses_settings['timeout'])
 
@@ -1568,7 +1569,8 @@ def run_mplot(name: str, base_dir: str, mplot_settings: dict or MPLOTSettings, m
     return mplot_log
 
 
-def run_mpolar(name: str, base_dir: str, alfa_array: np.ndarray, mpolar_settings: dict or MPOLARSettings) -> str:
+def run_mpolar(name: str, base_dir: str, alfa_array: np.ndarray, mpolar_settings: dict or MPOLARSettings,
+               conn: multiprocessing.connection.Connection = None) -> str:
     """
     A Python wrapper for MPOLAR
 
@@ -1586,16 +1588,46 @@ def run_mpolar(name: str, base_dir: str, alfa_array: np.ndarray, mpolar_settings
     mpolar_settings: dict or MPOLARSettings
         MPOLAR settings. If a dictionary, must contain all the keys found in MPOLARSettings.get_dict_rep()
 
+    conn: multiprocessing.connection.Connection
+        Pipe used to transfer intermediate and final results to the GUI when this function is run from the GUI.
+        This keyword argument should not be set if using this function directly.
+
     Returns
     -------
     str
         Absolute path to the MPOLAR log file
     """
+    def send_over_pipe(data: object):
+        """
+        Connection to the GUI that is only used if ``calculate_aero_data`` is being called directly from the GUI
+
+        Parameters
+        ----------
+        data: object
+            The intermediate information to pass to the GUI, normally a two-element tuple where the first argument
+            is a string specifying the kind of data being sent, and the second argument being the actual data
+            itself (note that the data must be picklable by the multiprocessing module)
+
+        Returns
+        -------
+
+        """
+        try:
+            if conn is not None:
+                conn.send(data)
+        except BrokenPipeError:
+            pass
+
+    def calculate_progress(alfa_val: float) -> int:
+        return int((alfa_val - alfa_array[0]) / (alfa_array[-1] - alfa_array[0]) * 100)
+
     if isinstance(mpolar_settings, MPOLARSettings):
         mpolar_settings = mpolar_settings.get_dict_rep()
 
     write_spec_file(name, base_dir, alfa_array)
     mpolar_log = os.path.join(base_dir, name, "mpolar.log")
+
+    send_over_pipe(("clear_residual_plots", None))
 
     mpolar_attempts = 0
     mpolar_max_attempts = 100
@@ -1605,7 +1637,37 @@ def run_mpolar(name: str, base_dir: str, alfa_array: np.ndarray, mpolar_settings
                 process = subprocess.Popen(["mpolar", name], stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                                            cwd=os.path.join(base_dir, name))
                 try:
+                    if conn is not None:
+                        iteration, rms_dR, rms_dA, rms_dV, alpha = None, None, None, None, None
+                        for line in process.stdout:
+                            decoded_line = line.decode("utf-8")
+                            if "Convergence failed." in decoded_line:
+                                raise ConvergenceFailedError
+                            f.write(line)
+                            if "rms(dR):" in decoded_line:
+                                decoded_line_split = decoded_line.split()
+                                iteration = decoded_line_split[0]
+                                rms_dR = decoded_line_split[decoded_line_split.index("rms(dR):") + 1]
+                                if rms_dR == "NaN":
+                                    raise ConvergenceFailedError
+                            elif "rms(dA):" in decoded_line:
+                                decoded_line_split = decoded_line.split()
+                                rms_dA = decoded_line_split[decoded_line_split.index("rms(dA):") + 1]
+                            elif "rms(dV):" in decoded_line:
+                                decoded_line_split = decoded_line.split()
+                                rms_dV = decoded_line_split[decoded_line_split.index("rms(dV):") + 1]
+                                send_over_pipe(
+                                    ("message", f"Iteration {iteration}, \u03b1={alpha:.2f}\u00b0"))
+                                send_over_pipe(("polar_progress", calculate_progress(alpha)))
+                                send_over_pipe(
+                                    ("mses_residual", (int(iteration), float(rms_dR), float(rms_dA), float(rms_dV))))
+                            elif "Specified parameter:" in decoded_line:
+                                decoded_line_split = decoded_line.split()
+                                alpha = float(decoded_line_split[-1])
+
+                    # Execute MPOLAR
                     outs, errs = process.communicate(timeout=mpolar_settings["timeout"])
+
                     f.write('Output:\n'.encode('utf-8'))
                     f.write(outs)
                     f.write('\nErrors:\n'.encode('utf-8'))
@@ -1622,6 +1684,8 @@ def run_mpolar(name: str, base_dir: str, alfa_array: np.ndarray, mpolar_settings
             # In case any of the log files cannot be created/read temporarily, wait a short period of time and try again
             time.sleep(0.01)
             mpolar_attempts += 1
+
+    send_over_pipe(("polar_complete", None))
 
     return mpolar_log
 

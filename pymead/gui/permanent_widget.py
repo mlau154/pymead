@@ -6,13 +6,13 @@ from pymead.version import __version__
 class PymeadProgressBar(QProgressBar):
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setTextVisible(False)
-        self.setStyleSheet(
-            '''
-            QProgressBar {border: 2px solid; border-color: #8E9091;} 
-            QProgressBar::chunk {background-color: #6495ED; width: 10px; margin: 0.5px;}
-            '''
-        )
+        # self.setStyleSheet(
+        #     '''
+        #     QProgressBar {border: 2px solid; border-color: #8E9091;}
+        #     QProgressBar::chunk {background-color: #6495ED; width: 10px; margin: 0.5px;}
+        #     '''
+        # )
+        self.setMaximum(100)
         self.setValue(0)
         self.hide()
 

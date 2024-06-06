@@ -507,6 +507,9 @@ class GUI(QMainWindow):
             self.residual_graph.set_formatting(theme=self.themes[self.current_theme])
             self.residual_graph.set_legend_label_format(theme=self.themes[self.current_theme])
 
+        if self.polar_graph_collection is not None:
+            self.polar_graph_collection.set_formatting(theme=self.themes[self.current_theme])
+
         for cnstr in self.geo_col.container()["geocon"].values():
             cnstr.canvas_item.setStyle(theme)
 
@@ -1916,6 +1919,12 @@ class GUI(QMainWindow):
                 self.add_new_tab_widget(self.polar_graph_collection, "Polars")
                 self.switch_to_tab("Polars")
             self.polar_graph_collection.set_data(data)
+        elif status == "polar_progress" and isinstance(data, int):
+            if self.permanent_widget.progress_bar.isHidden():
+                self.permanent_widget.progress_bar.show()
+            self.permanent_widget.progress_bar.setValue(data)
+        elif status == "polar_complete":
+            self.permanent_widget.progress_bar.hide()
 
     def clear_opt_plots(self):
         def clear_handles(h_list: list):
