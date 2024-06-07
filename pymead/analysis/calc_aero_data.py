@@ -849,6 +849,8 @@ def calculate_aero_data(conn: multiprocessing.connection.Connection or None,
     if tool == 'XFOIL':
         if xfoil_settings is None:
             raise ValueError(f"\'xfoil_settings\' must be set if \'xfoil\' tool is selected")
+        if isinstance(xfoil_settings, XFOILSettings):
+            xfoil_settings = xfoil_settings.get_dict_rep()
 
         xfoil_log = None
 
@@ -889,7 +891,7 @@ def calculate_aero_data(conn: multiprocessing.connection.Connection or None,
                 for k, v in aero_data["Cp"].items():
                     if isinstance(v, np.ndarray):
                         aero_data["Cp"][k] = v.tolist()
-            save_data(aero_data, os.path.join(base_dir, airfoil_name, "aero_data.json"))
+            save_data(aero_data, os.path.join(base_dir, "aero_data.json"))
 
         return aero_data, xfoil_log
 
@@ -904,6 +906,14 @@ def calculate_aero_data(conn: multiprocessing.connection.Connection or None,
         if mplot_settings is None and mpolar_settings is None:
             raise ValueError(f"\'mplot_settings\' must be set if \'mses\' tool is selected "
                              f"and \'mpolar_settings\' is not specified")
+
+        # Convert the MSET, MSES, and MPLOT settings to dictionary form so that their keys can be accessed directly
+        if isinstance(mset_settings, MSETSettings):
+            mset_settings = mset_settings.get_dict_rep()
+        if isinstance(mses_settings, MSESSettings):
+            mses_settings = mses_settings.get_dict_rep()
+        if isinstance(mplot_settings, MPLOTSettings):
+            mplot_settings = mplot_settings.get_dict_rep()
 
         converged = False
         mses_log, mplot_log = None, None
