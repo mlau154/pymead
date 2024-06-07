@@ -31,6 +31,18 @@ Click on any image to zoom. Press the "back" button to return to the gallery.
 
           Mach field of the NACA 0012 airfoil at :math:`M=0.7` and :math:`\alpha=2^\circ`
 
+   * - .. figure:: images/polar_analysis_dark.*
+          :width: 100%
+          :class: only-dark
+
+          Polar analysis workflow for a custom airfoil
+
+     - .. figure:: images/polars_dark.*
+          :width: 100%
+          :class: only-dark
+
+          Aerodynamic polars for a custom airfoil
+
 
 .. list-table::
    :widths: 50 50
@@ -58,3 +70,15 @@ Click on any image to zoom. Press the "back" button to return to the gallery.
           :class: only-light
 
           Mach field of the NACA 0012 airfoil at :math:`M=0.7` and :math:`\alpha=2^\circ`
+
+   * - .. figure:: images/polar_analysis_light.*
+          :width: 100%
+          :class: only-light
+
+          Polar analysis workflow for a custom airfoil
+
+     - .. figure:: images/polars_light.*
+          :width: 100%
+          :class: only-light
+
+          Aerodynamic polars for a custom airfoil

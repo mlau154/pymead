@@ -27,10 +27,10 @@ def convert_ps_to_pdf(conversion_dir: str, input_file_name: str, output_file_nam
                 f.write(errs)
     else:
         raise DependencyNotFoundError(
-            "Ghostscript ps2pdf tool (executable or batch file) not found on system path. See "
-            "https://pymead.readthedocs.io/en/latest/usage.html#optional for a link to the Ghostscript page. "
-            "If you already completed the installation and added the path to the executable or directory"
-            "containing the executable to the system path, you may need to restart your terminal or IDE"
+            "Ghostscript ps2pdf tool (executable or batch file) not found on system path. See\n"
+            "https://pymead.readthedocs.io/en/latest/install.html#optional for a link to the Ghostscript page.\n"
+            "If you already completed the installation and added the path to the executable or directory\n"
+            "containing the executable to the system path, you may need to restart your terminal or IDE\n"
             "for the changes to apply.")
     return ps2pdf_complete, log_file
 
@@ -59,12 +59,11 @@ def convert_pdf_to_svg(conversion_dir: str, input_file_name: str, output_file_na
                 f.write(errs)
     else:
         raise DependencyNotFoundError(
-            "MuPDF mutool executable not found on system path. See "
-            "https://pymead.readthedocs.io/en/latest/install.html#optional for a link to "
-            "the MuPDF page. "
-            "If you already completed the installation and added the path to the executable or directory"
-            " containing the executable to the system path, you may need to restart pymead"
-            " for the changes to apply.")
+            "MuPDF mutool executable not found on system path. See\n"
+            "https://pymead.readthedocs.io/en/latest/install.html#optional for a link to the MuPDF page.\n"
+            "If you already completed the installation and added the path to the executable or directory\n"
+            "containing the executable to the system path, you may need to restart pymead\n"
+            "for the changes to apply.")
     return mutool_complete, log_file
 
 

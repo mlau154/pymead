@@ -9,7 +9,7 @@ import multiprocessing.connection
 
 from pymead.analysis.read_aero_data import read_aero_data_from_xfoil, read_Cp_from_file_xfoil, read_bl_data_from_mses, \
     read_forces_from_mses, read_grid_stats_from_mses, read_field_from_mses, read_streamline_grid_from_mses, \
-    flow_var_idx, read_actuator_disk_data_mses
+    flow_var_idx, read_actuator_disk_data_mses, read_polar
 from pymead.core.mea import MEA
 from pymead.utils.file_conversion import convert_ps_to_svg
 from pymead.utils.read_write_files import save_data
@@ -241,8 +241,10 @@ class MSETSettings:
                  stag_pt_aspect_ratio: float = 2.5,
                  x_spacing_param: float = 0.85,
                  alf0_stream_gen: float = 0.0,
-                 timeout: float = 10.0
-                 ):
+                 timeout: float = 10.0,
+                 use_downsampling: bool = False,
+                 downsampling_max_pts: int = 200,
+                 downsampling_curve_exp: float = 2.0):
         """
         Defines a set of reasonable default values for MSET, the grid meshing tool in the MSES suite.
 
@@ -299,6 +301,18 @@ class MSETSettings:
         timeout: float
             Maximum time MSET is allowed to run before premature termination. Useful to prevent a hanging process
             in the case of a bad set of input parameters.
+
+        use_downsampling: bool
+            Whether to downsample the evaluated points along the airfoil. Useful when the number of points exceeds
+            the hard-coded limits of XFOIL or MSES. Default: ``False``
+
+        downsampling_max_pts: int
+            Total number of points to allow along the airfoil. Ignored if ``use_downsampling==False``. Default: ``200``
+
+        downsampling_curve_exp: float
+            Curvature exponent to influence the distribution of points on the airfoil. Values close to zero cause
+            the curvature of the airfoil to exert a large influence over the distribution, while values close to
+            infinity create a nearly uniform spacing. Ignored if ``use_downsampling==False``. Default: ``2.0``
         """
         if grid_bounds is not None and len(grid_bounds) != 4:
             raise ValueError("Grid bounds must contain exactly four values (")
@@ -316,6 +330,9 @@ class MSETSettings:
         self.alf0_stream_gen = alf0_stream_gen
         self.timeout = timeout
         self.multi_airfoil_grid = multi_airfoil_grid
+        self.use_downsampling = use_downsampling
+        self.downsampling_max_pts = downsampling_max_pts
+        self.downsampling_curve_exp = downsampling_curve_exp
 
     def get_dict_rep(self) -> dict:
         """
@@ -340,7 +357,10 @@ class MSETSettings:
             "x_spacing_param": self.x_spacing_param,
             "alf0_stream_gen": self.alf0_stream_gen,
             "timeout": self.timeout,
-            "multi_airfoil_grid": {k: v.get_dict_rep() for k, v in self.multi_airfoil_grid.items()}
+            "multi_airfoil_grid": {k: v.get_dict_rep() for k, v in self.multi_airfoil_grid.items()},
+            "use_downsampling": self.use_downsampling,
+            "downsampling_max_pts": self.downsampling_max_pts,
+            "downsampling_curve_exp": self.downsampling_curve_exp
         }
 
 
@@ -523,12 +543,14 @@ class MSESSettings:
             "ISPRES": 0,
             "ISMOVE": 0,
             "inverse_flag": 0,
+            "inverse_side": 0,
             "NMODN": 0,
             "NPOSN": 0,
             "timeout": self.timeout,
             "iter": self.iterations,
             "verbose": self.verbose,
-            "xtrs": self.xtrs,
+            "XTRSupper": {k: v[0] for k, v in self.xtrs.items()},
+            "XTRSlower": {k: v[1] for k, v in self.xtrs.items()},
             "AD_flags": [1 for _ in self.actuator_disk_side],
             "ISDELH": self.actuator_disk_side,
             "XCDELH": self.actuator_disk_xc_location,
@@ -615,6 +637,33 @@ class MPLOTSettings:
         }
 
 
+class MPOLARSettings:
+    def __init__(self,
+                 timeout: float = 300.0):
+        """
+        Defines the inputs for MPLOT.
+
+        Parameters
+        ----------
+        timeout: float
+            The time in seconds allotted to MPOLAR before premature termination. Default: ``300.0``
+        """
+        self.timeout = timeout
+
+    def get_dict_rep(self) -> dict:
+        """
+        Gets a dictionary representation of the MPLOT settings. Used in ``run_mplot`` and ``calculate_aero-data``.
+
+        Returns
+        -------
+        dict
+            The MPLOT settings in dictionary form
+        """
+        return {
+            "timeout": self.timeout
+        }
+
+
 def update_xfoil_settings_from_stencil(xfoil_settings: dict, stencil: typing.List[dict], idx: int):
     """
     Updates the XFOIL settings dictionary from a given multipoint stencil and multipoint index
@@ -688,8 +737,10 @@ def calculate_aero_data(conn: multiprocessing.connection.Connection or None,
                         mset_settings: dict or MSETSettings = None,
                         mses_settings: dict or MSESSettings = None,
                         mplot_settings: dict or MPLOTSettings = None,
+                        mpolar_settings: dict or MPOLARSettings = None,
                         export_Cp: bool = True,
-                        save_aero_data: bool = True):
+                        save_aero_data: bool = True,
+                        alfa_array: np.ndarray = None):
     r"""
     Convenience function calling either XFOIL or MSES depending on the ``tool`` specified
 
@@ -736,12 +787,21 @@ def calculate_aero_data(conn: multiprocessing.connection.Connection or None,
       A dictionary containing the settings for MPLOT or an instance of the ``MPLOTSettings`` class.
       Must be specified if the ``"MSES"`` tool is selected. Default: ``None``
 
+    mpolar_settings: dict or MPOLARSettings
+        A dictionary containing the settings for MPOLAR or an instance of the ``MPOLARSettings`` class.
+        If specified, ``mplot_settings`` will be ignored.
+        Default: ``None``
+
     export_Cp: bool
       Whether to calculate and export the surface pressure coefficient distribution in the case of XFOIL, or the
       entire set of boundary layer data in the case of MSES. Default: ``True``
 
     save_aero_data: bool
         Whether to save the aerodynamic data as a JSON file to the analysis directory
+
+    alfa_array: np.ndarray or None
+        An array of angles of attack (degrees) to sweep through. Ignored unless ``mpolar_settings`` is specified.
+        Default: ``None``
 
     Returns
     -------
@@ -789,6 +849,8 @@ def calculate_aero_data(conn: multiprocessing.connection.Connection or None,
     if tool == 'XFOIL':
         if xfoil_settings is None:
             raise ValueError(f"\'xfoil_settings\' must be set if \'xfoil\' tool is selected")
+        if isinstance(xfoil_settings, XFOILSettings):
+            xfoil_settings = xfoil_settings.get_dict_rep()
 
         xfoil_log = None
 
@@ -829,7 +891,7 @@ def calculate_aero_data(conn: multiprocessing.connection.Connection or None,
                 for k, v in aero_data["Cp"].items():
                     if isinstance(v, np.ndarray):
                         aero_data["Cp"][k] = v.tolist()
-            save_data(aero_data, os.path.join(base_dir, airfoil_name, "aero_data.json"))
+            save_data(aero_data, os.path.join(base_dir, "aero_data.json"))
 
         return aero_data, xfoil_log
 
@@ -841,8 +903,17 @@ def calculate_aero_data(conn: multiprocessing.connection.Connection or None,
             raise ValueError(f"\'mset_settings\' must be set if \'mses\' tool is selected")
         if mses_settings is None:
             raise ValueError(f"\'mses_settings\' must be set if \'mses\' tool is selected")
-        if mplot_settings is None:
-            raise ValueError(f"\'mplot_settings\' must be set if \'mses\' tool is selected")
+        if mplot_settings is None and mpolar_settings is None:
+            raise ValueError(f"\'mplot_settings\' must be set if \'mses\' tool is selected "
+                             f"and \'mpolar_settings\' is not specified")
+
+        # Convert the MSET, MSES, and MPLOT settings to dictionary form so that their keys can be accessed directly
+        if isinstance(mset_settings, MSETSettings):
+            mset_settings = mset_settings.get_dict_rep()
+        if isinstance(mses_settings, MSESSettings):
+            mses_settings = mses_settings.get_dict_rep()
+        if isinstance(mplot_settings, MPLOTSettings):
+            mplot_settings = mplot_settings.get_dict_rep()
 
         converged = False
         mses_log, mplot_log = None, None
@@ -850,6 +921,40 @@ def calculate_aero_data(conn: multiprocessing.connection.Connection or None,
             airfoil_name, airfoil_coord_dir, mset_settings, coords=coords, mea=mea, mea_airfoil_names=mea_airfoil_names)
 
         send_over_pipe(("message", f"MSET success"))
+
+        # If running MPOLAR, execute mpolar and then return the data immediately
+        if mpolar_settings is not None and alfa_array is not None:
+
+            # Write the MSES file from the mses_settings given
+            write_mses_file(airfoil_name, airfoil_coord_dir, mses_settings, airfoil_name_order=airfoil_name_order)
+
+            # Remove the polar and polarx files if they exist
+            polar_file = os.path.join(airfoil_coord_dir, airfoil_name, f"polar.{airfoil_name}")
+            polarx_file = os.path.join(airfoil_coord_dir, airfoil_name, f"polar.{airfoil_name}")
+            if os.path.exists(polar_file):
+                os.remove(polar_file)
+            if os.path.exists(polarx_file):
+                os.remove(polarx_file)
+
+            send_over_pipe(("clear_polar_plots", None))
+
+            # Run mpolar
+            t_start = time.perf_counter()
+            mpolar_log = run_mpolar(airfoil_name, airfoil_coord_dir, alfa_array=alfa_array,
+                                    mpolar_settings=mpolar_settings, conn=conn)
+            t_end = time.perf_counter()
+            send_over_pipe(("message", f"MPOLAR converged in {t_end - t_start:.2f} seconds"))
+
+            # Read the mpolar data
+            aero_data = read_polar(airfoil_name, airfoil_coord_dir)
+            send_over_pipe(("plot_polars", aero_data))
+
+            if save_aero_data:
+                save_data(aero_data, os.path.join(airfoil_coord_dir, airfoil_name, "aero_data.json"))
+
+            send_over_pipe(("message", "Post-processing successful"))
+
+            return aero_data, {"mset_log": mset_log, "mpolar_log": mpolar_log}
 
         # Set up single-point or multipoint settings
         mset_mplot_loop_iterations = 1
@@ -862,24 +967,22 @@ def calculate_aero_data(conn: multiprocessing.connection.Connection or None,
 
         # Multipoint Loop
         for i in range(mset_mplot_loop_iterations):
-            t1 = time.time()
 
             if stencil is not None:
                 mses_settings = update_mses_settings_from_stencil(mses_settings=mses_settings, stencil=stencil, idx=i)
-                # print(f"{mses_settings['XCDELH'] = }, {mses_settings['CLIFIN'] = }, {mses_settings['PTRHIN'] = }")
 
             if mset_success:
                 t_start = time.perf_counter()
                 converged, mses_log = run_mses(airfoil_name, airfoil_coord_dir, mses_settings,
                                                airfoil_name_order=airfoil_name_order, conn=conn)
                 t_end = time.perf_counter()
-                send_over_pipe(("message", f"MSES converged in {t_end-t_start:.2f} seconds"))
+                send_over_pipe(("message", f"MSES completed in {t_end-t_start:.2f} seconds"))
             if mset_success and converged:
                 mplot_log = run_mplot(airfoil_name, airfoil_coord_dir, mplot_settings, mode='forces')
                 aero_data = read_forces_from_mses(mplot_log)
 
                 # This is error is triggered in read_aero_data() in the rare case that there is an error reading the
-                # force file. If this error is triggered, break out of them multipoint loop.
+                # force file. If this error is triggered, break out of the multipoint loop.
                 errored_out = np.isclose(aero_data["Cd"], 1000.0)
                 if errored_out:
                     aero_data["converged"] = True
@@ -921,20 +1024,13 @@ def calculate_aero_data(conn: multiprocessing.connection.Connection or None,
 
                 if mplot_settings["CPK"]:
                     try:
-                        # outputs_CPK = calculate_CPK_power_consumption(os.path.join(airfoil_coord_dir, airfoil_name))
-                        # outputs_CPK = calculate_CPK_power_consumption_old(os.path.join(airfoil_coord_dir, airfoil_name))
                         outputs_CPK = calculate_CPK_mses_inviscid_only(os.path.join(airfoil_coord_dir, airfoil_name))
                         send_over_pipe(("message", "CPK calculation success"))
                     except Exception as e:
                         print(f"{e = }")
                         send_over_pipe(("message", "CPK calculation failed"))
-                        # outputs_CPK = {"CPK": 1e9, "diss_shock": 1e9, "diss_surf": 1e9, "Edot": 1e9, "Cd": 1e9,
-                        #                "Edota": 1e9, "Edotp": 1e9}
                         outputs_CPK = {"CPK": 1e9}
                     aero_data = {**aero_data, **outputs_CPK}
-
-            t2 = time.time()
-            # print(f"Time for stencil point {i}: {t2 - t1} seconds")
 
             if converged:
                 aero_data['converged'] = True
@@ -949,8 +1045,6 @@ def calculate_aero_data(conn: multiprocessing.connection.Connection or None,
                 if aero_data_list is not None:
                     aero_data_list.append(aero_data)
                 break
-
-            # print(f"{aero_data = }")
 
         logs = {'mset': mset_log, 'mses': mses_log, 'mplot': mplot_log}
 
@@ -1341,7 +1435,8 @@ def run_mses(name: str, base_folder: str, mses_settings: dict or MSESSettings, a
                     elif "rms(dV):" in decoded_line:
                         decoded_line_split = decoded_line.split()
                         rms_dV = decoded_line_split[decoded_line_split.index("rms(dV):") + 1]
-                        send_over_pipe(("message", f"Iteration {iteration}: rms(dR) = {rms_dR}, rms(dA) = {rms_dA}, rms(dV) = {rms_dV}"))
+                        send_over_pipe(("message", f"Iteration {iteration}: rms(dR) = {rms_dR}, rms(dA) = {rms_dA}, "
+                                                   f"rms(dV) = {rms_dV}"))
                         send_over_pipe(("mses_residual", (int(iteration), float(rms_dR), float(rms_dA), float(rms_dV))))
             outs, errs = process.communicate(timeout=mses_settings['timeout'])
 
@@ -1487,6 +1582,159 @@ def run_mplot(name: str, base_dir: str, mplot_settings: dict or MPLOTSettings, m
     elif mode in ['grid_zoom', 'Grid_Zoom', 'GRID_ZOOM']:
         convert_ps_to_svg(os.path.join(base_dir, name), 'plot.ps', 'grid_zoom.pdf', 'grid_zoom.svg')
     return mplot_log
+
+
+def run_mpolar(name: str, base_dir: str, alfa_array: np.ndarray, mpolar_settings: dict or MPOLARSettings,
+               conn: multiprocessing.connection.Connection = None) -> str:
+    """
+    A Python wrapper for MPOLAR
+
+    Parameters
+    ----------
+    name: str
+        Name of the airfoil. File will be written to ``base_dir/name/spec.name``
+
+    base_dir: str
+        Base directory where the analysis will take place
+
+    alfa_array: numpy.ndarray
+        Array of angle of attack values in degrees
+
+    mpolar_settings: dict or MPOLARSettings
+        MPOLAR settings. If a dictionary, must contain all the keys found in MPOLARSettings.get_dict_rep()
+
+    conn: multiprocessing.connection.Connection
+        Pipe used to transfer intermediate and final results to the GUI when this function is run from the GUI.
+        This keyword argument should not be set if using this function directly.
+
+    Returns
+    -------
+    str
+        Absolute path to the MPOLAR log file
+    """
+    def send_over_pipe(data: object):
+        """
+        Connection to the GUI that is only used if ``calculate_aero_data`` is being called directly from the GUI
+
+        Parameters
+        ----------
+        data: object
+            The intermediate information to pass to the GUI, normally a two-element tuple where the first argument
+            is a string specifying the kind of data being sent, and the second argument being the actual data
+            itself (note that the data must be picklable by the multiprocessing module)
+
+        Returns
+        -------
+
+        """
+        try:
+            if conn is not None:
+                conn.send(data)
+        except BrokenPipeError:
+            pass
+
+    def calculate_progress(alfa_val: float) -> int:
+        return int((alfa_val - alfa_array[0]) / (alfa_array[-1] - alfa_array[0]) * 100)
+
+    if isinstance(mpolar_settings, MPOLARSettings):
+        mpolar_settings = mpolar_settings.get_dict_rep()
+
+    write_spec_file(name, base_dir, alfa_array)
+    mpolar_log = os.path.join(base_dir, name, "mpolar.log")
+
+    send_over_pipe(("clear_residual_plots", None))
+
+    mpolar_attempts = 0
+    mpolar_max_attempts = 100
+    while mpolar_attempts < mpolar_max_attempts:
+        try:
+            with open(mpolar_log, "wb") as f:
+                process = subprocess.Popen(["mpolar", name], stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                           cwd=os.path.join(base_dir, name))
+                try:
+                    if conn is not None:
+                        iteration, rms_dR, rms_dA, rms_dV, alpha = None, None, None, None, None
+                        for line in process.stdout:
+                            decoded_line = line.decode("utf-8")
+                            if "Convergence failed." in decoded_line:
+                                raise ConvergenceFailedError
+                            f.write(line)
+                            if "rms(dR):" in decoded_line:
+                                decoded_line_split = decoded_line.split()
+                                iteration = decoded_line_split[0]
+                                rms_dR = decoded_line_split[decoded_line_split.index("rms(dR):") + 1]
+                                if rms_dR == "NaN":
+                                    raise ConvergenceFailedError
+                            elif "rms(dA):" in decoded_line:
+                                decoded_line_split = decoded_line.split()
+                                rms_dA = decoded_line_split[decoded_line_split.index("rms(dA):") + 1]
+                            elif "rms(dV):" in decoded_line:
+                                decoded_line_split = decoded_line.split()
+                                rms_dV = decoded_line_split[decoded_line_split.index("rms(dV):") + 1]
+                                send_over_pipe(
+                                    ("message", f"Iteration {iteration}, \u03b1={alpha:.2f}\u00b0"))
+                                send_over_pipe(("polar_progress", calculate_progress(alpha)))
+                                send_over_pipe(
+                                    ("mses_residual", (int(iteration), float(rms_dR), float(rms_dA), float(rms_dV))))
+                            elif "Specified parameter:" in decoded_line:
+                                decoded_line_split = decoded_line.split()
+                                alpha = float(decoded_line_split[-1])
+
+                    # Execute MPOLAR
+                    outs, errs = process.communicate(timeout=mpolar_settings["timeout"])
+
+                    f.write('Output:\n'.encode('utf-8'))
+                    f.write(outs)
+                    f.write('\nErrors:\n'.encode('utf-8'))
+                    f.write(errs)
+                except subprocess.TimeoutExpired:
+                    process.kill()
+                    outs, errs = process.communicate()
+                    f.write('After timeout, \nOutput: \n'.encode('utf-8'))
+                    f.write(outs)
+                    f.write('\nErrors:\n'.encode('utf-8'))
+                    f.write(errs)
+            break
+        except OSError:
+            # In case any of the log files cannot be created/read temporarily, wait a short period of time and try again
+            time.sleep(0.01)
+            mpolar_attempts += 1
+
+    send_over_pipe(("polar_complete", None))
+
+    return mpolar_log
+
+
+def write_spec_file(name: str, base_dir: str, alfa_array: np.ndarray) -> str:
+    """
+    Writes the "spec" file required by MPOLAR. This file is simply an integer indicating that that the angle
+    of attack is being swept followed by the values of angle of attack.
+
+    Parameters
+    ----------
+    name: str
+        Name of the airfoil. File will be written to ``base_dir/name/spec.name``
+
+    base_dir: str
+        Base directory where the analysis will take place
+
+    alfa_array: numpy.ndarray
+        Array of angle of attack values in degrees
+
+    Returns
+    -------
+    str
+        Absolute path to the spec file
+    """
+    spec_file_name = os.path.join(base_dir, name, f"spec.{name}")
+
+    # Write the KSPEC indicator and all the angle of attack values to file
+    with open(spec_file_name, "w") as spec_file:
+        spec_file.write("5\n")
+        for alfa in alfa_array:
+            spec_file.write(f"{alfa}\n")
+
+    return spec_file_name
 
 
 def write_blade_file(name: str, base_dir: str, grid_bounds: typing.List[float], coords: typing.List[np.ndarray],

@@ -30,5 +30,9 @@
   "residual-color-1": "indianred",
   "residual-color-2": "lightseagreen",
   "residual-color-3": "goldenrod",
-  "residual-target-color": "#000000"
+  "residual-target-color": "#000000",
+  "polar-color-1": "indianred",
+  "polar-color-2": "lightseagreen",
+  "polar-color-3": "goldenrod",
+  "polar-color-4": "purple"
 }
