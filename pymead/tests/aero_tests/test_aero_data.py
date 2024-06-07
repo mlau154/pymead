@@ -46,45 +46,6 @@ class CalcAeroData(unittest.TestCase):
         self.assertAlmostEqual(aero_data["Cl"], 0.3649, places=4)
         self.assertAlmostEqual(aero_data["Cm"], -0.0043, places=4)
 
-    def test_calculate_aero_data_viscous(self):
-        xfoil_settings = XFOILSettings(
-            base_dir=os.path.join(TEST_DIR, "aero_tests"),
-            airfoil_name="calculate_aero_data_viscous_test",
-            Re=2213243.6863567195832729,
-            mode=0,
-            alfa=3.0
-        )
-
-
-        aero_data, xfoil_log = calculate_aero_data(
-            conn = None,
-            airfoil_name="calculate_aero_data_viscous_test",
-            xfoil_settings=xfoil_settings,
-            airfoil_coord_dir=TEST_DIR,
-        )
-
-        self.assertAlmostEqual(aero_data["Cl"], 0.3325, places=4)
-        self.assertAlmostEqual(aero_data["Cd"], 0.00582, places=7)
-        self.assertAlmostEqual(aero_data["Cm"], 0.0015, places=4)
-        self.assertAlmostEqual(aero_data["L/D"], 57.1306, places=4)
-
-    def test_calculate_aero_data_inviscid(self):
-        xfoil_settings = XFOILSettings(
-            base_dir=os.path.join(TEST_DIR, "aero_tests"),
-            airfoil_name="xfoil_test",
-            mode=0,
-            alfa=3.0,
-            visc=False
-        )
-
-        aero_data, xfoil_log = calculate_aero_data(
-            conn=None,
-            airfoil_name="calculate_aero_data_viscous_test",
-            xfoil_settings=xfoil_settings,
-            airfoil_coord_dir=TEST_DIR
-        )
-
-        self.assertAlmostEqual(aero_data["Cl"], 0.3649, places=4)
-        self.assertAlmostEqual(aero_data["Cm"], -0.0043, places=4)
+    
 
 
