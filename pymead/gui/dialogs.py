@@ -116,8 +116,20 @@ def convert_dialog_to_mpolar_settings(dialog_input: dict):
         "timeout": dialog_input["timeout"],
         "alfa_array": None
     }
-    if dialog_input["alfa_array"] != "":
-        mplot_settings["alfa_array"] = np.loadtxt(dialog_input["alfa_array"])
+
+    if dialog_input["polar_mode"] == "No Polar Analysis":
+        pass
+    elif dialog_input["polar_mode"] == "Alpha Sweep from Data File":
+        if dialog_input["alfa_array"] != "":
+            mplot_settings["alfa_array"] = np.loadtxt(dialog_input["alfa_array"])
+    elif dialog_input["polar_mode"] == "Alpha Sweep from Start/Stop/Inc":
+        alfa_array = np.arange(dialog_input["alfa_start"], dialog_input["alfa_end"], dialog_input["alfa_inc"])
+        if dialog_input["alfa_end"] not in alfa_array:
+            alfa_array = np.append(alfa_array, dialog_input["alfa_end"])
+        mplot_settings["alfa_array"] = alfa_array
+    else:
+        raise ValueError("Invalid polar_mode")
+
     return mplot_settings
 
 
@@ -1845,10 +1857,31 @@ class MPOLARDialogWidget(PymeadDialogWidget2):
                                                   tool_tip="Maximum time allotted for the entire polar run",
                                                   minimum=0.0, maximum=np.inf, value=300.0, decimals=1,
                                                   single_step=10.0),
+            "polar_mode": PymeadLabeledComboBox(label="Polar Mode",
+                                                tool_tip="Specify whether to run a polar or which mode to run in",
+                                                items=["No Polar Analysis",
+                                                       "Alpha Sweep from Data File",
+                                                       "Alpha Sweep from Start/Stop/Inc"],
+                                                current_item="No Polar Analysis"),
             "alfa_array": PymeadLabeledLineEdit(label="Angle of Attack Sweep",
                                                 tool_tip="Specify a text or dat file with a single column specifying "
                                                          "the angles of attack to run in degrees",
-                                                push_label="Choose file")
+                                                push_label="Choose file"),
+            "alfa_start": PymeadLabeledDoubleSpinBox(label="\u03b1 Sweep Start (deg)",
+                                                     tool_tip="Starting angle of attack for the sweep. Ignored unless"
+                                                              " 'Polar Mode' is 'Alpha Sweep from Start/Stop/Inc'",
+                                                     minimum=-180.0, maximum=180.0, value=-2.0, decimals=2,
+                                                     single_step=1.0),
+            "alfa_end": PymeadLabeledDoubleSpinBox(label="\u03b1 Sweep End (deg)",
+                                                   tool_tip="Final angle of attack for the sweep. Ignored unless"
+                                                            " 'Polar Mode' is 'Alpha Sweep from Start/Stop/Inc'",
+                                                   minimum=-180.0, maximum=180.0, value=14.0, decimals=2,
+                                                   single_step=1.0),
+            "alfa_inc": PymeadLabeledDoubleSpinBox(label="\u03b1 Increment (deg)",
+                                                   tool_tip="Angle of attack increment for the sweep. Ignored unless"
+                                                            " 'Polar Mode' is 'Alpha Sweep from Start/Stop/Inc'",
+                                                   minimum=0.01, maximum=10.0, value=1.0, decimals=2,
+                                                   single_step=0.1)
         }
 
     def establishWidgetConnections(self):

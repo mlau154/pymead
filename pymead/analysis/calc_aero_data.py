@@ -923,7 +923,7 @@ def calculate_aero_data(conn: multiprocessing.connection.Connection or None,
         send_over_pipe(("message", f"MSET success"))
 
         # If running MPOLAR, execute mpolar and then return the data immediately
-        if mpolar_settings is not None:
+        if mpolar_settings is not None and alfa_array is not None:
 
             # Write the MSES file from the mses_settings given
             write_mses_file(airfoil_name, airfoil_coord_dir, mses_settings, airfoil_name_order=airfoil_name_order)
@@ -948,6 +948,11 @@ def calculate_aero_data(conn: multiprocessing.connection.Connection or None,
             # Read the mpolar data
             aero_data = read_polar(airfoil_name, airfoil_coord_dir)
             send_over_pipe(("plot_polars", aero_data))
+
+            if save_aero_data:
+                save_data(aero_data, os.path.join(airfoil_coord_dir, airfoil_name, "aero_data.json"))
+
+            send_over_pipe(("message", "Post-processing successful"))
 
             return aero_data, {"mset_log": mset_log, "mpolar_log": mpolar_log}
 

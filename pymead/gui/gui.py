@@ -1418,11 +1418,10 @@ class GUI(QMainWindow):
         self.multi_airfoil_analysis_settings = inputs
 
         if inputs is not None:
-            mset_settings = convert_dialog_to_mset_settings(inputs['MSET'])
-            mses_settings = convert_dialog_to_mses_settings(inputs['MSES'])
-            mplot_settings = convert_dialog_to_mplot_settings(inputs['MPLOT'])
-            mpolar_settings = None if inputs["MPOLAR"]["alfa_array"] == "" \
-                else convert_dialog_to_mpolar_settings(inputs["MPOLAR"])
+            mset_settings = convert_dialog_to_mset_settings(inputs["MSET"])
+            mses_settings = convert_dialog_to_mses_settings(inputs["MSES"])
+            mplot_settings = convert_dialog_to_mplot_settings(inputs["MPLOT"])
+            mpolar_settings = convert_dialog_to_mpolar_settings(inputs["MPOLAR"])
             self.run_mses(mset_settings, mses_settings, mplot_settings, mpolar_settings)
 
     def multi_airfoil_analysis_rejected(self):
@@ -1432,7 +1431,7 @@ class GUI(QMainWindow):
 
         def display_fail():
             # Throw a GUI error
-            self.disp_message_box("MSES Analysis Failed", message_mode='error')
+            self.disp_message_box("MSES Analysis Failed", message_mode="error")
 
             # Output failed MSES analysis info to console
             self.output_area_text(
