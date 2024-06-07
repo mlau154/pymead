@@ -1,4 +1,5 @@
 import os
+import shutil
 import subprocess
 import time
 import typing
@@ -13,6 +14,7 @@ from pymead.analysis.read_aero_data import read_aero_data_from_xfoil, read_Cp_fr
 from pymead.core.mea import MEA
 from pymead.utils.file_conversion import convert_ps_to_svg
 from pymead.utils.read_write_files import save_data
+from pymead import DependencyNotFoundError
 
 SVG_PLOTS = ['Mach_contours', 'grid', 'grid_zoom']
 SVG_SETTINGS_TR = {
@@ -1140,6 +1142,11 @@ def run_xfoil(xfoil_settings: dict or XFOILSettings, coords: np.ndarray, export_
         of the values is a one-dimensional ``numpy.ndarray``: ``"x"``, ``"y"``, and ``"Cp"``.
     """
 
+    if not shutil.which("xfoil"):
+        raise DependencyNotFoundError("XFOIL not found on the system path. Please see the optional section "
+                                      "of the pymead installation page: "
+                                      "https://pymead.readthedocs.io/en/latest/install.html#optional")
+
     aero_data = {}
 
     if isinstance(xfoil_settings, XFOILSettings):
@@ -1305,6 +1312,13 @@ def run_mset(name: str, base_dir: str, mset_settings: dict or MSETSettings, mea_
         A boolean describing whether the MSET call succeeded, a string containing the path to the MSET log file,
         and a list containing the order of the airfoil names determined by vertical position, descending order
     """
+
+    if not shutil.which("mset"):
+        raise DependencyNotFoundError("MSET not found on the system path. Please see the optional section "
+                                      "of the pymead installation page: "
+                                      "https://pymead.readthedocs.io/en/latest/install.html#optional to see how"
+                                      " to acquire the MSES suite.")
+
     if isinstance(mset_settings, MSETSettings):
         mset_settings = mset_settings.get_dict_rep()
 
@@ -1408,6 +1422,12 @@ def run_mses(name: str, base_folder: str, mses_settings: dict or MSESSettings, a
         except BrokenPipeError:
             pass
 
+    if not shutil.which("mses"):
+        raise DependencyNotFoundError("MSES not found on the system path. Please see the optional section "
+                                      "of the pymead installation page: "
+                                      "https://pymead.readthedocs.io/en/latest/install.html#optional to see how"
+                                      " to acquire the MSES suite.")
+
     if isinstance(mses_settings, MSESSettings):
         mses_settings = mses_settings.get_dict_rep()
 
@@ -1508,6 +1528,13 @@ def run_mplot(name: str, base_dir: str, mplot_settings: dict or MPLOTSettings, m
     str
         A string containing the path to the MPLOT log file
     """
+
+    if not shutil.which("mplot"):
+        raise DependencyNotFoundError("MPLOT not found on the system path. Please see the optional section "
+                                      "of the pymead installation page: "
+                                      "https://pymead.readthedocs.io/en/latest/install.html#optional to see how"
+                                      " to acquire the MSES suite.")
+
     if isinstance(mplot_settings, MPLOTSettings):
         mplot_settings = mplot_settings.get_dict_rep()
 
@@ -1644,6 +1671,12 @@ def run_mpolar(name: str, base_dir: str, alfa_array: np.ndarray, mpolar_settings
 
     def calculate_progress(alfa_val: float) -> int:
         return int((alfa_val - alfa_array[0]) / (alfa_array[-1] - alfa_array[0]) * 100)
+
+    if not shutil.which("mpolar"):
+        raise DependencyNotFoundError("MPOLAR not found on the system path. Please see the optional section "
+                                      "of the pymead installation page: "
+                                      "https://pymead.readthedocs.io/en/latest/install.html#optional to see how"
+                                      " to acquire the MSES suite.")
 
     if isinstance(mpolar_settings, MPOLARSettings):
         mpolar_settings = mpolar_settings.get_dict_rep()

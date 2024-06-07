@@ -1,9 +1,8 @@
 import os
 import unittest
 
-from pymead import TEST_DIR
-from pymead.utils.file_conversion import (convert_ps_to_svg, convert_pdf_to_svg, convert_ps_to_pdf,
-                                          DependencyNotFoundError)
+from pymead import TEST_DIR, DependencyNotFoundError
+from pymead.utils.file_conversion import (convert_ps_to_svg, convert_pdf_to_svg, convert_ps_to_pdf)
 
 
 class VectorGraphicsToolsTest(unittest.TestCase):

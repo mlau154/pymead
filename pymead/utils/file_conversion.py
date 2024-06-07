@@ -2,6 +2,8 @@ import subprocess as sp
 import os
 import shutil
 
+from pymead import DependencyNotFoundError
+
 
 def convert_ps_to_pdf(conversion_dir: str, input_file_name: str, output_file_name: str, timeout=10.0):
     if shutil.which('ps2pdf'):
@@ -88,17 +90,3 @@ def convert_ps_to_svg(conversion_dir: str, input_file_name: str, intermediate_pd
 class FileConversionError(Exception):
     pass
 
-
-class DependencyNotFoundError(Exception):
-    pass
-
-
-if __name__ == '__main__':
-    from pymead import RESOURCE_DIR
-
-    success, logs = convert_ps_to_svg(RESOURCE_DIR, 'plot.ps', 'grid_test.pdf', 'grid_test.svg')
-    if success:
-        print(f"Conversion successful")
-    else:
-        print(f"Conversion failed")
-    print(f"Logs: {logs}")
