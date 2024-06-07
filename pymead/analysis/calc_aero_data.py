@@ -2244,7 +2244,7 @@ def compute_alpha_zero_lift(alpha_deg: np.ndarray, Cl: np.ndarray, linear_eps: f
 
     linear_eps: float
         Tolerance used to determine whether a linear regime is present in the range of angles of attack provided
-        as input. Default: ``1e-5``
+        as input. Default: ``0.001``
 
     Returns
     -------
