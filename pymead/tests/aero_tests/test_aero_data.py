@@ -68,13 +68,17 @@ class CalcAeroData(unittest.TestCase):
             mode=0,
             alfa=3.0
         )
+        print("one")
 
         aero_data, xfoil_log = calculate_aero_data(
             conn=None,
             airfoil_name="calculate_aero_data_viscous_test",
             xfoil_settings=xfoil_settings,
-            airfoil_coord_dir=os.path.join(TEST_DIR, "aero_tests")
+            airfoil_coord_dir=os.path.join(TEST_DIR, "aero_tests"),
+            coords=extract_data_from_airfoiltools("n0012-il")
         )
+
+
 
         self.assertAlmostEqual(aero_data["Cl"], 0.3325, places=4)
         self.assertAlmostEqual(aero_data["Cd"], 0.00582, places=7)
@@ -94,7 +98,8 @@ class CalcAeroData(unittest.TestCase):
             conn=None,
             airfoil_name="calculate_aero_data_viscous_test",
             xfoil_settings=xfoil_settings,
-            airfoil_coord_dir=os.path.join(TEST_DIR, "aero_tests")
+            airfoil_coord_dir=os.path.join(TEST_DIR, "aero_tests"),
+            coords=extract_data_from_airfoiltools("n0012-il")
         )
 
         self.assertAlmostEqual(aero_data["Cl"], 0.3649, places=4)
