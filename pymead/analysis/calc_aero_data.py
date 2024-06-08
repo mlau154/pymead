@@ -1,4 +1,5 @@
 import os
+import shutil
 import subprocess
 import time
 import typing
@@ -13,6 +14,7 @@ from pymead.analysis.read_aero_data import read_aero_data_from_xfoil, read_Cp_fr
 from pymead.core.mea import MEA
 from pymead.utils.file_conversion import convert_ps_to_svg
 from pymead.utils.read_write_files import save_data
+from pymead import DependencyNotFoundError
 
 SVG_PLOTS = ['Mach_contours', 'grid', 'grid_zoom']
 SVG_SETTINGS_TR = {
@@ -925,8 +927,13 @@ def calculate_aero_data(conn: multiprocessing.connection.Connection or None,
         # If running MPOLAR, execute mpolar and then return the data immediately
         if mpolar_settings is not None and alfa_array is not None:
 
-            # Write the MSES file from the mses_settings given
-            write_mses_file(airfoil_name, airfoil_coord_dir, mses_settings, airfoil_name_order=airfoil_name_order)
+            # Run MSES on the first point
+            mses_settings["ALFAIN"] = alfa_array[0]
+            converged, mses_log = run_mses(airfoil_name, airfoil_coord_dir, mses_settings,
+                                           airfoil_name_order=airfoil_name_order, conn=conn)
+            # write_mses_file(airfoil_name, airfoil_coord_dir, mses_settings, airfoil_name_order=airfoil_name_order)
+            if not converged:
+                raise ConvergenceFailedError("Failed to converge first point")
 
             # Remove the polar and polarx files if they exist
             polar_file = os.path.join(airfoil_coord_dir, airfoil_name, f"polar.{airfoil_name}")
@@ -937,6 +944,7 @@ def calculate_aero_data(conn: multiprocessing.connection.Connection or None,
                 os.remove(polarx_file)
 
             send_over_pipe(("clear_polar_plots", None))
+            send_over_pipe(("switch_to_residuals_tab", None))
 
             # Run mpolar
             t_start = time.perf_counter()
@@ -947,12 +955,15 @@ def calculate_aero_data(conn: multiprocessing.connection.Connection or None,
 
             # Read the mpolar data
             aero_data = read_polar(airfoil_name, airfoil_coord_dir)
+            performance_parameters = calculate_performance_parameters_from_polar(aero_data)
+            aero_data = {**performance_parameters, **aero_data}
+            send_over_pipe(
+                ("polar_analysis_complete", (aero_data, mset_settings, mses_settings))
+            )
             send_over_pipe(("plot_polars", aero_data))
 
             if save_aero_data:
                 save_data(aero_data, os.path.join(airfoil_coord_dir, airfoil_name, "aero_data.json"))
-
-            send_over_pipe(("message", "Post-processing successful"))
 
             return aero_data, {"mset_log": mset_log, "mpolar_log": mpolar_log}
 
@@ -1131,6 +1142,11 @@ def run_xfoil(xfoil_settings: dict or XFOILSettings, coords: np.ndarray, export_
         of the values is a one-dimensional ``numpy.ndarray``: ``"x"``, ``"y"``, and ``"Cp"``.
     """
 
+    if not shutil.which("xfoil"):
+        raise DependencyNotFoundError("XFOIL not found on the system path. Please see the optional section "
+                                      "of the pymead installation page: "
+                                      "https://pymead.readthedocs.io/en/latest/install.html#optional")
+
     aero_data = {}
 
     if isinstance(xfoil_settings, XFOILSettings):
@@ -1296,6 +1312,13 @@ def run_mset(name: str, base_dir: str, mset_settings: dict or MSETSettings, mea_
         A boolean describing whether the MSET call succeeded, a string containing the path to the MSET log file,
         and a list containing the order of the airfoil names determined by vertical position, descending order
     """
+
+    if not shutil.which("mset"):
+        raise DependencyNotFoundError("MSET not found on the system path. Please see the optional section "
+                                      "of the pymead installation page: "
+                                      "https://pymead.readthedocs.io/en/latest/install.html#optional to see how"
+                                      " to acquire the MSES suite.")
+
     if isinstance(mset_settings, MSETSettings):
         mset_settings = mset_settings.get_dict_rep()
 
@@ -1399,6 +1422,12 @@ def run_mses(name: str, base_folder: str, mses_settings: dict or MSESSettings, a
         except BrokenPipeError:
             pass
 
+    if not shutil.which("mses"):
+        raise DependencyNotFoundError("MSES not found on the system path. Please see the optional section "
+                                      "of the pymead installation page: "
+                                      "https://pymead.readthedocs.io/en/latest/install.html#optional to see how"
+                                      " to acquire the MSES suite.")
+
     if isinstance(mses_settings, MSESSettings):
         mses_settings = mses_settings.get_dict_rep()
 
@@ -1499,6 +1528,13 @@ def run_mplot(name: str, base_dir: str, mplot_settings: dict or MPLOTSettings, m
     str
         A string containing the path to the MPLOT log file
     """
+
+    if not shutil.which("mplot"):
+        raise DependencyNotFoundError("MPLOT not found on the system path. Please see the optional section "
+                                      "of the pymead installation page: "
+                                      "https://pymead.readthedocs.io/en/latest/install.html#optional to see how"
+                                      " to acquire the MSES suite.")
+
     if isinstance(mplot_settings, MPLOTSettings):
         mplot_settings = mplot_settings.get_dict_rep()
 
@@ -1636,13 +1672,17 @@ def run_mpolar(name: str, base_dir: str, alfa_array: np.ndarray, mpolar_settings
     def calculate_progress(alfa_val: float) -> int:
         return int((alfa_val - alfa_array[0]) / (alfa_array[-1] - alfa_array[0]) * 100)
 
+    if not shutil.which("mpolar"):
+        raise DependencyNotFoundError("MPOLAR not found on the system path. Please see the optional section "
+                                      "of the pymead installation page: "
+                                      "https://pymead.readthedocs.io/en/latest/install.html#optional to see how"
+                                      " to acquire the MSES suite.")
+
     if isinstance(mpolar_settings, MPOLARSettings):
         mpolar_settings = mpolar_settings.get_dict_rep()
 
     write_spec_file(name, base_dir, alfa_array)
     mpolar_log = os.path.join(base_dir, name, "mpolar.log")
-
-    send_over_pipe(("clear_residual_plots", None))
 
     mpolar_attempts = 0
     mpolar_max_attempts = 100
@@ -2220,6 +2260,114 @@ def calculate_CPK_mses_inviscid_only(analysis_subdir: str) -> typing.Dict[str, f
         CPK = 1e9
 
     return {"CPK": CPK}
+
+
+def compute_alpha_zero_lift(alpha_deg: np.ndarray, Cl: np.ndarray, linear_eps: float = 0.001) -> float or None:
+    """
+    Computes the zero-lift angle of attack for an input set of angles of attack and lift coefficients. If
+    no linear regime is detected, ``None`` is returned.
+
+    Parameters
+    ----------
+    alpha_deg: numpy.ndarray
+        One-dimensional array of angle of attack in degrees.
+
+    Cl: numpy.ndarray
+        One-dimensional array of lift coefficients, one-to-one mapping with ``alpha_deg``
+
+    linear_eps: float
+        Tolerance used to determine whether a linear regime is present in the range of angles of attack provided
+        as input. Default: ``0.001``
+
+    Returns
+    -------
+    float or None
+        The zero-lift angle of attack in degrees if the linear regime is detected, otherwise ``None``
+    """
+    # Determine which indices are in the positive linear regime
+    positive_linear_indices = []
+    for i in range(len(alpha_deg) - 2):
+        a0 = (Cl[i + 1] - Cl[i]) / (alpha_deg[i + 1] - alpha_deg[i])
+        a1 = (Cl[i + 2] - Cl[i + 1]) / (alpha_deg[i + 2] - alpha_deg[i + 1])
+        consecutive_slope_percent_difference = abs((a1 - a0) / 0.5 / (a0 + a1))
+        linear = consecutive_slope_percent_difference < linear_eps
+        positive_slope = a0 > 0.0
+        if linear and positive_slope:
+            positive_linear_indices.append(i)
+
+    # Early return None if there are no indices in the linear regime
+    if not positive_linear_indices:
+        return None
+
+    # Perform linear interpolation using the start and end of the linear regime to determine the zero-lift alpha
+    idx_start = positive_linear_indices[0]
+    idx_end = positive_linear_indices[-1] + 2
+    dalf_dCl = (alpha_deg[idx_end] - alpha_deg[idx_start]) / (Cl[idx_end] - Cl[idx_start])
+    return alpha_deg[idx_start] + dalf_dCl * (0.0 - Cl[idx_start])
+
+
+def estimate_LD_max(alpha_deg: np.ndarray, Cl: np.ndarray, Cd: np.ndarray) -> (float, float) or (None, None):
+    r"""
+    Estimates the maximum lift-to-drag ratio and the angle of attack that gives :math:`(L/D)_\text{max}`.
+
+    Parameters
+    ----------
+    alpha_deg: numpy.ndarray
+        One-dimensional array of angle of attack in degrees.
+
+    Cl: numpy.ndarray
+        One-dimensional array of lift coefficients, one-to-one mapping with ``alpha_deg``
+
+    Cd: numpy.ndarray
+        One-dimensional array of drag coefficients, one-to-one mapping with ``alpha_deg``
+
+    Returns
+    -------
+    (float, float) or (None, None)
+        If the maximum of the :math:`(L/D)` vs. :math:`\alpha` curve is not at an endpoint, returns
+        the maximum lift-to-drag ratio and the angle of attack in degrees that gives that maximum lift-to-drag ratio,
+        in that order. Otherwise, returns ``(None, None)``
+    """
+    LD = Cl / Cd
+    max_idx = np.argmax(LD)
+    if max_idx in (0, len(LD) - 1):
+        return None, None
+
+    return LD[max_idx], alpha_deg[max_idx]
+
+
+def calculate_performance_parameters_from_polar(aero_data: dict) -> dict:
+    r"""
+    Computes performance parameters, such as :math:`\alpha_{ZL}`, :math:`(L/D)_\text{max}`, etc. from a set
+    of MPOLAR data.
+
+    Parameters
+    ----------
+    aero_data: dict
+        Aerodynamic data output by ``run_mpolar`` or ``calculate_aero_data`` with ``alfa_array != None``
+
+    Returns
+    -------
+    dict
+        Dictionary containing a set of performance parameters for the airfoil system. The outputs vary depending
+        on the input aerodynamic data, since the range of angles of attack covered may not allow for accurate
+        estimates of some of the outputs. Outputs may include:
+
+        - ``"alf_ZL"``: Zero-lift angle of attack (degrees)
+        - ``"LD_max"``: Estimate of maximum lift-to-drag ratio
+        - ``"alf_LD_max"``: Angle of attack (degrees) that gives the maximum lift-to-drag ratio
+    """
+    performance_params = {}
+
+    # Create numpy arrays from the input data
+    alf_deg = np.array(aero_data["alf"])
+    Cl = np.array(aero_data["Cl"])
+    Cd = np.array(aero_data["Cd"])
+
+    performance_params["alf_ZL"] = compute_alpha_zero_lift(alf_deg, Cl)
+    performance_params["LD_max"], performance_params["alf_LD_max"] = estimate_LD_max(alf_deg, Cl, Cd)
+
+    return performance_params
 
 
 class GeometryError(Exception):

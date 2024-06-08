@@ -6,7 +6,8 @@ import numpy as np
 import pyqtgraph
 
 from pyqtgraph import colormap
-from PyQt5 import Qt, QtCore, QtGui
+from PyQt5 import QtCore, QtGui
+from pyqtgraph import Qt
 from PyQt5.QtCore import pyqtSignal
 from pyqtgraph import functions as fn
 from pyqtgraph.graphicsItems.GradientEditorItem import Gradients  # List of colormaps

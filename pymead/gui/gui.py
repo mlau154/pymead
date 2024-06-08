@@ -1474,6 +1474,45 @@ class GUI(QMainWindow):
         else:
             display_success()
 
+    def display_mpolar_result(self, aero_data: dict, mset_settings: dict, mses_settings: dict):
+
+        # Compute the output analysis directory
+        analysis_dir_full_path = os.path.abspath(
+            os.path.join(mset_settings['airfoil_analysis_dir'], mset_settings['airfoil_coord_file_name'], '')
+        )
+
+        self.output_area_text(f"<a href='{analysis_dir_full_path}'>MPOLAR</a>", mode="html")  # Folder link
+        self.output_area_text(
+            f" ({mset_settings['mea']}, "
+            f"Re = {mses_settings['REYNIN']:.3E}, "  # Reynolds number
+            f"Ma = {mses_settings['MACHIN']:.3f}): "  # Mach number
+        )
+        performance_params = [k for k in ["alf_ZL", "LD_max", "alf_LD_max"] if k is not None]
+        if aero_data["alf_ZL"] is not None:
+            line_break = performance_params.index("alf_ZL") == len(performance_params) - 1
+            self.output_area_text(f"\u03b1<sub>ZL</sub> = {aero_data['alf_ZL']:.3f}\u00b0".replace(
+                "-", "\u2212"), mode="html")
+            if line_break:
+                self.output_area_text("", line_break=True)
+            else:
+                self.output_area_text(", ")
+        if aero_data["LD_max"] is not None:
+            line_break = performance_params.index("LD_max") == len(performance_params) - 1
+            self.output_area_text(f"(L/D)<sub>max</sub> = {aero_data['LD_max']:.1f}".replace(
+                "-", "\u2212"), mode="html")
+            if line_break:
+                self.output_area_text("", line_break=True)
+            else:
+                self.output_area_text(", ")
+        if aero_data["alf_LD_max"] is not None:
+            line_break = performance_params.index("alf_LD_max") == len(performance_params) - 1
+            self.output_area_text(f"\u03b1 @ (L/D)<sub>max</sub> = {aero_data['alf_LD_max']:.3f}\u00b0".replace(
+                "-", "\u2212"), mode="html")
+            if line_break:
+                self.output_area_text("", line_break=True)
+            else:
+                self.output_area_text(", ")
+
     def display_svgs(self, mset_settings: dict, mplot_settings: dict):
 
         def display_svg():
@@ -1890,16 +1929,32 @@ class GUI(QMainWindow):
                 self.n_analyses += 1
             else:
                 self.n_analyses += 1
+        elif status == "polar_analysis_complete" and isinstance(data, tuple):
+            aero_data = data[0]
+            mset_settings = data[1]
+            mses_settings = data[2]
+            self.display_mpolar_result(aero_data, mset_settings, mses_settings)
+            self.switch_to_tab("Polars")
+        elif status == "switch_to_residuals_tab":
+            self.switch_to_tab("Residuals")
         elif status == "mses_residual" and isinstance(data, tuple):
             if self.residual_graph is None:
                 self.residual_graph = ResidualGraph(theme=self.themes[self.current_theme])
                 self.add_new_tab_widget(self.residual_graph.w, "Residuals")
                 self.switch_to_tab("Residuals")
-            # current_data = self.residual_graph.plot_item.getData()
+
+            # Assign the data from the pipe to variables
             new_iteration = data[0]
             new_rms_dR = data[1]
             new_rms_dA = data[2]
             new_rms_dV = data[3]
+
+            # If running MPOLAR and an angle of attack fails, MSES will start over at a previous iteration.
+            # In this case, we need to delete the existing data from that iteration onward
+            if self.residual_data and new_iteration <= self.residual_data[-1][0]:
+                prev_iteration_idx = [arr[0] for arr in self.residual_data].index(new_iteration)
+                del self.residual_data[prev_iteration_idx:]
+
             self.residual_data.append([new_iteration, new_rms_dR, new_rms_dA, new_rms_dV])
             self.residual_graph.plot_items[0].setData([arr[0] for arr in self.residual_data],
                                                       [arr[1] for arr in self.residual_data])
@@ -1911,7 +1966,6 @@ class GUI(QMainWindow):
         elif status == "clear_polar_plots":
             if self.polar_graph_collection is not None:
                 self.polar_graph_collection.clear_data()
-            self.switch_to_tab("Polars")
         elif status == "plot_polars" and isinstance(data, dict):
             if self.polar_graph_collection is None:
                 self.polar_graph_collection = PolarGraphCollection(theme=self.themes[self.current_theme])

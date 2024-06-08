@@ -94,3 +94,7 @@ QCoreApplication.setOrganizationName("mlaero")
 QCoreApplication.setApplicationName("pymead")
 
 q_settings = QSettings()
+
+
+class DependencyNotFoundError(Exception):
+    pass
