@@ -1,5 +1,6 @@
 import os
 import unittest
+import numpy as np
 
 from pymead.utils.get_airfoil import extract_data_from_airfoiltools
 from pymead.analysis.calc_aero_data import run_xfoil, XFOILSettings
@@ -64,7 +65,7 @@ class CalcAeroData(unittest.TestCase):
             conn=None,
             airfoil_name="calculate_aero_data_viscous_test",
             xfoil_settings=xfoil_settings,
-            airfoil_coord_dir=TEST_DIR,
+            airfoil_coord_dir=os.path.join(TEST_DIR, "aero_tests")
         )
 
         self.assertAlmostEqual(aero_data["Cl"], 0.3325, places=4)
@@ -85,7 +86,7 @@ class CalcAeroData(unittest.TestCase):
             conn=None,
             airfoil_name="calculate_aero_data_viscous_test",
             xfoil_settings=xfoil_settings,
-            airfoil_coord_dir=TEST_DIR
+            airfoil_coord_dir=os.path.join(TEST_DIR, "aero_tests")
         )
 
         self.assertAlmostEqual(aero_data["Cl"], 0.3649, places=4)
