@@ -3,7 +3,7 @@ import sys
 
 from PyQt5.QtWidgets import QApplication, QDialog
 
-from gui_tests.utils import perform_action_on_dialog
+from pymead.tests.gui_tests.utils import perform_action_on_dialog
 from pymead.gui.dialogs import WebAirfoilDialog
 
 from pymead.gui.gui import GUI
