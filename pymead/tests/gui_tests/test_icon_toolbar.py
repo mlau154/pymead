@@ -21,6 +21,6 @@ class IconToolbarTest(unittest.TestCase):
             self.form = GUI()
 
     def test_icons(self):
-        self.form.main_icon_toolbar.buttons["change-background-color"]["button"].setChecked(True)
         self.form.main_icon_toolbar.buttons["change-background-color"]["button"].setChecked(False)
+        self.form.main_icon_toolbar.buttons["change-background-color"]["button"].setChecked(True)
         QTest.mouseClick(self.form.main_icon_toolbar.buttons["grid"]["button"], Qt.LeftButton)
