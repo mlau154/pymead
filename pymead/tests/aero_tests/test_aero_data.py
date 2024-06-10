@@ -3,9 +3,6 @@ import unittest
 import numpy as np
 
 from pymead.utils.get_airfoil import extract_data_from_airfoiltools
-from pymead.analysis.calc_aero_data import run_xfoil, XFOILSettings
-from pymead.analysis.calc_aero_data import calculate_aero_data
-from pymead import TEST_DIR
 from pymead.utils.read_write_files import load_data
 from pymead.analysis.calc_aero_data import (run_xfoil, XFOILSettings, MSETSettings, MSESSettings, MPOLARSettings,
                                             AirfoilMSETMeshingParameters, calculate_aero_data)
@@ -14,30 +11,6 @@ from pymead import TEST_DIR, EXAMPLES_DIR, DependencyNotFoundError
 
 
 class CalcAeroData(unittest.TestCase):
-
-    def test_run_xfoil(self):
-
-        xfoil_settings = XFOILSettings(
-            base_dir=os.path.join(TEST_DIR, "aero_tests"),
-            airfoil_name="xfoil_test",
-            Re=2213243.6863567195832729,
-            mode=0,
-            alfa=3.0
-        )
-
-        try:
-            aero_data, xfoil_log = run_xfoil(
-                xfoil_settings=xfoil_settings,
-                coords=extract_data_from_airfoiltools("n0012-il"),
-            )
-
-            self.assertAlmostEqual(aero_data["Cl"], 0.3325, places=4)
-            self.assertAlmostEqual(aero_data["Cd"], 0.00582, places=7)
-            self.assertAlmostEqual(aero_data["Cm"], 0.0015, places=4)
-            self.assertAlmostEqual(aero_data["L/D"], 57.1306, places=4)
-
-        except DependencyNotFoundError as e:
-            print(f"Warning: {str(e)}")
 
     def test_run_xfoil_inviscid(self):
         xfoil_settings = XFOILSettings(
@@ -68,22 +41,22 @@ class CalcAeroData(unittest.TestCase):
             mode=0,
             alfa=3.0
         )
-        print("one")
 
-        aero_data, xfoil_log = calculate_aero_data(
-            conn=None,
-            airfoil_name="calculate_aero_data_viscous_test",
-            xfoil_settings=xfoil_settings,
-            airfoil_coord_dir=os.path.join(TEST_DIR, "aero_tests"),
-            coords=extract_data_from_airfoiltools("n0012-il")
-        )
+        try:
+            aero_data, xfoil_log = calculate_aero_data(
+                conn=None,
+                airfoil_name="calculate_aero_data_viscous_test",
+                xfoil_settings=xfoil_settings,
+                airfoil_coord_dir=os.path.join(TEST_DIR, "aero_tests"),
+                coords=extract_data_from_airfoiltools("n0012-il")
+            )
 
-
-
-        self.assertAlmostEqual(aero_data["Cl"], 0.3325, places=4)
-        self.assertAlmostEqual(aero_data["Cd"], 0.00582, places=7)
-        self.assertAlmostEqual(aero_data["Cm"], 0.0015, places=4)
-        self.assertAlmostEqual(aero_data["L/D"], 57.1306, places=4)
+            self.assertAlmostEqual(aero_data["Cl"], 0.3325, places=4)
+            self.assertAlmostEqual(aero_data["Cd"], 0.00582, places=7)
+            self.assertAlmostEqual(aero_data["Cm"], 0.0015, places=4)
+            self.assertAlmostEqual(aero_data["L/D"], 57.1306, places=4)
+        except DependencyNotFoundError as e:
+            print(f"Warning: {str(e)}")
 
     def test_calculate_aero_data_inviscid(self):
         xfoil_settings = XFOILSettings(
@@ -94,18 +67,19 @@ class CalcAeroData(unittest.TestCase):
             visc=False
         )
 
-        aero_data, xfoil_log = calculate_aero_data(
-            conn=None,
-            airfoil_name="calculate_aero_data_viscous_test",
-            xfoil_settings=xfoil_settings,
-            airfoil_coord_dir=os.path.join(TEST_DIR, "aero_tests"),
-            coords=extract_data_from_airfoiltools("n0012-il")
-        )
+        try:
+            aero_data, xfoil_log = calculate_aero_data(
+                conn=None,
+                airfoil_name="calculate_aero_data_viscous_test",
+                xfoil_settings=xfoil_settings,
+                airfoil_coord_dir=os.path.join(TEST_DIR, "aero_tests"),
+                coords=extract_data_from_airfoiltools("n0012-il")
+            )
 
-        self.assertAlmostEqual(aero_data["Cl"], 0.3649, places=4)
-        self.assertAlmostEqual(aero_data["Cm"], -0.0043, places=4)
-
-
+            self.assertAlmostEqual(aero_data["Cl"], 0.3649, places=4)
+            self.assertAlmostEqual(aero_data["Cm"], -0.0043, places=4)
+        except DependencyNotFoundError as e:
+            print(f"Warning: {str(e)}")
 
     def test_run_mpolar(self):
         geo_col = GeometryCollection.set_from_dict_rep(
