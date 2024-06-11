@@ -64,6 +64,12 @@ class GeometryCollection(DualRep):
         """
         return self._container
 
+    def clear_container(self):
+        """
+        Clears all the entities in the geometry container.
+        """
+        self.container().clear()
+
     def get_name_list(self, sub_container: str):
         """
         Gets a list of all the parameter or geometry names in a specified sub-container.

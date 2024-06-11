@@ -13,3 +13,5 @@ pandas
 PyQtWebEngine
 networkx
 psutil
+pytest>=7
+pytest-qt

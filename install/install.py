@@ -4,7 +4,7 @@ Release workflow (ADMINS ONLY):
 
 On base platform (can be Windows or Linux):
 1. Create a draft release on GitHub and enter the version notes
-2. Run tests
+2. Run tests using "tox run" in the terminal
 3. Make sure version has been updated
 4. Make sure all changes are committed and pushed to dev branch
 5. Merge with main branch

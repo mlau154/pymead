@@ -1,4 +1,5 @@
-import numpy as np
+import math
+
 from decimal import Decimal
 
 
@@ -22,5 +23,5 @@ def nchoosek(n: int, k: int):
     =======
     :math:`n \choose k`
     """
-    f = np.math.factorial
+    f = math.factorial
     return float(Decimal(f(n)) / Decimal(f(k)) / Decimal(f(n - k)))

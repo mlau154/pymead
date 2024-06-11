@@ -44,6 +44,7 @@ class AirfoilCanvas(pg.PlotWidget):
 
     def __init__(self, parent, geo_col: GeometryCollection, gui_obj):
         super().__init__(parent)
+        self.dialog = None
         self.setMenuEnabled(False)
         self.setAspectLocked(True)
         self.disableAutoRange()
@@ -351,11 +352,20 @@ class AirfoilCanvas(pg.PlotWidget):
         self.gui_obj.permanent_widget.updateAirfoils()
 
     @undoRedoAction
-    def generateWebAirfoil(self):
-        dialog = WebAirfoilDialog(self, theme=self.gui_obj.themes[self.gui_obj.current_theme])
-        if dialog.exec_():
+    def generateWebAirfoil(self, dialog_test_action: typing.Callable = None):
+        """
+        Generates an airfoil from Airfoil Tools or from a file.
+
+        Parameters
+        ----------
+        dialog_test_action: typing.Callable or None
+            If not ``None``, should be a function that accepts a ``WebAirfoilDialog`` as its sole argument and returns
+            nothing. Default: ``None``
+        """
+        self.dialog = WebAirfoilDialog(self, theme=self.gui_obj.themes[self.gui_obj.current_theme])
+        if (dialog_test_action is not None and not dialog_test_action(self.dialog)) or self.dialog.exec_():
             try:
-                polyline = self.geo_col.add_polyline(source=dialog.value())
+                polyline = self.geo_col.add_polyline(source=self.dialog.value())
             except AirfoilNotFoundError as e:
                 self.gui_obj.disp_message_box(f"{e}", message_mode="error")
                 return

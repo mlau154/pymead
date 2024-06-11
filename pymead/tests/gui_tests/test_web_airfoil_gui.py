@@ -1,43 +1,36 @@
-import unittest
-import sys
-
-from PyQt5.QtWidgets import QApplication, QDialog
-
-from pymead.tests.gui_tests.utils import perform_action_on_dialog
-from pymead.gui.dialogs import WebAirfoilDialog
+import pytest
 
 from pymead.gui.gui import GUI
 
-app = QApplication(sys.argv)
-app.processEvents()
-app.setStyle('Fusion')
+
+@pytest.fixture
+def app(qtbot):
+    gui = GUI()
+    gui.show()
+    qtbot.addWidget(gui)
+    return gui
 
 
-class WebAirfoilGUITest(unittest.TestCase):
-    def setUp(self) -> None:
-        """Create the GUI"""
-        if len(sys.argv) > 1:
-            self.gui = GUI(path=sys.argv[1])
-        else:
-            self.gui = GUI()
+def test_load_n0012(app):
+    def dialog_action(dialog):
+        dialog.setModal(False)
+        dialog.show()
+        dialog.accept()
 
-    def test_load_n0012(self):
+    app.airfoil_canvas.generateWebAirfoil(dialog_test_action=dialog_action)
+    polyline_subcontainer = app.geo_col.container()["polylines"]
+    assert "n0012-1" in polyline_subcontainer
+    app.geo_col.clear_container()
 
-        def dialog_action(dialog: QDialog):
-            dialog.accept()
 
-        perform_action_on_dialog(self.gui.main_icon_toolbar.buttons["generate-web-airfoil"]["button"].click,
-                                 dialog_action)
-        polyline_subcontainer = self.gui.geo_col.container()["polylines"]
-        self.assertTrue("n0012-1" in polyline_subcontainer)
+def test_load_sc20612(app):
+    def dialog_action(dialog):
+        dialog.setModal(False)
+        dialog.show()
+        dialog.inputs[1].setValue("sc20612-il")
+        dialog.accept()
 
-    def test_load_sc20612(self):
-
-        def dialog_action(dialog: WebAirfoilDialog):
-            dialog.inputs[1].setValue("sc20612-il")
-            dialog.accept()
-
-        perform_action_on_dialog(self.gui.main_icon_toolbar.buttons["generate-web-airfoil"]["button"].click,
-                                 dialog_action)
-        polyline_subcontainer = self.gui.geo_col.container()["polylines"]
-        self.assertTrue("sc20612-1" in polyline_subcontainer)
+    app.airfoil_canvas.generateWebAirfoil(dialog_test_action=dialog_action)
+    polyline_subcontainer = app.geo_col.container()["polylines"]
+    assert "sc20612-1" in polyline_subcontainer
+    app.geo_col.clear_container()

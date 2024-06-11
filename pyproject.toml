@@ -51,7 +51,9 @@ dependencies = [
     "numba",
     "PyQtWebEngine",
     "networkx",
-    "psutil"
+    "psutil",
+    "pytest>=7",
+    "pytest-qt"
 ]
 dynamic = ["version"]
 

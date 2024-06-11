@@ -658,7 +658,8 @@ class PymeadDialog(QDialog):
         self.w = widget
 
         self.vbox_lay.addWidget(widget)
-        self.vbox_lay.addWidget(self.create_button_box())
+        self.button_box = self.create_button_box()
+        self.vbox_lay.addWidget(self.button_box)
 
         # mandatory for cursor updates
         self.setMouseTracking(True)
