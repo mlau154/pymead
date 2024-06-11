@@ -300,7 +300,7 @@ def read_bl_data_from_mses(src_file: str) -> typing.List[dict]:
     header_line = line1.replace(' #', '').split()
     header_line.pop(0)
     header_line[-1] = 'Pend'
-    df = pd.read_csv(src_file, delim_whitespace=True, skiprows=2, names=header_line)
+    df = pd.read_csv(src_file, sep="\s+", skiprows=2, names=header_line)
     bl = [{}]
     side_idx = 0
     # old_x_val = 0
