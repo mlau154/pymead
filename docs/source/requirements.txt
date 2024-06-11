@@ -6,8 +6,8 @@ scipy
 shapely
 matplotlib
 requests>=2.31
-PyQt5==5.15.7
-pyqtgraph==0.13.1
+PyQt5
+pyqtgraph
 python-benedict
 pandas
 PyQtWebEngine

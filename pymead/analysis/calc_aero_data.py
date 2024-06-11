@@ -1472,11 +1472,12 @@ def run_mses(name: str, base_folder: str, mses_settings: dict or MSESSettings, a
             if conn is None:
                 if 'Converged' in str(outs):
                     converged = True
-                    if mses_settings['verbose']:
-                        print('Converged!')
+                    # if mses_settings['verbose']:
+                    #     print('Converged!')
                 else:
-                    if mses_settings['verbose']:
-                        print('Not converged!')
+                    # if mses_settings['verbose']:
+                    #     print('Not converged!')
+                    pass
                 f.write('Output:\n'.encode('utf-8'))
                 f.write(outs)
                 f.write('\nErrors:\n'.encode('utf-8'))

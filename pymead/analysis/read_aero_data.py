@@ -39,7 +39,7 @@ def read_Cp_from_file_xfoil(fname: str):
     # Read in the Cp data for XFOIL versions 6.93 or 6.99 (other versions are untested)
     names = ["x", "y", "Cp"] if y_in_header else ["x", "Cp"]
     cols = {"x": 0, "y": 1, "Cp": 2} if y_in_header else {"x": 0, "Cp": 1}
-    df = pd.read_csv(fname, skiprows=header_line_idx + 1, names=names, sep='\s+', engine='python')
+    df = pd.read_csv(fname, skiprows=header_line_idx + 1, names=names, sep=r"\s+", engine='python')
     array_ = df.to_numpy()
     return {name: array_[:, cols[name]] for name in names}
 
@@ -300,7 +300,7 @@ def read_bl_data_from_mses(src_file: str) -> typing.List[dict]:
     header_line = line1.replace(' #', '').split()
     header_line.pop(0)
     header_line[-1] = 'Pend'
-    df = pd.read_csv(src_file, sep="\s+", skiprows=2, names=header_line)
+    df = pd.read_csv(src_file, sep=r"\s+", skiprows=2, names=header_line)
     bl = [{}]
     side_idx = 0
     # old_x_val = 0
