@@ -82,7 +82,6 @@ packages = [
     "pymead.optimization",
     "pymead.plugins",
     "pymead.plugins.IGES",
-    "pymead.plugins.NX",
     "pymead.post",
     "pymead.gui.scientificspinbox_master",
     "pymead.gui.pyqt_vertical_tab_widget.pyqt_vertical_tab_widget"
