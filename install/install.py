@@ -43,8 +43,8 @@ For uploading to TestPyPi (test) or PyPi (prod):
 - (Test Only) In a fresh, virtual environment, use
   pip install --extra-index-url https://test.pypi.org/simple/ pymead==<short ver name> to test the installation
 
-To test the TestPyPi build in a fresh virtual environment
-=========================================================
+To test the TestPyPi build in a fresh virtual environment (Windows PowerShell only)
+===================================================================================
 First, navigate to any directory outside the base directory. Then, for Python 3.12,
 - py -3.12 -m venv .\pymead312
 - May need to run the command `Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser` the first time
