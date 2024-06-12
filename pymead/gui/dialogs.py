@@ -2551,9 +2551,9 @@ class LoadDialog(QFileDialog):
     def __init__(self, parent, settings_var: str, file_filter: str = "JMEA Files (*.jmea)"):
         super().__init__(parent=parent)
 
-        self.setFileMode(QFileDialog.ExistingFile)
+        self.setFileMode(QFileDialog.FileMode.ExistingFile)
         self.setNameFilter(self.tr(file_filter))
-        self.setViewMode(QFileDialog.Detail)
+        self.setViewMode(QFileDialog.ViewMode.Detail)
         self.settings_var = settings_var
 
         # Get default open location
@@ -2704,9 +2704,9 @@ class LoadAirfoilAlgFile(QDialog):
 class SaveAsDialog(QFileDialog):
     def __init__(self, parent, file_filter: str = "JMEA Files (*.jmea)"):
         super().__init__(parent=parent)
-        self.setFileMode(QFileDialog.AnyFile)
+        self.setFileMode(QFileDialog.FileMode.AnyFile)
         self.setNameFilter(self.tr(file_filter))
-        self.setViewMode(QFileDialog.Detail)
+        self.setViewMode(QFileDialog.ViewMode.Detail)
 
 
 class NewGeoColDialog(PymeadDialog):
@@ -2897,7 +2897,7 @@ class ExportCoordinatesDialog(PymeadDialog):
 
     def select_directory(self, line_edit: QLineEdit):
         selected_dir = QFileDialog.getExistingDirectory(self, "Select a directory", os.path.expanduser("~"),
-                                                        QFileDialog.ShowDirsOnly)
+                                                        QFileDialog.Option.ShowDirsOnly)
         if selected_dir:
             line_edit.setText(selected_dir)
 
@@ -2952,7 +2952,7 @@ class ExportControlPointsDialog(PymeadDialog):
 
     def select_directory(self, line_edit: QLineEdit):
         selected_dir = QFileDialog.getExistingDirectory(self, "Select a directory", os.path.expanduser("~"),
-                                                        QFileDialog.ShowDirsOnly)
+                                                        QFileDialog.Option.ShowDirsOnly)
         if selected_dir:
             line_edit.setText(selected_dir)
 
@@ -3014,7 +3014,7 @@ class ExportIGESDialog(PymeadDialog):
 
     def select_directory(self, line_edit: QLineEdit):
         selected_dir = QFileDialog.getExistingDirectory(self, "Select a directory", os.path.expanduser("~"),
-                                                        QFileDialog.ShowDirsOnly)
+                                                        QFileDialog.Option.ShowDirsOnly)
         if selected_dir:
             line_edit.setText(selected_dir)
 

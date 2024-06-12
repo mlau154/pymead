@@ -488,7 +488,7 @@ class AirfoilCanvas(pg.PlotWidget):
         polyline = curve_item.parametric_curve
         dialog = SplitPolylineDialog(self, theme=self.gui_obj.themes[self.gui_obj.current_theme], polyline=polyline,
                                      geo_col=self.geo_col)
-        if dialog.exec_():
+        if dialog.exec():
             self.geo_col.split_polyline(polyline, dialog.value())
 
     def appendSelectedPoint(self, plot_data_item: pg.PlotDataItem):
@@ -736,8 +736,8 @@ class AirfoilCanvas(pg.PlotWidget):
 
         Parameters
         ==========
-        airfoil_name: str
-            Name of the airfoil (A0, A1, etc.)
+        airfoil: Airfoil
+            ``Airfoil`` object being hovered
 
         x_centroid: float
             x-location of the airfoil's centroid

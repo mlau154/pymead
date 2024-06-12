@@ -30,7 +30,6 @@
     "Export": {
       "Airfoil Coordinates": "export_coordinates",
       "Control Points": "export_control_points",
-      "NXOpen Macro": "export_nx_macro",
       "Design Variable Values": "export_design_variable_values",
       "IGES": "export_IGES"
     },

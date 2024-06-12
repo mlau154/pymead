@@ -51,7 +51,6 @@ from pymead.gui.main_icon_toolbar import MainIconToolbar
 from pymead.gui.message_box import disp_message_box
 from pymead.gui.parameter_tree import ParameterTree
 from pymead.gui.permanent_widget import PermanentWidget
-from pymead.gui.pymeadPColorMeshItem import PymeadPColorMeshItem
 from pymead.gui.show_hide import ShowHideDialog
 from pymead.gui.side_grip import SideGrip
 from pymead.gui.text_area import ConsoleTextArea
@@ -904,8 +903,7 @@ class GUI(QMainWindow):
 
     def clear_field(self):
         for child in self.airfoil_canvas.plot.allChildItems():
-            if isinstance(child, pg.PColorMeshItem) or isinstance(child, PymeadPColorMeshItem) or isinstance(
-                    child, pg.ColorBarItem):
+            if isinstance(child, pg.PColorMeshItem) or isinstance(child, pg.ColorBarItem):
                 self.airfoil_canvas.plot.getViewBox().removeItem(child)
         self.cbar = None
         self.cbar_label_attrs = None
@@ -981,10 +979,9 @@ class GUI(QMainWindow):
         for flow_section_idx in range(grid_stats["numel"] + 1):
             flow_var_section = flow_var[:, start_idx:end_idx]
 
-            pcmi = PymeadPColorMeshItem(current_theme=self.current_theme,
+            pcmi = pg.PColorMeshItem(current_theme=self.current_theme,
                                         flow_var=inputs["flow_variable"], edgecolors=edgecolors,
-                                        antialiasing=antialiasing,
-                                        colorMap=pg.colormap.get('CET-R1'))
+                                        antialiasing=antialiasing)
             pcmi_list.append(pcmi)
             vBox.addItem(pcmi)
             # vBox.addItem(pg.ArrowItem(pxMode=False, headLen=0.01, pos=(0.5, 0.1)))
@@ -998,8 +995,7 @@ class GUI(QMainWindow):
                 end_idx += x_grid[flow_section_idx + 1].shape[1] - 1
 
         for child in self.airfoil_canvas.plot.allChildItems():
-            if hasattr(child, 'setZValue') and not isinstance(child, pg.PColorMeshItem) \
-                    and not isinstance(child, PymeadPColorMeshItem):
+            if hasattr(child, 'setZValue') and not isinstance(child, pg.PColorMeshItem):
                 child.setZValue(5)
 
         all_levels = np.array([list(pcmi.getLevels()) for pcmi in pcmi_list])
@@ -1270,10 +1266,6 @@ class GUI(QMainWindow):
                 control_point_dict[a] = control_points
             save_data(control_point_dict, f_)
             self.disp_message_box(f"Airfoil control points saved to {f_}", message_mode='info')
-
-    def export_nx_macro(self):
-        # self.mea.write_NX_macro('test_ctrlpts.py', {})
-        self.disp_message_box("Writing out NX macros is not yet supported in pymead", message_mode="info")
 
     def show_help(self):
         HelpBrowserWindow(parent=self)
