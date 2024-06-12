@@ -1448,7 +1448,7 @@ class GUI(QMainWindow):
 
             # Output successful MSES analysis data to console
             self.output_area_text(f"[{str(self.n_analyses).zfill(2)}] ")  # Number of analyses
-            self.output_area_text(f"<a href='{analysis_dir_full_path}'>MSES</a>", mode="html")  # Folder link
+            self.output_area_text(f"<a href='file:///{analysis_dir_full_path}'>MSES</a>", mode="html")  # Folder link
             self.output_area_text(
                 f" ({mset_settings['mea']}, "
                 f"\u03b1 = {aero_data['alf']:.3f}\u00b0, "
@@ -1475,7 +1475,7 @@ class GUI(QMainWindow):
             os.path.join(mset_settings['airfoil_analysis_dir'], mset_settings['airfoil_coord_file_name'], '')
         )
 
-        self.output_area_text(f"<a href='{analysis_dir_full_path}'>MPOLAR</a>", mode="html")  # Folder link
+        self.output_area_text(f"<a href='file:///{analysis_dir_full_path}'>MPOLAR</a>", mode="html")  # Folder link
         self.output_area_text(
             f" ({mset_settings['mea']}, "
             f"Re = {mses_settings['REYNIN']:.3E}, "  # Reynolds number
