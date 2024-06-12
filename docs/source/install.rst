@@ -140,12 +140,11 @@ allows the user to easily update pymead if desired when a new version is availab
 
   pip install pymead --upgrade
 
-The pymead GUI can be started from any directory where pymead is installed by running the following command in the
-terminal (use ``python3`` instead of ``py`` for Linux or macOS):
+The pymead GUI can then be started from any directory by running the following command in the terminal:
 
 .. code-block::
 
-  py -m pymead.gui.gui
+  pymead-gui
 
 The API is centered primarily around the ``GeometryCollection`` class. After instantiating this class, geometric
 objects and parameters/design variables can be added using the methods starting with ``add_`` (e.g., ``add_point()``).
@@ -168,8 +167,7 @@ Method 3: IDE (GUI + API)
 -------------------------
 Some IDEs, like `PyCharm <https://www.jetbrains.com/pycharm/>`_, have a plugin for ``pip``. In PyCharm,
 simply search for and install "pymead" in the "Python Packages" tab. Follow similar steps as Method 2 for
-accessing the GUI and the API. Alternatively, to start the GUI, it is possible to simply click on the
-file called ``gui.py`` inside ``pymead/gui``, right-click, and press run.
+accessing the GUI and the API.
 
 .. _method-4:
 
@@ -195,7 +193,7 @@ To pull the latest changes from the repository at some point after installation,
 Cloning and checking out a branch of the pymead repository only copies the source code into a directory. Installation
 after this step is still recommended because installation automatically installs all Python dependencies and makes the
 pymead package importable from outside the repository. To install, navigate to the top-level directory of the install
-location in the terminal (where the ``setup.py`` file is located), then type:
+location in the terminal (where the ``pyproject.toml`` file is located), then type:
 
 .. code-block::
 
@@ -248,6 +246,8 @@ dependencies.
 - `networkx <https://networkx.org/documentation/stable/>`_: Analysis of the undirected graph describing the geometric
   constraint system
 - `psutil <https://pypi.org/project/psutil/>`_: Process management
+- `pytest <https://docs.pytest.org/en/8.2.x/>`_: Unit testing
+- `pytest-qt <https://pypi.org/project/pytest-qt/>`_: Unit testing of the GUI components
 
 Optional
 --------

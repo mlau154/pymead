@@ -36,13 +36,27 @@ on GitHub.
 
 For uploading to TestPyPi (test) or PyPi (prod):
 ================================================
-
-- Use py -m build from the root directory to build
+- Use py -3.10 -m build from the root directory to build
 - (Prod & Test) Use twine check dist/* to check the distribution
 - (Test Only) Use twine upload --repository testpypi dist/* to upload to TestPyPi
 - (Prod Only) Use twine upload dist/* to upload to PyPi
 - (Test Only) In a fresh, virtual environment, use
   pip install --extra-index-url https://test.pypi.org/simple/ pymead==<short ver name> to test the installation
+
+To test the TestPyPi build in a fresh virtual environment
+=========================================================
+First, navigate to any directory outside the base directory. Then, for Python 3.12,
+- py -3.12 -m venv .\pymead312
+- May need to run the command `Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser` the first time
+  if the previous command errors out
+- cd pymead312
+- .\Scripts\Activate.ps1
+- pip install --extra-index-url https://test.pypi.org/simple/ pymead==2.0.0-b5 to test pymead 2.0.0-beta.5 in a
+  Python 3.12 environment
+- Once done with the virtual environment, first deactivate using the command `deactivate` from any directory. Then,
+  navigate to the parent directory of the virtual environment (in this case, `cd ..`) and rm -r pymead312
+
+For more information on virtual environments, see https://docs.python.org/3/library/venv.html
 """
 
 import os
