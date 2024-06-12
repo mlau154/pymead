@@ -1,5 +1,5 @@
 import pandas as pd
-from PyQt5.QtWidgets import QTextEdit
+from PyQt6.QtWidgets import QTextEdit
 
 from pymead.core.geometry_collection import GeometryCollection
 from pymead.gui.dialogs import PymeadDialog

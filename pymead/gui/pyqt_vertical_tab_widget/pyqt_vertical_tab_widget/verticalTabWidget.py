@@ -1,5 +1,5 @@
-from PyQt5.QtCore import QRect, QPoint
-from PyQt5.QtWidgets import QTabWidget, QTabBar, QStylePainter, QStyleOptionTab, QStyle
+from PyQt6.QtCore import QRect, QPoint
+from PyQt6.QtWidgets import QTabWidget, QTabBar, QStylePainter, QStyleOptionTab, QStyle
 
 
 class TabBar(QTabBar):
@@ -16,7 +16,7 @@ class TabBar(QTabBar):
 
         for i in range(self.count()):
             self.initStyleOption(style_option, i)
-            painter.drawControl(QStyle.CE_TabBarTabShape, style_option)
+            painter.drawControl(QStyle.ControlElement.CE_TabBarTabShape, style_option)
             painter.save()
 
             size = style_option.rect.size()
@@ -29,7 +29,7 @@ class TabBar(QTabBar):
             painter.translate(center)
             painter.rotate(90)
             painter.translate(center*-1)
-            painter.drawControl(QStyle.CE_TabBarTabLabel, style_option)
+            painter.drawControl(QStyle.ControlElement.CE_TabBarTabLabel, style_option)
             painter.restore()
 
 
@@ -37,4 +37,4 @@ class VerticalTabWidget(QTabWidget):
     def __init__(self, parent=None):
         super().__init__(parent=parent)
         self.setTabBar(TabBar(self))
-        self.setTabPosition(QTabWidget.West)
+        self.setTabPosition(QTabWidget.TabPosition.West)

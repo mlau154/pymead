@@ -1,8 +1,8 @@
 import numpy as np
 import pyqtgraph as pg
-from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QFont
-from PyQt5.QtWidgets import QWidget, QGridLayout
+from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QFont
+from PyQt6.QtWidgets import QWidget, QGridLayout
 
 from pymead.core import UNITS
 
@@ -77,7 +77,7 @@ class ResidualGraph:
     @staticmethod
     def make_target_pen(theme: dict):
         target_pen = pg.mkPen(color=theme["residual-target-color"])
-        target_pen.setStyle(Qt.DashLine)
+        target_pen.setStyle(Qt.PenStyle.DashLine)
         return target_pen
 
     def set_background(self, background_color: str):

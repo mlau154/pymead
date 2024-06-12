@@ -1,8 +1,8 @@
 import pyqtgraph as pg
-from pyqtgraph.GraphicsScene.mouseEvents import HoverEvent
 import shapely.geometry
-from PyQt5.QtGui import QPicture, QPainter, QPolygonF, QPainterPath
-from PyQt5.QtCore import QPointF, QRectF, pyqtSignal
+from PyQt6.QtCore import QPointF, QRectF, pyqtSignal
+from PyQt6.QtGui import QPicture, QPainter, QPolygonF, QPainterPath
+from pyqtgraph.GraphicsScene.mouseEvents import HoverEvent
 
 
 # Create a subclass of GraphicsObject.
@@ -100,12 +100,3 @@ class PolygonItem(pg.GraphicsObject):
             self.sigPolyExit.emit(self.airfoil)
         elif ev.isEnter():
             self.sigPolyEnter.emit(self.airfoil, centroid[0], centroid[1])
-
-
-if __name__ == '__main__':
-    data_ = [[0, 0], [0.1, 0.1], [0.2, 0.3], [-1, 1], [0, 0]]
-    item = PolygonItem(data_, "A0")
-    plt = pg.plot()
-    plt.addItem(item)
-    plt.setWindowTitle('pyqtgraph example: customGraphicsItem')
-    pg.exec()

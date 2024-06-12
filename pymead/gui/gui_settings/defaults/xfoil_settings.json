@@ -2,12 +2,12 @@
     "viscous_flag": {
         "label": "Viscosity On?",
         "widget_type": "QCheckBox",
-        "setCheckState": 2
+        "setChecked": 2
     },
     "spec_Re": {
         "label": "Specify Reynolds Number?",
         "widget_type": "QCheckBox",
-        "setCheckState": 0
+        "setChecked": 0
     },
     "Re": {
         "label": "Reynolds Number",

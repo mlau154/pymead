@@ -1,7 +1,7 @@
 {
     "warm_start_active": {
         "label": "Warm Start Active?",
-        "setCheckState": 0,
+        "setChecked": 0,
         "widget_type": "QCheckBox",
         "widgets_to_enable": [
             [
@@ -31,12 +31,12 @@
     },
     "use_initial_settings": {
         "label": "Use Initial Settings?",
-        "setCheckState": 2,
+        "setChecked": 2,
         "widget_type": "QCheckBox"
     },
     "use_current_mea": {
         "label": "Use Current MEA?",
-        "setCheckState": 2,
+        "setChecked": 2,
         "widget_type": "QCheckBox",
         "widgets_to_disable": [
             [
@@ -54,7 +54,7 @@
     },
     "batch_mode_active": {
         "label": "Batch Mode Active?",
-        "setCheckState": 0,
+        "setChecked": 0,
         "widget_type": "QCheckBox",
         "widgets_to_enable": [
             [

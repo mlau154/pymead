@@ -5,7 +5,7 @@ Inspired by https://forum.qt.io/topic/110138/show-qprogressbar-with-computationa
 import multiprocessing as mp
 from multiprocessing import active_children
 
-from PyQt5.QtCore import QObject, QRunnable, QThreadPool, pyqtSignal
+from PyQt6.QtCore import QObject, QRunnable, QThreadPool, pyqtSignal
 
 from pymead.utils.pymead_mp import kill_child_processes
 

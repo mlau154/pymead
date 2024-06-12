@@ -6,11 +6,11 @@ scipy
 shapely
 matplotlib
 requests>=2.31
-PyQt5
+PyQt6
+PyQt6-WebEngine
 pyqtgraph
 python-benedict
 pandas
-PyQtWebEngine
 networkx
 psutil
 pytest>=7

@@ -1,4 +1,4 @@
-from PyQt5.QtWidgets import QDialog, QLineEdit, QVBoxLayout, QDialogButtonBox, QTreeWidgetItem
+from PyQt6.QtWidgets import QDialog, QLineEdit, QVBoxLayout, QDialogButtonBox
 
 
 class RenamePopup(QDialog):
@@ -8,7 +8,7 @@ class RenamePopup(QDialog):
         self.name = name
         self.setWindowTitle("Rename")
 
-        QBtn = QDialogButtonBox.Ok | QDialogButtonBox.Cancel
+        QBtn = QDialogButtonBox.ButtonRole.Ok | QDialogButtonBox.ButtonRole.Cancel
 
         self.button_box = QDialogButtonBox(QBtn)
         self.button_box.accepted.connect(self.accept)

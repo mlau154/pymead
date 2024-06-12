@@ -1,38 +1,28 @@
 import os
-import typing
 import sys
+import typing
 from copy import deepcopy
 from functools import partial
 
-import numpy as np
-import pyqtgraph as pg
-from PyQt5 import QtWidgets
-from PyQt5.QtCore import pyqtSignal, QEventLoop, Qt
-from PyQt5.QtGui import QFont, QBrush, QColor
-from PyQt5.QtWidgets import QApplication
+from PyQt6 import QtWidgets
+from PyQt6.QtCore import QEventLoop
+from PyQt6.QtWidgets import QApplication
 
-from pymead.utils.get_airfoil import AirfoilNotFoundError
-from pymead.core.line import PolyLine
-from pymead.gui.dialogs import PlotExportDialog, WebAirfoilDialog, SplitPolylineDialog
-from pymead.gui.polygon_item import PolygonItem
-
-from pymead.core.airfoil import Airfoil
-
-from pymead.core.constraints import *
-from pymead.core.constraint_equations import *
-from pymead.core.geometry_collection import GeometryCollection
-from pymead.core.param import LengthParam
-from pymead.core.parametric_curve import ParametricCurve
-from pymead.core.point import PointSequence, Point
-from pymead.core.pymead_obj import PymeadObj
-from pymead.gui.constraint_items import *
-from pymead.gui.hoverable_curve import HoverableCurve
-from pymead.gui.draggable_point import DraggablePoint
-from pymead.utils.read_write_files import load_data
-from pymead.utils.misc import get_setting
-from pymead.core import UNITS
 from pymead import q_settings, GUI_SETTINGS_DIR
+from pymead.core import UNITS
+from pymead.core.airfoil import Airfoil
+from pymead.core.geometry_collection import GeometryCollection
+from pymead.core.parametric_curve import ParametricCurve
+from pymead.core.point import PointSequence
+from pymead.gui.constraint_items import *
+from pymead.gui.dialogs import PlotExportDialog, WebAirfoilDialog, SplitPolylineDialog
+from pymead.gui.draggable_point import DraggablePoint
+from pymead.gui.hoverable_curve import HoverableCurve
+from pymead.gui.polygon_item import PolygonItem
 from pymead.resources.cmcrameri.cmaps import BERLIN, VIK
+from pymead.utils.get_airfoil import AirfoilNotFoundError
+from pymead.utils.misc import get_setting
+from pymead.utils.read_write_files import load_data
 
 q_settings_descriptions = load_data(os.path.join(GUI_SETTINGS_DIR, "q_settings_descriptions.json"))
 
@@ -101,13 +91,8 @@ class AirfoilCanvas(pg.PlotWidget):
         self.plot.getAxis("bottom").setTextPen(theme["main-color"])
         self.plot.getAxis("left").setTextPen(theme["main-color"])
 
-    def toggleGrid(self):
-        x_state = self.plot.ctrl.xGridCheck.checkState()
-        y_state = self.plot.ctrl.yGridCheck.checkState()
-        if x_state or y_state:
-            self.plot.showGrid(x=False, y=False)
-        else:
-            self.plot.showGrid(x=True, y=True)
+    def toggleGrid(self, show_grid: bool):
+        self.plot.showGrid(x=show_grid, y=show_grid)
 
     def getPointRange(self):
         """
@@ -363,7 +348,7 @@ class AirfoilCanvas(pg.PlotWidget):
             nothing. Default: ``None``
         """
         self.dialog = WebAirfoilDialog(self, theme=self.gui_obj.themes[self.gui_obj.current_theme])
-        if (dialog_test_action is not None and not dialog_test_action(self.dialog)) or self.dialog.exec_():
+        if (dialog_test_action is not None and not dialog_test_action(self.dialog)) or self.dialog.exec():
             try:
                 polyline = self.geo_col.add_polyline(source=self.dialog.value())
             except AirfoilNotFoundError as e:
@@ -793,7 +778,7 @@ class AirfoilCanvas(pg.PlotWidget):
         dialog = PlotExportDialog(self, gui_obj=self.gui_obj, theme=self.gui_obj.themes[self.gui_obj.current_theme],
                                   current_min_level=current_min_level,
                                   current_max_level=current_max_level)
-        if dialog.exec_():
+        if dialog.exec():
             # Get the inputs from the dialog
             inputs = dialog.value()
 
@@ -859,8 +844,8 @@ class AirfoilCanvas(pg.PlotWidget):
         addROCurvatureConstraintAction = add_constraint_menu.addAction("Add Radius of Curvature Constraint")
         addDistanceConstraintAction = add_constraint_menu.addAction("Add Distance Constraint")
         exportPlotAction = menu.addAction("Export Plot")
-        view_pos = self.getPlotItem().getViewBox().mapSceneToView(event.pos())
-        res = menu.exec_(event.globalPos())
+        view_pos = self.getPlotItem().getViewBox().mapSceneToView(event.pos().toPointF())
+        res = menu.exec(event.globalPos())
         if res is None:
             return
         if res == drawPointAction:
@@ -906,17 +891,17 @@ class AirfoilCanvas(pg.PlotWidget):
         line_item.sigCurveNotHovered.connect(self.curveLeaveHovered)
 
     def arrowKeyPointMove(self, key, mods):
-        step = 10 * self.geo_col.single_step if mods == Qt.ShiftModifier else self.geo_col.single_step
-        if key == Qt.Key_Left:
+        step = 10 * self.geo_col.single_step if mods == Qt.Key.ShiftModifier else self.geo_col.single_step
+        if key == Qt.Key.Key_Left:
             for point in self.geo_col.selected_objects["points"]:
                 point.request_move(point.x().value() - step, point.y().value())
-        elif key == Qt.Key_Right:
+        elif key == Qt.Key.Key_Right:
             for point in self.geo_col.selected_objects["points"]:
                 point.request_move(point.x().value() + step, point.y().value())
-        elif key == Qt.Key_Up:
+        elif key == Qt.Key.Key_Up:
             for point in self.geo_col.selected_objects["points"]:
                 point.request_move(point.x().value(), point.y().value() + step)
-        elif key == Qt.Key_Down:
+        elif key == Qt.Key.Key_Down:
             for point in self.geo_col.selected_objects["points"]:
                 point.request_move(point.x().value(), point.y().value() - step)
 
@@ -927,7 +912,7 @@ class AirfoilCanvas(pg.PlotWidget):
         if not self.drawing_object == "Points":
             return
 
-        view_pos = self.getPlotItem().getViewBox().mapSceneToView(ev.pos())
+        view_pos = self.getPlotItem().getViewBox().mapSceneToView(ev.pos().toPointF())
         self.geo_col.add_point(view_pos.x(), view_pos.y())
 
     @undoRedoAction
@@ -936,33 +921,34 @@ class AirfoilCanvas(pg.PlotWidget):
 
     def canvasShortcuts(self):
         return {
-            Qt.Key_P: self.drawPoints,
-            Qt.Key_L: self.drawLines,
-            Qt.Key_B: self.drawBeziers,
-            Qt.Key_F: self.generateAirfoil,
-            Qt.Key_W: self.generateWebAirfoil,
-            Qt.Key_M: self.generateMEA,
-            Qt.Key_D: self.addDistanceConstraint,
-            Qt.Key_A: self.addRelAngle3Constraint,
-            Qt.Key_T: self.addPerp3Constraint,
-            Qt.Key_H: self.addAntiParallel3Constraint,
-            Qt.Key_S: self.addSymmetryConstraint,
-            Qt.Key_R: self.addROCurvatureConstraint
+            Qt.Key.Key_P: self.drawPoints,
+            Qt.Key.Key_L: self.drawLines,
+            Qt.Key.Key_B: self.drawBeziers,
+            Qt.Key.Key_F: self.generateAirfoil,
+            Qt.Key.Key_W: self.generateWebAirfoil,
+            Qt.Key.Key_M: self.generateMEA,
+            Qt.Key.Key_D: self.addDistanceConstraint,
+            Qt.Key.Key_A: self.addRelAngle3Constraint,
+            Qt.Key.Key_T: self.addPerp3Constraint,
+            Qt.Key.Key_H: self.addAntiParallel3Constraint,
+            Qt.Key.Key_S: self.addSymmetryConstraint,
+            Qt.Key.Key_R: self.addROCurvatureConstraint
         }
 
     def keyPressEvent(self, ev):
         key = ev.key()
         mods = QApplication.keyboardModifiers()
-        if key == Qt.Key_Return:
+        if key == Qt.Key.Key_Return:
             self.sigEnterPressed.emit()
-        elif key == Qt.Key_Escape:
+        elif key == Qt.Key.Key_Escape:
             self.sigEscapePressed.emit()
             self.geo_col.clear_selected_objects()
             self.sigStatusBarUpdate.emit("", 0)
-        elif key == Qt.Key_Delete:
+        elif key == Qt.Key.Key_Delete:
             self.removeSelectedObjects()
             self.sigStatusBarUpdate.emit("", 0)
-        elif key in (Qt.Key_Left, Qt.Key_Right, Qt.Key_Down, Qt.Key_Up) and len(self.geo_col.selected_objects["points"]) > 0:
+        elif key in (Qt.Key.Key_Left, Qt.Key.Key_Right, Qt.Key.Key_Down, Qt.Key.Key_Up) and len(
+                self.geo_col.selected_objects["points"]) > 0:
             self.arrowKeyPointMove(ev.key(), mods)
         elif key in self.canvasShortcuts():
             self.canvasShortcuts()[key]()

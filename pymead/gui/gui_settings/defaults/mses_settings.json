@@ -2,12 +2,12 @@
     "viscous_flag": {
         "label": "Viscosity On?",
         "widget_type": "QCheckBox",
-        "setCheckState": 2
+        "setChecked": 2
     },
     "spec_Re": {
         "label": "Specify Reynolds Number?",
         "widget_type": "QCheckBox",
-        "setCheckState": 0
+        "setChecked": 0
     },
     "REYNIN": {
         "label": "Reynolds Number",
@@ -217,7 +217,7 @@
     "AD_active": {
         "label": "Actuator Disks Active?",
         "widget_type": "QCheckBox",
-        "setCheckState": 0,
+        "setChecked": 0,
         "column": 5,
         "label.column": 4
     },

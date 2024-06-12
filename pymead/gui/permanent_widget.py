@@ -1,4 +1,4 @@
-from PyQt5.QtWidgets import QWidget, QHBoxLayout, QProgressBar, QLabel, QComboBox
+from PyQt6.QtWidgets import QWidget, QHBoxLayout, QProgressBar, QLabel, QComboBox
 
 from pymead.version import __version__
 

@@ -13,12 +13,12 @@ import networkx
 import numpy as np
 import pyqtgraph as pg
 import requests
-from PyQt5.QtCore import QEvent, QObject, Qt, QThreadPool, QRect
-from PyQt5.QtCore import pyqtSlot
-from PyQt5.QtGui import QIcon, QFont, QFontDatabase, QPainter, QCloseEvent, QTextCursor, QImage
-from PyQt5.QtSvg import QSvgWidget
-from PyQt5.QtWidgets import QMainWindow, QApplication, \
-    QWidget, QMenu, QStatusBar, QAction, QGraphicsScene, QGridLayout, QDockWidget, QSizeGrip
+from PyQt6.QtCore import QEvent, QObject, Qt, QThreadPool, QRect
+from PyQt6.QtCore import pyqtSlot
+from PyQt6.QtGui import QIcon, QFont, QFontDatabase, QPainter, QCloseEvent, QTextCursor, QImage, QAction
+from PyQt6.QtSvgWidgets import QSvgWidget
+from PyQt6.QtWidgets import QMainWindow, QApplication, \
+    QWidget, QMenu, QStatusBar, QGraphicsScene, QGridLayout, QDockWidget, QSizeGrip
 
 from pymoo.factory import get_decomposition
 from pyqtgraph.exporters import CSVExporter, SVGExporter
@@ -91,7 +91,7 @@ class GUI(QMainWindow):
         UNITS.set_current_angle_unit(get_setting("angle_unit"))
         super().__init__(parent=parent)
         self.showHideState = None
-        self.setWindowFlags(self.windowFlags() | Qt.FramelessWindowHint)
+        self.setWindowFlags(self.windowFlags() | Qt.WindowType.FramelessWindowHint)
         self.windowMaximized = False
         # print(f"Running GUI with {os.getpid() = }")
         self.pool = None
@@ -170,19 +170,21 @@ class GUI(QMainWindow):
         # mandatory for cursor updates
         self.setMouseTracking(True)
 
-        self.title_bar = TitleBar(self)
+        self.title_bar = TitleBar(self, theme=self.themes[self.current_theme],
+                                  window_title=self.windowTitle())
         self.title_bar.sigMessage.connect(self.disp_message_box)
+        self.windowTitleChanged.connect(self.title_bar.updateTitle)
 
         self.sideGrips = [
-            SideGrip(self, Qt.LeftEdge),
-            SideGrip(self, Qt.TopEdge),
-            SideGrip(self, Qt.RightEdge),
-            SideGrip(self, Qt.BottomEdge),
+            SideGrip(self, Qt.Edge.LeftEdge),
+            SideGrip(self, Qt.Edge.TopEdge),
+            SideGrip(self, Qt.Edge.RightEdge),
+            SideGrip(self, Qt.Edge.BottomEdge),
         ]
         # corner grips should be "on top" of everything, otherwise the side grips
         # will take precedence on mouse events, so we are adding them *after*;
         # alternatively, widget.raise_() can be used
-        self.cornerGrips = [QSizeGrip(self) for i in range(4)]
+        self.cornerGrips = [QSizeGrip(self) for _ in range(4)]
 
         # try:
         #     pyi_splash.update_text("Generating pymead widgets...")
@@ -279,26 +281,26 @@ class GUI(QMainWindow):
     def add_new_tab_widget(self, widget, name):
         if not (name in self.dock_widget_names):
             dw = PymeadDockWidget(name, self)
-            dw.setAllowedAreas(Qt.AllDockWidgetAreas)
+            dw.setAllowedAreas(Qt.DockWidgetArea.AllDockWidgetAreas)
             dw.setWidget(widget)
             dw.setFloating(False)
             if name in ["Tree", "Geometry", "Console"]:
-                dw.setFeatures(dw.features() & ~QDockWidget.DockWidgetClosable)
+                dw.setFeatures(dw.features() & ~QDockWidget.DockWidgetFeature.DockWidgetClosable)
             dw.tab_closed.connect(self.on_tab_closed)
             self.dock_widgets.append(dw)
             self.dock_widget_names.append(name)
             if len(self.dock_widgets) == 2:
-                self.addDockWidget(Qt.LeftDockWidgetArea, self.dock_widgets[-2])  # Left
-                self.addDockWidget(Qt.RightDockWidgetArea, dw)  # Right
-                self.splitDockWidget(self.dock_widgets[-2], self.dock_widgets[-1], Qt.Horizontal)
+                self.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea, self.dock_widgets[-2])  # Left
+                self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, dw)  # Right
+                self.splitDockWidget(self.dock_widgets[-2], self.dock_widgets[-1], Qt.Orientation.Horizontal)
             elif len(self.dock_widgets) == 3:
-                self.addDockWidget(Qt.RightDockWidgetArea, dw)
-                self.splitDockWidget(self.dock_widgets[-2], self.dock_widgets[-1], Qt.Vertical)
+                self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, dw)
+                self.splitDockWidget(self.dock_widgets[-2], self.dock_widgets[-1], Qt.Orientation.Vertical)
             elif len(self.dock_widgets) == 4:
-                self.addDockWidget(Qt.RightDockWidgetArea, dw)
+                self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, dw)
                 self.tabifyDockWidget(self.dock_widgets[-3], self.dock_widgets[-1])
             elif len(self.dock_widgets) > 4:
-                self.addDockWidget(Qt.RightDockWidgetArea, dw)
+                self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, dw)
                 self.tabifyDockWidget(self.dock_widgets[-2], self.dock_widgets[-1])
 
     def switch_to_tab(self, tab_name: str):
@@ -342,7 +344,7 @@ class GUI(QMainWindow):
         """
         if self.shape_opt_process is not None:
             dialog = ExitOptimizationDialog(self, theme=self.themes[self.current_theme])
-            if dialog.exec_():
+            if dialog.exec():
                 self.stop_process()
             else:
                 a0.ignore()
@@ -352,11 +354,11 @@ class GUI(QMainWindow):
             save_dialog = NewGeoColDialog(theme=self.themes[self.current_theme], parent=self)
             exit_dialog = ExitDialog(theme=self.themes[self.current_theme], parent=self)
             while True:
-                if save_dialog.exec_():  # If "Yes" to "Save Changes,"
+                if save_dialog.exec():  # If "Yes" to "Save Changes,"
                     if save_dialog.save_successful:  # If the changes were saved successfully, close the program.
                         return
                     else:
-                        if exit_dialog.exec_():  # Otherwise, If "Yes" to "Exit the Program Anyway," close the program.
+                        if exit_dialog.exec():  # Otherwise, If "Yes" to "Exit the Program Anyway," close the program.
                             return
                         else:
                             a0.ignore()
@@ -368,7 +370,7 @@ class GUI(QMainWindow):
     def changeEvent(self, a0):
         if a0.type() == QEvent.Type.WindowStateChange:
             self.title_bar.windowStateChanged(self.windowState())
-            self.windowMaximized = self.windowState() == Qt.WindowMaximized
+            self.windowMaximized = self.windowState() == Qt.WindowState.WindowMaximized
 
             # Disable the resize grips when the window is maximized and enable them otherwise
             if self.windowMaximized:
@@ -532,20 +534,20 @@ class GUI(QMainWindow):
     @staticmethod
     def pen(n: int):
         pens = [
-            ('#d4251c', Qt.SolidLine),
-            ('darkorange', Qt.SolidLine),
-            ('gold', Qt.SolidLine),
-            ('limegreen', Qt.SolidLine),
-            ('cyan', Qt.SolidLine),
-            ('mediumpurple', Qt.SolidLine),
-            ('deeppink', Qt.SolidLine),
-            ('#d4251c', Qt.DashLine),
-            ('darkorange', Qt.DashLine),
-            ('gold', Qt.DashLine),
-            ('limegreen', Qt.DashLine),
-            ('cyan', Qt.DashLine),
-            ('mediumpurple', Qt.DashLine),
-            ('deeppink', Qt.DashLine)
+            ('#d4251c', Qt.PenStyle.SolidLine),
+            ('darkorange', Qt.PenStyle.SolidLine),
+            ('gold', Qt.PenStyle.SolidLine),
+            ('limegreen', Qt.PenStyle.SolidLine),
+            ('cyan', Qt.PenStyle.SolidLine),
+            ('mediumpurple', Qt.PenStyle.SolidLine),
+            ('deeppink', Qt.PenStyle.SolidLine),
+            ('#d4251c', Qt.PenStyle.DashLine),
+            ('darkorange', Qt.PenStyle.DashLine),
+            ('gold', Qt.PenStyle.DashLine),
+            ('limegreen', Qt.PenStyle.DashLine),
+            ('cyan', Qt.PenStyle.DashLine),
+            ('mediumpurple', Qt.PenStyle.DashLine),
+            ('deeppink', Qt.PenStyle.DashLine)
         ]
         return pens[n % len(pens)]
 
@@ -590,7 +592,7 @@ class GUI(QMainWindow):
     def open_settings(self):
         dialog = SettingsDialog(parent=self, geo_col=self.geo_col, theme=self.themes[self.current_theme],
                                 settings_override=None)
-        dialog.exec_()
+        dialog.exec()
 
 
     def undo(self):
@@ -613,7 +615,7 @@ class GUI(QMainWindow):
         """
         dialog = LoadPointsDialog(self, theme=self.themes[self.current_theme])
 
-        if dialog.exec_():
+        if dialog.exec():
             # Load the points to an array
             try:
                 points = np.loadtxt(dialog.value())
@@ -639,7 +641,7 @@ class GUI(QMainWindow):
         if self.screenshot_settings is not None:
             dialog.setValue(self.screenshot_settings)
 
-        if dialog.exec_():
+        if dialog.exec():
             inputs = dialog.value()
             self.screenshot_settings = inputs
 
@@ -647,7 +649,7 @@ class GUI(QMainWindow):
             ratio = 5  # Increased device-pixel ratio for better screenshot resolution
             window_widget = window_widget_dict[inputs["window"]]
             size = window_widget.size()
-            image = QImage(size.width() * ratio, size.height() * ratio, QImage.Format_ARGB32)
+            image = QImage(size.width() * ratio, size.height() * ratio, QImage.Format.Format_ARGB32)
             image.setDevicePixelRatio(ratio)
             window_widget.render(image)
 
@@ -682,7 +684,7 @@ class GUI(QMainWindow):
         if self.showHideState is None:
             self.showAllPymeadObjs()
         dialog = ShowHideDialog(self, state=self.showHideState, theme=self.themes[self.current_theme])
-        dialog.exec_()
+        dialog.exec()
 
     def showAllPymeadObjs(self):
         self.showHideState = self.airfoil_canvas.showAllPymeadObjs()
@@ -692,7 +694,7 @@ class GUI(QMainWindow):
 
     def save_as_geo_col(self):
         dialog = SaveAsDialog(self)
-        if dialog.exec_():
+        if dialog.exec():
             self.current_save_name = dialog.selectedFiles()[0]
             if self.current_save_name[-5:] != '.jmea':
                 self.current_save_name += '.jmea'
@@ -735,11 +737,11 @@ class GUI(QMainWindow):
             exit_dialog = ExitDialog(theme=self.themes[self.current_theme], parent=self, window_title="Load anyway?",
                                      message="Airfoil not saved.\nAre you sure you want to load a new one?")
             while True:
-                if save_dialog.exec_():  # If "Yes" to "Save Changes,"
+                if save_dialog.exec():  # If "Yes" to "Save Changes,"
                     if save_dialog.save_successful:  # If the changes were saved successfully, close the program.
                         break
                     else:
-                        if exit_dialog.exec_():  # Otherwise, If "Yes" to "Exit the Program Anyway," close the program.
+                        if exit_dialog.exec():  # Otherwise, If "Yes" to "Exit the Program Anyway," close the program.
                             break
                     if save_dialog.reject_changes:  # If "No" to "Save Changes," do not load an MEA.
                         return
@@ -748,7 +750,7 @@ class GUI(QMainWindow):
 
         if not file_name:
             dialog = LoadDialog(self, settings_var="jmea_default_open_location")
-            if dialog.exec_():
+            if dialog.exec():
                 file_name = dialog.selectedFiles()[0]
                 file_name_parent_dir = os.path.dirname(file_name)
                 q_settings.setValue(dialog.settings_var, file_name_parent_dir)
@@ -768,7 +770,7 @@ class GUI(QMainWindow):
 
         if self.changes_made():
             dialog = NewGeoColDialog(theme=self.themes[self.current_theme], parent=self)
-            if dialog.exec_():
+            if dialog.exec():
                 load_blank_geo_col()
         else:
             load_blank_geo_col()
@@ -778,7 +780,7 @@ class GUI(QMainWindow):
             self.disp_message_box("No design variables present", message_mode="info")
             return
         bv_dialog = EditBoundsDialog(geo_col=self.geo_col, theme=self.themes[self.current_theme], parent=self)
-        bv_dialog.exec_()
+        bv_dialog.exec()
 
     def auto_range_geometry(self):
         """
@@ -796,7 +798,7 @@ class GUI(QMainWindow):
         """This function imports a list of parameters normalized by their bounds"""
         file_filter = "DAT Files (*.dat)"
         dialog = LoadDialog(self, settings_var="parameter_list_default_open_location", file_filter=file_filter)
-        if dialog.exec_():
+        if dialog.exec():
             file_name = dialog.selectedFiles()[0]
             q_settings.setValue(dialog.settings_var, os.path.dirname(file_name))
             param_vec = np.loadtxt(file_name).tolist()
@@ -806,7 +808,7 @@ class GUI(QMainWindow):
 
     def import_algorithm_pkl_file(self):
         dialog = LoadAirfoilAlgFile(self)
-        if dialog.exec_():
+        if dialog.exec():
             inputs = dialog.valuesFromWidgets()
             dialog.load_airfoil_alg_file_widget.assignQSettings(inputs)
 
@@ -857,7 +859,7 @@ class GUI(QMainWindow):
         """This function imports a list of parameters normalized by their bounds"""
         file_filter = "DAT Files (*.dat)"
         dialog = SaveAsDialog(self, file_filter=file_filter)
-        if dialog.exec_():
+        if dialog.exec():
             file_name = dialog.selectedFiles()[0]
             parameter_list = self.geo_col.extract_design_variable_values(bounds_normalized=True)
             np.savetxt(file_name, np.array(parameter_list))
@@ -865,7 +867,7 @@ class GUI(QMainWindow):
     def plot_geometry(self):
         file_filter = "DAT Files (*.dat)"
         dialog = LoadDialog(self, settings_var="geometry_plot_default_open_location", file_filter=file_filter)
-        if dialog.exec_():
+        if dialog.exec():
             file_name = dialog.selectedFiles()[0]
             q_settings.setValue(dialog.settings_var, os.path.dirname(file_name))
             coords = np.loadtxt(file_name)
@@ -877,7 +879,7 @@ class GUI(QMainWindow):
                 else:
                     default_color = (214, 147, 39)
                     color_dialog = ColorInputDialog(parent=self, default_color=default_color)
-                    if color_dialog.exec_():
+                    if color_dialog.exec():
                         color = color_dialog.color_button_widget.color()
                     else:
                         color = default_color
@@ -920,7 +922,7 @@ class GUI(QMainWindow):
                 default_field_dir = ""
             dlg = MSESFieldPlotDialog(parent=self, default_field_dir=default_field_dir,
                                       theme=self.themes[self.current_theme])
-            if dlg.exec_():
+            if dlg.exec():
                 inputs = dlg.value()
                 self.field_plot_variable = inputs["flow_variable"]
             else:
@@ -1125,7 +1127,7 @@ class GUI(QMainWindow):
         # prepend_html = f"<head><style>body {{font-family: DejaVu Sans Mono;}}</style>" \
         #                f"</head><body><p><font size='20pt'>&#8203;</font></p></body>"
         previous_cursor = self.text_area.textCursor()
-        self.text_area.moveCursor(QTextCursor.End)
+        self.text_area.moveCursor(QTextCursor.MoveOperation.End)
         if mode == 'plain':
             # if mode == "plain" and mono:
             #     self.text_area.insertHtml(prepend_html)
@@ -1153,7 +1155,7 @@ class GUI(QMainWindow):
 
     def output_link_text(self, text: str, link: str, line_break: bool = False):
         previous_cursor = self.text_area.textCursor()
-        self.text_area.moveCursor(QTextCursor.End)
+        self.text_area.moveCursor(QTextCursor.MoveOperation.End)
         line_break = "<br>" if line_break else ""
         self.text_area.insertHtml(f'<head><style> ')
 
@@ -1174,7 +1176,7 @@ class GUI(QMainWindow):
 
         dialog = PanelDialog(self, theme=self.themes[self.current_theme], settings_override=self.panel_settings)
 
-        if dialog.exec_():
+        if dialog.exec():
             alpha_add = dialog.value()["alfa"]
             self.panel_settings = dialog.value()
         else:
@@ -1213,7 +1215,7 @@ class GUI(QMainWindow):
     def export_coordinates(self):
         """Airfoil coordinate exporter"""
         dialog = ExportCoordinatesDialog(self, theme=self.themes[self.current_theme])
-        if dialog.exec_():
+        if dialog.exec():
             inputs = dialog.value()
             f_ = os.path.join(inputs['choose_dir'], inputs['file_name'])
 
@@ -1253,7 +1255,7 @@ class GUI(QMainWindow):
 
     def export_control_points(self):
         dialog = ExportControlPointsDialog(self, theme=self.themes[self.current_theme])
-        if dialog.exec_():
+        if dialog.exec():
             inputs = dialog.value()
             f_ = os.path.join(inputs['choose_dir'], inputs['file_name'])
 
@@ -1278,7 +1280,7 @@ class GUI(QMainWindow):
 
     def export_IGES(self):
         self.dialog = ExportIGESDialog(parent=self, theme=self.themes[self.current_theme])
-        if self.dialog.exec_():
+        if self.dialog.exec():
             inputs = self.dialog.value()
             iges_file_path = self.geo_col.write_to_iges(base_dir=inputs["dir"], file_name=inputs["file_name"],
                                                         translation=inputs["translation"], scaling=inputs["scaling"],
@@ -1410,7 +1412,7 @@ class GUI(QMainWindow):
         )
         self.dialog.accepted.connect(self.multi_airfoil_analysis_accepted)
         self.dialog.rejected.connect(self.multi_airfoil_analysis_rejected)
-        self.dialog.exec_()
+        self.dialog.exec()
 
     def multi_airfoil_analysis_accepted(self):
 
@@ -1527,7 +1529,7 @@ class GUI(QMainWindow):
             graphics_scene = QGraphicsScene()
             graphics_scene.addWidget(image)
             view = CustomGraphicsView(graphics_scene, parent=self)
-            view.setRenderHint(QPainter.Antialiasing)
+            view.setRenderHint(QPainter.RenderHint.Antialiasing)
             Mach_contour_widget = QWidget(self)
             widget_layout = QGridLayout()
             Mach_contour_widget.setLayout(widget_layout)
@@ -1610,7 +1612,7 @@ class GUI(QMainWindow):
     def match_airfoil(self):
         airfoil_names = [a for a in self.geo_col.container()["airfoils"].keys()]
         dialog = AirfoilMatchingDialog(self, airfoil_names=airfoil_names, theme=self.themes[self.current_theme])
-        if dialog.exec_():
+        if dialog.exec():
             airfoil_match_settings = dialog.value()
             # res = match_airfoil_ga(self.mea, target_airfoil, airfoil_name)
             res = match_airfoil(self.geo_col, airfoil_match_settings["tool_airfoil"],
@@ -1630,7 +1632,7 @@ class GUI(QMainWindow):
 
     def plot_airfoil_from_airfoiltools(self):
         dialog = AirfoilPlotDialog(self, theme=self.themes[self.current_theme])
-        if dialog.exec_():
+        if dialog.exec():
             airfoil_name = dialog.value()
             airfoil = extract_data_from_airfoiltools(airfoil_name)
             self.airfoil_canvas.plot.plot(airfoil[:, 0], airfoil[:, 1], pen=pg.mkPen(color='orange', width=1))
@@ -1640,7 +1642,7 @@ class GUI(QMainWindow):
                                               geo_col=self.geo_col, theme=self.themes[self.current_theme])
         self.dialog.accepted.connect(self.optimization_accepted)
         self.dialog.rejected.connect(self.optimization_rejected)
-        self.dialog.exec_()
+        self.dialog.exec()
 
     def optimization_accepted(self):
         exit_the_dialog = False
@@ -2193,10 +2195,10 @@ class GUI(QMainWindow):
             self.showNormal()
 
     def keyPressEvent(self, a0):
-        if a0.key() == Qt.Key_Escape:
+        if a0.key() == Qt.Key.Key_Escape:
             self.geo_col.clear_selected_objects()
             self.status_bar.clearMessage()
-        if a0.key() == Qt.Key_Delete:
+        if a0.key() == Qt.Key.Key_Delete:
             self.airfoil_canvas.removeSelectedObjects()
             self.status_bar.clearMessage()
 
@@ -2219,7 +2221,7 @@ def main():
         gui = GUI()
 
     gui.show()
-    sys.exit(app.exec_())
+    sys.exit(app.exec())
 
 
 if __name__ == "__main__":

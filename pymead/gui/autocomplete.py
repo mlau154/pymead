@@ -1,5 +1,5 @@
-from PyQt5.QtWidgets import QLineEdit, QCompleter
-from PyQt5.QtCore import Qt
+from PyQt6.QtWidgets import QLineEdit, QCompleter
+from PyQt6.QtCore import Qt
 from pyqtgraph.parametertree.parameterTypes.basetypes import WidgetParameterItem
 
 from pymead.gui.custom_context_menu_event import custom_context_menu_event
@@ -37,8 +37,8 @@ class Completer(QCompleter):
     def __init__(self, parent=None):
         super(Completer, self).__init__(parent)
 
-        self.setCaseSensitivity(Qt.CaseInsensitive)
-        self.setCompletionMode(QCompleter.PopupCompletion)
+        self.setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
+        self.setCompletionMode(QCompleter.CompletionMode.PopupCompletion)
         self.setWrapAround(False)
 
     # Add texts instead of replace

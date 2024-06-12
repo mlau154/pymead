@@ -3,7 +3,7 @@ from abc import abstractmethod
 
 import numpy as np
 import pyqtgraph as pg
-from PyQt5.QtCore import QObject
+from PyQt6.QtCore import QObject
 
 from pymead.gui.aero_forces_graphs import DragGraph, CpGraph
 from pymead.gui.opt_airfoil_graph import OptAirfoilGraph

@@ -1,13 +1,13 @@
-from PyQt5.QtCore import QUrl
-from PyQt5.QtWidgets import QTextEdit, QTextBrowser
-from PyQt5.QtGui import QTextCursor, QColor, QFontDatabase, QDesktopServices
+from PyQt6.QtCore import QUrl
+from PyQt6.QtWidgets import QTextEdit, QTextBrowser
+from PyQt6.QtGui import QTextCursor, QDesktopServices
 
 
 class ConsoleTextArea(QTextBrowser):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setReadOnly(True)
-        self.setLineWrapMode(QTextEdit.NoWrap)
+        self.setLineWrapMode(QTextEdit.LineWrapMode.NoWrap)
         # font = self.font()
         # print(QFontDatabase().families())
         # font.setFamily("DejaVu Sans Mono")
@@ -18,7 +18,7 @@ class ConsoleTextArea(QTextBrowser):
         # self.setStyleSheet("""font: 10pt DejaVu Sans Mono;""")
         # prepend_html = f"<head><style>p {{font-family: DejaVu Sans Mono; font-size: 10pt}}</style>" \
         #                f"</head><body><p>&#8203;</p></body>"
-        self.moveCursor(QTextCursor.End)
+        self.moveCursor(QTextCursor.MoveOperation.End)
         # self.setTextColor(QColor("#13294B"))
         # self.setFontPointSize(5)
         self.setMinimumHeight(50)

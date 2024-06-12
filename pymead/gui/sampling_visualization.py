@@ -1,8 +1,8 @@
 from copy import deepcopy
 
 import pyqtgraph as pg
-from PyQt5.QtWidgets import QWidget, QDoubleSpinBox, QSpinBox, QLabel
-from PyQt5.QtWidgets import QGridLayout
+from PyQt6.QtWidgets import QWidget, QDoubleSpinBox, QSpinBox, QLabel
+from PyQt6.QtWidgets import QGridLayout
 
 from pymead.core.geometry_collection import GeometryCollection
 from pymead.optimization.sampling import ConstrictedRandomSampling

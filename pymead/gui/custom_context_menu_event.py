@@ -1,5 +1,5 @@
-from PyQt5.QtCore import QEvent, QCoreApplication
-from PyQt5.QtWidgets import QMenu
+from PyQt6.QtCore import QEvent, QCoreApplication
+from PyQt6.QtWidgets import QMenu
 from pyqtgraph.parametertree.ParameterItem import ParameterItem
 
 translate = QCoreApplication.translate

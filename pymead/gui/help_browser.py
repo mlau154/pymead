@@ -1,9 +1,9 @@
 import os
 
-from PyQt5.QtWidgets import QToolBar, QAction, QLineEdit, QStatusBar, QWidget, QVBoxLayout, QToolButton, QDialog
-from PyQt5.QtWebEngineWidgets import QWebEngineView
-from PyQt5.QtCore import QUrl
-from PyQt5.QtGui import QIcon
+from PyQt6.QtCore import QUrl
+from PyQt6.QtGui import QIcon
+from PyQt6.QtWebEngineWidgets import QWebEngineView
+from PyQt6.QtWidgets import QToolBar, QLineEdit, QWidget, QVBoxLayout, QToolButton, QDialog
 
 from pymead import ICON_DIR
 

@@ -1,7 +1,7 @@
 import os
 
 import pyqtgraph as pg
-from PyQt5.QtCore import Qt, pyqtSignal
+from PyQt6.QtCore import Qt, pyqtSignal
 import numpy as np
 
 from pymead import q_settings, GUI_SETTINGS_DIR

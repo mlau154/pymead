@@ -74,7 +74,7 @@ Version Notes
 """
 import os
 
-from PyQt5.QtCore import QCoreApplication, QSettings
+from PyQt6.QtCore import QCoreApplication, QSettings
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = os.path.join(BASE_DIR, "data")

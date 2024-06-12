@@ -2,7 +2,7 @@
   "multi_point_active": {
     "label": "Multi-Point Active?",
     "widget_type": "QCheckBox",
-    "setCheckState": 0
+    "setChecked": 0
   },
   "multi_point_stencil": {
     "label": "Multi-Point Stencil",

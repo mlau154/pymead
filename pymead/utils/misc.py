@@ -1,7 +1,7 @@
 import os
 import re
 
-from PyQt5.QtCore import Qt
+from PyQt6.QtCore import Qt
 from pymead import GUI_SETTINGS_DIR, q_settings
 
 from pymead.utils.read_write_files import load_data
@@ -59,7 +59,11 @@ def make_ga_opt_dir(rootdir: str, ga_opt_dir_name: str):
 
 
 def convert_str_to_Qt_dash_pattern(dash: str):
-    data = {"-": Qt.SolidLine, "--": Qt.DashLine, ":": Qt.DotLine, "-.": Qt.DashDotLine, "-..": Qt.DashDotDotLine}
+    data = {"-": Qt.PenStyle.SolidLine,
+            "--": Qt.PenStyle.DashLine,
+            ":": Qt.PenStyle.DotLine,
+            "-.": Qt.PenStyle.DashDotLine,
+            "-..": Qt.PenStyle.DashDotDotLine}
     return data[dash]
 
 

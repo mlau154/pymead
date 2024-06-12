@@ -1,10 +1,9 @@
 import sys
-from abc import abstractmethod
 from copy import deepcopy
 
-from PyQt5.QtCore import Qt, pyqtSignal, pyqtSlot, QRegularExpression, QStringListModel
-from PyQt5.QtGui import QValidator, QBrush, QColor
-from PyQt5.QtWidgets import QTreeWidget, QTreeWidgetItem, QPushButton, QHBoxLayout, QHeaderView, QDialog, QGridLayout, \
+from PyQt6.QtCore import Qt, pyqtSignal, pyqtSlot, QRegularExpression
+from PyQt6.QtGui import QValidator, QBrush, QColor
+from PyQt6.QtWidgets import QTreeWidget, QTreeWidgetItem, QPushButton, QHBoxLayout, QHeaderView, QDialog, QGridLayout, \
     QDoubleSpinBox, QLineEdit, QLabel, QMenu, QAbstractItemView, QTreeWidgetItemIterator, QWidget, QCompleter
 
 from pymead.core.airfoil import Airfoil
@@ -24,7 +23,7 @@ class HeaderButtonRow(QHeaderView):
     sigCollapsePressed = pyqtSignal()
 
     def __init__(self, parent):
-        super().__init__(Qt.Horizontal, parent)
+        super().__init__(Qt.Orientation.Horizontal, parent)
         self.lay = QHBoxLayout(self)
         self.expandButton = QPushButton("Expand All", self)
         self.collapseButton = QPushButton("Collapse All", self)
@@ -138,12 +137,12 @@ class NameValidator(QValidator):
 
     def validate(self, a0, a1):
         if a0 in self.geo_col.container()[self.sub_container].keys():
-            return QValidator.Invalid, a0, a1
+            return QValidator.State.Invalid, a0, a1
 
         if not self.regex.match(a0).hasMatch():
-            return QValidator.Invalid, a0, a1
+            return QValidator.State.Invalid, a0, a1
 
-        return QValidator.Acceptable, a0, a1
+        return QValidator.State.Acceptable, a0, a1
 
     def fixup(self, a0):
         pass
@@ -210,7 +209,7 @@ class TreeButton(QPushButton):
 
     def onClicked(self):
         self.dialog = self.createDialog()
-        if self.dialog.exec_():
+        if self.dialog.exec():
             pass
         self.dialog = None
         self.tree.geo_col.clear_selected_objects()
@@ -249,8 +248,8 @@ class Completer(QCompleter):
         else:
             super().__init__(model, parent)
 
-        self.setCaseSensitivity(Qt.CaseInsensitive)
-        self.setCompletionMode(QCompleter.PopupCompletion)
+        self.setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
+        self.setCompletionMode(QCompleter.CompletionMode.PopupCompletion)
         self.setWrapAround(False)
 
     # Add texts instead of replace
@@ -796,7 +795,7 @@ class ParameterTree(QTreeWidget):
 
         # Set the tree widget geometry
         self.setMinimumWidth(300)
-        self.header().setSectionResizeMode(0, QHeaderView.Stretch)
+        self.header().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
         self.setColumnWidth(1, 120)
 
         # Set the tree to be expanded by default
@@ -804,7 +803,7 @@ class ParameterTree(QTreeWidget):
 
         # Set the selection mode to extended. This allows the user to perform the usual operations of Shift-Click,
         # Ctrl-Click, or drag to select multiple tree items at once
-        self.setSelectionMode(QAbstractItemView.ExtendedSelection)
+        self.setSelectionMode(QAbstractItemView.SelectionMode.ExtendedSelection)
 
         # Item selection changed connection
         self.previous_items = None
@@ -820,11 +819,11 @@ class ParameterTree(QTreeWidget):
         self.previous_item_hovered = None
 
     def getPymeadObjFromItem(self, item: QTreeWidgetItem):
-        pymead_obj_name = item.data(0, Qt.DisplayRole)
+        pymead_obj_name = item.data(0, Qt.ItemDataRole.DisplayRole)
         pymead_obj_parent_tree_item = item.parent()
         if pymead_obj_parent_tree_item is None:
             return
-        pymead_obj_parent_name = pymead_obj_parent_tree_item.data(0, Qt.DisplayRole)
+        pymead_obj_parent_name = pymead_obj_parent_tree_item.data(0, Qt.ItemDataRole.DisplayRole)
         pymead_obj_sub_container = self.inverse_mapped_containers[pymead_obj_parent_name]
         try:
             pymead_obj = self.geo_col.container()[pymead_obj_sub_container][pymead_obj_name]
@@ -875,7 +874,7 @@ class ParameterTree(QTreeWidget):
         the mouse.
         """
         # Tracks the tree widget for a hover event, since a hover signal is not implemented in QTreeWidget
-        tree_item = self.itemAt(event.x(), event.y())
+        tree_item = self.itemAt(event.position().toPoint())
 
         # Hover leave
         if (self.previous_item_hovered is not None and tree_item is not self.previous_item_hovered and
@@ -1019,7 +1018,7 @@ class ParameterTree(QTreeWidget):
         if len(items) == 1 and items[0].text(0) == "Design Variables":
             menu = QMenu(self)
             addDesVarAction = menu.addAction("Add Design Variable")
-            res = menu.exec_(a0.globalPos())
+            res = menu.exec(a0.globalPos())
 
             if res is None:
                 return
@@ -1030,7 +1029,7 @@ class ParameterTree(QTreeWidget):
         elif len(items) == 1 and items[0].text(0) == "Parameters":
             menu = QMenu(self)
             addParameterAction = menu.addAction("Add Parameter")
-            res = menu.exec_(a0.globalPos())
+            res = menu.exec(a0.globalPos())
 
             if res is None:
                 return
@@ -1072,7 +1071,7 @@ class ParameterTree(QTreeWidget):
                 equateConstraintsAction = menu.addAction("Equate Constraints")
             removeObjectAction = menu.addAction("Delete")
 
-            res = menu.exec_(a0.globalPos())
+            res = menu.exec(a0.globalPos())
 
             if res is None:
                 return

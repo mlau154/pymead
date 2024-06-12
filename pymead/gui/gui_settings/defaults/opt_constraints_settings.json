@@ -26,7 +26,7 @@
     "check_thickness_at_points": {
       "label": "Check Thickness Dist.?",
       "widget_type": "QCheckBox",
-      "setCheckState": 0
+      "setChecked": 0
     },
     "thickness_at_points": {
       "label": "Thickness Dist. File",
@@ -50,7 +50,7 @@
     "use_internal_geometry": {
       "label": "Internal Geometry Check?",
       "widget_type": "QCheckBox",
-      "setCheckState": 0
+      "setChecked": 0
     },
     "internal_geometry_timing": {
       "label": "Int. Geometry Timing",
@@ -72,7 +72,7 @@
     "use_external_geometry": {
       "label": "External Geometry Check?",
       "widget_type": "QCheckBox",
-      "setCheckState": 0
+      "setChecked": 0
     },
     "external_geometry_timing": {
       "label": "Ext. Geometry Timing",

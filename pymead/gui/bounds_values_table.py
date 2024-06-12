@@ -1,6 +1,4 @@
-from copy import deepcopy
-
-from PyQt5.QtCore import Qt, QSize
+from PyQt6.QtCore import Qt, QSize
 from pyqtgraph import TableWidget
 
 from pymead.core.geometry_collection import GeometryCollection
@@ -53,7 +51,7 @@ class BoundsValuesTable(TableWidget):
     def makeColumnReadOnly(self, column: int):
         for row in range(self.rowCount()):
             item = self.item(row, column)
-            item.setFlags(item.flags() ^ Qt.ItemIsEditable)
+            item.setFlags(item.flags() ^ Qt.ItemFlag.ItemIsEditable)
 
     def sizeHint(self):
         width = sum([self.columnWidth(i) for i in range(self.columnCount())])

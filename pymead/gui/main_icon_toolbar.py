@@ -1,8 +1,8 @@
 import os
 
 import pyqtgraph as pg
-from PyQt5.QtGui import QIcon
-from PyQt5.QtWidgets import QToolBar, QToolButton
+from PyQt6.QtGui import QIcon
+from PyQt6.QtWidgets import QToolBar, QToolButton
 
 from pymead import ICON_DIR, GUI_SETTINGS_DIR, q_settings
 from pymead.utils.read_write_files import load_data
@@ -51,19 +51,14 @@ class MainIconToolbar(QToolBar):
     def on_stop_button_pressed(self):
         self.parent.stop_process()
 
-    def on_grid_button_pressed(self):
-        self.parent.airfoil_canvas.toggleGrid()
+    def on_grid_button_pressed(self, checked):
+        self.parent.airfoil_canvas.toggleGrid(checked)
         for dw in self.parent.dock_widgets:
             if isinstance(dw.widget(), pg.GraphicsLayoutWidget):
                 v = dw.widget().getItem(0, 0)
-                x_state = v.ctrl.xGridCheck.checkState()
-                y_state = v.ctrl.yGridCheck.checkState()
-                if x_state or y_state:
-                    v.showGrid(x=False, y=False)
-                else:
-                    v.showGrid(x=True, y=True)
+                v.showGrid(x=checked, y=checked)
             elif hasattr(dw.widget(), "toggle_grid"):
-                dw.widget().toggle_grid()
+                dw.widget().toggle_grid(checked)
 
     def change_background_color_button_toggled(self, checked):
 

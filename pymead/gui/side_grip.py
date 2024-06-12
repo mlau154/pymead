@@ -1,21 +1,21 @@
-from PyQt5.QtWidgets import QWidget
-from PyQt5.QtCore import Qt
+from PyQt6.QtWidgets import QWidget
+from PyQt6.QtCore import Qt
 
 
 class SideGrip(QWidget):
     def __init__(self, parent, edge):
         super().__init__(parent)
-        if edge == Qt.LeftEdge:
-            self.setCursor(Qt.SizeHorCursor)
+        if edge == Qt.Edge.LeftEdge:
+            self.setCursor(Qt.CursorShape.SizeHorCursor)
             self.resizeFunc = self.resizeLeft
-        elif edge == Qt.TopEdge:
-            self.setCursor(Qt.SizeVerCursor)
+        elif edge == Qt.Edge.TopEdge:
+            self.setCursor(Qt.CursorShape.SizeVerCursor)
             self.resizeFunc = self.resizeTop
-        elif edge == Qt.RightEdge:
-            self.setCursor(Qt.SizeHorCursor)
+        elif edge == Qt.Edge.RightEdge:
+            self.setCursor(Qt.CursorShape.SizeHorCursor)
             self.resizeFunc = self.resizeRight
         else:
-            self.setCursor(Qt.SizeVerCursor)
+            self.setCursor(Qt.CursorShape.SizeVerCursor)
             self.resizeFunc = self.resizeBottom
         self.mousePos = None
 
@@ -44,7 +44,7 @@ class SideGrip(QWidget):
         window.resize(window.width(), height)
 
     def mousePressEvent(self, event):
-        if event.button() == Qt.LeftButton:
+        if event.button() == Qt.MouseButton.LeftButton:
             self.mousePos = event.pos()
 
     def mouseMoveEvent(self, event):

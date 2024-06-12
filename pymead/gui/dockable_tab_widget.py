@@ -1,9 +1,9 @@
 import typing
 
-from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QCloseEvent
-from PyQt5.QtWidgets import QMainWindow, QDockWidget, QGridLayout, QApplication, QWidget
-from PyQt5.QtCore import pyqtSignal
+from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QCloseEvent
+from PyQt6.QtWidgets import QMainWindow, QDockWidget, QGridLayout, QWidget
+from PyQt6.QtCore import pyqtSignal
 
 
 class PymeadDockWidget(QDockWidget):
@@ -45,17 +45,17 @@ class DockableTabWidget(QMainWindow):
             self.dock_widgets.append(dw)
             self.names.append(name)
             if len(self.dock_widgets) == 2:
-                self.addDockWidget(Qt.LeftDockWidgetArea, self.dock_widgets[-2])
-                self.addDockWidget(Qt.RightDockWidgetArea, dw)
+                self.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea, self.dock_widgets[-2])
+                self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, dw)
                 self.setCentralWidget(QWidget())
                 self.tabifyDockWidget(self.dock_widgets[-2], self.dock_widgets[-1])
-                self.splitDockWidget(self.dock_widgets[-2], self.dock_widgets[-1], Qt.Horizontal)
+                self.splitDockWidget(self.dock_widgets[-2], self.dock_widgets[-1], Qt.AlignmentFlag.Horizontal)
             elif len(self.dock_widgets) == 3:
-                self.addDockWidget(Qt.BottomDockWidgetArea, dw)
+                self.addDockWidget(Qt.DockWidgetArea.BottomDockWidgetArea, dw)
                 self.tabifyDockWidget(self.dock_widgets[-2], self.dock_widgets[-1])
-                self.splitDockWidget(self.dock_widgets[-2], self.dock_widgets[-1], Qt.Vertical)
+                self.splitDockWidget(self.dock_widgets[-2], self.dock_widgets[-1], Qt.AlignmentFlag.Vertical)
             elif len(self.dock_widgets) > 3:
-                self.addDockWidget(Qt.RightDockWidgetArea, dw)
+                self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, dw)
                 self.tabifyDockWidget(self.dock_widgets[-2], self.dock_widgets[-1])
             else:
                 self.setCentralWidget(dw)

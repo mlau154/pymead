@@ -10,31 +10,31 @@
     "Mach": {
         "label": "Output Mach Contours",
         "widget_type": "QCheckBox",
-        "setCheckState": 0
+        "setChecked": 0
     },
     "Streamline_Grid": {
         "label": "Output Streamline Grid",
         "widget_type": "QCheckBox",
-        "setCheckState": 0
+        "setChecked": 0
     },
     "Grid": {
         "label": "Output Grid",
         "widget_type": "QCheckBox",
-        "setCheckState": 0
+        "setChecked": 0
     },
     "Grid_Zoom": {
         "label": "Output Zoomed-In Grid",
         "widget_type": "QCheckBox",
-        "setCheckState": 0
+        "setChecked": 0
     },
     "Output_Field": {
         "label": "Output Flow Variable Field",
         "widget_type": "QCheckBox",
-        "setCheckState": 2
+        "setChecked": 2
     },
     "CPK": {
         "label": "Output CPK",
         "widget_type": "QCheckBox",
-        "setCheckState": 0
+        "setChecked": 0
     }
 }

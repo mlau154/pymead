@@ -3,7 +3,7 @@ import typing
 
 import numpy as np
 import pyqtgraph as pg
-from PyQt5.QtCore import pyqtSignal
+from PyQt6.QtCore import pyqtSignal
 
 from pymead import q_settings, GUI_SETTINGS_DIR
 from pymead.core.bezier import Bezier

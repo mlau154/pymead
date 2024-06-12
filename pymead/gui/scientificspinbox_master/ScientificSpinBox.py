@@ -1,6 +1,6 @@
-from PyQt5 import QtWidgets
-from PyQt5 import QtCore
-from PyQt5 import QtGui
+from PyQt6 import QtWidgets
+from PyQt6 import QtCore
+from PyQt6 import QtGui
 import re
 
 """
@@ -102,11 +102,11 @@ class IntValidator(QtGui.QValidator):
 		"""
 
 		if self.valid_integer_string(string):
-			return QtGui.QValidator.Acceptable
+			return QtGui.QValidator.State.Acceptable
 		if self.intermediate_integer_string(string):
-			return QtGui.QValidator.Intermediate
+			return QtGui.QValidator.State.Intermediate
 		else:
-			return QtGui.QValidator.Invalid
+			return QtGui.QValidator.State.Invalid
 
 	def fixup(self, string: str) -> str:
 		"""

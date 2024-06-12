@@ -3,7 +3,7 @@ import os
 import pickle
 import typing
 
-from PyQt5.QtCore import QStandardPaths
+from PyQt6.QtCore import QStandardPaths
 
 from pymead import q_settings
 
@@ -58,5 +58,5 @@ def load_documents_path(settings_var: str):
     if q_settings.contains(settings_var):
         path = q_settings.value(settings_var)
     else:
-        path = QStandardPaths.writableLocation(QStandardPaths.DocumentsLocation)
+        path = QStandardPaths.writableLocation(QStandardPaths.StandardLocation.DocumentsLocation)
     return path

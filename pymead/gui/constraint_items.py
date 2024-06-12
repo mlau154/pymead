@@ -1,8 +1,6 @@
-from abc import abstractmethod
-
 import pyqtgraph as pg
-from PyQt5.QtCore import Qt, pyqtSignal, QObject
-from PyQt5.QtGui import QFont, QPen, QColor
+from PyQt6.QtCore import Qt, pyqtSignal, QObject
+from PyQt6.QtGui import QFont, QPen, QColor
 
 from pymead.core import UNITS
 from pymead.core.constraints import *
@@ -166,7 +164,7 @@ class ROCurvatureConstraintItem(ConstraintItem):
 class AntiParallel3ConstraintItem(ConstraintItem):
     def __init__(self, constraint: AntiParallel3Constraint, theme: dict):
         self.text_style = dict(anchor=(0.5, 0.5))
-        pen = pg.mkPen(width=1, style=Qt.DashLine)
+        pen = pg.mkPen(width=1, style=Qt.PenStyle.DashLine)
         canvas_items = [
             pg.TextItem("\u2225", **self.text_style),
             pg.TextItem("\u2225", **self.text_style),
@@ -198,7 +196,7 @@ class AntiParallel3ConstraintItem(ConstraintItem):
 
 class RelAngle3ConstraintItem(ConstraintItem):
     def __init__(self, constraint: RelAngle3Constraint, theme: dict):
-        pen = pg.mkPen(width=1, style=Qt.DashLine)
+        pen = pg.mkPen(width=1, style=Qt.PenStyle.DashLine)
         canvas_items = [
             pg.PlotDataItem(),
             pg.PlotDataItem(pen=pen),
@@ -243,7 +241,7 @@ class RelAngle3ConstraintItem(ConstraintItem):
 
 class Perp3ConstraintItem(ConstraintItem):
     def __init__(self, constraint: Perp3Constraint, theme: dict):
-        pen = pg.mkPen(width=1, style=Qt.DashLine)
+        pen = pg.mkPen(width=1, style=Qt.PenStyle.DashLine)
         canvas_items = [
             pg.PlotDataItem(),
             pg.PlotDataItem(),

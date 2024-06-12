@@ -1,8 +1,9 @@
 {
   "grid": {
     "icon": "grid_icon.png",
-    "status_tip": "Activate grid",
-    "checkable": false,
+    "status_tip": "Toggle grid",
+    "checkable": true,
+    "checked-by-default": true,
     "function": "on_grid_button_pressed"
   },
   "change-background-color": {

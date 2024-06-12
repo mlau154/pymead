@@ -1,8 +1,8 @@
 import os
 
-from PyQt5.QtCore import Qt, QSize, QUrl, pyqtSignal
-from PyQt5.QtGui import QIcon, QDesktopServices, QPalette, QLinearGradient, QGradient, QBrush
-from PyQt5.QtWidgets import QWidget, QHBoxLayout, QLabel, QToolButton, QStyle
+from PyQt6.QtCore import Qt, QSize, QUrl, pyqtSignal
+from PyQt6.QtGui import QIcon, QDesktopServices
+from PyQt6.QtWidgets import QWidget, QHBoxLayout, QLabel, QToolButton, QStyle
 
 from pymead import ICON_DIR
 
@@ -48,12 +48,10 @@ class TitleBar(QWidget):
 
     sigMessage = pyqtSignal(str, str)
 
-    def __init__(self, parent):
+    def __init__(self, parent, theme: dict, window_title: str):
         super().__init__(parent)
 
         self.guiWindowMaximized = False
-
-        theme = self.parent().themes[self.parent().current_theme]
 
         self.setAutoFillBackground(True)
 
@@ -61,7 +59,7 @@ class TitleBar(QWidget):
         self.lay.setContentsMargins(1, 1, 1, 1)
 
         self.title = QLabel("Custom Title Bar", self)
-        self.title.setAlignment(Qt.AlignCenter)
+        self.title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.title.setFixedHeight(30)
         self.title.setAutoFillBackground(True)
 
@@ -101,8 +99,8 @@ class TitleBar(QWidget):
                  theme["maximize-hover-color"], theme["close-hover-color"]),
                 ("Minimize", "Normal", "Maximize", "Close")
         ):
-            btn = TitleBarButton(self, operation=target)
-            btn.setFocusPolicy(Qt.NoFocus)
+            btn = TitleBarButton(self, operation=target, theme=theme)
+            btn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
             self.lay.addWidget(btn)
             btn.setFixedSize(btn_size)
             # btn.setIconSize(btn_size)
@@ -124,32 +122,31 @@ class TitleBar(QWidget):
 
         self.normalButton.hide()
 
-        self.updateTitle(parent.windowTitle())
-        parent.windowTitleChanged.connect(self.updateTitle)
+        self.updateTitle(window_title)
 
     def updateTitle(self, title=None):
         if title is None:
             title = self.window().windowTitle()
         width = self.title.width()
-        width -= self.style().pixelMetric(QStyle.PM_LayoutHorizontalSpacing) * 2
+        width -= self.style().pixelMetric(QStyle.PixelMetric.PM_LayoutHorizontalSpacing) * 2
         self.title.setText(self.fontMetrics().elidedText(
-            title, Qt.ElideRight, width))
+            title, Qt.TextElideMode.ElideRight, width))
         # self.title.setStyleSheet("QLabel { color: blue; }")
 
     def windowStateChanged(self, state):
-        self.normalButton.setVisible(state == Qt.WindowMaximized)
-        self.maximizeButton.setVisible(state != Qt.WindowMaximized)
-        self.guiWindowMaximized = state == Qt.WindowMaximized
+        self.normalButton.setVisible(state == Qt.WindowState.WindowMaximized)
+        self.maximizeButton.setVisible(state != Qt.WindowState.WindowMaximized)
+        self.guiWindowMaximized = state == Qt.WindowState.WindowMaximized
 
     def mousePressEvent(self, event):
-        if event.button() == Qt.LeftButton and not self.guiWindowMaximized:
-            self.clickPos = event.windowPos().toPoint()
+        if event.button() == Qt.MouseButton.LeftButton and not self.guiWindowMaximized:
+            self.clickPos = event.scenePosition().toPoint()
         super().mousePressEvent(event)
         event.accept()
 
     def mouseMoveEvent(self, event):
         if self.clickPos is not None and not self.guiWindowMaximized:
-            self.window().move(event.globalPos() - self.clickPos)
+            self.window().move(event.globalPosition().toPoint() - self.clickPos)
         super().mouseMoveEvent(event)
         event.accept()
 
@@ -194,7 +191,7 @@ class DialogTitleBar(QWidget):
         self.lay.setContentsMargins(1, 1, 1, 1)
 
         self.title = QLabel("Custom Title Bar", self)
-        self.title.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+        self.title.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
         self.title.setFixedHeight(30)
         self.title.setMinimumWidth(400)
         self.title.setAutoFillBackground(True)
@@ -234,7 +231,7 @@ class DialogTitleBar(QWidget):
                 ("Close",)
         ):
             btn = TitleBarButton(self, operation=target, theme=theme)
-            btn.setFocusPolicy(Qt.NoFocus)
+            btn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
             self.lay.addWidget(btn)
             btn.setFixedSize(btn_size)
             # btn.setIconSize(btn_size)
@@ -261,25 +258,25 @@ class DialogTitleBar(QWidget):
         if title is None:
             title = self.window().windowTitle()
         width = self.title.width()
-        width -= self.style().pixelMetric(QStyle.PM_LayoutHorizontalSpacing) * 2
+        width -= self.style().pixelMetric(QStyle.PixelMetric.PM_LayoutHorizontalSpacing) * 2
         self.title.setText(self.fontMetrics().elidedText(
-            title, Qt.ElideRight, width))
+            title, Qt.TextElideMode.ElideRight, width))
         # self.title.setStyleSheet("QLabel { color: blue; }")
 
     def windowStateChanged(self, state):
-        self.normalButton.setVisible(state == Qt.WindowMaximized)
-        self.maximizeButton.setVisible(state != Qt.WindowMaximized)
-        self.guiWindowMaximized = state == Qt.WindowMaximized
+        self.normalButton.setVisible(state == Qt.WindowState.WindowMaximized)
+        self.maximizeButton.setVisible(state != Qt.WindowState.WindowMaximized)
+        self.guiWindowMaximized = state == Qt.WindowState.WindowMaximized
 
     def mousePressEvent(self, event):
-        if event.button() == Qt.LeftButton and not self.guiWindowMaximized:
-            self.clickPos = event.windowPos().toPoint()
+        if event.button() == Qt.MouseButton.LeftButton and not self.guiWindowMaximized:
+            self.clickPos = event.scenePosition().toPoint()
         super().mousePressEvent(event)
         event.accept()
 
     def mouseMoveEvent(self, event):
         if self.clickPos is not None and not self.guiWindowMaximized:
-            self.window().move(event.globalPos() - self.clickPos)
+            self.window().move(event.globalPosition().toPoint() - self.clickPos)
         super().mouseMoveEvent(event)
         event.accept()
 

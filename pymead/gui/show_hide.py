@@ -1,7 +1,6 @@
 from functools import partial
 
-from PyQt5.QtCore import Qt
-from PyQt5.QtWidgets import QGridLayout, QCheckBox, QLabel, QWidget
+from PyQt6.QtWidgets import QGridLayout, QCheckBox, QLabel, QWidget
 
 from pymead.gui.dialogs import PymeadDialog
 

@@ -1,7 +1,7 @@
-from PyQt5.QtCore import QObject, QRunnable, pyqtSignal, pyqtSlot
-from multiprocessing.pool import Pool
-import traceback
 import sys
+import traceback
+
+from PyQt6.QtCore import QObject, QRunnable, pyqtSignal, pyqtSlot
 
 
 class WorkerSignals(QObject):

@@ -1,9 +1,9 @@
-from PyQt5.QtWidgets import QFileDialog, QLineEdit, QPlainTextEdit
+from PyQt6.QtWidgets import QFileDialog, QLineEdit, QPlainTextEdit
 
 
 def single_file_output_rule(dlg: QFileDialog, line_edit: QLineEdit = None):
     if line_edit is not None:
-        if dlg.exec_():
+        if dlg.exec():
             file_name = dlg.selectedFiles()[0]
             line_edit.setText(file_name)
             return file_name
@@ -13,7 +13,7 @@ def single_file_output_rule(dlg: QFileDialog, line_edit: QLineEdit = None):
 
 def multi_file_output_rule(dlg: QFileDialog, text_edit: QPlainTextEdit = None):
     if text_edit is not None:
-        if dlg.exec_():
+        if dlg.exec():
             text_edit.insertPlainText('\n\n'.join(dlg.selectedFiles()))
     else:
         return dlg
@@ -21,7 +21,7 @@ def multi_file_output_rule(dlg: QFileDialog, text_edit: QPlainTextEdit = None):
 
 def select_directory(parent, line_edit: QLineEdit = None, starting_dir: str = None):
     file_dialog = QFileDialog(parent)
-    file_dialog.setFileMode(QFileDialog.DirectoryOnly)
+    file_dialog.setFileMode(QFileDialog.FileMode.Directory)
     if starting_dir is not None:
         file_dialog.setDirectory(starting_dir)
     return single_file_output_rule(file_dialog, line_edit)
@@ -29,7 +29,7 @@ def select_directory(parent, line_edit: QLineEdit = None, starting_dir: str = No
 
 def select_json_file(parent, line_edit: QLineEdit = None, starting_dir: str = None):
     file_dialog = QFileDialog(parent)
-    file_dialog.setFileMode(QFileDialog.AnyFile)
+    file_dialog.setFileMode(QFileDialog.FileMode.AnyFile)
     if starting_dir is not None:
         file_dialog.setDirectory(starting_dir)
     file_dialog.setNameFilter(parent.tr("JSON Settings Files (*.json)"))
@@ -38,7 +38,7 @@ def select_json_file(parent, line_edit: QLineEdit = None, starting_dir: str = No
 
 def select_jpg_file(parent, line_edit: QLineEdit = None, starting_dir: str = None):
     file_dialog = QFileDialog(parent)
-    file_dialog.setFileMode(QFileDialog.AnyFile)
+    file_dialog.setFileMode(QFileDialog.FileMode.AnyFile)
     if starting_dir is not None:
         file_dialog.setDirectory(starting_dir)
     file_dialog.setNameFilter(parent.tr("JPEG Files (*.jpg *.jpeg)"))
@@ -47,7 +47,7 @@ def select_jpg_file(parent, line_edit: QLineEdit = None, starting_dir: str = Non
 
 def select_existing_json_file(parent, line_edit: QLineEdit = None, starting_dir: str = None):
     file_dialog = QFileDialog(parent)
-    file_dialog.setFileMode(QFileDialog.ExistingFile)
+    file_dialog.setFileMode(QFileDialog.FileMode.ExistingFile)
     if starting_dir is not None:
         file_dialog.setDirectory(starting_dir)
     file_dialog.setNameFilter(parent.tr("JSON Settings Files (*.json)"))
@@ -56,7 +56,7 @@ def select_existing_json_file(parent, line_edit: QLineEdit = None, starting_dir:
 
 def select_multiple_json_files(parent, text_edit: QPlainTextEdit = None, starting_dir: str = None):
     file_dialog = QFileDialog(parent)
-    file_dialog.setFileMode(QFileDialog.ExistingFiles)
+    file_dialog.setFileMode(QFileDialog.FileMode.ExistingFiles)
     if starting_dir is not None:
         file_dialog.setDirectory(starting_dir)
     file_dialog.setNameFilter(parent.tr("JSON Settings Files (*.json)"))
@@ -65,7 +65,7 @@ def select_multiple_json_files(parent, text_edit: QPlainTextEdit = None, startin
 
 def select_existing_jmea_file(parent, line_edit: QLineEdit = None, starting_dir: str = None):
     file_dialog = QFileDialog(parent)
-    file_dialog.setFileMode(QFileDialog.ExistingFile)
+    file_dialog.setFileMode(QFileDialog.FileMode.ExistingFile)
     if starting_dir is not None:
         file_dialog.setDirectory(starting_dir)
     file_dialog.setNameFilter(parent.tr("JMEA Parametrization (*.jmea)"))
@@ -74,7 +74,7 @@ def select_existing_jmea_file(parent, line_edit: QLineEdit = None, starting_dir:
 
 def select_data_file(parent, line_edit: QLineEdit = None, starting_dir: str = None):
     file_dialog = QFileDialog(parent)
-    file_dialog.setFileMode(QFileDialog.ExistingFile)
+    file_dialog.setFileMode(QFileDialog.FileMode.ExistingFile)
     if starting_dir is not None:
         file_dialog.setDirectory(starting_dir)
     file_dialog.setNameFilter(parent.tr("Data Files (*.txt *.dat *.csv)"))
@@ -83,7 +83,7 @@ def select_data_file(parent, line_edit: QLineEdit = None, starting_dir: str = No
 
 def select_multiple_data_files(parent, text_edit: QPlainTextEdit = None, starting_dir: str = None):
     file_dialog = QFileDialog(parent)
-    file_dialog.setFileMode(QFileDialog.ExistingFiles)
+    file_dialog.setFileMode(QFileDialog.FileMode.ExistingFiles)
     if starting_dir is not None:
         file_dialog.setDirectory(starting_dir)
     file_dialog.setNameFilter(parent.tr("Data Files (*.txt *.dat *.csv)"))

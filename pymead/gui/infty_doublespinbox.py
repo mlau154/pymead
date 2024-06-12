@@ -1,6 +1,6 @@
-from PyQt5.QtWidgets import QDoubleSpinBox
-from PyQt5.QtGui import QKeyEvent
-from PyQt5.QtCore import Qt
+from PyQt6.QtWidgets import QDoubleSpinBox
+from PyQt6.QtGui import QKeyEvent
+from PyQt6.QtCore import Qt
 import numpy as np
 
 
@@ -18,7 +18,7 @@ class InftyDoubleSpinBox(QDoubleSpinBox):
 
     def keyPressEvent(self, e: QKeyEvent):
 
-        if e.key() == Qt.Key_Home:
+        if e.key() == Qt.Key.Key_Home:
             if self.lower:
                 self.setValue(self.minimum())
             else:

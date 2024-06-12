@@ -1,6 +1,6 @@
-from PyQt5 import QtWidgets
-from PyQt5 import QtCore
-from PyQt5 import QtGui
+from PyQt6 import QtWidgets
+from PyQt6 import QtCore
+from PyQt6 import QtGui
 from numpy import inf
 import re
 
@@ -81,11 +81,11 @@ class FloatValidator(QtGui.QValidator):
 		"""
 
 		if self.valid_float_string(string):
-			return QtGui.QValidator.Acceptable
+			return QtGui.QValidator.State.Acceptable
 		if self.intermediate_float_string(string):
-			return QtGui.QValidator.Intermediate
+			return QtGui.QValidator.State.Intermediate
 		else:
-			return QtGui.QValidator.Invalid
+			return QtGui.QValidator.State.Invalid
 
 	def fixup(self, string: str) -> str:
 		"""

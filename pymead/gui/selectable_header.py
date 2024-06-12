@@ -1,7 +1,6 @@
 from pyqtgraph.parametertree.parameterTypes import GroupParameterItem
 from pyqtgraph import mkPen
-from PyQt5 import QtCore
-from PyQt5.QtWidgets import QMenu
+from PyQt6 import QtCore
 
 translate = QtCore.QCoreApplication.translate
 

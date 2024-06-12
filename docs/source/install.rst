@@ -234,13 +234,13 @@ dependencies.
 - `matplotlib <https://matplotlib.org/>`_: Static plotting
 - `requests <https://requests.readthedocs.io/en/latest/>`_: Downloading airfoil coordinate sets
   from `Airfoil Tools <http://airfoiltools.com/>`_
-- `PyQt5 <https://pypi.org/project/PyQt5/>`_: Graphical User Interface (GUI)
+- `PyQt6 <https://pypi.org/project/PyQt6/>`_: Graphical User Interface (GUI)
+- `PyQt6-WebEngine <https://pypi.org/project/PyQt6-WebEngine/>`_: Internal GUI web-based help browser
 - `pyqtgraph <https://www.pyqtgraph.org/>`_: Interactive plots
 - `python-benedict <https://pypi.org/project/python-benedict/>`_: Dictionary utilities
 - `pandas <https://pandas.pydata.org/>`_: Data structures
 - `pymoo <https://pymoo.org/>`_: Genetic algorithms used for aerodynamic shape optimization
 - `numba <https://numba.pydata.org/>`_: Speed-up of inviscid lift coefficient calculation
-- `PyQtWebEngine <https://pypi.org/project/PyQtWebEngine/>`_: Internal GUI web-based help browser
 - `cmcrameri <https://www.fabiocrameri.ch/colourmaps/>`_: Perceptually uniform, color-vision-deficiency friendly color
   maps by Fabio Crameri (used for flow visualization)
 - `networkx <https://networkx.org/documentation/stable/>`_: Analysis of the undirected graph describing the geometric

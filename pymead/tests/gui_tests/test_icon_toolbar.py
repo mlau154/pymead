@@ -1,5 +1,5 @@
 import pytest
-from PyQt5.QtCore import Qt
+from PyQt6.QtCore import Qt
 
 from pymead.gui.gui import GUI
 
@@ -18,4 +18,4 @@ def test_background_color_change(app):
 
 
 def test_grid_button_click(app, qtbot):
-    qtbot.mouseClick(app.main_icon_toolbar.buttons["grid"]["button"], Qt.LeftButton)
+    qtbot.mouseClick(app.main_icon_toolbar.buttons["grid"]["button"], Qt.MouseButton.LeftButton)
