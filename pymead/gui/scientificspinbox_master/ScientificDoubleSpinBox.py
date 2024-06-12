@@ -140,7 +140,7 @@ class ScientificDoubleSpinBox(QtWidgets.QDoubleSpinBox):
 		"""
 
 		string = "{:g}".format(value).replace("e+", "e").replace(".", QtCore.QLocale().decimalPoint(), 1)
-		string = re.sub("e(-?)0*(\d+)", r"e\1\2", string)
+		string = re.sub(r"e(-?)0*(\d+)", r"e\1\2", string)
 		return string
 
 	def valueFromText(self, string: str) -> float:
