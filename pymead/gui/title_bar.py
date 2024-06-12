@@ -25,13 +25,13 @@ class TitleBarButton(QToolButton):
 
     def setColorDefault(self):
         theme_name = self.theme["theme-name"] if self.theme is not None else self.parent().parent().current_theme
-        self.setIcon(QIcon(os.path.join(ICON_DIR, f"{self.operation}-{theme_name}-mode.svg")))
+        self.setIcon(QIcon(os.path.join(ICON_DIR, f"{self.operation}-{theme_name}-mode.png")))
         self.setStyleSheet(f"""QToolButton {{ border: none }}""")
 
     def setColorHover(self):
         theme_name = self.theme["theme-name"] if self.theme is not None else self.parent().parent().current_theme
         if theme_name == "dark":
-            self.setIcon(QIcon(os.path.join(ICON_DIR, f"{self.operation}-{theme_name}-mode.svg")))
+            self.setIcon(QIcon(os.path.join(ICON_DIR, f"{self.operation}-light-mode.png")))
         self.setStyleSheet(f"""QToolButton {{ background-color: {self.hoverColor()} }}""")
 
     def enterEvent(self, a0):
@@ -94,12 +94,12 @@ class TitleBar(QWidget):
         btn_size = QSize(30, 30)
         for target, picture, hover_color, tool_tip in zip(
                 ('minimize', 'normal', 'maximize', 'close'),
-                ("minimize-dark-mode.svg", "normal-dark-mode.svg", "maximize-dark-mode.svg", "close-dark-mode.svg"),
+                ("minimize-dark-mode.png", "normal-dark-mode.png", "maximize-dark-mode.png", "close-dark-mode.png"),
                 (theme["minimize-hover-color"], theme["maximize-hover-color"],
                  theme["maximize-hover-color"], theme["close-hover-color"]),
                 ("Minimize", "Normal", "Maximize", "Close")
         ):
-            btn = TitleBarButton(self, operation=target, theme=theme)
+            btn = TitleBarButton(self, operation=target)
             btn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
             self.lay.addWidget(btn)
             btn.setFixedSize(btn_size)
@@ -226,7 +226,7 @@ class DialogTitleBar(QWidget):
         btn_size = QSize(30, 30)
         for target, picture, hover_color, tool_tip in zip(
                 ('close',),
-                (f"close-{theme['theme-name']}-mode.svg",),
+                (f"close-{theme['theme-name']}-mode.png",),
                 (theme["close-hover-color"],),
                 ("Close",)
         ):
