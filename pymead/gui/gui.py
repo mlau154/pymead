@@ -82,11 +82,11 @@ class GUI(QMainWindow):
 
     def __init__(self, path=None, parent=None):
         # super().__init__(flags=Qt.FramelessWindowHint)
-        try:
-            import pyi_splash
-            pyi_splash.update_text("Initializing constants...")
-        except:
-            pass
+        # try:
+        #     import pyi_splash
+        #     pyi_splash.update_text("Initializing constants...")
+        # except:
+        #     pass
         UNITS.set_current_length_unit(get_setting("length_unit"))
         UNITS.set_current_angle_unit(get_setting("angle_unit"))
         super().__init__(parent=parent)
@@ -184,10 +184,10 @@ class GUI(QMainWindow):
         # alternatively, widget.raise_() can be used
         self.cornerGrips = [QSizeGrip(self) for i in range(4)]
 
-        try:
-            pyi_splash.update_text("Generating pymead widgets...")
-        except:
-            pass
+        # try:
+        #     pyi_splash.update_text("Generating pymead widgets...")
+        # except:
+        #     pass
 
         # Dock widget items
         self.dock_widgets = []
@@ -243,10 +243,10 @@ class GUI(QMainWindow):
         self.resize(1000, self.title_bar.height() + 600)
         self.parameter_tree.setMaximumWidth(800)
 
-        try:
-            pyi_splash.update_text("Loading geometry information...")
-        except:
-            pass
+        # try:
+        #     pyi_splash.update_text("Loading geometry information...")
+        # except:
+        #     pass
 
         # Load the airfoil system from the system argument variable if necessary
         if self.path is not None:
@@ -254,10 +254,10 @@ class GUI(QMainWindow):
         else:
             self.last_saved_state = self.get_geo_col_state()
 
-        try:
-            pyi_splash.close()
-        except:
-            pass
+        # try:
+        #     pyi_splash.close()
+        # except:
+        #     pass
 
         # Check if we are using the most recent release of pymead (notify if not)
         self.check_for_new_version()
