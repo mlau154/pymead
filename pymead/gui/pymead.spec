@@ -11,7 +11,6 @@ a = Analysis(
     datas=[('gui_settings/defaults/*.json', 'pymead/gui/gui_settings/defaults/'),
     ('gui_settings/themes/*.json', 'pymead/gui/gui_settings/themes/'),
     ('gui_settings/*.json', 'pymead/gui/gui_settings/'),
-    ('default_airfoil/*.jmea', 'pymead/gui/default_airfoil/'),
     ('../icons/*.png', 'pymead/icons/'),
     ('../icons/*.ico', 'pymead/icons/'),
     ('../icons/*.svg', 'pymead/icons/'),
