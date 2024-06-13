@@ -31,6 +31,18 @@ Click on any image to zoom. Press the "back" button to return to the gallery.
 
           Mach field of the NACA 0012 airfoil at :math:`M=0.7` and :math:`\alpha=2^\circ`
 
+   * - .. figure:: images/desvar_mod_dark.*
+          :width: 100%
+          :class: only-dark
+
+          Modification of design variables
+
+     - .. figure:: images/field_plotting_dark.*
+          :width: 100%
+          :class: only-dark
+
+          Plotting aerodynamic field variables
+
    * - .. figure:: images/polar_analysis_dark.*
           :width: 100%
           :class: only-dark
@@ -70,6 +82,18 @@ Click on any image to zoom. Press the "back" button to return to the gallery.
           :class: only-light
 
           Mach field of the NACA 0012 airfoil at :math:`M=0.7` and :math:`\alpha=2^\circ`
+
+   * - .. figure:: images/desvar_mod_light.*
+          :width: 100%
+          :class: only-light
+
+          Modification of design variables
+
+     - .. figure:: images/field_plotting_light.*
+          :width: 100%
+          :class: only-light
+
+          Plotting aerodynamic field variables
 
    * - .. figure:: images/polar_analysis_light.*
           :width: 100%

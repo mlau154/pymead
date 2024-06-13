@@ -8,7 +8,7 @@ Source code can be found [here](https://github.com/mlau154/pymead).
 Documentation can be found [here](https://pymead.readthedocs.io/en/latest/).
 
 ## Welcome
-To the documentation page for `pymead`, a Python GUI and API for generation, aerodynamic analysis, and shape 
+To the documentation page for *pymead*, a Python GUI and API for generation, aerodynamic analysis, and shape 
 optimization of parametric airfoil systems. This parametrization framework in its preliminary stage was presented at the 
 2022 AIAA Aviation Conference in Chicago, IL under the title
 "A Parametrization Framework for Multi-Element Airfoil Systems Using Bézier Curves."
@@ -26,6 +26,12 @@ of an axisymmetric nacelle).
 <img src="https://raw.githubusercontent.com/mlau154/pymead/dev/docs/source/images/pymead_main_screenshot_light.PNG" alt="pressure coefficient contours of an aeropropulsive system" width="700">
 </p>
 
+## Installation
+
+For access to both the API and GUI, *pymead* can be installed using the typical `pip install pymead`.
+There are several other installation options, including a standalone Windows installer.
+See the [*pymead* installation page](https://pymead.readthedocs.io/en/latest/install.html) for more details.
+
 ## How It Works
 
 By using a well-defined parametrization framework, this airfoil system can be morphed or deformed in a variety of ways
@@ -33,14 +39,16 @@ using changes in high-level design variables. These design variables are represe
 `pymead.core.param.DesVar` objects in this framework, which have modifiable lower and upper bounds for optimization. 
 This facilitates aerodynamic analysis, parametric sweeps, and even shape optimization.
 
-`pymead` has both an application programming interface (API) and a graphical user interface (GUI), either of which
+*pymead* has both an application programming interface (API) and a graphical user interface (GUI), either of which
 can be used to define airfoil geometries from basic geometries (like points, lines, and curves), implement
 geometric constraints, perform analysis using wrappers for XFOIL and MSES, match existing airfoils with Bézier curves,
-and even execute aerodynamic or aeropropulsive shape optimization studies.
+and even execute aerodynamic or aeropropulsive shape optimization studies. See the documentation site under
+development for [GUI tutorials](https://pymead.readthedocs.io/en/latest/gui.html) and 
+[API tutorials](https://pymead.readthedocs.io/en/latest/tutorials.html).
 
 ## Applications
 
-It is the hope of the author that `pymead` is sufficiently flexible to be used for airfoil applications of
+It is the hope of the author that *pymead* is sufficiently flexible to be used for airfoil applications of
 varying complexities, from simple, single-airfoil design to high-fidelity, multi-element airfoil shape optimization.
 Other common multi-element airfoil systems, such as the high-lift configuration on an aircraft, are also target
 applications for this software package.
