@@ -55,6 +55,14 @@ Click on any image to zoom. Press the "back" button to return to the gallery.
 
           Aerodynamic polars for a custom airfoil
 
+   * - .. figure:: images/sc20612_matching_4x_speed_dark.*
+          :width: 100%
+          :class: only-dark
+
+          Matching a NASA SC20612 airfoil with Bézier curves (4x speed)
+
+     -
+
 
 .. list-table::
    :widths: 50 50
@@ -106,3 +114,11 @@ Click on any image to zoom. Press the "back" button to return to the gallery.
           :class: only-light
 
           Aerodynamic polars for a custom airfoil
+
+   * - .. figure:: images/sc20612_matching_4x_speed_light.*
+          :width: 100%
+          :class: only-light
+
+          Matching a NASA SC20612 airfoil with Bézier curves (4x speed)
+
+     -
