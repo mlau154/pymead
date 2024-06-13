@@ -58,7 +58,6 @@ development for [GUI tutorials](https://pymead.readthedocs.io/en/latest/gui.html
 <img src="https://raw.githubusercontent.com/mlau154/pymead/dev/docs/source/images/sc20612_analysis_light.gif" alt="MSES analysis of the NASA SC20612 airfoil" width="700">
 </p>
 
-
 ## Applications
 
 It is the hope of the author that *pymead* is sufficiently flexible to be used for airfoil applications of
@@ -70,6 +69,10 @@ One utility provided in this software package which may be useful in the start-u
 `pymead.optimization.airfoil_matching.match_airfoil()`. This function allows the matching of a particular 
 parametrization to any public airfoil geometry at [airfoiltools.com](http://airfoiltools.com/) using the gradient-based "SLSQP"
 optimizer.
+
+<p align="center">
+<img src="https://raw.githubusercontent.com/mlau154/pymead/dev/docs/source/images/sc20612_matching_4x_speed_light.gif" alt="Matching a NASA SC20612 airfoil (4x speed)" width="700">
+</p>
 
 ## Acknowledgments
 
