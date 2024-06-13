@@ -26,7 +26,7 @@ class Bezier(ParametricCurve):
 
         .. math::
 
-            \vec{C}'(t)=n \sum_{i=0}^{n-1} (\vec{P}_{i+1} - \vec{P}_i B_{i,n-1}(t)
+            \vec{C}'(t)=n \sum_{i=0}^{n-1} (\vec{P}_{i+1} - \vec{P}_i) B_{i,n-1}(t)
 
         .. math::
 
