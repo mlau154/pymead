@@ -63,7 +63,7 @@ from pymead.optimization.shape_optimization import shape_optimization as shape_o
 from pymead.post.mses_field import flow_var_label
 from pymead.optimization.airfoil_matching import match_airfoil
 from pymead.utils.dict_recursion import compare_dicts_floating_precision
-from pymead.utils.get_airfoil import extract_data_from_airfoiltools
+from pymead.utils.get_airfoil import extract_data_from_airfoiltools, AirfoilNotFoundError
 from pymead.utils.misc import get_setting
 from pymead.utils.misc import make_ga_opt_dir
 from pymead.utils.read_write_files import load_data, save_data
@@ -1616,8 +1616,12 @@ class GUI(QMainWindow):
         if dialog.exec():
             airfoil_match_settings = dialog.value()
             # res = match_airfoil_ga(self.mea, target_airfoil, airfoil_name)
-            res = match_airfoil(self.geo_col, airfoil_match_settings["tool_airfoil"],
-                                airfoil_match_settings["target_airfoil"])
+            try:
+                res = match_airfoil(self.geo_col, airfoil_match_settings["tool_airfoil"],
+                                    airfoil_match_settings["target_airfoil"])
+            except AirfoilNotFoundError as e:
+                self.disp_message_box(f"{str(e)}")
+                return
             msg_mode = 'error'
             if hasattr(res, 'success') and res.success or hasattr(res, 'F') and res.F is not None:
                 if hasattr(res, 'x'):
@@ -1635,7 +1639,11 @@ class GUI(QMainWindow):
         dialog = AirfoilPlotDialog(self, theme=self.themes[self.current_theme])
         if dialog.exec():
             airfoil_name = dialog.value()
-            airfoil = extract_data_from_airfoiltools(airfoil_name)
+            try:
+                airfoil = extract_data_from_airfoiltools(airfoil_name)
+            except AirfoilNotFoundError as e:
+                self.disp_message_box(f"{str(e)}")
+                return
             self.airfoil_canvas.plot.plot(airfoil[:, 0], airfoil[:, 1], pen=pg.mkPen(color='orange', width=1))
 
     def setup_optimization(self):
