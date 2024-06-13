@@ -36,7 +36,7 @@ from pymead.core.geometry_collection import GeometryCollection
 from pymead.core.mea import MEA
 from pymead.gui.airfoil_canvas import AirfoilCanvas
 from pymead.gui.airfoil_statistics import AirfoilStatisticsDialog, AirfoilStatistics
-from pymead.gui.analysis_graph import AnalysisGraph, ResidualGraph, PolarGraphCollection
+from pymead.gui.analysis_graph import AnalysisGraph, ResidualGraph, PolarGraphCollection, AirfoilMatchingGraphCollection
 from pymead.gui.concurrency import CPUBoundProcess
 from pymead.gui.custom_graphics_view import CustomGraphicsView
 from pymead.gui.dockable_tab_widget import PymeadDockWidget
@@ -147,6 +147,7 @@ class GUI(QMainWindow):
         self.residual_graph = None
         self.residual_data = None
         self.polar_graph_collection = None
+        self.airfoil_matching_graph_collection = None
         self.opt_airfoil_graph = None
         self.parallel_coords_graph = None
         self.drag_graph = None
@@ -515,6 +516,9 @@ class GUI(QMainWindow):
 
         if self.polar_graph_collection is not None:
             self.polar_graph_collection.set_formatting(theme=self.themes[self.current_theme])
+
+        if self.airfoil_matching_graph_collection is not None:
+            self.airfoil_matching_graph_collection.set_formatting(theme=self.themes[self.current_theme])
 
         for cnstr in self.geo_col.container()["geocon"].values():
             cnstr.canvas_item.setStyle(theme)
@@ -1967,13 +1971,28 @@ class GUI(QMainWindow):
             self.permanent_widget.progress_bar.setValue(data)
         elif status == "polar_complete":
             self.permanent_widget.progress_bar.hide()
-        elif status == "symmetric_area_difference":
-            self.status_bar.showMessage(f"Symmetric area difference: {data:.3e}")
+        elif status == "clear_airfoil_matching_plots":
+            if self.airfoil_matching_graph_collection is not None:
+                self.airfoil_matching_graph_collection.clear_data()
+        elif status == "symmetric_area_difference" and isinstance(data, tuple):
+            current_fun_value = data[0]
+            coords = data[1]
+            airfoil_to_match_xy = data[2]
+            self.status_bar.showMessage(f"Symmetric area difference: {current_fun_value:.3e}")
+            if self.airfoil_matching_graph_collection is None:
+                self.airfoil_matching_graph_collection = AirfoilMatchingGraphCollection(
+                    theme=self.themes[self.current_theme],
+                    grid=self.main_icon_toolbar.buttons["grid"]["button"].isChecked()
+                )
+                self.add_new_tab_widget(self.airfoil_matching_graph_collection, "Matching")
+                self.switch_to_tab("Matching")
+            self.airfoil_matching_graph_collection.set_data(current_fun_value, coords, airfoil_to_match_xy)
         elif status == "match_airfoil_complete":
             if not isinstance(data, OptimizeResult):
                 raise ValueError(f"data ({data}) must be of type scipy.optimize.OptimizeResult")
             res = data
             msg_mode = "error"
+            message = res.message
             if hasattr(res, "success") and res.success:
                 update_params = res.x
                 self.geo_col.assign_design_variable_values(update_params, bounds_normalized=True)
@@ -1981,7 +2000,8 @@ class GUI(QMainWindow):
                 self.output_area_text(f"Airfoil matched successfully. Symmetric area difference: {res.fun:.3e}. "
                                       f"Function evaluations: {res.nfev}. Gradient evaluations: {res.njev}.",
                                       line_break=True)
-            self.disp_message_box(message=res.message, message_mode=msg_mode)
+                message = f"{res.message}. Geometry canvas updated with new design variable values."
+            self.disp_message_box(message=message, message_mode=msg_mode)
 
     def clear_opt_plots(self):
         def clear_handles(h_list: list):

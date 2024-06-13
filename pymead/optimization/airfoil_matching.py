@@ -10,8 +10,11 @@ from pymead.core.geometry_collection import GeometryCollection
 from pymead.utils.get_airfoil import extract_data_from_airfoiltools
 
 
-def airfoil_symmetric_area_difference(parameters: list, geo_col: GeometryCollection, target_airfoil: str,
-                                      airfoil_to_match_xy: np.ndarray):
+def airfoil_symmetric_area_difference(parameters: list,
+                                      geo_col: GeometryCollection,
+                                      target_airfoil: str,
+                                      airfoil_to_match_xy: np.ndarray,
+                                      output_coords: bool = False) -> float or (float, np.ndarray):
     r"""
     This method uses the ``shapely`` package to convert the parametrized airfoil and the "discrete" airfoil to
     `Polygon <https://shapely.readthedocs.io/en/stable/manual.html#Polygon>`_
@@ -38,10 +41,15 @@ def airfoil_symmetric_area_difference(parameters: list, geo_col: GeometryCollect
     airfoil_to_match_xy: np.ndarray
         Set of airfoil :math:`xy`-coordinates to be matched
 
+    output_coords: bool
+        If ``False``, only the symmetric area difference will be returned. Otherwise, the symmetric
+        area difference, and current matching coordinates will be returned.
+
     Returns
     -------
-    float
-        The boolean symmetric area difference between the parametrized airfoil and the discrete airfoil
+    float or (float, numpy.ndarray, numpy.ndarray)
+        The boolean symmetric area difference between the parametrized airfoil and the discrete airfoil,
+        and possibly the current matching airfoil coordinates.
     """
 
     # Override airfoil parameters with supplied sequence of parameters
@@ -62,7 +70,10 @@ def airfoil_symmetric_area_difference(parameters: list, geo_col: GeometryCollect
     except shapely.errors.TopologicalError:
         symmetric_area_difference = 1  # Set the boolean symmetric area difference to a large value
 
-    return symmetric_area_difference
+    if output_coords:
+        return symmetric_area_difference, coords
+    else:
+        return symmetric_area_difference
 
 
 def match_airfoil(conn: multiprocessing.connection.Connection or None,
@@ -131,11 +142,14 @@ def match_airfoil(conn: multiprocessing.connection.Connection or None,
             pass
 
     def callback(xk):
-        current_fun_value = airfoil_symmetric_area_difference(xk, geo_col, target_airfoil, airfoil_to_match_xy)
         if conn is None:
+            current_fun_value = airfoil_symmetric_area_difference(
+                xk, geo_col, target_airfoil, airfoil_to_match_xy)
             print(f"Symmetric area difference: {current_fun_value:.3e}")
         else:
-            send_over_pipe(("symmetric_area_difference", current_fun_value))
+            current_fun_value, coords = airfoil_symmetric_area_difference(
+                xk, geo_col, target_airfoil, airfoil_to_match_xy, output_coords=True)
+            send_over_pipe(("symmetric_area_difference", (current_fun_value, coords, airfoil_to_match_xy)))
 
     if isinstance(airfoil_to_match, str):
         airfoil_to_match_xy = extract_data_from_airfoiltools(airfoil_to_match, repair=repair)
@@ -156,6 +170,8 @@ def match_airfoil(conn: multiprocessing.connection.Connection or None,
         raise ValueError(f"No design variables were found in the geometry collection. Promote at least "
                          f"one parameter to a design variable to run an airfoil matching optimization.")
 
+    send_over_pipe(("clear_airfoil_matching_plots", None))
+
     initial_guess = np.array(geo_col.extract_design_variable_values())
     bounds = np.repeat(np.array([[0.0, 1.0]]), len(initial_guess), axis=0)
     res = minimize(
@@ -164,7 +180,7 @@ def match_airfoil(conn: multiprocessing.connection.Connection or None,
         method="SLSQP",
         bounds=bounds,
         args=(geo_col, target_airfoil, airfoil_to_match_xy),
-        options=dict(disp=True),
+        options=dict(disp=True if conn is None else False),
         callback=callback
     )
     send_over_pipe(("match_airfoil_complete", res))
