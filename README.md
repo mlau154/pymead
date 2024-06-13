@@ -39,6 +39,10 @@ using changes in high-level design variables. These design variables are represe
 `pymead.core.param.DesVar` objects in this framework, which have modifiable lower and upper bounds for optimization. 
 This facilitates aerodynamic analysis, parametric sweeps, and even shape optimization.
 
+<p align="center">
+<img src="https://raw.githubusercontent.com/mlau154/pymead/dev/docs/source/images/desvar_mod_light.gif" alt="dynamic modification of airfoil design variables" width="700">
+</p>
+
 *pymead* has both an application programming interface (API) and a graphical user interface (GUI), either of which
 can be used to define airfoil geometries from basic geometries (like points, lines, and curves), implement
 geometric constraints, perform analysis using wrappers for XFOIL and MSES, match existing airfoils with Bézier curves,
@@ -46,9 +50,7 @@ and even execute aerodynamic or aeropropulsive shape optimization studies. See t
 development for [GUI tutorials](https://pymead.readthedocs.io/en/latest/gui.html) and 
 [API tutorials](https://pymead.readthedocs.io/en/latest/tutorials.html).
 
-<p align="center">
-<img src="https://raw.githubusercontent.com/mlau154/pymead/dev/docs/source/images/desvar_mod_light.gif" alt="dynamic modification of airfoil design variables" width="700">
-</p>
+
 
 ## Applications
 

@@ -19,17 +19,17 @@ Click on any image to zoom. Press the "back" button to return to the gallery.
 
           Customization of the GUI
 
-   * - .. figure:: images/n0012_analysis_dark.*
+   * - .. figure:: images/n0012_analysis_xfoil_dark.*
           :width: 100%
           :class: only-dark
 
-          Analysis of the NACA 0012 airfoil at :math:`M=0.7` and :math:`\alpha=2^\circ`
+          XFOIL analysis of the NACA 0012 airfoil at :math:`M=0.1` and :math:`\alpha=\{0^\circ,1^\circ,2^\circ\}`
 
-     - .. figure:: images/n0012_mach_field_dark.*
+     - .. figure:: images/sc20612_analysis_dark.*
           :width: 100%
           :class: only-dark
 
-          Mach field of the NACA 0012 airfoil at :math:`M=0.7` and :math:`\alpha=2^\circ`
+          MSES analysis of the NASA SC20612 airfoil at :math:`M=0.67` and :math:`\alpha=\{0^\circ,1^\circ\}`
 
    * - .. figure:: images/desvar_mod_dark.*
           :width: 100%
@@ -71,17 +71,17 @@ Click on any image to zoom. Press the "back" button to return to the gallery.
 
           Customization of the GUI
 
-   * - .. figure:: images/n0012_analysis_light.*
+   * - .. figure:: images/n0012_analysis_xfoil_light.*
           :width: 100%
           :class: only-light
 
-          Analysis of the NACA 0012 airfoil at :math:`M=0.7` and :math:`\alpha=2^\circ`
+          XFOIL analysis of the NACA 0012 airfoil at :math:`M=0.1` and :math:`\alpha=\{0^\circ,1^\circ,2^\circ\}`
 
-     - .. figure:: images/n0012_mach_field_light.*
+     - .. figure:: images/sc20612_analysis_light.*
           :width: 100%
           :class: only-light
 
-          Mach field of the NACA 0012 airfoil at :math:`M=0.7` and :math:`\alpha=2^\circ`
+          MSES analysis of the NASA SC20612 airfoil at :math:`M=0.67` and :math:`\alpha=\{0^\circ,1^\circ\}`
 
    * - .. figure:: images/desvar_mod_light.*
           :width: 100%
