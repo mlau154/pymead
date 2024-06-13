@@ -46,6 +46,10 @@ and even execute aerodynamic or aeropropulsive shape optimization studies. See t
 development for [GUI tutorials](https://pymead.readthedocs.io/en/latest/gui.html) and 
 [API tutorials](https://pymead.readthedocs.io/en/latest/tutorials.html).
 
+<p align="center">
+<img src="https://raw.githubusercontent.com/mlau154/pymead/dev/docs/source/images/desvar_mod_light.gif" alt="dynamic modification of airfoil design variables" width="700">
+</p>
+
 ## Applications
 
 It is the hope of the author that *pymead* is sufficiently flexible to be used for airfoil applications of
