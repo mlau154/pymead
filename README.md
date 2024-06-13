@@ -1,4 +1,6 @@
+<div style="text-align: center;">
 <img src="https://raw.githubusercontent.com/mlau154/pymead/dev/pymead/icons/pymead-logo.png" alt="pymead logo" width="200">
+</div>
 
 ## Author: Matthew G Lauer
 
@@ -20,7 +22,9 @@ multi-element airfoil system comprises a main airfoil (either the fuselage or ma
 airfoil (representing the cross-section of an axisymmetric hub), and a nacelle airfoil (representing the cross-section
 of an axisymmetric nacelle).
 
-<img src="https://raw.githubusercontent.com/mlau154/pymead/dev/docs/source/images/pymead_main_screenshot_light.PNG" alt="pressure coefficient contours of an aeropropulsive system" width="600">
+<div style="text-align: center;">
+<img src="https://raw.githubusercontent.com/mlau154/pymead/dev/docs/source/images/pymead_main_screenshot_light.PNG" alt="pressure coefficient contours of an aeropropulsive system" width="700">
+</div>
 
 ## How It Works
 
