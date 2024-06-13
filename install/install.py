@@ -4,57 +4,80 @@ Release workflow (ADMINS ONLY):
 
 On base platform (can be Windows or Linux):
 1. Create a draft release on GitHub and enter the version notes
-2. Run tests using "tox run" in the terminal
+2. Run tests using ``tox run`` in the terminal
 3. Make sure version has been updated
 4. Make sure all changes are committed and pushed to dev branch
 5. Merge with main branch
-6. Make a test upload to TestPyPi using the instructions below
-7. If the test passes, execute the production upload to PyPi
-8. Generate the standalone executable/installer and copy to the GitHub draft release according to the instructions
+6. Make a test upload to TestPyPi using the instructions below and test.
+7. Generate the standalone executable/installer and copy to the GitHub draft release according to the instructions
    below (if starting from Windows, the installation order should be Windows-->Linux-->macOS; if starting from Linux,
    the installation order should be Linux-->macOS-->Windows)
+8. If the test passes, execute the production upload to PyPi. The PyPi upload should come last in the process (right
+   before the release is published) because any upload to PyPi cannot be undone.
 9. Publish the release on GitHub!
 
 Standalone executable/installer installation instructions:
 ==========================================================
 
+The standalone files should be built in Python 3.12 to take advantage of the performance improvements.
+
 Windows
 -------
-Right-click this file in PyCharm and run it. Then, copy the generated installation wizard to the draft release on
-GitHub.
+- First, navigate to the base directory of *pymead* (the directory containing ``pyproject.toml``)
+- Create a fresh virtual environment using PowerShell: ``py -3.12 -m venv .\pymead312``
+- May need to run the command `Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser` the first time
+  if the previous command errors out
+- Run ``.\pymead312\Scripts\Activate.ps1`` to activate the virtual environment
+- Install *pymead* in the new environment: ``pip install .``
+- Install *pyinstaller* in the new environment: ``pip install pyinstaller``
+- Navigate to the installation directory: ``cd install``
+- Generate the installation wizard: ``python -m install``
+- Test the new installation. If it passes,
+- Remove the virtual environment by navigating back to the base directory and running ``deactivate``, then
+  ``rm -r pymead312`` to remove the virtual environment.
+- Copy the generated installation wizard to the draft release on GitHub.
 
 Linux
 -----
-Right-click this file in PyCharm and run it. Copy the output tarball to the draft release on GitHub.
+- First, make sure to ``git pull`` to use the latest updates to *pymead*
+- Navigate to the base directory of *pymead* (the directory containing ``pyproject.toml``)
+- Create a fresh virtual environment: ``python3.12 -m venv pymead312``
+- Run ``source ./bin/activate`` to activate the virtual environment
+- Install *pymead* in the new environment: ``pip install .``
+- Install *pyinstaller* in the new environment: ``pip install pyinstaller``
+- Navigate to the installation directory: ``cd install``
+- Generate the installation wizard: ``python -m install``
+- Test the new installation. If it passes,
+- Remove the virtual environment by navigating back to the base directory and running ``deactivate``, then
+  ``rm -r pymead312`` to remove the virtual environment.
+- Copy the output tarball to the draft release on GitHub.
 
 macOS
 -----
-From the Linux environment, open the macOS virtual machine by running ./basic.sh from ~/KVM/macOS.
-Navigate to Documents/pymead in a terminal and do git pull, do pip3.10 install . --upgrade.
-Then, navigate to the "install" directory and run python3.10 -m install. Copy the output tarball to the draft release
-on GitHub.
+From the Linux environment, open the macOS virtual machine by running ``./basic.sh`` from ``~/KVM/macOS.``
+Then, follow every step from the Linux instructions exactly.
 
 For uploading to TestPyPi (test) or PyPi (prod):
 ================================================
-- Use py -3.10 -m build from the root directory to build
-- (Prod & Test) Use twine check dist/* to check the distribution
-- (Test Only) Use twine upload --repository testpypi dist/* to upload to TestPyPi
-- (Prod Only) Use twine upload dist/* to upload to PyPi
+- Use ``py -3.10 -m build`` from the root directory to build
+- (Prod & Test) Use ``twine check dist/*`` to check the distribution
+- (Test Only) Use ``twine upload --repository testpypi dist/*`` to upload to TestPyPi
+- (Prod Only) Use ``twine upload dist/*`` to upload to PyPi
 - (Test Only) In a fresh, virtual environment, use
-  pip install --extra-index-url https://test.pypi.org/simple/ pymead==<short ver name> to test the installation
+  ``pip install --extra-index-url https://test.pypi.org/simple/ pymead==<short ver name>`` to test the installation
 
-To test the TestPyPi build in a fresh virtual environment (Windows PowerShell only)
-===================================================================================
+To test the TestPyPi build in a fresh virtual environment
+=========================================================
 First, navigate to any directory outside the base directory. Then, for Python 3.12,
-- py -3.12 -m venv .\pymead312
-- May need to run the command `Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser` the first time
-  if the previous command errors out
-- cd pymead312
-- .\Scripts\Activate.ps1
-- pip install --extra-index-url https://test.pypi.org/simple/ pymead==2.0.0-b5 to test pymead 2.0.0-beta.5 in a
+- ``py -3.12 -m venv .\pymead312`` (Windows Powershell) or ``python3.12 -m venv pymead312`` (Linux)
+- May need to run the command ``Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser`` the first time
+  if the previous command errors out on Windows Powershell
+- ``cd pymead312``
+- ``.\Scripts\Activate.ps1`` (Windows Powershell) or ``source ./bin/activate`` (Linux)
+- ``pip install --extra-index-url https://test.pypi.org/simple/ pymead==2.0.0-b5`` to test pymead 2.0.0-beta.5 in a
   Python 3.12 environment
-- Once done with the virtual environment, first deactivate using the command `deactivate` from any directory. Then,
-  navigate to the parent directory of the virtual environment (in this case, `cd ..`) and rm -r pymead312
+- Once done with the virtual environment, first deactivate using the command ``deactivate`` from any directory. Then,
+  navigate to the parent directory of the virtual environment (in this case, ``cd ..``) and ``rm -r pymead312``
 
 For more information on virtual environments, see https://docs.python.org/3/library/venv.html
 """
