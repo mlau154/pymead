@@ -7,7 +7,7 @@ On base platform (can be Windows or Linux):
 2. Run tests using ``tox run`` in the terminal
 3. Make sure version has been updated
 4. Make sure all changes are committed and pushed to dev branch
-5. Merge with main branch
+5. Merge with master branch
 6. Make a test upload to TestPyPi using the instructions below and test.
 7. Generate the standalone executable/installer and copy to the GitHub draft release according to the instructions
    below (if starting from Windows, the installation order should be Windows-->Linux-->macOS; if starting from Linux,

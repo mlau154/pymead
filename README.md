@@ -68,7 +68,8 @@ applications for this software package.
 One utility provided in this software package which may be useful in the start-up phase of airfoil design is
 `pymead.optimization.airfoil_matching.match_airfoil()`. This function allows the matching of a particular 
 parametrization to any public airfoil geometry at [airfoiltools.com](http://airfoiltools.com/) using the gradient-based "SLSQP"
-optimizer.
+optimizer. See the [*pymead* gallery](https://pymead.readthedocs.io/en/latest/gallery.html) for more example
+applications.
 
 <p align="center">
 <img src="https://raw.githubusercontent.com/mlau154/pymead/dev/docs/source/images/sc20612_matching_4x_speed_light.gif" alt="Matching a NASA SC20612 airfoil (4x speed)" width="700">
