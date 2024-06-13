@@ -1,4 +1,4 @@
-# pymead
+<img src="https://raw.githubusercontent.com/mlau154/pymead/dev/pymead/icons/pymead-logo.png" alt="pymead logo" width="200">
 
 ## Author: Matthew G Lauer
 
@@ -6,9 +6,9 @@ Source code can be found [here](https://github.com/mlau154/pymead).
 Documentation can be found [here](https://pymead.readthedocs.io/en/latest/).
 
 ## Welcome
-To the documentation page for `pymead`, an object-oriented Python 3 package for single- and multi-element
-parametric airfoil design. This Bézier parametrization framework was first presented at the 2022 AIAA Aviation
-Conference in Chicago, IL under the title 
+To the documentation page for `pymead`, a Python GUI and API for generation, aerodynamic analysis, and shape 
+optimization of parametric airfoil systems. This parametrization framework in its preliminary stage was presented at the 
+2022 AIAA Aviation Conference in Chicago, IL under the title
 "A Parametrization Framework for Multi-Element Airfoil Systems Using Bézier Curves."
 
 ## Motivation
@@ -16,21 +16,23 @@ Conference in Chicago, IL under the title
 The creation of this package was motivated by a research aircraft application: the aerodynamic design of a
 propulsion-airframe-integrated commercial transport aircraft. The cross-section of a wing or fuselage with integrated
 propulsors can be represented, with some sacrifice in fidelity, as a quasi-2D multi-element airfoil system. This
-multi-element airfoil system is comprised of a main airfoil (either the fuselage or main airfoil element), a hub
+multi-element airfoil system comprises a main airfoil (either the fuselage or main airfoil element), a hub
 airfoil (representing the cross-section of an axisymmetric hub), and a nacelle airfoil (representing the cross-section
 of an axisymmetric nacelle).
 
+<img src="https://raw.githubusercontent.com/mlau154/pymead/dev/docs/source/images/pymead_main_screenshot_light.PNG" alt="pressure coefficient contours of an aeropropulsive system" width="600">
+
 ## How It Works
 
-By using a well-defined parametrization framework, this airfoil system can be morphed or deformed in a variety of
+By using a well-defined parametrization framework, this airfoil system can be morphed or deformed in a variety of ways
 using changes in high-level design variables. These design variables are represented by
 `pymead.core.param.DesVar` objects in this framework, which have modifiable lower and upper bounds for optimization. 
 This facilitates aerodynamic analysis, parametric sweeps, and even shape optimization.
 
 `pymead` has both an application programming interface (API) and a graphical user interface (GUI), either of which
 can be used to define airfoil geometries from basic geometries (like points, lines, and curves), implement
-geometric constraints, perform analysis using wrappers for XFOIL and MSES, and even execute aerodynamic or
-aero-propulsive shape optimization studies.
+geometric constraints, perform analysis using wrappers for XFOIL and MSES, match existing airfoils with Bézier curves,
+and even execute aerodynamic or aeropropulsive shape optimization studies.
 
 ## Applications
 
@@ -40,8 +42,8 @@ Other common multi-element airfoil systems, such as the high-lift configuration 
 applications for this software package.
 
 One utility provided in this software package which may be useful in the start-up phase of airfoil design is
-`pymead.utils.airfoil_matching.match_airfoil()`. This modules allows the matching of a particular parametrization
-to any public airfoil geometry at [airfoiltools.com](http://airfoiltools.com/) using the gradient-based "SLSQP"
+`pymead.optimization.airfoil_matching.match_airfoil()`. This function allows the matching of a particular 
+parametrization to any public airfoil geometry at [airfoiltools.com](http://airfoiltools.com/) using the gradient-based "SLSQP"
 optimizer.
 
 ## Acknowledgments
