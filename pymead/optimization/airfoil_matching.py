@@ -67,7 +67,7 @@ def airfoil_symmetric_area_difference(parameters: list,
         airfoil_to_match_polygon = Polygon(airfoil_to_match_shapely_points)
         symmetric_area_difference_polygon = airfoil_polygon.symmetric_difference(airfoil_to_match_polygon)
         symmetric_area_difference = symmetric_area_difference_polygon.area
-    except shapely.errors.TopologicalError:
+    except (shapely.errors.TopologicalError, shapely.errors.GEOSException):
         symmetric_area_difference = 1  # Set the boolean symmetric area difference to a large value
 
     if output_coords:
