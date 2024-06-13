@@ -50,6 +50,13 @@ and even execute aerodynamic or aeropropulsive shape optimization studies. See t
 development for [GUI tutorials](https://pymead.readthedocs.io/en/latest/gui.html) and 
 [API tutorials](https://pymead.readthedocs.io/en/latest/tutorials.html).
 
+<p align="center">
+<img src="https://raw.githubusercontent.com/mlau154/pymead/dev/docs/source/images/n0012_analysis_xfoil_light.gif" alt="XFOIL analysis of the NACA 0012 airfoil" width="700">
+</p>
+
+<p align="center">
+<img src="https://raw.githubusercontent.com/mlau154/pymead/dev/docs/source/images/sc20612_analysis_light.gif" alt="MSES analysis of the NASA SC20612 airfoil" width="700">
+</p>
 
 
 ## Applications
