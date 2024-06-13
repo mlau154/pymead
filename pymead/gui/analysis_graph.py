@@ -10,7 +10,8 @@ from pymead.utils.misc import get_setting
 
 
 class AnalysisGraph:
-    def __init__(self, theme: dict, pen=None, size: tuple = (1000, 300), background_color: str = 'w'):
+    def __init__(self, theme: dict, pen=None, size: tuple = (1000, 300), background_color: str = 'w',
+                 grid: bool = False):
         pg.setConfigOptions(antialias=True)
 
         if pen is None:
@@ -20,6 +21,7 @@ class AnalysisGraph:
 
         self.v = self.w.addPlot(pen=pen)
         self.v.invertY(True)
+        self.v.showGrid(x=grid, y=grid)
         self.legend = self.v.addLegend(offset=(300, 20))
         self.set_formatting(theme=theme)
 
@@ -45,7 +47,7 @@ class AnalysisGraph:
 
 
 class ResidualGraph:
-    def __init__(self, theme: dict, pen=None, size: tuple = (1000, 300)):
+    def __init__(self, theme: dict, pen=None, size: tuple = (1000, 300), grid: bool = False):
         pg.setConfigOptions(antialias=True)
 
         if pen is None:
@@ -55,6 +57,7 @@ class ResidualGraph:
 
         self.v = self.w.addPlot(pen=pen)
         self.v.setLogMode(x=False, y=True)
+        self.v.showGrid(x=grid, y=grid)
         self.legend = self.v.addLegend(offset=(-5, 5))
         target_pen = self.make_target_pen(theme)
 
@@ -108,7 +111,7 @@ class ResidualGraph:
 
 class SinglePolarGraph:
     def __init__(self, theme: dict, graph_color_key: str, x_axis_label: str, y_axis_label: str,
-                 pen=None, size: tuple = (350, 300)):
+                 pen=None, size: tuple = (350, 300), grid: bool = False):
         pg.setConfigOptions(antialias=True)
 
         if pen is None:
@@ -117,6 +120,7 @@ class SinglePolarGraph:
         self.w = pg.GraphicsLayoutWidget(show=True, size=size)
 
         self.v = self.w.addPlot(pen=pen)
+        self.v.showGrid(x=grid, y=grid)
 
         # Set up the line
         self.plot_items = [self.v.plot(pen=pg.mkPen(color=theme[graph_color_key]))]
@@ -147,16 +151,16 @@ class SinglePolarGraph:
 
 
 class PolarGraphCollection(QWidget):
-    def __init__(self, theme: dict):
+    def __init__(self, theme: dict, grid: bool = False):
         self.polar_graphs = [
             SinglePolarGraph(theme=theme, graph_color_key="polar-color-1",
-                             x_axis_label="&alpha; (&deg;)", y_axis_label="C<sub>l</sub>"),
+                             x_axis_label="&alpha; (&deg;)", y_axis_label="C<sub>l</sub>", grid=grid),
             SinglePolarGraph(theme=theme, graph_color_key="polar-color-2",
-                             x_axis_label="C<sub>d</sub>", y_axis_label="C<sub>l</sub>"),
+                             x_axis_label="C<sub>d</sub>", y_axis_label="C<sub>l</sub>", grid=grid),
             SinglePolarGraph(theme=theme, graph_color_key="polar-color-3",
-                             x_axis_label="&alpha; (&deg;)", y_axis_label="L/D"),
+                             x_axis_label="&alpha; (&deg;)", y_axis_label="L/D", grid=grid),
             SinglePolarGraph(theme=theme, graph_color_key="polar-color-4",
-                             x_axis_label="&alpha; (&deg;)", y_axis_label="C<sub>m</sub>")
+                             x_axis_label="&alpha; (&deg;)", y_axis_label="C<sub>m</sub>", grid=grid)
         ]
         super().__init__(parent=None)
         self.lay = QGridLayout()
@@ -185,11 +189,6 @@ class PolarGraphCollection(QWidget):
         for polar_graph in self.polar_graphs:
             polar_graph.plot_items[0].setData([], [])
 
-    def toggle_grid(self):
+    def toggle_grid(self, checked: bool):
         for polar_graph in self.polar_graphs:
-            x_state = polar_graph.v.ctrl.xGridCheck.checkState()
-            y_state = polar_graph.v.ctrl.yGridCheck.checkState()
-            if x_state or y_state:
-                polar_graph.v.showGrid(x=False, y=False)
-            else:
-                polar_graph.v.showGrid(x=True, y=True)
+            polar_graph.v.showGrid(x=checked, y=checked)

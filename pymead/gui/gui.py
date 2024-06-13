@@ -1195,8 +1195,11 @@ class GUI(QMainWindow):
             return
 
         if self.analysis_graph is None:
-            self.analysis_graph = AnalysisGraph(theme=self.themes[self.current_theme],
-                background_color=self.themes[self.current_theme]["graph-background-color"])
+            self.analysis_graph = AnalysisGraph(
+                theme=self.themes[self.current_theme],
+                background_color=self.themes[self.current_theme]["graph-background-color"],
+                grid=self.main_icon_toolbar.buttons["grid"]["button"].isChecked()
+            )
             self.add_new_tab_widget(self.analysis_graph.w, "Analysis")
         name = f"[{self.n_analyses}] P ({selected_airfoil_name}, \u03b1 = {alpha:.1f}\u00b0)"
         pg_plot_handle = self.analysis_graph.v.plot(pen=pg.mkPen(color=self.pen(self.n_converged_analyses)[0],
@@ -1362,8 +1365,11 @@ class GUI(QMainWindow):
             if aero_data['converged'] and not aero_data['errored_out'] and not aero_data['timed_out']:
                 if self.analysis_graph is None:
                     # TODO: Need to set analysis_graph to None if analysis window is closed! Might also not want to allow geometry docking window to be closed
-                    self.analysis_graph = AnalysisGraph(theme=self.themes[self.current_theme],
-                        background_color=self.themes[self.current_theme]["graph-background-color"])
+                    self.analysis_graph = AnalysisGraph(
+                        theme=self.themes[self.current_theme],
+                        background_color=self.themes[self.current_theme]["graph-background-color"],
+                        grid=self.main_icon_toolbar.buttons["grid"]["button"].isChecked()
+                    )
                     self.add_new_tab_widget(self.analysis_graph.w, "Analysis")
 
                 if xfoil_settings["visc"]:
@@ -1543,8 +1549,11 @@ class GUI(QMainWindow):
     def plot_mses_pressure_coefficient_distribution(self, aero_data: dict, mea: MEA, mses_settings: dict):
         if self.analysis_graph is None:
             # Need to set analysis_graph to None if analysis window is closed
-            self.analysis_graph = AnalysisGraph(theme=self.themes[self.current_theme],
-                background_color=self.themes[self.current_theme]["graph-background-color"])
+            self.analysis_graph = AnalysisGraph(
+                theme=self.themes[self.current_theme],
+                background_color=self.themes[self.current_theme]["graph-background-color"],
+                grid=self.main_icon_toolbar.buttons["grid"]["button"].isChecked()
+            )
             self.add_new_tab_widget(self.analysis_graph.w, "Analysis")
 
         # Get the maximum physical extent of the airfoil system in the x-direction (used to prevent showing
@@ -1933,7 +1942,10 @@ class GUI(QMainWindow):
             self.switch_to_tab("Residuals")
         elif status == "mses_residual" and isinstance(data, tuple):
             if self.residual_graph is None:
-                self.residual_graph = ResidualGraph(theme=self.themes[self.current_theme])
+                self.residual_graph = ResidualGraph(
+                    theme=self.themes[self.current_theme],
+                    grid=self.main_icon_toolbar.buttons["grid"]["button"].isChecked()
+                )
                 self.add_new_tab_widget(self.residual_graph.w, "Residuals")
                 self.switch_to_tab("Residuals")
 
@@ -1962,7 +1974,10 @@ class GUI(QMainWindow):
                 self.polar_graph_collection.clear_data()
         elif status == "plot_polars" and isinstance(data, dict):
             if self.polar_graph_collection is None:
-                self.polar_graph_collection = PolarGraphCollection(theme=self.themes[self.current_theme])
+                self.polar_graph_collection = PolarGraphCollection(
+                    theme=self.themes[self.current_theme],
+                    grid=self.main_icon_toolbar.buttons["grid"]["button"].isChecked()
+                )
                 self.add_new_tab_widget(self.polar_graph_collection, "Polars")
                 self.switch_to_tab("Polars")
             self.polar_graph_collection.set_data(data)
