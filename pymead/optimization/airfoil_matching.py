@@ -1,5 +1,5 @@
 import typing
-from copy import deepcopy
+import multiprocessing.connection
 
 import numpy as np
 import shapely.errors
@@ -59,14 +59,16 @@ def airfoil_symmetric_area_difference(parameters: list, geo_col: GeometryCollect
         airfoil_to_match_polygon = Polygon(airfoil_to_match_shapely_points)
         symmetric_area_difference_polygon = airfoil_polygon.symmetric_difference(airfoil_to_match_polygon)
         symmetric_area_difference = symmetric_area_difference_polygon.area
-        print(symmetric_area_difference)
     except shapely.errors.TopologicalError:
         symmetric_area_difference = 1  # Set the boolean symmetric area difference to a large value
 
     return symmetric_area_difference
 
 
-def match_airfoil(geo_col: GeometryCollection, target_airfoil: str, airfoil_to_match: str or np.ndarray,
+def match_airfoil(conn: multiprocessing.connection.Connection or None,
+                  geo_col_dict: dict,
+                  target_airfoil: str,
+                  airfoil_to_match: str or np.ndarray,
                   repair: typing.Callable or None = None):
     r"""
     This method uses the `sequential least-squares programming
@@ -76,7 +78,11 @@ def match_airfoil(geo_col: GeometryCollection, target_airfoil: str, airfoil_to_m
 
     Parameters
     ----------
-    geo_col: GeometryCollection
+    conn: multiprocessing.connection.Connection or None
+        If not ``None``, a connection established between the worker thread deployed by the GUI over which
+        data can be passed to update the user on the state of the analysis
+
+    geo_col_dict: GeometryCollection
         Geometry collection from which the ``Airfoil`` is selected by the ``target_airfoil`` name and where the
         design variables are stored. During the optimization, any values in the design variable sub-container will
         be updated to produce an airfoil geometry that closely matches the airfoil coordinates specified by
@@ -103,6 +109,34 @@ def match_airfoil(geo_col: GeometryCollection, target_airfoil: str, airfoil_to_m
         `Results object <https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.OptimizeResult.html#scipy.optimize.OptimizeResult>`_
         returned by the optimizer
     """
+    def send_over_pipe(data: object):
+        """
+        Connection to the GUI that is only used if ``calculate_aero_data`` is being called directly from the GUI
+
+        Parameters
+        ----------
+        data: object
+            The intermediate information to pass to the GUI, normally a two-element tuple where the first argument
+            is a string specifying the kind of data being sent, and the second argument being the actual data
+            itself (note that the data must be picklable by the multiprocessing module)
+
+        Returns
+        -------
+
+        """
+        try:
+            if conn is not None:
+                conn.send(data)
+        except BrokenPipeError:
+            pass
+
+    def callback(xk):
+        current_fun_value = airfoil_symmetric_area_difference(xk, geo_col, target_airfoil, airfoil_to_match_xy)
+        if conn is None:
+            print(f"Symmetric area difference: {current_fun_value:.3e}")
+        else:
+            send_over_pipe(("symmetric_area_difference", current_fun_value))
+
     if isinstance(airfoil_to_match, str):
         airfoil_to_match_xy = extract_data_from_airfoiltools(airfoil_to_match, repair=repair)
     elif isinstance(airfoil_to_match, np.ndarray):
@@ -110,6 +144,8 @@ def match_airfoil(geo_col: GeometryCollection, target_airfoil: str, airfoil_to_m
     else:
         raise TypeError(f'airfoil_to_match be of type str or np.ndarray, '
                         f'and type {type(airfoil_to_match)} was used')
+
+    geo_col = GeometryCollection.set_from_dict_rep(geo_col_dict)
 
     if target_airfoil not in geo_col.container()["airfoils"]:
         raise ValueError(f"Target airfoil {target_airfoil} not found in the specified geometry collection. Available"
@@ -120,7 +156,6 @@ def match_airfoil(geo_col: GeometryCollection, target_airfoil: str, airfoil_to_m
         raise ValueError(f"No design variables were found in the geometry collection. Promote at least "
                          f"one parameter to a design variable to run an airfoil matching optimization.")
 
-    geo_col_deepcopy = deepcopy(geo_col)
     initial_guess = np.array(geo_col.extract_design_variable_values())
     bounds = np.repeat(np.array([[0.0, 1.0]]), len(initial_guess), axis=0)
     res = minimize(
@@ -128,7 +163,9 @@ def match_airfoil(geo_col: GeometryCollection, target_airfoil: str, airfoil_to_m
         initial_guess,
         method="SLSQP",
         bounds=bounds,
-        args=(geo_col_deepcopy, target_airfoil, airfoil_to_match_xy),
-        options=dict(disp=True)
+        args=(geo_col, target_airfoil, airfoil_to_match_xy),
+        options=dict(disp=True),
+        callback=callback
     )
+    send_over_pipe(("match_airfoil_complete", res))
     return res

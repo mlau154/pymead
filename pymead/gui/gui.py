@@ -13,6 +13,7 @@ import networkx
 import numpy as np
 import pyqtgraph as pg
 import requests
+from scipy.optimize import OptimizeResult
 from PyQt6.QtCore import QEvent, QObject, Qt, QThreadPool, QRect
 from PyQt6.QtCore import pyqtSlot
 from PyQt6.QtGui import QIcon, QFont, QFontDatabase, QPainter, QCloseEvent, QTextCursor, QImage, QAction
@@ -104,6 +105,10 @@ class GUI(QMainWindow):
         self.cpu_bound_process = None
         self.opt_thread = None
         self.shape_opt_process = None
+
+        # Set up match airfoil process
+        self.match_airfoil_process = None
+        self.match_airfoil_thread = None
 
         self.closer = None  # This is a string of equal signs used to close out the optimization text progress
         self.menu_bar = None
@@ -1575,65 +1580,32 @@ class GUI(QMainWindow):
             pg_plot_handle.setData(x[np.where(x <= x_max)[0]], Cp[np.where(x <= x_max)[0]])
             self.analysis_graph.set_legend_label_format(self.themes[self.current_theme])
 
-    def multi_airfoil_analysis(self, mset_settings: dict, mses_settings: dict,
-                               mplot_settings: dict):
-
-        mea = self.geo_col.container()["mea"][mset_settings["mea"]]
-
-        try:
-            aero_data, _ = calculate_aero_data(None,
-                                               mset_settings['airfoil_analysis_dir'],
-                                               mset_settings['airfoil_coord_file_name'],
-                                               mea=mea,
-                                               tool="MSES",
-                                               export_Cp=True,
-                                               mset_settings=mset_settings,
-                                               mses_settings=mses_settings,
-                                               mplot_settings=mplot_settings)
-        except OSError as os_error:
-            self.disp_message_box(str(os_error), message_mode="error")
-            return
-
-        self.display_mses_result(aero_data, mset_settings, mses_settings)
-
-        if aero_data['converged'] and not aero_data['errored_out'] and not aero_data['timed_out']:
-            self.plot_mses_pressure_coefficient_distribution(aero_data, mea, mses_settings)
-            self.display_svgs(mset_settings, mplot_settings)
-
-            # Update the last successful analysis directory (for easy access in field plotting)
-            self.last_analysis_dir = os.path.join(mset_settings["airfoil_analysis_dir"],
-                                                  mset_settings["airfoil_coord_file_name"])
-
-            # Increment the number of converged analyses and the total number of analyses
-            self.n_converged_analyses += 1
-            self.n_analyses += 1
-        else:
-            self.n_analyses += 1
-
     def match_airfoil(self):
+
+        def run_cpu_bound_process():
+
+            self.match_airfoil_process = CPUBoundProcess(
+                match_airfoil,
+                args=(
+                    self.geo_col.get_dict_rep(),
+                    airfoil_match_settings["tool_airfoil"],
+                    airfoil_match_settings["target_airfoil"]
+                )
+            )
+            self.match_airfoil_process.progress_emitter.signals.progress.connect(self.progress_update)
+            self.match_airfoil_process.start()
+
         airfoil_names = [a for a in self.geo_col.container()["airfoils"].keys()]
         dialog = AirfoilMatchingDialog(self, airfoil_names=airfoil_names, theme=self.themes[self.current_theme])
         if dialog.exec():
             airfoil_match_settings = dialog.value()
-            # res = match_airfoil_ga(self.mea, target_airfoil, airfoil_name)
             try:
-                res = match_airfoil(self.geo_col, airfoil_match_settings["tool_airfoil"],
-                                    airfoil_match_settings["target_airfoil"])
+                # Start running the CPU-bound process from a worker thread (separate from the main GUI thread)
+                self.match_airfoil_thread = Thread(target=run_cpu_bound_process)
+                self.match_airfoil_thread.start()
             except AirfoilNotFoundError as e:
                 self.disp_message_box(f"{str(e)}")
                 return
-            msg_mode = 'error'
-            if hasattr(res, 'success') and res.success or hasattr(res, 'F') and res.F is not None:
-                if hasattr(res, 'x'):
-                    update_params = res.x
-                elif hasattr(res, 'X'):
-                    update_params = res.X
-                else:
-                    raise AttributeError("Did not have x or X to update airfoil parameter dictionary")
-                # print(f"{update_params = }")
-                self.geo_col.assign_design_variable_values(update_params, bounds_normalized=True)
-                msg_mode = 'info'
-            self.disp_message_box(message=res.message, message_mode=msg_mode)
 
     def plot_airfoil_from_airfoiltools(self):
         dialog = AirfoilPlotDialog(self, theme=self.themes[self.current_theme])
@@ -1995,6 +1967,21 @@ class GUI(QMainWindow):
             self.permanent_widget.progress_bar.setValue(data)
         elif status == "polar_complete":
             self.permanent_widget.progress_bar.hide()
+        elif status == "symmetric_area_difference":
+            self.status_bar.showMessage(f"Symmetric area difference: {data:.3e}")
+        elif status == "match_airfoil_complete":
+            if not isinstance(data, OptimizeResult):
+                raise ValueError(f"data ({data}) must be of type scipy.optimize.OptimizeResult")
+            res = data
+            msg_mode = "error"
+            if hasattr(res, "success") and res.success:
+                update_params = res.x
+                self.geo_col.assign_design_variable_values(update_params, bounds_normalized=True)
+                msg_mode = "info"
+                self.output_area_text(f"Airfoil matched successfully. Symmetric area difference: {res.fun:.3e}. "
+                                      f"Function evaluations: {res.nfev}. Gradient evaluations: {res.njev}.",
+                                      line_break=True)
+            self.disp_message_box(message=res.message, message_mode=msg_mode)
 
     def clear_opt_plots(self):
         def clear_handles(h_list: list):
@@ -2087,7 +2074,7 @@ class GUI(QMainWindow):
 
     def stop_process(self):
 
-        if self.shape_opt_process is None and self.mses_process is None:
+        if self.shape_opt_process is None and self.mses_process is None and self.match_airfoil_process is None:
             self.disp_message_box("No analysis or optimization to terminate")
             return
 
@@ -2095,14 +2082,19 @@ class GUI(QMainWindow):
             self.shape_opt_process.terminate()
         if self.mses_process is not None:
             self.mses_process.terminate()
+        if self.match_airfoil_process is not None:
+            self.match_airfoil_process.terminate()
 
         if self.opt_thread is not None:
             self.opt_thread.join()
         if self.mses_thread is not None:
             self.mses_thread.join()
+        if self.match_airfoil_thread is not None:
+            self.match_airfoil_thread.join()
 
         self.shape_opt_process = None
         self.mses_process = None
+        self.match_airfoil_process = None
 
     @staticmethod
     def generate_output_folder_link_text(folder: str):
