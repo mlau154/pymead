@@ -248,6 +248,8 @@ dependencies.
 - `psutil <https://pypi.org/project/psutil/>`_: Process management
 - `pytest <https://docs.pytest.org/en/8.2.x/>`_: Unit testing
 - `pytest-qt <https://pypi.org/project/pytest-qt/>`_: Unit testing of the GUI components
+- `PyQt6-Frameless-Window <https://pyqt-frameless-window.readthedocs.io/en/latest/index.html>`_: Windows Aero Snap and
+  other OS-specific title bar features
 
 Optional
 --------

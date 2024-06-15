@@ -1,8 +1,10 @@
 import os
+import sys
 
 from PyQt6.QtCore import Qt, QSize, QUrl, pyqtSignal
 from PyQt6.QtGui import QIcon, QDesktopServices
 from PyQt6.QtWidgets import QWidget, QHBoxLayout, QLabel, QToolButton, QStyle
+from qframelesswindow.utils import startSystemMove
 
 from pymead import ICON_DIR
 
@@ -16,6 +18,7 @@ class TitleBarButton(QToolButton):
 
         self.operation = operation
         self.theme = theme
+        self.state = 0  # 0 = normal, 1 = hover, 2 = pressed
 
     def hoverColor(self) -> str:
         if self.theme is not None:
@@ -36,11 +39,24 @@ class TitleBarButton(QToolButton):
 
     def enterEvent(self, a0):
         self.setColorHover()
+        self.state = 1
         super().enterEvent(a0)
 
     def leaveEvent(self, a0):
         self.setColorDefault()
+        self.state = 0
         super().leaveEvent(a0)
+
+    def mousePressEvent(self, a0):
+        if a0.button() != Qt.MouseButton.LeftButton:
+            return
+
+        self.state = 2
+        super().mousePressEvent(a0)
+
+    def mouseReleaseEvent(self, a0):
+        self.state = 0
+        super().mouseReleaseEvent(a0)
 
 
 class TitleBar(QWidget):
@@ -52,6 +68,8 @@ class TitleBar(QWidget):
         super().__init__(parent)
 
         self.guiWindowMaximized = False
+
+        self._isDoubleClickEnabled = True
 
         self.setAutoFillBackground(True)
 
@@ -139,21 +157,66 @@ class TitleBar(QWidget):
         self.guiWindowMaximized = state == Qt.WindowState.WindowMaximized
 
     def mousePressEvent(self, event):
-        if event.button() == Qt.MouseButton.LeftButton and not self.guiWindowMaximized:
-            self.clickPos = event.scenePosition().toPoint()
-        super().mousePressEvent(event)
-        event.accept()
+        if sys.platform == "win32" or not self.canDrag(event.pos()):
+            return
+
+        startSystemMove(self.window(), event.globalPosition().toPoint())
+
+    def mouseDoubleClickEvent(self, event):
+        """ Toggles the maximization state of the window """
+        if event.button() != Qt.MouseButton.LeftButton or not self._isDoubleClickEnabled:
+            return
+
+        self.__toggleMaxState()
 
     def mouseMoveEvent(self, event):
-        if self.clickPos is not None and not self.guiWindowMaximized:
-            self.window().move(event.globalPosition().toPoint() - self.clickPos)
-        super().mouseMoveEvent(event)
-        event.accept()
+        if sys.platform != "win32" or not self.canDrag(event.pos()):
+            return
+
+        startSystemMove(self.window(), event.globalPosition().toPoint())
 
     def mouseReleaseEvent(self, event):
         self.clickPos = None
         super().mouseReleaseEvent(event)
         event.accept()
+
+    def __toggleMaxState(self):
+        """ Toggles the maximization state of the window and change icon """
+        if self.window().isMaximized():
+            self.window().showNormal()
+        else:
+            self.window().showMaximized()
+
+        if sys.platform == "win32":
+            from qframelesswindow.utils.win32_utils import releaseMouseLeftButton
+            releaseMouseLeftButton(self.window().winId())
+
+    def _isDragRegion(self, pos):
+        """ Check whether the position belongs to the area where dragging is allowed """
+        width = 0
+        for button in self.findChildren(TitleBarButton):
+            if button.isVisible():
+                width += button.width()
+
+        return 0 < pos.x() < self.width() - width
+
+    def _hasButtonPressed(self):
+        """ whether any button is pressed """
+        return any(btn.state == 2 for btn in self.findChildren(TitleBarButton))
+
+    def canDrag(self, pos):
+        """ whether the position is draggable """
+        return self._isDragRegion(pos) and not self._hasButtonPressed()
+
+    def setDoubleClickEnabled(self, isEnabled):
+        """ whether to switch window maximization status when double-clicked
+
+        Parameters
+        ----------
+        isEnabled: bool
+            whether to enable double click
+        """
+        self._isDoubleClickEnabled = isEnabled
 
     def closeClicked(self):
         self.window().close()

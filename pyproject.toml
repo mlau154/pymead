@@ -45,6 +45,7 @@ dependencies = [
     "requests>=2.31",
     "PyQt6",
     "PyQt6-WebEngine",
+    "PyQt6-Frameless-Window",
     "pyqtgraph",
     "python-benedict",
     "pandas",

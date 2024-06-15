@@ -23,6 +23,7 @@ from PyQt6.QtWidgets import QMainWindow, QApplication, \
 
 from pymoo.factory import get_decomposition
 from pyqtgraph.exporters import CSVExporter, SVGExporter
+from qframelesswindow import FramelessMainWindow
 
 from pymead import ICON_DIR, GUI_SETTINGS_DIR, GUI_THEMES_DIR, RESOURCE_DIR, EXAMPLES_DIR, q_settings
 from pymead.analysis.calc_aero_data import SVG_PLOTS, SVG_SETTINGS_TR
@@ -77,7 +78,7 @@ q_settings_descriptions = load_data(os.path.join(GUI_SETTINGS_DIR, "q_settings_d
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 
 
-class GUI(QMainWindow):
+class GUI(FramelessMainWindow):
     _gripSize = 5
 
     def __init__(self, path=None, parent=None):
@@ -91,7 +92,7 @@ class GUI(QMainWindow):
         UNITS.set_current_angle_unit(get_setting("angle_unit"))
         super().__init__(parent=parent)
         self.showHideState = None
-        self.setWindowFlags(self.windowFlags() | Qt.WindowType.FramelessWindowHint)
+        # self.setWindowFlags(self.windowFlags() | Qt.WindowType.FramelessWindowHint)
         self.windowMaximized = False
         # print(f"Running GUI with {os.getpid() = }")
         self.pool = None
