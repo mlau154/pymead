@@ -2146,7 +2146,9 @@ class GAGeneralSettingsDialogWidget(PymeadDialogWidget2):
                 self.current_save_file = load_file
 
             gui_obj = get_parent(self, 4)
-            gui_obj.load_geo_col(file_name=new_inputs["General Settings"]["mea_file"])
+            geo_col_file = new_inputs["General Settings"]["mea_file"]
+            if geo_col_file:
+                gui_obj.load_geo_col(file_name=geo_col_file)
 
             # Pass the new GeometryCollection reference to the actuator disk
             get_parent(self, 3).mses_widget.widget_dict["AD"].geo_col = deepcopy(gui_obj.geo_col)
@@ -3455,7 +3457,10 @@ def convert_opt_settings_to_param_dict(opt_settings: dict) -> dict:
                       'xtr': [opt_settings['XFOIL']['xtr_upper'], opt_settings['XFOIL']['xtr_lower']],
                       'N': opt_settings['XFOIL']['N'],
                       'iter': opt_settings['XFOIL']['iter'],
+                      'visc': opt_settings['XFOIL']['viscous_flag'],
                       'timeout': opt_settings['XFOIL']['timeout'],
+                      'prescribe': opt_settings['XFOIL']['prescribe'],
+                      'airfoil': opt_settings['XFOIL']['airfoil'],
                   },
                   'mset_settings': convert_dialog_to_mset_settings(opt_settings['MSET']),
                   'mses_settings': convert_dialog_to_mses_settings(opt_settings['MSES']),

@@ -315,6 +315,8 @@ class Population:
             if chromosome.param_dict['tool'] == 'XFOIL':
                 tool = 'XFOIL'
                 xfoil_settings = chromosome.param_dict['xfoil_settings']
+                xfoil_settings["base_dir"] = chromosome.param_dict["base_folder"]
+                xfoil_settings["airfoil_name"] = chromosome.param_dict["name"][chromosome.population_idx]
             elif chromosome.param_dict['tool'] == 'MSES':
                 tool = 'MSES'
                 mset_settings = chromosome.param_dict['mset_settings']
