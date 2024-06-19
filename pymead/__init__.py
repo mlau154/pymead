@@ -98,3 +98,7 @@ q_settings = QSettings()
 
 class DependencyNotFoundError(Exception):
     pass
+
+
+class TargetPathNotFoundError(Exception):
+    pass

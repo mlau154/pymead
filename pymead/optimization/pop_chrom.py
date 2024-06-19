@@ -374,6 +374,7 @@ class Population:
         Evaluates the fitness of the population using parallel processing
         """
         n_eval = 0
+        n_converged_chromosomes = 0
         with Pool(processes=self.param_dict['num_processors']) as pool:
             result = pool.imap_unordered(self.eval_chromosome_fitness, self.population)
             # if self.verbose:
@@ -382,7 +383,8 @@ class Population:
 
                 if chromosome.fitness is not None:
                     self.converged_chromosomes.append(chromosome)
-                n_converged_chromosomes = len(self.converged_chromosomes)
+                    n_converged_chromosomes += 1
+
                 n_eval += 1
 
                 gen = 1 if self.generation == 0 else self.generation

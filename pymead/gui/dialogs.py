@@ -18,7 +18,7 @@ from PyQt6.QtWidgets import (QWidget, QGridLayout, QLabel, QPushButton, QCheckBo
                              QDoubleSpinBox, QComboBox, QDialog, QVBoxLayout, QSizeGrip, QDialogButtonBox, QMessageBox,
                              QFormLayout, QRadioButton)
 
-from pymead import GUI_DEFAULTS_DIR, q_settings, GUI_DIALOG_WIDGETS_DIR
+from pymead import GUI_DEFAULTS_DIR, q_settings, GUI_DIALOG_WIDGETS_DIR, TargetPathNotFoundError
 from pymead.analysis import cfd_output_templates
 from pymead.analysis.utils import viscosity_calculator
 from pymead.core import UNITS
@@ -3029,24 +3029,75 @@ class AirfoilMatchingDialog(PymeadDialog):
 
         self.airfoil_names = airfoil_names
 
-        self.lay = QFormLayout()
+        self.lay = QGridLayout()
 
         self.inputs = self.setInputs()
-        for i in self.inputs:
-            self.lay.addRow(i[0], i[1])
-
         widget.setLayout(self.lay)
-        self.setMinimumWidth(300)
+
+        for i in self.inputs:
+            row_count = self.lay.rowCount()
+            self.lay.addWidget(i.label, row_count, 0)
+            if i.push is None:
+                self.lay.addWidget(i.widget, row_count, 1, 1, 2)
+            else:
+                self.lay.addWidget(i.widget, row_count, 1, 1, 1)
+                self.lay.addWidget(i.push, row_count, 2, 1, 1)
+
+        # self.setMinimumWidth(400)
+        self.setMinimumSize(400, 200)
 
     def setInputs(self):
-        r0 = ["Tool Airfoil", QComboBox(self)]
-        r0[1].addItems(self.airfoil_names)
-        r1 = ["Target Airfoil", QLineEdit(self)]
-        r1[1].setText('n0012-il')
-        return [r0, r1]
+        inputs = [
+            PymeadLabeledComboBox(label="Tool Airfoil", tool_tip="pymead Airfoil object name; the parametrization used "
+                                                                 "to match the target airfoil",
+                                  items=self.airfoil_names),
+            PymeadLabeledComboBox(label="Airfoil type", tool_tip="Choose whether to use an AirfoilTools airfoil or a "
+                                                                 "coordinate-file airfoil",
+                                  items=["AirfoilTools", "Coordinate File"]),
+            PymeadLabeledLineEdit(label="Web Airfoil", tool_tip="URL-name of the AirfoilTools airfoil (name in the "
+                                                                "parentheses on airfoiltools.com)", text="n0012-il"),
+            PymeadLabeledLineEdit(label="Airfoil from File", tool_tip="Absolute file path of a Selig-format "
+                                                                      "(counter-clockwise starting with upper trailing "
+                                                                      "edge, space-delimited, airfoil coordinates file",
+                                  text="", push_label="Select Airfoil")
+        ]
+
+        # Run the connection once to show or hide the correct widgets
+        self.inputs = inputs
+        self.airfoilTypeChanged(inputs[1].value())
+
+        inputs[1].sigValueChanged.connect(self.airfoilTypeChanged)
+        inputs[3].push.clicked.connect(self.selectDatFile)
+
+        return inputs
+
+    def airfoilTypeChanged(self, airfoil_type: str):
+        if airfoil_type == "AirfoilTools":
+            self.inputs[2].label.show()
+            self.inputs[2].widget.show()
+            self.inputs[3].label.hide()
+            self.inputs[3].widget.hide()
+            self.inputs[3].push.hide()
+        else:
+            self.inputs[2].label.hide()
+            self.inputs[2].widget.hide()
+            self.inputs[3].label.show()
+            self.inputs[3].widget.show()
+            self.inputs[3].push.show()
+
+    def selectDatFile(self):
+        select_data_file(parent=self, line_edit=self.inputs[3].widget)
 
     def value(self):
-        return {"tool_airfoil": self.inputs[0][1].currentText(), "target_airfoil": self.inputs[1][1].text()}
+        airfoil_type = self.inputs[1].value()
+        if airfoil_type == "AirfoilTools":
+            target_airfoil = self.inputs[2].value()
+        else:
+            data_file = self.inputs[3].value()
+            if not os.path.exists(data_file):
+                raise TargetPathNotFoundError(f"Could not find airfoil file {data_file} in the system")
+            target_airfoil = np.loadtxt(data_file)
+        return {"tool_airfoil": self.inputs[0].value(), "target_airfoil": target_airfoil}
 
 
 class AirfoilPlotDialog(PymeadDialog):

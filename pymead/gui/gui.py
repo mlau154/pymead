@@ -25,7 +25,8 @@ from pymoo.factory import get_decomposition
 from pyqtgraph.exporters import CSVExporter, SVGExporter
 from qframelesswindow import FramelessMainWindow
 
-from pymead import ICON_DIR, GUI_SETTINGS_DIR, GUI_THEMES_DIR, RESOURCE_DIR, EXAMPLES_DIR, q_settings
+from pymead import ICON_DIR, GUI_SETTINGS_DIR, GUI_THEMES_DIR, RESOURCE_DIR, EXAMPLES_DIR, q_settings, \
+    TargetPathNotFoundError
 from pymead.analysis.calc_aero_data import SVG_PLOTS, SVG_SETTINGS_TR
 from pymead.analysis.calc_aero_data import calculate_aero_data
 from pymead.analysis.read_aero_data import flow_var_idx
@@ -1603,7 +1604,11 @@ class GUI(FramelessMainWindow):
         airfoil_names = [a for a in self.geo_col.container()["airfoils"].keys()]
         dialog = AirfoilMatchingDialog(self, airfoil_names=airfoil_names, theme=self.themes[self.current_theme])
         if dialog.exec():
-            airfoil_match_settings = dialog.value()
+            try:
+                airfoil_match_settings = dialog.value()
+            except TargetPathNotFoundError as e:
+                self.disp_message_box(f"{str(e)}")
+                return
             try:
                 # Start running the CPU-bound process from a worker thread (separate from the main GUI thread)
                 self.match_airfoil_thread = Thread(target=run_cpu_bound_process)
