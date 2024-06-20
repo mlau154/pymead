@@ -1,5 +1,4 @@
 import networkx
-from pymead.core.bezier import Bezier
 
 from pymead.core.constraints import *
 from pymead.core.constraint_equations import *
@@ -319,7 +318,7 @@ class GCS(networkx.DiGraph):
                 break
         return list(set(constraints_needing_reassign))
 
-    def _check_if_root_flows_into_polyline(self, root_node: Point):
+    def _check_if_root_flows_into_polyline(self, root_node: Point) -> Point or bool:
         for point in networkx.dfs_preorder_nodes(self, source=root_node):
             if any([isinstance(curve, PolyLine) and point not in curve.point_sequence().points()
                     for curve in point.curves]):
@@ -801,14 +800,17 @@ class GCS(networkx.DiGraph):
         rotation_point = source.p2
 
         if edge_data_p21 and "angle" in edge_data_p21 and edge_data_p21["angle"] is source:
-            # start = source.p1 if not source.p2.root else source.p2
-            # start = source.p2
-            start = source.p1
+            if source.p1.rotation_handle and source.p2.root:
+                start = source.p3
+                d_angle *= -1
+            else:
+                start = source.p1
         elif edge_data_p23 and "angle" in edge_data_p23 and edge_data_p23["angle"] is source:
-            # start = source.p3 if not source.p2.root else source.p2
-            # start = source.p2
-            start = source.p3
-            d_angle *= -1
+            if source.p3.rotation_handle and source.p2.root:
+                start = source.p1
+            else:
+                start = source.p3
+                d_angle *= -1
         else:
             raise ValueError("Somehow no angle constraint found between the three points")
 
@@ -879,43 +881,12 @@ class GCS(networkx.DiGraph):
         elif isinstance(source, ROCurvatureConstraint):
             points_solved.extend(self.solve_roc_constraint(source))
 
-        # symmetry_constraints_to_re_solve = []
-        # for roc_point in roc_points_solved:
-        #     for geo_con in roc_point.geo_cons:
-        #         if not isinstance(geo_con, SymmetryConstraint):
-        #             continue
-        #         if geo_con not in symmetry_constraints_to_re_solve:
-        #             symmetry_constraints_to_re_solve.append(geo_con)
-        #
-        # symmetry_points_solved_second_pass = []
-        # for symmetry_constraint in list(set(symmetry_constraints_to_re_solve)):
-        #     symmetry_points_solved_second_pass.extend(self.solve_symmetry_constraint(symmetry_constraint))
-        #
-        # roc_constraints_to_re_solve = []
-        # for symmetry_point in list(set(symmetry_points_solved_second_pass)):
-        #     for geo_con in symmetry_point.geo_cons:
-        #         if not isinstance(geo_con, ROCurvatureConstraint):
-        #             continue
-        #         if geo_con not in roc_constraints_to_re_solve:
-        #             roc_constraints_to_re_solve.append(geo_con)
-        #
-        # roc_points_solved_second_pass = []
-        # for roc_constraint in list(set(roc_constraints_to_re_solve)):
-        #     roc_points_solved_second_pass.extend(self.solve_roc_constraint(roc_constraint))
-
         other_points_solved = self.solve_other_constraints(points_solved)
         other_points_solved = list(
             set(other_points_solved).union(
                 set(symmetry_points_solved)).union(
                 set(roc_points_solved))
         )
-        # other_points_solved = list(
-        #     set(other_points_solved).union(
-        #         set(symmetry_points_solved)).union(
-        #         set(roc_points_solved)).union(
-        #         set(symmetry_points_solved_second_pass)).union(
-        #         set(roc_points_solved_second_pass))
-        # )
 
         points_solved = list(set(points_solved).union(set(other_points_solved)))
 

@@ -69,3 +69,20 @@ class GCSTests(TestCase):
         geo_col_file = os.path.join(TEST_DIR, "core_tests", "connected_angles.jmea")
         geo_col = GeometryCollection.set_from_dict_rep(load_data(geo_col_file))
         self.assertTrue(geo_col.verify_all())
+
+    def test_alt_fp_parametrization(self):
+        geo_col_file = os.path.join(TEST_DIR, "core_tests", "alt_fp_parametrization_no_angle7.jmea")
+        geo_col = GeometryCollection.set_from_dict_rep(load_data(geo_col_file))
+        self.assertTrue(geo_col.verify_all())
+
+    def test_alt_fp_parametrization_p7_first(self):
+        # Test adding the lower free point angle in the order Point-7 --> LE --> TE
+        geo_col_file = os.path.join(TEST_DIR, "core_tests", "alt_fp_parametrization_p7_first.jmea")
+        geo_col = GeometryCollection.set_from_dict_rep(load_data(geo_col_file))
+        self.assertTrue(geo_col.verify_all())
+
+    def test_alt_fp_parametrization_p7_last(self):
+        # Test adding the lower free point angle in the order TE --> LE --> Point-7
+        geo_col_file = os.path.join(TEST_DIR, "core_tests", "alt_fp_parametrization_p7_last.jmea")
+        geo_col = GeometryCollection.set_from_dict_rep(load_data(geo_col_file))
+        self.assertTrue(geo_col.verify_all())
