@@ -179,6 +179,20 @@ class GeoColTests(unittest.TestCase):
         for sub_container in self.geo_col.container().values():
             self.assertEqual(len(sub_container), 0)
 
+    def test_get_name_list(self):
+        point_container = self.geo_col.container()["points"]
+        point1 = self.geo_col.add_point(0.5, 0.1)
+        point2 = self.geo_col.add_point(0.3, 0.7)
+        point3 = self.geo_col.add_point(-0.1, -0.2)
+        point4 = self.geo_col.add_point(-0.2, 0.7)
+        self.geo_col.remove_pymead_obj(point3)
+        print(self.geo_col.get_name_list("points"))
+        self.assertIn("Point-1", self.geo_col.get_name_list("points"))
+        self.assertIn("Point-2", self.geo_col.get_name_list("points"))
+        self.assertNotIn("Point-3", self.geo_col.get_name_list("points"))
+        self.assertIn("Point-4", self.geo_col.get_name_list("points"))
+
+
 
 class ParamTests(unittest.TestCase):
     def test_dict_gen(self):
