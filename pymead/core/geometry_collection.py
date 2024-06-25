@@ -68,7 +68,8 @@ class GeometryCollection(DualRep):
         """
         Clears all the entities in the geometry container.
         """
-        self.container().clear()
+        for sub_container in self.container().values():
+            sub_container.clear()
 
     def get_name_list(self, sub_container: str):
         """
