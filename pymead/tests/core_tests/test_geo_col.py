@@ -171,7 +171,12 @@ class GeoColTests(unittest.TestCase):
         self.assertEqual(airfoil.curves, [upper_line, upper, lower])
         self.assertEqual(airfoil.curves_to_reverse, [upper_line, upper])
 
+    def test_container(self):
+        self.assertTrue(type(self.geo_col.container()) is dict)
 
+    def test_clear_container(self):
+        self.geo_col.clear_container()
+        self.assertEqual(len(self.geo_col.container()), 0)
 class ParamTests(unittest.TestCase):
     def test_dict_gen(self):
         param = Param.set_from_dict_rep({"name": "LC1", "value": 0.5})
@@ -433,3 +438,6 @@ class MEATests(unittest.TestCase):
         # Remove the created blade file
         if os.path.exists(blade_file):
             os.remove(blade_file)
+
+
+
