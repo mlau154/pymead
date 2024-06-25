@@ -186,7 +186,6 @@ class GeoColTests(unittest.TestCase):
         point3 = self.geo_col.add_point(-0.1, -0.2)
         point4 = self.geo_col.add_point(-0.2, 0.7)
         self.geo_col.remove_pymead_obj(point3)
-        print(self.geo_col.get_name_list("points"))
         self.assertIn("Point-1", self.geo_col.get_name_list("points"))
         self.assertIn("Point-2", self.geo_col.get_name_list("points"))
         self.assertNotIn("Point-3", self.geo_col.get_name_list("points"))
