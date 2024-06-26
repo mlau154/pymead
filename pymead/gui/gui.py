@@ -21,7 +21,7 @@ from PyQt6.QtSvgWidgets import QSvgWidget
 from PyQt6.QtWidgets import QMainWindow, QApplication, \
     QWidget, QMenu, QStatusBar, QGraphicsScene, QGridLayout, QDockWidget, QSizeGrip
 
-from pymoo.factory import get_decomposition
+from pymoo.decomposition.asf import ASF
 from pyqtgraph.exporters import CSVExporter, SVGExporter
 from qframelesswindow import FramelessMainWindow
 
@@ -847,7 +847,7 @@ class GUI(FramelessMainWindow):
                 if inputs["pkl_use_index"]:
                     x = X[inputs["pkl_index"], :]
                 elif inputs["pkl_use_weights"]:
-                    decomp = get_decomposition("asf")
+                    decomp = ASF()
 
                     if len(inputs["pkl_weights"]) == 0:
                         self.disp_message_box("The requested weights do not sum to 1.0.")

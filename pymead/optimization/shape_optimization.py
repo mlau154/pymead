@@ -23,7 +23,11 @@ from pymoo.operators.mutation.pm import PolynomialMutation
 from pymoo.operators.crossover.sbx import SimulatedBinaryCrossover
 from pymoo.config import Config
 from pymoo.core.evaluator import Evaluator
-from pymoo.factory import get_reference_directions, get_decomposition
+from pymoo.decomposition.asf import ASF
+try:
+    from pymoo.factory import get_reference_directions
+except ModuleNotFoundError:
+    from pymoo.util.ref_dirs import get_reference_directions
 from pymoo.core.evaluator import set_cv
 
 
@@ -331,7 +335,7 @@ def shape_optimization(conn: multiprocessing.connection.Connection or None, para
 
             # Use a "50-50" decomposition to get a representative optimal solution for plotting
             weights = np.array([1.0 / len(objectives) for _ in objectives])
-            decomp = get_decomposition("asf")
+            decomp = ASF()
             I = decomp.do(F, weights).argmin()
             X = X[I, :]
 

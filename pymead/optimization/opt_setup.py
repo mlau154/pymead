@@ -5,7 +5,7 @@ from copy import deepcopy
 
 import numpy as np
 from pymoo.core.problem import Problem
-from pymoo.factory import get_decomposition
+from pymoo.decomposition.asf import ASF
 from pymoo.util.display import Display
 from pymoo.util.termination.default import MultiObjectiveDefaultTermination
 from pymoo.util.termination.f_tol import MultiObjectiveSpaceToleranceTermination
@@ -182,7 +182,7 @@ class CustomDisplay(Display):
         G = algorithm.pop.get("G")
         # CV = algorithm.pop.get("CV")
         weights = np.array([0.5, 0.5])
-        decomp = get_decomposition("asf")
+        decomp = ASF()
         I = decomp.do(F, weights).argmin()
         n_nds = len(algorithm.opt)
         f_best = [F[I][i] for i in range(F.shape[1])]
