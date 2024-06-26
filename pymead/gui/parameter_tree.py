@@ -770,6 +770,7 @@ class ParameterTree(QTreeWidget):
         self.container_titles = {
             "desvar": "Design Variables",
             "params": "Parameters",
+            "reference": "Reference Geometry",
             "points": "Points",
             "lines": "Lines",
             "bezier": "Bézier Curves",

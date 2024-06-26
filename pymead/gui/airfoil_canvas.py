@@ -12,6 +12,7 @@ from pymead import q_settings, GUI_SETTINGS_DIR
 from pymead.core import UNITS
 from pymead.core.airfoil import Airfoil
 from pymead.core.geometry_collection import GeometryCollection
+from pymead.core.line import ReferencePolyline
 from pymead.core.parametric_curve import ParametricCurve
 from pymead.core.point import PointSequence
 from pymead.gui.constraint_items import *
@@ -206,6 +207,12 @@ class AirfoilCanvas(pg.PlotWidget):
             # Connect signals
             pymead_obj.canvas_item.sigPolyEnter.connect(self.airfoil_hovered)
             pymead_obj.canvas_item.sigPolyExit.connect(self.airfoil_exited)
+
+        elif isinstance(pymead_obj, ReferencePolyline):
+
+            pymead_obj.canvas_item = pg.PlotDataItem(pen=pg.mkPen(color=pymead_obj.color), lw=pymead_obj.lw)
+            pymead_obj.canvas_item.setData(pymead_obj.points[:, 0], pymead_obj.points[:, 1])
+            self.addItem(pymead_obj.canvas_item)
 
     def closeEnterCallbackConnection(self):
         if self.enter_connection is None:

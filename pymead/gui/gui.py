@@ -16,9 +16,9 @@ import requests
 from scipy.optimize import OptimizeResult
 from PyQt6.QtCore import QEvent, QObject, Qt, QThreadPool, QRect
 from PyQt6.QtCore import pyqtSlot
-from PyQt6.QtGui import QIcon, QFont, QFontDatabase, QPainter, QCloseEvent, QTextCursor, QImage, QAction
+from PyQt6.QtGui import QIcon, QFont, QFontDatabase, QPainter, QCloseEvent, QTextCursor, QImage, QAction, QColor
 from PyQt6.QtSvgWidgets import QSvgWidget
-from PyQt6.QtWidgets import QMainWindow, QApplication, \
+from PyQt6.QtWidgets import QApplication, \
     QWidget, QMenu, QStatusBar, QGraphicsScene, QGridLayout, QDockWidget, QSizeGrip
 
 from pymoo.decomposition.asf import ASF
@@ -875,7 +875,7 @@ class GUI(FramelessMainWindow):
             np.savetxt(file_name, np.array(parameter_list))
 
     def plot_geometry(self):
-        file_filter = "DAT Files (*.dat)"
+        file_filter = self.tr("Data Files (*.txt *.dat *.csv)")
         dialog = LoadDialog(self, settings_var="geometry_plot_default_open_location", file_filter=file_filter)
         if dialog.exec():
             file_name = dialog.selectedFiles()[0]
@@ -893,24 +893,10 @@ class GUI(FramelessMainWindow):
                         color = color_dialog.color_button_widget.color()
                     else:
                         color = default_color
-                    self.geometry_plot_handles[geometry_name] = self.v.plot(pen=pg.mkPen(color=color), lw=1.4)
-                    self.geometry_plot_handles[geometry_name].setData(coords[:, 0], coords[:, 1])
+                    if isinstance(color, QColor):
+                        color = color.getRgb()
+                    self.geo_col.add_reference_polyline(coords, color=color, lw=1.4)
                     break
-            self.param_tree_instance.p.child("Plot Handles").add_plot_handle(geometry_name, color)
-
-    def clear_geometry(self, name: str):
-        self.geometry_plot_handles[name].clear()
-        self.geometry_plot_handles.pop(name)
-        self.v.update()
-
-    def change_geometry_name(self, name: str, new_names: typing.List[str]):
-        old_name = next(iter(set([k for k in self.geometry_plot_handles.keys()]) - set(new_names)))
-        temp_handle = self.geometry_plot_handles[old_name]
-        self.geometry_plot_handles.pop(old_name)
-        self.geometry_plot_handles[name] = temp_handle
-
-    def update_pen(self, name, qpen):
-        self.geometry_plot_handles[name].setPen(qpen)
 
     def clear_field(self):
         for child in self.airfoil_canvas.plot.allChildItems():

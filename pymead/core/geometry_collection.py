@@ -14,7 +14,7 @@ from pymead.core.constraints import *
 from pymead.core.gcs import GCS
 from pymead.core.mea import MEA
 from pymead.core.pymead_obj import DualRep, PymeadObj
-from pymead.core.line import LineSegment, PolyLine
+from pymead.core.line import LineSegment, PolyLine, ReferencePolyline
 from pymead.core.param import Param, LengthParam, AngleParam, DesVar, LengthDesVar, AngleDesVar
 from pymead.core.point import Point, PointSequence
 from pymead.core.transformation import Transformation3D
@@ -34,6 +34,7 @@ class GeometryCollection(DualRep):
             "desvar": {},
             "params": {},
             "points": {},
+            "reference": {},
             "lines": {},
             "polylines": {},
             "bezier": {},
@@ -566,6 +567,12 @@ class GeometryCollection(DualRep):
                     self.add_pymead_obj_by_ref(point)
         return self.add_pymead_obj_by_ref(polyline, assign_unique_name=assign_unique_name)
 
+    def add_reference_polyline(self, points: typing.List[typing.List[float]] or np.ndarray, color, lw: float,
+                               name: str or None = None, assign_unique_name: bool = True):
+        ref_polyline = ReferencePolyline(points=points, color=color, lw=lw, name=name)
+
+        return self.add_pymead_obj_by_ref(ref_polyline, assign_unique_name=assign_unique_name)
+
     def split_polyline(self, polyline: PolyLine, split: int or float):
         new_polylines = polyline.split(split)
 
@@ -933,6 +940,8 @@ class GeometryCollection(DualRep):
         geo_col = cls(gui_obj=gui_obj)
         geo_col.canvas = canvas
         geo_col.tree = tree
+        for name, ref_dict in d["reference"].items():
+            geo_col.add_reference_polyline(**ref_dict, name=name, assign_unique_name=False)
         for name, point_dict in d["points"].items():
             geo_col.add_point(**point_dict, name=name, assign_unique_name=False)
         for name, desvar_dict in d["desvar"].items():

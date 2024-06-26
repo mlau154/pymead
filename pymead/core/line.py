@@ -4,6 +4,7 @@ import numpy as np
 
 from pymead.core.point import PointSequence, Point
 from pymead.core.parametric_curve import ParametricCurve, PCurveData
+from pymead.core.pymead_obj import PymeadObj
 from pymead.utils.get_airfoil import extract_data_from_airfoiltools
 
 
@@ -267,3 +268,16 @@ class PolyLine(ParametricCurve):
     def get_dict_rep(self):
         return {"points": [pt.name() for pt in self.point_sequence().points()], "source": self.source,
                 "start": self.start, "end": self.end}
+
+
+class ReferencePolyline(PymeadObj):
+    def __init__(self, points: typing.List[typing.List[float]] or np.ndarray, color, lw: float, name: str = None):
+        self.points = np.array(points) if isinstance(points, list) else points
+        self.color = color
+        self.lw = lw
+        super().__init__(sub_container="reference")
+        name = "RefPoly-1" if name is None else name
+        self.set_name(name)
+
+    def get_dict_rep(self) -> dict:
+        return {"points": self.points.tolist(), "color": self.color, "lw": self.lw}
