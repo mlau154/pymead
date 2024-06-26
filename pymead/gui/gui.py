@@ -1126,9 +1126,10 @@ class GUI(FramelessMainWindow):
     def changes_made(self, atol: float = 1e-15) -> bool:
         return not compare_dicts_floating_precision(self.last_saved_state, self.get_geo_col_state(), atol=atol)
 
-    def disp_message_box(self, message: str, message_mode: str = "error", rich_text: bool = False):
+    def disp_message_box(self, message: str, message_mode: str = "error", rich_text: bool = False,
+                         dialog_test_action: typing.Callable = None):
         disp_message_box(message, self, message_mode=message_mode, rich_text=rich_text,
-                         theme=self.themes[self.current_theme])
+                         theme=self.themes[self.current_theme], dialog_test_action=dialog_test_action)
 
     def output_area_text(self, text: str, mode: str = 'plain', mono: bool = True, line_break: bool = False):
         # prepend_html = f"<head><style>body {{font-family: DejaVu Sans Mono;}}</style>" \

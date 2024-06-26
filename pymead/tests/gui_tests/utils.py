@@ -1,8 +1,11 @@
 import time
 import typing
 
+import pytest
 from PyQt5.QtCore import QTimer
 from PyQt5.QtWidgets import QDialog, QApplication
+
+from pymead.gui.gui import GUI
 
 
 def perform_action_on_dialog(dialog_trigger: typing.Callable,
@@ -56,3 +59,11 @@ def perform_action_on_dialog(dialog_trigger: typing.Callable,
     ), f"No dialog was created after {time_out} seconds. Dialog type: {type(dialog)}"
 
     return dialog
+
+
+@pytest.fixture
+def app(qtbot):
+    gui = GUI()
+    gui.show()
+    qtbot.addWidget(gui)
+    return gui

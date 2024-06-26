@@ -73,3 +73,7 @@ def get_setting(key: str):
 
 def set_setting(key: str, value: object):
     q_settings.setValue(key, value)
+
+
+def convert_rgba_to_hex(rgba: tuple) -> str:
+    return "#" + "".join([str(hex(n)).split("x")[-1].zfill(2) for n in rgba])

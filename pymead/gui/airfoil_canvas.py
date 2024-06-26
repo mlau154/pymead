@@ -337,7 +337,8 @@ class AirfoilCanvas(pg.PlotWidget):
         self.gui_obj.permanent_widget.updateAirfoils()
 
     @undoRedoAction
-    def generateWebAirfoil(self, dialog_test_action: typing.Callable = None):
+    def generateWebAirfoil(self, dialog_test_action: typing.Callable = None,
+                           error_dialog_action: typing.Callable = None):
         """
         Generates an airfoil from Airfoil Tools or from a file.
 
@@ -346,13 +347,17 @@ class AirfoilCanvas(pg.PlotWidget):
         dialog_test_action: typing.Callable or None
             If not ``None``, should be a function that accepts a ``WebAirfoilDialog`` as its sole argument and returns
             nothing. Default: ``None``
+
+        error_dialog_action: typing.Callable or None
+            If not ``None``, should be a function that accepts a ``PymeadMessageBox`` as its sole argument and returns
+            nothing. Used to test that an error message appears in the GUI. Default: ``None``
         """
         self.dialog = WebAirfoilDialog(self, theme=self.gui_obj.themes[self.gui_obj.current_theme])
         if (dialog_test_action is not None and not dialog_test_action(self.dialog)) or self.dialog.exec():
             try:
                 polyline = self.geo_col.add_polyline(source=self.dialog.value())
             except AirfoilNotFoundError as e:
-                self.gui_obj.disp_message_box(f"{e}", message_mode="error")
+                self.gui_obj.disp_message_box(f"{e}", message_mode="error", dialog_test_action=error_dialog_action)
                 return
             polyline.add_polyline_airfoil()
         self.gui_obj.permanent_widget.updateAirfoils()
@@ -373,12 +378,6 @@ class AirfoilCanvas(pg.PlotWidget):
         if len(self.geo_col.selected_objects["points"]) != 2:
             self.sigStatusBarUpdate.emit("Choose exactly two points to define a distance constraint", 4000)
             return
-
-        # p1 = self.geo_col.selected_objects["points"][0]
-        # p2 = self.geo_col.selected_objects["points"][1]
-        #
-        # cnstr = self.geo_col.add_distance_constraint(p1, p2)
-        # cnstr.add_constraint_to_gcs()
 
         constraint = DistanceConstraint(*self.geo_col.selected_objects["points"])
         self.geo_col.add_constraint(constraint)
