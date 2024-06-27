@@ -465,10 +465,10 @@ class BezierButton(TreeButton):
             self.tree.itemWidget(point.tree_item, 0).setText(name)
 
     def enterEvent(self, a0):
-        self.bezier.canvas_item.setCurveStyle("hovered")
+        self.bezier.canvas_item.setItemStyle("hovered")
 
     def leaveEvent(self, a0):
-        self.bezier.canvas_item.setCurveStyle("default")
+        self.bezier.canvas_item.setItemStyle("default")
 
 
 class LineSegmentButton(TreeButton):
@@ -493,10 +493,10 @@ class LineSegmentButton(TreeButton):
             self.tree.itemWidget(point.tree_item, 0).setText(name)
 
     def enterEvent(self, a0):
-        self.line.canvas_item.setCurveStyle("hovered")
+        self.line.canvas_item.setItemStyle("hovered")
 
     def leaveEvent(self, a0):
-        self.line.canvas_item.setCurveStyle("default")
+        self.line.canvas_item.setItemStyle("default")
 
 
 class AirfoilButton(TreeButton):

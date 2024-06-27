@@ -1,20 +1,16 @@
-import os
 import typing
 
 import numpy as np
 import pyqtgraph as pg
 from PyQt6.QtCore import pyqtSignal
 
-from pymead import q_settings, GUI_SETTINGS_DIR
 from pymead.core.bezier import Bezier
 from pymead.core.line import LineSegment, PolyLine
 from pymead.core.parametric_curve import PCurveData, ParametricCurve
 from pymead.core.point import PointSequence, Point
 from pymead.gui.draggable_point import DraggablePoint
 from pymead.utils.misc import convert_str_to_Qt_dash_pattern
-from pymead.utils.read_write_files import load_data
-
-q_settings_descriptions = load_data(os.path.join(GUI_SETTINGS_DIR, "q_settings_descriptions.json"))
+from pymead.utils.misc import get_setting
 
 
 class HoverableCurve(pg.PlotCurveItem):
@@ -22,6 +18,7 @@ class HoverableCurve(pg.PlotCurveItem):
     Hoverable curve item to be drawn on an AirfoilCanvas. Inspired in part by https://stackoverflow.com/a/68857695.
     """
 
+    sigCurveClicked = pyqtSignal(object, object)
     sigCurveHovered = pyqtSignal(object, object)
     sigCurveNotHovered = pyqtSignal(object, object)
     sigRemove = pyqtSignal(object)
@@ -64,6 +61,9 @@ class HoverableCurve(pg.PlotCurveItem):
                 self.sigCurveHovered.emit(self, ev)
             else:
                 self.sigCurveNotHovered.emit(self, ev)
+
+    def mouseClickEvent(self, ev):
+        self.sigCurveClicked.emit(self, ev)
 
     def updateCurveData(self, data: np.ndarray):
         """
@@ -196,18 +196,17 @@ class HoverableCurve(pg.PlotCurveItem):
         for point in self.point_items:
             point.curves.remove(self)
 
-    def setCurveStyle(self, mode: str = "default"):
-        implemented_style_modes = ["default", "hovered"]
+    def setItemStyle(self, mode: str = "default"):
+        implemented_style_modes = ["default", "hovered", "selected"]
         if mode not in implemented_style_modes:
             raise NotImplementedError(f"Selected mode ({mode}) not implemented. "
                                       f"Currently implemented modes: {implemented_style_modes}.")
-        self.setPen(pg.mkPen(color=q_settings.value(f"curve_{mode}_pen_color",
-                                                    q_settings_descriptions[f"curve_{mode}_pen_color"][1]),
-                             width=q_settings.value(f"curve_{mode}_pen_width",
-                                                    q_settings_descriptions[f"curve_{mode}_pen_width"][1])))
+        self.setPen(
+            pg.mkPen(color=get_setting(f"curve_{mode}_pen_color"), width=get_setting(f"curve_{mode}_pen_width"))
+        )
 
         if self.parametric_curve is not None and self.parametric_curve.reference:
-            dash_str = q_settings.value(f"cpnet_default_pen_dash", q_settings_descriptions[f"cpnet_default_pen_dash"][1])
+            dash_str = get_setting(f"cpnet_default_pen_dash")
             dash = convert_str_to_Qt_dash_pattern(dash_str)
             self.setPen(style=dash)
 

@@ -13,6 +13,7 @@ from pymead.core.bezier import Bezier
 from pymead.core.constraints import *
 from pymead.core.gcs import GCS
 from pymead.core.mea import MEA
+from pymead.core.parametric_curve import ParametricCurve
 from pymead.core.pymead_obj import DualRep, PymeadObj
 from pymead.core.line import LineSegment, PolyLine, ReferencePolyline
 from pymead.core.param import Param, LengthParam, AngleParam, DesVar, LengthDesVar, AngleDesVar
@@ -241,20 +242,14 @@ class GeometryCollection(DualRep):
                 pymead_obj.canvas_item.hoverable = False
             elif isinstance(pymead_obj, Airfoil):
                 for curve in pymead_obj.curves:
-                    self.canvas.setItemStyle(curve.canvas_item, "hovered")
+                    self.canvas.setItemStyle(curve.canvas_item, "selected")
                     curve.canvas_item.hoverable = False
-
-        # if isinstance(pymead_obj, Point):
-        #     if pymead_obj not in self.selected_objects:
-        #         self.selected_objects.append(pymead_obj)
-        # elif isinstance(pymead_obj, Airfoil):
-        #     if pymead_obj not in self.selected_airfoils:
-        #         self.selected_airfoils.append(pymead_obj)
+            elif isinstance(pymead_obj, ParametricCurve):
+                self.canvas.setItemStyle(pymead_obj.canvas_item, "selected")
+                pymead_obj.canvas_item.hoverable = False
 
         if pymead_obj not in self.selected_objects[pymead_obj.sub_container]:
             self.selected_objects[pymead_obj.sub_container].append(pymead_obj)
-
-        # print(f"Selecting object {pymead_obj}. {self.selected_objects = }")
 
     def deselect_object(self, pymead_obj: PymeadObj):
         if self.tree is not None:
@@ -266,10 +261,7 @@ class GeometryCollection(DualRep):
             if isinstance(pymead_obj, Point):
                 pymead_obj.canvas_item.hoverable = True
                 self.canvas.setItemStyle(pymead_obj.canvas_item, "default")
-            elif isinstance(pymead_obj, LineSegment):
-                pymead_obj.canvas_item.hoverable = True
-                self.canvas.setItemStyle(pymead_obj.canvas_item, "default")
-            elif isinstance(pymead_obj, Bezier):
+            elif isinstance(pymead_obj, ParametricCurve):
                 pymead_obj.canvas_item.hoverable = True
                 self.canvas.setItemStyle(pymead_obj.canvas_item, "default")
             elif isinstance(pymead_obj, Airfoil):

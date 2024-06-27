@@ -170,12 +170,13 @@ class AirfoilCanvas(pg.PlotWidget):
             curve_item.parametric_curve = pymead_obj
 
             # Set the curve style
-            curve_item.setCurveStyle("default")
+            curve_item.setItemStyle("default")
 
             # Set the curve to be clickable within a specified radius
             curve_item.setClickable(True, width=4)
 
             # Connect hover/not hover signals
+            curve_item.sigCurveClicked.connect(self.curveClicked)
             curve_item.sigCurveHovered.connect(self.curveHovered)
             curve_item.sigCurveNotHovered.connect(self.curveLeaveHovered)
             curve_item.sigLineItemAdded.connect(self.onLineItemAdded)
@@ -665,7 +666,6 @@ class AirfoilCanvas(pg.PlotWidget):
             raise ValueError(f"Style found ({style}) is not a valid style. Must be one of {valid_styles}.")
 
         if style == "hovered":
-            # Point
             if isinstance(item, DraggablePoint):
                 self.point_hovered_item = item
                 point = self.point_hovered_item
@@ -677,31 +677,27 @@ class AirfoilCanvas(pg.PlotWidget):
                     self.addItem(self.point_text_item)
                     self.point_text_item.setPos(point.point.x().value(), point.point.y().value())
                 item.setScatterStyle(mode="hovered")
-            # Curve
             elif isinstance(item, HoverableCurve):
                 self.curve_hovered_item = item
-                item.setCurveStyle("hovered")
+                item.setItemStyle("hovered")
             elif isinstance(item, ConstraintItem):
                 self.constraint_hovered_item = item
                 item.setStyle(mode="hovered")
 
         elif style == "default":
-            # Point
             if isinstance(item, DraggablePoint):
                 self.point_hovered_item = None
                 self.removeItem(self.point_text_item)
                 self.point_text_item = None
                 item.setScatterStyle(mode="default")
-            # Curve
             elif isinstance(item, HoverableCurve):
                 self.curve_hovered_item = None
-                item.setCurveStyle("default")
+                item.setItemStyle("default")
             elif isinstance(item, ConstraintItem):
                 self.constraint_hovered_item = None
                 item.setStyle(theme=self.gui_obj.themes[self.gui_obj.current_theme])
 
         elif style == "selected":
-            # Point
             if isinstance(item, DraggablePoint):
                 self.point_hovered_item = None
                 self.removeItem(self.point_text_item)
@@ -710,10 +706,9 @@ class AirfoilCanvas(pg.PlotWidget):
             elif isinstance(item, ConstraintItem):
                 self.constraint_hovered_item = None
                 item.setStyle(mode="selected")
-            # Curve
-            # elif isinstance(item, HoverableCurve):
-            #     self.curve_hovered_item = None
-            #     item.setCurveStyle("default")
+            elif isinstance(item, HoverableCurve):
+                self.curve_hovered_item = None
+                item.setItemStyle("selected")
 
     def pointHovered(self, scatter_item, spot, ev, point_item):
         if point_item.dragPoint is not None:
@@ -722,6 +717,9 @@ class AirfoilCanvas(pg.PlotWidget):
 
     def pointLeaveHovered(self, scatter_item, spot, ev, point_item):
         self.geo_col.hover_leave_obj(point_item.point)
+
+    def curveClicked(self, item):
+        self.geo_col.select_object(item.parametric_curve)
 
     def curveHovered(self, item):
         self.geo_col.hover_enter_obj(item.parametric_curve)
