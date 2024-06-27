@@ -940,8 +940,9 @@ class GeometryCollection(DualRep):
         geo_col = cls(gui_obj=gui_obj)
         geo_col.canvas = canvas
         geo_col.tree = tree
-        for name, ref_dict in d["reference"].items():
-            geo_col.add_reference_polyline(**ref_dict, name=name, assign_unique_name=False)
+        if "reference" in d:
+            for name, ref_dict in d["reference"].items():
+                geo_col.add_reference_polyline(**ref_dict, name=name, assign_unique_name=False)
         for name, point_dict in d["points"].items():
             geo_col.add_point(**point_dict, name=name, assign_unique_name=False)
         for name, desvar_dict in d["desvar"].items():
