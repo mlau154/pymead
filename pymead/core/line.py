@@ -279,5 +279,9 @@ class ReferencePolyline(PymeadObj):
         name = "RefPoly-1" if name is None else name
         self.set_name(name)
 
+    def update(self):
+        if self.canvas_item is not None:
+            self.canvas_item.setData(self.points[:, 0], self.points[:, 1])
+
     def get_dict_rep(self) -> dict:
         return {"points": self.points.tolist(), "color": self.color, "lw": self.lw}

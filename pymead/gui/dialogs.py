@@ -3450,9 +3450,9 @@ class GeneralSettingsDialogWidget(PymeadDialogWidget2):
     def initializeWidgets(self, *args, **kwargs):
         self.widget_dict = {
             "length_unit": PymeadLabeledComboBox(label="Length Unit", items=["m", "mm", "in", "cm"],
-                                                 current_item=UNITS.current_length_unit()),
+                                                 current_item=self.geo_col.units.current_length_unit()),
             "angle_unit": PymeadLabeledComboBox(label="Angle Unit", items=["rad", "deg"],
-                                                current_item=UNITS.current_angle_unit())
+                                                current_item=self.geo_col.units.current_angle_unit())
         }
 
     def establishWidgetConnections(self):
@@ -3460,13 +3460,13 @@ class GeneralSettingsDialogWidget(PymeadDialogWidget2):
         self.widget_dict["angle_unit"].sigValueChanged.connect(self.onAngleUnitChanged)
 
     def onLengthUnitChanged(self, new_unit: str):
-        self.geo_col.switch_units("length", old_unit=UNITS.current_length_unit(), new_unit=new_unit)
+        self.geo_col.switch_units("length", old_unit=self.geo_col.units.current_length_unit(), new_unit=new_unit)
         q_settings.setValue("length_unit", new_unit)
-        if self.geo_col.gui_obj.field_plot_variable is not None:
+        if self.geo_col.gui_obj.cbar is not None:
             self.geo_col.gui_obj.plot_field(show_dialog=False)
 
     def onAngleUnitChanged(self, new_unit: str):
-        self.geo_col.switch_units("angle", old_unit=UNITS.current_angle_unit(), new_unit=new_unit)
+        self.geo_col.switch_units("angle", old_unit=self.geo_col.units.current_angle_unit(), new_unit=new_unit)
         q_settings.setValue("angle_unit", new_unit)
 
 

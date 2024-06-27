@@ -4,14 +4,13 @@ from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QFont
 from PyQt6.QtWidgets import QWidget, QGridLayout
 
-from pymead.core import UNITS
-
+from pymead.core.geometry_collection import GeometryCollection
 from pymead.utils.misc import get_setting
 
 
 class AnalysisGraph:
-    def __init__(self, theme: dict, pen=None, size: tuple = (1000, 300), background_color: str = 'w',
-                 grid: bool = False):
+    def __init__(self, theme: dict, pen=None, size: tuple = (1000, 300),
+                 background_color: str = 'w', grid: bool = False):
         pg.setConfigOptions(antialias=True)
 
         if pen is None:
@@ -31,7 +30,7 @@ class AnalysisGraph:
     def set_formatting(self, theme: dict):
         self.w.setBackground(theme["graph-background-color"])
         label_font = f"{get_setting('axis-label-point-size')}pt {get_setting('axis-label-font-family')}"
-        self.v.setLabel(axis="bottom", text=f"x [{UNITS.current_length_unit()}]", font=label_font,
+        self.v.setLabel(axis="bottom", text=f"x/c", font=label_font,
                            color=theme["main-color"])
         self.v.setLabel(axis="left", text=f"Pressure Coefficient", font=label_font, color=theme["main-color"])
         tick_font = QFont(get_setting("axis-tick-font-family"), get_setting("axis-tick-point-size"))

@@ -7,7 +7,7 @@ import typing
 from copy import copy
 
 from pymead.core.param_graph import ParamGraph
-from pymead.core import UNITS
+from pymead.core.units import Units
 from pymead.core.airfoil import Airfoil
 from pymead.core.bezier import Bezier
 from pymead.core.constraints import *
@@ -52,6 +52,7 @@ class GeometryCollection(DualRep):
         self.selected_objects = {k: [] for k in self._container.keys()}
         self.selected_airfoils = []
         self.single_step = 0.01
+        self.units = Units()
 
     def container(self):
         """
@@ -321,18 +322,22 @@ class GeometryCollection(DualRep):
         if self.canvas is not None:
             self.canvas.setItemStyle(pymead_obj.canvas_item, "default")
 
-    def add_pymead_obj_by_ref(self, pymead_obj: PymeadObj, assign_unique_name: bool = True):
+    def add_pymead_obj_by_ref(self, pymead_obj: PymeadObj, assign_unique_name: bool = True) -> PymeadObj:
         """
         This method adds a pymead object by passing it directly to the geometry collection. If the
         object is already associated with a geometry collection, a ``ValueError`` is raised.
 
         Parameters
-        ==========
+        ----------
         pymead_obj: PymeadObj
             The pymead object to add to the collection
+        assign_unique_name: bool
+            Whether to assign a unique name to the pymead object (by appending ``"-1"`` to the end of the name
+            of the object if there are no objects with the same name, ``"-2"`` if there is one object with the same
+            name, etc.). Default: ``True``
 
         Returns
-        =======
+        -------
         PymeadObj
             The modified pymead object
         """
@@ -372,6 +377,12 @@ class GeometryCollection(DualRep):
                 pymead_obj.param_graph.param_list.append(pymead_obj)
             pymead_obj.update_equation(pymead_obj.equation_str)
             pymead_obj.set_enabled(pymead_obj.enabled())
+
+        if isinstance(pymead_obj, LengthParam):
+            pymead_obj.set_unit(unit=self.units.current_length_unit(), old_unit=self.units.current_length_unit())
+
+        if isinstance(pymead_obj, AngleParam):
+            pymead_obj.set_unit(unit=self.units.current_angle_unit(), old_unit=self.units.current_angle_unit())
 
         return pymead_obj
 
@@ -533,6 +544,8 @@ class GeometryCollection(DualRep):
         point = Point(x=x, y=y, name=name)
         point.x().geo_col = self
         point.y().geo_col = self
+        point.x().set_unit(unit=self.units.current_length_unit(), old_unit=self.units.current_length_unit())
+        point.y().set_unit(unit=self.units.current_length_unit(), old_unit=self.units.current_length_unit())
         self.add_pymead_obj_by_ref(point, assign_unique_name=assign_unique_name)
 
         return point
@@ -917,14 +930,13 @@ class GeometryCollection(DualRep):
         dict_rep["metadata"] = self.get_metadata()
         return dict_rep
 
-    @staticmethod
-    def get_metadata():
+    def get_metadata(self):
         return {
             "pymead_version": __version__,
             "save_datetime": str(datetime.datetime.now()),
-            "length_unit": UNITS.current_length_unit(),
-            "angle_unit": UNITS.current_angle_unit(),
-            "area_unit": UNITS.current_area_unit()
+            "length_unit": self.units.current_length_unit(),
+            "angle_unit":  self.units.current_angle_unit(),
+            "area_unit": self.units.current_area_unit()
         }
 
     @classmethod
@@ -932,6 +944,9 @@ class GeometryCollection(DualRep):
         geo_col = cls(gui_obj=gui_obj)
         geo_col.canvas = canvas
         geo_col.tree = tree
+        geo_col.units.set_current_length_unit(d["metadata"]["length_unit"])
+        geo_col.units.set_current_angle_unit(d["metadata"]["angle_unit"])
+        geo_col.units.set_current_area_unit(d["metadata"]["area_unit"])
         if "reference" in d:
             for name, ref_dict in d["reference"].items():
                 geo_col.add_reference_polyline(**ref_dict, name=name, assign_unique_name=False)
@@ -1025,9 +1040,9 @@ class GeometryCollection(DualRep):
             return
 
         if unit_type == "length":
-            UNITS.set_current_length_unit(new_unit)
+            self.units.set_current_length_unit(new_unit)
         elif unit_type == "angle":
-            UNITS.set_current_angle_unit(new_unit)
+            self.units.set_current_angle_unit(new_unit)
 
         def switch_unit_for_param(p: Param):
             if isinstance(p, LengthParam) and unit_type == "length":
@@ -1036,13 +1051,33 @@ class GeometryCollection(DualRep):
             elif isinstance(p, AngleParam) and unit_type == "angle":
                 p.set_unit(new_unit, old_unit)
 
-        def switch_unit_for_point(p: Point):
+        def switch_unit_for_point(p: Point, force: bool = False):
             if unit_type != "length":
                 return
 
             new_x = p.x().set_unit(new_unit, old_unit, modify_value=False)
             new_y = p.y().set_unit(new_unit, old_unit, modify_value=False)
-            p.request_move(new_x, new_y)
+
+            p.request_move(new_x, new_y, force=force)
+
+        def switch_unit_for_polyline(p: PolyLine):
+            if unit_type != "length":
+                return
+
+            p.coords = self.units.convert_length_to_base(p.coords, old_unit)
+            p.coords = self.units.convert_length_from_base(p.coords, new_unit)
+            p.update()
+
+            for pt in p.point_sequence().points():
+                switch_unit_for_point(pt, force=True)
+
+        def switch_unit_for_ref_polyline(p: ReferencePolyline):
+            if unit_type != "length":
+                return
+
+            p.points = self.units.convert_length_to_base(p.points, old_unit)
+            p.points = self.units.convert_length_from_base(p.points, new_unit)
+            p.update()
 
         for param in self.container()["params"].values():
             if param.point is not None:
@@ -1057,11 +1092,17 @@ class GeometryCollection(DualRep):
         for point in self.container()["points"].values():
             switch_unit_for_point(point)
 
+        for poly in self.container()["polylines"].values():
+            switch_unit_for_polyline(poly)
+
+        for ref_poly in self.container()["reference"].values():
+            switch_unit_for_ref_polyline(ref_poly)
+
         if unit_type == "length" and self.canvas is not None:
             x_data_range, y_data_range = self.canvas.getPointRange()
             self.canvas.plot.getViewBox().setRange(xRange=x_data_range, yRange=y_data_range)
-            self.canvas.plot.setLabel(axis="bottom", text=f"x [{UNITS.current_length_unit()}]")
-            self.canvas.plot.setLabel(axis="left", text=f"y [{UNITS.current_length_unit()}]")
+            self.canvas.plot.setLabel(axis="bottom", text=f"x [{self.units.current_length_unit()}]")
+            self.canvas.plot.setLabel(axis="left", text=f"y [{self.units.current_length_unit()}]")
 
     def write_to_iges(self, base_dir: str, file_name: str, translation: typing.List[float] = None,
                       scaling: typing.List[float] = None, rotation: typing.List[float] = None,

@@ -9,7 +9,6 @@ from PyQt6.QtCore import QEventLoop
 from PyQt6.QtWidgets import QApplication
 
 from pymead import q_settings, GUI_SETTINGS_DIR
-from pymead.core import UNITS
 from pymead.core.airfoil import Airfoil
 from pymead.core.geometry_collection import GeometryCollection
 from pymead.core.line import ReferencePolyline
@@ -82,9 +81,9 @@ class AirfoilCanvas(pg.PlotWidget):
 
     def setAxisLabels(self, theme: dict):
         label_font = f"{get_setting('axis-label-point-size')}pt {get_setting('axis-label-font-family')}"
-        self.plot.setLabel(axis="bottom", text=f"x [{UNITS.current_length_unit()}]", font=label_font,
+        self.plot.setLabel(axis="bottom", text=f"x [{self.geo_col.units.current_length_unit()}]", font=label_font,
                            color=theme["main-color"])
-        self.plot.setLabel(axis="left", text=f"y [{UNITS.current_length_unit()}]", font=label_font,
+        self.plot.setLabel(axis="left", text=f"y [{self.geo_col.units.current_length_unit()}]", font=label_font,
                            color=theme["main-color"])
         tick_font = QFont(get_setting("axis-tick-font-family"), get_setting("axis-tick-point-size"))
         self.plot.getAxis("bottom").setTickFont(tick_font)

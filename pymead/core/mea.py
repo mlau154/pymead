@@ -5,7 +5,6 @@ import typing
 import numpy as np
 from pymead.utils.read_write_files import save_data
 
-from pymead.core import UNITS
 from pymead.core.transformation import Transformation2D
 from pymead.core.airfoil import Airfoil
 from pymead.core.pymead_obj import PymeadObj
@@ -49,7 +48,7 @@ class MEA(PymeadObj):
             rotation_units="rad", order="t,s,r"
         )
         transformation = Transformation2D(**transformation_kwargs)
-        transformation_kwargs["length_unit"] = UNITS.current_length_unit()
+        transformation_kwargs["length_unit"] = self.geo_col.units.current_length_unit()
 
         return [transformation.transform(coords) for coords in coords_list], transformation_kwargs
 

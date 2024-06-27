@@ -33,7 +33,6 @@ from pymead.analysis.read_aero_data import flow_var_idx
 from pymead.analysis.read_aero_data import read_grid_stats_from_mses, read_field_from_mses, \
     read_streamline_grid_from_mses
 from pymead.analysis.single_element_inviscid import single_element_inviscid
-from pymead.core import UNITS
 from pymead.core.geometry_collection import GeometryCollection
 from pymead.core.mea import MEA
 from pymead.gui.airfoil_canvas import AirfoilCanvas
@@ -89,8 +88,6 @@ class GUI(FramelessMainWindow):
         #     pyi_splash.update_text("Initializing constants...")
         # except:
         #     pass
-        UNITS.set_current_length_unit(get_setting("length_unit"))
-        UNITS.set_current_angle_unit(get_setting("angle_unit"))
         super().__init__(parent=parent)
         self.showHideState = None
         # self.setWindowFlags(self.windowFlags() | Qt.WindowType.FramelessWindowHint)
@@ -213,6 +210,9 @@ class GUI(FramelessMainWindow):
         self.text_area = ConsoleTextArea(self)
 
         self.geo_col = GeometryCollection(gui_obj=self)
+        self.geo_col.units.set_current_length_unit(get_setting("length_unit"))
+        self.geo_col.units.set_current_angle_unit(get_setting("angle_unit"))
+        self.geo_col.units.set_current_area_unit(get_setting("area_unit"))
 
         self.airfoil_canvas = AirfoilCanvas(self, geo_col=self.geo_col, gui_obj=self)
         self.airfoil_canvas.sigStatusBarUpdate.connect(self.setStatusBarText)
@@ -956,11 +956,11 @@ class GUI(FramelessMainWindow):
         try:
             transformation = load_data(transformation_file)
             x_grid = [x_grid_section / transformation["sx"][0] /
-                      UNITS.convert_length_from_base(1, transformation["length_unit"]) *
-                      UNITS.convert_length_from_base(1, UNITS.current_length_unit()) for x_grid_section in x_grid]
+                      self.geo_col.units.convert_length_from_base(1, transformation["length_unit"]) *
+                      self.geo_col.units.convert_length_from_base(1, self.geo_col.units.current_length_unit()) for x_grid_section in x_grid]
             y_grid = [y_grid_section / transformation["sy"][0] /
-                      UNITS.convert_length_from_base(1, transformation["length_unit"]) *
-                      UNITS.convert_length_from_base(1, UNITS.current_length_unit()) for y_grid_section in y_grid]
+                      self.geo_col.units.convert_length_from_base(1, transformation["length_unit"]) *
+                      self.geo_col.units.convert_length_from_base(1, self.geo_col.units.current_length_unit()) for y_grid_section in y_grid]
         except OSError:
             pass
         flow_var = field[flow_var_idx[inputs['flow_variable']]]
@@ -1043,13 +1043,6 @@ class GUI(FramelessMainWindow):
         self.parameter_tree.clear()
         self.parameter_tree.addContainers()
 
-        self.geo_col.switch_units("angle", old_unit=UNITS.current_angle_unit(),
-                                  new_unit=dict_rep["metadata"]["angle_unit"]
-                                  if "angle_unit" in dict_rep["metadata"] else "rad")
-        self.geo_col.switch_units("length", old_unit=UNITS.current_length_unit(),
-                                  new_unit=dict_rep["metadata"]["length_unit"]
-                                  if "length_unit" in dict_rep["metadata"] else "m")
-
         self.geo_col = GeometryCollection.set_from_dict_rep(dict_rep, canvas=self.airfoil_canvas,
                                                             tree=self.parameter_tree, gui_obj=self)
         self.permanent_widget.geo_col = self.geo_col
@@ -1070,13 +1063,6 @@ class GUI(FramelessMainWindow):
             geo_col_dict = load_data(file_name)
         else:
             geo_col_dict = GeometryCollection().get_dict_rep()
-
-        self.geo_col.switch_units("angle", old_unit=UNITS.current_angle_unit(),
-                                  new_unit=geo_col_dict["metadata"]["angle_unit"]
-                                  if "angle_unit" in geo_col_dict["metadata"] else "rad")
-        self.geo_col.switch_units("length", old_unit=UNITS.current_length_unit(),
-                                  new_unit=geo_col_dict["metadata"]["length_unit"]
-                                  if "length_unit" in geo_col_dict["metadata"] else "m")
 
         self.geo_col = GeometryCollection.set_from_dict_rep(geo_col_dict, canvas=self.airfoil_canvas,
                                                             tree=self.parameter_tree, gui_obj=self)

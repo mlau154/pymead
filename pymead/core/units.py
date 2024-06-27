@@ -21,53 +21,53 @@ class Units:
     def set_current_length_unit(self, unit: str):
         self._LENGTH_UNIT = unit
 
-    def convert_length_to_base(self, value: float, unit: str):
+    def convert_length_to_base(self, value, unit: str):
         if unit == self._BASE_LENGTH_UNIT:
             return value
         return value / self._LENGTH_CONVERSIONS[unit]
 
-    def convert_length_from_base(self, value: float, unit: str):
+    def convert_length_from_base(self, value, unit: str):
         if unit == self._BASE_LENGTH_UNIT:
             return value
         return value * self._LENGTH_CONVERSIONS[unit]
 
-    def current_area_unit(self):
+    def current_area_unit(self) -> str:
         return self._AREA_UNIT
 
     def set_current_area_unit(self, unit: str):
         self._AREA_UNIT = unit
 
-    def convert_area_to_base(self, value: float, unit: str):
+    def convert_area_to_base(self, value, unit: str):
         if unit == self._BASE_AREA_UNIT:
             return value
         return value / self._AREA_CONVERSIONS[unit]
 
-    def convert_area_from_base(self, value: float, unit: str):
+    def convert_area_from_base(self, value, unit: str):
         if unit == self._BASE_AREA_UNIT:
             return value
         return value * self._AREA_CONVERSIONS[unit]
 
-    def current_angle_unit(self):
+    def current_angle_unit(self) -> str:
         return self._ANGLE_UNIT
 
     def set_current_angle_unit(self, unit: str):
         self._ANGLE_UNIT = unit
 
-    def convert_angle_to_base(self, value: float, unit: str):
+    def convert_angle_to_base(self, value, unit: str):
         if unit == self._BASE_ANGLE_UNIT:
             return value
         return value / self._ANGLE_CONVERSIONS[unit]
 
-    def convert_angle_from_base(self, value: float, unit: str):
+    def convert_angle_from_base(self, value, unit: str):
         if unit == self._BASE_ANGLE_UNIT:
             return value
         return value * self._ANGLE_CONVERSIONS[unit]
 
-    def pi(self):
+    def pi(self) -> float:
         return self.convert_angle_from_base(np.pi, self.current_angle_unit())
 
-    def sin(self, angle: float):
+    def sin(self, angle: float) -> float:
         return np.sin(self.convert_angle_to_base(angle, self.current_angle_unit()))
 
-    def cos(self, angle: float):
+    def cos(self, angle: float) -> float:
         return np.cos(self.convert_angle_to_base(angle, self.current_angle_unit()))

@@ -1,7 +1,6 @@
 import networkx
 import numpy as np
 
-from pymead.core import UNITS
 from pymead.core.pymead_obj import PymeadObj
 
 
@@ -367,7 +366,6 @@ class LengthParam(Param):
                  setting_from_geo_col: bool = False, point=None, root=None, rotation_handle=None, enabled: bool = True,
                  equation_str: str = None):
         self._unit = None
-        self.set_unit(UNITS.current_length_unit())
         name = "Length-1" if name is None else name
         super().__init__(value=value, name=name, lower=lower, upper=upper, sub_container=sub_container,
                          setting_from_geo_col=setting_from_geo_col,
@@ -377,11 +375,31 @@ class LengthParam(Param):
     def unit(self):
         return self._unit
 
-    def set_unit(self, unit: str or None = None, old_unit: str = None, modify_value: bool = True):
+    def set_unit(self, unit: str or None = None, old_unit: str = None, modify_value: bool = True) -> float or None:
+        """
+        This method sets the length unit to be used, called the first time when adding a parameter
+        via ``GeometryCollection.add_pymead_obj_by_ref``.
+
+        Parameters
+        ----------
+        unit: str or None
+            The new unit to switch to. If ``None``, the current length unit will be used. Default: ``None``
+        old_unit: str or None
+            The old unit to switch from. If ``None``, no changes will be made to the bounds or value of the param.
+            Default: ``None``
+        modify_value: bool
+            Whether to scale the parameter value based on the conversion to the new unit. Default: ``True``
+
+        Returns
+        -------
+        float or None
+            If ``old_unit==None``, ``None`` will be returned. Otherwise, the value of the parameter is returned
+
+        """
         if unit is not None:
             self._unit = unit
         else:
-            self._unit = UNITS.current_length_unit()
+            self._unit = self.geo_col.units.current_length_unit()
 
         if old_unit is None:
             return
@@ -390,14 +408,14 @@ class LengthParam(Param):
         upper = self.upper()
         value = self.value()
         if lower is not None:
-            base_lower = UNITS.convert_length_to_base(lower, old_unit)
-            self.set_lower(UNITS.convert_length_from_base(base_lower, unit), force=True)
+            base_lower = self.geo_col.units.convert_length_to_base(lower, old_unit)
+            self.set_lower(self.geo_col.units.convert_length_from_base(base_lower, unit), force=True)
         if upper is not None:
-            base_upper = UNITS.convert_length_to_base(upper, old_unit)
-            self.set_upper(UNITS.convert_length_from_base(base_upper, unit), force=True)
+            base_upper = self.geo_col.units.convert_length_to_base(upper, old_unit)
+            self.set_upper(self.geo_col.units.convert_length_from_base(base_upper, unit), force=True)
 
-        base_value = UNITS.convert_length_to_base(value, old_unit)
-        new_value = UNITS.convert_length_from_base(base_value, unit)
+        base_value = self.geo_col.units.convert_length_to_base(value, old_unit)
+        new_value = self.geo_col.units.convert_length_from_base(base_value, unit)
         if modify_value:
             self.set_value(new_value)
 
@@ -433,7 +451,6 @@ class AngleParam(Param):
                  setting_from_geo_col: bool = False, point=None, root=None, rotation_handle=None,
                  enabled: bool = True, equation_str: str = None):
         self._unit = None
-        self.set_unit(UNITS.current_angle_unit())
         name = "Angle-1" if name is None else name
         super().__init__(value=value, name=name, lower=lower, upper=upper, sub_container=sub_container,
                          setting_from_geo_col=setting_from_geo_col, point=point, root=root,
@@ -446,7 +463,7 @@ class AngleParam(Param):
         if unit is not None:
             self._unit = unit
         else:
-            self._unit = UNITS.current_angle_unit()
+            self._unit = self.geo_col.units.current_angle_unit()
 
         if old_unit is None:
             return
@@ -455,13 +472,13 @@ class AngleParam(Param):
         upper = self.upper()
         value = self.value()
         if lower is not None:
-            base_lower = UNITS.convert_angle_to_base(lower, old_unit)
-            self.set_lower(UNITS.convert_angle_from_base(base_lower, unit), force=True)
+            base_lower = self.geo_col.units.convert_angle_to_base(lower, old_unit)
+            self.set_lower(self.geo_col.units.convert_angle_from_base(base_lower, unit), force=True)
         if upper is not None:
-            base_upper = UNITS.convert_angle_to_base(upper, old_unit)
-            self.set_upper(UNITS.convert_angle_from_base(base_upper, unit), force=True)
-        base_value = UNITS.convert_angle_to_base(value, old_unit)
-        self.set_value(UNITS.convert_angle_from_base(base_value, unit))
+            base_upper = self.geo_col.units.convert_angle_to_base(upper, old_unit)
+            self.set_upper(self.geo_col.units.convert_angle_from_base(base_upper, unit), force=True)
+        base_value = self.geo_col.units.convert_angle_to_base(value, old_unit)
+        self.set_value(self.geo_col.units.convert_angle_from_base(base_value, unit))
 
         if self.tree_item is not None:
             self.tree_item.treeWidget().itemWidget(self.tree_item, 1).setSuffix(f" {unit}")
@@ -475,14 +492,14 @@ class AngleParam(Param):
         float
             Angle in radians
         """
-        return UNITS.convert_angle_to_base(self._value, self.unit())
+        return self.geo_col.units.convert_angle_to_base(self._value, self.unit())
 
     def set_value(self, value: float, bounds_normalized: bool = False, force: bool = False,
                   param_graph_update: bool = False):
 
-        new_value = UNITS.convert_angle_to_base(value, self.unit())
+        new_value = self.geo_col.units.convert_angle_to_base(value, self.unit())
         zero_to_2pi_value = new_value % (2 * np.pi)
-        new_value = UNITS.convert_angle_from_base(zero_to_2pi_value, self.unit())
+        new_value = self.geo_col.units.convert_angle_from_base(zero_to_2pi_value, self.unit())
 
         return super().set_value(new_value, bounds_normalized=bounds_normalized, force=force,
                                  param_graph_update=param_graph_update)
