@@ -1,9 +1,11 @@
+
 from pymead.core.geometry_collection import GeometryCollection
 from pymead.core.point import PointSequence
 from pymead.tests.gui_tests.utils import app
 from pymead.utils.misc import convert_rgba_to_hex, get_setting
 
 import matplotlib.colors
+
 
 
 def test_select_object(app):
@@ -52,4 +54,55 @@ def test_select_deselect_object_line_segment(app):
     assert point_scatter_color_hex_6_digit_d == point_scatter_color_setting_d
     app.geo_col.clear_container()
 
+
+def test_clear_selected_objects_points(app):
+
+    point_one = app.geo_col.add_point(0.2, 0.6)
+    point_two = app.geo_col.add_point(0.3, 0.1)
+    point_three = app.geo_col.add_point(0.9, 0.1)
+
+    app.geo_col.select_object(point_one)
+    app.geo_col.select_object(point_two)
+
+    assert point_one.tree_item.isSelected()
+    assert not point_one.tree_item.hoverable
+    assert point_two.tree_item.isSelected()
+    assert not point_two.tree_item.hoverable
+    assert not point_three.tree_item.isSelected()
+    assert point_three.tree_item.hoverable
+
+    point_scatter_color_hex_6_digit_one = convert_rgba_to_hex(
+        point_one.canvas_item.scatter.opts["brush"].color().getRgb())[:-2]
+    point_scatter_color_hex_6_digit_two = convert_rgba_to_hex(
+        point_two.canvas_item.scatter.opts["brush"].color().getRgb())[:-2]
+    point_scatter_color_hex_6_digit_three = convert_rgba_to_hex(
+        point_three.canvas_item.scatter.opts["brush"].color().getRgb())[:-2]
+    point_scatter_color_setting_select = matplotlib.colors.cnames[get_setting(f"scatter_selected_brush_color")].lower()
+    point_scatter_color_setting_default = matplotlib.colors.cnames[get_setting(f"scatter_default_brush_color")].lower()
+
+    assert point_scatter_color_hex_6_digit_one == point_scatter_color_setting_select
+    assert point_scatter_color_hex_6_digit_two == point_scatter_color_setting_select
+    assert point_scatter_color_hex_6_digit_three == point_scatter_color_setting_default
+
+    app.geo_col.clear_selected_objects()
+
+    assert not point_one.tree_item.isSelected()
+    assert point_one.tree_item.hoverable
+    assert not point_two.tree_item.isSelected()
+    assert point_two.tree_item.hoverable
+    assert not point_three.tree_item.isSelected()
+    assert point_three.tree_item.hoverable
+
+    point_scatter_color_hex_6_digit_one = convert_rgba_to_hex(
+        point_one.canvas_item.scatter.opts["brush"].color().getRgb())[:-2]
+    point_scatter_color_hex_6_digit_two = convert_rgba_to_hex(
+        point_two.canvas_item.scatter.opts["brush"].color().getRgb())[:-2]
+    point_scatter_color_hex_6_digit_three = convert_rgba_to_hex(
+        point_three.canvas_item.scatter.opts["brush"].color().getRgb())[:-2]
+
+    assert point_scatter_color_hex_6_digit_one == point_scatter_color_setting_default
+    assert point_scatter_color_hex_6_digit_two == point_scatter_color_setting_default
+    assert point_scatter_color_hex_6_digit_three == point_scatter_color_setting_default
+
+    app.geo_col.clear_container()
 
