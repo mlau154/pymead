@@ -12,7 +12,7 @@ class Param(PymeadObj):
 
     def __init__(self, value: float or int, name: str, lower: float or None = None, upper: float or None = None,
                  sub_container: str = "params", setting_from_geo_col: bool = False, point=None, root=None,
-                 rotation_handle=None, enabled: bool = True, equation_str: str = None):
+                 rotation_handle=None, enabled: bool = True, equation_str: str = None, geo_col=None):
         """
         Parameters
         ==========
@@ -28,7 +28,7 @@ class Param(PymeadObj):
         upper: float
             Upper bound for the parameter
         """
-        super().__init__(sub_container=sub_container)
+        super().__init__(sub_container=sub_container, geo_col=geo_col)
 
         self.dtype = type(value).__name__
         self._value = None
@@ -364,13 +364,13 @@ class LengthParam(Param):
     def __init__(self, value: float, name: str, lower: float or None = None, upper: float or None = None,
                  sub_container: str = "params",
                  setting_from_geo_col: bool = False, point=None, root=None, rotation_handle=None, enabled: bool = True,
-                 equation_str: str = None):
+                 equation_str: str = None, geo_col=None):
         self._unit = None
         name = "Length-1" if name is None else name
         super().__init__(value=value, name=name, lower=lower, upper=upper, sub_container=sub_container,
                          setting_from_geo_col=setting_from_geo_col,
                          point=point, root=root, rotation_handle=rotation_handle, enabled=enabled,
-                         equation_str=equation_str)
+                         equation_str=equation_str, geo_col=geo_col)
 
     def unit(self):
         return self._unit
@@ -449,12 +449,13 @@ class AngleParam(Param):
     def __init__(self, value: float, name: str, lower: float or None = None, upper: float or None = None,
                  sub_container: str = "params",
                  setting_from_geo_col: bool = False, point=None, root=None, rotation_handle=None,
-                 enabled: bool = True, equation_str: str = None):
+                 enabled: bool = True, equation_str: str = None, geo_col=None):
         self._unit = None
         name = "Angle-1" if name is None else name
         super().__init__(value=value, name=name, lower=lower, upper=upper, sub_container=sub_container,
                          setting_from_geo_col=setting_from_geo_col, point=point, root=root,
-                         rotation_handle=rotation_handle, enabled=enabled, equation_str=equation_str)
+                         rotation_handle=rotation_handle, enabled=enabled, equation_str=equation_str,
+                         geo_col=geo_col)
 
     def unit(self):
         return self._unit
@@ -497,6 +498,8 @@ class AngleParam(Param):
     def set_value(self, value: float, bounds_normalized: bool = False, force: bool = False,
                   param_graph_update: bool = False):
 
+        if self.unit() is None:
+            self.set_unit()
         new_value = self.geo_col.units.convert_angle_to_base(value, self.unit())
         zero_to_2pi_value = new_value % (2 * np.pi)
         new_value = self.geo_col.units.convert_angle_from_base(zero_to_2pi_value, self.unit())

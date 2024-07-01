@@ -223,9 +223,9 @@ class GeometryCollection(DualRep):
         if unit_type is None:
             param = Param(**kwargs)
         elif unit_type == "length":
-            param = LengthParam(**kwargs)
+            param = LengthParam(**kwargs, geo_col=self)
         elif unit_type == "angle":
-            param = AngleParam(**kwargs)
+            param = AngleParam(**kwargs, geo_col=self)
         else:
             raise ValueError(f"unit_type must be None, 'length', or 'angle'. Found type: {type(unit_type)}")
 
@@ -344,11 +344,17 @@ class GeometryCollection(DualRep):
         if pymead_obj.geo_col is not None:
             if isinstance(pymead_obj, Param) and pymead_obj.point is not None:
                 pass
+            elif isinstance(pymead_obj, LengthParam) or isinstance(pymead_obj, AngleParam):
+                pass
+            elif isinstance(pymead_obj, GeoCon):
+                pass
+            elif isinstance(pymead_obj, MEA):
+                pass
             else:
                 raise ValueError("Can only add a pymead object by reference if it has not yet been added to a "
                                  "geometry collection")
-
-        pymead_obj.geo_col = self
+        else:
+            pymead_obj.geo_col = self
 
         self.add_to_subcontainer(pymead_obj, assign_unique_name=assign_unique_name)
 
@@ -881,11 +887,13 @@ class GeometryCollection(DualRep):
         return self.add_pymead_obj_by_ref(airfoil, assign_unique_name=assign_unique_name)
 
     def add_mea(self, airfoils: typing.List[Airfoil], name: str or None = None, assign_unique_name: bool = True):
-        mea = MEA(airfoils=airfoils, name=name)
+        mea = MEA(airfoils=airfoils, name=name, geo_col=self)
 
         return self.add_pymead_obj_by_ref(mea, assign_unique_name=assign_unique_name)
 
-    def add_constraint(self, constraint: GeoCon, assign_unique_name: bool = True, **constraint_kwargs):
+    def add_constraint(self, constraint_type: str, *constraint_args, assign_unique_name: bool = True,
+                       **constraint_kwargs):
+        constraint = getattr(sys.modules[__name__], constraint_type)(*constraint_args, geo_col=self, **constraint_kwargs)
         self.gcs.check_constraint_for_duplicates(constraint)
         self.add_pymead_obj_by_ref(constraint, assign_unique_name=assign_unique_name)
         if (constraint.param() is not None and constraint.param() not in self.container()["params"].values() and
@@ -1019,9 +1027,8 @@ class GeometryCollection(DualRep):
                 else:
                     pass
             constraint_type = geocon_dict.pop("constraint_type")
-            constraint = getattr(sys.modules[__name__], constraint_type)(**geocon_dict, name=name)
-            geo_col.add_constraint(constraint=constraint, assign_unique_name=False, compile=False,
-                                   solve_and_update=False)
+            geocon_dict["name"] = name
+            constraint = geo_col.add_constraint(constraint_type, **geocon_dict, assign_unique_name=False)
             constraints_added.append(constraint)
         for name, airfoil_dict in d["airfoils"].items():
             geo_col.add_airfoil(leading_edge=geo_col.container()["points"][airfoil_dict["leading_edge"]],

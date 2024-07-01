@@ -14,10 +14,10 @@ from pymead.plugins.IGES.iges_generator import IGESGenerator
 
 class MEA(PymeadObj):
 
-    def __init__(self, airfoils: typing.List[Airfoil], name: str or None = None):
+    def __init__(self, airfoils: typing.List[Airfoil], name: str or None = None, geo_col=None):
         self.airfoils = airfoils
         self.reference_airfoil = self.airfoils[0]
-        super().__init__(sub_container="mea")
+        super().__init__(sub_container="mea", geo_col=geo_col)
 
         # Name the MEA
         name = "MEA-1" if name is None else name

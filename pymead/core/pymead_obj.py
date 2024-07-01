@@ -33,7 +33,7 @@ class PymeadObj(ABC, DualRep):
     Base class for all objects in pymead.
     """
 
-    def __init__(self, sub_container: str):
+    def __init__(self, sub_container: str, geo_col=None):
         """
         Parameters
         ----------
@@ -42,7 +42,7 @@ class PymeadObj(ABC, DualRep):
         """
         self.sub_container = sub_container
         self._name = None
-        self.geo_col = None
+        self.geo_col = geo_col
         self.gcs = None
         self.tree_item = None
         self.canvas_item = None

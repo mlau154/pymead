@@ -396,6 +396,8 @@ class AirfoilTests(unittest.TestCase):
 class MEATests(unittest.TestCase):
 
     def test_blade_file_output(self):
+        geo_col = GeometryCollection()
+
         # Make the Bezier curve arrays
         b1_array = np.array([[0, 0], [0.0, 0.1], [0.3, 0.08], [0.7, 0.07], [1.0, 0.0]])
         b2_array = np.array([[0.0, -0.1], [0.3, -0.08], [0.7, -0.07]])
@@ -436,7 +438,7 @@ class MEATests(unittest.TestCase):
                      lower_surf_end=b5_points[-1])
 
         # Generate the MEA
-        mea = MEA(airfoils=[a1, a2, a3])
+        mea = geo_col.add_mea(airfoils=[a1, a2, a3])
 
         # Output the blade file
         blade_file_dir = temp_dir

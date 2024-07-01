@@ -16,11 +16,11 @@ class GeoCon(PymeadObj):
     default_name: str = ""
 
     def __init__(self, param: Param or None, child_nodes: list, kind: str,
-                 name: str or None = None, secondary_params: typing.List[Param] = None):
+                 name: str or None = None, secondary_params: typing.List[Param] = None, geo_col=None):
         self._param = None
         self.set_param(param)
         sub_container = "geocon"
-        super().__init__(sub_container=sub_container)
+        super().__init__(sub_container=sub_container, geo_col=geo_col)
         name = self.default_name if name is None else name
         self.set_name(name)
         if self.param() is not None:
@@ -62,12 +62,12 @@ class DistanceConstraint(GeoCon):
 
     default_name = "DistCon-1"
 
-    def __init__(self, p1: Point, p2: Point, value: float or LengthParam = None, name: str = None):
+    def __init__(self, p1: Point, p2: Point, value: float or LengthParam = None, name: str = None, geo_col=None):
         self.p1 = p1
         self.p2 = p2
         value = self.p1.measure_distance(self.p2) if value is None else value
-        param = value if isinstance(value, Param) else LengthParam(value=value, name="Length-1")
-        super().__init__(param=param, name=name, child_nodes=[self.p1, self.p2], kind="d")
+        param = value if isinstance(value, Param) else LengthParam(value=value, name="Length-1", geo_col=geo_col)
+        super().__init__(param=param, name=name, child_nodes=[self.p1, self.p2], kind="d", geo_col=geo_col)
 
     def __repr__(self):
         return f"{self.__class__.__name__} {self.name()}<v={self.param().value()}>"
@@ -86,7 +86,7 @@ class AntiParallel3Constraint(GeoCon):
     default_name = "AntiPar3Con-1"
 
     def __init__(self, p1: Point, p2: Point, p3: Point, name: str = None, polyline: PolyLine = None,
-                 point_on_curve: Point = None):
+                 point_on_curve: Point = None, geo_col=None):
         self.p1 = p1
         self.polyline = polyline
         self.point_on_curve = point_on_curve
@@ -96,7 +96,7 @@ class AntiParallel3Constraint(GeoCon):
         self.p3 = p3
         if polyline and polyline not in p3.curves and point_on_curve is p3:
             p3.curves.append(polyline)
-        super().__init__(param=None, name=name, child_nodes=[self.p1, self.p2, self.p3], kind="a3")
+        super().__init__(param=None, name=name, child_nodes=[self.p1, self.p2, self.p3], kind="a3", geo_col=geo_col)
 
     def __repr__(self):
         return f"{self.__class__.__name__} {self.name()}"
@@ -118,12 +118,13 @@ class SymmetryConstraint(GeoCon):
 
     default_name = "SymCon-1"
 
-    def __init__(self, p1: Point, p2: Point, p3: Point, p4: Point, name: str = None):
+    def __init__(self, p1: Point, p2: Point, p3: Point, p4: Point, name: str = None, geo_col=None):
         self.p1 = p1  # Line start point
         self.p2 = p2  # Line end point
         self.p3 = p3  # Tool point
         self.p4 = p4  # Target point
-        super().__init__(param=None, name=name, child_nodes=[self.p1, self.p2, self.p3, self.p4], kind="a4|d")
+        super().__init__(param=None, name=name, child_nodes=[self.p1, self.p2, self.p3, self.p4], kind="a4|d",
+                         geo_col=geo_col)
 
     @staticmethod
     def check_if_point_is_symmetric_target(p: Point):
@@ -167,11 +168,11 @@ class Perp3Constraint(GeoCon):
 
     default_name = "Perp3Con-1"
 
-    def __init__(self, p1: Point, p2: Point, p3: Point, name: str = None):
+    def __init__(self, p1: Point, p2: Point, p3: Point, name: str = None, geo_col=None):
         self.p1 = p1
         self.p2 = p2
         self.p3 = p3
-        super().__init__(param=None, name=name, child_nodes=[self.p1, self.p2, self.p3], kind="a3")
+        super().__init__(param=None, name=name, child_nodes=[self.p1, self.p2, self.p3], kind="a3", geo_col=geo_col)
 
     def __repr__(self):
         return f"{self.__class__.__name__} {self.name()}"
@@ -191,7 +192,8 @@ class RelAngle3Constraint(GeoCon):
 
     default_name = "RelAng3Con-1"
 
-    def __init__(self, p1: Point, p2: Point, p3: Point, value: float or AngleParam = None, name: str = None):
+    def __init__(self, p1: Point, p2: Point, p3: Point, value: float or AngleParam = None, name: str = None,
+                 geo_col=None):
         self.p1 = p1
         self.p2 = p2
         self.p3 = p3
@@ -200,8 +202,8 @@ class RelAngle3Constraint(GeoCon):
             for point in [self.p1, self.p2, self.p3]:
                 args.extend([point.x().value(), point.y().value()])
             value = measure_rel_angle3(*args)
-        param = value if isinstance(value, Param) else AngleParam(value=value, name="Angle-1")
-        super().__init__(param=param, name=name, child_nodes=[self.p1, self.p2, self.p3], kind="a3")
+        param = value if isinstance(value, Param) else AngleParam(value=value, name="Angle-1", geo_col=geo_col)
+        super().__init__(param=param, name=name, child_nodes=[self.p1, self.p2, self.p3], kind="a3", geo_col=geo_col)
 
     def __repr__(self):
         return f"{self.__class__.__name__} {self.name()}<v={self.param().value()}>"
@@ -240,7 +242,7 @@ class ROCurvatureConstraint(GeoCon):
 
     default_name = "ROCCon-1"
 
-    def __init__(self, curve_joint: Point, value: float or LengthParam = None, name: str = None):
+    def __init__(self, curve_joint: Point, value: float or LengthParam = None, name: str = None, geo_col=None):
         if len(curve_joint.curves) != 2:
             raise ConstraintValidationError(f"There must be exactly two curves attached to the curve joint. Found "
                                             f"{len(curve_joint.curves)} curves")
@@ -300,7 +302,7 @@ class ROCurvatureConstraint(GeoCon):
             else:
                 R = data.R[-1]
 
-            param = LengthParam(value=R, name="ROC-1", enabled=False) if not isinstance(value, Param) else value
+            param = LengthParam(value=R, name="ROC-1", enabled=False, geo_col=geo_col) if not isinstance(value, Param) else value
         elif self.curve_type_2 == "PolyLine" or (self.curve_type_2 == "Bezier" and (
                 self.curve_2.t_start is not None or self.curve_2.t_end is not None)):
             data = self.curve_2.evaluate()
@@ -309,7 +311,7 @@ class ROCurvatureConstraint(GeoCon):
                 R = data.R[0]
             else:
                 R = data.R[-1]
-            param = LengthParam(value=R, name="ROC-1", enabled=False) if not isinstance(value, Param) else value
+            param = LengthParam(value=R, name="ROC-1", enabled=False, geo_col=geo_col) if not isinstance(value, Param) else value
         else:
             enabled = True
             if value is None:
@@ -323,11 +325,11 @@ class ROCurvatureConstraint(GeoCon):
                     enabled = False
                 else:
                     value = 0.5 * (curvature_data.R1 + curvature_data.R2)
-            param = value if isinstance(value, Param) else LengthParam(value=value, name="ROC-1")
+            param = value if isinstance(value, Param) else LengthParam(value=value, name="ROC-1", geo_col=geo_col)
             param.set_enabled(enabled)
 
         super().__init__(param=param, child_nodes=points, kind="d", name=name,
-                         secondary_params=secondary_params)
+                         secondary_params=secondary_params, geo_col=geo_col)
 
     @staticmethod
     def calculate_curvature_data(curve_joint):
