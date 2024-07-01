@@ -386,8 +386,7 @@ class AirfoilCanvas(pg.PlotWidget):
             self.sigStatusBarUpdate.emit("Choose exactly two points to define a distance constraint", 4000)
             return
 
-        constraint = DistanceConstraint(*self.geo_col.selected_objects["points"])
-        self.geo_col.add_constraint(constraint)
+        self.geo_col.add_constraint("DistanceConstraint", *self.geo_col.selected_objects["points"])
 
     @undoRedoAction
     @runSelectionEventLoop(drawing_object="RelAngle3Constraint", starting_message="Select any point other than "
@@ -399,8 +398,7 @@ class AirfoilCanvas(pg.PlotWidget):
             self.sigStatusBarUpdate.emit(msg, 4000)
             return
 
-        constraint = RelAngle3Constraint(*self.geo_col.selected_objects["points"])
-        self.geo_col.add_constraint(constraint)
+        self.geo_col.add_constraint("RelAngle3Constraint", *self.geo_col.selected_objects["points"])
 
     @undoRedoAction
     @runSelectionEventLoop(drawing_object="AntiParallel3Constraint", starting_message="Select any point other than "
@@ -416,29 +414,30 @@ class AirfoilCanvas(pg.PlotWidget):
             self.sigStatusBarUpdate.emit(msg, 4000)
             return
         if case == 0:
-            constraint = AntiParallel3Constraint(*self.geo_col.selected_objects["points"])
-        else:
-            data = self.geo_col.selected_objects["polylines"][0].evaluate()
-            # if (np.isclose(self.geo_col.selected_objects["points"][0].x().value(), data.xy[0, 0]) and
-            #     np.isclose(self.geo_col.selected_objects["points"][0].y().value(), data.xy[0, 1])):
-            if self.geo_col.selected_objects["points"][0].is_coincident(Point(*data.xy[0, :])):
-                point = self.geo_col.add_point(data.xy[1, 0], data.xy[1, 1])
-                point_is_first_arg = True
-            elif self.geo_col.selected_objects["points"][0].is_coincident(Point(*data.xy[-1, :])):
-                point = self.geo_col.add_point(data.xy[-2, 0], data.xy[-2, 1])
-                point_is_first_arg = True
-            elif self.geo_col.selected_objects["points"][1].is_coincident(Point(*data.xy[0, :])):
-                point = self.geo_col.add_point(data.xy[1, 0], data.xy[1, 1])
-                point_is_first_arg = False
-            else:
-                point = self.geo_col.add_point(data.xy[-2, 0], data.xy[-2, 1])
-                point_is_first_arg = False
+            self.geo_col.add_constraint("AntiParallel3Constraint", *self.geo_col.selected_objects["points"])
+            return
 
-            args = [point, *self.geo_col.selected_objects["points"]] if point_is_first_arg else \
-                [*self.geo_col.selected_objects["points"], point]
-            constraint = AntiParallel3Constraint(*args, polyline=self.geo_col.selected_objects["polylines"][0],
+        data = self.geo_col.selected_objects["polylines"][0].evaluate()
+        # if (np.isclose(self.geo_col.selected_objects["points"][0].x().value(), data.xy[0, 0]) and
+        #     np.isclose(self.geo_col.selected_objects["points"][0].y().value(), data.xy[0, 1])):
+        if self.geo_col.selected_objects["points"][0].is_coincident(Point(*data.xy[0, :])):
+            point = self.geo_col.add_point(data.xy[1, 0], data.xy[1, 1])
+            point_is_first_arg = True
+        elif self.geo_col.selected_objects["points"][0].is_coincident(Point(*data.xy[-1, :])):
+            point = self.geo_col.add_point(data.xy[-2, 0], data.xy[-2, 1])
+            point_is_first_arg = True
+        elif self.geo_col.selected_objects["points"][1].is_coincident(Point(*data.xy[0, :])):
+            point = self.geo_col.add_point(data.xy[1, 0], data.xy[1, 1])
+            point_is_first_arg = False
+        else:
+            point = self.geo_col.add_point(data.xy[-2, 0], data.xy[-2, 1])
+            point_is_first_arg = False
+
+        args = [point, *self.geo_col.selected_objects["points"]] if point_is_first_arg else \
+            [*self.geo_col.selected_objects["points"], point]
+        self.geo_col.add_constraint("AntiParallel3Constraint", *args,
+                                                 polyline=self.geo_col.selected_objects["polylines"][0],
                                                  point_on_curve=point)
-        self.geo_col.add_constraint(constraint)
 
     @undoRedoAction
     @runSelectionEventLoop(drawing_object="SymmetryConstraint", starting_message="Select the start point of the "
@@ -450,8 +449,7 @@ class AirfoilCanvas(pg.PlotWidget):
             self.sigStatusBarUpdate.emit(msg, 4000)
             return
 
-        constraint = SymmetryConstraint(*self.geo_col.selected_objects["points"])
-        self.geo_col.add_constraint(constraint)
+        self.geo_col.add_constraint("SymmetryConstraint", *self.geo_col.selected_objects["points"])
 
     @undoRedoAction
     @runSelectionEventLoop(drawing_object="Perp3Constraint", starting_message="Select the first point (not the vertex)")
@@ -460,8 +458,7 @@ class AirfoilCanvas(pg.PlotWidget):
             msg = f"Choose exactly three points (start, vertex, and end) for a Perp3Constraint"
             self.sigStatusBarUpdate.emit(msg, 4000)
             return
-        constraint = Perp3Constraint(*self.geo_col.selected_objects["points"])
-        self.geo_col.add_constraint(constraint)
+        self.geo_col.add_constraint("Perp3Constraint", *self.geo_col.selected_objects["points"])
 
     @undoRedoAction
     @runSelectionEventLoop(drawing_object="ROCurvatureConstraint", starting_message="Select the curve joint")
@@ -472,8 +469,7 @@ class AirfoilCanvas(pg.PlotWidget):
             self.sigStatusBarUpdate.emit(msg, 4000)
             return
 
-        constraint = ROCurvatureConstraint(*self.geo_col.selected_objects["points"])
-        self.geo_col.add_constraint(constraint)
+        self.geo_col.add_constraint("ROCurvatureConstraint", *self.geo_col.selected_objects["points"])
 
     @undoRedoAction
     @runSelectionEventLoop(drawing_object="BezierAddPoint",
