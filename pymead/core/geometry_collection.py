@@ -1048,6 +1048,7 @@ class GeometryCollection(DualRep):
 
         if unit_type == "length":
             self.units.set_current_length_unit(new_unit)
+            self.units.set_current_area_unit(new_unit + "2")
         elif unit_type == "angle":
             self.units.set_current_angle_unit(new_unit)
 
