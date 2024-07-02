@@ -8,6 +8,11 @@ class Param(PymeadObj):
     """
     Base-level parameter in ``pymead``. Sub-classed by ``DesVar`` (design variable). Provides operator overloading and
     getter/setter methods.
+
+    .. note::
+
+       Instances of this class should never be created directly. Instead, parameters can be created by
+       creating a ``GeometryCollection`` and calling its ``add_param`` method.
     """
 
     def __init__(self, value: float or int, name: str, lower: float or None = None, upper: float or None = None,
@@ -361,6 +366,15 @@ class Param(PymeadObj):
 
 
 class LengthParam(Param):
+    """
+    Length-type parameter in ``pymead``. Adds unit functionality and prevents negative values except in the case
+    of points.
+
+    .. note::
+
+       Instances of this class should never be created directly. Instead, parameters can be created by
+       creating a ``GeometryCollection`` and calling its ``add_param`` method with ``unit_type="length"``.
+    """
     def __init__(self, value: float, name: str, lower: float or None = None, upper: float or None = None,
                  sub_container: str = "params",
                  setting_from_geo_col: bool = False, point=None, root=None, rotation_handle=None, enabled: bool = True,
@@ -446,6 +460,14 @@ class LengthParam(Param):
 
 
 class AngleParam(Param):
+    r"""
+    Angle-type parameter in ``pymead``. Adds unit functionality and transforms values into the range :math:`[0, 2\pi)`.
+
+    .. note::
+
+       Instances of this class should never be created directly. Instead, parameters can be created by
+       creating a ``GeometryCollection`` and calling its ``add_param`` method with ``unit_type="angle"``.
+    """
     def __init__(self, value: float, name: str, lower: float or None = None, upper: float or None = None,
                  sub_container: str = "params",
                  setting_from_geo_col: bool = False, point=None, root=None, rotation_handle=None,
@@ -576,8 +598,7 @@ class DesVar(Param):
 
 class LengthDesVar(LengthParam):
     """
-    Design variable class for length values; subclasses the base-level Param. Adds lower and upper bound
-    default behavior.
+    Design variable class for length values. Adds lower and upper bound default behavior.
     """
     def __init__(self, value: float, name: str, lower: float or None = None, upper: float or None = None,
                  setting_from_geo_col: bool = False, point=None, root=None, rotation_handle=None,
