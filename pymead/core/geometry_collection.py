@@ -162,6 +162,10 @@ class GeometryCollection(DualRep):
         # Set the object's name to a unique name if necessary
         if assign_unique_name:
             name_list = self.get_name_list(sub_container=pymead_obj.sub_container)
+            if pymead_obj.sub_container == "params":
+                name_list.extend(self.get_name_list("desvar"))
+            elif pymead_obj.sub_container == "desvar":
+                name_list.extend(self.get_name_list("params"))
             unique_name = self.unique_namer(pymead_obj.name(), name_list)
             if isinstance(pymead_obj, Param) and unique_name.split("-")[1] == "1":
                 pass

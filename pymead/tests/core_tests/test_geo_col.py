@@ -73,6 +73,22 @@ class GeoColTests(unittest.TestCase):
         self.geo_col.remove_pymead_obj(dv2)
         self.assertNotIn("DV-2", desvar_container)
 
+    def test_add_promote_constraint(self):
+        geo_col = GeometryCollection()
+        p0 = geo_col.add_point(0.1, 0.5)
+        p1 = geo_col.add_point(0.4, 0.3)
+        p2 = geo_col.add_point(0.6, 0.2)
+        p3 = geo_col.add_point(-0.1, -0.3)
+        d1 = geo_col.add_constraint("DistanceConstraint", p0, p1)
+        geo_col.promote_param_to_desvar(d1.param())
+        geo_col.add_constraint("DistanceConstraint", p2, p3)
+
+        # Check for duplicate names
+        param_dv_names = list(geo_col.container()["params"].keys())
+        param_dv_names.extend(list(geo_col.container()["desvar"].keys()))
+        unique_param_dv_names = set(param_dv_names)
+        self.assertEqual(len(param_dv_names), len(unique_param_dv_names))
+
     def test_bounded_point_movement(self):
         point = self.geo_col.add_point(4.0, 3.0)
         point2 = self.geo_col.add_point(1.5, 2.5)
