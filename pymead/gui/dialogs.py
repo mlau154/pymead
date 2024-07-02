@@ -3252,8 +3252,8 @@ class WebAirfoilDialog(PymeadDialog):
                                                                       "edge, space-delimited, airfoil coordinates file",
                                   text="", push_label="Select Airfoil", read_only=True)
         ]
-        self.inputs[0].sigValueChanged.connect(self.airfoilTypeChanged)
-        self.inputs[2].push.clicked.connect(self.selectDatFile)
+        inputs[0].sigValueChanged.connect(self.airfoilTypeChanged)
+        inputs[2].push.clicked.connect(self.selectDatFile)
         return inputs
 
     def airfoilTypeChanged(self, airfoil_type: str):
