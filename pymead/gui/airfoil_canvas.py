@@ -15,7 +15,7 @@ from pymead.core.line import ReferencePolyline
 from pymead.core.parametric_curve import ParametricCurve
 from pymead.core.point import PointSequence
 from pymead.gui.constraint_items import *
-from pymead.gui.dialogs import PlotExportDialog, WebAirfoilDialog, SplitPolylineDialog
+from pymead.gui.dialogs import PlotExportDialog, WebAirfoilDialog, SplitPolylineDialog, AirfoilDialog
 from pymead.gui.draggable_point import DraggablePoint
 from pymead.gui.hoverable_curve import HoverableCurve
 from pymead.gui.polygon_item import PolygonItem
@@ -322,26 +322,19 @@ class AirfoilCanvas(pg.PlotWidget):
             return
 
     @undoRedoAction
-    @runSelectionEventLoop(drawing_object="Airfoil", starting_message="Select the leading edge point")
-    def generateAirfoil(self):
-        if len(self.geo_col.selected_objects["points"]) not in [2, 4]:
-            self.sigStatusBarUpdate.emit(
-                "Choose either 2 points (sharp trailing edge) or 4 points (blunt trailing edge)"
-                " to generate an airfoil", 4000)
-            return
+    def generateAirfoil(self, dialog_test_action: typing.Callable = None):
 
-        le = self.geo_col.selected_objects["points"][0]
-        te = self.geo_col.selected_objects["points"][1]
-        if len(self.geo_col.selected_objects["points"]) > 2:
-            upper_surf_end = self.geo_col.selected_objects["points"][2]
-            lower_surf_end = self.geo_col.selected_objects["points"][3]
-        else:
-            upper_surf_end = te
-            lower_surf_end = te
-
-        self.geo_col.add_airfoil(leading_edge=le, trailing_edge=te, upper_surf_end=upper_surf_end,
-                                 lower_surf_end=lower_surf_end)
-        self.gui_obj.permanent_widget.updateAirfoils()
+        self.dialog = AirfoilDialog(self, theme=self.gui_obj.themes[self.gui_obj.current_theme], geo_col=self.geo_col)
+        if (dialog_test_action is not None and not dialog_test_action(self.dialog)) or self.dialog.exec():
+            dialog_value = self.dialog.value()
+            le = dialog_value["leading_edge"]
+            te = dialog_value["trailing_edge"]
+            upper_surf_end = dialog_value["upper_surf_end"] if not dialog_value["thin_airfoil"] else None
+            lower_surf_end = dialog_value["lower_surf_end"] if not dialog_value["thin_airfoil"] else None
+            self.geo_col.add_airfoil(leading_edge=le, trailing_edge=te, upper_surf_end=upper_surf_end,
+                                     lower_surf_end=lower_surf_end)
+            self.gui_obj.permanent_widget.updateAirfoils()
+        self.geo_col.clear_selected_objects()
 
     @undoRedoAction
     def generateWebAirfoil(self, dialog_test_action: typing.Callable = None,

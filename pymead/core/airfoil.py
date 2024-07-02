@@ -109,7 +109,7 @@ class Airfoil(PymeadObj):
         # Loop through the rest of the curves
         current_curve = None
         if self.upper_te_curve is None:
-            current_curve = self.upper_surf_end.curves[0]
+            current_curve = self.upper_surf_end.curves[0] if self.upper_surf_end.curves[0] is not self.lower_te_curve else self.upper_surf_end.curves[1]
         else:
             for curve in self.upper_surf_end.curves:
                 if curve is not self.upper_te_curve:

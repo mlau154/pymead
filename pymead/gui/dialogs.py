@@ -3151,13 +3151,14 @@ class LoadPointsDialog(PymeadDialog):
         return file_name
 
 
-class WebAirfoilDialog(PymeadDialog):
-    def __init__(self, parent, theme: dict):
+class AirfoilDialog(PymeadDialog):
+    def __init__(self, parent, theme: dict, geo_col: GeometryCollection):
         widget = QWidget()
-        super().__init__(parent, window_title="Load Airfoil from Coordinates", widget=widget, theme=theme)
+        super().__init__(parent, window_title="Create Airfoil", widget=widget, theme=theme)
         self.lay = QGridLayout()
         widget.setLayout(self.lay)
-        self.setInputs()
+        self.geo_col = geo_col
+        self.inputs = self.setInputs()
 
         for i in self.inputs:
             row_count = self.lay.rowCount()
@@ -3171,7 +3172,76 @@ class WebAirfoilDialog(PymeadDialog):
         self.setMinimumWidth(300)
 
     def setInputs(self):
-        self.inputs = [
+        point_list = list(self.geo_col.container()["points"].keys())
+        inputs = [
+            PymeadLabeledComboBox(label="Leading Edge",
+                                  tool_tip="Select the point corresponding to the airfoil's leading edge",
+                                  items=point_list),
+            PymeadLabeledComboBox(label="Trailing Edge",
+                                  tool_tip="Select the point corresponding to the airfoil's trailing edge.\n"
+                                           "This point does not have to be physically present on the airfoil,\n"
+                                           "but is only used to determine the chord length and angle of attack",
+                                  items=point_list),
+            PymeadLabeledCheckbox(label="Thin Airfoil",
+                                  tool_tip="A thin airfoil has coincident trailing edge,\nupper surface end, and "
+                                           "lower surface end",
+                                  initial_state=0),
+            PymeadLabeledComboBox(label="Upper Surface End",
+                                  tool_tip="Select the trailing edge point that lies on the upper surface.\nThis "
+                                           "is the first airfoil point using counter-clockwise ordering",
+                                  items=point_list),
+            PymeadLabeledComboBox(label="Lower Surface End",
+                                  tool_tip="Select the trailing edge point that lies on the lower surface.\nThis"
+                                           " is the last airfoil point using counter-clockwise ordering",
+                                  items=point_list)
+        ]
+        inputs[2].sigValueChanged.connect(self.thinAirfoilChecked)
+        for combo_idx in [0, 1, 3, 4]:
+            inputs[combo_idx].sigValueChanged.connect(self.pointObjectChanged)
+        self.inputs = inputs
+        self.pointObjectChanged(None)
+        return inputs
+
+    def thinAirfoilChecked(self, state: int):
+        self.inputs[3].setReadOnly(bool(state))
+        self.inputs[4].setReadOnly(bool(state))
+
+    def pointObjectChanged(self, _):
+        self.geo_col.clear_selected_objects()
+        for combo_idx in [0, 1, 3, 4]:
+            self.geo_col.select_object(self.geo_col.container()["points"][self.inputs[combo_idx].value()])
+
+    def value(self):
+        return {
+            "leading_edge": self.geo_col.container()["points"][self.inputs[0].value()] if self.inputs[0].value() in self.geo_col.container()["points"] else None,
+            "trailing_edge": self.geo_col.container()["points"][self.inputs[1].value()] if self.inputs[1].value() in self.geo_col.container()["points"] else None,
+            "thin_airfoil": self.inputs[2].value(),
+            "upper_surf_end": self.geo_col.container()["points"][self.inputs[3].value()] if self.inputs[3].value() in self.geo_col.container()["points"] else None,
+            "lower_surf_end": self.geo_col.container()["points"][self.inputs[4].value()] if self.inputs[4].value() in self.geo_col.container()["points"] else None
+        }
+
+
+class WebAirfoilDialog(PymeadDialog):
+    def __init__(self, parent, theme: dict):
+        widget = QWidget()
+        super().__init__(parent, window_title="Load Airfoil from Coordinates", widget=widget, theme=theme)
+        self.lay = QGridLayout()
+        widget.setLayout(self.lay)
+        self.inputs = self.setInputs()
+
+        for i in self.inputs:
+            row_count = self.lay.rowCount()
+            self.lay.addWidget(i.label, row_count, 0)
+            if i.push is None:
+                self.lay.addWidget(i.widget, row_count, 1, 1, 2)
+            else:
+                self.lay.addWidget(i.widget, row_count, 1, 1, 1)
+                self.lay.addWidget(i.push, row_count, 2, 1, 1)
+
+        self.setMinimumWidth(300)
+
+    def setInputs(self):
+        inputs = [
             PymeadLabeledComboBox(label="Airfoil type", tool_tip="Choose whether to use an AirfoilTools airfoil or a "
                                                                  "coordinate-file airfoil",
                                   items=["AirfoilTools", "Coordinate File"]),
@@ -3184,7 +3254,7 @@ class WebAirfoilDialog(PymeadDialog):
         ]
         self.inputs[0].sigValueChanged.connect(self.airfoilTypeChanged)
         self.inputs[2].push.clicked.connect(self.selectDatFile)
-        return self.inputs
+        return inputs
 
     def airfoilTypeChanged(self, airfoil_type: str):
         if airfoil_type == "AirfoilTools":
