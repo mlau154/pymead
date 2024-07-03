@@ -560,13 +560,14 @@ class GeometryCollection(DualRep):
 
         return point
 
-    def add_bezier(self, point_sequence: PointSequence, name: str or None = None,
+    def add_bezier(self, point_sequence: PointSequence or typing.List[Point], name: str or None = None,
                    t_start: float = None, t_end: float = None, assign_unique_name: bool = True):
         bezier = Bezier(point_sequence=point_sequence, name=name, t_start=t_start, t_end=t_end)
 
         return self.add_pymead_obj_by_ref(bezier, assign_unique_name=assign_unique_name)
 
-    def add_line(self, point_sequence: PointSequence, name: str or None = None, assign_unique_name: bool = True):
+    def add_line(self, point_sequence: PointSequence or typing.List[Point], name: str or None = None,
+                 assign_unique_name: bool = True):
         line = LineSegment(point_sequence=point_sequence, name=name)
 
         return self.add_pymead_obj_by_ref(line, assign_unique_name=assign_unique_name)

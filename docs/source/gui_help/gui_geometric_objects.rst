@@ -90,6 +90,7 @@ There are several ways to change the location of a point object:
 
 
 .. _point-deletion:
+
 Deletion
 --------
 

@@ -13,7 +13,7 @@ Click on any image to zoom. Press the "back" button to return to the gallery.
 
           Aero-propulsive analysis of an optimized multi-element airfoil
 
-     - .. figure:: gui_help/images/gui_customize_dark.*
+     - .. figure:: user/images/gui_customize_dark.*
           :width: 100%
           :class: only-dark
 
@@ -73,7 +73,7 @@ Click on any image to zoom. Press the "back" button to return to the gallery.
 
           Aero-propulsive analysis of an optimized multi-element airfoil
 
-     - .. figure:: gui_help/images/gui_customize_light.*
+     - .. figure:: user/images/gui_customize_light.*
           :width: 100%
           :class: only-light
 

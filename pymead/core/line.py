@@ -10,9 +10,10 @@ from pymead.utils.get_airfoil import extract_data_from_airfoiltools
 
 class LineSegment(ParametricCurve):
 
-    def __init__(self, point_sequence: PointSequence, name: str or None = None, **kwargs):
+    def __init__(self, point_sequence: PointSequence or typing.List[Point], name: str or None = None, **kwargs):
         super().__init__(sub_container="lines", **kwargs)
         self._point_sequence = None
+        point_sequence = PointSequence(point_sequence) if isinstance(point_sequence, list) else point_sequence
         self.set_point_sequence(point_sequence)
         name = "Line-1" if name is None else name
         self.set_name(name)
@@ -26,6 +27,12 @@ class LineSegment(ParametricCurve):
 
     def point_sequence(self):
         return self._point_sequence
+
+    def points(self):
+        return self.point_sequence().points()
+
+    def get_control_point_array(self):
+        return self.point_sequence().as_array()
 
     def set_point_sequence(self, point_sequence: PointSequence):
         if len(point_sequence) != 2:

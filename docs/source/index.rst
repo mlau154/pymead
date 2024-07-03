@@ -41,8 +41,7 @@ Contents
    :maxdepth: 2
 
    gallery
-   gui
-   tutorials
+   user
 
 .. toctree::
    :maxdepth: 3

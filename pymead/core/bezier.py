@@ -1,3 +1,5 @@
+import typing
+
 import numpy as np
 
 from pymead.core.parametric_curve import ParametricCurve, PCurveData
@@ -7,8 +9,8 @@ from pymead.utils.nchoosek import nchoosek
 
 class Bezier(ParametricCurve):
 
-    def __init__(self, point_sequence: PointSequence, name: str or None = None, t_start: float = None,
-                 t_end: float = None, **kwargs):
+    def __init__(self, point_sequence: PointSequence or typing.List[Point], name: str or None = None,
+                 t_start: float = None, t_end: float = None, **kwargs):
         r"""
         Computes the Bézier curve through the control points ``P`` according to
 
@@ -81,6 +83,7 @@ class Bezier(ParametricCurve):
         super().__init__(sub_container="bezier", **kwargs)
         self._point_sequence = None
         self.degree = None
+        point_sequence = PointSequence(point_sequence) if isinstance(point_sequence, list) else point_sequence
         self.set_point_sequence(point_sequence)
         self.t_start = t_start
         self.t_end = t_end
@@ -110,6 +113,12 @@ class Bezier(ParametricCurve):
     def point_sequence(self):
         return self._point_sequence
 
+    def points(self):
+        return self.point_sequence().points()
+
+    def get_control_point_array(self):
+        return self.point_sequence().as_array()
+
     def set_point_sequence(self, point_sequence: PointSequence):
         self._point_sequence = point_sequence
         self.degree = len(point_sequence) - 1
@@ -120,15 +129,15 @@ class Bezier(ParametricCurve):
     def insert_point(self, idx: int, point: Point):
         self.point_sequence().insert_point(idx, point)
         self.degree += 1
+        if self not in point.curves:
+            point.curves.append(self)
+        if self.canvas_item is not None:
+            self.canvas_item.point_items.insert(idx, point.canvas_item)
+            self.canvas_item.updateCurveItem(self.evaluate())
 
     def insert_point_after_point(self, point_to_add: Point, preceding_point: Point):
         idx = self.point_sequence().point_idx_from_ref(preceding_point) + 1
         self.insert_point(idx, point_to_add)
-        if self not in point_to_add.curves:
-            point_to_add.curves.append(self)
-        if self.canvas_item is not None:
-            self.canvas_item.point_items.insert(idx, point_to_add.canvas_item)
-            self.canvas_item.updateCurveItem(self.evaluate())
 
     def point_removal_deletes_curve(self):
         return len(self.point_sequence()) <= 3
