@@ -131,7 +131,9 @@ def read_forces_from_mses(search_file: str):
       Dictionary containing the aerodynamic force coefficients
     """
     CL_lines = []
-    alpha_line, vw_line, fp_line, ad_line = None, None, None, None
+    element_lines = []
+    alpha_line, vw_line, fp_line, ad_line, ad_mass_flow_line = None, None, None, None, None
+    element = 0
     with open(search_file, 'r') as f:
         file_out = f.readlines()
     for line in file_out:
@@ -145,6 +147,17 @@ def read_forces_from_mses(search_file: str):
             fp_line = line
         if 'CDh' in line:
             ad_line = line
+        if "mh / rho V" in line:
+            ad_mass_flow_line = line
+        if "Element" in line:
+            element = int(line.split(":")[-1].strip())
+        if element != 0 and "CL" in line:
+            element_lines.append([line])
+        if element != 0 and "CM" in line:
+            element_lines[-1].append(line)
+        if element != 0 and "top" in line:
+            element_lines[-1].append(line)
+
     try:
         required_line = CL_lines[1]  # line we need happens the second time the string "CL" is mentioned
         split_line = required_line.split()  # split the up the line to grab the actual numbers
@@ -175,9 +188,28 @@ def read_forces_from_mses(search_file: str):
             forces['Cdh'] = float(ad_line[-1].split()[0])
         else:
             forces['Cdh'] = 0.0
+
+        # Find the non-dimensional mass flow rate due to the actuator disk:
+        if ad_mass_flow_line is not None:
+            ad_mass_flow_line = ad_mass_flow_line.split("=")
+            forces["mh / rho V"] = float(ad_mass_flow_line[-1].strip())
+        else:
+            forces["mh / rho V"] = 0.0
+
+        # Find the elementwise aerodynamic performance components
+        if element_lines:
+            for idx, element_line in enumerate(element_lines):
+                forces[f"Element-{idx + 1}"] = {
+                    "Cl": float(element_line[0].split()[2]),
+                    "Cdv": float(element_line[0].split()[5]),
+                    "Cm": float(element_line[1].split()[2]),
+                    "Cdf": float(element_line[1].split()[5]),
+                    "top_xtr": float(element_line[2].split()[3]),
+                    "bot_xtr": float(element_line[2].split()[7]),
+                }
     except:
         forces = {'Cl': 0.0, 'Cd': 1000.0, 'Cm': 1000.0, 'alf': 0.0, 'Cdv': 1000.0, 'Cdw': 1000.0,
-                  'Cdf': 1000.0, 'Cdp': 1000.0, 'Cdh': 1000.0, 'CPK': 1000.0}
+                  'Cdf': 1000.0, 'Cdp': 1000.0, 'Cdh': 1000.0, 'CPK': 1000.0, "mh / rho V": 0.0}
 
     # print(f"{forces = }")
     return forces
