@@ -73,7 +73,7 @@ Point Creation
 
 
         Notice that these object-add methods always return the object that is created. The above code block illustrates how to
-        access attributes of the object. If the object instance is assigned to a variable (``p`` in the previous example),
+        access attributes of the object. If the object instance is not assigned to a variable (``p`` in the previous example),
         the object can be accessed from the geometry collection's ``container`` dictionary. For example, to access the point
         object, the following code can be used after the point is added:
 
@@ -667,22 +667,11 @@ Airfoil Creation
 
         The primary method which gives full control over the shape of the airfoil is started using the **F** key. This method
         creates an airfoil from any closed set of lines, polylines, or Bézier curves. After clicking the "Airfoil" button
-        or pressing the **F** key, first left-click on the leading edge point for the airfoil (either in the geometry
-        canvas or parameter tree). Ideally, this point is the endpoint of two of the curves in the airfoil. Then, left-click
-        on the trailing edge point of the airfoil.
-
-        For an airfoil with a thin trailing edge, this point must
-        be the endpoint of the airfoil curves. For an airfoil with a blunt trailing edge, this is not the case. In either
-        case, the trailing edge and leading edge points define the chord line for the airfoil, which also defines the angle of
-        attack. If you are designing a thin airfoil, simply press the **Enter** key after selecting both the leading edge
-        and trailing edge. If the points are selected properly and the airfoil is valid, the airfoil will now be shaded, and
-        you can hover over the shaded region to see the name of the airfoil.
-
-        For the case of a blunt trailing edge airfoil, select both the trailing edge upper surface point and trailing edge
-        lower surface point, in that order. Note that there must be curves connecting the trailing edge point to both of
-        these two points. These curves are normally lines, but they do not have to be. If the points are selected properly
-        and the airfoil is valid, the airfoil will now be shaded (without having to press the **Enter** key), and
-        you can hover over the shaded region to see the name of the airfoil.
+        or pressing the **F** key, selecting the appropriate points using the dropdown menus. For a thin airfoil,
+        check the corresponding "thin airfoil box." The trailing edge upper surface end and trailing edge lower surface
+        end points need not be selected if this box is checked. Press "OK" to accept the changes made in the dialog.
+        If the airfoil has been defined successfully, the airfoil should now be shaded. Hover over the shaded region
+        to see the name of the airfoil.
 
 
         .. figure:: images/airfoil_dark.*
@@ -751,7 +740,87 @@ Airfoil Creation
     .. tab-item:: API
         :sync: api
 
-        To add an airfoil,
+        To add an airfoil, use the ``add_airfoil`` method of the ``GeometryCollection``. The ``leading_edge``
+        and ``trailing_edge`` arguments must be assigned ``Point`` objects, but the ``upper_surf_end``
+        and ``lower_surf_end`` can be left unassigned (or set to ``None``) in the case of a thin airfoil.
+
+        **Thin airfoil example**
+
+        .. code-block:: python
+
+           # Define the array of control points for the airfoil's Bézier curves
+           upper_curve_array = np.array([
+               [0.0, 0.0],
+               [0.0, 0.05],
+               [0.05, 0.05],
+               [0.6, 0.04],
+               [1.0, 0.0]
+           ])
+           lower_curve_array = np.array([
+               [0.0, -0.05],
+               [0.05, -0.05],
+               [0.7, 0.01]
+           ])
+
+           # Generate the point sequences
+           point_seq_upper = PointSequence([geo_col.add_point(xy[0], xy[1]) for xy in upper_curve_array])
+           point_seq_lower = PointSequence([point_seq_upper.points()[0],
+                                           *[geo_col.add_point(xy[0], xy[1]) for xy in lower_curve_array],
+                                           point_seq_upper.points()[-1]])
+
+           # Add the Bézier curves
+           bez_upper = geo_col.add_bezier(point_seq_upper)
+           bez_lower = geo_col.add_bezier(point_seq_lower)
+
+           # Create the airfoil
+           airfoil = geo_col.add_airfoil(point_seq_upper.points()[0],
+                                         point_seq_upper.points()[-1],
+                                         upper_surf_end=None,
+                                         lower_surf_end=None
+                                         )
+
+
+        **Blunt airfoil example**
+
+        .. code-block:: python
+
+           # Define the array of control points for the airfoil's Bézier curves
+           upper_curve_array = np.array([
+               [0.0, 0.0],
+               [0.0, 0.05],
+               [0.05, 0.05],
+               [0.6, 0.04],
+               [1.0, 0.0025]
+           ])
+           lower_curve_array = np.array([
+               [0.0, -0.05],
+               [0.05, -0.05],
+               [0.7, 0.01],
+               [1.0, -0.0025]
+           ])
+
+           # Generate the point sequences
+           point_seq_upper = PointSequence([geo_col.add_point(xy[0], xy[1]) for xy in upper_curve_array])
+           point_seq_lower = PointSequence([point_seq_upper.points()[0],
+                                           *[geo_col.add_point(xy[0], xy[1]) for xy in lower_curve_array]])
+
+           # Add the Bézier curves
+           bez_upper = geo_col.add_bezier(point_seq_upper)
+           bez_lower = geo_col.add_bezier(point_seq_lower)
+
+           # Add the trailing edge at (1, 0)
+           te_point = geo_col.add_point(1.0, 0.0)
+
+           # Add lines connecting the trailing edge to the trailing edge upper and lower points
+           te_upper_line = geo_col.add_line(PointSequence([point_seq_upper.points()[-1], te_point]))
+           te_lower_line = geo_col.add_line(PointSequence([point_seq_lower.points()[-1], te_point]))
+
+           # Create the airfoil
+           airfoil = geo_col.add_airfoil(leading_edge=point_seq_upper.points()[0],
+                                         trailing_edge=te_point,
+                                         upper_surf_end=point_seq_upper.points()[-1],
+                                         lower_surf_end=point_seq_lower.points()[-1]
+                                         )
 
 
 .. _airfoil-deletion:
@@ -855,10 +924,35 @@ Multi-Element Airfoil Creation
 Multi-Element Airfoil Deletion
 ------------------------------
 
-A multi-element airfoil can be deleted by left-clicking the multi-element airfoil's name in the parameter tree and
-pressing the **Delete** key or
-by right-clicking the multi-element airfoil's name in the parameter tree and clicking the **Delete** option
-from the context menu that appears.
+.. tab-set::
+
+    .. tab-item:: GUI
+        :sync: gui
+
+        A multi-element airfoil can be deleted by left-clicking the multi-element airfoil's name in the parameter tree and
+        pressing the **Delete** key or
+        by right-clicking the multi-element airfoil's name in the parameter tree and clicking the **Delete** option
+        from the context menu that appears.
+
+    .. tab-item:: API
+        :sync: api
+
+        To delete multi-element airfoil, use the ``remove_pymead_obj`` method of the ``GeometryCollection``. This
+        can be done either directly by reference...
+
+        .. code-block:: python
+
+           m0 = geo_col.add_mea()
+           geo_col.remove_pymead_obj(m0)
+
+        ...or by retrieving the object reference from the container and removing by reference:
+
+        .. code-block:: python
+
+           mea = geo_col.container()["mea"]["MEA-1"]
+           geo_col.remove_pymead_obj(mea)
+
+        A multi-element airfoil can also be deleted by deleting any of its parent airfoils.
 
 
 .. raw:: html
