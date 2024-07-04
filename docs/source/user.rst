@@ -6,5 +6,6 @@ features of *pymead* from both the API and the GUI.
 
 .. toctree::
 
+   user/overview.rst
    user/params.rst
    user/geo_objects.rst
