@@ -604,7 +604,6 @@ class GUI(FramelessMainWindow):
                                 settings_override=None)
         dialog.exec()
 
-
     def undo(self):
         if not self.undo_stack:
             return
@@ -1050,6 +1049,7 @@ class GUI(FramelessMainWindow):
 
         self.geo_col.tree.geo_col = self.geo_col
         self.geo_col.canvas.geo_col = self.geo_col
+        self.airfoil_canvas.setAxisLabels(self.themes[self.current_theme])
         self.permanent_widget.updateAirfoils()
 
     def load_geo_col_no_dialog(self, file_name: str = None):
@@ -1071,6 +1071,7 @@ class GUI(FramelessMainWindow):
 
         self.geo_col.tree.geo_col = self.geo_col
         self.geo_col.canvas.geo_col = self.geo_col
+        self.airfoil_canvas.setAxisLabels(self.themes[self.current_theme])
         self.permanent_widget.updateAirfoils()
         self.auto_range_geometry()
 
