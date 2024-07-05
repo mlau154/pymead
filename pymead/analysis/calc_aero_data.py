@@ -937,7 +937,7 @@ def calculate_aero_data(conn: multiprocessing.connection.Connection or None,
 
             # Remove the polar and polarx files if they exist
             polar_file = os.path.join(airfoil_coord_dir, airfoil_name, f"polar.{airfoil_name}")
-            polarx_file = os.path.join(airfoil_coord_dir, airfoil_name, f"polar.{airfoil_name}")
+            polarx_file = os.path.join(airfoil_coord_dir, airfoil_name, f"polarx.{airfoil_name}")
             if os.path.exists(polar_file):
                 os.remove(polar_file)
             if os.path.exists(polarx_file):
