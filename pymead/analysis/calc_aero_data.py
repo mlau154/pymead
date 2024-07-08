@@ -1066,7 +1066,7 @@ def calculate_aero_data(conn: multiprocessing.connection.Connection or None,
                     aero_data[k].append(v)
 
         send_over_pipe(
-            ("mses_analysis_complete", (aero_data, mset_settings, mses_settings, mplot_settings, mea.name()))
+            ("mses_analysis_complete", (aero_data, mset_settings, mses_settings, mplot_settings, mset_settings["mea"]))
         )
 
         if save_aero_data:
