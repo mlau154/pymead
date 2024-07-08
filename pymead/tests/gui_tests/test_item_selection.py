@@ -1,8 +1,11 @@
+from PyQt6.QtCore import QPointF
+
 from pymead.core.point import PointSequence
 from pymead.tests.gui_tests.utils import app
 from pymead.utils.misc import convert_rgba_to_hex, get_setting
 
 import matplotlib.colors
+from pytestqt.qtbot import QtBot
 
 
 def test_select_object(app):
@@ -131,6 +134,22 @@ def test_clear_selected_objects_points(app):
 
     app.geo_col.clear_container()
 
+
+def test_point_hover(app, qtbot: QtBot):
+    point = app.geo_col.add_point(0.2, 0.6)
+    app.auto_range_geometry()
+    x = point.canvas_item.scatter.data[0][0]
+    y = point.canvas_item.scatter.data[0][1]
+    point_pixel_location = app.airfoil_canvas.getViewBox().mapViewToDevice(QPointF(x, y)).toPoint()
+    qtbot.mouseMove(app.airfoil_canvas, point_pixel_location)
+    qtbot.wait(1000)
+    point_brush_color_hex_6_digit = convert_rgba_to_hex(point.canvas_item.scatter.opts["brush"].color().getRgb())[:-2]
+    point_brush_color_setting = matplotlib.colors.cnames[get_setting(f"scatter_hovered_brush_color")].lower()
+    point_pen_color_hex_6_digit = convert_rgba_to_hex(point.canvas_item.scatter.opts["pen"].color().getRgb())[:-2]
+    point_pen_color_setting = matplotlib.colors.cnames[get_setting(f"scatter_hovered_pen_color")].lower()
+    app.geo_col.clear_container()
+    assert point_brush_color_hex_6_digit == point_brush_color_setting
+    assert point_pen_color_hex_6_digit == point_pen_color_setting
 
 def test_remove_pymead_obj_lines(app):
     line_container = app.geo_col.container()["lines"]
