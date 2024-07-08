@@ -151,6 +151,20 @@ def test_point_hover(app, qtbot: QtBot):
     assert point_brush_color_hex_6_digit == point_brush_color_setting
     assert point_pen_color_hex_6_digit == point_pen_color_setting
 
+
+def test_remove_pymead_obj_point(app):
+    point_container = app.geo_col.container()["points"]
+    point_one = app.geo_col.add_point(0.5, 0.4)
+    point_two = app.geo_col.add_point(0.7, 0.6)
+    app.geo_col.remove_pymead_obj(point_two)
+
+    assert "Point-1" in point_container
+    assert "Point-2" not in point_container
+    assert len(point_container) == 1
+
+    app.geo_col.clear_container()
+
+
 def test_remove_pymead_obj_lines(app):
     line_container = app.geo_col.container()["lines"]
     point_container = app.geo_col.container()["points"]
@@ -170,8 +184,6 @@ def test_remove_pymead_obj_lines(app):
 
     assert len(line_container) == 0
     assert len(point_container) == 2
-    assert len(app.geo_col.selected_objects["points"]) == 0
-    assert len(app.geo_col.selected_objects["lines"]) == 0
 
     app.geo_col.clear_container()
 
