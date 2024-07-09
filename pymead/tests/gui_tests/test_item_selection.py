@@ -135,6 +135,56 @@ def test_clear_selected_objects_points(app):
     app.geo_col.clear_container()
 
 
+def test_clear_selected_objects_lines(app):
+    point_one = app.geo_col.add_point(0.2, 0.6)
+    point_two = app.geo_col.add_point(0.3, 0.1)
+    point_three = app.geo_col.add_point(0.9, 0.1)
+    point_four = app.geo_col.add_point(0.4, 0.1)
+    line_one = app.geo_col.add_line(point_sequence=PointSequence(points=[point_one, point_two]))
+    line_two = app.geo_col.add_line(point_sequence=PointSequence(points=[point_one, point_two]))
+
+    app.geo_col.select_object(line_one)
+    app.geo_col.select_object(line_two)
+
+    assert len(app.geo_col.selected_objects["lines"]) == 2
+    assert not line_one.tree_item.hoverable
+    assert not line_two.tree_item.hoverable
+
+    app.geo_col.clear_selected_objects()
+
+    assert len(app.geo_col.selected_objects["lines"]) == 0
+    assert line_one.tree_item.hoverable
+    assert line_two.tree_item.hoverable
+
+    app.geo_col.clear_container()
+
+
+def test_clear_selected_objects_bezier(app):
+    point_one = app.geo_col.add_point(0.2, 0.6)
+    point_two = app.geo_col.add_point(0.3, 0.1)
+    point_three = app.geo_col.add_point(0.9, 0.1)
+    point_four = app.geo_col.add_point(0.4, 0.1)
+    bez_one = app.geo_col.add_bezier(point_sequence=PointSequence(points=[point_one, point_two, point_three]))
+    bez_two = app.geo_col.add_bezier(point_sequence=PointSequence(points=[point_four, point_two, point_three]))
+
+    app.geo_col.select_object(bez_one)
+    app.geo_col.select_object(bez_two)
+
+    assert len(app.geo_col.selected_objects["bezier"]) == 2
+    assert not bez_one.tree_item.hoverable
+    assert not bez_two.tree_item.hoverable
+
+    app.geo_col.clear_selected_objects()
+
+    assert len(app.geo_col.selected_objects["bezier"]) == 0
+    assert bez_one.tree_item.hoverable
+    assert bez_two.tree_item.hoverable
+
+    app.geo_col.clear_container()
+def test_clear_selected_objects_airfoils(app):
+    pass
+
+
 def test_point_hover(app, qtbot: QtBot):
     point = app.geo_col.add_point(0.2, 0.6)
     app.auto_range_geometry()
@@ -142,7 +192,7 @@ def test_point_hover(app, qtbot: QtBot):
     y = point.canvas_item.scatter.data[0][1]
     point_pixel_location = app.airfoil_canvas.getViewBox().mapViewToDevice(QPointF(x, y)).toPoint()
     qtbot.mouseMove(app.airfoil_canvas, point_pixel_location)
-    qtbot.wait(1000)
+    qtbot.wait(5000)
     point_brush_color_hex_6_digit = convert_rgba_to_hex(point.canvas_item.scatter.opts["brush"].color().getRgb())[:-2]
     point_brush_color_setting = matplotlib.colors.cnames[get_setting(f"scatter_hovered_brush_color")].lower()
     point_pen_color_hex_6_digit = convert_rgba_to_hex(point.canvas_item.scatter.opts["pen"].color().getRgb())[:-2]
@@ -207,6 +257,10 @@ def test_remove_pymead_obj_bezier(app):
     assert len(bez_container) == 0
 
     app.geo_col.clear_container()
+
+
+def test_remove_pymead_obj_airfoil(app):
+    pass
 
 
 def test_remove_selected_objects_points(app):
@@ -300,3 +354,8 @@ def test_remove_selected_objects_bezier(app):
     assert len(bez_container) == 0
 
     app.geo_col.clear_container()
+
+
+def test_remove_selected_objects_airfoils(app):
+    pass
+
