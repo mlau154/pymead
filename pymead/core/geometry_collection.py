@@ -249,6 +249,9 @@ class GeometryCollection(DualRep):
                 for curve in pymead_obj.curves:
                     self.canvas.setItemStyle(curve.canvas_item, "selected")
                     curve.canvas_item.hoverable = False
+                for line in (pymead_obj, Airfoil):
+                    line.canvas_item.hoverable = False
+                    self.canvas.setItemStyle(line.canvas_item, "selected")
             elif isinstance(pymead_obj, ParametricCurve):
                 self.canvas.setItemStyle(pymead_obj.canvas_item, "selected")
                 pymead_obj.canvas_item.hoverable = False
@@ -273,6 +276,9 @@ class GeometryCollection(DualRep):
                 for curve in pymead_obj.curves:
                     curve.canvas_item.hoverable = True
                     self.canvas.setItemStyle(curve.canvas_item, "default")
+                for line in (pymead_obj, Airfoil):
+                    line.canvas_item.hoverable = True
+                    self.canvas.setItemStyle(line.canvas_item, "default")
             elif isinstance(pymead_obj, GeoCon):
                 pymead_obj.canvas_item.hoverable = True
                 pymead_obj.canvas_item.setStyle(theme=self.gui_obj.themes[self.gui_obj.current_theme])
