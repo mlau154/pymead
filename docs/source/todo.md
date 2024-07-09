@@ -38,7 +38,3 @@ Aesthetic
 Testing
 -------
 - Add more unit test coverage!
-
-Documentation
--------------
-- Add images to `README.md`
