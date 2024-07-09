@@ -85,7 +85,6 @@ def test_select_deselect_object_bezier(app):
 
 
 def test_clear_selected_objects_points(app):
-
     point_one = app.geo_col.add_point(0.2, 0.6)
     point_two = app.geo_col.add_point(0.3, 0.1)
     point_three = app.geo_col.add_point(0.9, 0.1)
@@ -151,3 +150,141 @@ def test_point_hover(app, qtbot: QtBot):
     app.geo_col.clear_container()
     assert point_brush_color_hex_6_digit == point_brush_color_setting
     assert point_pen_color_hex_6_digit == point_pen_color_setting
+
+def test_remove_pymead_obj_lines(app):
+    line_container = app.geo_col.container()["lines"]
+    point_container = app.geo_col.container()["points"]
+
+    point_one = app.geo_col.add_point(0.5, 0.4)
+    point_two = app.geo_col.add_point(0.7, 0.6)
+    point_three = app.geo_col.add_point(0.4, 0.1)
+    line_segment = app.geo_col.add_line(point_sequence=PointSequence(points=[point_one, point_two]))
+    line_segment_two = app.geo_col.add_line(point_sequence=PointSequence(points=[point_one, point_three]))
+
+    app.geo_col.remove_pymead_obj(line_segment)
+    assert "Line-1" not in line_container
+    assert len(line_container) == 1
+    assert len(point_container) == 3
+
+    app.geo_col.remove_pymead_obj(point_three)
+
+    assert len(line_container) == 0
+    assert len(point_container) == 2
+    assert len(app.geo_col.selected_objects["points"]) == 0
+    assert len(app.geo_col.selected_objects["lines"]) == 0
+
+    app.geo_col.clear_container()
+
+
+def test_remove_pymead_obj_bezier(app):
+    point_container = app.geo_col.container()["points"]
+    bez_container = app.geo_col.container()["bezier"]
+    le = app.geo_col.add_point(0.0, 0.0)
+    upper1 = app.geo_col.add_point(0.0, 0.05)
+    upper2 = app.geo_col.add_point(0.05, 0.05)
+    upper3 = app.geo_col.add_point(0.6, 0.03)
+    upper4 = app.geo_col.add_point(0.8, 0.04)
+    bezier = app.geo_col.add_bezier(point_sequence=PointSequence(points=[le, upper1, upper2, upper3, upper4]))
+
+    app.geo_col.remove_pymead_obj(upper1)
+    app.geo_col.remove_pymead_obj(upper2)
+    assert len(point_container) == 3
+    assert len(bez_container) == 1
+
+    app.geo_col.remove_pymead_obj(upper3)
+    assert len(bez_container) == 0
+
+    app.geo_col.clear_container()
+
+
+def test_remove_selected_objects_points(app):
+    point_container = app.geo_col.container()["points"]
+    point_one = app.geo_col.add_point(0.5, 0.4)
+    point_two = app.geo_col.add_point(0.7, 0.6)
+    point_three = app.geo_col.add_point(0.4, 0.1)
+
+    app.geo_col.select_object(point_one)
+    app.geo_col.select_object(point_two)
+    assert len(app.geo_col.selected_objects["points"]) == 2
+    app.geo_col.remove_selected_objects()
+
+    assert len(app.geo_col.selected_objects["points"]) == 0
+    assert len(point_container) == 1
+    assert "Point-1" not in point_container
+    assert "Point-2" not in point_container
+    assert "Point-3" in point_container
+
+    app.geo_col.clear_container()
+
+
+def test_remove_selected_objects_lines(app):
+    line_container = app.geo_col.container()["lines"]
+    point_container = app.geo_col.container()["points"]
+    point_one = app.geo_col.add_point(0.5, 0.4)
+    point_two = app.geo_col.add_point(0.7, 0.6)
+    point_three = app.geo_col.add_point(0.4, 0.1)
+    point_four = app.geo_col.add_point(0.7,0.1)
+    line_segment = app.geo_col.add_line(point_sequence=PointSequence(points=[point_one, point_two]))
+    line_segment_two = app.geo_col.add_line(point_sequence=PointSequence(points=[point_three, point_four]))
+
+    app.geo_col.select_object(line_segment)
+    assert len(app.geo_col.selected_objects["points"]) == 0
+    assert len(app.geo_col.selected_objects["lines"]) == 1
+    app.geo_col.remove_selected_objects()
+
+    assert len(line_container) == 1
+    assert len(point_container) == 4
+    assert "Line-1" not in line_container
+    assert "Line-2" in line_container
+
+    app.geo_col.select_object(point_four)
+    app.geo_col.select_object(point_one)
+    assert len(app.geo_col.selected_objects["points"]) == 2
+    assert len(app.geo_col.selected_objects["lines"]) == 0
+    app.geo_col.remove_selected_objects()
+
+    assert len(line_container) == 0
+    assert len(point_container) == 2
+
+    app.geo_col.clear_container()
+
+
+def test_remove_selected_objects_bezier(app):
+
+    point_container = app.geo_col.container()["points"]
+    bez_container = app.geo_col.container()["bezier"]
+
+    le = app.geo_col.add_point(0.0, 0.0)
+    upper1 = app.geo_col.add_point(0.0, 0.05)
+    upper2 = app.geo_col.add_point(0.05, 0.05)
+    upper3 = app.geo_col.add_point(0.6, 0.03)
+    upper4 = app.geo_col.add_point(0.8, 0.04)
+    bezier = app.geo_col.add_bezier(point_sequence=PointSequence(points=[le, upper1, upper2, upper3, upper4]))
+
+    point_one = app.geo_col.add_point(0.1, 0.1)
+    point_two = app.geo_col.add_point(0.2, 0.3)
+    point_three = app.geo_col.add_point(0.51, 0.7)
+    bezier_two = app.geo_col.add_bezier(point_sequence=PointSequence(points=[point_two, point_one, point_three]))
+
+    app.geo_col.select_object(upper1)
+    app.geo_col.select_object(upper3)
+    app.geo_col.select_object(upper4)
+
+    assert len(app.geo_col.selected_objects["points"]) == 3
+    assert len(app.geo_col.selected_objects["bezier"]) == 0
+
+    app.geo_col.remove_selected_objects()
+
+    assert len(point_container) == 5
+    assert len(bez_container) == 1
+    assert len(app.geo_col.selected_objects["points"]) == 0
+    assert len(app.geo_col.selected_objects["bezier"]) == 0
+    assert "Bezier-1" not in bez_container
+
+    app.geo_col.select_object(bezier_two)
+    app.geo_col.remove_selected_objects()
+
+    assert len(point_container) == 5
+    assert len(bez_container) == 0
+
+    app.geo_col.clear_container()
