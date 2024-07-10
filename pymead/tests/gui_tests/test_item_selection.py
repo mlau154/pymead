@@ -247,7 +247,7 @@ def test_point_hover(app, qtbot: QtBot):
     y = point.canvas_item.scatter.data[0][1]
     point_pixel_location = app.airfoil_canvas.getViewBox().mapViewToDevice(QPointF(x, y)).toPoint()
     qtbot.mouseMove(app.airfoil_canvas, point_pixel_location)
-    qtbot.wait(5000)
+    qtbot.wait(1000)
     point_brush_color_hex_6_digit = convert_rgba_to_hex(point.canvas_item.scatter.opts["brush"].color().getRgb())[:-2]
     point_brush_color_setting = matplotlib.colors.cnames[get_setting(f"scatter_hovered_brush_color")].lower()
     point_pen_color_hex_6_digit = convert_rgba_to_hex(point.canvas_item.scatter.opts["pen"].color().getRgb())[:-2]
