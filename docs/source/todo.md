@@ -25,10 +25,14 @@ Bug fixes
 - Base dimension change in settings menu not working properly
 - Fix blank line in Objective/Constraint setup not reverting to background color after editing and erasing
 - Remove wave/viscous drag from XFOIL drag history plots (optimization)
-- Toggle grid should not affect all the dock widgets
 - Apply theme to status bar widgets immediately on theme change
 - Correct dimensions having default colors before switching themes
 - Use `QNativeGesture`/`ZoomNativeGesture` to allow pinch-zoom on macOS
+- Fix custom view checkboxes not taking effect immediately when a new .jmea file is loaded
+
+Aesthetic
+---------
+- Update formatting for optimization plots to match the other plots
 
 Testing
 -------

@@ -2073,7 +2073,7 @@ class GAGeneralSettingsDialogWidget(PymeadDialogWidget2):
                                                     read_only=True,
                                                     tool_tip="Choose '-1' to start from the most recent generation"),
             "use_initial_settings": PymeadLabeledCheckbox(label="Use Initial Settings?", initial_state=2),
-            "mea_file": PymeadLabeledLineEdit(label="MEA File", push_label="Choose file", read_only=True),
+            "mea_file": PymeadLabeledLineEdit(label="MEA File", push_label="Choose file"),
             "batch_mode_active": PymeadLabeledCheckbox(
                 label="Batch Mode Active?", initial_state=0,
                 tool_tip="If this box is checked, all settings in this dialog will be\noverridden by the settings "
