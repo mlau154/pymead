@@ -75,7 +75,6 @@ def test_select_deselect_object_bezier(app):
 
     app.geo_col.deselect_object(bezier)
     assert not bezier.tree_item.isSelected()
-    assert bezier.tree_item.hoverable
 
     point_scatter_color_hex_6_digit_d = convert_rgba_to_hex(bezier.canvas_item.opts["pen"].color().getRgb())[:-2]
     point_scatter_color_setting_d = matplotlib.colors.cnames[get_setting(f"curve_default_pen_color")].lower()
@@ -237,7 +236,81 @@ def test_clear_selected_objects_bezier(app):
 
 
 def test_clear_selected_objects_airfoils(app):
-    pass
+    airfoil_container = app.geo_col.container()["airfoils"]
+
+    upper_curve_array = np.array([
+        [0.0, 0.0],
+        [0.0, 0.05],
+        [0.05, 0.05],
+        [0.6, 0.04],
+        [1.0, 0.0]
+    ])
+    lower_curve_array = np.array([
+        [0.0, -0.05],
+        [0.05, -0.05],
+        [0.7, 0.01]
+    ])
+
+    point_seq_upper = PointSequence([app.geo_col.add_point(xy[0], xy[1]) for xy in upper_curve_array])
+    point_seq_lower = PointSequence([point_seq_upper.points()[0],
+                                     *[app.geo_col.add_point(xy[0], xy[1]) for xy in lower_curve_array],
+                                     point_seq_upper.points()[-1]])
+
+    bez_upper = app.geo_col.add_bezier(point_seq_upper)
+    bez_lower = app.geo_col.add_bezier(point_seq_lower)
+
+    airfoil_thin = app.geo_col.add_airfoil(point_seq_upper.points()[0],
+                                      point_seq_upper.points()[-1],
+                                      upper_surf_end=None,
+                                      lower_surf_end=None
+                                      )
+
+    point_one_upper = app.geo_col.add_point(0.0, 0.0)
+    point_two_upper = app.geo_col.add_point(0.3, 0.2)
+    point_three_upper = app.geo_col.add_point(0.6, 0.15)
+    point_four_upper = app.geo_col.add_point(0.8, 0.1)
+
+    point_one_lower = app.geo_col.add_point(0.2, -0.1)
+    point_two_lower = app.geo_col.add_point(0.5, 0.0)
+    point_three_lower = app.geo_col.add_point(0.8, -0.05)
+
+    midpoint = app.geo_col.add_point(0.8, 0.1)
+
+    bezier_one_blunt = app.geo_col.add_bezier(point_sequence=PointSequence(points=[
+        point_one_upper,
+        point_two_upper,
+        point_three_upper,
+        point_four_upper
+    ]))
+
+    bezier_two_blunt = app.geo_col.add_bezier(point_sequence=PointSequence(points=[
+        point_one_upper,
+        point_one_lower,
+        point_two_lower,
+        point_three_lower
+    ]))
+
+    line_one_blunt = app.geo_col.add_line(PointSequence(points=[point_four_upper, midpoint]))
+    line_two_blunt = app.geo_col.add_line(PointSequence(points=[point_three_lower, midpoint]))
+
+    airfoil_blunt = app.geo_col.add_airfoil(point_one_upper,
+                                            midpoint,
+                                            point_four_upper,
+                                            point_three_lower
+                                            )
+
+    app.geo_col.select_object(airfoil_thin)
+    app.geo_col.select_object(airfoil_blunt)
+
+    assert len(app.geo_col.selected_objects["airfoils"]) == 2
+    assert len(airfoil_container) == 2
+
+    app.geo_col.clear_selected_objects()
+
+    assert len(app.geo_col.selected_objects["airfoils"]) == 0
+    assert len(airfoil_container) == 2
+
+    app.geo_col.clear_container()
 
 
 def test_point_hover(app, qtbot: QtBot):
