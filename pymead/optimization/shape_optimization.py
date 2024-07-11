@@ -128,7 +128,6 @@ def shape_optimization(conn: multiprocessing.connection.Connection or None, para
                 objective.update(chromosome.forces)
             for constraint in constraints:
                 constraint.update(chromosome.forces)
-                print(f"{constraint.value = }")
             if J is None:
                 J = np.array([obj.value for obj in objectives])
             else:
