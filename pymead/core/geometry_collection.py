@@ -445,19 +445,37 @@ class GeometryCollection(DualRep):
                 if pymead_obj in pt.curves:
                     pt.curves.remove(pymead_obj)
 
+            # If this is an airfoil curve, delete the airfoil
             if pymead_obj.airfoil is not None:
                 for curve in pymead_obj.airfoil.curves:
                     if pymead_obj is not curve:
                         curve.airfoil = None
                 self.remove_pymead_obj(pymead_obj.airfoil)
 
+            # mark airfoils for removal if this is a trailing edge line for those airfoils
+            if isinstance(pymead_obj, LineSegment):
+                airfoils_to_delete = []
+                for airfoil in self.container()["airfoils"].values():
+                    te_references = [airfoil.trailing_edge, airfoil.upper_surf_end, airfoil.lower_surf_end]
+                    if pymead_obj.points()[0] in te_references and pymead_obj.points()[1] in te_references:
+                        airfoils_to_delete.append(airfoil)
+
+                # Remove the airfoils that need to be removed due to this line being a trailing edge line
+                for airfoil in airfoils_to_delete:
+                    try:
+                        self.remove_pymead_obj(airfoil)
+                    except KeyError:
+                        pass
+
         elif isinstance(pymead_obj, Point):
 
+            # Remove the x and y parameters from the parameter graph
             for param in [pymead_obj.x(), pymead_obj.y()]:
                 param.param_graph.param_list.remove(param)
                 if param in param.param_graph.nodes:
                     param.param_graph.remove_node(param)
 
+            # Remove any constraints associated with this point
             for geo_con in pymead_obj.geo_cons:
                 self.remove_pymead_obj(geo_con)
 
@@ -468,11 +486,24 @@ class GeometryCollection(DualRep):
                 if curve.point_removal_deletes_curve():
                     curves_to_delete.append(curve)
 
+            # If this point is a trailing edge of one or more airfoils, remove those airfoils
+            airfoils_to_delete = []
+            for airfoil in self.container()["airfoils"].values():
+                if pymead_obj is airfoil.trailing_edge:
+                    airfoils_to_delete.append(airfoil)
+
             # Remove the curves that need to be removed due to insufficient points in the point sequence
             for curve in curves_to_delete:
                 try:
                     self.remove_pymead_obj(curve)
-                except KeyError:
+                except KeyError:  # This curve may have already been deleted in a prior step, so catch this exception
+                    pass
+
+            # Remove the airfoils that need to be removed due to this point being a trailing edge
+            for airfoil in airfoils_to_delete:
+                try:
+                    self.remove_pymead_obj(airfoil)
+                except KeyError:  # This airfoil may have already been deleted in a prior step, so catch this exception
                     pass
 
             # Update any remaining curves
