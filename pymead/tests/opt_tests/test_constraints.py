@@ -5,7 +5,7 @@ import numpy as np
 
 from pymead.gui.dialogs import convert_opt_settings_to_param_dict
 
-from pymead.optimization.pop_chrom import Chromosome
+from pymead.optimization.pop_chrom import Chromosome, Population
 from pymead import EXAMPLES_DIR
 from pymead.utils.read_write_files import load_data
 
@@ -64,3 +64,37 @@ def test_thickness_at_points_check():
     chromosome.param_dict["constraints"]["Airfoil-1"]["thickness_at_points"] = thickness_data_to_fail
     chromosome.generate()
     assert not chromosome.valid_geometry
+
+
+def test_chromosome_eval_fitness_with_invalid_max_thickness():
+    geo_col_dict = load_data(os.path.join(EXAMPLES_DIR, "basic_airfoil_sharp_dv.jmea"))
+    param_dict = convert_opt_settings_to_param_dict(load_data("test_airfoil_thickness_settings.json"))
+    chromosome = Chromosome(
+        geo_col_dict=deepcopy(geo_col_dict),
+        param_dict=param_dict,
+        generation=0,
+        population_idx=0,
+        airfoil_name="Airfoil-1"
+    )
+    chromosome.param_dict["constraints"]["Airfoil-1"]["min_val_of_max_thickness"][0] = 0.12
+    population = Population(param_dict=param_dict, generation=0, parents=[chromosome])
+    chromosome = population.eval_chromosome_fitness(chromosome)
+    assert not chromosome.valid_geometry
+    assert chromosome.fitness is None
+
+
+def test_eval_pop_fitness_with_invalid_max_thickness():
+    geo_col_dict = load_data(os.path.join(EXAMPLES_DIR, "basic_airfoil_sharp_dv.jmea"))
+    param_dict = convert_opt_settings_to_param_dict(load_data("test_airfoil_thickness_settings.json"))
+    chromosome = Chromosome(
+        geo_col_dict=deepcopy(geo_col_dict),
+        param_dict=param_dict,
+        generation=0,
+        population_idx=0,
+        airfoil_name="Airfoil-1"
+    )
+    chromosome.param_dict["constraints"]["Airfoil-1"]["min_val_of_max_thickness"][0] = 0.12
+    chromosome.param_dict['num_processors'] = 1
+    population = Population(param_dict=param_dict, generation=0, parents=[chromosome])
+    population.eval_pop_fitness()
+    assert len(population.converged_chromosomes) == 0
