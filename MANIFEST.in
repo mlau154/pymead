@@ -12,3 +12,6 @@ include pymead/resources/dejavu-fonts-ttf-2.37/fontconfig/*
 include pymead/resources/dejavu-fonts-ttf-2.37/ttf/*
 include pymead/resources/cmcrameri/*
 include pymead/tests/core_tests/*.jmea
+include pymead/tests/misc_tests/ps_svg_pdf_conversion/*.ps
+include pymead/tests/opt_tests/*.json
+include pymead/tests/opt_tests/*.jmea

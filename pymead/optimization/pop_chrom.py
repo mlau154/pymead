@@ -85,19 +85,20 @@ class Chromosome:
                 if self.param_dict['constraints'][airfoil_name]['min_val_of_max_thickness'][1]:
                     self.chk_max_thickness(relative_line_strings[airfoil_name], airfoil_name=airfoil_name)
             if self.valid_geometry:
-                if self.param_dict['constraints'][airfoil_name]['thickness_at_points'] is not None:
+                if (self.param_dict['constraints'][airfoil_name]['check_thickness_at_points'] and
+                        self.param_dict['constraints'][airfoil_name]['thickness_at_points'] is not None):
                     self.check_thickness_at_points(relative_line_strings[airfoil_name], airfoil_name=airfoil_name)
             if self.valid_geometry:
                 if self.param_dict['constraints'][airfoil_name]['min_area'][1]:
                     self.check_min_area(airfoil_polygons[airfoil_name], airfoil_name=airfoil_name)
             if self.valid_geometry:
-                if self.param_dict['constraints'][airfoil_name]['internal_geometry'] is not None:
+                if self.param_dict['constraints'][airfoil_name]['internal_geometry']:
                     if self.param_dict['constraints'][airfoil_name]['internal_geometry_timing'] == 'Before Aerodynamic Evaluation':
                         self.check_contains_points(airfoil_polygons[airfoil_name], airfoil_name=airfoil_name)
                     else:
                         raise ValueError('Internal geometry timing after aerodynamic evaluation not yet implemented')
             if self.valid_geometry:
-                if self.param_dict['constraints'][airfoil_name]['external_geometry'] is not None:
+                if self.param_dict['constraints'][airfoil_name]['external_geometry']:
                     if self.param_dict['constraints'][airfoil_name]['external_geometry_timing'] == 'Before Aerodynamic Evaluation':
                         self.check_if_inside_points(airfoil_name=airfoil_name)
                     else:
@@ -373,12 +374,18 @@ class Population:
         """
         Evaluates the fitness of the population using parallel processing
         """
+
+        def _end_pool(chr_pool: multiprocessing.Pool):
+            for ch in active_children():
+                kill_child_processes(ch.pid)
+            chr_pool.terminate()
+            chr_pool.join()
+
         n_eval = 0
         n_converged_chromosomes = 0
         with Pool(processes=self.param_dict['num_processors']) as pool:
             result = pool.imap_unordered(self.eval_chromosome_fitness, self.population)
-            # if self.verbose:
-            #     print(f'result = {result}')
+
             for chromosome in result:
 
                 if chromosome.fitness is not None:
@@ -396,15 +403,13 @@ class Population:
                     try:
                         sig.send(("message", status_bar_message))
                     except BrokenPipeError:
-                        pool.terminate()
+                        _end_pool(pool)
+                        break
                 else:
                     print(status_bar_message)
 
                 if n_converged_chromosomes >= self.param_dict["population_size"]:
-                    for child in active_children():
-                        kill_child_processes(child.pid)
-                    pool.terminate()
-                    pool.join()
+                    _end_pool(pool)
                     break
 
         for chromosome in self.converged_chromosomes:
