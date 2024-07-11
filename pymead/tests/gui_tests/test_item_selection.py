@@ -1,6 +1,6 @@
 from PyQt6.QtCore import QPointF, QPoint
 from pymead.core.point import PointSequence
-from pymead.tests.gui_tests.utils import app
+from pymead.tests.gui_tests.utils import app, pointer
 from pymead.utils.misc import convert_rgba_to_hex, get_setting
 from pytestqt.qtbot import QtBot
 
@@ -328,10 +328,10 @@ def test_clear_selected_objects_airfoils(app):
     bez_lower = app.geo_col.add_bezier(point_seq_lower)
 
     airfoil_thin = app.geo_col.add_airfoil(point_seq_upper.points()[0],
-                                      point_seq_upper.points()[-1],
-                                      upper_surf_end=None,
-                                      lower_surf_end=None
-                                      )
+                                           point_seq_upper.points()[-1],
+                                           upper_surf_end=None,
+                                           lower_surf_end=None
+                                           )
 
     point_one_upper = app.geo_col.add_point(0.0, 0.0)
     point_two_upper = app.geo_col.add_point(0.3, 0.2)
@@ -398,6 +398,18 @@ def test_point_hover(app, qtbot: QtBot):
     app.geo_col.clear_container()
     assert point_brush_color_hex_6_digit == point_brush_color_setting
     assert point_pen_color_hex_6_digit == point_pen_color_setting
+
+
+def test_line_hover(app, qtbot: QtBot):
+    pass
+
+
+def test_bezier_hover(app, qtbot: QtBot):
+    pass
+
+
+def test_airfoil_hover(app, qtbot: QtBot):
+    pass
 
 
 def test_remove_pymead_obj_point(app):
@@ -561,8 +573,33 @@ def test_remove_pymead_obj_airfoil_blunt(app):
     app.geo_col.remove_pymead_obj(airfoil_blunt)
     assert len(airfoil_container) == 0
     assert len(point_container) == 8
-    assert len (bezier_container) == 2
+    assert len(bezier_container) == 2
     assert len(line_container) == 2
+
+    airfoil_blunt_two = app.geo_col.add_airfoil(point_one_upper,
+                                                midpoint,
+                                                point_four_upper,
+                                                point_three_lower
+                                                )
+
+    app.geo_col.remove_pymead_obj(line_two_blunt)
+    assert len(airfoil_container) == 0
+    assert len(point_container) == 8
+    assert len(bezier_container) == 2
+    assert len(line_container) == 1
+
+    line_two_blunt_two = app.geo_col.add_line(PointSequence(points=[point_three_lower, midpoint]))
+    airfoil_blunt_three = app.geo_col.add_airfoil(point_one_upper,
+                                                  midpoint,
+                                                  point_four_upper,
+                                                  point_three_lower
+                                                  )
+
+    app.geo_col.remove_pymead_obj(midpoint)
+    assert len(airfoil_container) == 0
+    assert len(point_container) == 7
+    assert len(bezier_container) == 2
+    assert len(line_container) == 0
 
     app.geo_col.clear_container()
 
