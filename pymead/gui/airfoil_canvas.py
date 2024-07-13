@@ -883,7 +883,7 @@ class AirfoilCanvas(pg.PlotWidget):
         line_item.sigCurveNotHovered.connect(self.curveLeaveHovered)
 
     def arrowKeyPointMove(self, key, mods):
-        step = 10 * self.geo_col.single_step if mods == Qt.Key.ShiftModifier else self.geo_col.single_step
+        step = 10 * self.geo_col.single_step if mods == Qt.KeyboardModifier.ShiftModifier else self.geo_col.single_step
         if key == Qt.Key.Key_Left:
             for point in self.geo_col.selected_objects["points"]:
                 point.request_move(point.x().value() - step, point.y().value())
