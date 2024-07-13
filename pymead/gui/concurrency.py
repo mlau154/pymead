@@ -7,7 +7,7 @@ from multiprocessing import active_children
 
 from PyQt6.QtCore import QObject, QRunnable, QThreadPool, pyqtSignal
 
-from pymead.utils.pymead_mp import kill_child_processes
+from pymead.utils.pymead_mp import kill_child_processes, kill_xfoil_mses_processes
 
 
 class ProgressEmitter(QRunnable):
@@ -72,3 +72,4 @@ class CPUBoundProcess(QObject):
         for child in active_children():
             kill_child_processes(child.pid)
         self.process.terminate()
+        kill_xfoil_mses_processes()

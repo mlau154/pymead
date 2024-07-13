@@ -31,17 +31,15 @@ def kill_child_processes(parent_pid: int, sig: int = signal.SIGTERM):
         except psutil.NoSuchProcess:
             continue
 
+
+def kill_xfoil_mses_processes(sig: int = signal.SIGTERM):
     # In the rare case that an instance of XFOIL or MSES does not get shut down, force-close any processes with those
     # names
-    for proc in psutil.process_iter():
-        # Try to get the name of the process. In rare cases, the process might get terminated in the middle of
-        # the call to proc.name(). In these cases, simply continue
+    xfoil_mses_processes = ["xfoil", "mset", "mses", "mplot", "mpolar"]
+    xfoil_mses_processes.extend([name + ".exe" for name in xfoil_mses_processes])
+    matching_processes = [proc for proc in psutil.process_iter(["name"]) if proc.info["name"] in xfoil_mses_processes]
+    for proc in matching_processes:
         try:
-            proc_name = proc.name()
+            proc.send_signal(sig)
         except psutil.NoSuchProcess:
             continue
-        if proc_name in ["xfoil.exe", "mses.exe", "xfoil", "mses"]:
-            try:
-                proc.send_signal(sig)
-            except psutil.NoSuchProcess:
-                continue

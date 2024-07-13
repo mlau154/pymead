@@ -8,7 +8,7 @@ import numpy as np
 from pymead.analysis.calc_aero_data import calculate_aero_data
 from pymead.core.airfoil import Airfoil
 from pymead.core.geometry_collection import GeometryCollection
-from pymead.utils.pymead_mp import kill_child_processes
+from pymead.utils.pymead_mp import kill_child_processes, kill_xfoil_mses_processes
 
 
 class CustomGASettings:
@@ -310,7 +310,7 @@ class Population:
             print(f"Geometry {chromosome.population_idx} passed all the tests. Continuing on to evaluation...")
         if chromosome.fitness is None:
             if self.verbose:
-                print(f'Chromosome {chromosome.population_idx + 1} '
+                print(f'Chromosome {chromosome.population_idx} '
                       f'(generation: {chromosome.generation}): Evaluating fitness...')
             xfoil_settings, mset_settings, mses_settings, mplot_settings = None, None, None, None
             if chromosome.param_dict['tool'] == 'XFOIL':
@@ -348,11 +348,11 @@ class Population:
 
             if self.verbose and chromosome.fitness is not None:
                 if "CPK" in chromosome.forces.keys():
-                    print(f"Fitness evaluated successfully for chromosome {chromosome.population_idx + 1} with "
+                    print(f"Fitness evaluated successfully for chromosome {chromosome.population_idx} with "
                           f"generation: {chromosome.generation} | CPK = {chromosome.forces['CPK']} | C_d = {chromosome.forces['Cd']} | C_l = "
                           f"{chromosome.forces['Cl']} | C_m = {chromosome.forces['Cm']}")
                 else:
-                    print(f"Fitness evaluated successfully for chromosome {chromosome.population_idx + 1} with "
+                    print(f"Fitness evaluated successfully for chromosome {chromosome.population_idx} with "
                           f"generation: {chromosome.generation} | C_d = {chromosome.forces['Cd']} | C_l = "
                           f"{chromosome.forces['Cl']} | C_m = {chromosome.forces['Cm']}")
         return chromosome
@@ -380,6 +380,7 @@ class Population:
                 kill_child_processes(ch.pid)
             chr_pool.terminate()
             chr_pool.join()
+            kill_xfoil_mses_processes()
 
         n_eval = 0
         n_converged_chromosomes = 0
