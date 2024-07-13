@@ -38,8 +38,6 @@ def shape_optimization(conn: multiprocessing.connection.Connection or None, para
     objectives = [Objective(func_str=func_str) for func_str in objectives]
     constraints = [Constraint(func_str=func_str) for func_str in constraints]
 
-    # print(f"Shape optimization has PID {os.getpid()}")
-
     def start_message(warm_start: bool):
         first_word = "Resuming" if warm_start else "Beginning"
         return f"\n{first_word} aerodynamic shape optimization with {param_dict['num_processors']} processors..."
@@ -122,8 +120,6 @@ def shape_optimization(conn: multiprocessing.connection.Connection or None, para
                     new_X = np.array(chromosome.genes)
             else:
                 new_X = np.row_stack((new_X, np.array(chromosome.genes)))
-            # print(f"{self.objectives = }")
-            # print(f"Before objective and constraint update, {chromosome.forces = }")
             for objective in objectives:
                 objective.update(chromosome.forces)
             for constraint in constraints:
@@ -138,8 +134,6 @@ def shape_optimization(conn: multiprocessing.connection.Connection or None, para
                 else:
                     G = np.row_stack((G, np.array([
                         constraint.value for constraint in constraints])))
-
-            # print(f"{J = }, {self.objectives = }")
 
         if new_X is None:
             send_over_pipe(("text", f"Could not converge any individuals in the population. Optimization terminated."))
@@ -157,7 +151,6 @@ def shape_optimization(conn: multiprocessing.connection.Connection or None, para
         pop_initial = pymoo.core.population.Population.new("X", new_X)
         # objectives
         pop_initial.set("F", J)
-        # print(f"Initially, {J = }")
         if len(constraints) > 0:
             if G is not None:
                 pop_initial.set("G", G)
@@ -181,10 +174,6 @@ def shape_optimization(conn: multiprocessing.connection.Connection or None, para
 
         algorithm.evaluator.n_eval += n_eval
 
-        # save_data(algorithm, os.path.join(param_dict['opt_dir'], 'algorithm_gen_0.pkl'))
-
-        # np.save('checkpoint', algorithm)
-        # until the algorithm has no terminated
         n_generation = 0
     else:
         logging.debug('Starting from where we left off...')
@@ -273,9 +262,7 @@ def shape_optimization(conn: multiprocessing.connection.Connection or None, para
                     ("text", f"Could not converge any individuals in the population. Optimization terminated."))
                 return
 
-            for idx in range(param_dict['n_offsprings'] - len(new_X)):
-                # f1 = np.append(f1, np.array([1000.0]))
-                # f2 = np.append(f2, np.array([1000.0]))
+            for _ in range(param_dict['n_offsprings'] - len(new_X)):
                 new_X = np.row_stack((new_X, 9999 * np.ones(param_dict['n_var'])))
                 J = np.row_stack((J, 1000.0 * np.ones(param_dict['n_obj'])))
                 if len(constraints) > 0:
@@ -295,8 +282,6 @@ def shape_optimization(conn: multiprocessing.connection.Connection or None, para
             # objectives
             pop.set("F", J)
 
-            # print(f"{pop.get('F') = }")
-
             # for constraints
             if len(constraints) > 0:
                 pop.set("G", G)
@@ -305,10 +290,7 @@ def shape_optimization(conn: multiprocessing.connection.Connection or None, para
             set_cv(pop)
 
         # returned the evaluated individuals which have been evaluated or even modified
-        # print(f"{pop.get('X') = }, {pop.get('F') = }")
         algorithm.tell(infills=pop)
-
-        # print(f"{algorithm.opt.get('F') = }")
 
         warm_start_gen = None
         if opt_settings["General Settings"]["warm_start_active"]:
@@ -316,8 +298,6 @@ def shape_optimization(conn: multiprocessing.connection.Connection or None, para
 
         send_over_pipe(("opt_progress", {"text": algorithm.display.progress_dict, "completed": not algorithm.has_next(),
                                          "warm_start_gen": warm_start_gen}))
-
-        # print(f"{algorithm.display.progress_dict = }")
 
         if len(objectives) == 1:
             if n_generation > 1:
