@@ -7,13 +7,14 @@ from pymead.core.geometry_collection import GeometryCollection
 from pymead.gui.dialogs import convert_opt_settings_to_param_dict
 
 from pymead.optimization.pop_chrom import Chromosome, Population
-from pymead import EXAMPLES_DIR
+from pymead import EXAMPLES_DIR, TEST_DIR
 from pymead.utils.read_write_files import load_data
 
 
 def test_thickness_check():
     geo_col_dict = load_data(os.path.join(EXAMPLES_DIR, "basic_airfoil_sharp_dv.jmea"))
-    param_dict = convert_opt_settings_to_param_dict(load_data("test_airfoil_thickness_settings.json"))
+    param_dict = convert_opt_settings_to_param_dict(load_data(os.path.join(
+        TEST_DIR, "opt_tests", "test_airfoil_thickness_settings.json")))
     chromosome = Chromosome(
         geo_col_dict=deepcopy(geo_col_dict),
         param_dict=param_dict,
@@ -36,8 +37,9 @@ def test_thickness_check():
 
 
 def test_thickness_at_points_check():
-    geo_col_dict = load_data("thickness_at_points.jmea")
-    param_dict = convert_opt_settings_to_param_dict(load_data("test_airfoil_thickness_settings.json"))
+    geo_col_dict = load_data(os.path.join(TEST_DIR, "opt_tests", "thickness_at_points.jmea"))
+    param_dict = convert_opt_settings_to_param_dict(load_data(os.path.join(
+        TEST_DIR, "opt_tests", "test_airfoil_thickness_settings.json")))
     chromosome = Chromosome(
         geo_col_dict=deepcopy(geo_col_dict),
         param_dict=param_dict,
@@ -69,7 +71,8 @@ def test_thickness_at_points_check():
 
 def test_chromosome_eval_fitness_with_invalid_max_thickness():
     geo_col_dict = load_data(os.path.join(EXAMPLES_DIR, "basic_airfoil_sharp_dv.jmea"))
-    param_dict = convert_opt_settings_to_param_dict(load_data("test_airfoil_thickness_settings.json"))
+    param_dict = convert_opt_settings_to_param_dict(load_data(os.path.join(
+        TEST_DIR, "opt_tests", "test_airfoil_thickness_settings.json")))
     chromosome = Chromosome(
         geo_col_dict=deepcopy(geo_col_dict),
         param_dict=param_dict,
@@ -86,7 +89,8 @@ def test_chromosome_eval_fitness_with_invalid_max_thickness():
 
 def test_eval_pop_fitness_with_invalid_max_thickness():
     geo_col_dict = load_data(os.path.join(EXAMPLES_DIR, "basic_airfoil_sharp_dv.jmea"))
-    param_dict = convert_opt_settings_to_param_dict(load_data("test_airfoil_thickness_settings.json"))
+    param_dict = convert_opt_settings_to_param_dict(load_data(os.path.join(
+        TEST_DIR, "opt_tests", "test_airfoil_thickness_settings.json")))
     chromosome = Chromosome(
         geo_col_dict=deepcopy(geo_col_dict),
         param_dict=param_dict,
@@ -103,13 +107,14 @@ def test_eval_pop_fitness_with_invalid_max_thickness():
 
 def test_chromosome_generate_with_invalid_max_thickness_scaled_airfoil():
     scale_factor = 50
-    geo_col_dict = load_data("thickness_at_points.jmea")
+    geo_col_dict = load_data(os.path.join(TEST_DIR, "opt_tests", "thickness_at_points.jmea"))
     geo_col = GeometryCollection.set_from_dict_rep(geo_col_dict)
     for point in geo_col.container()["points"].values():
         x, y = point.x().value(), point.y().value()
         point.request_move(x * scale_factor, y * scale_factor)
     geo_col_dict = geo_col.get_dict_rep()
-    param_dict = convert_opt_settings_to_param_dict(load_data("test_airfoil_thickness_settings.json"))
+    param_dict = convert_opt_settings_to_param_dict(load_data(os.path.join(
+        TEST_DIR, "opt_tests", "test_airfoil_thickness_settings.json")))
     chromosome = Chromosome(
         geo_col_dict=deepcopy(geo_col_dict),
         param_dict=param_dict,
