@@ -6,7 +6,6 @@ import multiprocessing.connection
 import numpy as np
 
 from pymead.analysis.calc_aero_data import calculate_aero_data
-from pymead.core.airfoil import Airfoil
 from pymead.core.geometry_collection import GeometryCollection
 from pymead.utils.pymead_mp import kill_child_processes, kill_xfoil_mses_processes
 
@@ -60,22 +59,16 @@ class Chromosome:
         Chromosome generation flow
         :return:
         """
-        self.geo_col = GeometryCollection.set_from_dict_rep(self.geo_col_dict)
+        self.geo_col = GeometryCollection.set_from_dict_rep(deepcopy(self.geo_col_dict))
         self.mea = None if self.mea_name is None else self.geo_col.container()["mea"][self.mea_name]
         self.airfoil = None if self.airfoil_name is None else self.geo_col.container()["airfoils"][self.airfoil_name]
         self.airfoil_list = [self.airfoil] if self.airfoil is not None else self.mea.airfoils
         if self.mea is not None:
             self.mea_airfoil_names = [airfoil.name() for airfoil in self.mea.airfoils]
-        # self.mea_object = MEA.generate_from_param_dict(self.mea)
-        # if deactivate_airfoil_graphs:
-        #     self.mea_object.remove_airfoil_graphs()
         if self.verbose:
             print(f'Generating chromosome idx = {self.population_idx}, gen = {self.generation}')
         self.generate_airfoil_sys_from_genes()
-        line_strings = self.get_airfoil_line_strings(airfoil_frame_relative=False)
-        relative_line_strings = self.get_airfoil_line_strings(airfoil_frame_relative=True)
-        airfoil_polygons = self.get_airfoil_polygons(line_strings)
-        self.chk_self_intersection(line_strings)
+        self.chk_self_intersection()
         for airfoil in self.airfoil_list:
             airfoil_name = airfoil.name()
             if self.valid_geometry:
@@ -83,18 +76,18 @@ class Chromosome:
                     self.chk_min_radius(airfoil_name=airfoil_name)
             if self.valid_geometry:
                 if self.param_dict['constraints'][airfoil_name]['min_val_of_max_thickness'][1]:
-                    self.chk_max_thickness(relative_line_strings[airfoil_name], airfoil_name=airfoil_name)
+                    self.chk_max_thickness(airfoil_frame_relative=True, airfoil_name=airfoil_name)
             if self.valid_geometry:
                 if (self.param_dict['constraints'][airfoil_name]['check_thickness_at_points'] and
                         self.param_dict['constraints'][airfoil_name]['thickness_at_points'] is not None):
-                    self.check_thickness_at_points(relative_line_strings[airfoil_name], airfoil_name=airfoil_name)
+                    self.check_thickness_at_points(airfoil_frame_relative=True, airfoil_name=airfoil_name)
             if self.valid_geometry:
                 if self.param_dict['constraints'][airfoil_name]['min_area'][1]:
-                    self.check_min_area(airfoil_polygons[airfoil_name], airfoil_name=airfoil_name)
+                    self.check_min_area(airfoil_frame_relative=True, airfoil_name=airfoil_name)
             if self.valid_geometry:
                 if self.param_dict['constraints'][airfoil_name]['internal_geometry']:
                     if self.param_dict['constraints'][airfoil_name]['internal_geometry_timing'] == 'Before Aerodynamic Evaluation':
-                        self.check_contains_points(airfoil_polygons[airfoil_name], airfoil_name=airfoil_name)
+                        self.check_contains_points(airfoil_frame_relative=True, airfoil_name=airfoil_name)
                     else:
                         raise ValueError('Internal geometry timing after aerodynamic evaluation not yet implemented')
             if self.valid_geometry:
@@ -136,6 +129,8 @@ class Chromosome:
     def update_param_dict(self):
         if self.param_dict["tool"] != "MSES":
             return
+        if "XCDELH-Param" not in self.param_dict["mses_settings"]:
+            return
         xcdelh_params = self.param_dict["mses_settings"]["XCDELH-Param"]
         for idx, xcdelh_param in enumerate(xcdelh_params):
             if xcdelh_param:
@@ -146,21 +141,7 @@ class Chromosome:
                 else:
                     raise ValueError(f"Could not find XCDELH parameter {xcdelh_param}")
 
-    def get_airfoil_line_strings(self, airfoil_frame_relative: bool):
-        line_strings = {}
-        for airfoil in self.airfoil_list:
-            if airfoil_frame_relative:
-                coords = airfoil.get_chord_relative_coords(airfoil.coords)
-            else:
-                coords = airfoil.coords
-            line_strings[airfoil.name()] = Airfoil.create_line_string(Airfoil.convert_coords_to_shapely_format(coords))
-        return line_strings
-
-    @staticmethod
-    def get_airfoil_polygons(line_strings: dict):
-        return {k: Airfoil.create_shapely_polygon(v) for k, v in line_strings.items()}
-
-    def chk_self_intersection(self, line_strings: dict) -> bool:
+    def chk_self_intersection(self) -> bool:
         """
         Checks if airfoil geometry is self-intersecting
         :return: Boolean flag
@@ -168,7 +149,7 @@ class Chromosome:
         try:
             if self.airfoil_sys_generated:
                 for airfoil in self.airfoil_list:  # For each airfoil,
-                    self_intersecting = airfoil.check_self_intersection(line_strings[airfoil.name()])
+                    self_intersecting = airfoil.check_self_intersection()
                     if self_intersecting:  # If the intersection array is not empty (& thus there is a
                         # self-intersection somewhere),
                         self_intersection_flag = True  # Set self-intersection flag to True
@@ -195,10 +176,10 @@ class Chromosome:
                 print(f'Min radius of curvature too small? {min_radius_too_small}. Min radius is {min_radius}')
             return min_radius_too_small
 
-    def chk_max_thickness(self, line_string, airfoil_name: str) -> bool:
+    def chk_max_thickness(self, airfoil_frame_relative: bool, airfoil_name: str) -> bool:
         if self.airfoil_sys_generated:
             thickness_data = self.geo_col.container()["airfoils"][airfoil_name].compute_thickness(
-                line_string)
+                airfoil_frame_relative=airfoil_frame_relative)
             max_thickness = thickness_data["t/c_max"]
             if max_thickness < self.param_dict['constraints'][airfoil_name]['min_val_of_max_thickness'][0]:
                 max_thickness_too_small = True
@@ -222,13 +203,14 @@ class Chromosome:
         else:
             raise Exception('Airfoil system has not yet been generated. Aborting self-intersection check.')
 
-    def check_thickness_at_points(self, line_string, airfoil_name: str):
+    def check_thickness_at_points(self, airfoil_frame_relative: bool, airfoil_name: str):
         if self.airfoil_sys_generated:
             thickness_array = np.array(self.param_dict['constraints'][airfoil_name]['thickness_at_points'])
             x_over_c_array = thickness_array[:, 0]
             t_over_c_array = thickness_array[:, 1]
             airfoil = self.geo_col.container()["airfoils"][airfoil_name]
-            thickness = airfoil.compute_thickness_at_points(x_over_c_array, line_string)
+            thickness = airfoil.compute_thickness_at_points(x_over_c_array,
+                                                            airfoil_frame_relative=airfoil_frame_relative)
             if np.any(thickness < t_over_c_array):
                 if self.verbose:
                     print(f"Minimum required thickness condition not met at some point. Trying again")
@@ -240,9 +222,10 @@ class Chromosome:
         else:
             raise Exception('Airfoil system has not yet been generated. Aborting self-intersection check.')
 
-    def check_min_area(self, airfoil_polygon, airfoil_name: str):
+    def check_min_area(self, airfoil_frame_relative: bool, airfoil_name: str):
         if self.airfoil_sys_generated:
-            area = self.geo_col.container()["airfoils"][airfoil_name].compute_area(airfoil_polygon)
+            area = self.geo_col.container()["airfoils"][airfoil_name].compute_area(
+                airfoil_frame_relative=airfoil_frame_relative)
             required_min_area = self.param_dict['constraints'][airfoil_name]['min_area'][0]
             if area < required_min_area:
                 if self.verbose:
@@ -256,10 +239,10 @@ class Chromosome:
         else:
             raise Exception('Airfoil system has not yet been generated. Aborting self-intersection check.')
 
-    def check_contains_points(self, airfoil_polygon, airfoil_name: str) -> bool:
+    def check_contains_points(self, airfoil_frame_relative: bool, airfoil_name: str) -> bool:
         if self.airfoil_sys_generated:
             if not self.geo_col.container()["airfoils"][airfoil_name].contains_line_string(
-                    airfoil_polygon, self.param_dict['constraints'][airfoil_name]['internal_geometry']):
+                    airfoil_frame_relative, self.param_dict['constraints'][airfoil_name]['internal_geometry']):
                 self.valid_geometry = False
                 return self.valid_geometry
         self.valid_geometry = True
@@ -390,6 +373,7 @@ class Population:
             for chromosome in result:
 
                 if chromosome.fitness is not None:
+                    assert chromosome.valid_geometry
                     self.converged_chromosomes.append(chromosome)
                     n_converged_chromosomes += 1
 

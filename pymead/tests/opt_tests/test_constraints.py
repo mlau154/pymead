@@ -3,6 +3,7 @@ from copy import deepcopy
 
 import numpy as np
 
+from pymead.core.geometry_collection import GeometryCollection
 from pymead.gui.dialogs import convert_opt_settings_to_param_dict
 
 from pymead.optimization.pop_chrom import Chromosome, Population
@@ -98,3 +99,24 @@ def test_eval_pop_fitness_with_invalid_max_thickness():
     population = Population(param_dict=param_dict, generation=0, parents=[chromosome])
     population.eval_pop_fitness()
     assert len(population.converged_chromosomes) == 0
+
+
+def test_chromosome_generate_with_invalid_max_thickness_scaled_airfoil():
+    scale_factor = 50
+    geo_col_dict = load_data("thickness_at_points.jmea")
+    geo_col = GeometryCollection.set_from_dict_rep(geo_col_dict)
+    for point in geo_col.container()["points"].values():
+        x, y = point.x().value(), point.y().value()
+        point.request_move(x * scale_factor, y * scale_factor)
+    geo_col_dict = geo_col.get_dict_rep()
+    param_dict = convert_opt_settings_to_param_dict(load_data("test_airfoil_thickness_settings.json"))
+    chromosome = Chromosome(
+        geo_col_dict=deepcopy(geo_col_dict),
+        param_dict=param_dict,
+        generation=0,
+        population_idx=0,
+        airfoil_name="Airfoil-1"
+    )
+    chromosome.param_dict["constraints"]["Airfoil-1"]["min_val_of_max_thickness"][0] = 0.17
+    chromosome.generate()
+    assert not chromosome.valid_geometry

@@ -3,7 +3,7 @@ pydata-sphinx-theme
 sphinx-design
 numpy
 scipy
-shapely
+shapely>=2.0
 matplotlib
 requests>=2.31
 PyQt6

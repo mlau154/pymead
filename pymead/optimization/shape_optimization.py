@@ -31,6 +31,33 @@ except ModuleNotFoundError:
 from pymoo.core.evaluator import set_cv
 
 
+def compute_objectives_and_forces_from_evaluated_population(
+        evaluated_population: Population,
+        objectives: typing.List[Objective],
+        constraints: typing.List[Constraint] or None) -> (np.ndarray, np.ndarray, typing.List[dict]):
+
+    n_offspring = len(evaluated_population.population)
+    forces = []
+    constraints = [] if constraints is None else constraints
+    J = 1000.0 * np.ones((n_offspring, len(objectives)))
+    G = 1000.0 * np.ones((n_offspring, len(constraints))) if constraints else None
+
+    for pop_idx, chromosome in enumerate(evaluated_population.population):
+        forces.append(chromosome.forces)
+        if chromosome.forces is None:
+            continue
+
+        # Update objective and constraint objects; assign values to J and G, respectively
+        for obj_idx, objective in enumerate(objectives):
+            objective.update(chromosome.forces)
+            J[pop_idx, obj_idx] = objective.value
+        for cnstr_idx, constraint in enumerate(constraints):
+            constraint.update(chromosome.forces)
+            G[pop_idx, cnstr_idx] = constraint.value
+
+    return J, G, forces
+
+
 def shape_optimization(conn: multiprocessing.connection.Connection or None, param_dict: dict, opt_settings: dict,
                        geo_col_dict: dict,
                        objectives: typing.List[str], constraints: typing.List[str]):
@@ -42,8 +69,8 @@ def shape_optimization(conn: multiprocessing.connection.Connection or None, para
         first_word = "Resuming" if warm_start else "Beginning"
         return f"\n{first_word} aerodynamic shape optimization with {param_dict['num_processors']} processors..."
 
-    def write_force_dict_to_file(forces_dict, file_name: str):
-        forces_temp = deepcopy(forces_dict)
+    def write_force_dict_to_file(force_dictionary, file_name: str):
+        forces_temp = deepcopy(force_dictionary)
         if "Cp" in forces_temp.keys():
             for el in forces_temp["Cp"]:
                 if isinstance(el, list):
@@ -73,7 +100,6 @@ def shape_optimization(conn: multiprocessing.connection.Connection or None, para
     send_over_pipe(("text", start_message(opt_settings["General Settings"]["warm_start_active"])))
 
     Config.show_compile_hint = False
-    forces = []
     ref_dirs = get_reference_directions("energy", param_dict['n_obj'], param_dict['n_ref_dirs'],
                                         seed=param_dict['seed'])
     geo_col = GeometryCollection.set_from_dict_rep(deepcopy(geo_col_dict))
@@ -107,54 +133,18 @@ def shape_optimization(conn: multiprocessing.connection.Connection or None, para
         n_eval = population.eval_pop_fitness(sig=conn)
         print(f"Finished evaluating population fitness. Continuing...")
 
-        new_X = None
-        J = None
-        G = None
+        J, G, forces = compute_objectives_and_forces_from_evaluated_population(population, objectives, constraints)
 
-        for chromosome in population.converged_chromosomes:
-            forces.append(chromosome.forces)
-            if new_X is None:
-                if param_dict['n_offsprings'] > 1:
-                    new_X = np.array([chromosome.genes])
-                else:
-                    new_X = np.array(chromosome.genes)
-            else:
-                new_X = np.row_stack((new_X, np.array(chromosome.genes)))
-            for objective in objectives:
-                objective.update(chromosome.forces)
-            for constraint in constraints:
-                constraint.update(chromosome.forces)
-            if J is None:
-                J = np.array([obj.value for obj in objectives])
-            else:
-                J = np.row_stack((J, np.array([obj.value for obj in objectives])))
-            if len(constraints) > 0:
-                if G is None:
-                    G = np.array([constraint.value for constraint in constraints])
-                else:
-                    G = np.row_stack((G, np.array([
-                        constraint.value for constraint in constraints])))
-
-        if new_X is None:
+        if all([obj_value == 1000.0 for obj_value in J[:, 0]]) is None:
             send_over_pipe(("text", f"Could not converge any individuals in the population. Optimization terminated."))
             return
 
-        if new_X.ndim == 1:
-            new_X = np.array([new_X])
-
-        if J.ndim == 1:
-            J = np.array([J])
-
-        if len(constraints) > 0 and G.ndim == 1:
-            G = np.array([G])
-
-        pop_initial = pymoo.core.population.Population.new("X", new_X)
-        # objectives
+        pop_initial = pymoo.core.population.Population.new("X", np.array(X_list))
         pop_initial.set("F", J)
-        if len(constraints) > 0:
-            if G is not None:
-                pop_initial.set("G", G)
+        if len(constraints) > 0 and G is not None:
+            pop_initial.set("G", G)
         set_cv(pop_initial)
+
         for individual in pop_initial:
             individual.evaluated = {"F", "G", "CV", "feasible"}
         Evaluator(skip_already_evaluated=True).eval(problem, pop_initial)
@@ -168,7 +158,6 @@ def shape_optimization(conn: multiprocessing.connection.Connection or None, para
 
         display = CustomDisplay()
 
-        # prepare the algorithm to solve the specific problem (same arguments as for the minimize function)
         algorithm.setup(problem, termination, display=display, seed=param_dict['seed'], verbose=True,
                         save_history=False)
 
@@ -176,22 +165,18 @@ def shape_optimization(conn: multiprocessing.connection.Connection or None, para
 
         n_generation = 0
     else:
-        logging.debug('Starting from where we left off...')
         warm_start_index = param_dict['warm_start_generation']
         n_generation = warm_start_index
         warm_start_alg_file = os.path.join(opt_settings['General Settings']['warm_start_dir'],
                                            f'algorithm_gen_{warm_start_index}.pkl')
         algorithm = load_data(warm_start_alg_file)
-        read_force_dict_from_file(os.path.join(param_dict["opt_dir"], "force_history.json"))
-        logging.debug(f'Loaded {warm_start_alg_file}.')
+        forces_dict = read_force_dict_from_file(os.path.join(param_dict["opt_dir"], "force_history.json"))
+        forces = []
         if not opt_settings['General Settings']['use_initial_settings']:
             # Currently only set up to change n_offsprings
             previous_offsprings = deepcopy(algorithm.n_offsprings)
             algorithm.n_offsprings = opt_settings['Genetic Algorithm']['n_offspring']
             algorithm.problem.param_dict['n_offsprings'] = algorithm.n_offsprings
-            if previous_offsprings != algorithm.n_offsprings:
-                logging.debug(f'Number of offspring changed from {previous_offsprings} '
-                              f'to {algorithm.n_offsprings}.')
         term = deepcopy(algorithm.termination.terminations)
         term = list(term)
         term[0].n_max_gen = param_dict['n_max_gen']
@@ -201,26 +186,13 @@ def shape_optimization(conn: multiprocessing.connection.Connection or None, para
 
     while algorithm.has_next():
 
-        logging.debug(f'Asking the algorithm to get the next population...')
-
         pop = algorithm.ask()
-
-        logging.debug(f'Acquired new population. pop = {pop}')
 
         n_generation += 1
 
         if n_generation > 1:
 
-            logging.debug(f'Starting generation {n_generation}...')
-
-            forces = []
-
-            # evaluate (objective function value arrays must be numpy column vectors)
             X = pop.get("X")
-            logging.debug(f'Input matrix has shape {X.shape} ({X.shape[0]} chromosomes with {X.shape[1]} genes).')
-            new_X = None
-            J = None
-            G = None
 
             parents = [Chromosome(param_dict=param_dict, generation=n_generation, population_idx=idx,
                                   airfoil_name=airfoil_name, mea_name=mea_name,
@@ -229,67 +201,20 @@ def shape_optimization(conn: multiprocessing.connection.Connection or None, para
                                     parents=parents, verbose=param_dict['verbose'])
             n_eval = population.eval_pop_fitness(sig=conn)
 
-            for chromosome in population.converged_chromosomes:
-                forces.append(chromosome.forces)
-                if new_X is None:
-                    if param_dict['n_offsprings'] > 1:
-                        new_X = np.array([chromosome.genes])
-                    else:
-                        new_X = np.array(chromosome.genes)
-                else:
-                    new_X = np.row_stack((new_X, np.array(chromosome.genes)))
-                for objective in objectives:
-                    objective.update(chromosome.forces)
-                for constraint in constraints:
-                    constraint.update(chromosome.forces)
-                if J is None:
-                    J = np.array([obj.value for obj in objectives])
-                else:
-                    J = np.row_stack((J, np.array([obj.value for obj in objectives])))
-                if len(constraints) > 0:
-                    if G is None:
-                        G = np.array([constraint.value for constraint in constraints])
-                    else:
-                        G = np.row_stack((G, np.array([
-                            constraint.value for constraint in constraints])))
-
-                # print(f"{J = }, {self.objectives = }")
+            J, G, forces = compute_objectives_and_forces_from_evaluated_population(population, objectives, constraints)
 
             algorithm.evaluator.n_eval += n_eval
 
-            if new_X is None:
+            if all([obj_value == 1000.0 for obj_value in J[:, 0]]) is None:
                 send_over_pipe(
                     ("text", f"Could not converge any individuals in the population. Optimization terminated."))
                 return
 
-            for _ in range(param_dict['n_offsprings'] - len(new_X)):
-                new_X = np.row_stack((new_X, 9999 * np.ones(param_dict['n_var'])))
-                J = np.row_stack((J, 1000.0 * np.ones(param_dict['n_obj'])))
-                if len(constraints) > 0:
-                    G = np.row_stack((G, 1000.0 * np.ones(param_dict['n_constr'])))
-
-            if new_X.ndim == 1:
-                new_X = np.array([new_X])
-
-            if J.ndim == 1:
-                J = np.array([J])
-
-            if len(constraints) > 0 and G.ndim == 1:
-                G = np.array([G])
-
-            pop.set("X", new_X)
-
-            # objectives
             pop.set("F", J)
-
-            # for constraints
-            if len(constraints) > 0:
+            if len(constraints) > 0 and G is not None:
                 pop.set("G", G)
+            set_cv(pop)  # this line is necessary to set the CV and feasbility status - even for unconstrained
 
-            # this line is necessary to set the CV and feasbility status - even for unconstrained
-            set_cv(pop)
-
-        # returned the evaluated individuals which have been evaluated or even modified
         algorithm.tell(infills=pop)
 
         warm_start_gen = None
@@ -321,7 +246,7 @@ def shape_optimization(conn: multiprocessing.connection.Connection or None, para
         best_in_previous_generation = False
         forces_index = 0
         try:
-            forces_index = np.where((new_X == X).all(axis=1))[0][0]
+            forces_index = np.where((pop.get("X") == X).all(axis=1))[0][0]
         except IndexError:
             best_in_previous_generation = True
 
