@@ -1,6 +1,6 @@
 from PyQt6.QtCore import QPointF, QPoint
 from pymead.core.point import PointSequence
-from pymead.tests.gui_tests.utils import app, pointer
+from pymead.tests.gui_tests.utils import app
 from pymead.utils.misc import convert_rgba_to_hex, get_setting
 from pytestqt.qtbot import QtBot
 
