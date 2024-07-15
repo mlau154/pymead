@@ -82,7 +82,6 @@ class GUI(FramelessMainWindow):
     _gripSize = 5
 
     def __init__(self, path=None, parent=None):
-        # super().__init__(flags=Qt.FramelessWindowHint)
         # try:
         #     import pyi_splash
         #     pyi_splash.update_text("Initializing constants...")
@@ -90,9 +89,7 @@ class GUI(FramelessMainWindow):
         #     pass
         super().__init__(parent=parent)
         self.showHideState = None
-        # self.setWindowFlags(self.windowFlags() | Qt.WindowType.FramelessWindowHint)
         self.windowMaximized = False
-        # print(f"Running GUI with {os.getpid() = }")
         self.pool = None
         self.current_opt_folder = None
 
@@ -178,6 +175,7 @@ class GUI(FramelessMainWindow):
                                   window_title=self.windowTitle())
         self.title_bar.sigMessage.connect(self.disp_message_box)
         self.windowTitleChanged.connect(self.title_bar.updateTitle)
+        self.titleBar.hide()
 
         self.sideGrips = [
             SideGrip(self, Qt.Edge.LeftEdge),
