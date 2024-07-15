@@ -2,10 +2,12 @@ import time
 import typing
 
 import pytest
-from PyQt5.QtCore import QTimer
-from PyQt5.QtWidgets import QDialog, QApplication
+from PyQt6.QtCore import QTimer, QPointF, QPoint
+from PyQt6.QtWidgets import QDialog, QApplication
 
 from pymead.gui.gui import GUI
+from pymead.core.point import Point
+from pytestqt.qtbot import QtBot
 
 
 def perform_action_on_dialog(dialog_trigger: typing.Callable,
@@ -67,3 +69,16 @@ def app(qtbot):
     gui.show()
     qtbot.addWidget(gui)
     return gui
+
+
+def pointer(app, point: Point, qtbot: QtBot):
+    app.auto_range_geometry()
+    x = point.canvas_item.scatter.data[0][0]
+    y = point.canvas_item.scatter.data[0][1]
+    point_pixel_location = app.airfoil_canvas.getViewBox().mapViewToDevice(QPointF(x, y)).toPoint()
+    qtbot.mouseMove(app.airfoil_canvas, point_pixel_location)
+    qtbot.wait(100)
+    qtbot.mouseMove(app.airfoil_canvas, QPoint(point_pixel_location.x() + 1, point_pixel_location.y() + 1))
+    qtbot.wait(100)
+    return point
+
