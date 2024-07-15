@@ -19,15 +19,19 @@ flow_var_label = {'M': 'Mach Number',
                   "dCpt": "Delta Total Pressure"}
 
 
-def generate_field_matplotlib(axs: plt.Axes or None, analysis_subdir: str, var: str, cmap_field: mpl_colors.Colormap or str ,
-                              cmap_airfoil: mpl_colors.Colormap or str, shading: str = 'gouraud', vmin: float = None,
-                              vmax: float = None, arrow_start_J_idx: int = 20, arrow_spacing: int = 60):
+def generate_field_matplotlib(axs: plt.Axes or None,
+                              analysis_subdir: str,
+                              var: str,
+                              cmap_field: mpl_colors.Colormap or str,
+                              vmin: float = None,
+                              vmax: float = None,
+                              arrow_start_J_idx: int = 20,
+                              arrow_spacing: int = 60):
     pcolormesh_handles = {'field': None, 'airfoil': []}
     field_file = os.path.join(analysis_subdir, f'field.{os.path.split(analysis_subdir)[-1]}')
     grid_stats_file = os.path.join(analysis_subdir, 'mplot_grid_stats.log')
     grid_file = os.path.join(analysis_subdir, f'grid.{os.path.split(analysis_subdir)[-1]}')
     mses_file = os.path.join(analysis_subdir, f"mses.{os.path.split(analysis_subdir)[-1]}")
-    # bl_file = os.path.join(analysis_subdir, f'bl.{os.path.split(analysis_subdir)[-1]}')
     if not os.path.exists(field_file):
         raise OSError(f"Field file {field_file} not found")
     if not os.path.exists(grid_stats_file):
@@ -35,7 +39,6 @@ def generate_field_matplotlib(axs: plt.Axes or None, analysis_subdir: str, var: 
     if not os.path.exists(grid_file):
         raise OSError(f"Grid file {grid_file} not found")
 
-    # bl_data = read_bl_data_from_mses(bl_file)
     M_inf = read_Mach_from_mses_file(mses_file)
     gam = 1.4
     field = read_field_from_mses(field_file, M_inf=M_inf, gam=gam)
@@ -93,9 +96,6 @@ def generate_field_matplotlib(axs: plt.Axes or None, analysis_subdir: str, var: 
         if flow_section_idx < grid_stats["numel"]:
             start_idx = end_idx
             end_idx += x_grid[flow_section_idx + 1].shape[1] - 1
-
-    # for bl in bl_data:
-    #     axs.plot(bl["x"], bl["y"], color="white", marker="x", mfc="none", mec="white")
 
     if axs is None:
         return pcolormesh_handles
