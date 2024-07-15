@@ -5,9 +5,8 @@ import numpy as np
 import pyqtgraph as pg
 from PyQt6.QtCore import QObject
 
-from pymead.gui.aero_forces_graphs import DragGraph, CpGraph
-from pymead.gui.opt_airfoil_graph import OptAirfoilGraph
-from pymead.gui.parallel_coords_graph import ParallelCoordsGraph
+from pymead.core.geometry_collection import GeometryCollection
+from pymead.gui.analysis_graph import OptAirfoilGraph, ParallelCoordsGraph, DragGraph, CpGraph
 
 
 class OptCallback(QObject):
@@ -15,7 +14,7 @@ class OptCallback(QObject):
         super().__init__(parent=parent)
 
     @abstractmethod
-    def exec_callback(self):
+    def exec_callback(self, *args, **kwargs):
         return
 
 
@@ -80,15 +79,15 @@ class TextCallback(OptCallback):
 
 
 class PlotAirfoilCallback(OptCallback):
-    def __init__(self, parent, coords: list, background_color: str = 'w'):
+    def __init__(self, parent, coords: list, geo_col: GeometryCollection):
         super().__init__(parent=parent)
         self.coords = coords
         self.parent = parent
-        self.background_color = background_color
+        self.geo_col = geo_col
 
-    def exec_callback(self):
+    def exec_callback(self, theme: dict, grid: bool):
         if self.parent.opt_airfoil_graph is None:
-            self.parent.opt_airfoil_graph = OptAirfoilGraph(background_color=self.background_color)
+            self.parent.opt_airfoil_graph = OptAirfoilGraph(theme, geo_col=self.geo_col, grid=grid)
         tab_name = "Opt. Airfoil"
         if tab_name not in self.parent.dock_widget_names:
             self.parent.add_new_tab_widget(self.parent.opt_airfoil_graph.w, tab_name)
@@ -111,16 +110,15 @@ class PlotAirfoilCallback(OptCallback):
 
 
 class ParallelCoordsCallback(OptCallback):
-    def __init__(self, parent, norm_val_list: list, param_name_list: list, background_color: str = 'w'):
+    def __init__(self, parent, norm_val_list: list, param_name_list: list):
         super().__init__(parent=parent)
         self.norm_val_list = norm_val_list
         self.param_name_list = param_name_list
         self.parent = parent
-        self.background_color = background_color
 
-    def exec_callback(self):
+    def exec_callback(self, theme: dict, grid: bool):
         if self.parent.parallel_coords_graph is None:
-            self.parent.parallel_coords_graph = ParallelCoordsGraph(background_color=self.background_color)
+            self.parent.parallel_coords_graph = ParallelCoordsGraph(theme, grid=grid)
         tab_name = "Parallel Coordinates"
         if tab_name not in self.parent.dock_widget_names:
             self.parent.add_new_tab_widget(self.parent.parallel_coords_graph.w, tab_name)
@@ -134,6 +132,7 @@ class ParallelCoordsCallback(OptCallback):
             stringaxis = pg.AxisItem(orientation='bottom')
             stringaxis.setTicks([xdict.items()])
             self.parent.parallel_coords_graph.v.setAxisItems({'bottom': stringaxis})
+            self.parent.parallel_coords_graph.set_formatting(theme)
         pg_plot_handle = self.parent.parallel_coords_graph.v.plot(pen=pen)
         pg_plot_handle.setData(self.norm_val_list)
         if len(self.parent.parallel_coords_plot_handles) > 1:
@@ -142,17 +141,16 @@ class ParallelCoordsCallback(OptCallback):
 
 
 class DragPlotCallbackXFOIL(OptCallback):
-    def __init__(self, parent, Cd, Cdp, Cdf, background_color: str = 'w'):
+    def __init__(self, parent, Cd, Cdp, Cdf):
         super().__init__(parent=parent)
         self.parent = parent
-        self.background_color = background_color
         self.Cd = Cd
         self.Cdp = Cdp
         self.Cdf = Cdf
 
-    def exec_callback(self):
+    def exec_callback(self, theme: dict, grid: bool):
         if self.parent.drag_graph is None:
-            self.parent.drag_graph = DragGraph(background_color=self.background_color)
+            self.parent.drag_graph = DragGraph(theme, grid=grid)
         tab_name = "Drag"
         if tab_name not in self.parent.dock_widget_names:
             self.parent.add_new_tab_widget(self.parent.drag_graph.w, tab_name)
@@ -162,19 +160,18 @@ class DragPlotCallbackXFOIL(OptCallback):
 
 
 class DragPlotCallbackMSES(OptCallback):
-    def __init__(self, parent, Cd, Cdp, Cdf, Cdv, Cdw, background_color: str = 'w'):
+    def __init__(self, parent, Cd, Cdp, Cdf, Cdv, Cdw):
         super().__init__(parent=parent)
         self.parent = parent
-        self.background_color = background_color
         self.Cd = Cd
         self.Cdp = Cdp
         self.Cdf = Cdf
         self.Cdv = Cdv
         self.Cdw = Cdw
 
-    def exec_callback(self):
+    def exec_callback(self, theme: dict, grid: bool):
         if self.parent.drag_graph is None:
-            self.parent.drag_graph = DragGraph(background_color=self.background_color)
+            self.parent.drag_graph = DragGraph(theme, grid=grid)
         tab_name = "Drag"
         if tab_name not in self.parent.dock_widget_names:
             self.parent.add_new_tab_widget(self.parent.drag_graph.w, tab_name)
@@ -186,15 +183,14 @@ class DragPlotCallbackMSES(OptCallback):
 
 
 class CpPlotCallbackXFOIL(OptCallback):
-    def __init__(self, parent, Cp, background_color: str = 'w'):
+    def __init__(self, parent, Cp):
         super().__init__(parent=parent)
         self.parent = parent
-        self.background_color = background_color
         self.Cp = Cp
 
-    def exec_callback(self):
+    def exec_callback(self, theme: dict, grid: bool):
         if self.parent.Cp_graph is None:
-            self.parent.Cp_graph = CpGraph(background_color=self.background_color)
+            self.parent.Cp_graph = CpGraph(theme, grid=grid)
         tab_name = "Cp"
         if tab_name not in self.parent.dock_widget_names:
             self.parent.add_new_tab_widget(self.parent.Cp_graph.w, tab_name)
@@ -211,19 +207,16 @@ class CpPlotCallbackXFOIL(OptCallback):
 
 
 class CpPlotCallbackMSES(OptCallback):
-    def __init__(self, parent, Cp, background_color: str = 'w'):
+    def __init__(self, parent, Cp):
         super().__init__(parent=parent)
         self.parent = parent
-        self.background_color = background_color
-        # print(f"forces = {self.forces}")
-        # The structure of forces dict is {..., "BL": [recent_gen_minus_2, recent_gen_minus_1, read_aero_data(recent_gen)]
         self.Cp = Cp
         # self.x_max = self.parent.mea.calculate_max_x_extent()
         self.x_max = 1.0
 
-    def exec_callback(self):
+    def exec_callback(self, theme: dict, grid: bool):
         if self.parent.Cp_graph is None:
-            self.parent.Cp_graph = CpGraph(background_color=self.background_color)
+            self.parent.Cp_graph = CpGraph(theme, grid=grid)
         tab_name = "Cp"
         if tab_name not in self.parent.dock_widget_names:
             self.parent.add_new_tab_widget(self.parent.Cp_graph.w, tab_name)
