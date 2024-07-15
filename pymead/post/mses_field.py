@@ -86,6 +86,7 @@ def generate_field_matplotlib(axs: plt.Axes or None,
             x_stags = [x_grid[flow_section_idx][:, 0], x_grid[flow_section_idx][:, -1]]
             y_stags = [y_grid[flow_section_idx][:, 0], y_grid[flow_section_idx][:, -1]]
 
+        axs = plt.gca() if axs is None else axs
         for x_stag, y_stag in zip(x_stags, y_stags):
             axs.plot(x_stag, y_stag, color="blue")
             for arrow_idx in arrow_idxs:
