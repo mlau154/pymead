@@ -383,7 +383,6 @@ def test_clear_selected_objects_airfoils(app):
 def test_point_hover(app, qtbot: QtBot):
 
     point_og = app.geo_col.add_point(0.2, 0.6)
-
     point = pointer(app, point_og, qtbot)
 
     point_brush_color_hex_6_digit = convert_rgba_to_hex(point.canvas_item.scatter.opts["brush"].color().getRgb())[:-2]
@@ -396,11 +395,33 @@ def test_point_hover(app, qtbot: QtBot):
 
 
 def test_line_hover(app, qtbot: QtBot):
-    pass
+    point_one = app.geo_col.add_point(0.0, 0.0)
+    point_two = app.geo_col.add_point(0.3, 0.3)
+    line = app.geo_col.add_line(point_sequence=PointSequence(points=[point_one, point_two]))
+
+    point_og = app.geo_col.add_point(0.2, 0.2)
+    point = pointer(app, point_og, qtbot)
+
+    line_pen_color_hex_6_digit = convert_rgba_to_hex(line.canvas_item.opts["pen"].color().getRgb())[:-2]
+    line_pen_color_setting = matplotlib.colors.cnames[get_setting(f"curve_hovered_pen_color")].lower()
+    assert line_pen_color_hex_6_digit == line_pen_color_setting
+    app.geo_col.clear_container()
 
 
 def test_bezier_hover(app, qtbot: QtBot):
-    pass
+    point_one = app.geo_col.add_point(0.0, 0.0)
+    point_two = app.geo_col.add_point(0.5, 0.2)
+    point_three = app.geo_col.add_point(1.0, 0.0)
+    bezier = app.geo_col.add_bezier(point_sequence=PointSequence(points=[point_one, point_two, point_three]))
+
+    point_og = app.geo_col.add_point(0.5, 0.1)
+    point = pointer(app, point_og, qtbot)
+
+    bezier_color_hex_6_digit = convert_rgba_to_hex(bezier.canvas_item.opts["pen"].color().getRgb())[:-2]
+    bezier_scatter_color_setting = matplotlib.colors.cnames[get_setting(f"curve_hovered_pen_color")].lower()
+    assert bezier_color_hex_6_digit == bezier_scatter_color_setting
+
+    app.geo_col.clear_container()
 
 
 def test_airfoil_hover(app, qtbot: QtBot):
