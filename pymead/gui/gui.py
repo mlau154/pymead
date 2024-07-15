@@ -1801,9 +1801,12 @@ class GUI(FramelessMainWindow):
                 param_dict_save = deepcopy(param_dict)
                 if not opt_settings['General Settings']['warm_start_active']:
                     save_data(param_dict_save, os.path.join(opt_dir, 'param_dict.json'))
+                    save_data(opt_settings, os.path.join(opt_dir, "opt_settings.json"))
                 else:
                     save_data(param_dict_save, os.path.join(
                         opt_dir, f'param_dict_{param_dict["warm_start_generation"]}.json'))
+                    save_data(opt_settings, os.path.join(
+                        opt_dir, f"opt_settings_{param_dict['warm_start_generation']}.json"))
 
                 if not loop_through_settings:
                     opt_settings_list = [opt_settings]

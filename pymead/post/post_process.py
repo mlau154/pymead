@@ -101,7 +101,6 @@ class PostProcess:
         self.underwing = underwing
         self.param_dict = load_data(os.path.join(self.analysis_dir, 'param_dict.json'))
         self.pop_size = deepcopy(self.param_dict["population_size"])
-        print(f"{self.pop_size = }")
         self.param_dict_original = deepcopy(self.param_dict)
         self.modify_param_dict_func = modify_param_dict_func
         if self.modify_param_dict_func is not None:
@@ -853,7 +852,7 @@ class PostProcess:
                                          'rho': r'Density ($\rho/\rho_\infty$)',
                                          'u': r'Velocity-x ($u/V_\infty$)',
                                          'v': r'Velocity-y ($v/V_\infty$)',
-                                         'q': r'Speed of Sound ($q/V_\infty$)',
+                                         'q': r'Velocity-mag ($V/V_\infty$)',
                                          "Cpt": r"Total Pressure Over P_inf",
                                          "dCpt": r"Delta Total Pressure",
                                          "dCp": r"Delta Pressure Coefficient"}
@@ -967,7 +966,7 @@ class PostProcess:
                                      'rho': r'Density ($\rho/\rho_\infty$)',
                                      'u': r'Velocity-x ($u/V_\infty$)',
                                      'v': r'Velocity-y ($v/V_\infty$)',
-                                     'q': r'Speed of Sound ($q/V_\infty$)',
+                                     'q': r'Velocity-mag ($V/V_\infty$)',
                                      "Cpt": "Total Pressure Coefficient"}
 
         airfoil_color = 'black'
