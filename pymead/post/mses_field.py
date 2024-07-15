@@ -5,7 +5,7 @@ import os
 from pymead.analysis.read_aero_data import read_grid_stats_from_mses, read_field_from_mses, \
     read_streamline_grid_from_mses, read_Mach_from_mses_file
 from pymead.analysis.read_aero_data import flow_var_idx
-
+from pymead.core.transformation import Transformation2D
 
 flow_var_label = {'M': 'Mach Number',
                   'Cp': 'Pressure Coefficient',
@@ -26,7 +26,8 @@ def generate_field_matplotlib(axs: plt.Axes or None,
                               vmin: float = None,
                               vmax: float = None,
                               arrow_start_J_idx: int = 20,
-                              arrow_spacing: int = 60):
+                              arrow_spacing: int = 60,
+                              field_scaling_factor: float = None):
     pcolormesh_handles = {'field': None, 'airfoil': []}
     field_file = os.path.join(analysis_subdir, f'field.{os.path.split(analysis_subdir)[-1]}')
     grid_stats_file = os.path.join(analysis_subdir, 'mplot_grid_stats.log')
@@ -44,6 +45,9 @@ def generate_field_matplotlib(axs: plt.Axes or None,
     field = read_field_from_mses(field_file, M_inf=M_inf, gam=gam)
     grid_stats = read_grid_stats_from_mses(grid_stats_file)
     x_grid, y_grid = read_streamline_grid_from_mses(grid_file, grid_stats)
+    if field_scaling_factor:
+        x_grid = [x_grid_section * field_scaling_factor for x_grid_section in x_grid]
+        y_grid = [y_grid_section * field_scaling_factor for y_grid_section in y_grid]
 
     flow_var = field[flow_var_idx[var]]
 
