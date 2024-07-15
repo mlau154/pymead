@@ -7,6 +7,7 @@ from PyQt6.QtCore import QObject
 
 from pymead.core.geometry_collection import GeometryCollection
 from pymead.gui.analysis_graph import OptAirfoilGraph, ParallelCoordsGraph, DragGraph, CpGraph
+from pymead.gui.vertical_axis_item import AngledAxisItem
 
 
 class OptCallback(QObject):
@@ -129,7 +130,7 @@ class ParallelCoordsCallback(OptCallback):
         old_pen = pg.mkPen(color=pg.mkColor('l'), width=1)
         if len(self.parent.parallel_coords_plot_handles) == 0:
             xdict = dict(enumerate(self.param_name_list))
-            stringaxis = pg.AxisItem(orientation='bottom')
+            stringaxis = AngledAxisItem(orientation='bottom', angle=90)
             stringaxis.setTicks([xdict.items()])
             self.parent.parallel_coords_graph.v.setAxisItems({'bottom': stringaxis})
             self.parent.parallel_coords_graph.set_formatting(theme)
