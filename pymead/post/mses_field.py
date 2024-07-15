@@ -23,6 +23,7 @@ def generate_field_matplotlib(axs: plt.Axes or None,
                               analysis_subdir: str,
                               var: str,
                               cmap_field: mpl_colors.Colormap or str,
+                              shading: str = None,
                               vmin: float = None,
                               vmax: float = None,
                               arrow_start_J_idx: int = 20,
@@ -73,7 +74,7 @@ def generate_field_matplotlib(axs: plt.Axes or None,
         flow_var_section = flow_var[:, start_idx:end_idx]
 
         args = (x_grid[flow_section_idx], y_grid[flow_section_idx], flow_var_section)
-        kwargs = dict(cmap=cmap_field, vmin=vmin, vmax=vmax)
+        kwargs = dict(cmap=cmap_field, vmin=vmin, vmax=vmax, shading=shading)
 
         if axs is None:
             pcolormesh_handles[f'field_{flow_section_idx}'] = plt.pcolormesh(*args, **kwargs)
@@ -91,12 +92,14 @@ def generate_field_matplotlib(axs: plt.Axes or None,
             y_stags = [y_grid[flow_section_idx][:, 0], y_grid[flow_section_idx][:, -1]]
 
         axs = plt.gca() if axs is None else axs
+        arrow_width = 0.0001 * field_scaling_factor
+        head_width = 0.01 * field_scaling_factor
         for x_stag, y_stag in zip(x_stags, y_stags):
             axs.plot(x_stag, y_stag, color="blue")
             for arrow_idx in arrow_idxs:
                 axs.arrow(x_stag[arrow_idx], y_stag[arrow_idx],
                           x_stag[arrow_idx + 1] - x_stag[arrow_idx], y_stag[arrow_idx + 1] - y_stag[arrow_idx],
-                          color="blue", width=0.0001, head_width=0.01, zorder=1000)
+                          color="blue", width=arrow_width, head_width=head_width, zorder=1000)
 
         if flow_section_idx < grid_stats["numel"]:
             start_idx = end_idx

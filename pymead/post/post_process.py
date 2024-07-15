@@ -827,17 +827,18 @@ class PostProcess:
                                     bbox_inches="tight")
 
     def generate_field_matplotlib(self, var: str, axs: plt.Axes or None, index: int, cmap_field: mpl_colors.Colormap or str,
-                                  cmap_airfoil: mpl_colors.Colormap or str, shading: str = 'gouraud', vmin: float = None,
+                                   vmin: float = None,
                                   vmax: float = None, weight_idx: int = 0):
         return generate_field_matplotlib(axs=axs,
                                          analysis_subdir=os.path.join(self.analysis_dir,
                                                                       'analysis', f'analysis_{index}{self.get_weight_str(weight_idx)}'),
-                                         var=var, cmap_field=cmap_field, cmap_airfoil=cmap_airfoil, shading=shading,
+                                         var=var, cmap_field=cmap_field,
                                          vmin=vmin, vmax=vmax)
 
     def generate_single_field(self, var: str, index: int, index_list, cmap_field: mpl_colors.Colormap or str,
-                              cmap_airfoil: mpl_colors.Colormap or str, shading: str = 'gouraud', vmin: float = None,
-                              vmax: float = None, image_extensions: tuple = ('.png', '.pdf'),
+                              vmin: float = None,
+                              vmax: float = None,
+                              image_extensions: tuple = ('.png', '.pdf'),
                               field_display_var: str or typing.List[str] = "Cd", weight_idx_list: list = None):
         for weight_idx, weights in enumerate(self.weights):
 
@@ -852,7 +853,7 @@ class PostProcess:
                                          'rho': r'Density ($\rho/\rho_\infty$)',
                                          'u': r'Velocity-x ($u/V_\infty$)',
                                          'v': r'Velocity-y ($v/V_\infty$)',
-                                         'q': r'Velocity-mag ($V/V_\infty$)',
+                                         'V': r'Velocity-mag ($V/V_\infty$)',
                                          "Cpt": r"Total Pressure Over P_inf",
                                          "dCpt": r"Delta Total Pressure",
                                          "dCp": r"Delta Pressure Coefficient"}
@@ -864,7 +865,7 @@ class PostProcess:
             quad = generate_field_matplotlib(axs=axs,
                                       analysis_subdir=os.path.join(self.analysis_dir,
                                                                    'analysis', f'analysis_{index}{weight_str}'),
-                                      var=var, cmap_field=cmap_field, cmap_airfoil=cmap_airfoil, shading=shading,
+                                      var=var, cmap_field=cmap_field,
                                       vmin=vmin, vmax=vmax)
 
             # Plot the airfoils
