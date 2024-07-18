@@ -425,7 +425,39 @@ def test_bezier_hover(app, qtbot: QtBot):
 
 
 def test_airfoil_hover(app, qtbot: QtBot):
-    pass
+    upper_curve_array = np.array([
+        [0.0, 0.0],
+        [0.0, 0.05],
+        [0.05, 0.05],
+        [0.6, 0.04],
+        [1.0, 0.0]
+    ])
+    lower_curve_array = np.array([
+        [0.0, -0.05],
+        [0.05, -0.05],
+        [0.7, 0.01]
+    ])
+
+    point_seq_upper = PointSequence([app.geo_col.add_point(xy[0], xy[1]) for xy in upper_curve_array])
+    point_seq_lower = PointSequence([point_seq_upper.points()[0],
+                                     *[app.geo_col.add_point(xy[0], xy[1]) for xy in lower_curve_array],
+                                     point_seq_upper.points()[-1]])
+
+    bez_upper = app.geo_col.add_bezier(point_seq_upper)
+    bez_lower = app.geo_col.add_bezier(point_seq_lower)
+
+    airfoil_thin = app.geo_col.add_airfoil(point_seq_upper.points()[0],
+                                           point_seq_upper.points()[-1],
+                                           upper_surf_end=None,
+                                           lower_surf_end=None
+                                           )
+
+    point_og = app.geo_col.add_point(0.1, 0.0)
+    point = pointer(app, point_og, qtbot)
+
+    assert app.airfoil_canvas.airfoil_text_items[airfoil_thin].toPlainText() == "Airfoil-1"
+
+    app.geo_col.clear_container()
 
 
 def test_remove_pymead_obj_point(app):
