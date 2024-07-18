@@ -82,7 +82,6 @@ class GUI(FramelessMainWindow):
     _gripSize = 5
 
     def __init__(self, path=None, parent=None):
-        # super().__init__(flags=Qt.FramelessWindowHint)
         # try:
         #     import pyi_splash
         #     pyi_splash.update_text("Initializing constants...")
@@ -90,9 +89,7 @@ class GUI(FramelessMainWindow):
         #     pass
         super().__init__(parent=parent)
         self.showHideState = None
-        # self.setWindowFlags(self.windowFlags() | Qt.WindowType.FramelessWindowHint)
         self.windowMaximized = False
-        # print(f"Running GUI with {os.getpid() = }")
         self.pool = None
         self.current_opt_folder = None
 
@@ -178,6 +175,7 @@ class GUI(FramelessMainWindow):
                                   window_title=self.windowTitle())
         self.title_bar.sigMessage.connect(self.disp_message_box)
         self.windowTitleChanged.connect(self.title_bar.updateTitle)
+        self.titleBar.hide()
 
         self.sideGrips = [
             SideGrip(self, Qt.Edge.LeftEdge),
@@ -504,23 +502,15 @@ class GUI(FramelessMainWindow):
             self.cbar.axis.setStyle(tickFont=tick_font)
             self.cbar.axis.setTextPen(pg.mkPen(color=theme["cbar-color"]))
             self.airfoil_canvas.color_bar_data["current_theme"] = self.current_theme
-        # if self.analysis_graph is not None:
-        #     self.analysis_graph.set_background(theme["graph-background-color"])
-        # if self.param_tree_instance is not None:
-        #     self.param_tree_instance.set_theme(theme)
-        if self.analysis_graph is not None:
-            self.analysis_graph.set_formatting(theme=self.themes[self.current_theme])
-            self.analysis_graph.set_legend_label_format(theme=self.themes[self.current_theme])
 
-        if self.residual_graph is not None:
-            self.residual_graph.set_formatting(theme=self.themes[self.current_theme])
-            self.residual_graph.set_legend_label_format(theme=self.themes[self.current_theme])
+        graphs_to_update = [self.analysis_graph, self.residual_graph, self.polar_graph_collection,
+                            self.airfoil_matching_graph_collection, self.opt_airfoil_graph,
+                            self.parallel_coords_graph, self.drag_graph, self.Cp_graph]
 
-        if self.polar_graph_collection is not None:
-            self.polar_graph_collection.set_formatting(theme=self.themes[self.current_theme])
-
-        if self.airfoil_matching_graph_collection is not None:
-            self.airfoil_matching_graph_collection.set_formatting(theme=self.themes[self.current_theme])
+        for graph_to_update in graphs_to_update:
+            if graph_to_update is None:
+                continue
+            graph_to_update.set_formatting(theme=self.themes[self.current_theme])
 
         for cnstr in self.geo_col.container()["geocon"].values():
             cnstr.canvas_item.setStyle(theme)
@@ -1850,26 +1840,29 @@ class GUI(FramelessMainWindow):
                                     warm_start_gen=data["warm_start_gen"])
             callback.exec_callback()
         elif status == "airfoil_coords" and isinstance(data, list):
-            callback = PlotAirfoilCallback(parent=self, coords=data,
-                                           background_color=bcolor)
-            callback.exec_callback()
+            callback = PlotAirfoilCallback(parent=self, coords=data, geo_col=self.geo_col)
+            callback.exec_callback(theme=self.themes[self.current_theme],
+                                   grid=self.main_icon_toolbar.buttons["grid"]["button"].isChecked())
         elif status == "parallel_coords" and isinstance(data, tuple):
-            callback = ParallelCoordsCallback(parent=self, norm_val_list=data[0], param_name_list=data[1],
-                                              background_color=bcolor)
-            callback.exec_callback()
+            callback = ParallelCoordsCallback(parent=self, norm_val_list=data[0], param_name_list=data[1])
+            callback.exec_callback(theme=self.themes[self.current_theme],
+                                   grid=self.main_icon_toolbar.buttons["grid"]["button"].isChecked())
         elif status == "cp_xfoil":
-            callback = CpPlotCallbackXFOIL(parent=self, Cp=data, background_color=bcolor)
-            callback.exec_callback()
+            callback = CpPlotCallbackXFOIL(parent=self, Cp=data)
+            callback.exec_callback(theme=self.themes[self.current_theme],
+                                   grid=self.main_icon_toolbar.buttons["grid"]["button"].isChecked())
         elif status == "cp_mses":
-            callback = CpPlotCallbackMSES(parent=self, Cp=data, background_color=bcolor)
-            callback.exec_callback()
+            callback = CpPlotCallbackMSES(parent=self, Cp=data)
+            callback.exec_callback(theme=self.themes[self.current_theme],
+                                   grid=self.main_icon_toolbar.buttons["grid"]["button"].isChecked())
         elif status == "drag_xfoil" and isinstance(data, tuple):
-            callback = DragPlotCallbackXFOIL(parent=self, Cd=data[0], Cdp=data[1], Cdf=data[2], background_color=bcolor)
-            callback.exec_callback()
+            callback = DragPlotCallbackXFOIL(parent=self, Cd=data[0], Cdp=data[1], Cdf=data[2])
+            callback.exec_callback(theme=self.themes[self.current_theme],
+                                   grid=self.main_icon_toolbar.buttons["grid"]["button"].isChecked())
         elif status == "drag_mses" and isinstance(data, tuple):
-            callback = DragPlotCallbackMSES(parent=self, Cd=data[0], Cdp=data[1], Cdf=data[2], Cdv=data[3], Cdw=data[4],
-                                            background_color=bcolor)
-            callback.exec_callback()
+            callback = DragPlotCallbackMSES(parent=self, Cd=data[0], Cdp=data[1], Cdf=data[2], Cdv=data[3], Cdw=data[4])
+            callback.exec_callback(theme=self.themes[self.current_theme],
+                                   grid=self.main_icon_toolbar.buttons["grid"]["button"].isChecked())
         elif status == "clear_residual_plots":
             if self.residual_graph is not None:
                 for plot_item in self.residual_graph.plot_items:

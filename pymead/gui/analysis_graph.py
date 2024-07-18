@@ -38,6 +38,7 @@ class AnalysisGraph:
         self.v.getAxis("left").setTickFont(tick_font)
         self.v.getAxis("bottom").setTextPen(theme["main-color"])
         self.v.getAxis("left").setTextPen(theme["main-color"])
+        self.set_legend_label_format(theme)
 
     def set_legend_label_format(self, theme: dict):
         for _, label in self.legend.items:
@@ -101,6 +102,7 @@ class ResidualGraph:
         target_pen = self.make_target_pen(theme)
         self.target_line.setPen(target_pen)
         self.target_line_dummy_plot.setPen(target_pen)
+        self.set_legend_label_format(theme)
 
     def set_legend_label_format(self, theme: dict):
         for _, label in self.legend.items:
@@ -320,3 +322,136 @@ class AirfoilMatchingGraphCollection(QWidget):
     def toggle_grid(self, checked: bool):
         for graph in self.graphs:
             graph.v.showGrid(x=checked, y=checked)
+
+
+class OptAirfoilGraph:
+    def __init__(self, theme: dict, geo_col: GeometryCollection,
+                 pen=None, size: tuple = (1000, 300), grid: bool = False):
+        pg.setConfigOptions(antialias=True)
+
+        if pen is None:
+            pen = pg.mkPen(color='cornflowerblue', width=2)
+
+        self.geo_col = geo_col
+        self.w = pg.GraphicsLayoutWidget(show=True, size=size)
+        self.v = self.w.addPlot(pen=pen)
+        self.v.setAspectLocked()
+        self.v.showGrid(x=grid, y=grid)
+        self.legend = self.v.addLegend(offset=(300, 20))
+        self.set_formatting(theme=theme)
+
+    def set_background(self, background_color: str):
+        self.w.setBackground(background_color)
+
+    def set_formatting(self, theme: dict):
+        self.w.setBackground(theme["graph-background-color"])
+        label_font = f"{get_setting('axis-label-point-size')}pt {get_setting('axis-label-font-family')}"
+        self.v.setLabel(axis="bottom", text=f"x [{self.geo_col.units.current_length_unit()}]", font=label_font,
+                        color=theme["main-color"])
+        self.v.setLabel(axis="left", text=f"y [{self.geo_col.units.current_length_unit()}]", font=label_font,
+                        color=theme["main-color"])
+        tick_font = QFont(get_setting("axis-tick-font-family"), get_setting("axis-tick-point-size"))
+        self.v.getAxis("bottom").setTickFont(tick_font)
+        self.v.getAxis("left").setTickFont(tick_font)
+        self.v.getAxis("bottom").setTextPen(theme["main-color"])
+        self.v.getAxis("left").setTextPen(theme["main-color"])
+
+    def set_legend_label_format(self, theme: dict):
+        for _, label in self.legend.items:
+            label.item.setHtml(f"<span style='font-family: DejaVu Sans; color: "
+                               f"{theme['main-color']}; size: 8pt'>{label.text}</span>")
+
+
+class ParallelCoordsGraph:
+    def __init__(self, theme: dict, pen=None, size: tuple = (1000, 300), grid: bool = False):
+        pg.setConfigOptions(antialias=True)
+
+        if pen is None:
+            pen = pg.mkPen(color='cornflowerblue', width=2)
+
+        self.w = pg.GraphicsLayoutWidget(show=True, size=size)
+        self.v = self.w.addPlot(pen=pen)
+        self.v.setYRange(0, 1, padding=0)
+        self.v.showGrid(x=grid, y=grid)
+        self.set_formatting(theme=theme)
+
+    def set_background(self, background_color: str):
+        self.w.setBackground(background_color)
+
+    def set_formatting(self, theme: dict):
+        self.w.setBackground(theme["graph-background-color"])
+        label_font = f"{get_setting('axis-label-point-size')}pt {get_setting('axis-label-font-family')}"
+        self.v.setLabel(axis="bottom", text=f"Parameter", font=label_font, color=theme["main-color"])
+        self.v.setLabel(axis="left", text=f"Normalized Value", font=label_font, color=theme["main-color"])
+        tick_font = QFont(get_setting("axis-tick-font-family"), get_setting("axis-tick-point-size"))
+        self.v.getAxis("bottom").setTickFont(tick_font)
+        self.v.getAxis("left").setTickFont(tick_font)
+        self.v.getAxis("bottom").setTextPen(theme["main-color"])
+        self.v.getAxis("left").setTextPen(theme["main-color"])
+
+
+class DragGraph:
+    def __init__(self, theme: dict, pen=None, size: tuple = (1000, 300), grid: bool = False):
+        pg.setConfigOptions(antialias=True)
+
+        if pen is None:
+            pen = pg.mkPen(color='cornflowerblue', width=2)
+
+        self.w = pg.GraphicsLayoutWidget(show=True, size=size)
+        self.v = self.w.addPlot(pen=pen)
+        self.v.showGrid(x=grid, y=grid)
+        self.legend = self.v.addLegend(offset=(30, 30))
+        self.pg_plot_handle_Cd = self.v.plot(pen=pg.mkPen(color='indianred'), name='Cd', symbol='s', symbolBrush=pg.mkBrush('indianred'))
+        self.pg_plot_handle_Cdp = self.v.plot(pen=pg.mkPen(color='gold'), name='Cdp', symbol='o', symbolBrush=pg.mkBrush('gold'))
+        self.pg_plot_handle_Cdf = self.v.plot(pen=pg.mkPen(color='limegreen'), name='Cdf', symbol='t', symbolBrush=pg.mkBrush('limegreen'))
+        self.pg_plot_handle_Cdv = self.v.plot(pen=pg.mkPen(color='mediumturquoise'), name='Cdv', symbol='d', symbolBrush=pg.mkBrush('mediumturquoise'))
+        self.pg_plot_handle_Cdw = self.v.plot(pen=pg.mkPen(color='violet'), name='Cdw', symbol='x', symbolBrush=pg.mkBrush('violet'))
+        self.set_formatting(theme)
+
+    def set_background(self, background_color: str):
+        self.w.setBackground(background_color)
+
+    def set_formatting(self, theme: dict):
+        self.w.setBackground(theme["graph-background-color"])
+        label_font = f"{get_setting('axis-label-point-size')}pt {get_setting('axis-label-font-family')}"
+        self.v.setLabel(axis="bottom", text=f"Generation", font=label_font, color=theme["main-color"])
+        self.v.setLabel(axis="left", text=f"Drag (Counts)", font=label_font, color=theme["main-color"])
+        tick_font = QFont(get_setting("axis-tick-font-family"), get_setting("axis-tick-point-size"))
+        self.v.getAxis("bottom").setTickFont(tick_font)
+        self.v.getAxis("left").setTickFont(tick_font)
+        self.v.getAxis("bottom").setTextPen(theme["main-color"])
+        self.v.getAxis("left").setTextPen(theme["main-color"])
+        self.set_legend_label_format(theme)
+
+    def set_legend_label_format(self, theme: dict):
+        for _, label in self.legend.items:
+            label.item.setHtml(f"<span style='font-family: DejaVu Sans; color: "
+                               f"{theme['main-color']}; size: 8pt'>{label.text}</span>")
+
+
+class CpGraph:
+    def __init__(self, theme: dict, pen=None, size: tuple = (1000, 300), grid: bool = False):
+        pg.setConfigOptions(antialias=True)
+
+        if pen is None:
+            pen = pg.mkPen(color='cornflowerblue', width=2)
+
+        self.w = pg.GraphicsLayoutWidget(show=True, size=size)
+        self.v = self.w.addPlot(pen=pen)
+        self.v.invertY(True)
+        self.v.showGrid(x=grid, y=grid)
+        self.set_formatting(theme)
+
+    def set_background(self, background_color: str):
+        self.w.setBackground(background_color)
+
+    def set_formatting(self, theme: dict):
+        self.w.setBackground(theme["graph-background-color"])
+        label_font = f"{get_setting('axis-label-point-size')}pt {get_setting('axis-label-font-family')}"
+        self.v.setLabel(axis="bottom", text=f"x/c", font=label_font, color=theme["main-color"])
+        self.v.setLabel(axis="left", text=f"Pressure Coefficient", font=label_font, color=theme["main-color"])
+        tick_font = QFont(get_setting("axis-tick-font-family"), get_setting("axis-tick-point-size"))
+        self.v.getAxis("bottom").setTickFont(tick_font)
+        self.v.getAxis("left").setTickFont(tick_font)
+        self.v.getAxis("bottom").setTextPen(theme["main-color"])
+        self.v.getAxis("left").setTextPen(theme["main-color"])
