@@ -75,6 +75,10 @@ Version Notes
 import os
 
 from PyQt6.QtCore import QCoreApplication, QSettings
+import numpy as np
+
+# Monkeypatch for pymoo==0.5.0 (msort deprecation error)
+np.msort = np.sort
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = os.path.join(BASE_DIR, "data")
