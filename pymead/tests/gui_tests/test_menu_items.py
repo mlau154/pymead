@@ -5,6 +5,7 @@ import os
 
 
 def test_load_examples(app):
+    app_obj = app
     menu_json_file = os.path.join(GUI_SETTINGS_DIR, "menu.json")
     menu_dict = load_data(menu_json_file)
     load_example_data = menu_dict["File"]["Load Example"]
@@ -15,8 +16,7 @@ def test_load_examples(app):
                 _test_load_example_recursively(v)
 
             else:
-                print(v)
-                #assert getattr(app, v)()
+                getattr(app_obj, v)()
 
     _test_load_example_recursively(load_example_data)
 
