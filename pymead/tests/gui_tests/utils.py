@@ -65,7 +65,7 @@ def perform_action_on_dialog(dialog_trigger: typing.Callable,
 
 @pytest.fixture
 def app(qtbot):
-    gui = GUI()
+    gui = GUI(bypass_vercheck=True)
     gui.show()
     qtbot.addWidget(gui)
     return gui
@@ -81,4 +81,3 @@ def pointer(app, point: Point, qtbot: QtBot):
     qtbot.mouseMove(app.airfoil_canvas, QPoint(point_pixel_location.x() + 1, point_pixel_location.y() + 1))
     qtbot.wait(100)
     return point
-
