@@ -81,7 +81,7 @@ warnings.filterwarnings("ignore", category=DeprecationWarning)
 class GUI(FramelessMainWindow):
     _gripSize = 5
 
-    def __init__(self, path=None, parent=None):
+    def __init__(self, path=None, parent=None, bypass_vercheck: bool=False):
         # try:
         #     import pyi_splash
         #     pyi_splash.update_text("Initializing constants...")
@@ -267,6 +267,8 @@ class GUI(FramelessMainWindow):
         #     pass
 
         # Check if we are using the most recent release of pymead (notify if not)
+        if bypass_vercheck:
+            return
         self.check_for_new_version()
 
     def check_for_new_version(self):
