@@ -12,12 +12,12 @@ Motivation
 The creation of this package was motivated by a research aircraft application: the aerodynamic design of a
 propulsion-airframe-integrated commercial transport aircraft. The cross-section of a wing or fuselage with integrated
 propulsors can be represented, with some sacrifice in fidelity, as a quasi-2D multi-element airfoil system. This
-multi-element airfoil system is comprised of a main airfoil (either the fuselage or main airfoil element), a hub
+multi-element airfoil system comprises a main airfoil (either the fuselage or main airfoil element), a hub
 airfoil (representing the cross-section of an axisymmetric hub), and a nacelle airfoil (representing the cross-section
 of an axisymmetric nacelle).
 
 By using a well-defined parametrization framework, this airfoil system can be morphed or deformed in a variety of
-ways simply by changing the value of any of the input parameters. These parameters are represented by
+ways simply by changing the value of the input parameters. These parameters are represented by
 ``pymead.core.param.Param`` objects in this framework. Defining the airfoil system in this way provides an
 intuitive I/O interface for shape optimization or parametric sweeps.
 
@@ -37,9 +37,9 @@ Other common multi-element airfoil systems, such as the high-lift configuration 
 applications for this software package.
 
 One utility provided in this software package which may be useful in the start-up phase of airfoil design is
-``pymead.utils.airfoil_matching.match_airfoil()``. This modules allows the matching of a particular parametrization
-to any public airfoil geometry at [airfoiltools.com](http://airfoiltools.com/) using the gradient-based "SLSQP"
-optimizer.
+``pymead.utils.airfoil_matching.match_airfoil()``. This function allows the matching of a particular parametrization
+to any public airfoil geometry at [airfoiltools.com](http://airfoiltools.com/) or local set of airfoil coordinates
+using the gradient-based "SLSQP" optimizer.
 
 
 Acknowledgments
