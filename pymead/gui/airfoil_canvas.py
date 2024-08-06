@@ -10,6 +10,7 @@ from PyQt6.QtWidgets import QApplication
 
 from pymead import q_settings, GUI_SETTINGS_DIR
 from pymead.core.airfoil import Airfoil
+from pymead.core.bezier import Bezier
 from pymead.core.geometry_collection import GeometryCollection
 from pymead.core.line import ReferencePolyline
 from pymead.core.parametric_curve import ParametricCurve
@@ -467,24 +468,22 @@ class AirfoilCanvas(pg.PlotWidget):
     @undoRedoAction
     @runSelectionEventLoop(drawing_object="BezierAddPoint",
                            starting_message="First, click the point to add to the curve")
-    def addPointToCurve(self, curve_item: HoverableCurve):
+    def addPointToCurve(self, curve: Bezier):
         if len(self.geo_col.selected_objects["points"]) != 2:
             msg = (f"Choose exactly two points (the point to add, then the preceding point in the curve) to add"
                    f" a point to a Bezier curve")
             self.sigStatusBarUpdate.emit(msg, 4000)
             return
-        bezier_curve = curve_item.parametric_curve
         point_to_add = self.geo_col.selected_objects["points"][0]
         preceding_point = self.geo_col.selected_objects["points"][1]
-        bezier_curve.insert_point_after_point(point_to_add, preceding_point)
+        curve.insert_point_after_point(point_to_add, preceding_point)
 
     @undoRedoAction
-    def splitPoly(self, curve_item: HoverableCurve):
-        polyline = curve_item.parametric_curve
-        dialog = SplitPolylineDialog(self, theme=self.gui_obj.themes[self.gui_obj.current_theme], polyline=polyline,
+    def splitPoly(self, curve: PolyLine):
+        dialog = SplitPolylineDialog(self, theme=self.gui_obj.themes[self.gui_obj.current_theme], polyline=curve,
                                      geo_col=self.geo_col)
         if dialog.exec():
-            self.geo_col.split_polyline(polyline, dialog.value())
+            self.geo_col.split_polyline(curve, dialog.value())
 
     def appendSelectedPoint(self, plot_data_item: pg.PlotDataItem):
         self.geo_col.selected_objects["points"].append(plot_data_item.point)
@@ -756,8 +755,8 @@ class AirfoilCanvas(pg.PlotWidget):
         if airfoil in self.airfoil_text_items.keys():
             self.removeItem(self.airfoil_text_items[airfoil])
 
-    def removeCurve(self, item):
-        self.geo_col.remove_pymead_obj(item.parametric_curve)
+    def removeCurve(self, curve):
+        self.geo_col.remove_pymead_obj(curve)
 
     def exportPlot(self):
         color_bar_data = self.color_bar_data
@@ -812,17 +811,22 @@ class AirfoilCanvas(pg.PlotWidget):
         modify_geometry_menu = menu.addMenu("Modify Geometry")
         add_constraint_menu = menu.addMenu("Add Constraint")
 
-        removeCurveAction, curve_item, insertCurvePointAction, splitPolyAction = None, None, None, None
-        if self.curve_hovered_item is not None:
-            # Curve removal action
-            removeCurveAction = modify_geometry_menu.addAction("Remove Curve")
-            curve_item = self.curve_hovered_item
+        removeCurveAction, curve, curves, insertCurvePointAction, splitPolyAction = None, None, None, None, None
+        if len(self.geo_col.selected_objects["bezier"]) > 0:
+            curve = self.geo_col.selected_objects["bezier"][0]
 
             # Curve point insertion action
             insertCurvePointAction = modify_geometry_menu.addAction("Insert Curve Point")
 
-            if isinstance(curve_item.parametric_curve, PolyLine):
-                splitPolyAction = modify_geometry_menu.addAction("Split PolyLine")
+        if len(self.geo_col.selected_objects["polylines"]) > 0:
+            curve = self.geo_col.selected_objects["polylines"][0]
+
+            splitPolyAction = modify_geometry_menu.addAction("Split PolyLine")
+
+        curves = self.geo_col.selected_objects["bezier"] + self.geo_col.selected_objects["polylines"] + self.geo_col.selected_objects["lines"]
+        if len(curves) > 0:
+            # Curve removal action
+            removeCurveAction = modify_geometry_menu.addAction("Remove Curve")
 
         drawPointAction = create_geometry_menu.addAction("Insert Point")
         drawBezierCurveThroughPointsAction = create_geometry_menu.addAction("Bezier Curve Through Points")
@@ -862,12 +866,13 @@ class AirfoilCanvas(pg.PlotWidget):
             self.addROCurvatureConstraint()
         elif res == addDistanceConstraintAction:
             self.addDistanceConstraint()
-        elif res == removeCurveAction and curve_item is not None:
-            self.removeCurve(curve_item)
-        elif res == insertCurvePointAction and curve_item is not None:
-            self.addPointToCurve(curve_item)
-        elif res == splitPolyAction and curve_item is not None:
-            self.splitPoly(curve_item)
+        elif res == removeCurveAction and curves is not None:
+            for curve in curves:
+                self.removeCurve(curve)
+        elif res == insertCurvePointAction and curve is not None:
+            self.addPointToCurve(curve)
+        elif res == splitPolyAction and curve is not None:
+            self.splitPoly(curve)
         elif res == exportPlotAction:
             self.exportPlot()
 
