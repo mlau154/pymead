@@ -1,0 +1,556 @@
+{
+    "desvar": {
+        "Length-1": {
+            "value": 0.020333,
+            "lower": 0.0007280351540025383,
+            "upper": 0.04072803515400254,
+            "unit_type": "length",
+            "enabled": true,
+            "equation_str": null
+        },
+        "Length-2": {
+            "value": 0.012442,
+            "lower": 0.01,
+            "upper": 0.03781953786048349,
+            "unit_type": "length",
+            "enabled": true,
+            "equation_str": null
+        },
+        "Angle-1": {
+            "value": 2.539534,
+            "lower": 1.7278816,
+            "upper": 2.5918224,
+            "unit_type": "angle",
+            "root": null,
+            "rotation_handle": null,
+            "enabled": true,
+            "equation_str": null
+        },
+        "Angle-2": {
+            "value": 2.368437,
+            "lower": 1.6365976,
+            "upper": 2.4548964,
+            "unit_type": "angle",
+            "root": null,
+            "rotation_handle": null,
+            "enabled": true,
+            "equation_str": null
+        },
+        "ROC-1": {
+            "value": 0.012066,
+            "lower": 0.01,
+            "upper": 0.03429429639160962,
+            "unit_type": "length",
+            "enabled": true,
+            "equation_str": null
+        },
+        "ClusterAngle-1": {
+            "value": 1.642618,
+            "lower": 1.4657536000000002,
+            "upper": 2.1986304,
+            "unit_type": "angle",
+            "root": "Point-3",
+            "rotation_handle": "Point-5",
+            "enabled": true,
+            "equation_str": null
+        },
+        "Point-9.x": {
+            "value": 0.118754,
+            "lower": 0.11228908740458682,
+            "upper": 0.1684336311068802,
+            "unit_type": "length",
+            "enabled": true,
+            "equation_str": null
+        },
+        "Point-9.y": {
+            "value": 0.095394,
+            "lower": 0.09539357416168928,
+            "upper": 0.1430903612425339,
+            "unit_type": "length",
+            "enabled": true,
+            "equation_str": null
+        },
+        "Point-10.x": {
+            "value": 0.400463,
+            "lower": 0.29819981897479403,
+            "upper": 0.44729972846219096,
+            "unit_type": "length",
+            "enabled": true,
+            "equation_str": null
+        },
+        "Point-10.y": {
+            "value": 0.089047,
+            "lower": 0.054890963866763134,
+            "upper": 0.09489096386676314,
+            "unit_type": "length",
+            "enabled": true,
+            "equation_str": null
+        },
+        "Point-12.x": {
+            "value": 0.141864,
+            "lower": 0.13193205336841907,
+            "upper": 0.1978980800526286,
+            "unit_type": "length",
+            "enabled": true,
+            "equation_str": null
+        },
+        "Point-12.y": {
+            "value": -0.045597,
+            "lower": -0.07050605628798322,
+            "upper": -0.030506056287983214,
+            "unit_type": "length",
+            "enabled": true,
+            "equation_str": null
+        },
+        "Point-13.x": {
+            "value": 0.432296,
+            "lower": 0.32200094358535014,
+            "upper": 0.4830014153780251,
+            "unit_type": "length",
+            "enabled": true,
+            "equation_str": null
+        },
+        "Point-13.y": {
+            "value": -0.071243,
+            "lower": -0.07573411255923133,
+            "upper": -0.035734112559231326,
+            "unit_type": "length",
+            "enabled": true,
+            "equation_str": null
+        },
+        "ClusterAngle-2": {
+            "value": 6.230047,
+            "lower": 5.0050016,
+            "upper": 7.5075024,
+            "unit_type": "angle",
+            "root": "Point-11",
+            "rotation_handle": "Point-15",
+            "enabled": true,
+            "equation_str": null
+        },
+        "ClusterAngle-3": {
+            "value": 6.313389,
+            "lower": 5.0255992,
+            "upper": 7.5383987999999995,
+            "unit_type": "angle",
+            "root": "Point-14",
+            "rotation_handle": "Point-18",
+            "enabled": true,
+            "equation_str": null
+        },
+        "Length-3": {
+            "value": 0.041708089244926486,
+            "lower": 0.041708089244926486,
+            "upper": 0.08170808924492648,
+            "unit_type": "length",
+            "enabled": true,
+            "equation_str": null
+        },
+        "Length-4": {
+            "value": 0.04823521936845776,
+            "lower": 0.04823521936845776,
+            "upper": 0.08823521936845777,
+            "unit_type": "length",
+            "enabled": true,
+            "equation_str": null
+        },
+        "Length-5": {
+            "value": 0.046695,
+            "lower": 0.029775332860818734,
+            "upper": 0.06977533286081873,
+            "unit_type": "length",
+            "enabled": true,
+            "equation_str": null
+        },
+        "Length-6": {
+            "value": 0.034929901577206504,
+            "lower": 0.034929901577206504,
+            "upper": 0.07492990157720651,
+            "unit_type": "length",
+            "enabled": true,
+            "equation_str": null
+        },
+        "Angle-3": {
+            "value": 4.725589,
+            "lower": 3.25567419212377,
+            "upper": 4.883511288185655,
+            "unit_type": "angle",
+            "root": null,
+            "rotation_handle": null,
+            "enabled": true,
+            "equation_str": null
+        },
+        "Angle-4": {
+            "value": 1.74444,
+            "lower": 1.1746078539295624,
+            "upper": 1.7619117808943432,
+            "unit_type": "angle",
+            "root": null,
+            "rotation_handle": null,
+            "enabled": true,
+            "equation_str": null
+        },
+        "ROC-2": {
+            "value": 0.365371,
+            "lower": 0.2591577494747551,
+            "upper": 0.3887366242121326,
+            "unit_type": "length",
+            "enabled": true,
+            "equation_str": null
+        },
+        "Angle-5": {
+            "value": 2.394366,
+            "lower": 1.622962786281807,
+            "upper": 2.4344441794227105,
+            "unit_type": "angle",
+            "root": null,
+            "rotation_handle": null,
+            "enabled": true,
+            "equation_str": null
+        },
+        "Angle-6": {
+            "value": 2.281718,
+            "lower": 1.5274456037644102,
+            "upper": 2.2911684056466153,
+            "unit_type": "angle",
+            "root": null,
+            "rotation_handle": null,
+            "enabled": true,
+            "equation_str": null
+        },
+        "ROC-3": {
+            "value": 0.338803,
+            "lower": 0.25652050492855,
+            "upper": 0.38478075739282497,
+            "unit_type": "length",
+            "enabled": true,
+            "equation_str": null
+        },
+        "Point-17.x": {
+            "value": 0.798058,
+            "lower": 0.670531062361103,
+            "upper": 1.0057965935416544,
+            "unit_type": "length",
+            "enabled": true,
+            "equation_str": null
+        },
+        "Point-17.y": {
+            "value": 0.035323,
+            "lower": 0.010268046285573113,
+            "upper": 0.05026804628557312,
+            "unit_type": "length",
+            "enabled": true,
+            "equation_str": null
+        },
+        "Point-20.x": {
+            "value": 0.664428,
+            "lower": 0.6614663688374706,
+            "upper": 0.9921995532562057,
+            "unit_type": "length",
+            "enabled": true,
+            "equation_str": null
+        },
+        "Point-20.y": {
+            "value": -0.039294,
+            "lower": -0.04985411265569249,
+            "upper": -0.009854112655692488,
+            "unit_type": "length",
+            "enabled": true,
+            "equation_str": null
+        }
+    },
+    "params": {},
+    "points": {
+        "Point-1": {
+            "x": 1.0,
+            "y": 0.00126
+        },
+        "Point-2": {
+            "x": 1.0,
+            "y": -0.00126
+        },
+        "Point-3": {
+            "x": 0.0,
+            "y": 0.0
+        },
+        "Point-4": {
+            "x": 1.0,
+            "y": 0.0
+        },
+        "Point-5": {
+            "x": -0.0014590949049142243,
+            "y": 0.02028058014600306
+        },
+        "Point-6": {
+            "x": 0.03423811653453647,
+            "y": 0.08117286319550766
+        },
+        "Point-7": {
+            "x": 0.0008928372009513023,
+            "y": -0.012409923679563763
+        },
+        "Point-8": {
+            "x": 0.016922981487382107,
+            "y": -0.02663533156377563
+        },
+        "Point-9": {
+            "x": 0.118754,
+            "y": 0.095394
+        },
+        "Point-10": {
+            "x": 0.400463,
+            "y": 0.089047
+        },
+        "Point-11": {
+            "x": 0.6403627943770791,
+            "y": 0.04986557541686179
+        },
+        "Point-12": {
+            "x": 0.141864,
+            "y": -0.045597
+        },
+        "Point-13": {
+            "x": 0.432296,
+            "y": -0.071243
+        },
+        "Point-14": {
+            "x": 0.6458962436653493,
+            "y": -0.03424099233298916
+        },
+        "Point-15": {
+            "x": 0.6820120123345136,
+            "y": 0.047650321030369404
+        },
+        "Point-16": {
+            "x": 0.681591160702085,
+            "y": 0.04131561055532516
+        },
+        "Point-17": {
+            "x": 0.798058,
+            "y": 0.035323
+        },
+        "Point-18": {
+            "x": 0.6941094631019502,
+            "y": -0.032784332083855866
+        },
+        "Point-19": {
+            "x": 0.7017141425071183,
+            "y": -0.023394094920488263
+        },
+        "Point-20": {
+            "x": 0.664428,
+            "y": -0.039294
+        },
+        "Point-21": {
+            "x": 0.599222541107996,
+            "y": -0.03565113934224602
+        },
+        "Point-22": {
+            "x": 0.5908949629724364,
+            "y": -0.028391036137234205
+        },
+        "Point-23": {
+            "x": 0.604592857149892,
+            "y": 0.047866716771553915
+        },
+        "Point-24": {
+            "x": 0.6054821966235444,
+            "y": 0.051720817867175375
+        }
+    },
+    "reference": {},
+    "lines": {
+        "Line-1": {
+            "points": [
+                "Point-4",
+                "Point-1"
+            ]
+        },
+        "Line-2": {
+            "points": [
+                "Point-4",
+                "Point-2"
+            ]
+        }
+    },
+    "polylines": {},
+    "bezier": {
+        "Bezier-1": {
+            "points": [
+                "Point-3",
+                "Point-5",
+                "Point-6",
+                "Point-9",
+                "Point-10",
+                "Point-23",
+                "Point-24",
+                "Point-11"
+            ]
+        },
+        "Bezier-2": {
+            "points": [
+                "Point-3",
+                "Point-7",
+                "Point-8",
+                "Point-12",
+                "Point-13",
+                "Point-22",
+                "Point-21",
+                "Point-14"
+            ]
+        },
+        "Bezier-3": {
+            "points": [
+                "Point-11",
+                "Point-15",
+                "Point-16",
+                "Point-17",
+                "Point-1"
+            ]
+        },
+        "Bezier-4": {
+            "points": [
+                "Point-14",
+                "Point-18",
+                "Point-19",
+                "Point-20",
+                "Point-2"
+            ]
+        }
+    },
+    "airfoils": {
+        "Airfoil-1": {
+            "leading_edge": "Point-3",
+            "trailing_edge": "Point-4",
+            "upper_surf_end": "Point-1",
+            "lower_surf_end": "Point-2"
+        }
+    },
+    "mea": {},
+    "geocon": {
+        "DistCon-1": {
+            "p1": "Point-3",
+            "p2": "Point-5",
+            "value": "Length-1",
+            "constraint_type": "DistanceConstraint"
+        },
+        "DistCon-2": {
+            "p1": "Point-3",
+            "p2": "Point-7",
+            "value": "Length-2",
+            "constraint_type": "DistanceConstraint"
+        },
+        "AntiPar3Con-1": {
+            "p1": "Point-5",
+            "p2": "Point-3",
+            "p3": "Point-7",
+            "constraint_type": "AntiParallel3Constraint",
+            "polyline": null,
+            "point_on_curve": null
+        },
+        "RelAng3Con-1": {
+            "p1": "Point-6",
+            "p2": "Point-5",
+            "p3": "Point-3",
+            "value": "Angle-1",
+            "constraint_type": "RelAngle3Constraint"
+        },
+        "RelAng3Con-2": {
+            "p1": "Point-3",
+            "p2": "Point-7",
+            "p3": "Point-8",
+            "value": "Angle-2",
+            "constraint_type": "RelAngle3Constraint"
+        },
+        "ROCCon-1": {
+            "curve_joint": "Point-3",
+            "value": "ROC-1",
+            "constraint_type": "ROCurvatureConstraint"
+        },
+        "DistCon-3": {
+            "p1": "Point-11",
+            "p2": "Point-15",
+            "value": "Length-3",
+            "constraint_type": "DistanceConstraint"
+        },
+        "DistCon-4": {
+            "p1": "Point-14",
+            "p2": "Point-18",
+            "value": "Length-4",
+            "constraint_type": "DistanceConstraint"
+        },
+        "DistCon-5": {
+            "p1": "Point-14",
+            "p2": "Point-21",
+            "value": "Length-5",
+            "constraint_type": "DistanceConstraint"
+        },
+        "DistCon-6": {
+            "p1": "Point-11",
+            "p2": "Point-24",
+            "value": "Length-6",
+            "constraint_type": "DistanceConstraint"
+        },
+        "AntiPar3Con-2": {
+            "p1": "Point-15",
+            "p2": "Point-11",
+            "p3": "Point-24",
+            "constraint_type": "AntiParallel3Constraint",
+            "polyline": null,
+            "point_on_curve": null
+        },
+        "AntiPar3Con-3": {
+            "p1": "Point-18",
+            "p2": "Point-14",
+            "p3": "Point-21",
+            "constraint_type": "AntiParallel3Constraint",
+            "polyline": null,
+            "point_on_curve": null
+        },
+        "RelAng3Con-3": {
+            "p1": "Point-11",
+            "p2": "Point-15",
+            "p3": "Point-16",
+            "value": "Angle-3",
+            "constraint_type": "RelAngle3Constraint"
+        },
+        "RelAng3Con-4": {
+            "p1": "Point-11",
+            "p2": "Point-24",
+            "p3": "Point-23",
+            "value": "Angle-4",
+            "constraint_type": "RelAngle3Constraint"
+        },
+        "ROCCon-2": {
+            "curve_joint": "Point-11",
+            "value": "ROC-2",
+            "constraint_type": "ROCurvatureConstraint"
+        },
+        "RelAng3Con-5": {
+            "p1": "Point-22",
+            "p2": "Point-21",
+            "p3": "Point-14",
+            "value": "Angle-5",
+            "constraint_type": "RelAngle3Constraint"
+        },
+        "RelAng3Con-6": {
+            "p1": "Point-14",
+            "p2": "Point-18",
+            "p3": "Point-19",
+            "value": "Angle-6",
+            "constraint_type": "RelAngle3Constraint"
+        },
+        "ROCCon-3": {
+            "curve_joint": "Point-14",
+            "value": "ROC-3",
+            "constraint_type": "ROCurvatureConstraint"
+        }
+    },
+    "metadata": {
+        "pymead_version": "2.0.0-beta.9",
+        "save_datetime": "2024-08-06 15:21:41.011133",
+        "length_unit": "m",
+        "angle_unit": "rad",
+        "area_unit": "m2"
+    }
+}

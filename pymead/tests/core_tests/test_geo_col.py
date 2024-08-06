@@ -4,6 +4,7 @@ import unittest
 
 import numpy as np
 
+from pymead import TEST_DIR
 from pymead.core.airfoil import Airfoil, ClosureError, BranchError
 from pymead.core.bezier import Bezier
 from pymead.core.geometry_collection import GeometryCollection
@@ -11,6 +12,7 @@ from pymead.core.line import LineSegment
 from pymead.core.mea import MEA
 from pymead.core.param import Param, DesVar
 from pymead.core.point import Point, PointSequence
+from pymead.utils.read_write_files import load_data
 
 temp_dir = tempfile.gettempdir()
 
@@ -206,7 +208,6 @@ class GeoColTests(unittest.TestCase):
         self.assertIn("Point-2", self.geo_col.get_name_list("points"))
         self.assertNotIn("Point-3", self.geo_col.get_name_list("points"))
         self.assertIn("Point-4", self.geo_col.get_name_list("points"))
-
 
 
 class ParamTests(unittest.TestCase):
@@ -407,6 +408,22 @@ class AirfoilTests(unittest.TestCase):
             prev_xy = row
 
         self.assertFalse(repeat)
+
+    def test_reduced_curve_points_on_airfoil(self):
+        jmea_file = os.path.join(TEST_DIR, "core_tests", "naca23012_il_matched.jmea")
+        geo_col = GeometryCollection.set_from_dict_rep(load_data(jmea_file))
+        airfoil = geo_col.container()["airfoils"]["Airfoil-1"]
+        coords = airfoil.get_coords_selig_format(n_points_per_curve=100)
+
+        self.assertEqual(len(coords), 397)
+
+    def test_full_curve_points_on_airfoil(self):
+        jmea_file = os.path.join(TEST_DIR, "core_tests", "naca23012_il_matched.jmea")
+        geo_col = GeometryCollection.set_from_dict_rep(load_data(jmea_file))
+        airfoil = geo_col.container()["airfoils"]["Airfoil-1"]
+        coords = airfoil.get_coords_selig_format()
+
+        self.assertEqual(len(coords), 597)
 
 
 class MEATests(unittest.TestCase):

@@ -152,7 +152,8 @@ class Airfoil(PymeadObj):
         if not closed:
             raise ClosureError("Curve loop not closed")
 
-    def get_coords_selig_format(self, max_airfoil_points: int = None, curvature_exp: float = 2.0) -> np.ndarray:
+    def get_coords_selig_format(self, max_airfoil_points: int = None, curvature_exp: float = 2.0,
+                                n_points_per_curve: int = 150) -> np.ndarray:
         r"""
         Gets the coordinates of the airfoil in the Selig file format (coordinate array of size :math:`N \times 2`,
         where :math:`N` is the number of airfoil coordinates, and the columns represent :math:`x` and :math:`y`). The
@@ -169,6 +170,9 @@ class Airfoil(PymeadObj):
             Optional value specifying the curvature exponent used in the ``downsample`` method. If
             ``max_airfoil_points`` is left as ``None``, this value will be ignored. Default: 2
 
+        n_points_per_curve: int
+            Number of points to evaluate for each Bézier curve. Default: 150
+
         Returns
         -------
         np.ndarray
@@ -177,6 +181,8 @@ class Airfoil(PymeadObj):
         """
         if max_airfoil_points is not None:
             t_vec_list = self.downsample(max_airfoil_points=max_airfoil_points, curvature_exp=curvature_exp)
+        elif n_points_per_curve != 150:
+            t_vec_list = [np.linspace(0.0, 1.0, n_points_per_curve) for _ in self.curves]
         else:
             t_vec_list = [None for _ in self.curves]
 
