@@ -1410,10 +1410,16 @@ class GUI(FramelessMainWindow):
             # Throw a GUI error
             self.disp_message_box("MSES Analysis Failed", message_mode="error")
 
+            # Compute the output analysis directory
+            analysis_dir_full_path = os.path.abspath(
+                os.path.join(mset_settings['airfoil_analysis_dir'], mset_settings['airfoil_coord_file_name'], '')
+            )
+
             # Output failed MSES analysis info to console
+            self.output_area_text(f"[{str(self.n_analyses).zfill(2)}] ")  # Number of analyses
+            self.output_area_text(f"<a href='file:///{analysis_dir_full_path}'>MSES</a>", mode="html")  # Folder link
             self.output_area_text(
-                f"[{str(self.n_analyses).zfill(2)}] "
-                f"MSES Converged = {aero_data['converged']} | "
+                f" Converged = {aero_data['converged']} | "
                 f"Errored out = {aero_data['errored_out']} | "
                 f"Timed out = {aero_data['timed_out']}",
                 line_break=True
