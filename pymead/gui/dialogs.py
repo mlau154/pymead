@@ -291,6 +291,8 @@ class PymeadDialogWidget(QWidget):
     def setValue(self, new_values: dict):
         for k, v in new_values.items():
             if v is not None:
+                if k not in self.widget_dict:
+                    continue
                 if self.widget_dict[k]['checkbox'] is not None:
                     self.widget_dict[k]['checkbox'].setChecked(v[1])
                     getattr(self.widget_dict[k]['widget'], get_set_value_names[self.settings[k]['widget_type']][1])(v[0])
