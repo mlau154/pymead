@@ -845,8 +845,16 @@ def calculate_aero_data(conn: multiprocessing.connection.Connection or None,
 
     # Make the analysis directory if not already created
     base_dir = os.path.join(airfoil_coord_dir, airfoil_name)
-    if not os.path.exists(base_dir):
-        os.mkdir(base_dir)
+    try:
+        if not os.path.exists(base_dir):
+            os.mkdir(base_dir)
+    except FileNotFoundError as e:
+        if conn is not None:
+            send_over_pipe(("disp_message_box",
+                            f"Could not find analysis base directory {mset_settings['airfoil_analysis_dir']}"))
+            return
+        else:
+            raise FileNotFoundError(f"Could not find analysis base directory {mset_settings['airfoil_analysis_dir']}")
 
     if tool == 'XFOIL':
         if xfoil_settings is None:

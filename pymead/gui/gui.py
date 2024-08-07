@@ -1843,6 +1843,8 @@ class GUI(FramelessMainWindow):
             self.output_area_text(data, line_break=True)
         elif status == "message" and isinstance(data, str):
             self.message_callback_fn(data)
+        elif status == "disp_message_box" and isinstance(data, str):
+            self.disp_message_box(data)
         elif status == "opt_progress" and isinstance(data, dict):
             callback = TextCallback(parent=self, text_list=data["text"], completed=data["completed"],
                                     warm_start_gen=data["warm_start_gen"])
