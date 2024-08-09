@@ -28,12 +28,7 @@ Bug fixes
 - Apply theme to status bar widgets immediately on theme change
 - Correct dimensions having default colors before switching themes
 - Use `QNativeGesture`/`ZoomNativeGesture` to allow pinch-zoom on macOS
-- Fix custom show/hide checkboxes not taking effect immediately when a new .jmea file is loaded
 - Add reference polylines to show/hide customization
-
-Aesthetic
----------
-- Update formatting for optimization plots to match the other plots
 
 Testing
 -------
