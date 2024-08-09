@@ -3252,7 +3252,11 @@ class WebAirfoilDialog(PymeadDialog):
             PymeadLabeledLineEdit(label="Airfoil from File", tool_tip="Absolute file path of a Selig-format "
                                                                       "(counter-clockwise starting with upper trailing "
                                                                       "edge, space-delimited, airfoil coordinates file",
-                                  text="", push_label="Select Airfoil", read_only=True)
+                                  text="", push_label="Select Airfoil", read_only=True),
+            PymeadLabeledCheckbox(label="Reference?", tool_tip="Whether to add this airfoil as a reference polyline "
+                                                               "rather than an airfoil object. This produces a static "
+                                                               "plot of the airfoil coordinates in the background that "
+                                                               "can be used for comparison")
         ]
         inputs[0].sigValueChanged.connect(self.airfoilTypeChanged)
         inputs[2].push.clicked.connect(self.selectDatFile)
