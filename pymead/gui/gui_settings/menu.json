@@ -62,13 +62,9 @@
     "Run": ["setup_optimization", "Ctrl+Alt+O"]
   },
   "Tools": {
-    "Plot Airfoil from AirfoilTools": "plot_airfoil_from_airfoiltools",
     "Match Airfoil": "match_airfoil",
     "Airfoil Statistics": "display_airfoil_statistics",
     "Take Screenshot": ["take_screenshot", "Ctrl+Shift+S"]
-  },
-  "Plot": {
-    "Reference Geometry From File": "plot_geometry"
   },
   "Dev": {
     "Show Constraint Graph": "show_constraint_graph",

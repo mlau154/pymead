@@ -865,30 +865,6 @@ class GUI(FramelessMainWindow):
             parameter_list = self.geo_col.extract_design_variable_values(bounds_normalized=True)
             np.savetxt(file_name, np.array(parameter_list))
 
-    def plot_geometry(self):
-        file_filter = self.tr("Data Files (*.txt *.dat *.csv)")
-        dialog = LoadDialog(self, settings_var="geometry_plot_default_open_location", file_filter=file_filter)
-        if dialog.exec():
-            file_name = dialog.selectedFiles()[0]
-            q_settings.setValue(dialog.settings_var, os.path.dirname(file_name))
-            coords = np.loadtxt(file_name)
-            geometry_idx = 0
-            while True:
-                geometry_name = f"Geometry_{geometry_idx}"
-                if geometry_name in self.geometry_plot_handles.keys():
-                    geometry_idx += 1
-                else:
-                    default_color = (214, 147, 39)
-                    color_dialog = ColorInputDialog(parent=self, default_color=default_color)
-                    if color_dialog.exec():
-                        color = color_dialog.color_button_widget.color()
-                    else:
-                        color = default_color
-                    if isinstance(color, QColor):
-                        color = color.getRgb()
-                    self.geo_col.add_reference_polyline(coords, color=color, lw=1.4)
-                    break
-
     def clear_field(self):
         for child in self.airfoil_canvas.plot.allChildItems():
             if isinstance(child, pg.PColorMeshItem) or isinstance(child, pg.ColorBarItem):
@@ -1594,17 +1570,6 @@ class GUI(FramelessMainWindow):
             except AirfoilNotFoundError as e:
                 self.disp_message_box(f"{str(e)}")
                 return
-
-    def plot_airfoil_from_airfoiltools(self):
-        dialog = AirfoilPlotDialog(self, theme=self.themes[self.current_theme])
-        if dialog.exec():
-            airfoil_name = dialog.value()
-            try:
-                airfoil = extract_data_from_airfoiltools(airfoil_name)
-            except AirfoilNotFoundError as e:
-                self.disp_message_box(f"{str(e)}")
-                return
-            self.airfoil_canvas.plot.plot(airfoil[:, 0], airfoil[:, 1], pen=pg.mkPen(color='orange', width=1))
 
     def setup_optimization(self):
         self.dialog = OptimizationSetupDialog(self, settings_override=self.opt_settings,
