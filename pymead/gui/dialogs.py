@@ -570,6 +570,30 @@ class PymeadLabeledCheckbox(QObject):
         return self.widget.isChecked()
 
 
+class PymeadLabeledColorSelector(QObject):
+
+    sigValueChanged = pyqtSignal(tuple)
+
+    def __init__(self, label: str = "", tool_tip: str = "", initial_color: tuple = (245, 37, 106),
+                 read_only: bool = False):
+        self.label = QLabel(label)
+        self.widget = pg.ColorButton(color=initial_color)
+        self.label.setToolTip(tool_tip)
+        self.widget.setToolTip(tool_tip)
+        self.push = None
+        self.widget.setMinimumHeight(25)
+        self.widget.setEnabled(not read_only)
+
+        super().__init__()
+        self.widget.sigColorChanged.connect(self.sigValueChanged)
+
+    def setValue(self, color: tuple):
+        self.widget.setColor(color)
+
+    def value(self):
+        return self.widget.color(mode="byte")
+
+
 class PymeadLabeledPushButton:
 
     def __init__(self, label: str = "", text: str = "", tool_tip: str = ""):
@@ -3256,10 +3280,14 @@ class WebAirfoilDialog(PymeadDialog):
             PymeadLabeledCheckbox(label="Reference?", tool_tip="Whether to add this airfoil as a reference polyline "
                                                                "rather than an airfoil object. This produces a static "
                                                                "plot of the airfoil coordinates in the background that "
-                                                               "can be used for comparison")
+                                                               "can be used for comparison"),
+            PymeadLabeledColorSelector(label="Reference Color", tool_tip="Color used for the airfoil coordinates; only "
+                                                                         "used if 'Reference' is selected",
+                                       read_only=True)
         ]
         inputs[0].sigValueChanged.connect(self.airfoilTypeChanged)
         inputs[2].push.clicked.connect(self.selectDatFile)
+        inputs[3].sigValueChanged.connect(self.referenceSelectionChanged)
         return inputs
 
     def airfoilTypeChanged(self, airfoil_type: str):
@@ -3273,11 +3301,14 @@ class WebAirfoilDialog(PymeadDialog):
     def selectDatFile(self):
         select_data_file(parent=self, line_edit=self.inputs[2].widget)
 
+    def referenceSelectionChanged(self, reference: bool):
+        self.inputs[4].widget.setEnabled(reference)
+
     def value(self):
         if self.inputs[0].value() == "AirfoilTools":
-            return self.inputs[1].value()
+            return [self.inputs[1].value(), self.inputs[3].value(), self.inputs[4].value()]
         else:
-            return self.inputs[2].value()
+            return [self.inputs[2].value(), self.inputs[3].value(), self.inputs[4].value()]
 
 
 class MSESFieldPlotDialogWidget(PymeadDialogWidget):

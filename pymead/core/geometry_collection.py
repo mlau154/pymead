@@ -614,9 +614,12 @@ class GeometryCollection(DualRep):
                     self.add_pymead_obj_by_ref(point)
         return self.add_pymead_obj_by_ref(polyline, assign_unique_name=assign_unique_name)
 
-    def add_reference_polyline(self, points: typing.List[typing.List[float]] or np.ndarray, color, lw: float,
-                               name: str or None = None, assign_unique_name: bool = True):
-        ref_polyline = ReferencePolyline(points=points, color=color, lw=lw, name=name)
+    def add_reference_polyline(self, points: typing.List[typing.List[float]] or np.ndarray = None, source: str = None,
+                               num_header_rows: int = 0, delimiter: str or None = None,
+                               color: tuple = (245, 37, 106), lw: float = 1.0, name: str = None,
+                               assign_unique_name: bool = True):
+        ref_polyline = ReferencePolyline(points=points, source=source, num_header_rows=num_header_rows,
+                                         delimiter=delimiter, color=color, lw=lw, name=name)
 
         return self.add_pymead_obj_by_ref(ref_polyline, assign_unique_name=assign_unique_name)
 

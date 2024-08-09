@@ -278,13 +278,49 @@ class PolyLine(ParametricCurve):
 
 
 class ReferencePolyline(PymeadObj):
-    def __init__(self, points: typing.List[typing.List[float]] or np.ndarray, color, lw: float, name: str = None):
-        self.points = np.array(points) if isinstance(points, list) else points
+
+    AirfoilTools = 0
+    DatFile = 1
+
+    def __init__(self, points: typing.List[typing.List[float]] or np.ndarray = None, source: str = None,
+                 num_header_rows: int = 0, delimiter: str or None = None,
+                 color: tuple = (245, 37, 106), lw: float = 1.0, name: str = None):
+        self.source = source
+        self.source_type = None
+        if self.source is not None:
+            self.source_type = self.DatFile if ("/" in source or "\\" in source) else self.AirfoilTools
+
+        self.num_header_rows = num_header_rows
+        self.delimiter = delimiter
+
+        if self.source is None:
+            self.points = np.array(points) if isinstance(points, list) else points
+        else:
+            self.points = self._get_original_coords()
+
         self.color = color
         self.lw = lw
         super().__init__(sub_container="reference")
         name = "RefPoly-1" if name is None else name
         self.set_name(name)
+
+    def _get_original_coords(self):
+        if self.source_type == self.AirfoilTools:
+            return self._load_coords_from_airfoil_tools()
+        elif self.source_type == self.DatFile:
+            try:
+                return self._load_coords_from_dat_file(self.num_header_rows, self.delimiter)
+            except:
+                self.num_header_rows = 1
+                return self._load_coords_from_dat_file(self.num_header_rows, self.delimiter)
+        else:
+            raise ValueError("Invalid polyline source type")
+
+    def _load_coords_from_dat_file(self, num_header_rows: int = 0, delimiter: str or None = None):
+        return np.loadtxt(self.source, skiprows=num_header_rows, delimiter=delimiter)
+
+    def _load_coords_from_airfoil_tools(self):
+        return extract_data_from_airfoiltools(self.source)
 
     def update(self):
         if self.canvas_item is not None:

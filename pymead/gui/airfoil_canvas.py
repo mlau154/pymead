@@ -356,11 +356,16 @@ class AirfoilCanvas(pg.PlotWidget):
         self.dialog = WebAirfoilDialog(self, theme=self.gui_obj.themes[self.gui_obj.current_theme])
         if (dialog_test_action is not None and not dialog_test_action(self.dialog)) or self.dialog.exec():
             try:
-                polyline = self.geo_col.add_polyline(source=self.dialog.value())
+                polyline = None
+                if self.dialog.value()[1]:
+                    self.geo_col.add_reference_polyline(source=self.dialog.value()[0], color=self.dialog.value()[2])
+                else:
+                    polyline = self.geo_col.add_polyline(source=self.dialog.value()[0])
             except AirfoilNotFoundError as e:
                 self.gui_obj.disp_message_box(f"{e}", message_mode="error", dialog_test_action=error_dialog_action)
                 return
-            polyline.add_polyline_airfoil()
+            if polyline is not None:
+                polyline.add_polyline_airfoil()
         self.gui_obj.permanent_widget.updateAirfoils()
 
     @undoRedoAction
