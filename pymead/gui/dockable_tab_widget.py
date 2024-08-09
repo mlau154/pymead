@@ -2,15 +2,29 @@ import typing
 
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QCloseEvent
-from PyQt6.QtWidgets import QMainWindow, QDockWidget, QGridLayout, QWidget
+from PyQt6.QtWidgets import QMainWindow, QDockWidget, QGridLayout, QWidget, QLabel
 from PyQt6.QtCore import pyqtSignal
 
 
 class PymeadDockWidget(QDockWidget):
     """
-    Simple re-implementation of QDockWidget with special handling of tab close with a custom signal.
+    Simple re-implementation of QDockWidget with custom title bar and
+    special handling of tab close with a custom signal.
     """
     tab_closed = pyqtSignal(str, QCloseEvent)
+
+    def __init__(self, *args, theme, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        self.theme = theme
+        self.topLevelChanged.connect(self.dockFloatEvent)
+
+    def dockFloatEvent(self, isFloating: bool):
+        if not isFloating:
+            return
+        label = QLabel(f" {self.windowTitle()}", self)
+        label.setMinimumHeight(17)
+        self.setTitleBarWidget(label)
 
     def closeEvent(self, event: QCloseEvent) -> None:
         """
