@@ -1,6 +1,7 @@
 import sys
 from copy import deepcopy
 
+import pyqtgraph as pg
 from PyQt6.QtCore import Qt, pyqtSignal, pyqtSlot, QRegularExpression
 from PyQt6.QtGui import QValidator, QBrush, QColor
 from PyQt6.QtWidgets import QTreeWidget, QTreeWidgetItem, QPushButton, QHBoxLayout, QHeaderView, QDialog, QGridLayout, \
@@ -10,7 +11,7 @@ from pymead.core.airfoil import Airfoil
 from pymead.core.bezier import Bezier
 from pymead.core.constraints import *
 from pymead.core.geometry_collection import GeometryCollection
-from pymead.core.line import LineSegment, PolyLine
+from pymead.core.line import LineSegment, PolyLine, ReferencePolyline
 from pymead.core.mea import MEA
 from pymead.core.param import Param, DesVar, LengthParam, AngleParam, LengthDesVar, AngleDesVar, EquationCompileError
 from pymead.core.point import Point
@@ -538,6 +539,28 @@ class PolyLineButton(TreeButton):
         name_edit.setEnabled(False)
         layout.addWidget(name_label, 1, 0)
         layout.addWidget(name_edit, 1, 1)
+        color_edit = pg.ColorButton
+
+
+class ReferencePolylineButton(TreeButton):
+    def __init__(self, ref_polyline: ReferencePolyline, tree, top_level: bool = False):
+        super().__init__(pymead_obj=ref_polyline, tree=tree, top_level=top_level)
+        self.ref_polyline = ref_polyline
+
+    def modifyDialogInternals(self, dialog: QDialog, layout: QGridLayout) -> None:
+        name_label = QLabel("Name", self)
+        name_edit = NameEdit(self, self.ref_polyline, self.tree)
+        name_edit.setEnabled(False)
+        layout.addWidget(name_label, 1, 0)
+        layout.addWidget(name_edit, 1, 1)
+        color_edit = pg.ColorButton(color=self.ref_polyline.color)
+        color_edit.sigColorChanged.connect(self.onColorChanged)
+        color_edit.setMinimumHeight(25)
+        layout.addWidget(QLabel("Color", self), 2, 0)
+        layout.addWidget(color_edit, 2, 1)
+
+    def onColorChanged(self, button):
+        self.ref_polyline.set_color(button.color(mode="byte"))
 
 
 class MEAButton(TreeButton):

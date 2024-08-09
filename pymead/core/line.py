@@ -1,6 +1,7 @@
 import typing
 
 import numpy as np
+import pyqtgraph as pg
 
 from pymead.core.point import PointSequence, Point
 from pymead.core.parametric_curve import ParametricCurve, PCurveData
@@ -325,6 +326,10 @@ class ReferencePolyline(PymeadObj):
     def update(self):
         if self.canvas_item is not None:
             self.canvas_item.setData(self.points[:, 0], self.points[:, 1])
+
+    def set_color(self, color):
+        self.color = color
+        self.canvas_item.setPen(pg.mkPen(color=color, lw=self.lw))
 
     def get_dict_rep(self) -> dict:
         return {"points": self.points.tolist(), "color": self.color, "lw": self.lw}
