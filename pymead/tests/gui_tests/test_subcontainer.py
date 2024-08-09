@@ -1,4 +1,7 @@
+from pymead.core.constraints import DistanceConstraint
+from pymead.core.param import LengthParam
 from pymead.core.point import PointSequence
+from pymead.gui.constraint_items import DistanceConstraintItem
 from pymead.tests.gui_tests.utils import app
 
 import numpy as np
@@ -154,6 +157,24 @@ def test_show_hide_objs_airfoils(app):
     app.showHidePymeadObjs("airfoils", show=True)
     assert airfoil_thin.canvas_item.isVisible()
     assert airfoil_blunt.canvas_item.isVisible()
+
+    app.geo_col.clear_container()
+
+
+def test_show_hide_objs_geocon(app):
+    point_one = app.geo_col.add_point(0.1, 0.3)
+    point_two = app.geo_col.add_point(0.1, 0.6)
+    length_param = LengthParam(value=0.3, name="DistanceParam", geo_col=app.geo_col)
+    geocon_one = app.geo_col.add_constraint(constraint_type="DistanceConstraint",
+                                            p1=point_one,
+                                            p2=point_two,
+                                            value=length_param,
+                                            assign_unique_name=True
+                                            )
+
+    app.showHidePymeadObjs("geocon", show=False)
+    #assert not geocon_one.canvas_item.isHidden()
+    #DistanceConstraintItem
 
     app.geo_col.clear_container()
 
