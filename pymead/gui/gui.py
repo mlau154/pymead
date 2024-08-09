@@ -1067,6 +1067,12 @@ class GUI(FramelessMainWindow):
         self.permanent_widget.updateAirfoils()
         self.auto_range_geometry()
 
+        if self.showHideState is None:
+            self.showAllPymeadObjs()
+        else:
+            for k, v in self.showHideState.items():
+                self.showHidePymeadObjs(k, v)
+
         # self.geo_col.switch_units("angle", old_unit=UNITS.current_angle_unit(),
         #                           new_unit=geo_col_dict["metadata"]["angle_unit"])
         # self.geo_col.switch_units("length", old_unit=UNITS.current_length_unit(),
