@@ -1,14 +1,7 @@
-import os
-import time
-
-import matplotlib.pyplot as plt
 import numpy as np
-import pandas as pd
 from numba import jit
 from numpy import zeros, pi, arctan2, sin, cos, sqrt, log, dot
 from numpy.linalg import inv
-
-from pymead import DATA_DIR
 
 
 @jit(nopython=True, cache=True)
@@ -22,21 +15,21 @@ def single_element_inviscid(coord: np.ndarray, alpha: float or np.float64):
     Available: `<https://asmedigitalcollection.asme.org/fluidsengineering/article/126/2/293/458666/LowSpeed-Aerodynamics-Second-Edition>`_
 
     Parameters
-    ==========
+    ----------
     coord: np.ndarray
-      An :math:`N \times 2` array of airfoil coordinates, where :math:`N` is the number of coordinates, and the columns
-      represent :math:`x` and :math:`y`
+        An :math:`N \times 2` array of airfoil coordinates, where :math:`N` is the number of coordinates, and the columns
+        represent :math:`x` and :math:`y`
 
     alpha: float or np.float64
-      Angle of attack of the airfoil
+        Angle of attack of the airfoil
 
     Returns
-    =======
+    -------
     np.ndarray, np.ndarray, float
-      The first returned array is of size :math:`(N-1) \times 2` and represents the :math:`x` and :math:`y` locations
-      of the collocation points, where :math:`N` is the number of airfoil coordinates. The second returned array is a
-      one-dimensional array with length :math:`(N-1)` representing the surface pressure coefficient at each collocation
-      point. The final returned value is the lift coefficient.
+        The first returned array is of size :math:`(N-1) \times 2` and represents the :math:`x`- and :math:`y`-locations
+        of the collocation points, where :math:`N` is the number of airfoil coordinates. The second returned array is a
+        one-dimensional array with length :math:`(N-1)` representing the surface pressure coefficient at each collocation
+        point. The final returned value is the lift coefficient.
     """
 
     N = len(coord)          # Number of panel end points
@@ -175,28 +168,3 @@ def single_element_inviscid(coord: np.ndarray, alpha: float or np.float64):
     CP = 1 - V**2
 
     return CO, CP, CL
-
-
-def _main():
-    # Insert airfoil points here
-    coords = pd.read_csv(os.path.join(DATA_DIR, 'naca0012.dat'), skiprows=1, names=['x', 'y'], delim_whitespace=True)
-    # print(coord)
-    coords = coords.to_numpy()
-    single_element_inviscid(coords, 4.0)
-    t1 = time.time()
-    CO, CP, CL = single_element_inviscid(coords, 4.0)
-    t2 = time.time()
-    print(f"calculation time = {t2 - t1:.4e} seconds")
-
-    fig, axs = plt.subplots()
-    axs.plot(CO[:, 0], CP)
-    axs.set_xlabel(r"$x/c$")
-    axs.set_ylabel(r"$C_p$")
-    axs.invert_yaxis()
-    print(f"CL = {CL:.4g}")
-    plt.show()
-
-
-if __name__ == '__main__':
-    _main()
-

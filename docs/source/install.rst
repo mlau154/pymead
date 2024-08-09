@@ -215,7 +215,7 @@ terminal (use ``python3`` instead of ``py`` for Linux or macOS):
 .. code-block::
 
   >>> quit()
-  py -m pymead.gui.gui
+  pymead-gui
 
 
 Dependencies

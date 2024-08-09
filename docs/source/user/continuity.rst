@@ -1,5 +1,5 @@
 Continuity
-==========
+##########
 
 There are different kinds of continuity frequently discussed in computer graphics design: geometric continuity
 (or :math:`G^k` continuity) and parametric continuity (or :math:`C^k` continuity). Geometric continuity requires
