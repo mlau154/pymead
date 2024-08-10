@@ -33,7 +33,7 @@ panel method, XFOIL, and MSES. Details about these analysis methods are summariz
      - |cross|
      - |cross|
      - |cross|
-   * - :ref:`MSES<mses>`
+   * - :ref:`MSES<mses-suite>`
      - |check|
      - |check|
      - |cross|
@@ -192,10 +192,58 @@ be found at the `XFOIL home page <https://web.mit.edu/drela/Public/web/xfoil/>`_
 
         *Construction Zone*
 
-.. _mses:
+.. _mses-suite:
+
+MSES Suite
+==========
+
+Because
+`MSES <https://tlo.mit.edu/industry-entrepreneurs/available-technologies/mses-software-high-lift-multielement-airfoil>`_
+is a full suite of tools/executables rather than a single primary executable like XFOIL, the
+field entry descriptions will be split up into several categories that correspond with the vertical tabs in the
+MSES analysis dialog. These are MSET (grid generation), MSES (flow analysis), MPLOT (post-processing), and
+MPOLAR (polar analysis). Additional information about each of these programs can be found in the
+`MSES user guide <https://web.mit.edu/drela/Public/web/mses/mses.pdf>`_.
+
+MSET
+----
+
+MSET is built-in grid generation tool within the MSES suite.
+
+.. tab-set::
+
+    .. tab-item:: GUI
+        :sync: gui
+
+        *Construction Zone*
+
+    .. tab-item:: API
+        :sync: api
+
+        *Construction Zone*
+
+
 
 MSES
-====
+----
+
+MSES is the flow analysis tool in the MSES suite.
+
+MPLOT
+-----
+
+MPLOT is the post-processing module in the MSES suite that gives a number of options for exporting data and
+generating plots. The *pymead* interface to MPLOT is limited to a small subset of the original features, as
+the primary focus is on generating *pymead*-native plots of the flow field and surface data. Of course, MPLOT
+can always be used directly from the results in the output folder to generate MSES-native plots.
+
+MPOLAR
+------
+
+MPOLAR is the parameter-sweep analysis module in the MSES suite. Currently, the *pymead* interface to MPOLAR is
+limited to angle of attack sweeps, which takes advantage of the fact that MSES starts each angle of attack analysis
+using the previous angle of attack solution. This means that MPOLAR can run a series of angles of attack much
+faster than running MSES individually at each angle of attack.
 
 
 References

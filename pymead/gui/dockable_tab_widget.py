@@ -13,10 +13,9 @@ class PymeadDockWidget(QDockWidget):
     """
     tab_closed = pyqtSignal(str, QCloseEvent)
 
-    def __init__(self, *args, theme, **kwargs):
+    def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        self.theme = theme
         self.topLevelChanged.connect(self.dockFloatEvent)
 
     def dockFloatEvent(self, isFloating: bool):
