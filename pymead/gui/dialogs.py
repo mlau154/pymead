@@ -1564,13 +1564,13 @@ class MSETDialogWidget2(PymeadDialogWidget2):
             "save_as_mses_settings": PymeadLabeledPushButton(label="Save As", text="Save MSES Settings As..."),
             "load_mses_settings": PymeadLabeledPushButton(label="Load", text="Load MSES Settings File"),
             "use_downsampling": PymeadLabeledCheckbox(
-                label="Use downsampling?", push_label="Preview",
+                label="Use Downsampling?", push_label="Preview",
                 tool_tip="Downsample the airfoil coordinates based on the curvature"),
             "downsampling_max_pts": PymeadLabeledSpinBox(
-                label="Max downsampling points", minimum=20, maximum=9999, value=200,
+                label="Max Downsampling Points", minimum=20, maximum=9999, value=200,
                 tool_tip="Maximum number of airfoil coordinates allowed per airfoil"),
             "downsampling_curve_exp": PymeadLabeledDoubleSpinBox(
-                label="Downsammpling curvature exponent", minimum=0.0001, maximum=9999., value=2.0,
+                label="Downsampling Curvature Exponent", minimum=0.0001, maximum=9999., value=2.0,
                 tool_tip="Importance of curvature in the downsampling scheme.\nValues close to 0 place high emphasis "
                          "on curvature,\nwhile values close to positive infinity place no emphasis\non curvature and "
                          "leave the parameter\nvector effectively uniformly spaced")

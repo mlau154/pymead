@@ -208,7 +208,8 @@ MPOLAR (polar analysis). Additional information about each of these programs can
 MSET
 ----
 
-MSET is built-in grid generation tool within the MSES suite.
+MSET is built-in grid generation tool within the MSES suite. Note that the MSET tool automatically re-meshes
+the airfoil surfaces according to the set of input parameters.
 
 .. tab-set::
 
@@ -217,6 +218,85 @@ MSET is built-in grid generation tool within the MSES suite.
 
         The MSET settings can be accessed from the GUI by navigating in the toolbar to
         **Analysis** |rarrow| **Multi-Element Airfoil**.
+
+        .. list-table::
+           :widths: 20 80
+           :header-rows: 1
+           :class: max-width-table
+
+           * - Option
+             - Description
+           * - MEA
+             - The name of the multi-element airfoil to be analyzed that matches a name under the
+               "Multi-Element Airfoils" sub-container of the parameter tree. Note that even for single-airfoil
+               analysis in MSES, a multi-element airfoil must be created. See :ref:`multi-element-airfoils` for
+               more information about how to create these objects.
+           * - Grid Bounds
+             - These four values represent the chord-normalized locations of the four sides of the pseudo-rectangular
+               grid boundary. The "Left" and "Right" fields represent the :math:`x/c`-locations of the vertical
+               inlet and outlet lines, respectively. The "Bottom" and "Top" fields represent the
+               :math:`y/c`-locations of the "floor" and "ceiling" of the flow volume, respectively. Note that all
+               MSES analyses automatically normalize the airfoil coordinates by the chord length of the first airfoil
+               in the multi-element airfoil system.
+           * - Airfoil Side Points
+             - The number of grid points allocated to each airfoil side when re-meshing the airfoil surfaces.
+           * - Side Points Exponent
+             - Large values of this number (> 1) correspond to very fine meshing in areas of high curvature,
+               while small values of this number (close to 0) correspond to nearly uniform arc length between
+               airfoil surface points.
+           * - Inlet Points Left
+             - Number of streamwise cells upstream of the leftmost airfoil stagnation point.
+           * - Outlet Points Right
+             - Number of streamwise cells downstream of the rightmost airfoil stagnation point.
+           * - Number Top Streamlines
+             - Number of stream-normal cells above the uppermost airfoil surface.
+           * - Number Bottom Streamlines
+             - Number of stream-normal cells below the lowermost airfoil surface.
+           * - Max Streamlines Between
+             - Maximum number of stream-normal cells between any two airfoil elements.
+           * - Elliptic Parameter
+             - None
+           * - Stag. Pt. Aspect Ratio
+             - None
+           * - X-Spacing Parameter
+             - None
+           * - Streamline Gen. Alpha
+             - Angle of attack in degrees used to generate the initial set of streamlines.
+           * - MSET Timeout
+             - This is the maximum amount of time for allotted grid generation, used to prevent hanging grid-generation
+               processes from permanently freezing *pymead*.
+           * - dsLE/dsAvg
+             - None
+           * - dsTE/dsAvg
+             - None
+           * - Curvature Exponent
+             - None
+           * - U_s_smax_min
+             - None
+           * - U_s_smax_maxx
+             - None
+           * - L_s_smax_min
+             - None
+           * - L_s_smax_max
+             - None
+           * - U Local Avg. Spac. Ratio
+             - None
+           * - L Local Avg. Spac. Ratio
+             - None
+           * - Analysis Directory
+             - None
+           * - Airfoil Coord. Filename
+             - None
+           * - Save As
+             - None
+           * - Load
+             - None
+           * - Use downsampling?
+             - None
+           * - Max downsampling points
+             - None
+           * - Downsampling curvature exponent
+             - None
 
     .. tab-item:: API
         :sync: api
