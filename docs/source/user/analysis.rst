@@ -149,6 +149,42 @@ be found at the `XFOIL home page <https://web.mit.edu/drela/Public/web/xfoil/>`_
            * - Gas Constant (J/(kg*K))
              - The specific gas constant in Joules per kilogram Kelvin. Ignored if "Specify Reynolds Number?" is
                checked.
+           * - Prescribe α/Cl/CLI
+             - Whether to prescribe angle of attack, viscous lift coefficient, or inviscid lift coefficient.
+               If the lift coefficient is prescribed, XFOIL uses the linear lift-curve slope to compute the angle of
+               attack required to achieve the prescribed lift coefficient.
+           * - Angle of Attack (deg)
+             - The angle of attack of the airfoil in degrees. The angle of attack is relative to the angle of the
+               input geometry as shown in the geometry canvas, so the total angle of attack analyzed is the sum of
+               the two angles of attack.
+           * - Viscous Cl
+             - Viscous lift coefficient.
+           * - Inviscid Cl
+             - Inviscid lift coefficient.
+           * - Transition x/c (upper)
+             - Chord-normalized x-location along the upper surface where transition is forced. Transition can naturally
+               occur upstream of the specified location, but it will never occur downstream. If a value of 1.0
+               is specified, free transition is allowed.
+           * - Transition x/c (lower)
+             - Chord-normalized x-location along the lower surface where transition is forced.
+           * - Turbulence (NCrit)
+             - Transition amplification factor. A value of 9.0 is used for an average wind tunnel. See the
+               `XFOIL documentation page <https://web.mit.edu/drela/Public/web/xfoil/xfoil_doc.txt>`_ for details
+               about this variable and typical values for other scenarios.
+           * - Maximum Iterations
+             - The number of iterations allowed during viscous analysis. Ignored if "Viscosity On?" is not checked.
+           * - Timeout (sec)
+             - The amount of time allotted to an XFOIL analysis. The XFOIL process will be automatically terminated
+               after this amount of time regardless of whether the analysis has completed.
+           * - Airfoil to Analyze
+             - This is the name of an airfoil found in the "Airfoils" container of the parameter tree; default names
+               are "Airfoil-1", "Airfoil-2", etc. See the :ref:`airfoils` section to learn about airfoil creation.
+           * - Analysis Base Directory
+             - This is the directory where a new sub-directory named using the next field ("Airfoil Name") will
+               be created to store the analysis files.
+           * - Airfoil Name
+             - Separate from the "Airfoil to Analyze" option, this is the name given to the analysis sub-directory
+               and to several of the files used for analysis.
 
 
     .. tab-item:: API
