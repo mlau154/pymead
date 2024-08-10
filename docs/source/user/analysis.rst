@@ -215,13 +215,13 @@ MSET is built-in grid generation tool within the MSES suite.
     .. tab-item:: GUI
         :sync: gui
 
-        *Construction Zone*
+        The MSET settings can be accessed from the GUI by navigating in the toolbar to
+        **Analysis** |rarrow| **Multi-Element Airfoil**.
 
     .. tab-item:: API
         :sync: api
 
         *Construction Zone*
-
 
 
 MSES

@@ -269,6 +269,12 @@ make the most of pymead, download the following software packages:
 - `Ghostscript <https://www.ghostscript.com/>`_: PS-to-PDF file conversion
 - `MuPDF <https://mupdf.com/>`_: PDF-to-SVG file conversion
 
+.. note::
+
+    The latest MuPDF release for Windows at the time of writing is 1.23.0.
+    Go to the `Releases <https://mupdf.com/releases>`_ page, scroll to "1.23.0,"
+    and download "mupdf-1.23.0-windows.zip."
+
 Each of these software packages are free except for MSES. However, even MSES
 is free by request for academic research. It is important that for each of these programs installed, the full path
 to the folder containing the executable be added to the system path. Please see
