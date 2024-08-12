@@ -15,3 +15,4 @@ include pymead/tests/core_tests/*.jmea
 include pymead/tests/misc_tests/ps_svg_pdf_conversion/*.ps
 include pymead/tests/opt_tests/*.json
 include pymead/tests/opt_tests/*.jmea
+include pymead/tests/gui_tests/*.txt

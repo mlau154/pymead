@@ -108,6 +108,10 @@ class TargetPathNotFoundError(Exception):
     pass
 
 
+class InvalidFileFormat(Exception):
+    pass
+
+
 def count_lines_of_code():
     """
     Counts the lines of code in each sub-package and prints the results.

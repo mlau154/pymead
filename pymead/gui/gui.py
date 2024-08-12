@@ -26,7 +26,7 @@ from pyqtgraph.exporters import CSVExporter, SVGExporter
 from qframelesswindow import FramelessMainWindow
 
 from pymead import ICON_DIR, GUI_SETTINGS_DIR, GUI_THEMES_DIR, RESOURCE_DIR, EXAMPLES_DIR, q_settings, \
-    TargetPathNotFoundError
+    TargetPathNotFoundError, InvalidFileFormat
 from pymead.analysis.calc_aero_data import SVG_PLOTS, SVG_SETTINGS_TR
 from pymead.analysis.calc_aero_data import calculate_aero_data
 from pymead.analysis.read_aero_data import flow_var_idx
@@ -607,7 +607,14 @@ class GUI(FramelessMainWindow):
             try:
                 points = np.loadtxt(dialog.value())
             except ValueError:
-                points = np.loadtxt(dialog.value(), delimiter=",")
+                try:
+                    points = np.loadtxt(dialog.value(), delimiter=",")
+                except ValueError:
+                    self.disp_message_box("Only whitespace and comma-delimited point files are accepted.")
+                    return
+            except FileNotFoundError:
+                self.disp_message_box(f"Could not find point file {dialog.value()}")
+                return
 
             # Add each point from the array to the GeometryCollection
             for point in points:
