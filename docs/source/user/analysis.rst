@@ -331,10 +331,11 @@ MSES is the flow analysis tool in the MSES suite.
     .. tab-item:: GUI
         :sync: gui
 
-        An XFOIL analysis can be setup and run by navigating in the toolbar to
-        **Analysis** |rarrow| **Single-Airfoil** |rarrow| **Viscous**. Selecting this menu option brings up a dialog
-        with a number of options. Once the options are configured as desired, press **OK** to run XFOIL. A detailed
-        description of the various configuration options is given below.
+        The MSES settings can be accessed from the GUI by navigating in the toolbar to
+        **Analysis** |rarrow| **Multi-Element Airfoil** and selecting the "MSES" tab.
+        Descriptions of the various parameters are given below.
+        More details on these parameters can be found in the
+        `MSES user guide <https://web.mit.edu/drela/Public/web/mses/mses.pdf>`_.
 
         .. list-table::
            :widths: 20 80
@@ -459,6 +460,56 @@ generating plots. The *pymead* interface to MPLOT is limited to a small subset o
 the primary focus is on generating *pymead*-native plots of the flow field and surface data. Of course, MPLOT
 can always be used directly from the results in the output folder to generate MSES-native plots.
 
+
+.. tab-set::
+
+    .. tab-item:: GUI
+        :sync: gui
+
+        The MPLOT settings can be accessed from the GUI by navigating in the toolbar to
+        **Analysis** |rarrow| **Multi-Element Airfoil** and selecting the "MPLOT" tab.
+        Descriptions of the various parameters are given below.
+
+        .. list-table::
+           :widths: 20 80
+           :header-rows: 1
+           :class: max-width-table
+
+           * - Option
+             - Description
+           * - Timeout (sec)
+             - The amount of time allotted to post-processing using MPLOT. The MPLOT process will be automatically
+               terminated
+               after this amount of time regardless of whether the post-processing has completed.
+           * - Output Mach Contours
+             - Export the MSES-native Mach contour plot and display it in a new tab on the screen. This option
+               also automatically saves the plot as both ``Mach_contours.pdf`` and ``Mach_contours.svg`` in the
+               analysis directory. Note that the analysis
+               directory can be accessed by clicking on word "MSES" in the console.
+           * - Output Streamline Grid
+             - Export the streamline grid as ``grid.<airfoil_name>`` to the analysis directory.
+           * - Output Grid
+             - Export the MSES-native grid plot and display it in a new tab on the screen. This option also
+               saves this plot to ``grid.pdf`` and ``grid.svg`` in the analysis directory.
+           * - Output Zoomed-In Grid
+             - Export a zoomed version of the MSES-native grid plot, display it in a new tab on the screen, and
+               save it to both ``grid_zoom.pdf`` and ``grid_zoom.svg``.
+           * - Output Flow Variable Field
+             - Export the flow variable field data to ``field.<airfoil_name>`` in the analysis directory. This
+               step is not performed by default during an MSES runs due the size of the file. While this file is
+               usually only 1-2 MB, this size can add up especially during optimization when tens of thousands
+               of MSES runs are performed.
+           * - Output CPK
+             - Compute the mechanical flow power coefficient and store the value in ``aero_data.json`` in the analysis
+               directory.
+
+
+    .. tab-item:: API
+        :sync: api
+
+        *Construction Zone*
+
+
 MPOLAR
 ------
 
@@ -466,6 +517,50 @@ MPOLAR is the parameter-sweep analysis module in the MSES suite. Currently, the 
 limited to angle of attack sweeps, which takes advantage of the fact that MSES starts each angle of attack analysis
 using the previous angle of attack solution. This means that MPOLAR can run a series of angles of attack much
 faster than running MSES individually at each angle of attack.
+
+
+.. tab-set::
+
+    .. tab-item:: GUI
+        :sync: gui
+
+        The MPOLAR settings can be accessed from the GUI by navigating in the toolbar to
+        **Analysis** |rarrow| **Multi-Element Airfoil** and selecting the "MPOLAR" tab.
+        Descriptions of the various parameters are given below.
+
+        .. list-table::
+           :widths: 20 80
+           :header-rows: 1
+           :class: max-width-table
+
+           * - Option
+             - Description
+           * - Timeout (s)
+             - The amount of time allotted to an MPOLAR analysis. The MPOLAR process will be automatically terminated
+               after this amount of time regardless of whether the analysis has completed.
+           * - Polar Mode
+             - If "No Polar Analysis" is selected, all the settings in the MPOLAR tab will be ignored. If
+               "Alpha Sweep from Data File" is selected, the proceeding field ("Angle of Attack") will be used
+               to determine the array of angles of attack to analyze from a file. If "Alpha Sweep from Start/Stop/Inc"
+               is selected, the "α Sweep Start (deg)," "α Sweep End (deg)," and "α Increment (deg)" fields will be
+               used to compute the array of angles of attack.
+           * - α Sweep Start (deg)
+             - Starting value for the angle of attack sweep in degrees. Ignored if "Alpha Sweep from Data File" is
+               selected.
+           * - α Sweep End (deg)
+             - Ending value for the angle of attack sweep in degrees. Ignored if "Alpha Sweep from Data File" is
+               selected.
+           * - α Increment (deg)
+             - Increment for the angle of attack sweep in degrees. Ignored if "Alpha Sweep from Data File" is
+               selected. Note that MPOLAR will automatically decrease the increment at higher angles of attack
+               if the prescribed angle of attack cannot be converged.
+
+
+
+    .. tab-item:: API
+        :sync: api
+
+        *Construction Zone*
 
 
 References
