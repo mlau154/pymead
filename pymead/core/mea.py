@@ -83,8 +83,8 @@ class MEA(PymeadObj):
             if mea_coords is None:
                 mea_coords = airfoil_coords
             else:
-                mea_coords = np.row_stack((mea_coords, np.array([999.0, 999.0])))  # MSES-specific airfoil delimiter
-                mea_coords = np.row_stack((mea_coords, airfoil_coords))  # Append this airfoil's coordinates to the mat.
+                mea_coords = np.vstack((mea_coords, np.array([999.0, 999.0])))  # MSES-specific airfoil delimiter
+                mea_coords = np.vstack((mea_coords, airfoil_coords))  # Append this airfoil's coordinates to the mat.
 
         # Generate the full file path
         blade_file_path = os.path.join(blade_file_dir, f"blade.{airfoil_sys_name}")
