@@ -256,7 +256,7 @@ the airfoil surfaces according to the set of input parameters.
            * - Max Streamlines Between
              - Maximum number of stream-normal cells between any two airfoil elements.
            * - Elliptic Parameter
-             - None
+             - Used in the MSET ``gridpar`` file, must does not seem to have an impact on the grid.
            * - Stag. Pt. Aspect Ratio
              - Aspect ratio of the cells at the stagnation points.
            * - X-Spacing Parameter
@@ -299,14 +299,14 @@ the airfoil surfaces according to the set of input parameters.
            * - Airfoil Coord. Filename
              - This is the name given to the analysis sub-directory and to several of the files used for analysis.
            * - Save As
-             - Save all the information in every tab of this dialog to a `.json` settings file.
+             - Save all the information in every tab of this dialog to a ``.json`` settings file.
            * - Load
-             - Loading MSES settings from a `.json` settings file (saved using the above button).
+             - Loading MSES settings from a ``.json`` settings file (saved using the above button).
            * - Use downsampling?
              - Whether to downsample the airfoil system prior to sending to MSET. It is sometimes necessary to check
                this box when a large number of curves is used for an airfoil; this can cause the internal grid
                size limits within MSES to be reached. Downsampling can prevent this error from occurring.
-               More details about the downsampling method can be found in the `downsample` method of
+               More details about the downsampling method can be found in the ``downsample`` method of
                :doc:`../_autosummary/pymead.core.airfoil.Airfoil`.
            * - Max downsampling points
              - The maximum number of points to allow for each airfoil.
@@ -324,6 +324,132 @@ MSES
 ----
 
 MSES is the flow analysis tool in the MSES suite.
+
+
+.. tab-set::
+
+    .. tab-item:: GUI
+        :sync: gui
+
+        An XFOIL analysis can be setup and run by navigating in the toolbar to
+        **Analysis** |rarrow| **Single-Airfoil** |rarrow| **Viscous**. Selecting this menu option brings up a dialog
+        with a number of options. Once the options are configured as desired, press **OK** to run XFOIL. A detailed
+        description of the various configuration options is given below.
+
+        .. list-table::
+           :widths: 20 80
+           :header-rows: 1
+           :class: max-width-table
+
+           * - Option
+             - Description
+           * - Viscosity On?
+             - Whether to include the boundary-layer solver in the XFOIL analysis. A separate command is run in XFOIL
+               when this option is selected.
+           * - Specify Reynolds Number?
+             - Whether to directly specify the Reynolds number directly rather than indirectly through Mach number,
+               length scale, etc. Selecting this option will disable the option to modify several of the atmospheric
+               variables below.
+           * - Mach Number
+             - The ratio of velocity to speed of sound for the flow. Used along with the temperature, gas constant,
+               and specific heat ratio
+               to determine the freestream velocity if "Specify Reynolds Number?" is not checked. Also used
+               within XFOIL to calculate a compressibility correction to make the analysis more accurate at higher
+               Mach numbers. Note that, as the XFOIL documentation mentions, the use of any freestream Mach number where
+               supersonic flow over the airfoil occurs will incur severe accuracy penalties.
+           * - Specify Flow Variables
+             - A combination of two thermodynamic state variables to use to determine the third out of pressure,
+               temperature, and density using the ideal gas law.
+           * - Pressure (Pa)
+             - The static thermodynamic pressure of the airfoil environment in Pascals. Ignored if "Specify Reynolds
+               Number?" is checked.
+           * - Temperature (K)
+             - The static thermodynamic temperature of the airfoil environment in Kelvin. Ignored if "Specify Reynolds
+               Number?" is checked.
+           * - Density (kg/m^3)
+             - The density of the airfoil environment in kilograms per cubic meter. Ignored if "Specify Reynolds
+               Number?" is checked.
+           * - Specific Heat Ratio
+             - The ratio of specific heat at constant pressure to specific heat at constant volume. Ignored if
+               "Specify Reynolds Number?" is checked.
+           * - Length Scale (m)
+             - The length scale, in meters, used to determine the Reynolds number. Ignored if "Specify Reynolds Number?"
+               is checked.
+           * - Gas Constant (J/(kg*K))
+             - The specific gas constant in Joules per kilogram Kelvin. Ignored if "Specify Reynolds Number?" is
+               checked.
+           * - Specify Alpha/Cl
+             - Whether to prescribe angle of attack or lift coefficient.
+               If the lift coefficient is prescribed, MSES uses the linear lift-curve slope to compute the angle of
+               attack required to achieve the prescribed lift coefficient.
+           * - Angle of Attack (deg)
+             - The angle of attack of the airfoil in degrees. The angle of attack is relative to the angle of the
+               input geometry as shown in the geometry canvas, so the total angle of attack analyzed is the sum of
+               the two angles of attack.
+           * - Lift Coefficient
+             - This value will be used to indirectly set the angle of attack.
+           * - Isentropic/Momentum
+             - Where to use the isentropic condition or the momentum equation. More details about this parameter
+               can be found in the `MSES user guide <https://web.mit.edu/drela/Public/web/mses/mses.pdf>`_.
+           * - Far-Field Boundary
+             - Which boundary condition to use in the far field. More details about the boundary conditions can be
+               be found in the `MSES user guide <https://web.mit.edu/drela/Public/web/mses/mses.pdf>`_.
+           * - Crit. Amp. Factor
+             - Critical amplification factor. A value of 9.0 is used for an average wind tunnel. Same as the
+               "Turbulence (NCrit)" option in the XFOIL dialog. See the
+               `XFOIL documentation page <https://web.mit.edu/drela/Public/web/xfoil/xfoil_doc.txt>`_ for details
+               about this variable and typical values for other scenarios.
+           * - Critical Mach Number
+             - Mach number where shock waves are triggered. For incompressible cases, 1.0 is a fine value for this
+               parameter. For higher Mach number transonic cases, this value may need to be reduced to achieve
+               convergence.
+           * - Artificial Dissipation
+             - The "MUCON" parameter in MSES. For incompressible cases, 1.0 is a fine value for this parameter.
+               For higher Mach number transonic cases where significant supersonic regions are present, this
+               value may need to be increased to achieve convergence.
+           * - Timeout (sec)
+             - The amount of time allotted to an MSES analysis. The MSES process will be automatically terminated
+               after this amount of time regardless of whether the analysis has completed.
+           * - Maximum Iterations
+             - The number of iterations allowed during viscous analysis.
+           * - XTRSupper
+             - Chord-normalized x-location along the upper surface where transition is forced. Transition can naturally
+               occur upstream of the specified location, but it will never occur downstream. If a value of 1.0
+               is specified, free transition is allowed.
+           * - XTRSlower
+             - Chord-normalized x-location along the lower surface where transition is forced.
+           * - Actuator Disks Active
+             - Whether to implement the actuator disk model in the analysis. The remaining fields are disabled if this
+               box is not checked.
+           * - Num. Actuator Disks
+             - The number of actuator disks to use. For the latest version of MSES available at the time of writing
+               (3.12), only one actuator disk can be used. Multiple actuator disks require modifications to the source
+               code; permission to use modified source code is also required. Email mlauer2@illinois.edu for
+               more information about a working version of this modified code.
+           * - AD Side
+             - Airfoil side from which the actuator disk will emanate. The top of the uppermost airfoil is side 1,
+               the bottom of the uppermost airfoil is side 2, the top of the airfoil immediately below the uppermost
+               airfoil is side 3, etc.
+           * - AD X-Location
+             - The :math:`x/c`-location on the "AD Side" from which the actuator disk will emanate. The actuator disk
+               starts at this point on the airfoil surface and follows the stream-normal direction of the grid until
+               another airfoil surface is reached.
+           * - AD X-Location Param
+             - Optional parameter allowing the :math:`x/c`-location of the actuator disk to depend on a parameter
+               or design variable in the ``GeometryCollection``. The numerical value of this parameter is updated
+               automatically during optimization.
+           * - AD Total Pres. Ratio
+             - The ratio of total pressure immediately downstream to total pressure immediately upstream of the
+               actuator disk.
+           * - AD Thermal Efficiency
+             - The thermal efficiency of the actuator disk.
+
+
+    .. tab-item:: API
+        :sync: api
+
+        *Construction Zone*
+
 
 MPLOT
 -----
