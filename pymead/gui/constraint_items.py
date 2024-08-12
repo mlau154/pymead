@@ -32,6 +32,12 @@ class ConstraintItem(QObject):
         for canvas_item in self.canvas_items:
             canvas_item.show()
 
+    def isHidden(self):
+        return all([not canvas_item.isVisible() for canvas_item in self.canvas_items])
+
+    def isShown(self):
+        return all([canvas_item.isVisible() for canvas_item in self.canvas_items])
+
     @abstractmethod
     def update(self):
         pass

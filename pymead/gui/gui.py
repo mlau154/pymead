@@ -390,12 +390,6 @@ class GUI(FramelessMainWindow):
             super().changeEvent(a0)
             a0.accept()
 
-    #
-    # def resizeEvent(self, a0):
-    #     self.title_bar.resize(self.width(), self.title_bar.height())
-    #     super().resizeEvent(a0)
-    #     a0.accept()
-
     @property
     def gripSize(self):
         return self._gripSize
@@ -524,14 +518,6 @@ class GUI(FramelessMainWindow):
 
             image_path = os.path.join(ICON_DIR, icon_name.replace("dark", theme_name))
             self.main_icon_toolbar.buttons[button_name]["button"].setIcon(QIcon(image_path))
-
-    def set_color_bar_style(self, new_values: dict = None):
-        if self.cbar is None:
-            return
-
-        new_values = {} if new_values is None else new_values
-        self.cbar.setLabel(axis="right", )
-        self.cbar.getAxis("right").setWidth(25 + 1)
 
     @staticmethod
     def pen(n: int):
