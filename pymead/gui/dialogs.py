@@ -897,9 +897,9 @@ class MSETMultiGridWidget(QTabWidget):
                                                        value=1.0, single_step=0.01),
             "L_s_smax_max": PymeadLabeledDoubleSpinBox(label="L_s_smax_max", minimum=0.0, maximum=np.inf,
                                                        value=1.0, single_step=0.01),
-            "U_local_avg_spac_ratio": PymeadLabeledDoubleSpinBox(label="U Local Avg. Spac. Ratio", minimum=0.0,
+            "U_local_avg_spac_ratio": PymeadLabeledDoubleSpinBox(label="U Local/Max. Density Ratio", minimum=0.0,
                                                                  maximum=np.inf, value=0.0, single_step=0.01),
-            "L_local_avg_spac_ratio": PymeadLabeledDoubleSpinBox(label="L Local Avg. Spac. Ratio", minimum=0.0,
+            "L_local_avg_spac_ratio": PymeadLabeledDoubleSpinBox(label="L Local/Max. Density Ratio", minimum=0.0,
                                                                  maximum=np.inf, value=0.0, single_step=0.01)
         }
         for widget in self.widget_dict[name].values():
