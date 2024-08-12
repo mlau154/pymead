@@ -1,7 +1,5 @@
-from pymead.core.constraints import DistanceConstraint
 from pymead.core.param import LengthParam
 from pymead.core.point import PointSequence
-from pymead.gui.constraint_items import DistanceConstraintItem
 from pymead.tests.gui_tests.utils import app
 
 import numpy as np
@@ -161,6 +159,25 @@ def test_show_hide_objs_airfoils(app):
     app.geo_col.clear_container()
 
 
+def test_show_hide_objs_geocon(app):
+    point_one = app.geo_col.add_point(0.1, 0.3)
+    point_two = app.geo_col.add_point(0.1, 0.6)
+    length_param = LengthParam(value=0.3, name="DistanceParam", geo_col=app.geo_col)
+    geocon_one = app.geo_col.add_constraint(constraint_type="DistanceConstraint",
+                                            p1=point_one,
+                                            p2=point_two,
+                                            value=length_param,
+                                            assign_unique_name=True
+                                            )
+
+    app.showHidePymeadObjs("geocon", show=False)
+    assert geocon_one.canvas_item.isHidden()
+
+    app.showHidePymeadObjs("geocon", show=True)
+    assert geocon_one.canvas_item.isShown()
+    app.geo_col.clear_container()
+
+
 def test_show_hide_all_objs(app):
     point_one_upper = app.geo_col.add_point(0.0, 0.0)
     point_two_upper = app.geo_col.add_point(0.3, 0.2)
@@ -172,6 +189,14 @@ def test_show_hide_all_objs(app):
     point_three_lower = app.geo_col.add_point(0.8, -0.05)
 
     midpoint = app.geo_col.add_point(0.8, 0.1)
+
+    length_param = LengthParam(value=0.5, name="DistanceParam", geo_col=app.geo_col)
+    geocon_one = app.geo_col.add_constraint(constraint_type="DistanceConstraint",
+                                            p1=point_one_upper,
+                                            p2=point_two_lower,
+                                            value=length_param,
+                                            assign_unique_name=True
+                                            )
 
     bezier_one_blunt = app.geo_col.add_bezier(point_sequence=PointSequence(points=[
         point_one_upper,
@@ -203,6 +228,7 @@ def test_show_hide_all_objs(app):
     assert line_two_blunt.canvas_item.isVisible()
     assert line_one_blunt.canvas_item.isVisible()
     assert airfoil_blunt.canvas_item.isVisible()
+    assert geocon_one.canvas_item.isShown()
 
     app.hideAllPymeadObjs()
     assert not point_four_upper.canvas_item.isVisible()
@@ -212,6 +238,7 @@ def test_show_hide_all_objs(app):
     assert not line_two_blunt.canvas_item.isVisible()
     assert not line_one_blunt.canvas_item.isVisible()
     assert not airfoil_blunt.canvas_item.isVisible()
+    assert geocon_one.canvas_item.isHidden()
 
     app.showAllPymeadObjs()
     assert point_four_upper.canvas_item.isVisible()
@@ -221,5 +248,6 @@ def test_show_hide_all_objs(app):
     assert line_two_blunt.canvas_item.isVisible()
     assert line_one_blunt.canvas_item.isVisible()
     assert airfoil_blunt.canvas_item.isVisible()
+    assert geocon_one.canvas_item.isShown()
 
     app.geo_col.clear_container()
