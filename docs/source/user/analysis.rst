@@ -217,7 +217,9 @@ the airfoil surfaces according to the set of input parameters.
         :sync: gui
 
         The MSET settings can be accessed from the GUI by navigating in the toolbar to
-        **Analysis** |rarrow| **Multi-Element Airfoil**.
+        **Analysis** |rarrow| **Multi-Element Airfoil**. Descriptions of the various parameters are given below.
+        More details on these parameters can be found in the
+        `MSES user guide <https://web.mit.edu/drela/Public/web/mses/mses.pdf>`_ in the "MSET" section.
 
         .. list-table::
            :widths: 20 80
@@ -241,9 +243,8 @@ the airfoil surfaces according to the set of input parameters.
            * - Airfoil Side Points
              - The number of grid points allocated to each airfoil side when re-meshing the airfoil surfaces.
            * - Side Points Exponent
-             - Large values of this number (> 1) correspond to very fine meshing in areas of high curvature,
-               while small values of this number (close to 0) correspond to nearly uniform arc length between
-               airfoil surface points.
+             - If this value is 1.0, each airfoil element is allocated a number of grid points proportional to its
+               chord. If this value is 0.0, each airfoil receives the same number of grid points.
            * - Inlet Points Left
              - Number of streamwise cells upstream of the leftmost airfoil stagnation point.
            * - Outlet Points Right
@@ -257,46 +258,61 @@ the airfoil surfaces according to the set of input parameters.
            * - Elliptic Parameter
              - None
            * - Stag. Pt. Aspect Ratio
-             - None
+             - Aspect ratio of the cells at the stagnation points.
            * - X-Spacing Parameter
-             - None
+             - From the `MSES user guide <https://web.mit.edu/drela/Public/web/mses/mses.pdf>`_:
+               "...how much the quasi-normal grid lines spread out away from the airfoil.
+               A larger value (0.8 ... 1.0) tends to make the grid more orthogonal (which is good), but may cause
+               excessive bunching of the quasi-normal grid lines in high-lift cases (which is bad). Transonic flows
+               are best run with a nearly-orthogonal grid, since grid shearing increases the amount of dissipation
+               needed for stability."
            * - Streamline Gen. Alpha
              - Angle of attack in degrees used to generate the initial set of streamlines.
            * - MSET Timeout
              - This is the maximum amount of time for allotted grid generation, used to prevent hanging grid-generation
                processes from permanently freezing *pymead*.
            * - dsLE/dsAvg
-             - None
+             - Leading edge spacing ratio. Smaller values (closer to 0) refine the surface grid near the leading edge.
            * - dsTE/dsAvg
-             - None
+             - Trailing edge spacing ratio. Smaller values (closer to 0) refine the surface grid near the trailing edge.
            * - Curvature Exponent
-             - None
+             - Large values of this number (> 1) correspond to very fine meshing in areas of high curvature,
+               while small values of this number (close to 0) correspond to nearly uniform arc length between
+               airfoil surface points.
            * - U_s_smax_min
-             - None
-           * - U_s_smax_maxx
-             - None
+             - Arc length fraction of the starting position of the upper surface refinement.
+           * - U_s_smax_max
+             - Arc length fraction of the ending position of the upper surface refinement.
            * - L_s_smax_min
-             - None
+             - Arc length fraction of the starting position of the lower surface refinement.
            * - L_s_smax_max
-             - None
-           * - U Local Avg. Spac. Ratio
-             - None
-           * - L Local Avg. Spac. Ratio
-             - None
+             - Arc length fraction of the ending position of the lower surface refinement.
+           * - U Local/Max. Density Ratio
+             - Upper side spacing refinement. Higher values increase the refinement in the region specified
+               by "U_s_smax_min" and "U_s_smax_max." A value of 0.0 indicates no refinement.
+           * - L Local/Max. Density Ratio
+             - Lower side spacing refinement. Higher values increase the refinement in the region specified
+               by "L_s_smax_min" and "L_s_smax_max." A value of 0.0 indicates no refinement.
            * - Analysis Directory
-             - None
+             - This is the directory where a new sub-directory named using the next field
+               ("Airfoil Coord. Filename") will be created to store the analysis files.
            * - Airfoil Coord. Filename
-             - None
+             - This is the name given to the analysis sub-directory and to several of the files used for analysis.
            * - Save As
-             - None
+             - Save all the information in every tab of this dialog to a `.json` settings file.
            * - Load
-             - None
+             - Loading MSES settings from a `.json` settings file (saved using the above button).
            * - Use downsampling?
-             - None
+             - Whether to downsample the airfoil system prior to sending to MSET. It is sometimes necessary to check
+               this box when a large number of curves is used for an airfoil; this can cause the internal grid
+               size limits within MSES to be reached. Downsampling can prevent this error from occurring.
+               More details about the downsampling method can be found in the `downsample` method of
+               :doc:`../_autosummary/pymead.core.airfoil.Airfoil`.
            * - Max downsampling points
-             - None
+             - The maximum number of points to allow for each airfoil.
            * - Downsampling curvature exponent
-             - None
+             - Values close to 0 place high emphasis on curvature, while values close to ∞ place low emphasis on
+               curvature (creating nearly uniform spacing).
 
     .. tab-item:: API
         :sync: api
