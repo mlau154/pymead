@@ -671,7 +671,7 @@ class AirfoilCanvas(pg.PlotWidget):
                 if self.point_text_item is None:
                     self.point_text_item = pg.TextItem(
                         f"{point.point.name()}\nx: {point.point.x().value():.6f}\ny: {point.point.y().value():.6f}",
-                        anchor=(0, 1))
+                        anchor=(0, 1), color=self.gui_obj.themes[self.gui_obj.current_theme]["main-color"])
                     self.point_text_item.setFont(QFont("DejaVu Sans", 8))
                     self.addItem(self.point_text_item)
                     self.point_text_item.setPos(point.point.x().value(), point.point.y().value())

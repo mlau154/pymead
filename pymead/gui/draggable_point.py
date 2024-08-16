@@ -104,24 +104,6 @@ class DraggablePoint(pg.GraphItem):
 
         ev.accept()
 
-    # @staticmethod
-    # def hover_tip(x: float, y: float, data):
-    #     """
-    #     Shows data about a point when it is hovered
-    #
-    #     Parameters
-    #     ==========
-    #     x: float
-    #         x-location of the control point
-    #
-    #     y: float
-    #         y-location of the control point
-    #
-    #     data
-    #         Signaled by the hover
-    #     """
-    #     return f"x: {x:.8f}\ny: {y:.8f}\n{data}"
-
     def clicked(self, item, spot, ev):
         self.sigPointClicked.emit(item, spot, ev, self)
 
