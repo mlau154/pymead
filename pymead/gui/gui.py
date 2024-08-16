@@ -82,7 +82,7 @@ warnings.filterwarnings("ignore", category=DeprecationWarning)
 class GUI(FramelessMainWindow):
     _gripSize = 5
 
-    def __init__(self, path=None, parent=None, bypass_vercheck: bool=False):
+    def __init__(self, path=None, parent=None, bypass_vercheck: bool = False):
         # try:
         #     import pyi_splash
         #     pyi_splash.update_text("Initializing constants...")
@@ -481,7 +481,7 @@ class GUI(FramelessMainWindow):
                 QTreeWidget::branch::closed::has-children {{
                     image: url({closed_arrow_image});
                 }}            
-        
+
                 QTreeWidget::branch::open::has-children {{
                     image: url({opened_arrow_image});
                 }}
@@ -589,7 +589,6 @@ class GUI(FramelessMainWindow):
                             # requires that "checked" is the first positional argument of the connected method.
                             action.triggered.connect(getattr(self, val))
 
-
         recursively_add_menus(menu_data, self.menu_bar)
 
     def open_settings(self):
@@ -611,24 +610,26 @@ class GUI(FramelessMainWindow):
         self.load_geo_col_from_memory(self.redo_stack[-1])
         self.redo_stack.pop()
 
-    def load_points(self, dialog_test_action: typing.Callable = None):
+    def load_points(self, dialog_test_action: typing.Callable = None, error_dialog_action: typing.Callable = None):
         """
         Loads a set of :math:`x`-:math:`y` points from a .dat/.txt/.csv file.
         """
-        dialog = LoadPointsDialog(self, theme=self.themes[self.current_theme])
+        self.dialog = LoadPointsDialog(self, theme=self.themes[self.current_theme])
 
-        if dialog_test_action is not None or dialog.exec():
+        if (dialog_test_action is not None and not dialog_test_action(self.dialog)) or self.dialog.exec():
             # Load the points to an array
             try:
-                points = np.loadtxt(dialog.value())
+                points = np.loadtxt(self.dialog.value())
             except ValueError:
                 try:
-                    points = np.loadtxt(dialog.value(), delimiter=",")
+                    points = np.loadtxt(self.dialog.value(), delimiter=",")
                 except ValueError:
-                    self.disp_message_box("Only whitespace and comma-delimited point files are accepted.")
+                    self.disp_message_box("Only whitespace and comma-delimited point files are accepted.",
+                                          message_mode="error", dialog_test_action=error_dialog_action)
                     return
             except FileNotFoundError:
-                self.disp_message_box(f"Could not find point file {dialog.value()}")
+                self.disp_message_box(f"Could not find point file {self.dialog.value()}",
+                                      message_mode="error", dialog_test_action=error_dialog_action)
                 return
 
             # Add each point from the array to the GeometryCollection
@@ -755,7 +756,7 @@ class GUI(FramelessMainWindow):
                     if save_dialog.reject_changes:  # If "No" to "Save Changes," do not load an MEA.
                         return
                 else:  # If "Cancel" to "Save Changes," do not load an MEA
-                        return
+                    return
 
         if not file_name:
             dialog = LoadDialog(self, settings_var="jmea_default_open_location")
@@ -932,10 +933,12 @@ class GUI(FramelessMainWindow):
             transformation = load_data(transformation_file)
             x_grid = [x_grid_section / transformation["sx"][0] /
                       self.geo_col.units.convert_length_from_base(1, transformation["length_unit"]) *
-                      self.geo_col.units.convert_length_from_base(1, self.geo_col.units.current_length_unit()) for x_grid_section in x_grid]
+                      self.geo_col.units.convert_length_from_base(1, self.geo_col.units.current_length_unit()) for
+                      x_grid_section in x_grid]
             y_grid = [y_grid_section / transformation["sy"][0] /
                       self.geo_col.units.convert_length_from_base(1, transformation["length_unit"]) *
-                      self.geo_col.units.convert_length_from_base(1, self.geo_col.units.current_length_unit()) for y_grid_section in y_grid]
+                      self.geo_col.units.convert_length_from_base(1, self.geo_col.units.current_length_unit()) for
+                      y_grid_section in y_grid]
         except OSError:
             pass
         flow_var = field[flow_var_idx[inputs['flow_variable']]]
@@ -952,8 +955,8 @@ class GUI(FramelessMainWindow):
             flow_var_section = flow_var[:, start_idx:end_idx]
 
             pcmi = pg.PColorMeshItem(current_theme=self.current_theme,
-                                        flow_var=inputs["flow_variable"], edgecolors=edgecolors,
-                                        antialiasing=antialiasing)
+                                     flow_var=inputs["flow_variable"], edgecolors=edgecolors,
+                                     antialiasing=antialiasing)
             pcmi_list.append(pcmi)
             vBox.addItem(pcmi)
             # vBox.addItem(pg.ArrowItem(pxMode=False, headLen=0.01, pos=(0.5, 0.1)))
@@ -1324,7 +1327,9 @@ class GUI(FramelessMainWindow):
                     self.output_area_text(f" ({xfoil_settings['airfoil']}, "
                                           f"\u03b1 = {aero_data['alf']:.3f}\u00b0, "
                                           f"Ma = {xfoil_settings['Ma']:.3f}): "
-                                          f"Cl = {aero_data['Cl']:+7.4f} | Cm = {aero_data['Cm']:+7.4f}".replace("-", "\u2212"), line_break=True)
+                                          f"Cl = {aero_data['Cl']:+7.4f} | Cm = {aero_data['Cm']:+7.4f}".replace("-",
+                                                                                                                 "\u2212"),
+                                          line_break=True)
             bar = self.text_area.verticalScrollBar()
             sb = bar
             sb.setValue(sb.maximum())
@@ -1340,11 +1345,13 @@ class GUI(FramelessMainWindow):
                     self.add_new_tab_widget(self.analysis_graph.w, "Analysis")
 
                 if xfoil_settings["visc"]:
-                    name = (f"[{str(self.n_analyses)}] X ({xfoil_settings['airfoil']}, \u03b1 = {aero_data['alf']:.1f}\u00b0,"
-                            f" Re = {xfoil_settings['Re']:.1E}, Ma = {xfoil_settings['Ma']:.2f})")
+                    name = (
+                        f"[{str(self.n_analyses)}] X ({xfoil_settings['airfoil']}, \u03b1 = {aero_data['alf']:.1f}\u00b0,"
+                        f" Re = {xfoil_settings['Re']:.1E}, Ma = {xfoil_settings['Ma']:.2f})")
                 else:
-                    name = (f"[{str(self.n_analyses)}] X ({xfoil_settings['airfoil']}, \u03b1 = {aero_data['alf']:.1f}\u00b0,"
-                            f" Ma = {xfoil_settings['Ma']:.2f})")
+                    name = (
+                        f"[{str(self.n_analyses)}] X ({xfoil_settings['airfoil']}, \u03b1 = {aero_data['alf']:.1f}\u00b0,"
+                        f" Ma = {xfoil_settings['Ma']:.2f})")
 
                 pg_plot_handle = self.analysis_graph.v.plot(pen=pg.mkPen(color=self.pen(self.n_converged_analyses)[0],
                                                                          style=self.pen(self.n_converged_analyses)[1]),
