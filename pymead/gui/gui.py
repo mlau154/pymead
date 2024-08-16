@@ -596,24 +596,26 @@ class GUI(FramelessMainWindow):
         self.load_geo_col_from_memory(self.redo_stack[-1])
         self.redo_stack.pop()
 
-    def load_points(self, dialog_test_action: typing.Callable = None):
+    def load_points(self, dialog_test_action: typing.Callable = None, error_dialog_action: typing.Callable = None):
         """
         Loads a set of :math:`x`-:math:`y` points from a .dat/.txt/.csv file.
         """
-        dialog = LoadPointsDialog(self, theme=self.themes[self.current_theme])
+        self.dialog = LoadPointsDialog(self, theme=self.themes[self.current_theme])
 
-        if (dialog_test_action is not None and not dialog_test_action(dialog)) or dialog.exec():
+        if (dialog_test_action is not None and not dialog_test_action(self.dialog)) or self.dialog.exec():
             # Load the points to an array
             try:
-                points = np.loadtxt(dialog.value())
+                points = np.loadtxt(self.dialog.value())
             except ValueError:
                 try:
-                    points = np.loadtxt(dialog.value(), delimiter=",")
+                    points = np.loadtxt(self.dialog.value(), delimiter=",")
                 except ValueError:
-                    self.disp_message_box("Only whitespace and comma-delimited point files are accepted.")
+                    self.disp_message_box("Only whitespace and comma-delimited point files are accepted.",
+                                          message_mode="error", dialog_test_action=error_dialog_action)
                     return
             except FileNotFoundError:
-                self.disp_message_box(f"Could not find point file {dialog.value()}")
+                self.disp_message_box(f"Could not find point file {self.dialog.value()}",
+                                      message_mode="error", dialog_test_action=error_dialog_action)
                 return
 
             # Add each point from the array to the GeometryCollection
