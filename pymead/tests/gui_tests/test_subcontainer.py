@@ -178,6 +178,36 @@ def test_show_hide_objs_geocon(app):
     app.geo_col.clear_container()
 
 
+def test_show_hide_objs_polylines(app):
+    polyline_1 = app.geo_col.add_polyline("n0012-il")
+    polyline_2 = app.geo_col.add_polyline("sc20612-il")
+
+    app.showHidePymeadObjs("polylines", show=False)
+    assert not polyline_1.canvas_item.isVisible()
+    assert not polyline_2.canvas_item.isVisible()
+
+    app.showHidePymeadObjs("polylines", show=True)
+    assert polyline_1.canvas_item.isVisible()
+    assert polyline_2.canvas_item.isVisible()
+
+    app.geo_col.clear_container()
+
+
+def test_show_hide_objs_reference(app):
+    ref_1 = app.geo_col.add_reference_polyline(source="n0012-il")
+    ref_2 = app.geo_col.add_reference_polyline(source="sc20612-il")
+
+    app.showHidePymeadObjs("reference", show=False)
+    assert not ref_1.canvas_item.isVisible()
+    assert not ref_2.canvas_item.isVisible()
+
+    app.showHidePymeadObjs("reference", show=True)
+    assert ref_1.canvas_item.isVisible()
+    assert ref_2.canvas_item.isVisible()
+
+    app.geo_col.clear_container()
+
+
 def test_show_hide_all_objs(app):
     point_one_upper = app.geo_col.add_point(0.0, 0.0)
     point_two_upper = app.geo_col.add_point(0.3, 0.2)
@@ -221,6 +251,9 @@ def test_show_hide_all_objs(app):
                                             point_three_lower
                                             )
 
+    polyline = app.geo_col.add_polyline("n0012-il")
+    ref = app.geo_col.add_reference_polyline(source="sc20612-il")
+
     assert point_four_upper.canvas_item.isVisible()
     assert point_one_lower.canvas_item.isVisible()
     assert bezier_one_blunt.canvas_item.isVisible()
@@ -229,6 +262,8 @@ def test_show_hide_all_objs(app):
     assert line_one_blunt.canvas_item.isVisible()
     assert airfoil_blunt.canvas_item.isVisible()
     assert geocon_one.canvas_item.isShown()
+    assert polyline.canvas_item.isVisible()
+    assert ref.canvas_item.isVisible()
 
     app.hideAllPymeadObjs()
     assert not point_four_upper.canvas_item.isVisible()
@@ -239,6 +274,8 @@ def test_show_hide_all_objs(app):
     assert not line_one_blunt.canvas_item.isVisible()
     assert not airfoil_blunt.canvas_item.isVisible()
     assert geocon_one.canvas_item.isHidden()
+    assert not polyline.canvas_item.isVisible()
+    assert not ref.canvas_item.isVisible()
 
     app.showAllPymeadObjs()
     assert point_four_upper.canvas_item.isVisible()
@@ -249,5 +286,7 @@ def test_show_hide_all_objs(app):
     assert line_one_blunt.canvas_item.isVisible()
     assert airfoil_blunt.canvas_item.isVisible()
     assert geocon_one.canvas_item.isShown()
+    assert polyline.canvas_item.isVisible()
+    assert ref.canvas_item.isVisible()
 
     app.geo_col.clear_container()

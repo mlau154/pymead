@@ -9,7 +9,7 @@ from PyQt6.QtCore import QEventLoop
 from PyQt6.QtWidgets import QApplication
 
 from pymead import q_settings, GUI_SETTINGS_DIR
-from pymead.core.airfoil import Airfoil
+from pymead.core.airfoil import Airfoil, ClosureError, BranchError
 from pymead.core.bezier import Bezier
 from pymead.core.geometry_collection import GeometryCollection
 from pymead.core.line import ReferencePolyline
@@ -69,13 +69,13 @@ class AirfoilCanvas(pg.PlotWidget):
             pymead_obj.canvas_item.hide()
 
     def showAllPymeadObjs(self):
-        sub_containers = ("points", "bezier", "lines", "airfoils", "geocon")
+        sub_containers = ("points", "bezier", "lines", "airfoils", "geocon", "polylines", "reference")
         for sub_container in sub_containers:
             self.showPymeadObjs(sub_container)
         return {sub_container: True for sub_container in sub_containers}
 
     def hideAllPymeadObjs(self):
-        sub_containers = ("points", "bezier", "lines", "airfoils", "geocon")
+        sub_containers = ("points", "bezier", "lines", "airfoils", "geocon", "polylines", "reference")
         for sub_container in sub_containers:
             self.hidePymeadObjs(sub_container)
         return {sub_container: False for sub_container in sub_containers}
@@ -332,8 +332,15 @@ class AirfoilCanvas(pg.PlotWidget):
             te = dialog_value["trailing_edge"]
             upper_surf_end = dialog_value["upper_surf_end"] if not dialog_value["thin_airfoil"] else None
             lower_surf_end = dialog_value["lower_surf_end"] if not dialog_value["thin_airfoil"] else None
-            self.geo_col.add_airfoil(leading_edge=le, trailing_edge=te, upper_surf_end=upper_surf_end,
-                                     lower_surf_end=lower_surf_end)
+            try:
+                self.geo_col.add_airfoil(leading_edge=le, trailing_edge=te, upper_surf_end=upper_surf_end,
+                                         lower_surf_end=lower_surf_end)
+            except ClosureError as e:
+                self.gui_obj.disp_message_box(str(e))
+                return
+            except BranchError as e:
+                self.gui_obj.disp_message_box(str(e))
+                return
             self.gui_obj.permanent_widget.updateAirfoils()
         self.geo_col.clear_selected_objects()
 
@@ -664,7 +671,7 @@ class AirfoilCanvas(pg.PlotWidget):
                 if self.point_text_item is None:
                     self.point_text_item = pg.TextItem(
                         f"{point.point.name()}\nx: {point.point.x().value():.6f}\ny: {point.point.y().value():.6f}",
-                        anchor=(0, 1))
+                        anchor=(0, 1), color=self.gui_obj.themes[self.gui_obj.current_theme]["main-color"])
                     self.point_text_item.setFont(QFont("DejaVu Sans", 8))
                     self.addItem(self.point_text_item)
                     self.point_text_item.setPos(point.point.x().value(), point.point.y().value())

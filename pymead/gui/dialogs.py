@@ -569,6 +569,11 @@ class PymeadLabeledCheckbox(QObject):
     def value(self):
         return self.widget.isChecked()
 
+    def setReadOnly(self, read_only: bool):
+        self.widget.setEnabled(not read_only)
+        if self.push is not None:
+            self.push.setEnabled(not read_only)
+
 
 class PymeadLabeledColorSelector(QObject):
 
@@ -2123,7 +2128,7 @@ class GAGeneralSettingsDialogWidget(PymeadDialogWidget2):
 
     def warm_start_active_state_changed(self, state: int):
         self.widget_dict["warm_start_generation"].widget.setReadOnly(not bool(state))
-        self.widget_dict["warm_start_dir"].widget.setReadOnly(not bool(state))
+        self.widget_dict["warm_start_dir"].setReadOnly(not bool(state))
 
     def batch_mode_active_state_changed(self, state: int):
         self.widget_dict["batch_mode_files"].widget.setReadOnly(not bool(state))

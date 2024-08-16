@@ -195,7 +195,7 @@ class Airfoil(PymeadObj):
             if coords is None:
                 coords = arr
             else:
-                coords = np.row_stack((coords, arr[1:, :]))
+                coords = np.vstack((coords, arr[1:, :]))
         return coords
 
     def update_coords(self):
