@@ -596,13 +596,13 @@ class GUI(FramelessMainWindow):
         self.load_geo_col_from_memory(self.redo_stack[-1])
         self.redo_stack.pop()
 
-    def load_points(self):
+    def load_points(self, dialog_test_action: typing.Callable = None):
         """
         Loads a set of :math:`x`-:math:`y` points from a .dat/.txt/.csv file.
         """
         dialog = LoadPointsDialog(self, theme=self.themes[self.current_theme])
 
-        if dialog.exec():
+        if (dialog_test_action is not None and not dialog_test_action(dialog)) or dialog.exec():
             # Load the points to an array
             try:
                 points = np.loadtxt(dialog.value())
