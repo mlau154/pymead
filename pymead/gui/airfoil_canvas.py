@@ -69,13 +69,13 @@ class AirfoilCanvas(pg.PlotWidget):
             pymead_obj.canvas_item.hide()
 
     def showAllPymeadObjs(self):
-        sub_containers = ("points", "bezier", "lines", "airfoils", "geocon")
+        sub_containers = ("points", "bezier", "lines", "airfoils", "geocon", "polylines", "reference")
         for sub_container in sub_containers:
             self.showPymeadObjs(sub_container)
         return {sub_container: True for sub_container in sub_containers}
 
     def hideAllPymeadObjs(self):
-        sub_containers = ("points", "bezier", "lines", "airfoils", "geocon")
+        sub_containers = ("points", "bezier", "lines", "airfoils", "geocon", "polylines", "reference")
         for sub_container in sub_containers:
             self.hidePymeadObjs(sub_container)
         return {sub_container: False for sub_container in sub_containers}

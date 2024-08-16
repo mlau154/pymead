@@ -24,7 +24,9 @@ class ShowHideDialog(PymeadDialog):
             "lines": "Lines",
             "bezier": "Bezier",
             "airfoils": "Airfoils",
-            "geocon": "Constraints"
+            "geocon": "Constraints",
+            "polylines": "Polylines",
+            "reference": "Reference"
         }
 
         for row_idx, (sub_container, title) in enumerate(items.items()):
