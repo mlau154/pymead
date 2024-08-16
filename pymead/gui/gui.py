@@ -448,6 +448,7 @@ class GUI(FramelessMainWindow):
             stop: 0 {theme['background-color']}, 
             stop: 0.5 {theme['title-gradient-color']}, 
             stop: 1 {theme['background-color']})""")
+        self.status_bar.setStyleSheet(f"""color: {theme['main-color']}""")
 
         # Set title bar buttons
         self.title_bar.normalButton.setIcon(QIcon(os.path.join(ICON_DIR, f"normal-{theme_name}-mode.png")))

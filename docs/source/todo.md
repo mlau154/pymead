@@ -25,7 +25,6 @@ Bug fixes
 - Base dimension change in settings menu not working properly
 - Fix blank line in Objective/Constraint setup not reverting to background color after editing and erasing
 - Remove wave/viscous drag from XFOIL drag history plots (optimization)
-- Apply theme to status bar widgets immediately on theme change
 - Correct dimensions having default colors before switching themes
 - Use `QNativeGesture`/`ZoomNativeGesture` to allow pinch-zoom on macOS
 - Add reference polylines to show/hide customization
