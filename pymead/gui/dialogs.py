@@ -3155,31 +3155,52 @@ class AirfoilPlotDialog(PymeadDialog):
 
 class LoadPointsDialog(PymeadDialog):
     def __init__(self, parent, theme: dict):
-        self.grid_widget = QWidget()
-        super().__init__(parent, window_title="Load Points", widget=self.grid_widget, theme=theme)
+        widget = QWidget()
+        super().__init__(parent, window_title="Load Points", widget=widget, theme=theme)
         self.lay = QGridLayout()
-        explanation = QPlainTextEdit("Load points from a .txt/.dat/.csv file in space- or comma-delimited format "
-                                     "with two columns: x and y")
-        explanation.setReadOnly(True)
-        self.lay.addWidget(explanation, 0, 0, 1, 3)
-        self.file_name_widget = QLineEdit()
-        self.lay.addWidget(QLabel("Data File"), 1, 0, 1, 1)
-        self.lay.addWidget(self.file_name_widget, 1, 1, 1, 1)
-        push = QPushButton("Choose File")
-        push.clicked.connect(self.select_data_file)
-        self.lay.addWidget(push, 1, 2, 1, 1)
-        self.grid_widget.setLayout(self.lay)
+        widget.setLayout(self.lay)
+        self.inputs = self.setInputs()
+
+        for i in self.inputs:
+            row_count = self.lay.rowCount()
+            self.lay.addWidget(i.label, row_count, 0)
+            if i.push is None:
+                self.lay.addWidget(i.widget, row_count, 1, 1, 2)
+            else:
+                self.lay.addWidget(i.widget, row_count, 1, 1, 1)
+                self.lay.addWidget(i.push, row_count, 2, 1, 1)
+
         self.setMinimumWidth(450)
 
+    def setInputs(self):
+        explanation = PymeadLabeledPlainTextEdit(
+            label=None,
+            text="Load points from a .txt/.dat/.csv file in space- or comma-delimited format with two columns: x and y",
+            read_only=True
+        )
+        file_name_widget = PymeadLabeledLineEdit(
+            label="Data File",
+            text="",
+            read_only=False,
+            push_label="Choose File"
+        )
+        file_name_widget.push.clicked.connect(self.select_data_file)
+
+        inputs = [explanation, file_name_widget]
+        return inputs
+
     def select_data_file(self):
-        select_data_file(self, self.file_name_widget, starting_dir=get_setting("load_points_default_open_location"))
-        file_name = self.file_name_widget.text()
+        select_data_file(
+            parent=self,
+            line_edit=self.inputs[1].widget,
+            starting_dir=get_setting("load_points_default_open_location")
+        )
+        file_name = self.inputs[1].widget.text()
         if file_name:
             set_setting("load_points_default_open_location", file_name)
 
     def value(self):
-        file_name = self.file_name_widget.text()
-        return file_name
+        return self.inputs[1].widget.text()
 
 
 class AirfoilDialog(PymeadDialog):
