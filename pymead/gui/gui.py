@@ -26,7 +26,7 @@ from pyqtgraph.exporters import CSVExporter, SVGExporter
 from qframelesswindow import FramelessMainWindow
 
 from pymead import ICON_DIR, GUI_SETTINGS_DIR, GUI_THEMES_DIR, RESOURCE_DIR, EXAMPLES_DIR, q_settings, \
-    TargetPathNotFoundError, InvalidFileFormat
+    TargetPathNotFoundError
 from pymead.analysis.calc_aero_data import SVG_PLOTS, SVG_SETTINGS_TR
 from pymead.analysis.calc_aero_data import calculate_aero_data
 from pymead.analysis.read_aero_data import flow_var_idx
@@ -43,13 +43,14 @@ from pymead.gui.custom_graphics_view import CustomGraphicsView
 from pymead.gui.dockable_tab_widget import PymeadDockWidget
 from pymead.gui.help_browser import HelpBrowserWindow
 from pymead.gui.dialogs import LoadDialog, SaveAsDialog, OptimizationSetupDialog, \
-    MultiAirfoilDialog, ColorInputDialog, ExportCoordinatesDialog, ExportControlPointsDialog, AirfoilPlotDialog, \
+    MultiAirfoilDialog, ExportCoordinatesDialog, ExportControlPointsDialog, \
     AirfoilMatchingDialog, MSESFieldPlotDialog, ExportIGESDialog, XFOILDialog, NewGeoColDialog, EditBoundsDialog, \
     ExitDialog, ScreenshotDialog, LoadAirfoilAlgFile, ExitOptimizationDialog, SettingsDialog, LoadPointsDialog, \
     PanelDialog
 from pymead.gui.dialogs import convert_dialog_to_mset_settings, convert_dialog_to_mses_settings, \
     convert_dialog_to_mplot_settings, convert_dialog_to_mpolar_settings, convert_opt_settings_to_param_dict
 from pymead.gui.main_icon_toolbar import MainIconToolbar
+from pymead.gui.menu_action import MenuAction
 from pymead.gui.message_box import disp_message_box
 from pymead.gui.parameter_tree import ParameterTree
 from pymead.gui.permanent_widget import PermanentWidget
@@ -557,7 +558,12 @@ class GUI(FramelessMainWindow):
                     menu_bar.addMenu(menu)
                     recursively_add_menus(val, menu_bar.children()[-1])
                 else:
-                    action = QAction(key, parent=menu_bar)
+                    if isinstance(val, list) and len(val) > 2 and val[2] is not None:
+                        action = QAction(key, parent=menu_bar)
+                    else:
+                        # QAction.triggered always emits the "checked" argument even if the action is not checkable,
+                        # so use a custom class here to override this behavior.
+                        action = MenuAction(key, parent=menu_bar)
                     action_parent = action.parent()
                     if isinstance(action_parent, QMenu):
                         action_parent.addAction(action)
@@ -574,7 +580,15 @@ class GUI(FramelessMainWindow):
                             action.setCheckable(True)
                             action.setChecked(val[2])
                     else:
-                        action.triggered.connect(getattr(self, val))
+                        if isinstance(action, MenuAction):
+                            # QAction.triggered always emits the "checked" argument even if the action is not checkable,
+                            # so connect the custom signal of the MenuAction here instead of triggered.
+                            action.menuActionClicked.connect(getattr(self, val))
+                        else:
+                            # If the QAction is checkable, connect the default "triggered" signal instead. This
+                            # requires that "checked" is the first positional argument of the connected method.
+                            action.triggered.connect(getattr(self, val))
+
 
         recursively_add_menus(menu_data, self.menu_bar)
 
@@ -597,13 +611,13 @@ class GUI(FramelessMainWindow):
         self.load_geo_col_from_memory(self.redo_stack[-1])
         self.redo_stack.pop()
 
-    def load_points(self):
+    def load_points(self, dialog_test_action: typing.Callable = None):
         """
         Loads a set of :math:`x`-:math:`y` points from a .dat/.txt/.csv file.
         """
         dialog = LoadPointsDialog(self, theme=self.themes[self.current_theme])
 
-        if dialog.exec():
+        if dialog_test_action is not None or dialog.exec():
             # Load the points to an array
             try:
                 points = np.loadtxt(dialog.value())
