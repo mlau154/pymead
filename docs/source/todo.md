@@ -26,6 +26,8 @@ Bug fixes
 - Fix blank line in Objective/Constraint setup not reverting to background color after editing and erasing
 - Remove wave/viscous drag from XFOIL drag history plots (optimization)
 - Use `QNativeGesture`/`ZoomNativeGesture` to allow pinch-zoom on macOS
+- Fix bug where when trying to create a new optimization directory using the root directory but a directory was renamed
+  after a previous optimization to the same name but with additional numbers and strings following the root name
 
 Testing
 -------
