@@ -198,7 +198,9 @@ class AirfoilCanvas(pg.PlotWidget):
             constraint_item.addItems(self)
 
             # Connect hover/not hover signals
-            # TODO: need to connect these
+            pymead_obj.canvas_item.sigItemClicked.connect(self.constraintClicked)
+            pymead_obj.canvas_item.sigItemHovered.connect(self.constraintHovered)
+            pymead_obj.canvas_item.sigItemLeaveHovered.connect(self.constraintLeaveHovered)
 
         elif isinstance(pymead_obj, Airfoil):
 
@@ -726,11 +728,14 @@ class AirfoilCanvas(pg.PlotWidget):
     def curveLeaveHovered(self, item):
         self.geo_col.hover_leave_obj(item.parametric_curve)
 
-    def constraintHovered(self, item):
-        self.geo_col.hover_enter_obj(item.canvas_item)
+    def constraintClicked(self, geo_con: GeoCon):
+        self.geo_col.select_object(geo_con)
 
-    def constraintLeaveHovered(self, item):
-        self.geo_col.hover_leave_obj(item.canvas_item)
+    def constraintHovered(self, geo_con: GeoCon):
+        self.geo_col.hover_enter_obj(geo_con)
+
+    def constraintLeaveHovered(self, geo_con: GeoCon):
+        self.geo_col.hover_leave_obj(geo_con)
 
     def airfoil_hovered(self, airfoil: Airfoil, x_centroid: float, y_centroid: float):
         """

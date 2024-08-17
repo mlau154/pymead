@@ -252,6 +252,9 @@ class GeometryCollection(DualRep):
             elif isinstance(pymead_obj, ParametricCurve):
                 self.canvas.setItemStyle(pymead_obj.canvas_item, "selected")
                 pymead_obj.canvas_item.hoverable = False
+            elif isinstance(pymead_obj, GeoCon):
+                self.canvas.setItemStyle(pymead_obj.canvas_item, "selected")
+                pymead_obj.canvas_item.hoverable = False
 
         if pymead_obj not in self.selected_objects[pymead_obj.sub_container]:
             self.selected_objects[pymead_obj.sub_container].append(pymead_obj)
@@ -275,7 +278,8 @@ class GeometryCollection(DualRep):
                     self.canvas.setItemStyle(curve.canvas_item, "default")
             elif isinstance(pymead_obj, GeoCon):
                 pymead_obj.canvas_item.hoverable = True
-                pymead_obj.canvas_item.setStyle(theme=self.gui_obj.themes[self.gui_obj.current_theme])
+                self.canvas.setItemStyle(pymead_obj.canvas_item, "default")
+                # pymead_obj.canvas_item.setStyle(theme=self.gui_obj.themes[self.gui_obj.current_theme])
 
         # if isinstance(pymead_obj, Point):
         #     if pymead_obj in self.selected_objects:

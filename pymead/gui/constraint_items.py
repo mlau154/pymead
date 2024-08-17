@@ -9,20 +9,36 @@ from pymead.utils.misc import get_setting
 
 class ConstraintItem(QObject):
 
-    sigItemHovered = pyqtSignal()
-    sigItemLeaveHovered = pyqtSignal()
+    sigItemClicked = pyqtSignal(object)
+    sigItemHovered = pyqtSignal(object)
+    sigItemLeaveHovered = pyqtSignal(object)
 
     def __init__(self, constraint: GeoCon, canvas_items: list, theme: dict):
         super().__init__()
         self.constraint = constraint
         self.constraint.canvas_item = self
         self.canvas_items = canvas_items
+        self._hoverable = True
         self.setStyle(theme=theme, mode="default")
+
+    @property
+    def hoverable(self):
+        return self._hoverable
+
+    @hoverable.setter
+    def hoverable(self, hoverable: bool):
+        self._hoverable = hoverable
+        for item in self.canvas_items:
+            if isinstance(item, ConstraintCurveItem):
+                item.hoverable = hoverable
 
     def addItems(self, canvas):
         for item in self.canvas_items:
             canvas.addItem(item)
-            # TODO: connect hover leave/enter signals here
+            if isinstance(item, ConstraintCurveItem):
+                item.sigCurveClicked.connect(lambda _: self.sigItemClicked.emit(self.constraint))
+                item.sigCurveHovered.connect(lambda _: self.sigItemHovered.emit(self.constraint))
+                item.sigCurveNotHovered.connect(lambda _: self.sigItemLeaveHovered.emit(self.constraint))
 
     def hide(self):
         for canvas_item in self.canvas_items:
@@ -60,10 +76,42 @@ class ConstraintItem(QObject):
                 pen = item.opts["pen"]
                 if isinstance(pen, QPen):
                     if mode == "default":
-                        pen.setColor(QColor(theme["main-color"]))
+                        color = QColor(theme["main-color"])
                     else:
-                        pen.setColor(QColor(get_setting(f"curve_{mode}_pen_color")))
+                        color = QColor(get_setting(f"curve_{mode}_pen_color"))
+                    pen.setColor(color)
                 item.setPen(pen)
+
+
+class ConstraintCurveItem(pg.PlotCurveItem):
+
+    sigCurveClicked = pyqtSignal(object, object)
+    sigCurveHovered = pyqtSignal(object, object)
+    sigCurveNotHovered = pyqtSignal(object, object)
+    sigCurveStartedMoving = pyqtSignal(object)
+    sigCurveMoving = pyqtSignal(object)
+    sigCurveFinishedMoving = pyqtSignal(object)
+
+    def __init__(self, *args, draggable: bool = False, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.draggable = draggable
+        self.hoverable = True
+        self.clickable = True
+        self.setAcceptHoverEvents(True)
+        self.sigClicked.connect(self.clickEvent)
+
+    def hoverEvent(self, ev):
+        """
+        Trigger custom signals when a hover event is detected. Only active when ``hoverable==True``.
+        """
+        if self.hoverable:
+            if hasattr(ev, "_scenePos") and self.mouseShape().contains(ev.pos()):
+                self.sigCurveHovered.emit(self, ev)
+            else:
+                self.sigCurveNotHovered.emit(self, ev)
+
+    def clickEvent(self, ev):
+        self.sigCurveClicked.emit(self, ev)
 
 
 class DistanceConstraintItem(ConstraintItem):
@@ -74,9 +122,9 @@ class DistanceConstraintItem(ConstraintItem):
             pg.ArrowItem(**self.arrow_style),
             pg.ArrowItem(**self.arrow_style),
             pg.TextItem(**self.text_style),
-            pg.PlotCurveItem(),
-            pg.PlotCurveItem(),
-            pg.PlotCurveItem(),
+            ConstraintCurveItem(mouseWidth=2),
+            ConstraintCurveItem(mouseWidth=2),
+            ConstraintCurveItem(mouseWidth=2),
         ]
         super().__init__(constraint=constraint, canvas_items=canvas_items, theme=theme)
         self.canvas_items[2].setFont(QFont("DejaVu Sans Mono", 10))
@@ -204,9 +252,9 @@ class RelAngle3ConstraintItem(ConstraintItem):
     def __init__(self, constraint: RelAngle3Constraint, theme: dict):
         pen = pg.mkPen(width=1, style=Qt.PenStyle.DashLine)
         canvas_items = [
-            pg.PlotDataItem(),
-            pg.PlotDataItem(pen=pen),
-            pg.PlotDataItem(pen=pen),
+            ConstraintCurveItem(mouseWidth=2),
+            ConstraintCurveItem(pen=pen, mouseWidth=2),
+            ConstraintCurveItem(pen=pen, mouseWidth=2),
             pg.TextItem(anchor=(0, 0.5)),
         ]
         canvas_items[3].setFont(QFont("DejaVu Sans Mono", 10))
@@ -249,10 +297,10 @@ class Perp3ConstraintItem(ConstraintItem):
     def __init__(self, constraint: Perp3Constraint, theme: dict):
         pen = pg.mkPen(width=1, style=Qt.PenStyle.DashLine)
         canvas_items = [
-            pg.PlotDataItem(),
-            pg.PlotDataItem(),
-            pg.PlotDataItem(pen=pen),
-            pg.PlotDataItem(pen=pen)
+            ConstraintCurveItem(mouseWidth=2),
+            ConstraintCurveItem(mouseWidth=2),
+            ConstraintCurveItem(pen=pen, mouseWidth=2),
+            ConstraintCurveItem(pen=pen, mouseWidth=2)
         ]
         super().__init__(constraint=constraint, canvas_items=canvas_items, theme=theme)
         for item in canvas_items:
