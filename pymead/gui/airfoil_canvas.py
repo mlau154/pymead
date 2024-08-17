@@ -683,7 +683,7 @@ class AirfoilCanvas(pg.PlotWidget):
                 item.setItemStyle("hovered")
             elif isinstance(item, ConstraintItem):
                 self.constraint_hovered_item = item
-                item.setStyle(mode="hovered")
+                item.setStyle(theme=self.gui_obj.themes[self.gui_obj.current_theme], mode="hovered")
 
         elif style == "default":
             if isinstance(item, DraggablePoint):
@@ -706,7 +706,7 @@ class AirfoilCanvas(pg.PlotWidget):
                 item.setScatterStyle(mode="selected")
             elif isinstance(item, ConstraintItem):
                 self.constraint_hovered_item = None
-                item.setStyle(mode="selected")
+                item.setStyle(theme=self.gui_obj.themes[self.gui_obj.current_theme], mode="selected")
             elif isinstance(item, HoverableCurve):
                 self.curve_hovered_item = None
                 item.setItemStyle("selected")

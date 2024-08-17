@@ -126,9 +126,6 @@ class PymeadGraphicsTextItem(QGraphicsTextItem):
         self.setFocus()
         super().mouseDoubleClickEvent(*args, **kwargs)
 
-    def focusInEvent(self, *args, **kwargs):
-        super().focusInEvent(*args, **kwargs)
-
     def focusOutEvent(self, *args, **kwargs):
         self.setTextInteractionFlags(Qt.TextInteractionFlag.NoTextInteraction)
         try:
