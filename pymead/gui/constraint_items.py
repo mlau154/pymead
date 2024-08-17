@@ -1,6 +1,7 @@
 import pyqtgraph as pg
 from PyQt6.QtCore import Qt, pyqtSignal, QObject
 from PyQt6.QtGui import QFont, QPen, QColor
+from PyQt6.QtWidgets import QGraphicsTextItem
 
 import pymead.core
 from pymead.core.constraints import *
@@ -114,6 +115,39 @@ class ConstraintCurveItem(pg.PlotCurveItem):
         self.sigCurveClicked.emit(self, ev)
 
 
+class PymeadGraphicsTextItem(QGraphicsTextItem):
+    def __init__(self, param, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.param = param
+
+    def mouseDoubleClickEvent(self, *args, **kwargs):
+        if self.textInteractionFlags() == Qt.TextInteractionFlag.NoTextInteraction:
+            self.setTextInteractionFlags(Qt.TextInteractionFlag.TextEditorInteraction)
+        self.setFocus()
+        super().mouseDoubleClickEvent(*args, **kwargs)
+
+    def focusInEvent(self, *args, **kwargs):
+        super().focusInEvent(*args, **kwargs)
+
+    def focusOutEvent(self, *args, **kwargs):
+        self.setTextInteractionFlags(Qt.TextInteractionFlag.NoTextInteraction)
+        try:
+            self.param.set_value(float(self.toPlainText()))
+        except ValueError:
+            # If the string cannot be cast to a float (e.g., it contains a non-numeric character),
+            # then set the param to its original value to undo the change
+            self.param.set_value(self.param.value())
+        super().focusOutEvent(*args, **kwargs)
+
+
+class ConstraintTextItem(pg.TextItem):
+    def __init__(self, param: Param, *args, interactive: bool = False, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.interactive = interactive
+        self.textItem = PymeadGraphicsTextItem(param)
+        self.textItem.setParentItem(self)
+
+
 class DistanceConstraintItem(ConstraintItem):
     def __init__(self, constraint: DistanceConstraint, theme: dict):
         self.arrow_style = {"headLen": 10}
@@ -121,7 +155,7 @@ class DistanceConstraintItem(ConstraintItem):
         canvas_items = [
             pg.ArrowItem(**self.arrow_style),
             pg.ArrowItem(**self.arrow_style),
-            pg.TextItem(**self.text_style),
+            ConstraintTextItem(constraint.param(), **self.text_style, interactive=True),
             ConstraintCurveItem(mouseWidth=2),
             ConstraintCurveItem(mouseWidth=2),
             ConstraintCurveItem(mouseWidth=2),
@@ -255,7 +289,7 @@ class RelAngle3ConstraintItem(ConstraintItem):
             ConstraintCurveItem(mouseWidth=2),
             ConstraintCurveItem(pen=pen, mouseWidth=2),
             ConstraintCurveItem(pen=pen, mouseWidth=2),
-            pg.TextItem(anchor=(0, 0.5)),
+            ConstraintTextItem(constraint.param(), anchor=(0, 0.5), interactive=True),
         ]
         canvas_items[3].setFont(QFont("DejaVu Sans Mono", 10))
         super().__init__(constraint=constraint, canvas_items=canvas_items, theme=theme)

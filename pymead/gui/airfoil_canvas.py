@@ -966,3 +966,4 @@ class AirfoilCanvas(pg.PlotWidget):
             self.arrowKeyPointMove(ev.key(), mods)
         elif key in self.canvasShortcuts():
             self.canvasShortcuts()[key]()
+        super().keyPressEvent(ev)

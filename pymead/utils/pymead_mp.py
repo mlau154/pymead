@@ -38,6 +38,7 @@ def kill_xfoil_mses_processes(sig: int = signal.SIGTERM):
     xfoil_mses_processes = ["xfoil", "mset", "mses", "mplot", "mpolar"]
     xfoil_mses_processes.extend([name + ".exe" for name in xfoil_mses_processes])
     matching_processes = [proc for proc in psutil.process_iter(["name"]) if proc.info["name"] in xfoil_mses_processes]
+    print(f"In kill XFOIL/MSES process function, {len(matching_processes) = }, {matching_processes = }")
     for proc in matching_processes:
         try:
             proc.send_signal(sig)

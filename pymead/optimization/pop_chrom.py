@@ -359,11 +359,16 @@ class Population:
         """
 
         def _end_pool(chr_pool: multiprocessing.Pool):
+            print("Ending pool...")
+            print("Killing child processes...")
             for ch in active_children():
                 kill_child_processes(ch.pid)
+            print("Terminating pool...")
             chr_pool.terminate()
-            chr_pool.join()
+            # chr_pool.join()
+            print("Killing XFOIL and MSES processes")
             kill_xfoil_mses_processes()
+            print("Pool ended successfully.")
 
         n_eval = 0
         n_converged_chromosomes = 0
