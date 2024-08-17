@@ -570,13 +570,19 @@ class GUI(FramelessMainWindow):
                     else:
                         raise ValueError('Attempted to add QAction to an object not of type QMenu')
                     if isinstance(val, list):
-                        if len(val) > 3 and val[3] is not None:
+                        shortcut_condition = val[1] is not None
+                        checkable_condition = len(val) > 2 and val[2] is not None
+                        extra_args_condition = len(val) > 3 and val[3] is not None
+                        if extra_args_condition:
                             action.triggered.connect(partial(getattr(self, val[0]), *val[3]))
                         else:
-                            action.triggered.connect(getattr(self, val[0]))
-                        if val[1] is not None:
+                            if checkable_condition:
+                                action.triggered.connect(getattr(self, val[0]))
+                            else:
+                                action.menuActionClicked.connect(getattr(self, val[0]))
+                        if shortcut_condition:
                             action.setShortcut(val[1])
-                        if len(val) > 2 and val[2] is not None:
+                        if checkable_condition:
                             action.setCheckable(True)
                             action.setChecked(val[2])
                     else:
@@ -681,8 +687,8 @@ class GUI(FramelessMainWindow):
                 self.disp_message_box(f"{inputs['window']} window screenshot saved to {final_file_name}",
                                       message_mode="info")
             else:
-                self.disp_message_box(f"Directory {dir_name} for"
-                                      f"file {file_name} not found")
+                self.disp_message_box(f"Directory '{dir_name}' for "
+                                      f"file '{file_name}' not found")
 
     def showHidePymeadObjs(self, sub_container: str, show: bool):
         if show:
