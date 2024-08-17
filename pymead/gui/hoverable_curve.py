@@ -27,7 +27,7 @@ class HoverableCurve(pg.PlotCurveItem):
     sigPolyLineAdded = pyqtSignal(object)
     sigLineItemAdded = pyqtSignal(object)
 
-    def __init__(self, curve_type: str, *args, **kwargs):
+    def __init__(self, curve_type: str, *args, mouseWidth=2, **kwargs):
         """
         Parameters
         ==========
@@ -44,13 +44,15 @@ class HoverableCurve(pg.PlotCurveItem):
         if curve_type not in implemented_curve_types:
             raise NotImplementedError(f"Curve type {curve_type} either incorrectly labeled or not yet implemented."
                                       f"Currently implemented curve types: {implemented_curve_types}.")
-        super().__init__(*args, **kwargs)
+        super().__init__(*args, mouseWidth=mouseWidth, **kwargs)
         self.hoverable = True
+        self.clickable = True
         self.setAcceptHoverEvents(True)
         self.curve_type = curve_type
         self.point_items = []
         self.control_point_line_items = None
         self.parametric_curve = None
+        self.sigClicked.connect(self.clickEvent)
 
     def hoverEvent(self, ev):
         """
@@ -62,7 +64,7 @@ class HoverableCurve(pg.PlotCurveItem):
             else:
                 self.sigCurveNotHovered.emit(self, ev)
 
-    def mouseClickEvent(self, ev):
+    def clickEvent(self, ev):
         self.sigCurveClicked.emit(self, ev)
 
     def updateCurveData(self, data: np.ndarray):
