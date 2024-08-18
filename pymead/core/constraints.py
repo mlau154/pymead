@@ -67,6 +67,7 @@ class DistanceConstraint(GeoCon):
         self.p2 = p2
         value = self.p1.measure_distance(self.p2) if value is None else value
         param = value if isinstance(value, Param) else LengthParam(value=value, name="Length-1", geo_col=geo_col)
+        self.handle_offset = None
         super().__init__(param=param, name=name, child_nodes=[self.p1, self.p2], kind="d", geo_col=geo_col)
 
     def __repr__(self):
@@ -75,6 +76,7 @@ class DistanceConstraint(GeoCon):
     def get_dict_rep(self) -> dict:
         return {"p1": self.p1.name(), "p2": self.p2.name(), "value": self.param().name(),
                 "constraint_type": self.__class__.__name__}
+                # "constraint_type": self.__class__.__name__, "handle_offset": self.handle_offset}
 
     def verify(self) -> bool:
         measured_distance = self.p1.measure_distance(self.p2)

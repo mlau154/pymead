@@ -11,6 +11,7 @@ q_settings_descriptions = load_data(os.path.join(GUI_SETTINGS_DIR, "q_settings_d
 
 
 class DraggablePoint(pg.GraphItem):
+
     sigPointClicked = pyqtSignal(object, object, object, object)
     sigPointHovered = pyqtSignal(object, object, object, object)
     sigPointLeaveHovered = pyqtSignal(object, object, object, object)
@@ -59,6 +60,7 @@ class DraggablePoint(pg.GraphItem):
             item.setParentItem(self)
 
     def mouseDragEvent(self, ev):
+        print(f"Mouse drag event = {ev}")
         if ev.button() != Qt.MouseButton.LeftButton:
             ev.ignore()
             return

@@ -29,9 +29,13 @@ q_settings_descriptions = load_data(os.path.join(GUI_SETTINGS_DIR, "q_settings_d
 
 
 class AirfoilCanvas(pg.PlotWidget):
+
     sigEnterPressed = pyqtSignal()
     sigEscapePressed = pyqtSignal()
     sigStatusBarUpdate = pyqtSignal(str, int)
+    sigCanvasMousePressed = pyqtSignal(object)
+    sigCanvasMouseMoved = pyqtSignal(object)
+    sigCanvasMouseReleased = pyqtSignal(object)
 
     def __init__(self, parent, geo_col: GeometryCollection, gui_obj):
         super().__init__(parent)
@@ -201,6 +205,12 @@ class AirfoilCanvas(pg.PlotWidget):
             pymead_obj.canvas_item.sigItemClicked.connect(self.constraintClicked)
             pymead_obj.canvas_item.sigItemHovered.connect(self.constraintHovered)
             pymead_obj.canvas_item.sigItemLeaveHovered.connect(self.constraintLeaveHovered)
+
+            for canvas_item in constraint_item.canvas_items:
+                if isinstance(canvas_item, ConstraintCurveItem):
+                    self.sigCanvasMouseMoved.connect(canvas_item.onMouseMoved)
+                    self.sigCanvasMousePressed.connect(canvas_item.onMousePressed)
+                    self.sigCanvasMouseReleased.connect(canvas_item.onMouseReleased)
 
         elif isinstance(pymead_obj, Airfoil):
 
@@ -921,6 +931,8 @@ class AirfoilCanvas(pg.PlotWidget):
 
     def mousePressEvent(self, ev):
 
+        self.sigCanvasMousePressed.emit(ev)
+
         super().mousePressEvent(ev)
 
         if not self.drawing_object == "Points":
@@ -928,6 +940,14 @@ class AirfoilCanvas(pg.PlotWidget):
 
         view_pos = self.getPlotItem().getViewBox().mapSceneToView(ev.pos().toPointF())
         self.geo_col.add_point(view_pos.x(), view_pos.y())
+
+    def mouseMoveEvent(self, ev):
+        self.sigCanvasMouseMoved.emit(ev)
+        super().mouseMoveEvent(ev)
+
+    def mouseReleaseEvent(self, ev):
+        self.sigCanvasMouseReleased.emit(ev)
+        super().mouseReleaseEvent(ev)
 
     @undoRedoAction
     def removeSelectedObjects(self):

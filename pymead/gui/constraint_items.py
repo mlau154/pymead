@@ -19,6 +19,8 @@ class ConstraintItem(QObject):
         self.constraint = constraint
         self.constraint.canvas_item = self
         self.canvas_items = canvas_items
+        for canvas_item in self.canvas_items:
+            canvas_item.constraint_item = self
         self._hoverable = True
         self.setStyle(theme=theme, mode="default")
 
@@ -93,11 +95,16 @@ class ConstraintCurveItem(pg.PlotCurveItem):
     sigCurveMoving = pyqtSignal(object)
     sigCurveFinishedMoving = pyqtSignal(object)
 
-    def __init__(self, *args, draggable: bool = False, **kwargs):
+    def __init__(self, *args, draggable: bool = False, canvas=None, **kwargs):
         super().__init__(*args, **kwargs)
         self.draggable = draggable
         self.hoverable = True
         self.clickable = True
+        self.canvas = canvas
+        self.constraint_item = None
+        self.is_moving = False
+        self.starting_point = None
+        self.starting_handle_offset = None
         self.setAcceptHoverEvents(True)
         self.sigClicked.connect(self.clickEvent)
 
@@ -112,7 +119,47 @@ class ConstraintCurveItem(pg.PlotCurveItem):
                 self.sigCurveNotHovered.emit(self, ev)
 
     def clickEvent(self, ev):
+        if not self.clickable:
+            return
         self.sigCurveClicked.emit(self, ev)
+
+    def onMousePressed(self, ev):
+        if not self.draggable:
+            return
+        point_scene_coords = ev.pos().toPointF()
+        point_view_coords = self.canvas.getViewBox().mapSceneToView(point_scene_coords)
+        if self not in self.canvas.scene().items(point_scene_coords):
+            ev.ignore()
+            return
+        self.is_moving = True
+        self.starting_point = point_view_coords
+        self.starting_handle_offset = self.constraint_item.handle_offset
+        self.canvas.getViewBox().setMouseEnabled(x=False, y=False)  # Need to disable panning because panning
+        # takes precedence during the mouse drag
+        ev.accept()
+
+    def onMouseMoved(self, ev):
+        if not self.draggable or not self.is_moving:
+            return
+
+        # This is a bit of a hack for now to prevent moving points near the constraint handle from also adjusting
+        # the constraint handle offset
+        for point in self.canvas.geo_col.container()["points"].values():
+            if point.canvas_item.dragPoint is not None:
+                return
+        ending_point = self.canvas.getViewBox().mapSceneToView(ev.pos().toPointF())
+        self.constraint_item.handle_offset = self.starting_handle_offset + (ending_point.y() - self.starting_point.y())
+        self.constraint_item.update()
+        ev.accept()
+
+    def onMouseReleased(self, ev):
+        if not self.draggable:
+            return
+        self.is_moving = False
+        self.starting_point = None
+        self.starting_handle_offset = None
+        self.canvas.getViewBox().setMouseEnabled(x=True, y=True)  # Need to turn panning back on
+        ev.accept()
 
 
 class PymeadGraphicsTextItem(QGraphicsTextItem):
@@ -153,9 +200,9 @@ class DistanceConstraintItem(ConstraintItem):
             pg.ArrowItem(**self.arrow_style),
             pg.ArrowItem(**self.arrow_style),
             ConstraintTextItem(constraint.param(), **self.text_style, interactive=True),
-            ConstraintCurveItem(mouseWidth=2),
-            ConstraintCurveItem(mouseWidth=2),
-            ConstraintCurveItem(mouseWidth=2),
+            ConstraintCurveItem(mouseWidth=2, canvas=constraint.canvas, draggable=True),
+            ConstraintCurveItem(mouseWidth=2, canvas=constraint.canvas),
+            ConstraintCurveItem(mouseWidth=2, canvas=constraint.canvas),
         ]
         super().__init__(constraint=constraint, canvas_items=canvas_items, theme=theme)
         self.canvas_items[2].setFont(QFont("DejaVu Sans Mono", 10))
@@ -164,6 +211,9 @@ class DistanceConstraintItem(ConstraintItem):
                 item.setZValue(-8)
             else:
                 item.setZValue(-10)
+        self.handle_offset = constraint.handle_offset if constraint.handle_offset is not None else (
+                0.05 * pymead.core.UNITS.convert_length_from_base(1.0, pymead.core.UNITS.current_length_unit()))
+        print(f"Starting, {self.handle_offset = }")
         self.update()
 
     def update(self):
@@ -171,13 +221,16 @@ class DistanceConstraintItem(ConstraintItem):
         dist = self.constraint.p1.measure_distance(self.constraint.p2)
 
         handle_angle = angle + np.pi / 2
-        arrow_offset = 0.04 * pymead.core.UNITS.convert_length_from_base(1.0, pymead.core.UNITS.current_length_unit())
+        # arrow_offset = 0.04 * pymead.core.UNITS.convert_length_from_base(1.0, pymead.core.UNITS.current_length_unit())
+        arrow_offset = 0.8 * self.handle_offset
         p1_arrow = (self.constraint.p1.x().value() + arrow_offset * np.cos(handle_angle),
                     self.constraint.p1.y().value() + arrow_offset * np.sin(handle_angle))
         p2_arrow = (self.constraint.p2.x().value() + arrow_offset * np.cos(handle_angle),
                     self.constraint.p2.y().value() + arrow_offset * np.sin(handle_angle))
 
-        text_offset = 0.06 * pymead.core.UNITS.convert_length_from_base(1.0, pymead.core.UNITS.current_length_unit())
+        # text_offset = 0.06 * pymead.core.UNITS.convert_length_from_base(1.0, pymead.core.UNITS.current_length_unit())
+        text_offset = 1.2 * self.handle_offset
+
         text_angle = np.rad2deg((angle + np.pi / 2) % np.pi - np.pi / 2)
         text_pos = (self.constraint.p1.x().value() + text_offset * np.cos(handle_angle) + 0.5 * dist * np.cos(angle),
                     self.constraint.p1.y().value() + text_offset * np.sin(handle_angle) + 0.5 * dist * np.sin(angle))
@@ -187,7 +240,7 @@ class DistanceConstraintItem(ConstraintItem):
         line_y = [self.constraint.p1.y().value() + arrow_offset * np.sin(handle_angle),
                   self.constraint.p1.y().value() + arrow_offset * np.sin(handle_angle) + dist * np.sin(angle)]
 
-        handle_offset = 0.05 * pymead.core.UNITS.convert_length_from_base(1.0, pymead.core.UNITS.current_length_unit())
+        handle_offset = self.handle_offset
         handle1_x = [self.constraint.p1.x().value(),
                      self.constraint.p1.x().value() + handle_offset * np.cos(handle_angle)]
         handle1_y = [self.constraint.p1.y().value(),
