@@ -60,7 +60,6 @@ class DraggablePoint(pg.GraphItem):
             item.setParentItem(self)
 
     def mouseDragEvent(self, ev):
-        print(f"Mouse drag event = {ev}")
         if ev.button() != Qt.MouseButton.LeftButton:
             ev.ignore()
             return

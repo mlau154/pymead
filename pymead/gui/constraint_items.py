@@ -1,5 +1,5 @@
 import pyqtgraph as pg
-from PyQt6.QtCore import Qt, pyqtSignal, QObject
+from PyQt6.QtCore import Qt, pyqtSignal, QObject, QPointF
 from PyQt6.QtGui import QFont, QPen, QColor
 from PyQt6.QtWidgets import QGraphicsTextItem
 
@@ -21,6 +21,7 @@ class ConstraintItem(QObject):
         self.canvas_items = canvas_items
         for canvas_item in self.canvas_items:
             canvas_item.constraint_item = self
+            canvas_item.constraint = constraint
         self._hoverable = True
         self.setStyle(theme=theme, mode="default")
 
@@ -102,6 +103,7 @@ class ConstraintCurveItem(pg.PlotCurveItem):
         self.clickable = True
         self.canvas = canvas
         self.constraint_item = None
+        self.constraint = None
         self.is_moving = False
         self.starting_point = None
         self.starting_handle_offset = None
@@ -138,6 +140,14 @@ class ConstraintCurveItem(pg.PlotCurveItem):
         # takes precedence during the mouse drag
         ev.accept()
 
+    def compute_offset(self, ending_point: QPointF):
+        angle = self.constraint.p1.measure_angle(self.constraint.p2) + np.pi / 2
+        unit_vector = np.array([np.cos(angle), np.sin(angle)])
+        measured_offset = np.array([ending_point.x() - self.starting_point.x(),
+                                    ending_point.y() - self.starting_point.y()])
+        component_along_unit_vector = np.dot(unit_vector, measured_offset)
+        return component_along_unit_vector
+
     def onMouseMoved(self, ev):
         if not self.draggable or not self.is_moving:
             return
@@ -148,7 +158,7 @@ class ConstraintCurveItem(pg.PlotCurveItem):
             if point.canvas_item.dragPoint is not None:
                 return
         ending_point = self.canvas.getViewBox().mapSceneToView(ev.pos().toPointF())
-        self.constraint_item.handle_offset = self.starting_handle_offset + (ending_point.y() - self.starting_point.y())
+        self.constraint_item.handle_offset = self.starting_handle_offset + self.compute_offset(ending_point)
         self.constraint_item.update()
         ev.accept()
 
@@ -213,7 +223,6 @@ class DistanceConstraintItem(ConstraintItem):
                 item.setZValue(-10)
         self.handle_offset = constraint.handle_offset if constraint.handle_offset is not None else (
                 0.05 * pymead.core.UNITS.convert_length_from_base(1.0, pymead.core.UNITS.current_length_unit()))
-        print(f"Starting, {self.handle_offset = }")
         self.update()
 
     def update(self):
