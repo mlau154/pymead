@@ -140,11 +140,24 @@ class ConstraintCurveItem(pg.PlotCurveItem):
         # takes precedence during the mouse drag
         ev.accept()
 
-    def compute_offset(self, ending_point: QPointF):
+    def compute_offset_distance_constraint(self, ending_point: QPointF):
         angle = self.constraint.p1.measure_angle(self.constraint.p2) + np.pi / 2
         unit_vector = np.array([np.cos(angle), np.sin(angle)])
         measured_offset = np.array([ending_point.x() - self.starting_point.x(),
                                     ending_point.y() - self.starting_point.y()])
+        component_along_unit_vector = np.dot(unit_vector, measured_offset)
+        return component_along_unit_vector
+
+    def compute_offset_relative_angle_3_constraint(self, ending_point: QPointF):
+        dist_1 = self.constraint.p2.measure_distance(self.constraint.p1)
+        dist_2 = self.constraint.p2.measure_distance(self.constraint.p3)
+        angle_1 = self.constraint.p2.measure_angle(self.constraint.p1)
+        angle_2 = self.constraint.p2.measure_angle(self.constraint.p3)
+        mean_dist = 0.5 * (dist_1 + dist_2)
+        mean_angle = 0.5 * (angle_1 + angle_2)
+        unit_vector = np.array([np.cos(mean_angle), np.sin(mean_angle)])
+        measured_offset = np.array([ending_point.x() - self.starting_point.x(),
+                                    ending_point.y() - self.starting_point.y()]) / mean_dist
         component_along_unit_vector = np.dot(unit_vector, measured_offset)
         return component_along_unit_vector
 
@@ -158,7 +171,14 @@ class ConstraintCurveItem(pg.PlotCurveItem):
             if point.canvas_item.dragPoint is not None:
                 return
         ending_point = self.canvas.getViewBox().mapSceneToView(ev.pos().toPointF())
-        self.constraint_item.handle_offset = self.starting_handle_offset + self.compute_offset(ending_point)
+        if isinstance(self.constraint_item, DistanceConstraintItem):
+            self.constraint_item.handle_offset = (self.starting_handle_offset +
+                                                  self.compute_offset_distance_constraint(ending_point))
+        elif isinstance(self.constraint_item, RelAngle3ConstraintItem):
+            self.constraint_item.handle_offset = (self.starting_handle_offset +
+                                                  self.compute_offset_relative_angle_3_constraint(ending_point))
+        else:
+            raise ValueError("Dragging only implemented for distance and relative angle 3 constraint items")
         self.constraint_item.update()
         ev.accept()
 
@@ -343,9 +363,10 @@ class AntiParallel3ConstraintItem(ConstraintItem):
 
 class RelAngle3ConstraintItem(ConstraintItem):
     def __init__(self, constraint: RelAngle3Constraint, theme: dict):
+        self._handle_offset = None
         pen = pg.mkPen(width=1, style=Qt.PenStyle.DashLine)
         canvas_items = [
-            ConstraintCurveItem(mouseWidth=2),
+            ConstraintCurveItem(mouseWidth=2, canvas=constraint.canvas, draggable=True),
             ConstraintCurveItem(pen=pen, mouseWidth=2),
             ConstraintCurveItem(pen=pen, mouseWidth=2),
             ConstraintTextItem(constraint.param(), anchor=(0, 0.5), interactive=True),
@@ -354,21 +375,40 @@ class RelAngle3ConstraintItem(ConstraintItem):
         super().__init__(constraint=constraint, canvas_items=canvas_items, theme=theme)
         for item in canvas_items:
             item.setZValue(-10)
+        self.handle_offset = constraint.handle_offset if constraint.handle_offset is not None else 0.1
         self.update()
 
+    @property
+    def handle_offset(self):
+        return self._handle_offset
+
+    @handle_offset.setter
+    def handle_offset(self, offset: float):
+        """
+        Ensure that the handle offset is always greater than a small positive number to avoid displaying the
+        angle line on the incorrect side of the vertex. Also ensure that the arc item does not extend beyond the
+        shortest of the two lines p2p1 and p2p3.
+        """
+        dist1 = self.constraint.p2.measure_distance(self.constraint.p1)
+        dist2 = self.constraint.p2.measure_distance(self.constraint.p3)
+        mean_distance = np.mean([dist1, dist2])
+        self._handle_offset = min([max([offset, 1e-3]), dist1 / mean_distance, dist2 / mean_distance])
+
     def update(self):
+
         dist1 = self.constraint.p2.measure_distance(self.constraint.p1)
         dist2 = self.constraint.p2.measure_distance(self.constraint.p3)
         angle1 = self.constraint.p2.measure_angle(self.constraint.p1)
         angle2 = angle1 - self.constraint.param().rad()
         mean_angle = np.mean([angle1, angle2])
-        text_distance = 0.15 * np.mean([dist1, dist2])
+        mean_distance = np.mean([dist1, dist2])
+        text_distance = 1.5 * self.handle_offset * mean_distance
         text_x = self.constraint.p2.x().value() + text_distance * np.cos(mean_angle)
         text_y = self.constraint.p2.y().value() + text_distance * np.sin(mean_angle)
 
         theta = np.linspace(angle1, angle2, 30)
-        x = self.constraint.p2.x().value() + np.mean([dist1, dist2]) * 0.1 * np.cos(theta)
-        y = self.constraint.p2.y().value() + np.mean([dist1, dist2]) * 0.1 * np.sin(theta)
+        x = self.constraint.p2.x().value() + self.handle_offset * mean_distance * np.cos(theta)
+        y = self.constraint.p2.y().value() + self.handle_offset * mean_distance * np.sin(theta)
 
         line1_x = [self.constraint.p2.x().value(), self.constraint.p1.x().value()]
         line1_y = [self.constraint.p2.y().value(), self.constraint.p1.y().value()]

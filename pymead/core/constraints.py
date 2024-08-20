@@ -205,6 +205,7 @@ class RelAngle3Constraint(GeoCon):
                 args.extend([point.x().value(), point.y().value()])
             value = measure_rel_angle3(*args)
         param = value if isinstance(value, Param) else AngleParam(value=value, name="Angle-1", geo_col=geo_col)
+        self.handle_offset = None
         super().__init__(param=param, name=name, child_nodes=[self.p1, self.p2, self.p3], kind="a3", geo_col=geo_col)
 
     def __repr__(self):
