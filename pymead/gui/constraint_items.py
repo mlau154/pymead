@@ -144,7 +144,7 @@ class ConstraintCurveItem(pg.PlotCurveItem):
         angle = self.constraint.p1.measure_angle(self.constraint.p2) + np.pi / 2
         unit_vector = np.array([np.cos(angle), np.sin(angle)])
         measured_offset = np.array([ending_point.x() - self.starting_point.x(),
-                                    ending_point.y() - self.starting_point.y()])
+                                    ending_point.y() - self.starting_point.y()]) / 0.8
         component_along_unit_vector = np.dot(unit_vector, measured_offset)
         return component_along_unit_vector
 
