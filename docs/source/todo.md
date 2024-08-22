@@ -17,6 +17,7 @@ Planned feature additions
 - Add modifiable perpendicular constraint handle positioning
 - Add handle offsets to `.jmea` files
 - Add the ability to hide individual objects
+- Display RAM/CPU usage live during optimization (using `psutil.virtual_memory().percent` and `psutil.cpu_percent()`)
 
 Refactoring
 -----------
