@@ -18,6 +18,7 @@ Planned feature additions
 - Add handle offsets to `.jmea` files
 - Add the ability to hide individual objects
 - Display RAM/CPU usage live during optimization (using `psutil.virtual_memory().percent` and `psutil.cpu_percent()`)
+- Make Airfoil ("F") dialog non-blocking
 
 Refactoring
 -----------
@@ -33,6 +34,9 @@ Bug fixes
   after a previous optimization to the same name but with additional numbers and strings following the root name
 - Fix draggable constraint handles interfering with each other
 - Fix angle constraints sometimes only responding to movement in the antiparallel direction
+- Create GUI error message instead of early terminating for plotting Mach contours etc. with MSES analysis if MuPDF
+  or ps2pdf not found
+- Override context menu for all graphs
 
 Testing
 -------
