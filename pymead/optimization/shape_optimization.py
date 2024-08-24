@@ -124,9 +124,26 @@ def shape_optimization(conn: multiprocessing.connection.Connection or None, para
         sampling = ConstrictedRandomSampling(n_samples=param_dict['n_offsprings'], norm_param_list=parameter_list,
                                              max_sampling_width=param_dict['max_sampling_width'])
         X_list = sampling.sample()
-        parents = [Chromosome(geo_col_dict=geo_col_dict, param_dict=param_dict, generation=0,
-                              airfoil_name=airfoil_name, mea_name=mea_name, population_idx=idx, genes=individual)
-                   for idx, individual in enumerate(X_list)]
+
+        if "multi_geom_active" in param_dict and param_dict["multi_geom_active"]:
+            parents = [[Chromosome(geo_col_dict=geo_col_dict,
+                                   param_dict=param_dict,
+                                   generation=0,
+                                   airfoil_name=airfoil_name,
+                                   mea_name=mea_name,
+                                   population_idx=idx,
+                                   genes=individual) for _ in range(len(param_dict["multi_geom_stencil"]))]
+                       for idx, individual in enumerate(X_list)]
+        else:
+            parents = [Chromosome(geo_col_dict=geo_col_dict,
+                                  param_dict=param_dict,
+                                  generation=0,
+                                  airfoil_name=airfoil_name,
+                                  mea_name=mea_name,
+                                  population_idx=idx,
+                                  genes=individual)
+                       for idx, individual in enumerate(X_list)]
+
         population = Population(param_dict=param_dict, generation=0, parents=parents,
                                 verbose=param_dict['verbose'])
 

@@ -41,6 +41,7 @@ class Chromosome:
 
         self.param_dict = deepcopy(param_dict)
         self.genes = deepcopy(genes)
+        self.genes_copy = deepcopy(genes)  # Required for multipoint geometry
         self.generation = generation
         self.population_idx = population_idx
 
@@ -116,16 +117,45 @@ class Chromosome:
             )
         return coords
 
-    def generate_airfoil_sys_from_genes(self) -> dict:
+    def generate_airfoil_sys_from_genes(self, stencil: dict = None) -> dict:
         """
         Converts Chromosome's gene list into a set of discrete airfoil system coordinates
-        :return:
+
+        Parameters
+        ----------
+        stencil: dict or None
+            Multi-geometry stencil indexed for this chromosome. Should have the following format:
+            ``{'dvs_to_mask': [dv_to_mask_1, dv_to_mask_2, ...],
+            'params_to_update': {'myParam-1': 0.5, 'myParam-2': 0.3, ...}}``
+
+        Returns
+        -------
+        dict
+            The (possibly updated) optimization parameter dictionary
         """
         if self.genes is not None:
+
+            # Refresh the list of genes in case changes were made
+            self.genes = deepcopy(self.genes_copy)
+
+            # Update the geometry from the stencil if required
+            if stencil is not None:
+                dv_names = self.geo_col.alphabetical_sub_container_key_list("desvar")
+                for dv_to_mask in stencil["dvs_to_mask"]:
+                    self.genes[dv_names.index(dv_to_mask)] = 888
+                for param_key, param_val in stencil["params_to_update"].items():
+                    self.geo_col.container()["params"][param_key].set_value(param_val)
+
+            # Assign the design variables from the bounds-normalized list (self.genes)
             self.geo_col.assign_design_variable_values(dv_values=self.genes, bounds_normalized=True)
-            self.update_param_dict()  # updates the MSES settings from the geometry (just for XCDELH right now)
+
+            # Update the MSES settings from the geometry (just for XCDELH right now)
+            self.update_param_dict()
+
+        # Get the coordinates of the airfoil system
         self.coords = self.get_coords()
         self.airfoil_sys_generated = True
+
         return self.param_dict
 
     def update_param_dict(self):
@@ -265,7 +295,8 @@ class Chromosome:
 
 class Population:
     def __init__(self, param_dict: dict, generation: int,
-                 parents: typing.List[Chromosome] or None, verbose: bool = True,
+                 parents: typing.List[Chromosome] or typing.List[typing.List[Chromosome]] or None,
+                 verbose: bool = True,
                  skip_parent_assignment: bool = False):
         self.param_dict = deepcopy(param_dict)
         self.generation = generation
@@ -273,19 +304,28 @@ class Population:
         self.population = []
         self.parent_indices = []
         self.converged_chromosomes = []
-        if not skip_parent_assignment:
+        self.num_parents = 0
+        if skip_parent_assignment:
+            return
+
+        if "multi_geom_active" in self.param_dict and self.param_dict["multi_geom_active"]:
+            for population_idx, chromosome_list in enumerate(parents):
+                for chromosome in chromosome_list:
+                    chromosome.population_idx = population_idx
+                self.population.append(chromosome_list)
+                self.parent_indices.append(population_idx)
+        else:
             for population_idx, chromosome in enumerate(parents):
                 chromosome.population_idx = population_idx
                 self.population.append(chromosome)
-                # self.parents.append(chromosome)
                 self.parent_indices.append(population_idx)
-            self.num_parents = len(self.parent_indices)
+
+        self.num_parents = len(self.parent_indices)
 
     def eval_chromosome_fitness(self, chromosome: Chromosome):
         """
         Evaluates the fitness of a particular chromosome
         """
-        # print(f"Generating {chromosome.population_idx}...")
         chromosome.generate()
         if not chromosome.valid_geometry:
             print(f"Geometry invalid for chromosome {chromosome.population_idx} "
@@ -354,6 +394,12 @@ class Population:
         for chromosome in result:
             self.population = [chromosome if c.population_idx == chromosome.population_idx
                                else c for c in self.population]
+
+    def eval_chromosome_fitness_multi_geom(self, chromosomes: typing.List[Chromosome]):
+        output_chromosomes = []
+        for chromosome, geom in zip(chromosomes, self.param_dict["multi_geom_stencil"]):
+
+            self.eval_chromosome_fitness(chromosome)
 
     def eval_pop_fitness(self, sig: multiprocessing.connection.Connection = None):
         """

@@ -1745,17 +1745,23 @@ class GUI(FramelessMainWindow):
                 # MULTI-POINT OPTIMIZATION
                 multi_point_stencil = None
                 if opt_settings['Multi-Point Optimization']['multi_point_active']:
-                    try:
-                        multi_point_data = np.loadtxt(param_dict['multi_point_stencil'], delimiter=',')
-                        multi_point_stencil = read_stencil_from_array(multi_point_data, tool=param_dict["tool"])
+                    try:  # make multi_point_stencil a list of dicts here
+                        if isinstance(param_dict["multi_point_stencil"], list):
+                            multi_point_data = [np.loadtxt(
+                                stencil, delimiter=',') for stencil in param_dict["multi_point_stencil"]]
+                            multi_point_stencil = [read_stencil_from_array(
+                                data, tool=param_dict["tool"]) for data in multi_point_data]
+                        else:
+                            multi_point_data = np.loadtxt(param_dict['multi_point_stencil'], delimiter=',')
+                            multi_point_stencil = read_stencil_from_array(multi_point_data, tool=param_dict["tool"])
                     except FileNotFoundError:
                         message = f'Multi-point stencil file {param_dict["multi_point_stencil"]} not found'
-                        self.disp_message_box(message=message, message_mode='error')
+                        self.disp_message_box(message=message, message_mode="error")
                         raise FileNotFoundError(message)
-                if param_dict['tool'] == 'MSES':
-                    param_dict['mses_settings']['multi_point_stencil'] = multi_point_stencil
-                elif param_dict['tool'] == 'XFOIL':
-                    param_dict['xfoil_settings']['multi_point_stencil'] = multi_point_stencil
+                if param_dict["tool"] == "MSES":
+                    param_dict["mses_settings"]["multi_point_stencil"] = multi_point_stencil
+                elif param_dict["tool"] == "XFOIL":
+                    param_dict["xfoil_settings"]["multi_point_stencil"] = multi_point_stencil
                 else:
                     raise ValueError(f"Currently only MSES and XFOIL are supported as analysis tools for "
                                      f"aerodynamic shape optimization. Tool selected was {param_dict['tool']}")

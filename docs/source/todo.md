@@ -18,6 +18,7 @@ Planned feature additions
 - Add handle offsets to `.jmea` files
 - Add the ability to hide individual objects
 - Display RAM/CPU usage live during optimization (using `psutil.virtual_memory().percent` and `psutil.cpu_percent()`)
+- Create a tab during optimization showing details about the status of the chromosome owned by each processor
 
 Refactoring
 -----------

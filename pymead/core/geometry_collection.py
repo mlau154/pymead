@@ -854,14 +854,16 @@ class GeometryCollection(DualRep):
 
         # Set the values
         for dv, dv_value in zip(self.container()["desvar"].values(), dv_values):
+            if dv_value == 888 and bounds_normalized:
+                continue
             dv.set_value(dv_value, bounds_normalized=bounds_normalized)
 
-    def alphabetical_sub_container_key_list(self, sub_container: str):
+    def alphabetical_sub_container_key_list(self, sub_container: str) -> typing.List[str]:
         """
         This method sorts a sub-container with the following rules:
 
         - Text case does not matter
-        - Any consecutive numerical strings should appear in descending order
+        - Any consecutive numerical strings should appear in ascending order
         - For parameters with an associated index, the parameter with an implied index of 1 should appear first,
           provided it exists. For example, ``"Point-2.x"`` should come after ``"Point.x"``, and ``"myParam-5"``
           should come after ``"myParam"``.
