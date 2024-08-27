@@ -337,8 +337,7 @@ class AirfoilCanvas(pg.PlotWidget):
     @undoRedoAction
     def generateAirfoil(self, dialog_test_action: typing.Callable = None):
 
-        self.dialog = AirfoilDialog(self, theme=self.gui_obj.themes[self.gui_obj.current_theme], geo_col=self.geo_col)
-        if (dialog_test_action is not None and not dialog_test_action(self.dialog)) or self.dialog.exec():
+        def onAccept():
             dialog_value = self.dialog.value()
             le = dialog_value["leading_edge"]
             te = dialog_value["trailing_edge"]
@@ -354,6 +353,17 @@ class AirfoilCanvas(pg.PlotWidget):
                 self.gui_obj.disp_message_box(str(e))
                 return
             self.gui_obj.permanent_widget.updateAirfoils()
+
+        try:
+            self.dialog = AirfoilDialog(parent=self, theme=self.gui_obj.themes[self.gui_obj.current_theme], geo_col=self.geo_col)
+        except ValueError as e:
+            self.gui_obj.disp_message_box(str(e))
+            return
+        if dialog_test_action is not None and not dialog_test_action(self.dialog):
+            onAccept()
+        else:
+            self.dialog.accepted.connect(onAccept)
+            self.dialog.show()
         self.geo_col.clear_selected_objects()
 
     @undoRedoAction

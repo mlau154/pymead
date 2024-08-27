@@ -3204,9 +3204,11 @@ class LoadPointsDialog(PymeadDialog):
 
 
 class AirfoilDialog(PymeadDialog):
-    def __init__(self, parent, theme: dict, geo_col: GeometryCollection):
+    def __init__(self, theme: dict, geo_col: GeometryCollection, parent=None):
+        if len(geo_col.container()["points"]) == 0:
+            raise ValueError("An airfoil cannot be created until at least one Point has been added.")
         widget = QWidget()
-        super().__init__(parent, window_title="Create Airfoil", widget=widget, theme=theme)
+        super().__init__(parent=parent, window_title="Create Airfoil", widget=widget, theme=theme)
         self.lay = QGridLayout()
         widget.setLayout(self.lay)
         self.geo_col = geo_col
