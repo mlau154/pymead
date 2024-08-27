@@ -14,6 +14,7 @@ Quick Links
 - `pymead releases page <https://github.com/mlau154/pymead/releases>`_
 - `PyPi project page <https://pypi.org/project/pymead/>`_
 - `pymead installation page (next tab) <https://pymead.readthedocs.io/en/latest/install.html>`_
+- `GitHub issues page <https://github.com/mlau154/pymead/issues>`_
 
 
 How to Use Pymead
@@ -28,6 +29,15 @@ For those desiring to extend `pymead`'s functionality, the API can be used. Even
 API, an easy starting point may be to create an airfoil system with the GUI, save the
 airfoil system, and load the airfoil system into the API using the ``set_from_dict_rep`` class method in
 a ``GeometryCollection`` object.
+
+
+Bug Squashing
+-------------
+
+If you find a bug in `pymead`, or even simply want the behavior of a feature changed or a small feature added,
+feel free to create an "Issue" on the GitHub issues page (see the `Quick Links`_ section). Feature changes and
+additions will be reviewed by the `pymead` developers, and bugs will be fixed in order of priority and timestamp.
+
 
 Contents
 --------
