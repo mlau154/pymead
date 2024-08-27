@@ -14,7 +14,8 @@ There are several easy ways to install pymead.
   are designed for users interested in using the
   various pymead classes and functions in their Python code and/or using the GUI
   to develop airfoil systems.
-- :ref:`Method 4<method-4>` is for advanced users who wish to extend
+- :ref:`Method 4<method-4>` is for those who wish to use the bleeding-edge version of pymead or for
+  advanced users who wish to extend
   and/or develop pymead in addition to using both the GUI and API.
 
 These installation methods are summarized in the table below and described in depth in the sections
@@ -26,18 +27,20 @@ following the table.
 
 
 .. list-table::
-   :widths: 20 38 14 14 14
+   :widths: 15 32 13 13 14 13
    :header-rows: 1
    :class: max-width-table
 
-   * - Method #
+   * - Method
      - Description
      - GUI
      - API
      - Develop
+     - Latest
    * - :ref:`1<method-1>`
      - :ref:`Native Application<method-1>`
      - |check|
+     - |cross|
      - |cross|
      - |cross|
    * - :ref:`2<method-2>`
@@ -45,13 +48,16 @@ following the table.
      - |check|
      - |check|
      - |cross|
+     - |cross|
    * - :ref:`3<method-3>`
      - :ref:`IDE + pip<method-3>`
      - |check|
      - |check|
      - |cross|
+     - |cross|
    * - :ref:`4<method-4>`
      - :ref:`Git<method-4>`
+     - |check|
      - |check|
      - |check|
      - |check|
@@ -173,7 +179,8 @@ accessing the GUI and the API.
 
 Method 4: Local Install (DEV: GUI+API)
 -----------------------------------------
-This method is recommended for those wishing to contribute to pymead in any capacity.
+This method is recommended for those wishing to use the latest development version of pymead or for those who
+desire to contribute to pymead in any capacity.
 The pymead package can be installed in a local location using `Git <https://gitforwindows.org/>`_.
 To accomplish this, clone the repository, fetch all the branches, and checkout the ``dev`` branch:
 

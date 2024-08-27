@@ -4,6 +4,7 @@ import typing
 import pytest
 from PyQt6.QtCore import QTimer, QPointF, QPoint
 from PyQt6.QtWidgets import QDialog, QApplication
+from pynput.mouse import Controller, Button
 
 from pymead.gui.gui import GUI
 from pymead.core.point import Point
@@ -80,4 +81,37 @@ def pointer(app, point: Point, qtbot: QtBot):
     qtbot.wait(100)
     qtbot.mouseMove(app.airfoil_canvas, QPoint(point_pixel_location.x() + 1, point_pixel_location.y() + 1))
     qtbot.wait(100)
+    return point
+
+
+def moving_point_2(app, point: Point, qtbot: QtBot):
+
+    mouse = Controller()
+
+    app.auto_range_geometry()
+
+    qtbot.wait(1000)
+
+    x = point.canvas_item.scatter.data[0][0]
+    y = point.canvas_item.scatter.data[0][1]
+
+    # Compute the position of the input Point object in global pixel coordinates
+    screenGeometry = app.airfoil_canvas.getViewBox().screenGeometry()
+    viewRange = app.airfoil_canvas.getViewBox().viewRange()
+    viewNormalizedX = (x - viewRange[0][0]) / (viewRange[0][1] - viewRange[0][0])
+    viewNormalizedY = (y - viewRange[1][0]) / (viewRange[1][1] - viewRange[1][0])
+    point_pixel_location = QPointF(
+        screenGeometry.topLeft().x() + screenGeometry.width() * viewNormalizedX,
+        screenGeometry.topLeft().y() + screenGeometry.height() * (1 - viewNormalizedY) - 25
+    ).toPoint()
+
+    # Move pointer relative to current position
+    mouse.position = (point_pixel_location.x(), point_pixel_location.y())
+    qtbot.wait(100)
+    mouse.press(Button.left)
+    qtbot.wait(100)
+    mouse.move(25, -25)
+    mouse.release(Button.left)
+    qtbot.wait(200)
+
     return point
