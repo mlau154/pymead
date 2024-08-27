@@ -97,7 +97,7 @@ class PolyLine(ParametricCurve):
     AirfoilTools = 0
     DatFile = 1
 
-    def __init__(self, source: str, start: int or float = None, end: int or float = None,
+    def __init__(self, source: str, coords: np.ndarray = None, start: int or float = None, end: int or float = None,
                  point_sequence: PointSequence = None, name: str or None = None, num_header_rows: int = 0,
                  delimiter: str or None = None, **kwargs):
 
@@ -109,7 +109,7 @@ class PolyLine(ParametricCurve):
         self.end = end
         self.num_header_rows = num_header_rows
         self.delimiter = delimiter
-        self.original_coords = self._get_original_coords()
+        self.original_coords = self._get_original_coords() if coords is None else coords
         self.coords = self._get_coord_slice()
         point_sequence = self._extract_point_sequence_from_coords() if point_sequence is None else point_sequence
         self.set_point_sequence(point_sequence)
@@ -275,7 +275,7 @@ class PolyLine(ParametricCurve):
 
     def get_dict_rep(self):
         return {"points": [pt.name() for pt in self.point_sequence().points()], "source": self.source,
-                "start": self.start, "end": self.end}
+                "start": self.start, "end": self.end, "coords": self.original_coords.tolist()}
 
 
 class ReferencePolyline(PymeadObj):

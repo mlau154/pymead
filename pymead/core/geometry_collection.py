@@ -607,10 +607,10 @@ class GeometryCollection(DualRep):
 
         return self.add_pymead_obj_by_ref(line, assign_unique_name=assign_unique_name)
 
-    def add_polyline(self, source: str, start: int or float = None, end: int or float = None,
+    def add_polyline(self, source: str, coords: np.ndarray = None, start: int or float = None, end: int or float = None,
                      point_sequence: PointSequence = None,
                      name: str or None = None, assign_unique_name: bool = True):
-        polyline = PolyLine(source=source, start=start, end=end, point_sequence=point_sequence,
+        polyline = PolyLine(source=source, coords=coords, start=start, end=end, point_sequence=point_sequence,
                             name=name)
         if point_sequence is None:
             for point in polyline.point_sequence().points():
@@ -1044,6 +1044,7 @@ class GeometryCollection(DualRep):
             for name, polyline_dict in d["polylines"].items():
                 geo_col.add_polyline(point_sequence=PointSequence(
                     points=[geo_col.container()["points"][k] for k in polyline_dict["points"]]),
+                    coords=np.array(polyline_dict["coords"]) if "coords" in polyline_dict else None,
                     source=polyline_dict["source"], start=polyline_dict["start"], end=polyline_dict["end"], name=name,
                     assign_unique_name=False)
         for name, bezier_dict in d["bezier"].items():
