@@ -19,6 +19,7 @@ Planned feature additions
 - Add the ability to hide individual objects
 - Display RAM/CPU usage live during optimization (using `psutil.virtual_memory().percent` and `psutil.cpu_percent()`)
 - Make Airfoil ("F") dialog non-blocking
+- Direct & inverse airfoil design modules
 
 Refactoring
 -----------
@@ -37,6 +38,7 @@ Bug fixes
 - Create GUI error message instead of early terminating for plotting Mach contours etc. with MSES analysis if MuPDF
   or ps2pdf not found
 - Override context menu for all graphs
+- Fix visual artifacts of FramelessWindow appearing while dragging
 
 Testing
 -------
