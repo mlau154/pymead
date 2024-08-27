@@ -54,7 +54,8 @@ dependencies = [
     "networkx",
     "psutil",
     "pytest>=7",
-    "pytest-qt"
+    "pytest-qt",
+    "pynput"
 ]
 dynamic = ["version"]
 

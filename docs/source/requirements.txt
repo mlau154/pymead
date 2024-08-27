@@ -16,3 +16,4 @@ networkx
 psutil
 pytest>=7
 pytest-qt
+pynput
