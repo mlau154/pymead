@@ -47,8 +47,10 @@ Bug fixes
   or ps2pdf not found
 - Fix visual artifacts of FramelessWindow appearing while dragging
 - Throw GUI error if XFOIL airfoil has more than 495 coordinate points (hard-coded limit)
-- Fix `QLayout` warning when loading downsampling preview
-- Fix some airfoil of an MEA occasionally not being added to MSET dialog
+- Fix the following `QLayout` warning when loading downsampling preview:
+  'Attempting to add QLayout "" to DownsamplingPreviewDialog "", which already has a layout'
+- Fix some airfoils of an MEA occasionally not being added to MSET dialog
+- Fix no GUI error being thrown when trying to visualize downsampling on an empty/non-existent MEA
 
 Aesthetics
 ----------
