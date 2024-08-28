@@ -9,7 +9,8 @@ from pymead.utils.nchoosek import nchoosek
 
 class Bezier(ParametricCurve):
 
-    def __init__(self, point_sequence: PointSequence or typing.List[Point], name: str or None = None,
+    def __init__(self, point_sequence: PointSequence or typing.List[Point],
+                 default_nt: int or None = None, name: str or None = None,
                  t_start: float = None, t_end: float = None, **kwargs):
         r"""
         Computes the Bézier curve through the control points ``P`` according to
@@ -83,6 +84,7 @@ class Bezier(ParametricCurve):
         super().__init__(sub_container="bezier", **kwargs)
         self._point_sequence = None
         self.degree = None
+        self.default_nt = default_nt
         point_sequence = PointSequence(point_sequence) if isinstance(point_sequence, list) else point_sequence
         self.set_point_sequence(point_sequence)
         self.t_start = t_start
@@ -262,6 +264,8 @@ class Bezier(ParametricCurve):
             vector-valued functions :math:`\vec{C}(t)`, :math:`\vec{C}'(t)`, and :math:`\vec{C}''(t)`.
         """
         # Generate the parameter vector
+        if self.default_nt is not None:
+            kwargs["nt"] = self.default_nt
         t = ParametricCurve.generate_t_vec(**kwargs) if t is None else t
 
         # Number of control points, curve degree, control point array
@@ -362,7 +366,7 @@ class Bezier(ParametricCurve):
             )
 
     def get_dict_rep(self):
-        return {"points": [pt.name() for pt in self.point_sequence().points()]}
+        return {"points": [pt.name() for pt in self.point_sequence().points()], "default_nt": self.default_nt}
 
 
 def main():

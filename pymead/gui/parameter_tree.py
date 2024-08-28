@@ -5,7 +5,8 @@ import pyqtgraph as pg
 from PyQt6.QtCore import Qt, pyqtSignal, pyqtSlot, QRegularExpression
 from PyQt6.QtGui import QValidator, QBrush, QColor
 from PyQt6.QtWidgets import QTreeWidget, QTreeWidgetItem, QPushButton, QHBoxLayout, QHeaderView, QDialog, QGridLayout, \
-    QDoubleSpinBox, QLineEdit, QLabel, QMenu, QAbstractItemView, QTreeWidgetItemIterator, QWidget, QCompleter
+    QDoubleSpinBox, QLineEdit, QLabel, QMenu, QAbstractItemView, QTreeWidgetItemIterator, QWidget, QCompleter, QSpinBox
+from pymead.core.parametric_curve import INTERMEDIATE_NT
 
 from pymead.core.airfoil import Airfoil
 from pymead.core.bezier import Bezier
@@ -447,15 +448,28 @@ class PointButton(TreeButton):
 class BezierButton(TreeButton):
 
     def __init__(self, bezier: Bezier, tree, top_level: bool = False):
-        super().__init__(pymead_obj=bezier, tree=tree, top_level=top_level)
         self.bezier = bezier
+        super().__init__(pymead_obj=bezier, tree=tree, top_level=top_level)
 
     def modifyDialogInternals(self, dialog: QDialog, layout: QGridLayout) -> None:
+        # Add name widget
         name_label = QLabel("Name", self)
         name_edit = NameEdit(self, self.bezier, self.tree)
         name_edit.textChanged.connect(self.onNameChange)
         layout.addWidget(name_label, 1, 0)
         layout.addWidget(name_edit, 1, 1)
+
+        # Add default nt widget
+        nt_label = QLabel("Evaluated Points", self)
+        nt_spin = QSpinBox(self)
+        nt_spin.setMinimum(2)
+        nt_spin.setMaximum(100000)
+        nt_spin.setValue(INTERMEDIATE_NT if self.bezier.default_nt is None else self.bezier.default_nt)
+        nt_spin.valueChanged.connect(self.onSpinChange)
+        layout.addWidget(nt_label, 2, 0)
+        layout.addWidget(nt_spin, 2, 1)
+
+        # Add the point buttons
         for point in self.bezier.point_sequence().points():
             point_button = PointButton(point, self.tree)
             point_button.sigNameChanged.connect(self.onPointNameChange)
@@ -470,6 +484,10 @@ class BezierButton(TreeButton):
 
     def leaveEvent(self, a0):
         self.bezier.canvas_item.setItemStyle("default")
+
+    def onSpinChange(self, new_val: int):
+        self.bezier.default_nt = new_val
+        self.bezier.update()
 
 
 class LineSegmentButton(TreeButton):

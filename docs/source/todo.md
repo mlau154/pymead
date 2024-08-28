@@ -42,6 +42,7 @@ Bug fixes
 - Create GUI error message instead of early terminating for plotting Mach contours etc. with MSES analysis if MuPDF
   or ps2pdf not found
 - Fix visual artifacts of FramelessWindow appearing while dragging
+- Throw GUI error if XFOIL airfoil has more than 495 coordinate points (hard-coded limit)
 
 Aesthetics
 ----------
