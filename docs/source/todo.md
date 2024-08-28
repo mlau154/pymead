@@ -24,6 +24,10 @@ Planned feature additions
 - Add downsampling feature to XFOIL
 - Make downsampling also apply to polylines
 - Add variable number of Bezier evaluation points in the `BezierButton` dialog
+- Make single-step unit aware for spin-boxes and arrow-key movements
+- Make airfoil-relative points an option, either by adding this as a new constraint option
+  or by adding a list of airfoil-relative points to that particular airfoil. Either way,
+  the points would need to be added to the graph
 
 Refactoring
 -----------
