@@ -36,7 +36,6 @@ Bug fixes
 - Fix angle constraints sometimes only responding to movement in the antiparallel direction
 - Create GUI error message instead of early terminating for plotting Mach contours etc. with MSES analysis if MuPDF
   or ps2pdf not found
-- Override context menu for all graphs
 - Fix visual artifacts of FramelessWindow appearing while dragging
 
 Testing
