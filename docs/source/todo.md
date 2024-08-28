@@ -19,6 +19,11 @@ Planned feature additions
 - Add the ability to hide individual objects
 - Display RAM/CPU usage live during optimization (using `psutil.virtual_memory().percent` and `psutil.cpu_percent()`)
 - Direct & inverse airfoil design modules
+- Add polyline from GUI
+- Make function tolerance default value dependent on number of objectives
+- Add downsampling feature to XFOIL
+- Make downsampling also apply to polylines
+- Add variable number of Bezier evaluation points in the `BezierButton` dialog
 
 Refactoring
 -----------
@@ -37,6 +42,10 @@ Bug fixes
 - Create GUI error message instead of early terminating for plotting Mach contours etc. with MSES analysis if MuPDF
   or ps2pdf not found
 - Fix visual artifacts of FramelessWindow appearing while dragging
+
+Aesthetics
+----------
+- Make airfoil coordinate downsampling preview adhere to the global format
 
 Testing
 -------
