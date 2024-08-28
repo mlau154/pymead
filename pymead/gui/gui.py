@@ -119,6 +119,7 @@ class GUI(FramelessMainWindow):
             "light": load_data(os.path.join(GUI_THEMES_DIR, "light_theme.json")),
         }
 
+        # Undo/redo stacks
         self.undo_stack = []
         self.redo_stack = []
 
@@ -141,6 +142,7 @@ class GUI(FramelessMainWindow):
         self.last_analysis_dir = None
         self.field_plot_variable = None
         self.analysis_graph = None
+        self.cached_cp_data = []
         self.residual_graph = None
         self.residual_data = None
         self.polar_graph_collection = None
@@ -1173,6 +1175,7 @@ class GUI(FramelessMainWindow):
         if self.analysis_graph is None:
             self.analysis_graph = AnalysisGraph(
                 theme=self.themes[self.current_theme],
+                gui_obj=self,
                 background_color=self.themes[self.current_theme]["graph-background-color"],
                 grid=self.main_icon_toolbar.buttons["grid"]["button"].isChecked()
             )
@@ -1345,6 +1348,7 @@ class GUI(FramelessMainWindow):
                     # TODO: Need to set analysis_graph to None if analysis window is closed! Might also not want to allow geometry docking window to be closed
                     self.analysis_graph = AnalysisGraph(
                         theme=self.themes[self.current_theme],
+                        gui_obj=self,
                         background_color=self.themes[self.current_theme]["graph-background-color"],
                         grid=self.main_icon_toolbar.buttons["grid"]["button"].isChecked()
                     )
@@ -1363,6 +1367,13 @@ class GUI(FramelessMainWindow):
                                                                          style=self.pen(self.n_converged_analyses)[1]),
                                                             name=name)
                 self.analysis_graph.set_legend_label_format(self.themes[self.current_theme])
+
+                self.cached_cp_data.append({
+                    "tool": "XFOIL",
+                    "index": self.n_analyses,
+                    "xc": aero_data["Cp"]["x"],
+                    "Cp": aero_data["Cp"]["Cp"]
+                })
 
                 pg_plot_handle.setData(aero_data['Cp']['x'], aero_data['Cp']['Cp'])
                 # pen = pg.mkPen(color='green')
@@ -1537,6 +1548,7 @@ class GUI(FramelessMainWindow):
             # Need to set analysis_graph to None if analysis window is closed
             self.analysis_graph = AnalysisGraph(
                 theme=self.themes[self.current_theme],
+                gui_obj=self,
                 background_color=self.themes[self.current_theme]["graph-background-color"],
                 grid=self.main_icon_toolbar.buttons["grid"]["button"].isChecked()
             )

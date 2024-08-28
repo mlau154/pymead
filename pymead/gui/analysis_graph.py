@@ -1,26 +1,81 @@
+import os
+from itertools import chain
+
 import numpy as np
 import pyqtgraph as pg
 from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QFont
-from PyQt6.QtWidgets import QWidget, QGridLayout
+from PyQt6.QtGui import QFont, QAction
+from PyQt6.QtWidgets import QWidget, QGridLayout, QMenu
 
 from pymead.core.geometry_collection import GeometryCollection
 from pymead.utils.misc import get_setting
+from pymead.gui.dialogs import ExportCSVDialog
+
+
+class AnalysisGraphGLW(pg.GraphicsLayoutWidget):
+    def __init__(self, analysis_graph: "AnalysisGraph", *args, gui_obj=None, **kwargs):
+        self.analysis_graph = analysis_graph
+        self.gui_obj = gui_obj
+        super().__init__(*args, **kwargs)
+
+    def contextMenuEvent(self, event, QContextMenuEvent=None):
+        menu = QMenu(self)
+
+        if self.gui_obj is not None:
+            exportAction = QAction("Export Data", self)
+            exportAction.triggered.connect(self.onExport)
+            menu.addAction(exportAction)
+
+            clearAction = QAction("Clear Data", self)
+            clearAction.triggered.connect(self.onClear)
+            menu.addAction(clearAction)
+
+        menu.exec(event.globalPos())
+
+    def onExport(self):
+        datas = self.gui_obj.cached_cp_data
+        if len(datas) == 0:
+            self.gui_obj.disp_message_box("No data to export")
+            return
+        csv_dialog = ExportCSVDialog(parent=self.gui_obj, theme=self.gui_obj.themes[self.gui_obj.current_theme])
+        if csv_dialog.exec():
+            file_name = csv_dialog.value()["csv_file"]
+        else:
+            return
+        header_list = list(chain.from_iterable([
+            [f"[{data['index']}] {data['tool'][0]} (xc)",
+             f"[{data['index']}] {data['tool'][0]} (Cp)"] for data in datas]))
+        header = ",".join(header_list)
+        xCp_list = [np.column_stack((data["xc"], data["Cp"])) for data in datas]
+        xCps = np.column_stack(tuple(xCp_list))
+        try:
+            np.savetxt(file_name, xCps, header=header, comments="", delimiter=",")
+            self.gui_obj.disp_message_box(f"Cp data saved to {file_name}", message_mode="info")
+        except FileNotFoundError:
+            self.gui_obj.disp_message_box(f"Could not find directory {os.path.split(file_name)[0]}")
+            return
+
+    def onClear(self):
+        self.gui_obj.cached_cp_data.clear()
+        self.analysis_graph.v.clear()
+        self.gui_obj.n_converged_analyses = 0
+        self.gui_obj.n_analyses = 0
 
 
 class AnalysisGraph:
-    def __init__(self, theme: dict, pen=None, size: tuple = (1000, 300),
+    def __init__(self, theme: dict, gui_obj, pen=None, size: tuple = (1000, 300),
                  background_color: str = 'w', grid: bool = False):
         pg.setConfigOptions(antialias=True)
 
         if pen is None:
             pen = pg.mkPen(color='cornflowerblue', width=2)
 
-        self.w = pg.GraphicsLayoutWidget(show=True, size=size)
+        self.w = AnalysisGraphGLW(analysis_graph=self, gui_obj=gui_obj, show=True, size=size)
 
         self.v = self.w.addPlot(pen=pen)
         self.v.invertY(True)
         self.v.showGrid(x=grid, y=grid)
+        self.v.setMenuEnabled(False)
         self.legend = self.v.addLegend(offset=(300, 20))
         self.set_formatting(theme=theme)
 
@@ -56,6 +111,7 @@ class ResidualGraph:
         self.w = pg.GraphicsLayoutWidget(show=True, size=size)
 
         self.v = self.w.addPlot(pen=pen)
+        self.v.setMenuEnabled(False)
         self.v.setLogMode(x=False, y=True)
         self.v.showGrid(x=grid, y=grid)
         self.legend = self.v.addLegend(offset=(-5, 5))
@@ -120,6 +176,7 @@ class SymmetricAreaDifferenceGraph:
         self.w = pg.GraphicsLayoutWidget(show=True, size=size)
 
         self.v = self.w.addPlot(pen=pen)
+        self.v.setMenuEnabled(False)
         self.v.setLogMode(x=False, y=True)
         self.v.showGrid(x=grid, y=grid)
 
@@ -159,6 +216,7 @@ class AirfoilMatchingGraph:
         self.w = pg.GraphicsLayoutWidget(show=True, size=size)
 
         self.v = self.w.addPlot(pen=pen)
+        self.v.setMenuEnabled(False)
         self.v.showGrid(x=grid, y=grid)
         self.v.setAspectLocked(True)
         self.legend = self.v.addLegend(offset=(-5, 5))
@@ -207,6 +265,7 @@ class SinglePolarGraph:
         self.w = pg.GraphicsLayoutWidget(show=True, size=size)
 
         self.v = self.w.addPlot(pen=pen)
+        self.v.setMenuEnabled(False)
         self.v.showGrid(x=grid, y=grid)
 
         # Set up the line
@@ -335,6 +394,7 @@ class OptAirfoilGraph:
         self.geo_col = geo_col
         self.w = pg.GraphicsLayoutWidget(show=True, size=size)
         self.v = self.w.addPlot(pen=pen)
+        self.v.setMenuEnabled(False)
         self.v.setAspectLocked()
         self.v.showGrid(x=grid, y=grid)
         self.legend = self.v.addLegend(offset=(300, 20))
@@ -371,6 +431,7 @@ class ParallelCoordsGraph:
 
         self.w = pg.GraphicsLayoutWidget(show=True, size=size)
         self.v = self.w.addPlot(pen=pen)
+        self.v.setMenuEnabled(False)
         self.v.setYRange(0, 1, padding=0)
         self.v.showGrid(x=grid, y=grid)
         self.set_formatting(theme=theme)
@@ -399,6 +460,7 @@ class DragGraph:
 
         self.w = pg.GraphicsLayoutWidget(show=True, size=size)
         self.v = self.w.addPlot(pen=pen)
+        self.v.setMenuEnabled(False)
         self.v.showGrid(x=grid, y=grid)
         self.legend = self.v.addLegend(offset=(30, 30))
         self.pg_plot_handle_Cd = self.v.plot(pen=pg.mkPen(color='indianred'), name='Cd', symbol='s', symbolBrush=pg.mkBrush('indianred'))
@@ -438,6 +500,7 @@ class CpGraph:
 
         self.w = pg.GraphicsLayoutWidget(show=True, size=size)
         self.v = self.w.addPlot(pen=pen)
+        self.v.setMenuEnabled(False)
         self.v.invertY(True)
         self.v.showGrid(x=grid, y=grid)
         self.set_formatting(theme)

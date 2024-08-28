@@ -2941,6 +2941,36 @@ class ExportCoordinatesDialog(PymeadDialog):
         self.grid_widget["file_name"]["line"].setText("blade.airfoil_name")
 
 
+class ExportCSVDialogWidget(PymeadDialogWidget2):
+    def __init__(self, parent=None):
+        super().__init__(parent=parent)
+
+    def initializeWidgets(self, *args, **kwargs):
+        self.widget_dict = {
+            "csv_file": PymeadLabeledLineEdit("Select CSV File", push_label="Select Filename")
+        }
+
+    def establishWidgetConnections(self):
+        self.widget_dict["csv_file"].push.clicked.connect(self.select_data_file)
+
+    def select_data_file(self):
+        select_data_file(
+            parent=self,
+            line_edit=self.widget_dict["csv_file"].widget,
+            starting_dir=get_setting("export_csv_default_open_location")
+        )
+        file_name = self.widget_dict["csv_file"].widget.text()
+        if file_name:
+            set_setting("export_csv_default_open_location", file_name)
+
+
+class ExportCSVDialog(PymeadDialog):
+    def __init__(self, parent, theme: dict):
+        widget = ExportCSVDialogWidget()
+        super().__init__(parent, window_title="Export CSV", widget=widget, theme=theme)
+        self.setMinimumWidth(450)
+
+
 class ExportControlPointsDialog(PymeadDialog):
     def __init__(self, parent, theme: dict):
         w = QWidget()

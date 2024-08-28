@@ -838,7 +838,7 @@ class AirfoilCanvas(pg.PlotWidget):
             # Display success message
             self.gui_obj.disp_message_box(f"Plot saved to {file_path}", message_mode="info")
 
-    def contextMenuEvent(self, event):
+    def contextMenuEvent(self, event, **kwargs):
         menu = QtWidgets.QMenu(self)
         menu.setStyleSheet(f"""
         QMenu::item:selected {{ background-color: 
