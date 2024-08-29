@@ -51,6 +51,7 @@ Bug fixes
   'Attempting to add QLayout "" to DownsamplingPreviewDialog "", which already has a layout'
 - Fix some airfoils of an MEA occasionally not being added to MSET dialog
 - Fix no GUI error being thrown when trying to visualize downsampling on an empty/non-existent MEA
+- Fix bug where multiprocessing pool does not properly terminate
 
 Aesthetics
 ----------
