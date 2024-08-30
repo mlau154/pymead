@@ -28,6 +28,10 @@ Planned feature additions
 - Make airfoil-relative points an option, either by adding this as a new constraint option
   or by adding a list of airfoil-relative points to that particular airfoil. Either way,
   the points would need to be added to the graph
+- Add XFOIL polar feature
+- Make web airfoils transformable (dialog and canvas-dynamic?) and create design variables based on
+  c, alf, dx, dy
+- Add XFOIL flap deflection feature
 
 Refactoring
 -----------
