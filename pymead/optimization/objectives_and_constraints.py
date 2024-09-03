@@ -82,7 +82,7 @@ class ObjectiveConstraint:
                     if not isinstance(return_val, float):
                         raise FunctionCompileError(f"Error in function compilation output type. Required type is float,"
                                                    f"found type {type(return_val)}")
-                except (SyntaxError, NameError, TypeError):
+                except (SyntaxError, NameError, TypeError, IndexError):
                     raise FunctionCompileError('Error in function compilation')
 
     def update_value(self):
@@ -95,7 +95,7 @@ class ObjectiveConstraint:
             try:
                 self.value = self.function_dict['f']()  # no parameters passed as inputs (inputs all stored and updated
                 # inside self.function_dict )
-            except (SyntaxError, NameError, TypeError):
+            except (SyntaxError, NameError, TypeError, IndexError):
                 raise FunctionCompileError('Error in function update')
 
     def update(self, dependencies: dict):

@@ -13,19 +13,21 @@ import PyQt6.QtWidgets
 from PyQt6.QtCore import QEvent
 from PyQt6.QtCore import Qt, pyqtSignal, QObject, QRect
 from PyQt6.QtCore import pyqtSlot, QStandardPaths
-from PyQt6.QtGui import QFont
+from PyQt6.QtGui import QFont, QAction
 from PyQt6.QtWidgets import (QWidget, QGridLayout, QLabel, QPushButton, QCheckBox, QTabWidget, QSpinBox,
                              QDoubleSpinBox, QComboBox, QDialog, QVBoxLayout, QSizeGrip, QDialogButtonBox, QMessageBox,
-                             QFormLayout, QRadioButton)
+                             QFormLayout, QRadioButton, QTableWidget, QTableWidgetItem, QMenu, QToolButton, QTabBar)
 
 from pymead import GUI_DEFAULTS_DIR, q_settings, GUI_DIALOG_WIDGETS_DIR, TargetPathNotFoundError
 from pymead.analysis import cfd_output_templates
+from pymead.analysis.cfd_output_templates import AeroDataOutputTemplates
 from pymead.analysis.utils import viscosity_calculator
 from pymead.core import UNITS
 from pymead.core.airfoil import Airfoil
 from pymead.core.geometry_collection import GeometryCollection
 from pymead.core.line import PolyLine
 from pymead.core.mea import MEA
+from pymead.core.param import Param, LengthParam, AngleParam
 from pymead.gui.bounds_values_table import BoundsValuesTable
 from pymead.gui.default_settings import xfoil_settings_default
 from pymead.gui.file_selection import *
@@ -379,7 +381,8 @@ class PymeadLabeledDoubleSpinBox(QObject):
     sigValueChanged = pyqtSignal(float)
 
     def __init__(self, label: str = "", tool_tip: str = "", minimum: float = None, maximum: float = None,
-                 value: float = None, decimals: int = None, single_step: float = None, read_only: bool = None):
+                 value: float = None, decimals: int = None, single_step: float = None, push_label: str = None,
+                 read_only: bool = None):
         self.label = QLabel(label)
         self.widget = QDoubleSpinBox()
         self.label.setToolTip(tool_tip)
@@ -397,6 +400,10 @@ class PymeadLabeledDoubleSpinBox(QObject):
         if read_only is not None:
             self.widget.setReadOnly(read_only)
         self.push = None
+
+        if push_label is not None:
+            self.push = QPushButton(push_label)
+
         super().__init__()
         self.widget.valueChanged.connect(self.sigValueChanged)
 
@@ -1032,7 +1039,7 @@ class ADWidget(QTabWidget):
     ADChanged = pyqtSignal()
     sigXCDELHParamChanged = pyqtSignal(str)
 
-    def __init__(self, parent, param_list: typing.List[str], geo_col: GeometryCollection, number_AD: int):
+    def __init__(self, parent, param_list: typing.List[str], gui_obj, number_AD: int):
         super().__init__(parent=parent)
         self.widget_dict = {}
         self.grid_widgets = {}
@@ -1040,7 +1047,7 @@ class ADWidget(QTabWidget):
         self.grid_layout = None
         self.param_list = param_list
         self.param_list.insert(0, "")
-        self.geo_col = geo_col
+        self.gui_obj = gui_obj
         self.number_AD = number_AD
         self.setValue()
 
@@ -1076,7 +1083,7 @@ class ADWidget(QTabWidget):
 
         sub_container = "params" if "DV" not in param_name else "desvar"
         param_name = param_name.strip(" (DV)")
-        param = self.geo_col.container()[sub_container][param_name]
+        param = self.gui_obj.geo_col.container()[sub_container][param_name]
 
         if param.value() > 1.0:
             raise ValueError(f"Parameter value ({param.value()}) is greater than the maximum allowable AD x/c "
@@ -1527,14 +1534,13 @@ class MSETDialogWidget2(PymeadDialogWidget2):
 
     sigMEAChanged = pyqtSignal(object)
 
-    def __init__(self, geo_col: GeometryCollection, theme: dict, parent=None):
-        self.geo_col = geo_col
-        self.theme = theme
+    def __init__(self, gui_obj, parent=None):
+        self.gui_obj = gui_obj
         super().__init__(parent=parent, label_column_split="timeout")
 
     def initializeWidgets(self, label_column_split: str):
-        initial_mea_names = [k for k in self.geo_col.container()["mea"].keys()]
-        initial_mea = None if len(initial_mea_names) == 0 else self.geo_col.container()["mea"][initial_mea_names[0]]
+        initial_mea_names = [k for k in self.gui_obj.geo_col.container()["mea"].keys()]
+        initial_mea = None if len(initial_mea_names) == 0 else self.gui_obj.geo_col.container()["mea"][initial_mea_names[0]]
         self.widget_dict = {
             "mea": PymeadLabeledComboBox(label="MEA", items=initial_mea_names),
             "grid_bounds": GridBounds(self),
@@ -1625,7 +1631,7 @@ class MSETDialogWidget2(PymeadDialogWidget2):
 
     def onMEAChanged(self, mea_name: str):
         if mea_name:
-            self.sigMEAChanged.emit(self.geo_col.container()["mea"][mea_name])
+            self.sigMEAChanged.emit(self.gui_obj.geo_col.container()["mea"][mea_name])
         else:
             self.sigMEAChanged.emit(None)
 
@@ -1665,7 +1671,7 @@ class MSETDialogWidget2(PymeadDialogWidget2):
     def showAirfoilCoordinatesPreview(self):
         mset_settings = self.value()
         preview_dialog = DownsamplingPreviewDialog(
-            theme=self.theme, mea_name=self.widget_dict["mea"].widget.currentText(),
+            theme=self.gui_obj.themes[self.gui_obj.current_theme], mea_name=self.widget_dict["mea"].widget.currentText(),
             max_airfoil_points=mset_settings["downsampling_max_pts"] if bool(mset_settings["use_downsampling"]) else None,
             curvature_exp=mset_settings["downsampling_curve_exp"],
             parent=self)
@@ -1689,17 +1695,17 @@ class PanelDialogWidget(PymeadDialogWidget2):
 
 
 class MSESDialogWidget2(PymeadDialogWidget2):
-    def __init__(self, geo_col: GeometryCollection, parent=None):
-        self.geo_col = geo_col
+    def __init__(self, gui_obj, parent=None):
+        self.gui_obj = gui_obj
         super().__init__(parent=parent, label_column_split="timeout")
 
     def initializeWidgets(self, label_column_split: str):
 
-        initial_mea_names = [k for k in self.geo_col.container()["mea"].keys()]
-        initial_mea = None if len(initial_mea_names) == 0 else self.geo_col.container()["mea"][initial_mea_names[0]]
+        initial_mea_names = [k for k in self.gui_obj.geo_col.container()["mea"].keys()]
+        initial_mea = None if len(initial_mea_names) == 0 else self.gui_obj.geo_col.container()["mea"][initial_mea_names[0]]
 
-        param_list = [param for param in self.geo_col.container()["params"]]
-        dv_list = [dv + " (DV)" for dv in self.geo_col.container()["desvar"]]
+        param_list = [param for param in self.gui_obj.geo_col.container()["params"]]
+        dv_list = [dv + " (DV)" for dv in self.gui_obj.geo_col.container()["desvar"]]
 
         self.widget_dict = {
             "viscous_flag": PymeadLabeledCheckbox(label="Viscosity On?", initial_state=2),
@@ -1772,7 +1778,7 @@ class MSESDialogWidget2(PymeadDialogWidget2):
             "AD_number": PymeadLabeledSpinBox(label="Num. Actuator Disks", minimum=0, maximum=5, value=0,
                                               read_only=True, tool_tip="'Actuator disks active' must be checked "
                                                                        "to enable modification of the number of AD's"),
-            "AD": ADWidget(parent=self, param_list=param_list + dv_list, geo_col=self.geo_col, number_AD=0)
+            "AD": ADWidget(parent=self, param_list=param_list + dv_list, gui_obj=self.gui_obj, number_AD=0)
         }
 
     def addWidgets(self, *args, **kwargs):
@@ -1942,9 +1948,9 @@ class OptConstraintsHTabWidget(PymeadDialogHTabWidget):
 
     OptConstraintsChanged = pyqtSignal()
 
-    def __init__(self, parent, geo_col: GeometryCollection, mset_dialog_widget: MSETDialogWidget = None):
+    def __init__(self, parent, gui_obj, mset_dialog_widget: MSETDialogWidget = None):
         super().__init__(parent=parent,
-                         widgets={k: OptConstraintsDialogWidget() for k in geo_col.container()["airfoils"]})
+                         widgets={k: OptConstraintsDialogWidget() for k in gui_obj.geo_col.container()["airfoils"]})
         # mset_dialog_widget.airfoilsChanged.connect(self.onAirfoilListChanged)
         self.label = QLabel("Optimization Constraints")
         self.widget = self
@@ -1995,10 +2001,11 @@ class OptConstraintsHTabWidget(PymeadDialogHTabWidget):
 
 
 class XFOILDialogWidget(PymeadDialogWidget):
-    def __init__(self, current_airfoils: typing.List[str], settings_override: dict = None):
+    def __init__(self, gui_obj, settings_override: dict = None):
+        self.gui_obj = gui_obj
         super().__init__(settings_file=os.path.join(GUI_DEFAULTS_DIR, 'xfoil_settings.json'))
         self.widget_dict["base_dir"]["widget"].setText(tempfile.gettempdir())
-        self.widget_dict["airfoil"]["widget"].addItems(current_airfoils)
+        self.widget_dict["airfoil"]["widget"].addItems([k for k in gui_obj.geo_col.container()["airfoils"]])
         if settings_override:
             self.setValue(new_values=settings_override)
 
@@ -2082,6 +2089,606 @@ class XFOILDialogWidget(PymeadDialogWidget):
 
     def select_directory(self, line_edit: QLineEdit):
         select_directory(parent=self.parent(), line_edit=line_edit, starting_dir=tempfile.gettempdir())
+
+
+class MSESFlowVarCombo(QComboBox):
+
+    flowVars = {
+        "Freestream Mach number": 0,
+        "Reynolds number": 1,
+        "Angle of attack": 2,
+        "Lift coefficient": 3,
+        "Freestream pressure": 4,
+        "Freestream temperature": 5,
+        "Characteristic length": 6,
+        "Gas constant": 7,
+        "Freestream density": 8,
+        "Specific heat ratio": 9,
+        "Crit. amplification factor": 10,
+        "Critical Mach number": 11,
+        "Artificial dissipation constant": 12,
+        "x/c-transition (upper)": 13,
+        "x/c-transition (lower)": 14,
+        "Equation set (ISMOM)": 15,
+        "Boundary condition (IFFBC)": 16,
+        "AD-1 Side": 17,
+        "AD-1 x/c": 18,
+        "AD-1 FPR": 19,
+        "AD-1 thermal efficiency": 20,
+        "AD-2 Side": 21,
+        "AD-2 x/c": 22,
+        "AD-2 FPR": 23,
+        "AD-2 thermal efficiency": 24,
+        "AD-3 Side": 25,
+        "AD-3 x/c": 26,
+        "AD-3 FPR": 27,
+        "AD-3 thermal efficiency": 28,
+        "AD-4 Side": 29,
+        "AD-4 x/c": 30,
+        "AD-4 FPR": 31,
+        "AD-4 thermal efficiency": 32,
+        "AD-5 Side": 33,
+        "AD-5 x/c": 34,
+        "AD-5 FPR": 35,
+        "AD-5 thermal efficiency": 36
+    }
+    flowVarsReverseMapping = {v: k for k, v in flowVars.items()}
+
+    def __init__(self, parent=None):
+        super().__init__(parent=parent)
+        keys = [k for k in self.flowVars.keys()]
+        self.addItems(keys)
+        self.setCurrentText(keys[0])
+        self.setMinimumWidth(210)
+
+
+class DesVarCombo(QComboBox):
+    def __init__(self, gui_obj, parent=None):
+        super().__init__(parent=parent)
+        desvars = [k for k in gui_obj.geo_col.container()["desvar"].keys()]
+        self.addItems(desvars)
+        self.setCurrentText(desvars[0])
+        self.setMinimumWidth(120)
+
+    def contextMenuEvent(self, e):
+        self.parent().contextMenuEvent(e)
+
+
+class ParamCombo(QComboBox):
+
+    paramChanged = pyqtSignal(int, str)
+
+    def __init__(self, gui_obj, row: int, parent=None):
+        self.row = row
+        super().__init__(parent=parent)
+        params = [k for k in gui_obj.geo_col.container()["params"].keys()]
+        self.addItems(params)
+        self.setCurrentText(params[0])
+        self.setMinimumWidth(120)
+        self.currentTextChanged.connect(self.onSelectionChanged)
+
+    def onSelectionChanged(self, new_param_name: str):
+        self.paramChanged.emit(self.row, new_param_name)
+
+    def contextMenuEvent(self, e):
+        self.parent().contextMenuEvent(e)
+
+
+class ParamSpin(QDoubleSpinBox):
+    def __init__(self, param: Param, parent=None):
+        super().__init__(parent=parent)
+        self.setContextMenuPolicy(Qt.ContextMenuPolicy.DefaultContextMenu)
+        self.pymead_obj = param
+        self.setMaximumWidth(150)
+        self.setDecimals(6)
+        self.setSingleStep(0.01)
+        if isinstance(param, LengthParam) or isinstance(param, AngleParam):
+            self.setSuffix(f" {param.unit()}")
+        self.param = param
+        if isinstance(param, LengthParam):
+            self.setMinimum(0.0)
+        else:
+            self.setMinimum(-1.0e9)
+        self.setMaximum(1.0e9)
+        self.setValue(self.param.value())
+
+    # TODO: figure out how to add "Delete Row" to existing context menu
+    # def contextMenuEvent(self, e):
+    #     self.parent().contextMenuEvent(e)
+    #     # super().contextMenuEvent(e)
+
+
+class MultiPointTable(QTableWidget):
+
+    sigMultiPointGeomUpdated = pyqtSignal()
+
+    def __init__(self, gui_obj, parent=None):
+        self.gui_obj = gui_obj
+        self.flow_vars = []
+        super().__init__(1, 1, parent=parent)
+        label = QLabel("Description")
+        label.setMinimumWidth(210)
+        self.setCellWidget(0, 0, label)
+        self.setColumnWidth(0, 210)
+        self.cellChanged.connect(self.onCellChanged)
+
+    def contextMenuEvent(self, a0):
+        row = self.rowAt(a0.pos().y())
+        column = self.columnAt(a0.pos().x())
+
+        if row == -1 or column == -1:
+            return
+
+        contextMenu = QMenu(self)
+
+        if row != 0:  # Do not allow removal of the header row
+            deleteRowAction = QAction("Delete row", self)
+            deleteRowAction.triggered.connect(partial(self.onDeleteRow, row))
+            contextMenu.addAction(deleteRowAction)
+
+        if column != 0:  # Do not allow removal of the description column
+            deleteColumnAction = QAction("Delete column", self)
+            deleteColumnAction.triggered.connect(partial(self.onDeleteColumn, column, remove_flow_var_from_list=True))
+            contextMenu.addAction(deleteColumnAction)
+
+        contextMenu.exec(self.mapToGlobal(a0.pos()))
+
+    def onCellChanged(self, *args, **kwargs):
+        self.sigMultiPointGeomUpdated.emit()
+
+    def onDeleteRow(self, row: int):
+        self.removeRow(row)
+
+    def onDeleteColumn(self, column: int, remove_flow_var_from_list: bool = True):
+        cell_widget = self.cellWidget(0, column)
+        assert isinstance(cell_widget, MSESFlowVarCombo)
+        if remove_flow_var_from_list:
+            self.flow_vars.remove(cell_widget.currentText())
+        self.removeColumn(column)
+
+    def extractHeaderData(self) -> list:
+        widget_0_0 = self.cellWidget(0, 0)
+        assert isinstance(widget_0_0, QLabel)
+        header = [widget_0_0.text()]
+        for idx in range(1, len(MSESFlowVarCombo.flowVars) + 1):
+            cell_widget = self.cellWidget(0, idx)
+            if isinstance(cell_widget, MSESFlowVarCombo):
+                header.append(MSESFlowVarCombo.flowVars[cell_widget.currentText()])
+            else:
+                break
+        else:
+            raise ValueError("Too many flow variables specified")
+        return header
+
+    def extractRowData(self, header_length: int) -> list:
+        row_idx = 1
+        rows = []
+        while True:
+            row = []
+            for col_idx in range(header_length):
+                item = self.item(row_idx, col_idx)
+                if item is None:
+                    row.append(None)
+                    # if col_idx != 0:
+                    #     raise ValueError(f"Empty required field at row {row_idx + 1}, col {col_idx + 1}")
+                else:
+                    if col_idx == 0:
+                        row.append(item.text())
+                    else:
+                        try:
+                            row.append(float(item.text()))
+                        except ValueError:
+                            if len(item.text().strip()) == 0:
+                                raise ValueError(f"Empty required field at row {row_idx + 1}, col {col_idx + 1}")
+                            else:
+                                raise ValueError(f"Could not cast {item.text()} to "
+                                                 f"float at row {row_idx + 1}, col {col_idx + 1}")
+            if all([val is None for val in row]):
+                break
+            else:
+                rows.append(row)
+                row_idx += 1
+        return rows
+
+    def addFlowVar(self, var_idx: int = None, display_errors: bool = True) -> int:
+        self.insertColumn(self.columnCount())
+        combo = MSESFlowVarCombo()
+        self.setCellWidget(0, self.columnCount() - 1, combo)
+        self.setColumnWidth(self.columnCount() - 1, 210)
+
+        if var_idx is None:
+            # If the default value of the first item in the combo box list is not yet in the masked_dvs,
+            # just add it to the list of masked_dvs
+            if combo.currentText() not in self.flow_vars:
+                self.flow_vars.append(combo.currentText())
+                return 0
+
+            # Otherwise, loop through the available design variables in the combo box until we find an unused one
+            combo_items = [combo.itemText(i) for i in range(combo.count())]
+            for val in combo_items:
+                if val not in self.flow_vars:
+                    combo.setCurrentText(val)
+                    self.flow_vars.append(val)
+                    break
+            else:
+                # Delete the row, but do not remove the dv from the list since the dv value should still be the first
+                # value in the combo box by default (unchanged by the for loop)
+                self.onDeleteColumn(self.columnCount() - 1, remove_flow_var_from_list=False)
+
+                if display_errors:
+                    self.gui_obj.disp_message_box("Cannot add another design variable. "
+                                                  "All design variables have already been used")
+                return -3  # If there are no unused design variables
+
+        if var_idx is None:
+            return 0
+        combo.setCurrentText(MSESFlowVarCombo.flowVarsReverseMapping[var_idx])
+        return 0
+
+    def addStencilPoint(self, vals: list = None):
+        self.insertRow(self.rowCount())
+        if vals is None:
+            return
+        new_row_count = self.rowCount()
+        for col_idx in range(self.columnCount()):
+            self.setItem(new_row_count - 1, col_idx, QTableWidgetItem(str(vals[col_idx])))
+
+    def value(self) -> list or None:
+        header = self.extractHeaderData()
+        if len(header) == 1:  # No stencil points entered
+            return None
+        rows = self.extractRowData(len(header))
+        return [header] + rows
+
+    def setValue(self, d: dict or None):
+        if d is None:
+            return
+        for header_idx, val in enumerate(d[0]):
+            if header_idx == 0:  # "Description"
+                continue
+            self.addFlowVar(val)
+        for row in d[1:]:
+            self.addStencilPoint(row)
+
+
+class DesVarTable(QTableWidget):
+
+    def __init__(self, gui_obj, parent=None):
+        self.gui_obj = gui_obj
+        self.masked_dvs = []
+        super().__init__(0, 1, parent=parent)
+        self.setColumnWidth(0, 150)
+
+    def contextMenuEvent(self, a0):
+        row = self.rowAt(a0.pos().y())
+
+        if row == -1:
+            return
+
+        contextMenu = QMenu(self)
+
+        deleteRowAction = QAction("Delete row", self)
+        deleteRowAction.triggered.connect(partial(self.onDeleteRow, row, remove_dv_from_list=True))
+        contextMenu.addAction(deleteRowAction)
+
+        contextMenu.exec(self.mapToGlobal(a0.pos()))
+
+    def onDeleteRow(self, row: int, remove_dv_from_list: bool = True):
+        cell_widget = self.cellWidget(row, 0)
+        assert isinstance(cell_widget, DesVarCombo)
+        if remove_dv_from_list:
+            self.masked_dvs.remove(cell_widget.currentText())
+        self.removeRow(row)
+
+    def addDesVar(self, desvar: str = None, display_errors: bool = True) -> int:
+        if len(self.gui_obj.geo_col.container()["desvar"]) == 0:
+            if display_errors:
+                self.gui_obj.disp_message_box("No design variables found in geometry collection")
+            return -1
+        self.insertRow(self.rowCount())
+        desvar_combo = DesVarCombo(self.gui_obj, parent=self)
+        self.setCellWidget(self.rowCount() - 1, 0, desvar_combo)
+        if desvar is None:
+            # TODO: add this logic to param modifications
+            # If the default value of the first item in the combo box list is not yet in the masked_dvs,
+            # just add it to the list of masked_dvs
+            if desvar_combo.currentText() not in self.masked_dvs:
+                self.masked_dvs.append(desvar_combo.currentText())
+                return 0
+
+            # Otherwise, loop through the available design variables in the combo box until we find an unused one
+            combo_items = [desvar_combo.itemText(i) for i in range(desvar_combo.count())]
+            for val in combo_items:
+                if val not in self.masked_dvs:
+                    desvar_combo.setCurrentText(val)
+                    self.masked_dvs.append(val)
+                    break
+            else:
+                # Delete the row, but do not remove the dv from the list since the dv value should still be the first
+                # value in the combo box by default (unchanged by the for loop)
+                self.onDeleteRow(self.rowCount() - 1, remove_dv_from_list=False)
+
+                if display_errors:
+                    self.gui_obj.disp_message_box("Cannot add another design variable. "
+                                                  "All design variables have already been used")
+                return -3  # If there are no unused design variables
+
+        desvar_combo.setCurrentText(desvar)
+        return 0
+
+    def value(self) -> typing.List[str] or None:
+        if self.rowCount() == 0:
+            return None
+        cell_widgets = [self.cellWidget(row_idx, 0) for row_idx in range(self.rowCount())]
+        assert all([isinstance(cell_widget, DesVarCombo) for cell_widget in cell_widgets])
+        return [cell_widget.currentText() for cell_widget in cell_widgets]
+
+    def setValue(self, value: typing.List[str] or None):
+        if value is None:
+            return
+        for desvar in value:
+            self.addDesVar(desvar)
+
+
+class ParamTable(QTableWidget):
+
+    def __init__(self, gui_obj, parent=None):
+        self.gui_obj = gui_obj
+        self.params_to_modify = []
+        super().__init__(1, 3, parent=parent)
+        self.setColumnWidth(0, 150)
+        self.setCellWidget(0, 0, QLabel("Parameter"))
+        self.setCellWidget(0, 1, QLabel("New Value"))
+        self.setCellWidget(0, 2, QLabel("Original Value"))
+
+    def contextMenuEvent(self, a0):
+        row = self.rowAt(a0.pos().y())
+
+        if row == -1:
+            return
+
+        contextMenu = QMenu(self)
+
+        if row != 0:  # Do not allow removal of the header row
+            deleteRowAction = QAction("Delete row", self)
+            deleteRowAction.triggered.connect(partial(self.onDeleteRow, row, remove_param_from_list=True))
+            contextMenu.addAction(deleteRowAction)
+
+        contextMenu.exec(self.mapToGlobal(a0.pos()))
+
+    def onDeleteRow(self, row: int, remove_param_from_list: bool = True):
+        cell_widget = self.cellWidget(row, 0)
+        assert isinstance(cell_widget, ParamCombo)
+        if remove_param_from_list:
+            self.params_to_modify.remove(cell_widget.currentText())
+        self.removeRow(row)
+
+    def addParam(self, param: str = None, new_val: float = None, display_errors: bool = True) -> int:
+        """
+        Adds a parameter to the multipoint optimization widget
+
+        Parameters
+        ----------
+        param
+        new_val
+        display_errors
+
+        Returns
+        -------
+        int
+            Status code:
+
+            * ``0`` if successful
+            * ``-1`` if no parameters found in geometry collection
+            * ``-2`` if requested parameter not found in geometry collection
+        """
+        if len(self.gui_obj.geo_col.container()["desvar"]) == 0:
+            if display_errors:
+                self.gui_obj.disp_message_box("No parameters found in geometry collection")
+            return -1
+        self.insertRow(self.rowCount())
+        row = self.rowCount() - 1
+        param_combo = ParamCombo(self.gui_obj, row, parent=self)
+        param_combo.paramChanged.connect(self.onParamChanged)
+        # param_combo.deleteRow.connect(self.widget_dict["param_table"].onDeleteRowAtPos)
+        self.setCellWidget(self.rowCount() - 1, 0, param_combo)
+        if param is None:
+
+            # If the default value of the first item in the combo box list is not yet in the params_to_modify list,
+            # just add it to the list of params_to_modify and add the corresponding spin boxes
+            if param_combo.currentText() not in self.params_to_modify:
+                status_code = self.onParamChanged(row, param_combo.currentText())
+                self.params_to_modify.append(param_combo.currentText())
+                return status_code
+
+            # Otherwise, loop through the available design variables in the combo box until we find an unused one
+            combo_items = [param_combo.itemText(i) for i in range(param_combo.count())]
+            for val in combo_items:
+                if val not in self.params_to_modify:
+                    param_combo.setCurrentText(val)
+                    self.params_to_modify.append(val)
+                    param = val
+                    break
+            else:
+                # Delete the row, but do not remove the dv from the list since the dv value should still be the first
+                # value in the combo box by default (unchanged by the for loop)
+                self.onDeleteRow(self.rowCount() - 1, remove_param_from_list=False)
+
+                if display_errors:
+                    self.gui_obj.disp_message_box("Cannot add another parameter to modify. "
+                                                  "All parameters have already been used")
+                return -3  # If there are no unused design variables
+        else:
+            combo_items = [param_combo.itemText(i) for i in range(param_combo.count())]
+            if param not in combo_items:
+                return -2
+            param_combo.setCurrentText(param)
+
+        status_code = self.onParamChanged(row, param, new_val=new_val)
+        return status_code
+
+    def onParamChanged(self, row: int, new_param_name: str, new_val: float = None) -> int:
+        if new_param_name not in self.gui_obj.geo_col.container()["params"]:
+            return -2
+        param = self.gui_obj.geo_col.container()["params"][new_param_name]
+        new_param_widget = ParamSpin(param, parent=self)
+        if new_val is not None:
+            new_param_widget.setValue(new_val)
+        original_param_widget = ParamSpin(param, parent=self)
+        original_param_widget.setEnabled(False)
+        self.setCellWidget(row, 1, new_param_widget)
+        self.setCellWidget(row, 2, original_param_widget)
+        return 0
+
+    def value(self) -> list or None:
+        if self.rowCount() < 2:
+            return None
+        rows = []
+        for row_idx in range(1, self.rowCount()):
+            row = []
+            combo = self.cellWidget(row_idx, 0)
+            assert isinstance(combo, ParamCombo)
+            row.append(combo.currentText())
+            spin = self.cellWidget(row_idx, 1)
+            assert isinstance(spin, ParamSpin)
+            row.append(spin.value())
+            rows.append(row)
+        return rows
+
+    def setValue(self, value: list):
+        if value is None:
+            return
+        non_matching_parameters = []
+        for row_idx_minus_1, row in enumerate(value):
+            status_code = self.addParam(row[0], new_val=row[1], display_errors=False)
+            if status_code == -2:
+                non_matching_parameters.append(row[0])
+
+        if len(non_matching_parameters) == 0:
+            return
+        self.gui_obj.disp_message_box(f"Multipoint Optimization: The .jmea file currently loaded does not contain the "
+                                      f"following 'params to modify' specified in the Multipoint Optimization dialog: "
+                                      f"{non_matching_parameters}. Load a .jmea file with matching parameters and "
+                                      f"select that file as the 'MEA File' in the General Settings dialog to ensure "
+                                      f"proper loading of optimization settings from file.")
+
+
+class MultiPointWidget(PymeadDialogWidget2):
+
+    sigMultiPointGeomUpdated = pyqtSignal()
+
+    def __init__(self, gui_obj, parent=None):
+        self.gui_obj = gui_obj
+        super().__init__(parent=parent)
+
+    def initializeWidgets(self, *args, **kwargs):
+        self.widget_dict = {
+            "add_flow_var_button": QPushButton("Add flow variable", parent=self),
+            "add_stencil_point_button": QPushButton("Add stencil point", parent=self),
+            "table": MultiPointTable(self.gui_obj)
+        }
+
+    def addWidgets(self, *args, **kwargs):
+        # Add all the widgets
+        self.lay.addWidget(self.widget_dict["add_flow_var_button"], 0, 0)
+        self.lay.addWidget(self.widget_dict["add_stencil_point_button"], 0, 1)
+        self.lay.addWidget(self.widget_dict["table"], 1, 0, 1, 2)
+
+    def onMultiPointGeomUpdated(self, *args, **kwargs):
+        self.sigMultiPointGeomUpdated.emit()
+
+    def establishWidgetConnections(self):
+        self.widget_dict["add_flow_var_button"].clicked.connect(self.onFlowVarButtonPressed)
+        self.widget_dict["add_stencil_point_button"].clicked.connect(self.onStencilPointButtonPressed)
+        self.widget_dict["table"].sigMultiPointGeomUpdated.connect(self.onMultiPointGeomUpdated)
+
+    def value(self) -> dict:
+        """
+        Override ``value`` method in ``PymeadDialogWidget2`` because ``QPushButton`` does not have a ``value``
+        method
+        """
+        return {k: v.value() if hasattr(v, "value") else None for k, v in self.widget_dict.items()}
+
+    def setValue(self, d: dict):
+        """
+        Override ``setValue`` method in ``PymeadDialogWidget2`` because ``QPushButton`` does not have a ``setValue``
+        method
+        """
+        for d_name, d_value in d.items():
+            try:
+                if not hasattr(self.widget_dict[d_name], "setValue"):
+                    continue
+                self.widget_dict[d_name].setValue(d_value)
+            except KeyError:
+                pass
+
+    def onFlowVarButtonPressed(self):
+        self.widget_dict["table"].addFlowVar()
+        self.sigMultiPointGeomUpdated.emit()
+
+    def onStencilPointButtonPressed(self):
+        self.widget_dict["table"].addStencilPoint()
+        self.sigMultiPointGeomUpdated.emit()
+
+
+class MultiGeomWidget(PymeadDialogWidget2):
+
+    sigMultiPointGeomUpdated = pyqtSignal()
+
+    def __init__(self, gui_obj, parent=None):
+        self.gui_obj = gui_obj
+        super().__init__(parent=parent)
+
+    def initializeWidgets(self, *args, **kwargs):
+        self.widget_dict = {
+            "add_desvar_button": QPushButton("Add masked design variable", parent=self),
+            "add_param_button": QPushButton("Add param to modify", parent=self),
+            "desvar_table": DesVarTable(self.gui_obj),
+            "param_table": ParamTable(self.gui_obj),
+        }
+
+    def addWidgets(self, *args, **kwargs):
+        # Add all the widgets
+        self.lay.addWidget(self.widget_dict["add_desvar_button"], 0, 0, 1, 2)
+        self.lay.addWidget(self.widget_dict["add_param_button"], 0, 2, 1, 1)
+        self.lay.addWidget(self.widget_dict["desvar_table"], 1, 0, 1, 2)
+        self.lay.addWidget(self.widget_dict["param_table"], 1, 2, 1, 1)
+
+    def establishWidgetConnections(self):
+        self.widget_dict["add_desvar_button"].clicked.connect(self.onDesVarButtonPressed)
+        self.widget_dict["add_param_button"].clicked.connect(self.onParamButtonPressed)
+
+    def value(self) -> dict:
+        """
+        Override ``value`` method in ``PymeadDialogWidget2`` because ``QPushButton`` does not have a ``value``
+        method
+        """
+        return {k: v.value() if hasattr(v, "value") else None for k, v in self.widget_dict.items()}
+
+    def setValue(self, d: dict):
+        """
+        Override ``setValue`` method in ``PymeadDialogWidget2`` because ``QPushButton`` does not have a ``setValue``
+        method
+        """
+        if d["desvar_table"] is not None and len(self.gui_obj.geo_col.container()["desvar"]) == 0:
+            pass
+        if d["param_table"] is not None and len(self.gui_obj.geo_col.container()["params"]) == 0:
+            pass
+        for d_name, d_value in d.items():
+            try:
+                if not hasattr(self.widget_dict[d_name], "setValue"):
+                    continue
+                self.widget_dict[d_name].setValue(d_value)
+            except KeyError:
+                pass
+
+    def onDesVarButtonPressed(self):
+        self.widget_dict["desvar_table"].addDesVar()
+        self.sigMultiPointGeomUpdated.emit()
+
+    def onParamButtonPressed(self):
+        self.widget_dict["param_table"].addParam()
+        self.sigMultiPointGeomUpdated.emit()
 
 
 class GAGeneralSettingsDialogWidget(PymeadDialogWidget2):
@@ -2225,13 +2832,13 @@ class GAConstraintsTerminationDialogWidget(PymeadDialogWidget):
 
 
 class GAConstraintsTerminationDialogWidget2(PymeadDialogWidget2):
-    def __init__(self, geo_col: GeometryCollection, parent=None):
-        self.geo_col = geo_col
+    def __init__(self, gui_obj, parent=None):
+        self.gui_obj = gui_obj
         super().__init__(parent=parent)
 
     def initializeWidgets(self, *args, **kwargs):
         self.widget_dict = {
-            "constraints": OptConstraintsHTabWidget(parent=None, geo_col=self.geo_col),
+            "constraints": OptConstraintsHTabWidget(parent=None, gui_obj=self.gui_obj),
             "f_tol": PymeadLabeledScientificDoubleSpinBox(label="Function Tolerance", value=0.0025, minimum=0.0,
                                                           maximum=100000.0),
             "cv_tol": PymeadLabeledScientificDoubleSpinBox(label="Constraint Violation Tol.", value=1.0e-6,
@@ -2289,48 +2896,298 @@ class GASaveLoadDialogWidget(PymeadDialogWidget):
         pass
 
 
-class MultiPointOptDialogWidget(PymeadDialogWidget):
-    def __init__(self):
-        super().__init__(settings_file=os.path.join(GUI_DEFAULTS_DIR, 'multi_point_opt_settings.json'))
+class MultiPointOptDialogWidget(PymeadDialogWidget2):
+
+    sigMultiPointGeomUpdated = pyqtSignal()
+
+    def __init__(self, gui_obj, parent=None):
+        self.gui_obj = gui_obj
+        super().__init__(parent=parent)
         self.current_save_file = None
 
-    def select_data_file(self, line_edit: QLineEdit):
-        select_data_file(parent=self.parent(), line_edit=line_edit)
+    def initializeWidgets(self, *args, **kwargs):
+        self.widget_dict = {
+            "multi_point_active": PymeadLabeledCheckbox(
+                "Multi-Point Active?",
+                tool_tip="Whether to use a multi-point aerodynamic stencil for this geometry"),
+            "multi_geom": MultiGeomWidget(self.gui_obj),
+            "multi_point": MultiPointWidget(self.gui_obj)
+        }
+        self.multiPointActive(self.widget_dict["multi_point_active"].value())
 
-    def updateDialog(self, new_inputs: dict, w_name: str):
+    def establishWidgetConnections(self):
+        self.widget_dict["multi_point_active"].sigValueChanged.connect(self.multiPointActive)
+        self.widget_dict["multi_point_active"].sigValueChanged.connect(self.onMultiPointGeomUpdated)
+        self.widget_dict["multi_geom"].sigMultiPointGeomUpdated.connect(self.onMultiPointGeomUpdated)
+        self.widget_dict["multi_point"].sigMultiPointGeomUpdated.connect(self.onMultiPointGeomUpdated)
+
+    def onMultiPointGeomUpdated(self, *args, **kwargs):
+        self.sigMultiPointGeomUpdated.emit()
+
+    def multiPointActive(self, active: bool):
+        self.widget_dict["multi_point"].setEnabled(active)
+
+    def addWidgets(self, *args, **kwargs):
+        self.lay.addWidget(self.widget_dict["multi_geom"], 0, 0, 1, 3)
+        self.lay.addWidget(self.widget_dict["multi_point_active"].label, 1, 0, 1, 1),
+        self.lay.addWidget(self.widget_dict["multi_point_active"].widget, 1, 1, 1, 2),
+        self.lay.addWidget(self.widget_dict["multi_point"], 2, 0, 1, 3)
+
+
+class RenameTabDialogWidget(PymeadDialogWidget2):
+
+    def __init__(self, initial_name: str, parent=None, **kwargs):
+        self.initial_name = initial_name
+        super().__init__(parent=parent, **kwargs)
+        self.setMinimumWidth(250)
+
+    def initializeWidgets(self, *args, **kwargs):
+        self.widget_dict = {
+            "rename": PymeadLabeledLineEdit("Rename", text=self.initial_name)
+        }
+
+
+class RenameTabDialog(PymeadDialog):
+    def __init__(self, initial_name: str, theme: dict, parent=None):
+        widget = RenameTabDialogWidget(initial_name)
+        super().__init__(parent=parent, window_title="Rename Tab", widget=widget, theme=theme)
+
+
+class MultiPointGeomTabWidget(QTabWidget):
+
+    sigPlusPressed = pyqtSignal()
+    sigRemoveTab = pyqtSignal(int)
+    sigRenameTab = pyqtSignal(int)
+
+    def __init__(self, parent=None):
+        super().__init__(parent=parent)
+        tool_button = QToolButton(self)
+        tool_button.setText("+")
+        tool_button.clicked.connect(lambda _: self.sigPlusPressed.emit())
+        self.addTab(QLabel("Add stencil points by pressing '+'"), "")
+        self.setTabEnabled(0, False)
+        self.tabBar().setTabButton(0, QTabBar.ButtonPosition.RightSide, tool_button)
+
+    @staticmethod
+    def value():
+        return None
+
+    @staticmethod
+    def setValue(*args, **kwargs):
         pass
 
+    def contextMenuEvent(self, a0):
+        tab_index = self.tabBar().tabAt(self.mapFromGlobal(a0.globalPos()))
+        if tab_index == 0:  # Do not allow context menu for the plus button tab
+            return
+        menu = QMenu(self)
 
-class GeneticAlgorithmDialogWidget(PymeadDialogWidget):
-    def __init__(self, multi_point_dialog_widget: MultiPointOptDialogWidget):
-        super().__init__(settings_file=os.path.join(GUI_DEFAULTS_DIR, 'genetic_algorithm_settings.json'))
-        self.widget_dict['J']['widget'].textChanged.connect(partial(self.objectives_changed,
-                                                                    self.widget_dict['J']['widget']))
-        self.widget_dict['G']['widget'].textChanged.connect(partial(self.constraints_changed,
-                                                                    self.widget_dict['G']['widget']))
-        multi_point_active_widget = multi_point_dialog_widget.widget_dict['multi_point_active']['widget']
-        self.multi_point = multi_point_active_widget.isChecked()
-        tool = self.value()['tool']
-        self.cfd_template = tool
-        if self.multi_point:
-            self.cfd_template += '_MULTIPOINT'
-        multi_point_active_widget.stateChanged.connect(self.multi_point_changed)
+        # Remove tab option
+        removeTabAction = QAction("Remove tab", self)
+        removeTabAction.triggered.connect(lambda _: self.sigRemoveTab.emit(tab_index))
+        menu.addAction(removeTabAction)
+
+        # Rename tab option
+        renameTabAction = QAction("Rename tab", self)
+        renameTabAction.triggered.connect(lambda _: self.sigRenameTab.emit(tab_index))
+        menu.addAction(renameTabAction)
+
+        menu.exec(a0.globalPos())
+
+
+class MultiGeomTabWidget(PymeadDialogWidget2):
+
+    sigMultiPointGeomUpdated = pyqtSignal()
+
+    def __init__(self, gui_obj, parent=None):
+        self.gui_obj = gui_obj
+        self.tab_names = []
+        super().__init__(parent=parent)
+
+    def initializeWidgets(self, *args, **kwargs):
+        self.widget_dict = {
+            "tab_widget": MultiPointGeomTabWidget(self)
+        }
+
+    def addWidgets(self, *args, **kwargs):
+        self.lay.addWidget(self.widget_dict["tab_widget"])
+
+    def establishWidgetConnections(self):
+        self.widget_dict["tab_widget"].sigPlusPressed.connect(self.onPlusPressed)
+        self.widget_dict["tab_widget"].sigRemoveTab.connect(self.onRemovePressed)
+        self.widget_dict["tab_widget"].sigRenameTab.connect(self.onRenamePressed)
+
+    def onMultiPointGeomUpdated(self, *args, **kwargs):
+        self.sigMultiPointGeomUpdated.emit()
+
+    def onPlusPressed(self, tab_name: str = None):
+        tab_name = GeometryCollection.unique_namer("Design", self.tab_names) if tab_name is None else tab_name
+        self.widget_dict[tab_name] = MultiPointOptDialogWidget(self.gui_obj)
+        self.widget_dict[tab_name].sigMultiPointGeomUpdated.connect(self.onMultiPointGeomUpdated)
+        self.widget_dict["tab_widget"].addTab(self.widget_dict[tab_name], tab_name)
+        self.tab_names.append(tab_name)
+        self.sigMultiPointGeomUpdated.emit()
+
+    def onRemovePressed(self, index: int):
+        tab_name = self.widget_dict["tab_widget"].tabText(index)
+        self.widget_dict["tab_widget"].removeTab(index)
+        self.tab_names.remove(tab_name)
+        self.widget_dict.pop(tab_name)
+        self.sigMultiPointGeomUpdated.emit()
+
+    def onRenamePressed(self, index: int):
+        old_name = self.widget_dict["tab_widget"].tabText(index)
+        dialog = RenameTabDialog(old_name, theme=self.gui_obj.themes[self.gui_obj.current_theme], parent=self)
+        if dialog.exec():
+            new_name = dialog.value()["rename"]
+
+            # Disable duplicate names
+            if new_name in self.tab_names:
+                return
+
+            self.tab_names[self.tab_names.index(old_name)] = new_name
+            self.widget_dict[new_name] = self.widget_dict.pop(old_name)
+            self.widget_dict["tab_widget"].setTabText(index, dialog.value()["rename"])
+
+    def value(self) -> dict:
+        val = super().value()
+        return val
+
+    def setValue(self, d: dict):
+        # First replace all param tables and desvar tables with None if there is no geometry collection loaded
+        n_dv = len(self.gui_obj.geo_col.container()["desvar"])
+        n_params = len(self.gui_obj.geo_col.container()["params"])
+        null_dv, null_params = False, False
+        if any([v is not None and v["multi_geom"] is not None and v["multi_geom"]["param_table"] is not None
+                for k, v in d.items()]) and n_params == 0:
+            self.gui_obj.disp_message_box("Multipoint Optimization: "
+                                          "No parameters found in the currently loaded GeometryCollection. "
+                                          "Load a .jmea file with matching parameters and select that file "
+                                          "as the 'MEA File' in the General Settings dialog to ensure "
+                                          "proper loading of optimization settings from file.")
+            null_params = True
+        if any([v is not None and v["multi_geom"] is not None and v["multi_geom"]["desvar_table"] is not None
+                for k, v in d.items()]) and n_dv == 0:
+            self.gui_obj.disp_message_box("Multipoint Optimization: "
+                                          "No design variables found in the currently loaded GeometryCollection. "
+                                          "Load a .jmea file with matching design variables and select that file "
+                                          "as the 'MEA File' in the General Settings dialog to ensure "
+                                          "proper loading of optimization settings from file.")
+            null_dv = True
+
+        # Count the number of tabs and remove all of them except for the "plus" tab in reverse order
+        n_tabs = self.widget_dict["tab_widget"].tabBar().count()
+        if n_tabs > 1:
+            for tab_idx in reversed(range(1, n_tabs)):
+                self.onRemovePressed(tab_idx)
+
+        # Add the tabs by name and set the value of all the widgets for each tab
+        for k, v in d.items():
+            if k == "tab_widget":
+                continue
+            self.onPlusPressed(k)
+            if v is None:
+                continue
+            if null_params:
+                v["multi_geom"]["param_table"] = None
+            if null_dv:
+                v["multi_geom"]["desvar_table"] = None
+            self.widget_dict[k].setValue(v)
+
+
+class GeneticAlgorithmDialogWidget(PymeadDialogWidget2):
+    def __init__(self, gui_obj, multi_point_dialog_widget: MultiGeomTabWidget, parent=None):
+        self.aero_data_output_templates = AeroDataOutputTemplates()
+        self.gui_obj = gui_obj
+        self.multi_point_dialog_widget = multi_point_dialog_widget
+        super().__init__(parent=parent)
+
+    def initializeWidgets(self, *args, **kwargs):
+        self.widget_dict = {
+            "tool": PymeadLabeledComboBox(label="CFD Tool", items=["XFOIL", "MSES"], current_item="XFOIL"),
+            "J": PymeadLabeledLineEdit(
+                label="Objective Functions",
+                tool_tip="Enter the objective functions to be minimized, separated by commas.\n"
+                         "Variables can be started with the dollar sign ($).",
+                text="$Cd"
+            ),
+            "G": PymeadLabeledLineEdit(
+                label="Aerodynamic Constraints ",
+                tool_tip="Enter the constraints to be applied, separated by commas.\n"
+                         "Variables can be started with the dollar sign ($).",
+                text=""
+            ),
+            "pop_size": PymeadLabeledSpinBox(label="Population Size", minimum=1, maximum=2147483647, value=50),
+            "n_offspring": PymeadLabeledSpinBox(
+                label="Number of Offspring",
+                tool_tip="Number of offspring to generate to fill out the population.\nOffspring with converged "
+                         "objective functions become members of the\ncurrent population until the population is "
+                         "full. Must be greater\nthan or equal to the population size",
+                minimum=1, maximum=2147483647, value=1500
+            ),
+            "max_sampling_width": PymeadLabeledDoubleSpinBox(
+                label="Max. Sampling Width", decimals=8, minimum=0, maximum=1.0, value=0.2, single_step=0.01,
+                push_label="Visualize sampling",
+                tool_tip="Maximum random distance from original (seed) parameter\n value for each active and "
+                         "unlinked parameter"
+            ),
+            "eta_crossover": PymeadLabeledDoubleSpinBox(
+                label="\u03b7 (crossover)", decimals=3, minimum=0.0, maximum=100000.0, value=20.0,
+                tool_tip="Simulated Binary Crossover parameter as described in\n"
+                         "https://pymoo.org/operators/crossover.html?highlight=eta%20crossover"
+            ),
+            "eta_mutation": PymeadLabeledDoubleSpinBox(
+                label="\u03b7 (mutation)", decimals=3, minimum=0.0, maximum=100000.0, value=15.0,
+                tool_tip="Polynomial Mutation parameter as descrbied in\n"
+                         "https://pymoo.org/operators/mutation.html"
+            ),
+            "random_seed": PymeadLabeledSpinBox(label="Random Seed", minimum=0, maximum=2147483647, value=1),
+            "num_processors": PymeadLabeledSpinBox(
+                label="Number of Processors", minimum=1, maximum=100000, value=os.cpu_count(),
+                tool_tip="Number of logical processors to use for the optimization. The default value is the "
+                         "total number of logical processors available on your machine."
+            ),
+            "algorithm_save_frequency": PymeadLabeledSpinBox(
+                label="State Save Frequency", minimum=1, maximum=1000, value=1,
+                tool_tip="How often to save the setCheckState of the genetic algorithm.\n"
+                         "A setValue of '1' enforces a setCheckState save every generation"
+            ),
+            "root_dir": PymeadLabeledLineEdit(label="Opt. Root Directory", text="", push_label="Choose folder"),
+            "opt_dir_name": PymeadLabeledLineEdit(
+                label="Opt. Directory Name", text="ga_opt",
+                tool_tip="A unique directory will be created inside 'root_dir' with this name\n"
+                         "and followed by an underscore and a number if necessary"
+            ),
+            "temp_analysis_dir_name": PymeadLabeledLineEdit(
+                label="Temp. Analysis Dir. Name", text="analysis_temp",
+                tool_tip="The directory 'root_dir/temp_analysis_dir_name' will be created\n"
+                         "to hold the temporary XFOIL or MSES analysis files"
+            )
+        }
+
+    def establishWidgetConnections(self):
+        self.widget_dict["max_sampling_width"].push.clicked.connect(self.visualize_sampling)
+        self.widget_dict["root_dir"].push.clicked.connect(
+            partial(self.select_directory, self.widget_dict["root_dir"].widget)
+        )
+        self.widget_dict["J"].sigValueChanged.connect(self.objectives_changed)
+        self.widget_dict["G"].sigValueChanged.connect(self.constraints_changed)
+        self.widget_dict["tool"].sigValueChanged.connect(self.update_objectives_and_constraints)
 
     def setValue(self, new_values: dict):
         super().setValue(new_values)
         self.update_objectives_and_constraints()
 
-    def update_objectives_and_constraints(self):
+    def update_objectives_and_constraints(self, *args, **kwargs):
         inputs = self.value()
-        self.objectives_changed(self.widget_dict['J']['widget'], inputs['J'])
-        self.constraints_changed(self.widget_dict['G']['widget'], inputs['G'])
+        self.objectives_changed(inputs["J"])
+        self.constraints_changed(inputs["G"])
 
-    def visualize_sampling(self, ws_widget, _):
-        starting_value = ws_widget.value()
-        gui_obj = get_parent(self, depth=4)
-        background_color = gui_obj.themes[gui_obj.current_theme]["graph-background-color"]
-        theme = gui_obj.themes[gui_obj.current_theme]
-        geo_col_dict = gui_obj.geo_col.get_dict_rep()
+    def visualize_sampling(self):
+        starting_value = self.widget_dict["max_sampling_width"].value()
+        background_color = self.gui_obj.themes[self.gui_obj.current_theme]["graph-background-color"]
+        theme = self.gui_obj.themes[self.gui_obj.current_theme]
+        geo_col_dict = self.gui_obj.geo_col.get_dict_rep()
 
         dialog = SamplingVisualizationDialog(geo_col_dict=geo_col_dict, initial_sampling_width=starting_value,
                                              initial_n_samples=20, background_color=background_color, theme=theme,
@@ -2344,51 +3201,51 @@ class GeneticAlgorithmDialogWidget(PymeadDialogWidget):
         pass
 
     def multi_point_changed(self, state: int or bool):
-        self.multi_point = state
-        self.objectives_changed(self.widget_dict['J']['widget'], self.widget_dict['J']['widget'].text())
-        self.constraints_changed(self.widget_dict['G']['widget'], self.widget_dict['G']['widget'].text())
+        self.objectives_changed(self.widget_dict["J"].value())
+        self.constraints_changed(self.widget_dict["G"].value())
 
-    def objectives_changed(self, widget, text: str):
-        objective_container = get_parent(self, depth=4)
-        if objective_container is None:
-            objective_container = get_parent(self, depth=1)
-        inputs = self.value()
-        tool = inputs['tool']
-        if self.multi_point:
-            tool += '_MULTIPOINT'
-        objective_container.objectives = []
+    def get_template(self) -> dict:
+        dialog_value = self.value()
+        multi_widget_value = self.multi_point_dialog_widget.value()
+        tool = dialog_value["tool"]
+        assert isinstance(tool, str)
+        geoms = len([k for k in multi_widget_value.keys() if multi_widget_value[k] is not None])
+        multipoint_active = [bool(v["multi_point_active"])
+                             for k, v in multi_widget_value.items() if k != "tab_widget"]
+        stencil_points = [len(v["multi_point"]["table"]) - 1 if v is not None and v["multi_point"] is not None and v[
+            "multi_point"]["table"] is not None else 0 for k, v in multi_widget_value.items()]
+        stencil_points.pop(0)  # Delete the n_points value associated with the plus botton tab
+        assert len(multipoint_active) == len(stencil_points)
+        return self.aero_data_output_templates.get_aero_data_output_template(
+            tool, geoms, multipoint_active, stencil_points)
+
+    def objectives_changed(self, text: str):
+        widget = self.widget_dict["J"].widget
+        template = self.get_template()
+        self.gui_obj.objectives.clear()
         for obj_func_str in text.split(','):
             objective = Objective(obj_func_str)
-            objective_container.objectives.append(objective)
+            self.gui_obj.objectives.append(objective)
             if text == '':
                 widget.setStyleSheet("QLineEdit {background-color: rgba(176,25,25,50)}")
                 return
             try:
-                function_input_data1 = getattr(cfd_output_templates, tool)
-                function_input_data2 = self.convert_text_array_to_dict(inputs['additional_data'])
-                objective.update({**function_input_data1, **function_input_data2})
+                objective.update(template)
                 widget.setStyleSheet("QLineEdit {background-color: rgba(16,201,87,50)}")
             except FunctionCompileError:
                 widget.setStyleSheet("QLineEdit {background-color: rgba(176,25,25,50)}")
                 return
 
-    def constraints_changed(self, widget, text: str):
-        constraint_container = get_parent(self, depth=4)
-        if constraint_container is None:
-            constraint_container = get_parent(self, depth=1)
-        inputs = self.value()
-        tool = inputs['tool']
-        if self.multi_point:
-            tool += '_MULTIPOINT'
-        constraint_container.constraints = []
+    def constraints_changed(self, text: str):
+        widget = self.widget_dict["G"].widget
+        template = self.get_template()
+        self.gui_obj.constraints.clear()
         for constraint_func_str in text.split(','):
             if len(constraint_func_str) > 0:
                 constraint = Constraint(constraint_func_str)
-                constraint_container.constraints.append(constraint)
+                self.gui_obj.constraints.append(constraint)
                 try:
-                    function_input_data1 = getattr(cfd_output_templates, tool)
-                    function_input_data2 = self.convert_text_array_to_dict(inputs['additional_data'])
-                    constraint.update({**function_input_data1, **function_input_data2})
+                    constraint.update(template)
                     widget.setStyleSheet("QLineEdit {background-color: rgba(16,201,87,50)}")
                 except FunctionCompileError:
                     widget.setStyleSheet("QLineEdit {background-color: rgba(176,25,25,50)}")
@@ -2414,17 +3271,17 @@ class PanelDialog(PymeadDialog):
 
 
 class XFOILDialog(PymeadDialog):
-    def __init__(self, parent: QWidget, current_airfoils: typing.List[str], theme: dict,
-                 settings_override: dict = None):
-        self.w = XFOILDialogWidget(current_airfoils=current_airfoils, settings_override=settings_override)
+    def __init__(self, parent: QWidget, gui_obj, settings_override: dict = None):
+        self.w = XFOILDialogWidget(gui_obj=gui_obj, settings_override=settings_override)
+        theme = gui_obj.themes[gui_obj.current_theme]
         super().__init__(parent=parent, window_title="Single Airfoil Viscous Analysis", widget=self.w,
                          theme=theme)
 
 
 class MultiAirfoilDialog(PymeadDialog):
-    def __init__(self, parent: QWidget, geo_col: GeometryCollection, theme: dict, settings_override: dict = None):
-        mset_dialog_widget = MSETDialogWidget2(geo_col=geo_col, theme=theme)
-        mses_dialog_widget = MSESDialogWidget2(geo_col=geo_col)
+    def __init__(self, parent: QWidget, gui_obj, settings_override: dict = None):
+        mset_dialog_widget = MSETDialogWidget2(gui_obj=gui_obj)
+        mses_dialog_widget = MSESDialogWidget2(gui_obj=gui_obj)
         mset_dialog_widget.sigMEAChanged.connect(mses_dialog_widget.widget_dict["xtrs"].onMEAChanged)
         mplot_dialog_widget = MPLOTDialogWidget()
         mpolar_dialog_widget = MPOLARDialogWidget()
@@ -2435,6 +3292,7 @@ class MultiAirfoilDialog(PymeadDialog):
             "MPOLAR": mpolar_dialog_widget
         }
         widget = PymeadDialogVTabWidget(parent=None, widgets=tab_widgets, settings_override=settings_override)
+        theme = gui_obj.themes[gui_obj.current_theme]
         super().__init__(parent=parent, window_title="Multi-Element-Airfoil Analysis", widget=widget, theme=theme)
 
 
@@ -2803,28 +3661,35 @@ class OptimizationDialogVTabWidget(PymeadDialogVTabWidget):
 
 
 class OptimizationSetupDialog(PymeadDialog):
-    def __init__(self, parent, geo_col: GeometryCollection, theme: dict, settings_override: dict = None):
+    def __init__(self, parent, theme: dict, gui_obj, settings_override: dict = None):
         w0 = GAGeneralSettingsDialogWidget()
-        w3 = XFOILDialogWidget(current_airfoils=[k for k in geo_col.container()["airfoils"]])
-        w4 = MSETDialogWidget2(geo_col=geo_col, theme=theme)
-        w2 = GAConstraintsTerminationDialogWidget2(geo_col=geo_col)
-        w7 = MultiPointOptDialogWidget()
-        w5 = MSESDialogWidget2(geo_col=geo_col)
-        w1 = GeneticAlgorithmDialogWidget(multi_point_dialog_widget=w7)
-        w6 = PymeadDialogWidget(os.path.join(GUI_DEFAULTS_DIR, 'mplot_settings.json'))
-        w = OptimizationDialogVTabWidget(parent=self, widgets={'General Settings': w0,
-                                                        'Genetic Algorithm': w1,
-                                                        'Constraints/Termination': w2,
-                                                               'Multi-Point Optimization': w7,
-                                                        'XFOIL': w3, 'MSET': w4, 'MSES': w5, 'MPLOT': w6},
-                                         settings_override=settings_override)
-        super().__init__(parent=parent, window_title='Optimization Setup', widget=w, theme=theme)
-        w.objectives = self.parent().objectives
-        w.constraints = self.parent().constraints
+        w3 = XFOILDialogWidget(gui_obj=gui_obj)
+        w4 = MSETDialogWidget2(gui_obj=gui_obj)
+        w2 = GAConstraintsTerminationDialogWidget2(gui_obj=gui_obj)
+        w7 = MultiGeomTabWidget(gui_obj=gui_obj)
+        w5 = MSESDialogWidget2(gui_obj=gui_obj)
+        w1 = GeneticAlgorithmDialogWidget(gui_obj=gui_obj, multi_point_dialog_widget=w7)
+        w6 = PymeadDialogWidget(os.path.join(GUI_DEFAULTS_DIR, "mplot_settings.json"))
+        w = OptimizationDialogVTabWidget(
+            parent=self, widgets={
+                "General Settings": w0,
+                "Genetic Algorithm": w1,
+                "Constraints/Termination": w2,
+                "Multi-Point Optimization": w7,
+                "XFOIL": w3,
+                "MSET": w4,
+                "MSES": w5,
+                "MPLOT": w6},
+            settings_override=settings_override
+        )
+        super().__init__(parent=parent, window_title="Optimization Setup", widget=w, theme=theme)
+        w.objectives = gui_obj.objectives
+        w.constraints = gui_obj.constraints
 
         w1.update_objectives_and_constraints()  # IMPORTANT: makes sure that the objectives/constraints get stored
+        w7.sigMultiPointGeomUpdated.connect(w1.update_objectives_and_constraints)
 
-        self.geo_col = geo_col
+        self.gui_obj = gui_obj
         self.mset_widget = w4
         self.xfoil_widget = w3
         self.mses_widget = w5
@@ -2834,16 +3699,12 @@ class OptimizationSetupDialog(PymeadDialog):
 
     def onMEAFileChanged(self, airfoil_objs: typing.List[Airfoil], mea_objs: typing.List[MEA],
                          current_airfoil: str or None, current_mea: str or None):
-        self.geo_col = get_parent(self, 1).geo_col
-        self.mset_widget.geo_col = self.geo_col
-        self.mses_widget.geo_col = self.geo_col
-        self.constraints_widget.geo_col = self.geo_col
         self.xfoil_widget.widget_dict["airfoil"]["widget"].clear()
         self.mset_widget.widget_dict["mea"].widget.clear()
 
         # Add the new list of parameters to the actuator disk MSES widget
-        param_list = [param for param in self.geo_col.container()["params"]]
-        dv_list = [dv + " (DV)" for dv in self.geo_col.container()["desvar"]]
+        param_list = [param for param in self.gui_obj.geo_col.container()["params"]]
+        dv_list = [dv + " (DV)" for dv in self.gui_obj.geo_col.container()["desvar"]]
         AD_widget = self.mses_widget.widget_dict["AD"]
         AD_widget.param_list = [""] + param_list + dv_list
         for ad in AD_widget.widget_dict.values():

@@ -1260,8 +1260,7 @@ class GUI(FramelessMainWindow):
             self.disp_message_box(f"Airfoil geometry saved to {iges_file_path}", message_mode="info")
 
     def single_airfoil_viscous_analysis(self):
-        self.dialog = XFOILDialog(parent=self, current_airfoils=[k for k in self.geo_col.container()["airfoils"]],
-                                  theme=self.themes[self.current_theme], settings_override=self.xfoil_settings)
+        self.dialog = XFOILDialog(parent=self, gui_obj=self, settings_override=self.xfoil_settings)
         current_airfoils = [k for k in self.geo_col.container()["airfoils"].keys()]
         self.dialog.w.widget_dict["airfoil"]["widget"].addItems(current_airfoils)
         if self.dialog.exec():
@@ -1385,8 +1384,7 @@ class GUI(FramelessMainWindow):
             return
 
         self.dialog = MultiAirfoilDialog(
-            parent=self, geo_col=self.geo_col, theme=self.themes[self.current_theme],
-            settings_override=self.multi_airfoil_analysis_settings
+            parent=self, gui_obj=self, settings_override=self.multi_airfoil_analysis_settings
         )
         self.dialog.accepted.connect(self.multi_airfoil_analysis_accepted)
         self.dialog.rejected.connect(self.multi_airfoil_analysis_rejected)
@@ -1594,7 +1592,7 @@ class GUI(FramelessMainWindow):
 
     def setup_optimization(self):
         self.dialog = OptimizationSetupDialog(self, settings_override=self.opt_settings,
-                                              geo_col=self.geo_col, theme=self.themes[self.current_theme])
+                                              gui_obj=self, theme=self.themes[self.current_theme])
         self.dialog.accepted.connect(self.optimization_accepted)
         self.dialog.rejected.connect(self.optimization_rejected)
         self.dialog.exec()
@@ -1670,24 +1668,7 @@ class GUI(FramelessMainWindow):
                     self.disp_message_box('MPLOT suite executable \'mplot\' not found on system path')
                     return
 
-                # print(f"{opt_settings['General Settings']['use_current_mea'] = }")
-                # if opt_settings['General Settings']['use_current_mea']:
-                #     # mea_dict = self.mea.copy_as_param_dict(deactivate_airfoil_graphs=True)
-                #     geo_col = self.geo_col.get_dict_rep()
-                # else:
-                #     mea_file = opt_settings['General Settings']['mea_file']
-                #     if not os.path.exists(mea_file):
-                #         self.disp_message_box('JMEA parametrization file not found', message_mode='error')
-                #         exit_the_dialog = True
-                #         early_return = True
-                #         continue
-                #     else:
-                #         # mea_dict = load_data(mea_file)
-                #         geo_col = load_data(mea_file)
                 geo_col = self.geo_col.get_dict_rep()
-
-                # # Generate the multi-element airfoil from the dictionary
-                # mea = MEA.generate_from_param_dict(mea_dict)
 
                 # TODO: reimplement this logic
                 # norm_val_list = geo_col.extract_design_variable_values(bounds_normalized=True)
