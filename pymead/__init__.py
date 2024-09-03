@@ -118,22 +118,23 @@ def count_lines_of_code():
     """
     print("Counting the lines of code in all of pymead's sub-packages...")
 
-    def _count_lines(folder: str):
+    def _count_lines(_folder: str):
         n_lines = 0
-        for file_or_folder in os.listdir(folder):
-            if os.path.isdir(os.path.join(folder, file_or_folder)):
-                n_lines += _count_lines(os.path.join(folder, file_or_folder))
+        for file_or_folder in os.listdir(_folder):
+            if os.path.isdir(os.path.join(_folder, file_or_folder)):
+                n_lines += _count_lines(os.path.join(_folder, file_or_folder))
             else:
                 if os.path.splitext(file_or_folder)[-1] != ".py":
                     continue
-                n_lines += sum(1 for _ in open(os.path.join(folder, file_or_folder)))
+                n_lines += sum(1 for _ in open(os.path.join(_folder, file_or_folder)))
         return n_lines
 
     total_lines = 0
-    for file_path in os.listdir(BASE_DIR):
-        if not os.path.isdir(file_path) or file_path == "__pycache__":
+    for folder in os.listdir(BASE_DIR):
+        file_path = os.path.join(BASE_DIR, folder)
+        if not os.path.isdir(file_path) or folder == "__pycache__":
             continue
         subpackage_lines = _count_lines(file_path)
         total_lines += subpackage_lines
-        print(f"Subpackage {file_path}: {subpackage_lines}")
+        print(f"Subpackage {folder}: {subpackage_lines}")
     print(f"Total Lines: {total_lines}")
