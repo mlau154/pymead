@@ -649,7 +649,7 @@ class GUI(FramelessMainWindow):
 
     def take_screenshot(self, dialog_test_action: typing.Callable = None,
                         info_dialog_action: typing.Callable = None,
-                        error_dialog_action: typing.Callable = None):
+                        error_dialog_action: typing.Callable = None) -> str:
 
         id_dict = {dw.windowTitle(): dw.winId() for dw in self.dock_widgets}
         id_dict = {"Full Window": self.winId(), **id_dict}
@@ -661,6 +661,7 @@ class GUI(FramelessMainWindow):
         if self.screenshot_settings is not None:
             self.dialog.setValue(self.screenshot_settings)
 
+        final_file_name = None
         if (dialog_test_action is not None and not dialog_test_action(self.dialog)) or self.dialog.exec():
             inputs = self.dialog.value()
             self.screenshot_settings = inputs
@@ -693,6 +694,8 @@ class GUI(FramelessMainWindow):
             else:
                 self.disp_message_box(f"Directory '{dir_name}' for "
                                       f"file '{file_name}' not found", dialog_test_action=error_dialog_action)
+
+        return str(final_file_name)
 
     def showHidePymeadObjs(self, sub_container: str, show: bool):
         if show:
