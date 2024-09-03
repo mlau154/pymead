@@ -34,7 +34,13 @@ class TabBar(QTabBar):
 
 
 class VerticalTabWidget(QTabWidget):
-    def __init__(self, parent=None):
+    def __init__(self, gui_obj, parent=None):
         super().__init__(parent=parent)
+        theme = gui_obj.themes[gui_obj.current_theme]
         self.setTabBar(TabBar(self))
         self.setTabPosition(QTabWidget.TabPosition.West)
+        self.setStyleSheet(
+            f"""
+            QTabBar::tab:selected, QTabBar::tab:hover {{ background: {theme['tab-selected-hover-color']}; }}
+            """
+        )

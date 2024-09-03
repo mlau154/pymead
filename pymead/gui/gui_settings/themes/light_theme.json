@@ -22,6 +22,7 @@
   "menu-item-background-color": "#ffffff",
   "menu-item-main-color": "#0f0e06",
   "menu-item-selected-color": "#3944bcdd",
+  "tab-selected-hover-color": "#3944bcdd",
   "minimize-hover-color": "#ffbd44",
   "normal-hover-color": "#00ca4e",
   "maximize-hover-color": "#00ca4e",

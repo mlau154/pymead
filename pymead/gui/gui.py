@@ -1592,7 +1592,7 @@ class GUI(FramelessMainWindow):
 
     def setup_optimization(self):
         self.dialog = OptimizationSetupDialog(self, settings_override=self.opt_settings,
-                                              gui_obj=self, theme=self.themes[self.current_theme])
+                                              theme=self.themes[self.current_theme], parent=self)
         self.dialog.accepted.connect(self.optimization_accepted)
         self.dialog.rejected.connect(self.optimization_rejected)
         self.dialog.exec()

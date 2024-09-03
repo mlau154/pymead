@@ -667,8 +667,8 @@ class PymeadDialogWidget2(QWidget):
 
 
 class PymeadDialogVTabWidget(VerticalTabWidget):
-    def __init__(self, parent, widgets: dict, settings_override: dict = None):
-        super().__init__()
+    def __init__(self, gui_obj, widgets: dict, settings_override: dict = None, parent=None):
+        super().__init__(gui_obj=gui_obj, parent=parent)
         self.w_dict = widgets
         for k, v in self.w_dict.items():
             self.addTab(v, k)
@@ -3654,14 +3654,14 @@ class EditBoundsDialog(PymeadDialog):
 
 
 class OptimizationDialogVTabWidget(PymeadDialogVTabWidget):
-    def __init__(self, parent, widgets: dict, settings_override: dict):
-        super().__init__(parent=parent, widgets=widgets, settings_override=settings_override)
+    def __init__(self, gui_obj, widgets: dict, settings_override: dict, parent=None):
+        super().__init__(gui_obj=gui_obj, widgets=widgets, settings_override=settings_override, parent=parent)
         self.objectives = None
         self.constraints = None
 
 
 class OptimizationSetupDialog(PymeadDialog):
-    def __init__(self, parent, theme: dict, gui_obj, settings_override: dict = None):
+    def __init__(self, gui_obj, theme: dict, settings_override: dict = None, parent=None):
         w0 = GAGeneralSettingsDialogWidget()
         w3 = XFOILDialogWidget(gui_obj=gui_obj)
         w4 = MSETDialogWidget2(gui_obj=gui_obj)
@@ -3671,7 +3671,7 @@ class OptimizationSetupDialog(PymeadDialog):
         w1 = GeneticAlgorithmDialogWidget(gui_obj=gui_obj, multi_point_dialog_widget=w7)
         w6 = PymeadDialogWidget(os.path.join(GUI_DEFAULTS_DIR, "mplot_settings.json"))
         w = OptimizationDialogVTabWidget(
-            parent=self, widgets={
+            gui_obj=gui_obj, widgets={
                 "General Settings": w0,
                 "Genetic Algorithm": w1,
                 "Constraints/Termination": w2,
