@@ -14,6 +14,7 @@ Planned feature additions
 - Create a custom context menu for all callback plots (similar to airfoil canvas context menu) with a subset of the
   original context menu actions
 - Make a "File Already Exists. Overwrite?" dialog
+- Add save protection for example files
 - Add modifiable perpendicular constraint handle positioning
 - Add handle offsets to `.jmea` files
 - Add the ability to hide individual objects
