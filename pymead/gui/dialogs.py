@@ -2339,6 +2339,7 @@ class MultiPointTable(QTableWidget):
         if var_idx is None:
             return 0
         combo.setCurrentText(MSESFlowVarCombo.flowVarsReverseMapping[var_idx])
+        self.flow_vars.append(combo.currentText())
         return 0
 
     def addStencilPoint(self, vals: list = None):
@@ -2430,6 +2431,7 @@ class DesVarTable(QTableWidget):
                 return -3  # If there are no unused design variables
 
         desvar_combo.setCurrentText(desvar)
+        self.masked_dvs.append(desvar_combo.currentText())
         return 0
 
     def value(self) -> typing.List[str] or None:
@@ -2539,6 +2541,7 @@ class ParamTable(QTableWidget):
             if param not in combo_items:
                 return -2
             param_combo.setCurrentText(param)
+            self.params_to_modify.append(param_combo.currentText())
 
         status_code = self.onParamChanged(row, param, new_val=new_val)
         return status_code
@@ -3163,7 +3166,7 @@ class MultiGeomTabWidget(PymeadDialogWidget2):
         n_dv = len(self.gui_obj.geo_col.container()["desvar"])
         n_params = len(self.gui_obj.geo_col.container()["params"])
         null_dv, null_params = False, False
-        if any([v is not None and v["multi_geom"] is not None and v["multi_geom"]["param_table"] is not None
+        if any([isinstance(v, dict) and v["multi_geom"] is not None and v["multi_geom"]["param_table"] is not None
                 for k, v in d.items()]) and n_params == 0:
             self.gui_obj.disp_message_box("Multipoint Optimization: "
                                           "No parameters found in the currently loaded GeometryCollection. "
@@ -3171,7 +3174,7 @@ class MultiGeomTabWidget(PymeadDialogWidget2):
                                           "as the 'MEA File' in the General Settings dialog to ensure "
                                           "proper loading of optimization settings from file.")
             null_params = True
-        if any([v is not None and v["multi_geom"] is not None and v["multi_geom"]["desvar_table"] is not None
+        if any([isinstance(v, dict) and v["multi_geom"] is not None and v["multi_geom"]["desvar_table"] is not None
                 for k, v in d.items()]) and n_dv == 0:
             self.gui_obj.disp_message_box("Multipoint Optimization: "
                                           "No design variables found in the currently loaded GeometryCollection. "
@@ -3198,6 +3201,8 @@ class MultiGeomTabWidget(PymeadDialogWidget2):
             if null_dv:
                 v["multi_geom"]["desvar_table"] = None
             self.widget_dict[k].setValue(v)
+        self.widget_dict["design_geom"].setValue(d["design_geom"])
+        self.widget_dict["design_aero"].setValue(d["design_aero"])
 
 
 class GeneticAlgorithmDialogWidget(PymeadDialogWidget2):
