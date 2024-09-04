@@ -10,7 +10,7 @@ from typing import List
 import numpy as np
 import pyqtgraph as pg
 import PyQt6.QtWidgets
-from PyQt6.QtCore import QEvent
+from PyQt6.QtCore import QEvent, QSignalBlocker
 from PyQt6.QtCore import Qt, pyqtSignal, QObject, QRect
 from PyQt6.QtCore import pyqtSlot, QStandardPaths
 from PyQt6.QtGui import QFont, QAction
@@ -2201,6 +2201,7 @@ class ParamSpin(QDoubleSpinBox):
 class MultiPointTable(QTableWidget):
 
     sigMultiPointGeomUpdated = pyqtSignal()
+    sigMultiPointTableUpdated = pyqtSignal(list)
 
     def __init__(self, gui_obj, parent=None):
         self.gui_obj = gui_obj
@@ -2233,11 +2234,26 @@ class MultiPointTable(QTableWidget):
 
         contextMenu.exec(self.mapToGlobal(a0.pos()))
 
+    def getDescriptionList(self) -> list:
+        descriptions = []
+        if self.rowCount() <= 1:
+            return descriptions
+        for row_idx in range(1, self.rowCount()):
+            item = self.item(row_idx, 0)
+            if item is None:
+                continue
+            if item.text() == "":
+                continue
+            descriptions.append(item.text())
+        return descriptions
+
     def onCellChanged(self, *args, **kwargs):
         self.sigMultiPointGeomUpdated.emit()
+        self.sigMultiPointTableUpdated.emit(self.getDescriptionList())
 
     def onDeleteRow(self, row: int):
         self.removeRow(row)
+        self.sigMultiPointTableUpdated.emit(self.getDescriptionList())
 
     def onDeleteColumn(self, column: int, remove_flow_var_from_list: bool = True):
         cell_widget = self.cellWidget(0, column)
@@ -2576,6 +2592,7 @@ class ParamTable(QTableWidget):
 class MultiPointWidget(PymeadDialogWidget2):
 
     sigMultiPointGeomUpdated = pyqtSignal()
+    sigMultiPointTableUpdated = pyqtSignal(list)
 
     def __init__(self, gui_obj, parent=None):
         self.gui_obj = gui_obj
@@ -2597,10 +2614,14 @@ class MultiPointWidget(PymeadDialogWidget2):
     def onMultiPointGeomUpdated(self, *args, **kwargs):
         self.sigMultiPointGeomUpdated.emit()
 
+    def onMultiPointTableUpdated(self, descriptions: typing.List[str]):
+        self.sigMultiPointTableUpdated.emit(descriptions)
+
     def establishWidgetConnections(self):
         self.widget_dict["add_flow_var_button"].clicked.connect(self.onFlowVarButtonPressed)
         self.widget_dict["add_stencil_point_button"].clicked.connect(self.onStencilPointButtonPressed)
         self.widget_dict["table"].sigMultiPointGeomUpdated.connect(self.onMultiPointGeomUpdated)
+        self.widget_dict["table"].sigMultiPointTableUpdated.connect(self.onMultiPointTableUpdated)
 
     def value(self) -> dict:
         """
@@ -2899,6 +2920,7 @@ class GASaveLoadDialogWidget(PymeadDialogWidget):
 class MultiPointOptDialogWidget(PymeadDialogWidget2):
 
     sigMultiPointGeomUpdated = pyqtSignal()
+    sigMultiPointTableUpdated = pyqtSignal(list)
 
     def __init__(self, gui_obj, parent=None):
         self.gui_obj = gui_obj
@@ -2920,9 +2942,13 @@ class MultiPointOptDialogWidget(PymeadDialogWidget2):
         self.widget_dict["multi_point_active"].sigValueChanged.connect(self.onMultiPointGeomUpdated)
         self.widget_dict["multi_geom"].sigMultiPointGeomUpdated.connect(self.onMultiPointGeomUpdated)
         self.widget_dict["multi_point"].sigMultiPointGeomUpdated.connect(self.onMultiPointGeomUpdated)
+        self.widget_dict["multi_point"].sigMultiPointTableUpdated.connect(self.onMultiPointTableUpdated)
 
     def onMultiPointGeomUpdated(self, *args, **kwargs):
         self.sigMultiPointGeomUpdated.emit()
+
+    def onMultiPointTableUpdated(self, descriptions: typing.List[str]):
+        self.sigMultiPointTableUpdated.emit(descriptions)
 
     def multiPointActive(self, active: bool):
         self.widget_dict["multi_point"].setEnabled(active)
@@ -2998,42 +3024,111 @@ class MultiPointGeomTabWidget(QTabWidget):
 class MultiGeomTabWidget(PymeadDialogWidget2):
 
     sigMultiPointGeomUpdated = pyqtSignal()
+    sigMultiPointTableUpdated = pyqtSignal(list, str)
 
     def __init__(self, gui_obj, parent=None):
         self.gui_obj = gui_obj
         self.tab_names = []
+        self.descriptions = {}
         super().__init__(parent=parent)
 
     def initializeWidgets(self, *args, **kwargs):
         self.widget_dict = {
+            "design_geom": PymeadLabeledComboBox(
+                label="Design Geometry",
+                tool_tip="Geometry that will be plotted live during optimization. "
+                         "Has no impact on the optimization procedure."),
+            "design_aero": PymeadLabeledComboBox(
+                label="Design Aero",
+                tool_tip="Stencil point that will be used for showing surface pressure distribution "
+                         "live during optimization. Has no impact on the optimization procedure."
+            ),
             "tab_widget": MultiPointGeomTabWidget(self)
         }
 
     def addWidgets(self, *args, **kwargs):
-        self.lay.addWidget(self.widget_dict["tab_widget"])
+        self.lay.addWidget(self.widget_dict["design_geom"].label, 0, 0)
+        self.lay.addWidget(self.widget_dict["design_geom"].widget, 0, 1)
+        self.lay.addWidget(self.widget_dict["design_aero"].label, 0, 2)
+        self.lay.addWidget(self.widget_dict["design_aero"].widget, 0, 3)
+        self.lay.addWidget(self.widget_dict["tab_widget"], 1, 0, 1, 4)
+
+    @staticmethod
+    def getExcludedKeys():
+        return ["design_geom", "design_aero", "tab_widget"]
 
     def establishWidgetConnections(self):
         self.widget_dict["tab_widget"].sigPlusPressed.connect(self.onPlusPressed)
         self.widget_dict["tab_widget"].sigRemoveTab.connect(self.onRemovePressed)
         self.widget_dict["tab_widget"].sigRenameTab.connect(self.onRenamePressed)
+        self.widget_dict["design_geom"].sigValueChanged.connect(self.onDesignComboChanged)
 
     def onMultiPointGeomUpdated(self, *args, **kwargs):
         self.sigMultiPointGeomUpdated.emit()
+
+    def onMultiPointTableUpdated(self, descriptions: typing.List[str], tab_name: str):
+        self.descriptions[tab_name] = descriptions
+        self.updateDesignAeroCombo()
+
+    def onDesignComboChanged(self, new_value: str):
+        self.updateDesignAeroCombo()
+
+    def updateDesignGeomCombo(self, new_name: str = None):
+        current_val = self.widget_dict["design_geom"].value()
+        self.widget_dict["design_geom"].widget.clear()
+        self.widget_dict["design_geom"].widget.addItems(self.tab_names)
+        if current_val in self.tab_names:
+            self.widget_dict["design_geom"].setValue(current_val)
+            return
+
+        if new_name is not None and new_name in self.tab_names:
+            self.widget_dict["design_geom"].setValue(new_name)
+            return
+
+        if len(self.tab_names) > 0:
+            self.widget_dict["design_geom"].setValue(self.tab_names[0])
+
+    def updateDesignAeroCombo(self):
+        current_val = self.widget_dict["design_aero"].value()
+        design_geom_val = self.widget_dict["design_geom"].value()
+        self.widget_dict["design_aero"].widget.clear()
+        if design_geom_val == "":
+            return  # This should mean that we have deleted all the tabs
+        self.widget_dict["design_aero"].widget.addItems(self.descriptions[design_geom_val])
+        if current_val in self.descriptions[design_geom_val]:
+            self.widget_dict["design_aero"].setValue(current_val)
+            return
+
+        if len(self.descriptions[design_geom_val]) > 0:
+            self.widget_dict["design_aero"].setValue(self.descriptions[design_geom_val][0])
 
     def onPlusPressed(self, tab_name: str = None):
         tab_name = GeometryCollection.unique_namer("Design", self.tab_names) if tab_name is None else tab_name
         self.widget_dict[tab_name] = MultiPointOptDialogWidget(self.gui_obj)
         self.widget_dict[tab_name].sigMultiPointGeomUpdated.connect(self.onMultiPointGeomUpdated)
+        self.widget_dict[tab_name].sigMultiPointTableUpdated.connect(partial(self.onMultiPointTableUpdated, tab_name=tab_name))
         self.widget_dict["tab_widget"].addTab(self.widget_dict[tab_name], tab_name)
         self.tab_names.append(tab_name)
         self.sigMultiPointGeomUpdated.emit()
+
+        # Block the sigValueChanged signal from the design geometry combobox while we directly update it with the value
+        # of the new tab
+        with QSignalBlocker(self.widget_dict["design_geom"]):
+            self.updateDesignGeomCombo()
+
+        self.descriptions[tab_name] = []
 
     def onRemovePressed(self, index: int):
         tab_name = self.widget_dict["tab_widget"].tabText(index)
         self.widget_dict["tab_widget"].removeTab(index)
         self.tab_names.remove(tab_name)
+        if tab_name in self.descriptions:
+            self.descriptions.pop(tab_name)
         self.widget_dict.pop(tab_name)
         self.sigMultiPointGeomUpdated.emit()
+        with QSignalBlocker(self.widget_dict["design_geom"]):
+            self.updateDesignGeomCombo()
+        self.updateDesignAeroCombo()
 
     def onRenamePressed(self, index: int):
         old_name = self.widget_dict["tab_widget"].tabText(index)
@@ -3046,8 +3141,18 @@ class MultiGeomTabWidget(PymeadDialogWidget2):
                 return
 
             self.tab_names[self.tab_names.index(old_name)] = new_name
+            self.descriptions[new_name] = self.descriptions.pop(old_name)
             self.widget_dict[new_name] = self.widget_dict.pop(old_name)
             self.widget_dict["tab_widget"].setTabText(index, dialog.value()["rename"])
+
+            # Disconnect the connection using the old tab name and connect it to the new tab name
+            self.widget_dict[new_name].sigMultiPointTableUpdated.disconnect()
+            self.widget_dict[new_name].sigMultiPointTableUpdated.connect(
+                partial(self.onMultiPointTableUpdated, tab_name=new_name))
+
+            with QSignalBlocker(self.widget_dict["design_geom"]):
+                self.updateDesignGeomCombo(new_name=new_name)
+            self.updateDesignAeroCombo()
 
     def value(self) -> dict:
         val = super().value()
@@ -3083,7 +3188,7 @@ class MultiGeomTabWidget(PymeadDialogWidget2):
 
         # Add the tabs by name and set the value of all the widgets for each tab
         for k, v in d.items():
-            if k == "tab_widget":
+            if k in MultiGeomTabWidget.getExcludedKeys():
                 continue
             self.onPlusPressed(k)
             if v is None:
@@ -3209,12 +3314,13 @@ class GeneticAlgorithmDialogWidget(PymeadDialogWidget2):
         multi_widget_value = self.multi_point_dialog_widget.value()
         tool = dialog_value["tool"]
         assert isinstance(tool, str)
-        geoms = len([k for k in multi_widget_value.keys() if multi_widget_value[k] is not None])
+        geoms = len([k for k in multi_widget_value.keys() if isinstance(multi_widget_value[k], dict)])
         multipoint_active = [bool(v["multi_point_active"])
-                             for k, v in multi_widget_value.items() if k != "tab_widget"]
-        stencil_points = [len(v["multi_point"]["table"]) - 1 if v is not None and v["multi_point"] is not None and v[
+                             for k, v in multi_widget_value.items() if k not in MultiGeomTabWidget.getExcludedKeys()]
+        stencil_points = [len(v["multi_point"]["table"]) - 1 if isinstance(v, dict) and v[
+            "multi_point"] is not None and v[
             "multi_point"]["table"] is not None else 0 for k, v in multi_widget_value.items()]
-        stencil_points.pop(0)  # Delete the n_points value associated with the plus botton tab
+        stencil_points = stencil_points[3:]  # Delete the n_points value associated with the other widgets
         assert len(multipoint_active) == len(stencil_points)
         return self.aero_data_output_templates.get_aero_data_output_template(
             tool, geoms, multipoint_active, stencil_points)
@@ -4486,7 +4592,6 @@ def convert_opt_settings_to_param_dict(opt_settings: dict) -> dict:
                   'xl': 0.0,
                   'xu': 1.0,
                   'seed': opt_settings['Genetic Algorithm']['random_seed'],
-                  'multi_point': opt_settings['Multi-Point Optimization']['multi_point_active'],
                   'design_idx': opt_settings['Multi-Point Optimization']['design_idx'],
                   'num_processors': opt_settings['Genetic Algorithm']['num_processors'],
                   'x_tol': opt_settings['Constraints/Termination']['x_tol'],
@@ -4511,8 +4616,6 @@ def convert_opt_settings_to_param_dict(opt_settings: dict) -> dict:
                   'mses_settings': convert_dialog_to_mses_settings(opt_settings['MSES']),
                   'mplot_settings': convert_dialog_to_mplot_settings(opt_settings['MPLOT']),
                   'constraints': opt_settings['Constraints/Termination']['constraints'],
-                  'multi_point_active': opt_settings['Multi-Point Optimization']['multi_point_active'],
-                  'multi_point_stencil': opt_settings['Multi-Point Optimization']['multi_point_stencil'],
                   'verbose': True,
                   'eta_crossover': opt_settings['Genetic Algorithm']['eta_crossover'],
                   'eta_mutation': opt_settings['Genetic Algorithm']['eta_mutation'],

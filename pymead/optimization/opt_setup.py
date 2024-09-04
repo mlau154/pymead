@@ -1,6 +1,7 @@
 
 import os
 import re
+import typing
 from copy import deepcopy
 
 import numpy as np
@@ -9,6 +10,8 @@ from pymoo.decomposition.asf import ASF
 from pymoo.util.display import Display
 from pymoo.util.termination.default import MultiObjectiveDefaultTermination
 from pymoo.util.termination.f_tol import MultiObjectiveSpaceToleranceTermination
+
+from pymead.gui.dialogs import MultiGeomTabWidget
 
 multi_point_keys_mses = {
     0: 'MACHIN',
@@ -26,12 +29,28 @@ multi_point_keys_mses = {
     12: 'MUCON',
     13: 'XTRSupper',
     14: 'XTRSlower',
-    15: 'ISDELH',
-    16: 'XCDELH',
-    17: 'PTRHIN',
-    18: 'ETAH',
-    19: 'ISMOM',
-    20: 'IFFBC',
+    15: 'ISMOM',
+    16: 'IFFBC',
+    17: 'ISDELH',
+    18: 'XCDELH',
+    19: 'PTRHIN',
+    20: 'ETAH',
+    21: 'ISDELH',
+    22: 'XCDELH',
+    23: 'PTRHIN',
+    24: 'ETAH',
+    25: 'ISDELH',
+    26: 'XCDELH',
+    27: 'PTRHIN',
+    28: 'ETAH',
+    29: 'ISDELH',
+    30: 'XCDELH',
+    31: 'PTRHIN',
+    32: 'ETAH',
+    33: 'ISDELH',
+    34: 'XCDELH',
+    35: 'PTRHIN',
+    36: 'ETAH',
 }
 
 multi_point_keys_xfoil = {
@@ -52,7 +71,19 @@ multi_point_keys_xfoil = {
 }
 
 
-def read_stencil_from_array(data: np.ndarray, tool: str):
+def read_multipoint_stencil_from_table(multi_point_table: list, tool: str) -> typing.List[dict]:
+
+    def get_index(flow_var: int) -> int:
+        if flow_var < 21:
+            return 0
+        if flow_var < 25:
+            return 1
+        if flow_var < 29:
+            return 2
+        if flow_var < 33:
+            return 3
+        return 4
+
     """Read the Multi-Point stencil from a text file and converts it to a list of dictionaries"""
     if tool == "MSES":
         multi_point_keys = multi_point_keys_mses
@@ -61,14 +92,15 @@ def read_stencil_from_array(data: np.ndarray, tool: str):
     else:
         raise ValueError("Either 'MSES' or 'XFOIL' must be selected for the tool in the multipoint stencil")
 
-    if data.ndim == 1:
-        return [{"variable": multi_point_keys[int(data[0])], "index": int(data[1]), "points": data[2:].tolist()}]
-    elif data.ndim == 2:
-        return [{'variable': multi_point_keys[int(col[0])], 'index': int(col[1]),
-                 'points': col[2:].tolist()}
-                for col in data.T]
-    else:
-        raise ValueError(f"Discovered multipoint data that was not 1-D or 2-D. {data.ndim = }")
+    return [{"variable": multi_point_keys[multi_point_table[0][col_idx]],
+             "index": get_index(multi_point_table[0][col_idx]),
+             "points": [row[col_idx] for row in multi_point_table[1:]]}  # Skip the header row
+            for col_idx in range(len(multi_point_table[0][1:]))]  # Skip the description column
+
+
+def read_stencils_from_dialog_value(value: dict, tool: str):
+    n_designs = len([k for k in value.keys() if k not in MultiGeomTabWidget.getExcludedKeys()])
+    print(f"{n_designs = }")
 
 
 def termination_condition(param_dict: dict):

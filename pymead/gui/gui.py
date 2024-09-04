@@ -60,8 +60,7 @@ from pymead.gui.text_area import ConsoleTextArea
 from pymead.gui.title_bar import TitleBar
 from pymead.gui.opt_callback import PlotAirfoilCallback, ParallelCoordsCallback, OptCallback, \
     DragPlotCallbackXFOIL, CpPlotCallbackXFOIL, DragPlotCallbackMSES, CpPlotCallbackMSES, TextCallback
-from pymead.optimization.opt_setup import calculate_warm_start_index
-from pymead.optimization.opt_setup import read_stencil_from_array
+from pymead.optimization.opt_setup import calculate_warm_start_index, read_stencils_from_dialog_value
 from pymead.optimization.shape_optimization import shape_optimization as shape_optimization_static
 from pymead.post.mses_field import flow_var_label
 from pymead.optimization.airfoil_matching import match_airfoil
@@ -1606,6 +1605,7 @@ class GUI(FramelessMainWindow):
         files = None
         while not exit_the_dialog and not early_return:
             self.opt_settings = self.dialog.value()
+            print(f"At the start, {self.opt_settings = }")
 
             loop_through_settings = False
 
@@ -1725,20 +1725,8 @@ class GUI(FramelessMainWindow):
 
                 # MULTI-POINT OPTIMIZATION
                 multi_point_stencil = None
-                if opt_settings['Multi-Point Optimization']['multi_point_active']:
-                    try:  # make multi_point_stencil a list of dicts here
-                        if isinstance(param_dict["multi_point_stencil"], list):
-                            multi_point_data = [np.loadtxt(
-                                stencil, delimiter=',') for stencil in param_dict["multi_point_stencil"]]
-                            multi_point_stencil = [read_stencil_from_array(
-                                data, tool=param_dict["tool"]) for data in multi_point_data]
-                        else:
-                            multi_point_data = np.loadtxt(param_dict['multi_point_stencil'], delimiter=',')
-                            multi_point_stencil = read_stencil_from_array(multi_point_data, tool=param_dict["tool"])
-                    except FileNotFoundError:
-                        message = f'Multi-point stencil file {param_dict["multi_point_stencil"]} not found'
-                        self.disp_message_box(message=message, message_mode="error")
-                        raise FileNotFoundError(message)
+                read_stencils_from_dialog_value(opt_settings["Multi-Point Optimization"], param_dict["tool"])
+
                 if param_dict["tool"] == "MSES":
                     param_dict["mses_settings"]["multi_point_stencil"] = multi_point_stencil
                 elif param_dict["tool"] == "XFOIL":
