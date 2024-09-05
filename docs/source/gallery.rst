@@ -13,7 +13,7 @@ Click on any image to zoom. Press the "back" button to return to the gallery.
 
           Aero-propulsive analysis of an optimized multi-element airfoil
 
-     - .. figure:: user/images/xfoil_opt_10x_dark.*
+     - .. figure:: images/xfoil_opt_10x_dark.*
           :width: 100%
           :class: only-dark
 
@@ -78,7 +78,7 @@ Click on any image to zoom. Press the "back" button to return to the gallery.
 
           Aero-propulsive analysis of an optimized multi-element airfoil
 
-     - .. figure:: user/images/xfoil_opt_10x_light.*
+     - .. figure:: images/xfoil_opt_10x_light.*
           :width: 100%
           :class: only-light
 
