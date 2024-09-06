@@ -362,12 +362,14 @@ class Population:
 
         def _end_pool(chr_pool: multiprocessing.Pool):
             print("Ending pool...")
-            print("Collecting child processes")
-            child_processes = collect_child_processes(os.getpid())
+            # print("Collecting child processes")
+            # child_processes = collect_child_processes(os.getpid())
+            # print("Killing any remaining child processes...")
+            # kill_all_processes_in_list(child_processes)
             print("Terminating pool...")
             chr_pool.terminate()
-            print("Killing any remaining child processes...")
-            kill_all_processes_in_list(child_processes)
+            print("Joining...")
+            chr_pool.join()
             # chr_pool.join()
             print("Killing XFOIL and MSES processes")
             kill_xfoil_mses_processes()
@@ -375,35 +377,50 @@ class Population:
 
         n_eval = 0
         n_converged_chromosomes = 0
-        with Pool(processes=self.param_dict['num_processors']) as pool:
-            result = pool.imap_unordered(self.eval_chromosome_fitness, self.population)
+        pool = Pool(processes=self.param_dict['num_processors'])
+        result = pool.imap_unordered(self.eval_chromosome_fitness, self.population)
 
-            for chromosome in result:
+        for chromosome in result:
 
-                if chromosome.fitness is not None:
-                    assert chromosome.valid_geometry
-                    self.converged_chromosomes.append(chromosome)
-                    n_converged_chromosomes += 1
+            if chromosome.fitness is not None:
+                assert chromosome.valid_geometry
+                self.converged_chromosomes.append(chromosome)
+                n_converged_chromosomes += 1
 
-                n_eval += 1
+            n_eval += 1
 
-                gen = 1 if self.generation == 0 else self.generation
-                status_bar_message = f"Generation {gen} of {self.param_dict['n_max_gen']}: Converged " \
-                                     f"{n_converged_chromosomes} of {self.param_dict['population_size']} chromosomes. " \
-                                     f"Total evaluations: {n_eval}\n"
+            gen = 1 if self.generation == 0 else self.generation
+            status_bar_message = f"Generation {gen} of {self.param_dict['n_max_gen']}: Converged " \
+                                 f"{n_converged_chromosomes} of {self.param_dict['population_size']} chromosomes. " \
+                                 f"Total evaluations: {n_eval}\n"
 
-                if sig is not None:
-                    try:
-                        sig.send(("message", status_bar_message))
-                    except BrokenPipeError:
-                        _end_pool(pool)
-                        break
-                else:
-                    print(status_bar_message)
-
-                if n_converged_chromosomes >= self.param_dict["population_size"]:
+            if sig is not None:
+                try:
+                    sig.send(("message", status_bar_message))
+                except BrokenPipeError:
                     _end_pool(pool)
                     break
+            else:
+                print(status_bar_message)
+
+            if n_converged_chromosomes >= self.param_dict["population_size"]:
+                _end_pool(pool)
+                break
+
+        if n_converged_chromosomes < self.param_dict["population_size"]:
+            message_to_display = ("Ran out of chromosomes to analyze before population size was reached. "
+                                  "Increase the number of offspring in the optimization settings to allow "
+                                  "more chromosomes to be generated.")
+            if sig is not None:
+                try:
+                    sig.send(("disp_message_box", message_to_display))
+                    _end_pool(pool)
+                except BrokenPipeError:
+                    _end_pool(pool)
+                    return
+            else:
+                print(message_to_display)
+                _end_pool(pool)
 
         for chromosome in self.converged_chromosomes:
             # Re-write the population such that the order of the results from the multiprocessing.Pool does not
