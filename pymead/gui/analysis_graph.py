@@ -1,4 +1,5 @@
 import os
+import typing
 from itertools import chain
 
 import numpy as np
@@ -164,6 +165,74 @@ class ResidualGraph:
         for _, label in self.legend.items:
             label.item.setHtml(f"<span style='font-family: DejaVu Sans; color: "
                                f"{theme['main-color']}; size: 8pt'>{label.text}</span>")
+
+
+class ResourcesGraph:
+    def __init__(self, theme: dict, pen=None, size: tuple = (1000, 300), grid: bool = False):
+        pg.setConfigOptions(antialias=True)
+
+        if pen is None:
+            pen = pg.mkPen(color='cornflowerblue', width=2)
+
+        self.time_window_sec = 60
+
+        self.w = pg.GraphicsLayoutWidget(show=True, size=size)
+
+        self.v1 = self.w.addPlot(pen=pen)
+        self.v1.setMenuEnabled(False)
+        self.v1.showGrid(x=grid, y=grid)
+
+        self.v2 = self.w.addPlot(pen=pen)
+        self.v2.setMenuEnabled(False)
+        self.v2.showGrid(x=grid, y=grid)
+
+        # Set up the residual plot lines
+        self.plot_items = [
+            self.v1.plot(pen=pg.mkPen(color=theme["cpu-color"], width=4)),
+            self.v2.plot(pen=pg.mkPen(color=theme["mem-color"], width=4))
+        ]
+
+        for plot_item in self.plot_items:
+            plot_item.setFillLevel(0)
+
+        for v in (self.v1, self.v2):
+            v.setXRange(-60, 0)
+            v.setYRange(0, 100)
+
+        # Set the formatting for the graph based on the current theme
+        self.set_formatting(theme=theme)
+
+    def set_background(self, background_color: str):
+        self.w.setBackground(background_color)
+
+    def set_formatting(self, theme: dict):
+        label_font = f"{get_setting('axis-label-point-size')}pt {get_setting('axis-label-font-family')}"
+        tick_font = QFont(get_setting("axis-tick-font-family"), get_setting("axis-tick-point-size"))
+
+        self.w.setBackground(theme["graph-background-color"])
+
+        self.v1.setLabel(axis="left", text=r"CPU Usage (%)", font=label_font, color=theme["main-color"])
+        self.v2.setLabel(axis="left", text=r"RAM Usage (%)", font=label_font, color=theme["main-color"])
+
+        for v in (self.v1, self.v2):
+            v.setLabel(axis="bottom", text=f"Relative Time (s)", font=label_font,
+                               color=theme["main-color"])
+            v.getAxis("bottom").setTickFont(tick_font)
+            v.getAxis("left").setTickFont(tick_font)
+            v.getAxis("bottom").setTextPen(theme["main-color"])
+            v.getAxis("left").setTextPen(theme["main-color"])
+
+        for plot_item, color, fill_color in zip(
+                self.plot_items, ["cpu-color", "mem-color"], ["cpu-fill-color", "mem-fill-color"]):
+            plot_item.setPen(pg.mkPen(color=theme[color]))
+            plot_item.setBrush(pg.mkBrush(color=theme[fill_color]))
+
+    def update(self,
+               time_array: typing.Iterable,
+               cpu_percent_array: typing.Iterable,
+               mem_percent_array: typing.Iterable):
+        self.plot_items[0].setData(time_array, cpu_percent_array)
+        self.plot_items[1].setData(time_array, mem_percent_array)
 
 
 class SymmetricAreaDifferenceGraph:

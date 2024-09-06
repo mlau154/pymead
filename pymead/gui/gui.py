@@ -37,7 +37,8 @@ from pymead.core.geometry_collection import GeometryCollection
 from pymead.core.mea import MEA
 from pymead.gui.airfoil_canvas import AirfoilCanvas
 from pymead.gui.airfoil_statistics import AirfoilStatisticsDialog, AirfoilStatistics
-from pymead.gui.analysis_graph import AnalysisGraph, ResidualGraph, PolarGraphCollection, AirfoilMatchingGraphCollection
+from pymead.gui.analysis_graph import AnalysisGraph, ResidualGraph, PolarGraphCollection, \
+    AirfoilMatchingGraphCollection, ResourcesGraph
 from pymead.gui.concurrency import CPUBoundProcess
 from pymead.gui.custom_graphics_view import CustomGraphicsView
 from pymead.gui.dockable_tab_widget import PymeadDockWidget
@@ -62,6 +63,7 @@ from pymead.gui.opt_callback import PlotAirfoilCallback, ParallelCoordsCallback,
     DragPlotCallbackXFOIL, CpPlotCallbackXFOIL, DragPlotCallbackMSES, CpPlotCallbackMSES, TextCallback
 from pymead.optimization.opt_setup import calculate_warm_start_index
 from pymead.optimization.opt_setup import read_stencil_from_array
+from pymead.optimization.resources import display_resources
 from pymead.optimization.shape_optimization import shape_optimization as shape_optimization_static
 from pymead.post.mses_field import flow_var_label
 from pymead.optimization.airfoil_matching import match_airfoil
@@ -107,6 +109,10 @@ class GUI(FramelessMainWindow):
         self.match_airfoil_process = None
         self.match_airfoil_thread = None
 
+        # Set up resources process
+        self.display_resources_process = None
+        self.display_resources_thread = None
+
         self.closer = None  # This is a string of equal signs used to close out the optimization text progress
         self.menu_bar = None
         self.path = path
@@ -143,6 +149,7 @@ class GUI(FramelessMainWindow):
         self.field_plot_variable = None
         self.analysis_graph = None
         self.cached_cp_data = []
+        self.resources_graph = None
         self.residual_graph = None
         self.residual_data = None
         self.polar_graph_collection = None
@@ -505,7 +512,7 @@ class GUI(FramelessMainWindow):
 
         graphs_to_update = [self.analysis_graph, self.residual_graph, self.polar_graph_collection,
                             self.airfoil_matching_graph_collection, self.opt_airfoil_graph,
-                            self.parallel_coords_graph, self.drag_graph, self.Cp_graph]
+                            self.parallel_coords_graph, self.drag_graph, self.Cp_graph, self.resources_graph]
 
         for graph_to_update in graphs_to_update:
             if graph_to_update is None:
@@ -1573,6 +1580,20 @@ class GUI(FramelessMainWindow):
             pg_plot_handle.setData(x[np.where(x <= x_max)[0]], Cp[np.where(x <= x_max)[0]])
             self.analysis_graph.set_legend_label_format(self.themes[self.current_theme])
 
+    def display_resources(self):
+
+        def run_cpu_bound_process():
+            self.display_resources_process = CPUBoundProcess(
+                display_resources
+            )
+            self.display_resources_process.progress_emitter.signals.progress.connect(self.progress_update)
+            self.display_resources_process.start()
+
+        # Start running the CPU-bound process from a worker thread (separate from the main GUI thread)
+        self.display_resources_thread = Thread(target=run_cpu_bound_process)
+        self.display_resources_thread.start()
+
+
     def match_airfoil(self):
 
         def run_cpu_bound_process():
@@ -1835,6 +1856,7 @@ class GUI(FramelessMainWindow):
                                             geo_col_dict,
                                             new_obj_list, new_constr_list,
                                             )
+                self.display_resources()
 
     def optimization_rejected(self):
         self.opt_settings = self.dialog.value()
@@ -1992,6 +2014,15 @@ class GUI(FramelessMainWindow):
                                       line_break=True)
                 message = f"{res.message}. Geometry canvas updated with new design variable values."
             self.disp_message_box(message=message, message_mode=msg_mode)
+        elif status == "resources_update":
+            assert isinstance(data, tuple)
+            if self.resources_graph is None:
+                self.resources_graph = ResourcesGraph(
+                    theme=self.themes[self.current_theme],
+                    grid=self.main_icon_toolbar.buttons["grid"]["button"].isChecked()
+                )
+                self.add_new_tab_widget(self.resources_graph.w, "Resources")
+            self.resources_graph.update(time_array=data[0], cpu_percent_array=data[1], mem_percent_array=data[2])
 
     def clear_opt_plots(self):
         def clear_handles(h_list: list):
@@ -2084,27 +2115,28 @@ class GUI(FramelessMainWindow):
 
     def stop_process(self):
 
-        if self.shape_opt_process is None and self.mses_process is None and self.match_airfoil_process is None:
-            self.disp_message_box("No analysis or optimization to terminate")
+        processes = [self.shape_opt_process, self.mses_process, self.match_airfoil_process,
+                     self.display_resources_process]
+        if all([process is None for process in processes]):
+            self.disp_message_box("No process to terminate")
             return
 
-        if self.shape_opt_process is not None:
-            self.shape_opt_process.terminate()
-        if self.mses_process is not None:
-            self.mses_process.terminate()
-        if self.match_airfoil_process is not None:
-            self.match_airfoil_process.terminate()
+        for process in processes:
+            if process is None:
+                continue
+            process.terminate()
 
-        if self.opt_thread is not None:
-            self.opt_thread.join()
-        if self.mses_thread is not None:
-            self.mses_thread.join()
-        if self.match_airfoil_thread is not None:
-            self.match_airfoil_thread.join()
+        threads = [self.opt_thread, self.mses_thread, self.match_airfoil_thread, self.display_resources_thread]
+
+        for thread in threads:
+            if thread is None:
+                continue
+            thread.join()
 
         self.shape_opt_process = None
         self.mses_process = None
         self.match_airfoil_process = None
+        self.display_resources_process = None
 
     @staticmethod
     def generate_output_folder_link_text(folder: str):

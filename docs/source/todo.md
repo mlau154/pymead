@@ -24,7 +24,6 @@ Planned feature additions
 - Make function tolerance default value dependent on number of objectives
 - Add downsampling feature to XFOIL
 - Make downsampling also apply to polylines
-- Add variable number of Bezier evaluation points in the `BezierButton` dialog
 - Make single-step unit aware for spin-boxes and arrow-key movements
 - Make airfoil-relative points an option, either by adding this as a new constraint option
   or by adding a list of airfoil-relative points to that particular airfoil. Either way,
@@ -56,7 +55,6 @@ Bug fixes
   'Attempting to add QLayout "" to DownsamplingPreviewDialog "", which already has a layout'
 - Fix some airfoils of an MEA occasionally not being added to MSET dialog
 - Fix no GUI error being thrown when trying to visualize downsampling on an empty/non-existent MEA
-- Fix bug where multiprocessing pool does not properly terminate
 
 Aesthetics
 ----------

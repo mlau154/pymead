@@ -362,16 +362,8 @@ class Population:
 
         def _end_pool(chr_pool: multiprocessing.Pool):
             print("Ending pool...")
-            # print("Collecting child processes")
-            # child_processes = collect_child_processes(os.getpid())
-            # print("Killing any remaining child processes...")
-            # kill_all_processes_in_list(child_processes)
-            print("Terminating pool...")
             chr_pool.terminate()
-            print("Joining...")
             chr_pool.join()
-            # chr_pool.join()
-            print("Killing XFOIL and MSES processes")
             kill_xfoil_mses_processes()
             print("Pool ended successfully.")
 
