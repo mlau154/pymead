@@ -2118,7 +2118,7 @@ class GUI(FramelessMainWindow):
         processes = [self.shape_opt_process, self.mses_process, self.match_airfoil_process,
                      self.display_resources_process]
         if all([process is None for process in processes]):
-            self.disp_message_box("No process to terminate")
+            # self.disp_message_box("No process to terminate")
             return
 
         for process in processes:
