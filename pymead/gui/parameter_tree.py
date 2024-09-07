@@ -861,7 +861,10 @@ class ParameterTree(QTreeWidget):
         self.previous_item_hovered = None
 
     def getPymeadObjFromItem(self, item: QTreeWidgetItem):
-        pymead_obj_name = item.data(0, Qt.ItemDataRole.DisplayRole)
+        try:
+            pymead_obj_name = item.data(0, Qt.ItemDataRole.DisplayRole)
+        except RuntimeError:  # Fix for the wrapped C/C++ object (item) being deleted and then access attempted
+            return
         pymead_obj_parent_tree_item = item.parent()
         if pymead_obj_parent_tree_item is None:
             return
