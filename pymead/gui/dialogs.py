@@ -2232,7 +2232,7 @@ class GAConstraintsTerminationDialogWidget2(PymeadDialogWidget2):
     def initializeWidgets(self, *args, **kwargs):
         self.widget_dict = {
             "constraints": OptConstraintsHTabWidget(parent=None, geo_col=self.geo_col),
-            "f_tol": PymeadLabeledScientificDoubleSpinBox(label="Function Tolerance", value=0.0025, minimum=0.0,
+            "f_tol": PymeadLabeledScientificDoubleSpinBox(label="Function Tolerance", value=1e-6, minimum=0.0,
                                                           maximum=100000.0),
             "cv_tol": PymeadLabeledScientificDoubleSpinBox(label="Constraint Violation Tol.", value=1.0e-6,
                                                            minimum=0.0, maximum=100000.0),
