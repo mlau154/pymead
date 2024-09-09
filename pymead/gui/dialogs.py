@@ -1054,7 +1054,7 @@ class ADWidget(QTabWidget):
                                                  single_step=0.05, decimals=8),
             "XCDELH-Param": PymeadLabeledComboBox(label="AD X-Location Param", items=self.param_list),
             "PTRHIN": PymeadLabeledDoubleSpinBox(label="AD Total Pres. Ratio", minimum=1.0, maximum=np.inf,
-                                                 value=1.1, single_step=0.01),
+                                                 value=1.1, single_step=0.01, decimals=6),
             "ETAH": PymeadLabeledDoubleSpinBox(label="AD Thermal Efficiency", minimum=0.0, maximum=1.0,
                                                value=0.95, single_step=0.01)
         }
