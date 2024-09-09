@@ -409,7 +409,7 @@ class Population:
                     _end_pool(pool)
                 except BrokenPipeError:
                     _end_pool(pool)
-                    return
+                    return n_eval
             else:
                 print(message_to_display)
                 _end_pool(pool)
