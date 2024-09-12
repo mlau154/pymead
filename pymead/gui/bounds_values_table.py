@@ -15,8 +15,7 @@ class BoundsValuesTable(TableWidget):
         self.setHorizontalHeaderLabels(["DesVar Name", "Lower Bound", "Value", "Upper Bound"])
         for column in (0, 2):
             self.makeColumnReadOnly(column)
-        for column in range(self.columnCount()):
-            self.setColumnWidth(column, 100)
+        self.resizeColumnsToContents()
         self.initializing_data = False
 
     def handleItemChanged(self, item):
