@@ -810,7 +810,8 @@ class GUI(FramelessMainWindow):
             self.disp_message_box("No design variables present", message_mode="info")
             return
         bv_dialog = EditBoundsDialog(geo_col=self.geo_col, theme=self.themes[self.current_theme], parent=self)
-        bv_dialog.exec()
+        bv_dialog.show()
+        bv_dialog.resizetoFit()
 
     def auto_range_geometry(self):
         """

@@ -370,9 +370,8 @@ class Population:
         n_eval = 0
         n_converged_chromosomes = 0
         pool = Pool(processes=self.param_dict['num_processors'])
-        result = pool.imap_unordered(self.eval_chromosome_fitness, self.population)
 
-        for chromosome in result:
+        for chromosome in pool.imap_unordered(self.eval_chromosome_fitness, self.population):
 
             if chromosome.fitness is not None:
                 assert chromosome.valid_geometry
