@@ -244,7 +244,8 @@ class Chromosome:
     def check_contains_points(self, airfoil_frame_relative: bool, airfoil_name: str) -> bool:
         if self.airfoil_sys_generated:
             if not self.geo_col.container()["airfoils"][airfoil_name].contains_line_string(
-                    airfoil_frame_relative, self.param_dict['constraints'][airfoil_name]['internal_geometry']):
+                    points=self.param_dict['constraints'][airfoil_name]['internal_geometry'],
+                    airfoil_frame_relative=airfoil_frame_relative):
                 self.valid_geometry = False
                 return self.valid_geometry
         self.valid_geometry = True
