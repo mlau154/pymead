@@ -87,13 +87,13 @@ class Chromosome:
                 if self.param_dict['constraints'][airfoil_name]['min_area'][1]:
                     self.check_min_area(airfoil_frame_relative=True, airfoil_name=airfoil_name)
             if self.valid_geometry:
-                if self.param_dict['constraints'][airfoil_name]['internal_geometry']:
+                if self.param_dict['constraints'][airfoil_name]['use_internal_geometry']:
                     if self.param_dict['constraints'][airfoil_name]['internal_geometry_timing'] == 'Before Aerodynamic Evaluation':
                         self.check_contains_points(airfoil_frame_relative=True, airfoil_name=airfoil_name)
                     else:
                         raise ValueError('Internal geometry timing after aerodynamic evaluation not yet implemented')
             if self.valid_geometry:
-                if self.param_dict['constraints'][airfoil_name]['external_geometry']:
+                if self.param_dict['constraints'][airfoil_name]['use_external_geometry']:
                     if self.param_dict['constraints'][airfoil_name]['external_geometry_timing'] == 'Before Aerodynamic Evaluation':
                         self.check_if_inside_points(airfoil_name=airfoil_name)
                     else:
