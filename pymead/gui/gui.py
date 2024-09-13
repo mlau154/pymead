@@ -654,7 +654,9 @@ class GUI(FramelessMainWindow):
             # Make sure that all the points are in view
             self.auto_range_geometry()
 
-    def take_screenshot(self):
+    def take_screenshot(self, dialog_test_action: typing.Callable = None,
+                        info_dialog_action: typing.Callable = None,
+                        error_dialog_action: typing.Callable = None) -> str:
 
         id_dict = {dw.windowTitle(): dw.winId() for dw in self.dock_widgets}
         id_dict = {"Full Window": self.winId(), **id_dict}
@@ -662,12 +664,13 @@ class GUI(FramelessMainWindow):
         window_widget_dict = {dw.windowTitle(): dw for dw in self.dock_widgets}
         window_widget_dict = {"Full Window": self, **window_widget_dict}
 
-        dialog = ScreenshotDialog(self, theme=self.themes[self.current_theme], windows=[k for k in id_dict.keys()])
+        self.dialog = ScreenshotDialog(self, theme=self.themes[self.current_theme], windows=[k for k in id_dict.keys()])
         if self.screenshot_settings is not None:
-            dialog.setValue(self.screenshot_settings)
+            self.dialog.setValue(self.screenshot_settings)
 
-        if dialog.exec():
-            inputs = dialog.value()
+        final_file_name = None
+        if (dialog_test_action is not None and not dialog_test_action(self.dialog)) or self.dialog.exec():
+            inputs = self.dialog.value()
             self.screenshot_settings = inputs
 
             # Take the screenshot
@@ -694,10 +697,12 @@ class GUI(FramelessMainWindow):
                 # screenshot.save(final_file_name, "jpg")  # Save the screenshot
                 image.save(final_file_name, "jpg")  # Save the screenshot
                 self.disp_message_box(f"{inputs['window']} window screenshot saved to {final_file_name}",
-                                      message_mode="info")
+                                      message_mode="info", dialog_test_action=info_dialog_action)
             else:
                 self.disp_message_box(f"Directory '{dir_name}' for "
-                                      f"file '{file_name}' not found")
+                                      f"file '{file_name}' not found", dialog_test_action=error_dialog_action)
+
+        return str(final_file_name)
 
     def showHidePymeadObjs(self, sub_container: str, show: bool):
         if show:
@@ -805,7 +810,8 @@ class GUI(FramelessMainWindow):
             self.disp_message_box("No design variables present", message_mode="info")
             return
         bv_dialog = EditBoundsDialog(geo_col=self.geo_col, theme=self.themes[self.current_theme], parent=self)
-        bv_dialog.exec()
+        bv_dialog.show()
+        bv_dialog.resizetoFit()
 
     def auto_range_geometry(self):
         """

@@ -87,13 +87,13 @@ class Chromosome:
                 if self.param_dict['constraints'][airfoil_name]['min_area'][1]:
                     self.check_min_area(airfoil_frame_relative=True, airfoil_name=airfoil_name)
             if self.valid_geometry:
-                if self.param_dict['constraints'][airfoil_name]['internal_geometry']:
+                if self.param_dict['constraints'][airfoil_name]['use_internal_geometry']:
                     if self.param_dict['constraints'][airfoil_name]['internal_geometry_timing'] == 'Before Aerodynamic Evaluation':
                         self.check_contains_points(airfoil_frame_relative=True, airfoil_name=airfoil_name)
                     else:
                         raise ValueError('Internal geometry timing after aerodynamic evaluation not yet implemented')
             if self.valid_geometry:
-                if self.param_dict['constraints'][airfoil_name]['external_geometry']:
+                if self.param_dict['constraints'][airfoil_name]['use_external_geometry']:
                     if self.param_dict['constraints'][airfoil_name]['external_geometry_timing'] == 'Before Aerodynamic Evaluation':
                         self.check_if_inside_points(airfoil_name=airfoil_name)
                     else:
@@ -244,7 +244,8 @@ class Chromosome:
     def check_contains_points(self, airfoil_frame_relative: bool, airfoil_name: str) -> bool:
         if self.airfoil_sys_generated:
             if not self.geo_col.container()["airfoils"][airfoil_name].contains_line_string(
-                    airfoil_frame_relative, self.param_dict['constraints'][airfoil_name]['internal_geometry']):
+                    points=self.param_dict['constraints'][airfoil_name]['internal_geometry'],
+                    airfoil_frame_relative=airfoil_frame_relative):
                 self.valid_geometry = False
                 return self.valid_geometry
         self.valid_geometry = True
@@ -370,9 +371,8 @@ class Population:
         n_eval = 0
         n_converged_chromosomes = 0
         pool = Pool(processes=self.param_dict['num_processors'])
-        result = pool.imap_unordered(self.eval_chromosome_fitness, self.population)
 
-        for chromosome in result:
+        for chromosome in pool.imap_unordered(self.eval_chromosome_fitness, self.population):
 
             if chromosome.fitness is not None:
                 assert chromosome.valid_geometry

@@ -2792,8 +2792,10 @@ class EditBoundsDialog(PymeadDialog):
     def __init__(self, geo_col: GeometryCollection, theme: dict, parent=None):
         self.bv_table = BoundsValuesTable(geo_col=geo_col)
         super().__init__(parent=parent, window_title="Edit Bounds", widget=self.bv_table, theme=theme)
-        self.resize(self.bv_table.sizeHint())
 
+    def resizetoFit(self):
+        self.bv_table.resizeColumnsToContents()
+        self.resize(self.bv_table.sizeHint())
 
 class OptimizationDialogVTabWidget(PymeadDialogVTabWidget):
     def __init__(self, parent, widgets: dict, settings_override: dict):
