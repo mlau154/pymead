@@ -31,6 +31,7 @@ Planned feature additions
 - Make web airfoils transformable (dialog and canvas-dynamic?) and create design variables based on
   c, alf, dx, dy
 - Add XFOIL flap deflection feature
+- Use `.jses` extension for MSES settings and `.jopt` for optimization settings files
 
 Refactoring
 -----------
