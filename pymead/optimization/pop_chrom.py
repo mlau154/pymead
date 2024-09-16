@@ -1,15 +1,13 @@
-import os
 import typing
 from copy import deepcopy
-from multiprocessing import Pool, active_children
+from multiprocessing import Pool
 import multiprocessing.connection
 
 import numpy as np
 
 from pymead.analysis.calc_aero_data import calculate_aero_data
 from pymead.core.geometry_collection import GeometryCollection
-from pymead.utils.pymead_mp import kill_xfoil_mses_processes, collect_child_processes, \
-    kill_all_processes_in_list
+from pymead.utils.pymead_mp import kill_xfoil_mses_processes, pool_terminate_multi_tiered
 
 
 class CustomGASettings:
@@ -362,11 +360,8 @@ class Population:
         """
 
         def _end_pool(chr_pool: multiprocessing.Pool):
-            print("Ending pool...")
-            chr_pool.terminate()
-            chr_pool.join()
+            pool_terminate_multi_tiered(chr_pool)
             kill_xfoil_mses_processes()
-            print("Pool ended successfully.")
 
         n_eval = 0
         n_converged_chromosomes = 0
