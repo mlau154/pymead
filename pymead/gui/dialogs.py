@@ -16,7 +16,7 @@ from PyQt6.QtCore import pyqtSlot, QStandardPaths
 from PyQt6.QtGui import QFont
 from PyQt6.QtWidgets import (QWidget, QGridLayout, QLabel, QPushButton, QCheckBox, QTabWidget, QSpinBox,
                              QDoubleSpinBox, QComboBox, QDialog, QVBoxLayout, QSizeGrip, QDialogButtonBox, QMessageBox,
-                             QFormLayout, QRadioButton)
+                             QFormLayout, QRadioButton, QGroupBox, QSizePolicy)
 
 from pymead import GUI_DEFAULTS_DIR, q_settings, GUI_DIALOG_WIDGETS_DIR, TargetPathNotFoundError
 from pymead.analysis import cfd_output_templates
@@ -332,7 +332,7 @@ class PymeadDialogHTabWidget(QTabWidget):
 
     def setValue(self, new_values: dict):
         for k, v in new_values.items():
-            self.w_dict[k].setValue(new_values=v)
+            self.w_dict[k].setValue(v)
 
     def value(self):
         return {k: v.value() for k, v in self.w_dict.items()}
@@ -373,6 +373,18 @@ class PymeadLabeledSpinBox(QObject):
     def setActive(self, active: int):
         self.widget.setReadOnly(not active)
 
+    def setShown(self, shown: bool):
+        if shown:
+            self.label.show()
+            self.widget.show()
+            if self.push is not None:
+                self.push.show()
+        else:
+            self.label.hide()
+            self.widget.hide()
+            if self.push is not None:
+                self.push.hide()
+
 
 class PymeadLabeledDoubleSpinBox(QObject):
 
@@ -411,6 +423,18 @@ class PymeadLabeledDoubleSpinBox(QObject):
 
     def setActive(self, active: bool):
         self.widget.setReadOnly(not active)
+
+    def setShown(self, shown: bool):
+        if shown:
+            self.label.show()
+            self.widget.show()
+            if self.push is not None:
+                self.push.show()
+        else:
+            self.label.hide()
+            self.widget.hide()
+            if self.push is not None:
+                self.push.hide()
 
 
 class PymeadLabeledScientificDoubleSpinBox(QObject):
@@ -451,6 +475,18 @@ class PymeadLabeledScientificDoubleSpinBox(QObject):
     def setActive(self, active: bool):
         self.widget.setReadOnly(not active)
 
+    def setShown(self, shown: bool):
+        if shown:
+            self.label.show()
+            self.widget.show()
+            if self.push is not None:
+                self.push.show()
+        else:
+            self.label.hide()
+            self.widget.hide()
+            if self.push is not None:
+                self.push.hide()
+
 
 class PymeadLabeledLineEdit(QObject):
 
@@ -483,6 +519,18 @@ class PymeadLabeledLineEdit(QObject):
         if self.push is not None:
             self.push.setEnabled(not read_only)
 
+    def setShown(self, shown: bool):
+        if shown:
+            self.label.show()
+            self.widget.show()
+            if self.push is not None:
+                self.push.show()
+        else:
+            self.label.hide()
+            self.widget.hide()
+            if self.push is not None:
+                self.push.hide()
+
 
 class PymeadLabeledPlainTextEdit(QObject):
 
@@ -513,6 +561,17 @@ class PymeadLabeledPlainTextEdit(QObject):
     def setReadOnly(self, read_only: bool):
         self.widget.setReadOnly(read_only)
 
+    def setShown(self, shown: bool):
+        if shown:
+            self.label.show()
+            self.widget.show()
+            if self.push is not None:
+                self.push.show()
+        else:
+            self.label.hide()
+            self.widget.hide()
+            if self.push is not None:
+                self.push.hide()
 
 class PymeadLabeledComboBox(QObject):
 
@@ -542,6 +601,18 @@ class PymeadLabeledComboBox(QObject):
 
     def setReadOnly(self, read_only: bool):
         self.widget.setEnabled(not read_only)
+
+    def setShown(self, shown: bool):
+        if shown:
+            self.label.show()
+            self.widget.show()
+            if self.push is not None:
+                self.push.show()
+        else:
+            self.label.hide()
+            self.widget.hide()
+            if self.push is not None:
+                self.push.hide()
 
 
 class PymeadLabeledCheckbox(QObject):
@@ -574,6 +645,17 @@ class PymeadLabeledCheckbox(QObject):
         if self.push is not None:
             self.push.setEnabled(not read_only)
 
+    def setShown(self, shown: bool):
+        if shown:
+            self.label.show()
+            self.widget.show()
+            if self.push is not None:
+                self.push.show()
+        else:
+            self.label.hide()
+            self.widget.hide()
+            if self.push is not None:
+                self.push.hide()
 
 class PymeadLabeledColorSelector(QObject):
 
@@ -598,6 +680,18 @@ class PymeadLabeledColorSelector(QObject):
     def value(self):
         return self.widget.color(mode="byte")
 
+    def setShown(self, shown: bool):
+        if shown:
+            self.label.show()
+            self.widget.show()
+            if self.push is not None:
+                self.push.show()
+        else:
+            self.label.hide()
+            self.widget.hide()
+            if self.push is not None:
+                self.push.hide()
+
 
 class PymeadLabeledPushButton:
 
@@ -615,6 +709,18 @@ class PymeadLabeledPushButton:
     def value():
         return None
 
+    def setShown(self, shown: bool):
+        if shown:
+            self.label.show()
+            self.widget.show()
+            if self.push is not None:
+                self.push.show()
+        else:
+            self.label.hide()
+            self.widget.hide()
+            if self.push is not None:
+                self.push.hide()
+
 
 class PymeadDialogWidget2(QWidget):
     def __init__(self, parent=None, **kwargs):
@@ -625,6 +731,7 @@ class PymeadDialogWidget2(QWidget):
         self.initializeWidgets(**kwargs)
         self.addWidgets(**kwargs)
         self.establishWidgetConnections()
+        self._widgets_excluded_from_value = []
 
     @abstractmethod
     def initializeWidgets(self, *args, **kwargs):
@@ -636,27 +743,48 @@ class PymeadDialogWidget2(QWidget):
         column = 0
         for widget_name, widget in self.widget_dict.items():
             row_span = 1
-            col_span = 2 if widget.push is None else 1
-            self.lay.addWidget(widget.label, row_count, column, 1, 1)
-            self.lay.addWidget(widget.widget, row_count, column + 1, row_span, col_span)
+            if widget.push is None and widget.label is None:
+                col_span = 3
+            elif widget.push is None and widget.label is not None:
+                col_span = 2
+            elif widget.push is not None and widget.label is None:
+                col_span = 2
+            else:
+                col_span = 1
+
+            if widget.label is not None:
+                self.lay.addWidget(widget.label, row_count, column, 1, 1)
+
+            if widget.label is None:
+                self.lay.addWidget(widget.widget, row_count, column, row_span, col_span)
+            else:
+                self.lay.addWidget(widget.widget, row_count, column + 1, row_span, col_span)
 
             if widget.push is not None:
-                self.lay.addWidget(widget.push, row_count, column + 2, row_span, col_span)
+                if widget.label is None:
+                    self.lay.addWidget(widget.push, row_count, column + 1, row_span, col_span)
+                else:
+                    self.lay.addWidget(widget.push, row_count, column + 2, row_span, col_span)
 
             row_count += 1
 
     def establishWidgetConnections(self):
         pass
 
+    def excludeWidgetsFromValue(self, widgets: typing.List[str]):
+        self._widgets_excluded_from_value = widgets
+
     def setValue(self, d: dict):
         for d_name, d_value in d.items():
+            if d_name in self._widgets_excluded_from_value:
+                continue
             try:
                 self.widget_dict[d_name].setValue(d_value)
             except KeyError:
                 pass
 
     def value(self) -> dict:
-        return {k: v.value() for k, v in self.widget_dict.items()}
+        return {k: v.value() for k, v in self.widget_dict.items() if k not in self._widgets_excluded_from_value}
 
 
 class PymeadDialogVTabWidget(VerticalTabWidget):
@@ -1927,15 +2055,161 @@ class MPOLARDialogWidget(PymeadDialogWidget2):
             partial(select_data_file, self, line_edit=self.widget_dict["alfa_array"].widget))
 
 
-class OptConstraintsDialogWidget(PymeadDialogWidget):
-    def __init__(self):
-        super().__init__(settings_file=os.path.join(GUI_DEFAULTS_DIR, 'opt_constraints_settings.json'))
+class OptConstraintsMultiCheckbox(QGroupBox):
+    def __init__(self, parent=None):
+        super().__init__(parent=parent)
+        self.widget_dict = {
+            "min_val_of_max_thickness": QCheckBox("Minimum Thickness", self),
+            "min_radius_curvature": QCheckBox("Min. Radius of Curvature", self),
+            "thickness_at_points": QCheckBox("Thickness Distribution", self),
+            "min_area": QCheckBox("Minimum Area", self),
+            "internal_geometry": QCheckBox("Internal Geometry", self),
+            "external_geometry": QCheckBox("External Geometry", self)
+        }
+        self.lay = QGridLayout()
+
+        grid_mapping = {
+            0: [0, 0],
+            1: [0, 1],
+            2: [0, 2],
+            3: [1, 0],
+            4: [1, 1],
+            5: [1, 2]
+        }
+
+        for idx, widget in enumerate(self.widget_dict.values()):
+            self.lay.addWidget(widget, grid_mapping[idx][0], grid_mapping[idx][1])
+        self.setLayout(self.lay)
+        self.setTitle("Active Constraints")
+        self.setSizePolicy(QSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed))
+
+    def value(self) -> dict:
+        return {k: v.isChecked() for k, v in self.widget_dict.items()}
+
+    def setValue(self, d: dict):
+        for k, v in d.items():
+            self.widget_dict[k].setChecked(v)
+
+
+class OptConstraintsDialogWidget(PymeadDialogWidget2):
+    def __init__(self, parent=None):
+        super().__init__(parent=parent)
+
+    def initializeWidgets(self, *args, **kwargs):
+        self.widget_dict = {
+            "active_constraints": OptConstraintsMultiCheckbox(self),
+            "min_val_of_max_thickness": PymeadLabeledDoubleSpinBox(
+                label="Minimum Thickness", decimals=16, minimum=0.0, maximum=np.inf, single_step=0.01, value=0.1
+            ),
+            "min_val_of_max_thickness_policy": PymeadLabeledComboBox(
+                label="Min. Thickness Policy", items=["Non-Dimensional", "Dimensional"], current_item="Non-Dimensional"
+            ),
+            "min_radius_curvature": PymeadLabeledDoubleSpinBox(
+                label="Min. Radius of Curvature", decimals=16, minimum=0.0, maximum=np.inf, single_step=0.001,
+                value=0.004
+            ),
+            "min_radius_curvature_policy": PymeadLabeledComboBox(
+                label="Min. Radius of Curvature Policy", items=["Non-Dimensional", "Dimensional"],
+                current_item="Non-Dimensional"
+            ),
+            "thickness_at_points": PymeadLabeledLineEdit(label="Thickness Dist. File", push_label="Select File"),
+            "thickness_at_points_policy": PymeadLabeledComboBox(
+                label="Thickness Distribution Policy",
+                items=[
+                    "Non-Dimensional, Chord-Perpendicular",
+                    "Dimensional, Chord-Perpendicular",
+                    "Non-Dimensional, Vertical",
+                    "Dimensional, Vertical"
+                ]
+            ),
+            "min_area": PymeadLabeledDoubleSpinBox(
+                label="Minimum Area", decimals=16, minimum=0.0, maximum=np.inf, single_step=0.01, value=0.04
+            ),
+            "min_area_policy": PymeadLabeledComboBox(
+                label="Minimum Area Policy", items=["Non-Dimensional", "Dimensional"], current_item="Non-Dimensional"
+            ),
+            "internal_geometry": PymeadLabeledLineEdit(
+                label="Internal Geometry File", push_label="Select File",
+                tool_tip="Ensure that the given convex hull of x-y coordinates (preferably closed) "
+                         "fits inside the airfoil"
+            ),
+            "internal_geometry_policy": PymeadLabeledComboBox(
+                label="Int. Geometry Timing",
+                items=[
+                    "Non-Dimensional, Rotate/Translate w/ Airfoil, Eval. Before Aerodynamic Evaluation",
+                    "After Aerodynamic Evaluation"
+                ],
+                current_item="Before Aerodynamic Evaluation",
+                tool_tip="The timing of the internal geometry fit check can be important\ndepending on whether the "
+                         "internal geometry should be rotated\nwith the airfoil angle of attack. If the internal "
+                         "geometry\ncan move with the airfoil angle of attack, choose 'Before Aerodynamic Evaluation' "
+                         "(faster).\nOtherwise, choose 'After Aerodynamic Evaluation' (slower)."
+            ),
+            "external_geometry": PymeadLabeledLineEdit(
+                label="External Geometry File", push_label="Select File",
+                tool_tip="Ensure that the airfoil fits inside the given convex hull of x-y coordinates "
+                         "(preferably closed)"
+            ),
+            "external_geometry_policy": PymeadLabeledComboBox(
+                label="Ext. Geometry Timing", items=["Before Aerodynamic Evaluation", "After Aerodynamic Evaluation"],
+                current_item="Before Aerodynamic Evaluation",
+                tool_tip="The timing of the external geometry fit check can be important\ndepending on whether the "
+                         "external geometry should be rotated\nwith the airfoil angle of attack. If the external "
+                         "geometry\ncan move with the airfoil angle of attack, choose 'Before Aerodynamic Evaluation' "
+                         "(faster).\nOtherwise, choose 'After Aerodynamic Evaluation' (slower)."
+            ),
+        }
+
+        # Hide all the constraint widgets on initialization
+        for k, v in self.widget_dict.items():
+            if k == "active_constraints":
+                continue
+            v.setShown(False)
+
+        # Set the tool tip from each of the constraint types to the checkboxes
+        for k, v in self.widget_dict["active_constraints"].widget_dict.items():
+            v.setToolTip(self.widget_dict[k].widget.toolTip())
+
+    def addWidgets(self, *args, **kwargs):
+        self.lay.addWidget(self.widget_dict["active_constraints"], 0, 0, 1, 3)
+        row_count = 1
+        column = 0
+        for widget_name, widget in self.widget_dict.items():
+            if widget_name in ["active_constraints"]:
+                continue
+            row_span = 1
+            col_span = 2 if widget.push is None else 1
+            self.lay.addWidget(widget.label, row_count, column, 1, 1)
+            self.lay.addWidget(widget.widget, row_count, column + 1, row_span, col_span)
+
+            if widget.push is not None:
+                self.lay.addWidget(widget.push, row_count, column + 2, row_span, col_span)
+
+            row_count += 1
+
+    def establishWidgetConnections(self):
+        for k, v in self.widget_dict["active_constraints"].widget_dict.items():
+            v.stateChanged.connect(self.widget_dict[k].setShown)
+            v.stateChanged.connect(self.widget_dict[k + "_policy"].setShown)
+        self.widget_dict["thickness_at_points"].push.clicked.connect(partial(
+            self.select_data_file, line_edit=self.widget_dict["thickness_at_points"].widget))
 
     def select_data_file(self, line_edit: QLineEdit):
         select_data_file(parent=self.parent(), line_edit=line_edit)
 
-    def updateDialog(self, new_inputs: dict, w_name: str):
-        pass
+    def value(self) -> dict:
+        d = {}
+        for k, v in self.widget_dict["active_constraints"].widget_dict.items():
+            d[k] = [self.widget_dict[k].value(), v.isChecked(), self.widget_dict[k + "_policy"].value()]
+        return d
+
+    def setValue(self, d: dict):
+        for k, v in d.items():
+            if k == "active_constraints":
+                continue
+            self.widget_dict["active_constraints"].widget_dict[k].setChecked(v[1])
+            self.widget_dict[k].setValue(v[0])
+            self.widget_dict[k + "_policy"].setValue(v[2])
 
 
 class OptConstraintsHTabWidget(PymeadDialogHTabWidget):
@@ -1946,7 +2220,7 @@ class OptConstraintsHTabWidget(PymeadDialogHTabWidget):
         super().__init__(parent=parent,
                          widgets={k: OptConstraintsDialogWidget() for k in geo_col.container()["airfoils"]})
         # mset_dialog_widget.airfoilsChanged.connect(self.onAirfoilListChanged)
-        self.label = QLabel("Optimization Constraints")
+        self.label = None
         self.widget = self
         self.push = None
 
