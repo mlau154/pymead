@@ -2091,9 +2091,9 @@ class OptConstraintsMultiCheckbox(QGroupBox):
 
 class VisualizeButton(QPushButton):
     def __init__(self, parent=None):
-        super().__init__("Visualize", parent=parent)
+        super().__init__("Visualize Constraints", parent=parent)
         self.setStyleSheet("color: #1ed8e6; font-size: 18px;")
-        self.setMaximumWidth(300)
+        # self.setMaximumWidth(300)
 
 
 class OptConstraintsDialogWidget(PymeadDialogWidget2):
@@ -4020,7 +4020,7 @@ class GeometricConstraintGraph:
 
         # Set up the residual plot lines
         self.plot_items = [
-            self.v.plot(pen=pg.mkPen(color=theme["residual-color-1"], width=2), name="Airfoil")
+            self.v.plot(pen=pg.mkPen(color="cornflowerblue", width=2), name="Airfoil")
         ]
 
         # Set the formatting for the graph based on the current theme
@@ -4041,7 +4041,7 @@ class GeometricConstraintGraph:
         self.v.getAxis("bottom").setTextPen(theme["main-color"])
         self.v.getAxis("left").setTextPen(theme["main-color"])
         for idx, plot_item in enumerate(self.plot_items):
-            plot_item.setPen(pg.mkPen(color=theme[f"residual-color-{idx+1}"], width=2))
+            plot_item.setPen(pg.mkPen(color="cornflowerblue", width=2))
         self.set_legend_label_format(theme)
 
     def set_legend_label_format(self, theme: dict):
