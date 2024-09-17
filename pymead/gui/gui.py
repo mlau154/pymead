@@ -1633,10 +1633,17 @@ class GUI(FramelessMainWindow):
 
     def setup_optimization(self):
         self.dialog = OptimizationSetupDialog(self, settings_override=self.opt_settings,
-                                              geo_col=self.geo_col, theme=self.themes[self.current_theme])
+                                              geo_col=self.geo_col, theme=self.themes[self.current_theme],
+                                              grid=self.main_icon_toolbar.buttons["grid"]["button"].isChecked())
         self.dialog.accepted.connect(self.optimization_accepted)
         self.dialog.rejected.connect(self.optimization_rejected)
         self.dialog.exec()
+
+        # Close all the constraint visualization widgets that have been opened
+        for widget in self.dialog.constraints_widget.widget_dict["constraints"].w_dict.values():
+            if widget.sub_dialog is None:
+                continue
+            widget.sub_dialog.close()
 
     def optimization_accepted(self):
         exit_the_dialog = False

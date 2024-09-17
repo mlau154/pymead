@@ -18,6 +18,7 @@ from PyQt6.QtWidgets import (QWidget, QGridLayout, QLabel, QPushButton, QCheckBo
                              QDoubleSpinBox, QComboBox, QDialog, QVBoxLayout, QSizeGrip, QDialogButtonBox, QMessageBox,
                              QFormLayout, QRadioButton, QGroupBox, QSizePolicy)
 
+from misc import get_setting
 from pymead import GUI_DEFAULTS_DIR, q_settings, GUI_DIALOG_WIDGETS_DIR, TargetPathNotFoundError
 from pymead.analysis import cfd_output_templates
 from pymead.analysis.utils import viscosity_calculator
@@ -2064,7 +2065,6 @@ class OptConstraintsMultiCheckbox(QGroupBox):
             "thickness_at_points": QCheckBox("Thickness Distribution", self),
             "min_area": QCheckBox("Minimum Area", self),
             "internal_geometry": QCheckBox("Internal Geometry", self),
-            "external_geometry": QCheckBox("External Geometry", self)
         }
         self.lay = QGridLayout()
 
@@ -2074,7 +2074,6 @@ class OptConstraintsMultiCheckbox(QGroupBox):
             2: [0, 2],
             3: [1, 0],
             4: [1, 1],
-            5: [1, 2]
         }
 
         for idx, widget in enumerate(self.widget_dict.values()):
@@ -2091,13 +2090,27 @@ class OptConstraintsMultiCheckbox(QGroupBox):
             self.widget_dict[k].setChecked(v)
 
 
-class OptConstraintsDialogWidget(PymeadDialogWidget2):
+class VisualizeButton(QPushButton):
     def __init__(self, parent=None):
+        super().__init__("Visualize", parent=parent)
+        self.setStyleSheet("color: #1ed8e6; font-size: 18px;")
+        self.setMaximumWidth(300)
+
+
+class OptConstraintsDialogWidget(PymeadDialogWidget2):
+    def __init__(self, geo_col: GeometryCollection, airfoil_name: str, theme: dict, grid: bool, parent=None):
+        self.grid = grid
+        self.theme = theme
+        self.airfoil_name = airfoil_name
+        self.geo_col = geo_col
+        self.sub_dialog = None
         super().__init__(parent=parent)
+        self.graph = None
 
     def initializeWidgets(self, *args, **kwargs):
         self.widget_dict = {
             "active_constraints": OptConstraintsMultiCheckbox(self),
+            "visualize": VisualizeButton(self),
             "min_val_of_max_thickness": PymeadLabeledDoubleSpinBox(
                 label="Minimum Thickness", decimals=16, minimum=0.0, maximum=np.inf, single_step=0.01, value=0.1
             ),
@@ -2136,33 +2149,22 @@ class OptConstraintsDialogWidget(PymeadDialogWidget2):
             "internal_geometry_policy": PymeadLabeledComboBox(
                 label="Int. Geometry Timing",
                 items=[
-                    "Non-Dimensional, Rotate/Translate w/ Airfoil, Eval. Before Aerodynamic Evaluation",
-                    "After Aerodynamic Evaluation"
+                    "Rotate/Translate/Scale w/ Airfoil, Eval. Before Aerodynamic Evaluation",
+                    "Rotate/Translate w/ Airfoil, Eval. Before Aerodynamic Evaluation",
+                    "Absolute, Eval. Before Aerodynamic Evaluation",
+                    "Absolute, Eval. After Aerodynamic Evaluation",
                 ],
-                current_item="Before Aerodynamic Evaluation",
+                current_item="Rotate/Translate/Scale w/ Airfoil, Eval. Before Aerodynamic Evaluation",
                 tool_tip="The timing of the internal geometry fit check can be important\ndepending on whether the "
                          "internal geometry should be rotated\nwith the airfoil angle of attack. If the internal "
                          "geometry\ncan move with the airfoil angle of attack, choose 'Before Aerodynamic Evaluation' "
                          "(faster).\nOtherwise, choose 'After Aerodynamic Evaluation' (slower)."
-            ),
-            "external_geometry": PymeadLabeledLineEdit(
-                label="External Geometry File", push_label="Select File",
-                tool_tip="Ensure that the airfoil fits inside the given convex hull of x-y coordinates "
-                         "(preferably closed)"
-            ),
-            "external_geometry_policy": PymeadLabeledComboBox(
-                label="Ext. Geometry Timing", items=["Before Aerodynamic Evaluation", "After Aerodynamic Evaluation"],
-                current_item="Before Aerodynamic Evaluation",
-                tool_tip="The timing of the external geometry fit check can be important\ndepending on whether the "
-                         "external geometry should be rotated\nwith the airfoil angle of attack. If the external "
-                         "geometry\ncan move with the airfoil angle of attack, choose 'Before Aerodynamic Evaluation' "
-                         "(faster).\nOtherwise, choose 'After Aerodynamic Evaluation' (slower)."
-            ),
+            )
         }
 
         # Hide all the constraint widgets on initialization
         for k, v in self.widget_dict.items():
-            if k == "active_constraints":
+            if k in ["active_constraints", "visualize"]:
                 continue
             v.setShown(False)
 
@@ -2172,10 +2174,11 @@ class OptConstraintsDialogWidget(PymeadDialogWidget2):
 
     def addWidgets(self, *args, **kwargs):
         self.lay.addWidget(self.widget_dict["active_constraints"], 0, 0, 1, 3)
-        row_count = 1
+        self.lay.addWidget(self.widget_dict["visualize"], 1, 0, 1, 3, alignment=Qt.AlignmentFlag.AlignHCenter)
+        row_count = 2
         column = 0
         for widget_name, widget in self.widget_dict.items():
-            if widget_name in ["active_constraints"]:
+            if widget_name in ["active_constraints", "visualize"]:
                 continue
             row_span = 1
             col_span = 2 if widget.push is None else 1
@@ -2193,6 +2196,18 @@ class OptConstraintsDialogWidget(PymeadDialogWidget2):
             v.stateChanged.connect(self.widget_dict[k + "_policy"].setShown)
         self.widget_dict["thickness_at_points"].push.clicked.connect(partial(
             self.select_data_file, line_edit=self.widget_dict["thickness_at_points"].widget))
+        self.widget_dict["visualize"].clicked.connect(self.visualize)
+
+    def visualize(self):
+        if self.sub_dialog is not None:
+            return
+        airfoil = self.geo_col.container()["airfoils"][self.airfoil_name]
+        airfoil_coords = airfoil.get_coords_selig_format()
+        self.sub_dialog = GeometricConstraintGraphDialog(
+            theme=self.theme, grid=self.grid, airfoil_name=self.airfoil_name, parent=self
+        )
+        self.sub_dialog.graph.plot_items[0].setData(airfoil_coords[:, 0], airfoil_coords[:, 1])
+        self.sub_dialog.show()
 
     def select_data_file(self, line_edit: QLineEdit):
         select_data_file(parent=self.parent(), line_edit=line_edit)
@@ -2205,7 +2220,7 @@ class OptConstraintsDialogWidget(PymeadDialogWidget2):
 
     def setValue(self, d: dict):
         for k, v in d.items():
-            if k == "active_constraints":
+            if k in ["active_constraints", "visualize"]:
                 continue
             self.widget_dict["active_constraints"].widget_dict[k].setChecked(v[1])
             self.widget_dict[k].setValue(v[0])
@@ -2216,9 +2231,14 @@ class OptConstraintsHTabWidget(PymeadDialogHTabWidget):
 
     OptConstraintsChanged = pyqtSignal()
 
-    def __init__(self, parent, geo_col: GeometryCollection, mset_dialog_widget: MSETDialogWidget = None):
+    def __init__(self, parent, geo_col: GeometryCollection, theme: dict, grid: bool,
+                 mset_dialog_widget: MSETDialogWidget = None):
+        self.geo_col = geo_col
+        self.theme = theme
+        self.grid = grid
         super().__init__(parent=parent,
-                         widgets={k: OptConstraintsDialogWidget() for k in geo_col.container()["airfoils"]})
+                         widgets={k: OptConstraintsDialogWidget(geo_col=geo_col, airfoil_name=k, theme=self.theme, grid=self.grid)
+                                  for k in geo_col.container()["airfoils"]})
         # mset_dialog_widget.airfoilsChanged.connect(self.onAirfoilListChanged)
         self.label = None
         self.widget = self
@@ -2228,7 +2248,8 @@ class OptConstraintsHTabWidget(PymeadDialogHTabWidget):
         temp_dict = {}
         for airfoil_name in new_airfoil_name_list:
             if airfoil_name not in self.w_dict:
-                self.w_dict[airfoil_name] = OptConstraintsDialogWidget()
+                self.w_dict[airfoil_name] = OptConstraintsDialogWidget(geo_col=self.geo_col, airfoil_name=airfoil_name,
+                                                                       theme=self.theme, grid=self.grid)
             temp_dict[airfoil_name] = self.w_dict[airfoil_name]
         self.w_dict = temp_dict
         self.regenerateWidgets()
@@ -2499,13 +2520,15 @@ class GAConstraintsTerminationDialogWidget(PymeadDialogWidget):
 
 
 class GAConstraintsTerminationDialogWidget2(PymeadDialogWidget2):
-    def __init__(self, geo_col: GeometryCollection, parent=None):
+    def __init__(self, geo_col: GeometryCollection, theme: dict, grid: bool, parent=None):
         self.geo_col = geo_col
+        self.theme = theme
+        self.grid = grid
         super().__init__(parent=parent)
 
     def initializeWidgets(self, *args, **kwargs):
         self.widget_dict = {
-            "constraints": OptConstraintsHTabWidget(parent=None, geo_col=self.geo_col),
+            "constraints": OptConstraintsHTabWidget(parent=None, geo_col=self.geo_col, theme=self.theme, grid=self.grid),
             "f_tol": PymeadLabeledScientificDoubleSpinBox(label="Function Tolerance", value=1e-6, minimum=0.0,
                                                           maximum=100000.0),
             "cv_tol": PymeadLabeledScientificDoubleSpinBox(label="Constraint Violation Tol.", value=1.0e-6,
@@ -3079,11 +3102,11 @@ class OptimizationDialogVTabWidget(PymeadDialogVTabWidget):
 
 
 class OptimizationSetupDialog(PymeadDialog):
-    def __init__(self, parent, geo_col: GeometryCollection, theme: dict, settings_override: dict = None):
+    def __init__(self, parent, geo_col: GeometryCollection, theme: dict, grid: bool, settings_override: dict = None):
         w0 = GAGeneralSettingsDialogWidget()
         w3 = XFOILDialogWidget(current_airfoils=[k for k in geo_col.container()["airfoils"]])
         w4 = MSETDialogWidget2(geo_col=geo_col, theme=theme)
-        w2 = GAConstraintsTerminationDialogWidget2(geo_col=geo_col)
+        w2 = GAConstraintsTerminationDialogWidget2(geo_col=geo_col, theme=theme, grid=grid)
         w7 = MultiPointOptDialogWidget()
         w5 = MSESDialogWidget2(geo_col=geo_col)
         w1 = GeneticAlgorithmDialogWidget(multi_point_dialog_widget=w7)
@@ -3973,3 +3996,60 @@ def convert_opt_settings_to_param_dict(opt_settings: dict) -> dict:
         param_dict['xfoil_settings']['CLI'] = opt_settings['XFOIL']['CLI']
     param_dict['mses_settings']['n_airfoils'] = param_dict['mset_settings']['n_airfoils']
     return param_dict
+
+
+class GeometricConstraintGraph:
+    def __init__(self, theme: dict, pen=None, size: tuple = (1000, 300), grid: bool = False):
+        pg.setConfigOptions(antialias=True)
+
+        if pen is None:
+            pen = pg.mkPen(color="cornflowerblue", width=2)
+
+        self.w = pg.GraphicsLayoutWidget(show=True, size=size)
+        self.w.setMinimumWidth(600)
+        self.w.setMinimumHeight(400)
+
+        self.v = self.w.addPlot(pen=pen)
+        self.v.setMenuEnabled(False)
+        self.v.showGrid(x=grid, y=grid)
+        self.v.setAspectLocked(True)
+        self.legend = self.v.addLegend(offset=(-5, 5))
+
+        # Set up the residual plot lines
+        self.plot_items = [
+            self.v.plot(pen=pg.mkPen(color=theme["residual-color-1"], width=2), name="Airfoil")
+        ]
+
+        # Set the formatting for the graph based on the current theme
+        self.set_formatting(theme=theme)
+
+    def set_background(self, background_color: str):
+        self.w.setBackground(background_color)
+
+    def set_formatting(self, theme: dict):
+        self.w.setBackground(theme["graph-background-color"])
+        label_font = f"{get_setting('axis-label-point-size')}pt {get_setting('axis-label-font-family')}"
+        self.v.setLabel(axis="bottom", text=f"x [{UNITS.current_length_unit()}]", font=label_font,
+                           color=theme["main-color"])
+        self.v.setLabel(axis="left", text=f"y [{UNITS.current_length_unit()}]", font=label_font, color=theme["main-color"])
+        tick_font = QFont(get_setting("axis-tick-font-family"), get_setting("axis-tick-point-size"))
+        self.v.getAxis("bottom").setTickFont(tick_font)
+        self.v.getAxis("left").setTickFont(tick_font)
+        self.v.getAxis("bottom").setTextPen(theme["main-color"])
+        self.v.getAxis("left").setTextPen(theme["main-color"])
+        for idx, plot_item in enumerate(self.plot_items):
+            plot_item.setPen(pg.mkPen(color=theme[f"residual-color-{idx+1}"], width=2))
+        self.set_legend_label_format(theme)
+
+    def set_legend_label_format(self, theme: dict):
+        for _, label in self.legend.items:
+            label.item.setHtml(f"<span style='font-family: DejaVu Sans; color: "
+                               f"{theme['main-color']}; size: 8pt'>{label.text}</span>")
+
+
+class GeometricConstraintGraphDialog(PymeadDialog):
+    def __init__(self, theme: dict, grid: bool, airfoil_name: str, parent=None):
+        self.graph = GeometricConstraintGraph(theme=theme, grid=grid)
+        self.widget = self.graph.w
+        super().__init__(parent=parent, window_title=f"Geometric Constraint Visualization - {airfoil_name}",
+                         widget=self.widget, theme=theme)

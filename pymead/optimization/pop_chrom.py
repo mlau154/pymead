@@ -72,30 +72,25 @@ class Chromosome:
         for airfoil in self.airfoil_list:
             airfoil_name = airfoil.name()
             if self.valid_geometry:
-                if self.param_dict['constraints'][airfoil_name]['min_radius_curvature'][1]:
+                if self.param_dict["constraints"][airfoil_name]['min_radius_curvature'][1]:
                     self.chk_min_radius(airfoil_name=airfoil_name)
             if self.valid_geometry:
-                if self.param_dict['constraints'][airfoil_name]['min_val_of_max_thickness'][1]:
-                    self.chk_max_thickness(airfoil_frame_relative=True, airfoil_name=airfoil_name)
+                if self.param_dict["constraints"][airfoil_name]['min_val_of_max_thickness'][1]:
+                    self.chk_max_thickness(airfoil_name=airfoil_name)
             if self.valid_geometry:
-                if (self.param_dict['constraints'][airfoil_name]['check_thickness_at_points'] and
-                        self.param_dict['constraints'][airfoil_name]['thickness_at_points'] is not None):
-                    self.check_thickness_at_points(airfoil_frame_relative=True, airfoil_name=airfoil_name)
+                cnstr_spec = self.param_dict["constraints"][airfoil_name]["thickness_at_points"]
+                if cnstr_spec[1]:
+                    self.check_thickness_at_points(airfoil_name=airfoil_name)
             if self.valid_geometry:
-                if self.param_dict['constraints'][airfoil_name]['min_area'][1]:
-                    self.check_min_area(airfoil_frame_relative=True, airfoil_name=airfoil_name)
+                if self.param_dict["constraints"][airfoil_name]["min_area"][1]:
+                    self.check_min_area(airfoil_name=airfoil_name)
             if self.valid_geometry:
-                if self.param_dict['constraints'][airfoil_name]['use_internal_geometry']:
-                    if self.param_dict['constraints'][airfoil_name]['internal_geometry_timing'] == 'Before Aerodynamic Evaluation':
-                        self.check_contains_points(airfoil_frame_relative=True, airfoil_name=airfoil_name)
+                cnstr_spec = self.param_dict["constraints"][airfoil_name]["internal_geometry"]
+                if cnstr_spec[1]:
+                    if "Before" in cnstr_spec[2]:
+                        self.check_contains_points(airfoil_name=airfoil_name)
                     else:
                         raise ValueError('Internal geometry timing after aerodynamic evaluation not yet implemented')
-            if self.valid_geometry:
-                if self.param_dict['constraints'][airfoil_name]['use_external_geometry']:
-                    if self.param_dict['constraints'][airfoil_name]['external_geometry_timing'] == 'Before Aerodynamic Evaluation':
-                        self.check_if_inside_points(airfoil_name=airfoil_name)
-                    else:
-                        raise ValueError('External geometry timing after aerodynamic evaluation not yet implemented')
 
         # Set the equation_dict to None because it contains the unpicklable __builtins__ module
         for param in self.geo_col.container()["params"].values():
@@ -147,117 +142,130 @@ class Chromosome:
         :return: Boolean flag
         """
         try:
-            if self.airfoil_sys_generated:
-                for airfoil in self.airfoil_list:  # For each airfoil,
-                    self_intersecting = airfoil.check_self_intersection()
-                    if self_intersecting:  # If the intersection array is not empty (& thus there is a
-                        # self-intersection somewhere),
-                        self_intersection_flag = True  # Set self-intersection flag to True
-                        self.valid_geometry = False
-                        if self.verbose:
-                            print('Failed self-intersection test')
-                        return self_intersection_flag  # Return the self-intersection flag and break out of the method
-                self_intersection_flag = False  # If the whole method runs with no self-intersections, set the
-                # flag to False
-                self.valid_geometry = True
-                return self_intersection_flag  # Return the false self-intersection flag, meaning that this geometry is
-                # good to go
-            else:
-                raise Exception('Airfoil system has not yet been generated. Aborting self-intersection check.')
+            for airfoil in self.airfoil_list:  # For each airfoil,
+                self_intersecting = airfoil.check_self_intersection()
+                if self_intersecting:  # If the intersection array is not empty (& thus there is a
+                    # self-intersection somewhere),
+                    self_intersection_flag = True  # Set self-intersection flag to True
+                    self.valid_geometry = False
+                    if self.verbose:
+                        print('Failed self-intersection test')
+                    return self_intersection_flag  # Return the self-intersection flag and break out of the method
+            self_intersection_flag = False  # If the whole method runs with no self-intersections, set the
+            # flag to False
+            self.valid_geometry = True
+            return self_intersection_flag  # Return the false self-intersection flag, meaning that this geometry is
+            # good to go
         finally:
             self.intersection_checked = True
 
     def chk_min_radius(self, airfoil_name: str) -> bool:
-        if self.airfoil_sys_generated:
-            min_radius = self.geo_col.container()["airfoils"][airfoil_name].compute_min_radius()
-            min_radius_too_small = min_radius < self.param_dict['constraints'][airfoil_name]['min_radius_curvature'][0]
-            self.valid_geometry = not min_radius_too_small
+        chord_relative = False
+        cnstr_spec = self.param_dict["constraints"][airfoil_name]["min_radius_curvature"]
+        if len(cnstr_spec) > 2:
+            if cnstr_spec[2] == "Non-Dimensional":
+                chord_relative = True
+        min_radius = self.geo_col.container()["airfoils"][airfoil_name].compute_min_radius(
+            chord_relative=chord_relative)
+        min_radius_too_small = min_radius < cnstr_spec[0]
+        self.valid_geometry = not min_radius_too_small
+        if self.verbose:
+            print(f'Min radius of curvature too small? {min_radius_too_small}. Min radius is {min_radius}')
+        return min_radius_too_small
+
+    def chk_max_thickness(self, airfoil_name: str) -> bool:
+        airfoil_frame_relative = True
+        cnstr_spec = self.param_dict["constraints"][airfoil_name]["min_val_of_max_thickness"]
+        if len(cnstr_spec) > 2:
+            if cnstr_spec[2] == "Dimensional":
+                airfoil_frame_relative = False
+        thickness_data = self.geo_col.container()["airfoils"][airfoil_name].compute_thickness(
+            airfoil_frame_relative=airfoil_frame_relative)
+        max_thickness = thickness_data["t_max"] if "t_max" in thickness_data else thickness_data["t/c_max"]
+        if max_thickness < cnstr_spec[0]:
+            max_thickness_too_small = True
+        else:
+            max_thickness_too_small = False
+        if max_thickness_too_small:
+            max_thickness_too_small_flag = True
+            self.valid_geometry = False
             if self.verbose:
-                print(f'Min radius of curvature too small? {min_radius_too_small}. Min radius is {min_radius}')
-            return min_radius_too_small
-
-    def chk_max_thickness(self, airfoil_frame_relative: bool, airfoil_name: str) -> bool:
-        if self.airfoil_sys_generated:
-            thickness_data = self.geo_col.container()["airfoils"][airfoil_name].compute_thickness(
-                airfoil_frame_relative=airfoil_frame_relative)
-            max_thickness = thickness_data["t/c_max"]
-            if max_thickness < self.param_dict['constraints'][airfoil_name]['min_val_of_max_thickness'][0]:
-                max_thickness_too_small = True
-            else:
-                max_thickness_too_small = False
-            if max_thickness_too_small:
-                max_thickness_too_small_flag = True
-                self.valid_geometry = False
-                if self.verbose:
-                    print(f'Max thickness is {max_thickness}. '
-                          f'Failed thickness test in chk_max_thickness, trying again...')
-                for cnstr in self.geo_col.container()["geocon"].values():
-                    cnstr.data = None
-                return max_thickness_too_small_flag
-            else:
-                max_thickness_too_small_flag = False
-                self.valid_geometry = True
-                if self.verbose:
-                    print(f'Max thickness is {max_thickness}. Passed thickness test. Continuing...')
-                return max_thickness_too_small_flag
+                print(f'Max thickness is {max_thickness}. '
+                      f'Failed thickness test in chk_max_thickness, trying again...')
+            for cnstr in self.geo_col.container()["geocon"].values():
+                cnstr.data = None
+            return max_thickness_too_small_flag
         else:
-            raise Exception('Airfoil system has not yet been generated. Aborting self-intersection check.')
+            max_thickness_too_small_flag = False
+            self.valid_geometry = True
+            if self.verbose:
+                print(f'Max thickness is {max_thickness}. Passed thickness test. Continuing...')
+            return max_thickness_too_small_flag
 
-    def check_thickness_at_points(self, airfoil_frame_relative: bool, airfoil_name: str):
-        if self.airfoil_sys_generated:
-            thickness_array = np.array(self.param_dict['constraints'][airfoil_name]['thickness_at_points'])
-            x_over_c_array = thickness_array[:, 0]
-            t_over_c_array = thickness_array[:, 1]
-            airfoil = self.geo_col.container()["airfoils"][airfoil_name]
-            thickness = airfoil.compute_thickness_at_points(x_over_c_array,
-                                                            airfoil_frame_relative=airfoil_frame_relative)
-            if np.any(thickness < t_over_c_array):
-                if self.verbose:
-                    print(f"Minimum required thickness condition not met at some point. Trying again")
-                self.valid_geometry = False
-            else:
-                if self.verbose:
-                    print(f"Minimum required thickness condition met everywhere [success]")
-                self.valid_geometry = True
+    def check_thickness_at_points(self, airfoil_name: str):
+        airfoil_frame_relative = True
+        vertical_check = False
+        cnstr_spec = self.param_dict["constraints"][airfoil_name]["thickness_at_points"]
+        if len(cnstr_spec) > 1:
+            airfoil_frame_relative = "Non-Dimensional" in cnstr_spec[2]
+            vertical_check = "Vertical" in cnstr_spec[2]
+
+        thickness_array = np.array(cnstr_spec[0])
+        x_array = thickness_array[:, 0]
+        t_array = thickness_array[:, 1]
+        airfoil = self.geo_col.container()["airfoils"][airfoil_name]
+        thickness = airfoil.compute_thickness_at_points(
+            x_array, airfoil_frame_relative=airfoil_frame_relative, vertical_check=vertical_check)
+        if np.any(thickness < t_array):
+            if self.verbose:
+                print(f"Minimum required thickness condition not met at some point. Trying again")
+            self.valid_geometry = False
         else:
-            raise Exception('Airfoil system has not yet been generated. Aborting self-intersection check.')
+            if self.verbose:
+                print(f"Minimum required thickness condition met everywhere [success]")
+            self.valid_geometry = True
 
-    def check_min_area(self, airfoil_frame_relative: bool, airfoil_name: str):
-        if self.airfoil_sys_generated:
-            area = self.geo_col.container()["airfoils"][airfoil_name].compute_area(
-                airfoil_frame_relative=airfoil_frame_relative)
-            required_min_area = self.param_dict['constraints'][airfoil_name]['min_area'][0]
-            if area < required_min_area:
-                if self.verbose:
-                    print(f'Area is {area} < required min. area ({required_min_area}). Trying again...')
-                self.valid_geometry = False
-            else:
-                if self.verbose:
-                    print(f'Area is {area} >= minimum req. area ({required_min_area}) [success]. '
-                          f'Continuing...')
-                self.valid_geometry = True
+    def check_min_area(self, airfoil_name: str):
+        airfoil_frame_relative = True
+        cnstr_spec = self.param_dict["constraints"][airfoil_name]["min_area"]
+        if len(cnstr_spec) > 2:
+            airfoil_frame_relative = cnstr_spec[2] == "Non-Dimensional"
+        area = self.geo_col.container()["airfoils"][airfoil_name].compute_area(
+            airfoil_frame_relative=airfoil_frame_relative)
+        required_min_area = cnstr_spec[0]
+        if area < required_min_area:
+            if self.verbose:
+                print(f'Area is {area} < required min. area ({required_min_area}). Trying again...')
+            self.valid_geometry = False
         else:
-            raise Exception('Airfoil system has not yet been generated. Aborting self-intersection check.')
+            if self.verbose:
+                print(f'Area is {area} >= minimum req. area ({required_min_area}) [success]. '
+                      f'Continuing...')
+            self.valid_geometry = True
 
-    def check_contains_points(self, airfoil_frame_relative: bool, airfoil_name: str) -> bool:
-        if self.airfoil_sys_generated:
-            if not self.geo_col.container()["airfoils"][airfoil_name].contains_line_string(
-                    points=self.param_dict['constraints'][airfoil_name]['internal_geometry'],
-                    airfoil_frame_relative=airfoil_frame_relative):
-                self.valid_geometry = False
-                return self.valid_geometry
-        self.valid_geometry = True
-        return self.valid_geometry
+    def check_contains_points(self, airfoil_name: str) -> bool:
+        airfoil_frame_relative, rotate_with_airfoil, translate_with_airfoil, scale_with_airfoil = True, True, True, True
+        cnstr_spec = self.param_dict["constraints"][airfoil_name]["internal_geometry"]
+        if len(cnstr_spec) > 1:
+            if "Rotate/Translate w/ Airfoil" in cnstr_spec[2]:
+                scale_with_airfoil = False
+                airfoil_frame_relative = False
+            elif "Absolute" in cnstr_spec[2]:
+                airfoil_frame_relative = False
+                rotate_with_airfoil = False
+                translate_with_airfoil = False
+                scale_with_airfoil = False
 
-    def check_if_inside_points(self, airfoil_name: str) -> bool:
-        if self.airfoil_sys_generated:
-            if not self.geo_col.container()["airfoils"][airfoil_name].within_line_string_until_point(
-                    self.param_dict['constraints'][airfoil_name]['external_geometry'],
-                    self.param_dict['cutoff_point'],
-                    self.param_dict['ext_transform_kwargs']
-            ):
-                self.valid_geometry = False
-                return self.valid_geometry
+        contains_points = self.geo_col.container()["airfoils"][airfoil_name].contains_line_string(
+            points=cnstr_spec[0],
+            airfoil_frame_relative=airfoil_frame_relative,
+            rotate_with_airfoil=rotate_with_airfoil,
+            translate_with_airfoil=translate_with_airfoil,
+            scale_with_airfoil=scale_with_airfoil
+        )
+        if not contains_points:
+            self.valid_geometry = False
+            return self.valid_geometry
         self.valid_geometry = True
         return self.valid_geometry
 

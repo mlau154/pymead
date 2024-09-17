@@ -365,9 +365,14 @@ class Airfoil(PymeadObj):
         airfoil_line_string = LineString(self.get_coords_selig_format())
         return not airfoil_line_string.is_simple
 
-    def compute_min_radius(self) -> float:
+    def compute_min_radius(self, chord_relative: bool = False) -> float:
         """
         Computes the minimum radius of curvature for the airfoil.
+
+        Parameters
+        ----------
+        chord_relative: bool
+            Whether to scale the output value by the chord length of the current airfoil. Default: ``False``.
 
         Returns
         -------
@@ -375,7 +380,10 @@ class Airfoil(PymeadObj):
             The minimum radius of curvature
 
         """
-        return min([np.abs(curve.evaluate().R).min() for curve in self.curves])
+        R_abs_min = min([np.abs(curve.evaluate().R).min() for curve in self.curves])
+        if not chord_relative:
+            return R_abs_min
+        return R_abs_min / self.measure_chord()
 
     def compute_thickness(self, airfoil_frame_relative: bool = False, n_lines: int = 201) -> typing.Dict[str, float]:
         r"""Calculates the thickness distribution and maximum thickness of the airfoil.
@@ -383,19 +391,19 @@ class Airfoil(PymeadObj):
         Parameters
         ----------
         airfoil_frame_relative: bool
-            Whether to compute the area in the airfoil-relative frame. If ``True``, the thickness
+            Whether to compute the thickness distribution in the airfoil-relative frame. If ``True``, the thickness
             based on a chord-relative scaling will be returned. Default: ``False``
 
         n_lines: int
-          Describes the number of lines evenly spaced along the chordline produced to determine the thickness
-          distribution. Default: 201
+            Describes the number of lines evenly spaced along the chordline produced to determine the thickness
+            distribution. Default: 201
 
         Returns
-        =======
+        -------
         dict
-          The list of :math:`x`-values used for the thickness distribution calculation, the thickness distribution, the
-          maximum value of the thickness distribution, and, if ``return_max_thickness_location=True``,
-          the :math:`x/c`-location of the maximum thickness value.
+            The list of :math:`x`-values used for the thickness distribution calculation, the thickness distribution, the
+            maximum value of the thickness distribution, and, if ``return_max_thickness_location=True``,
+            the :math:`x/c`-location of the maximum thickness value.
         """
         airfoil_line_string = LineString(
             self.get_chord_relative_coords() if airfoil_frame_relative else self.get_coords_selig_format()
@@ -409,39 +417,47 @@ class Airfoil(PymeadObj):
                 thickness.append(0.0)
             else:
                 thickness.append(x_inters.convex_hull.length)
-        x_thickness = x_thickness
-        thickness = thickness
+        thickness = np.array(thickness)
         max_thickness = max(thickness)
         x_c_loc_idx = np.argmax(thickness)
         x_c_loc = x_thickness[x_c_loc_idx]
-        return {
-            "x/c": x_thickness,
-            "t/c": thickness,
-            "t/c_max": max_thickness,
-            "t/c_max_x/c_loc": x_c_loc
-        }
+        if airfoil_frame_relative:
+            return {
+                "x/c": x_thickness,
+                "t/c": thickness,
+                "t/c_max": max_thickness,
+                "t/c_max_x/c_loc": x_c_loc
+            }
+        else:
+            return {
+                "x/c": x_thickness,
+                "t": thickness * self.measure_chord(),
+                "t_max": max_thickness * self.measure_chord(),
+                "t_max_x/c_loc": x_c_loc
+            }
 
-    def compute_thickness_at_points(self, x_over_c: np.ndarray, airfoil_frame_relative: bool = False,
-                                    start_y_over_c: float = -1.0, end_y_over_c: float = 1.0) -> np.ndarray:
+    def compute_thickness_at_points(self, x_arr: np.ndarray, airfoil_frame_relative: bool = False,
+                                    vertical_check: bool = False) -> np.ndarray:
         """
         Calculates the thickness (t/c) at a set of x-locations (x/c)
 
+        .. warning::
+           If the airfoil's angle of attack is far from zero and ``vertical_check==True``, this method may yield
+           undesirable results.
+
         Parameters
         ----------
-        x_over_c: float or list or np.ndarray
-            The :math:`x/c` locations at which to evaluate the thickness
+        x_arr: float or list or np.ndarray
+            The :math:`x` (or :math:`x/c` if ``airfoil_frame_relative==True``)
+            locations at which to evaluate the thickness
 
         airfoil_frame_relative: bool
             Whether to compute the area in the airfoil-relative frame. If ``True``, the thickness
             based on a chord-relative scaling will be returned. Default: ``False``
 
-        start_y_over_c: float
-            The :math:`y/c` location to draw the first point in a line whose intersection with the airfoil is checked.
-            May need to decrease this value for unusually thick airfoils
-
-        end_y_over_c: float
-            The :math:`y/c` location to draw the last point in a line whose intersection with the airfoil is checked.
-            May need to increase this value for unusually thick airfoils
+        vertical_check: bool
+            Whether to compute the thickness vertically from the chordline (rather than perpendicular).
+            This value is ignored unless``airfoil_frame_relative==False``.
 
         Returns
         -------
@@ -452,15 +468,42 @@ class Airfoil(PymeadObj):
             self.get_chord_relative_coords() if airfoil_frame_relative else self.get_coords_selig_format()
         )
         thickness = np.array([])
-        for pt in x_over_c:
-            line_string = LineString([(pt, start_y_over_c), (pt, end_y_over_c)])
+        max_dist_from_chord_to_check = 1.0 if airfoil_frame_relative else self.measure_chord()
+        trailing_edge_x = 1.0 if airfoil_frame_relative else self.trailing_edge.x()
+
+        for x in x_arr:
+            # Get the start and end of the line used to slice either vertically or perpendicular to the chordline
+            # and compute the intersections with the airfoil
+            if airfoil_frame_relative:
+                slice_start = np.array([x, -max_dist_from_chord_to_check])
+                slice_end = np.array([x, max_dist_from_chord_to_check])
+            else:
+                y_on_chord = np.interp(
+                    x, np.array([self.leading_edge.x(), self.trailing_edge.x()]),
+                    np.array([self.leading_edge.y(), self.trailing_edge.y()])
+                )
+                if vertical_check:
+                    slice_start = np.array([x, y_on_chord]) - np.array([0.0, max_dist_from_chord_to_check])
+                    slice_end = np.array([x, y_on_chord]) + np.array([0.0, max_dist_from_chord_to_check])
+                else:
+                    slice_start = np.array([x, y_on_chord]) + max_dist_from_chord_to_check * np.array(
+                        [np.cos(-self.measure_alpha() - np.pi / 2), np.sin(-self.measure_alpha() - np.pi / 2)])
+                    slice_end = np.array([x, y_on_chord]) + max_dist_from_chord_to_check * np.array(
+                        [np.cos(-self.measure_alpha() + np.pi / 2), np.sin(-self.measure_alpha() + np.pi / 2)])
+
+            line_string = LineString(np.vstack((slice_start, slice_end)))
             x_inters = line_string.intersection(airfoil_line_string)
-            if pt == 1.0:
-                thickness = np.append(thickness, self.lower_surf_end.measure_distance(self.upper_surf_end))
+            te_thickness = self.lower_surf_end.measure_distance(self.upper_surf_end)
+            if airfoil_frame_relative:
+                te_thickness /= self.measure_chord()
+
+            if trailing_edge_x == trailing_edge_x:
+                thickness = te_thickness
             elif x_inters.is_empty:  # If no intersection between line and airfoil LineString,
                 thickness = np.append(thickness, 0.0)
             else:
                 thickness = np.append(thickness, x_inters.convex_hull.length)
+
         return thickness  # Return an array of t/c values corresponding to the x/c locations
 
     def compute_camber_at_points(self, x_over_c: np.ndarray, airfoil_frame_relative: bool = False,
@@ -527,9 +570,11 @@ class Airfoil(PymeadObj):
         )
         return airfoil_polygon.contains(Point(point[0], point[1]))
 
-    def contains_line_string(self, points: np.ndarray or list, airfoil_frame_relative: bool = False) -> bool:
+    def contains_line_string(self, points: np.ndarray or list, airfoil_frame_relative: bool = False,
+                             rotate_with_airfoil: bool = True, translate_with_airfoil: bool = True,
+                             scale_with_airfoil: bool = True) -> bool:
         """
-        Whether a connected string of points is contained the airfoil
+        Whether a connected string of points is contained inside the airfoil.
 
         Parameters
         ----------
@@ -537,8 +582,19 @@ class Airfoil(PymeadObj):
             Should be a 2-D array or list of the form ``[[<x_val_1>, <y_val_1>], [<x_val_2>, <y_val_2>], ...]``
 
         airfoil_frame_relative: bool
-            Whether to compute the area in the airfoil-relative frame. If ``True``, the thickness
-            based on a chord-relative scaling will be returned. Default: ``False``
+            Whether to run the enclosure test with the line string defined in the airfoil-relative frame.
+            Default: ``False``
+
+        rotate_with_airfoil: bool
+            Whether to rotate the line string by the opposite of the airfoil's angle of attack before running the
+            test. Default: ``True``
+
+        translate_with_airfoil: bool
+            Whether to translate the line string by a displacement equal to the airfoil's leading edge location
+            before running the test. Default: ``True``
+
+        scale_with_airfoil: bool
+            Whether to scale the line string by the airfoil's chord before running the test. Default: ``True``
 
         Returns
         -------
@@ -547,6 +603,18 @@ class Airfoil(PymeadObj):
         """
         points = np.array(points) if isinstance(points, list) else points
         assert points.ndim == 2
+
+        if (translate_with_airfoil or scale_with_airfoil or rotate_with_airfoil) and not airfoil_frame_relative:
+            transformation = Transformation2D(
+                tx=[self.leading_edge.x()] if translate_with_airfoil else None,
+                ty=[self.leading_edge.y()] if translate_with_airfoil else None,
+                sx=[self.measure_chord()] if scale_with_airfoil else None,
+                sy=[self.measure_chord()] if scale_with_airfoil else None,
+                r=[-self.measure_alpha()] if rotate_with_airfoil else None,
+                order="r,s,t", rotation_units="rad"
+            )
+            points = transformation.transform(points)
+
         airfoil_polygon = Polygon(
             self.get_chord_relative_coords() if airfoil_frame_relative else self.get_coords_selig_format()
         )
