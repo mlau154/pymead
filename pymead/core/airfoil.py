@@ -589,6 +589,7 @@ class Airfoil(PymeadObj):
         )
         thickness = np.array([])
         slices = []
+        warning_x_vals = []
         max_dist_from_chord_to_check = 1.0 if airfoil_frame_relative else self.measure_chord()
         trailing_edge_x = 1.0 if airfoil_frame_relative else self.trailing_edge.x()
 
@@ -620,12 +621,12 @@ class Airfoil(PymeadObj):
 
             line_string = LineString(np.vstack((slice_start, slice_end)))
             x_inters = line_string.intersection(airfoil_line_string)
-            if isinstance(x_inters, shapely.MultiPoint):
+            if not x_inters.is_empty:
+                assert isinstance(x_inters, shapely.MultiPoint)
                 xy = np.array([[geom.x, geom.y] for geom in x_inters.geoms])
-            elif isinstance(x_inters, shapely.LineString):
-                xy = np.array(x_inters.coords[:])
             else:
-                raise ValueError(f"{x_inters} is not of a supported type for conversion to array")
+                warning_x_vals.append(x)
+                continue
 
             slice_midpoint = np.mean(xy, axis=0)
 
@@ -659,7 +660,7 @@ class Airfoil(PymeadObj):
             else:
                 thickness = np.append(thickness, x_inters.convex_hull.length)
 
-        return {"slices": slices}
+        return {"slices": slices, "warning_x_vals": warning_x_vals}
 
     def compute_camber_at_points(self, x_over_c: np.ndarray, airfoil_frame_relative: bool = False,
                                  start_y_over_c: float = -1.0, end_y_over_c: float = 1.0) -> np.ndarray:

@@ -2096,7 +2096,8 @@ class VisualizeButton(QPushButton):
 
 
 class OptConstraintsDialogWidget(PymeadDialogWidget2):
-    def __init__(self, geo_col: GeometryCollection, airfoil_name: str, theme: dict, grid: bool, parent=None):
+    def __init__(self, geo_col: GeometryCollection, gui_obj, airfoil_name: str, theme: dict, grid: bool, parent=None):
+        self.gui_obj = gui_obj
         self.grid = grid
         self.theme = theme
         self.airfoil_name = airfoil_name
@@ -2265,6 +2266,8 @@ class OptConstraintsDialogWidget(PymeadDialogWidget2):
             )
             for sl in data["slices"]:
                 self.sub_dialog.graph.v.plot(sl[:, 0], sl[:, 1], pen=pg.mkPen(color="magenta", width=1.5))
+            self.gui_obj.disp_message_box(f"Intersection not found for x-values: {data['warning_x_vals']}",
+                                          message_mode="warn")
 
         dialog_value = self.value()
         airfoil = self.geo_col.container()["airfoils"][self.airfoil_name]
