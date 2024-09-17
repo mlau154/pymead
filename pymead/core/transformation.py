@@ -228,14 +228,3 @@ class AirfoilTransformation:
           Size N x 2, where N is the number of coordinates. The columns represent :math:`x` and :math:`y`.
         """
         return self.transform_rel_obj.transform(coordinates)
-
-
-if __name__ == '__main__':
-    coords = np.array([[1, 0], [2, 1], [3, 3], [2, 0]])
-    transform2d = Transformation2D(tx=[1], ty=[1], r=[90], sx=[2], sy=[2], rotation_units='deg', order='r,s,t')
-    new_coords = transform2d.transform(coords)
-    print(f"new_coords = {new_coords}")
-    coords_3d = np.array([[0, 0, 0], [1, 2, 3], [-1, 0, -6], [-6, 0, 0]])
-    transform3d = Transformation3D(tx=[1], ty=[2], tz=[3], sx=[2], sy=[2], sz=[2], rx=[30], ry=[40], rz=[-180],
-                                   rotation_units='deg', order='rx,rz,ry,s,t')
-    new_coords_3d = transform3d.transform(coords_3d)
