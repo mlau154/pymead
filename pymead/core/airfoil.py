@@ -385,6 +385,25 @@ class Airfoil(PymeadObj):
             return R_abs_min
         return R_abs_min / self.measure_chord()
 
+    def visualize_min_radius(self) -> dict:
+        R_abs_min, R_abs_min_coord_idx, R_abs_curve_idx = None, None, None
+        for curve_idx, curve in enumerate(self.curves):
+            R_abs = np.abs(curve.evaluate().R)
+            if curve_idx == 0:
+                R_abs_min_coord_idx = np.argmin(R_abs)
+                R_abs_curve_idx = curve_idx
+                R_abs_min = R_abs[R_abs_min_coord_idx]
+                continue
+            if R_abs[np.argmin(R_abs)] < R_abs_min:
+                R_abs_min_coord_idx = np.argmin(R_abs)
+                R_abs_curve_idx = curve_idx
+                R_abs_min = R_abs[R_abs_min_coord_idx]
+        return {
+            "R_abs_min": R_abs_min,
+            "R_abs_min_over_c": R_abs_min / self.measure_chord(),
+            "xy": self.curves[R_abs_curve_idx].evaluate().xy[R_abs_min_coord_idx]
+        }
+
     def compute_thickness(self, airfoil_frame_relative: bool = False, n_lines: int = 201) -> typing.Dict[str, float]:
         r"""Calculates the thickness distribution and maximum thickness of the airfoil.
 
@@ -435,6 +454,28 @@ class Airfoil(PymeadObj):
                 "t_max": max_thickness * self.measure_chord(),
                 "t_max_x/c_loc": x_c_loc
             }
+
+    def visualize_max_thickness(self):
+        data = self.compute_thickness(airfoil_frame_relative=True)
+        airfoil_line_string = LineString(self.get_chord_relative_coords())
+        line_string = LineString([(data["t/c_max_x/c_loc"], -1.0), (data["t/c_max_x/c_loc"], 1.0)])
+        intersection = line_string.intersection(airfoil_line_string)
+        xy = np.array([[geom.x, geom.y] for geom in intersection.geoms])
+        transformation = Transformation2D(
+            tx=[self.leading_edge.x().value()],
+            ty=[self.leading_edge.y().value()],
+            sx=[self.measure_chord()],
+            sy=[self.measure_chord()],
+            r=[-self.measure_alpha()],
+            rotation_units="rad", order="r,s,t"
+        )
+        xy = transformation.transform(xy)
+        return {
+            "xy": xy,
+            "t_max": data["t/c_max"] * self.measure_chord(),
+            "t/c_max": data["t/c_max"],
+            "x/c": data["t/c_max_x/c_loc"]
+        }
 
     def compute_thickness_at_points(self, x_arr: np.ndarray, airfoil_frame_relative: bool = False,
                                     vertical_check: bool = False) -> np.ndarray:

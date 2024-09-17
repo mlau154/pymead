@@ -21,7 +21,6 @@ from PyQt6.QtWidgets import (QWidget, QGridLayout, QLabel, QPushButton, QCheckBo
 from pymead import GUI_DEFAULTS_DIR, q_settings, GUI_DIALOG_WIDGETS_DIR, TargetPathNotFoundError
 from pymead.analysis import cfd_output_templates
 from pymead.analysis.utils import viscosity_calculator
-from pymead.core import UNITS
 from pymead.core.airfoil import Airfoil
 from pymead.core.geometry_collection import GeometryCollection
 from pymead.core.line import PolyLine
@@ -2200,13 +2199,48 @@ class OptConstraintsDialogWidget(PymeadDialogWidget2):
     def visualize(self):
         if self.sub_dialog is not None:
             return
+
+        def _visualize_min_radius():
+            min_radius_data = airfoil.visualize_min_radius()
+            self.sub_dialog.graph.plot_items["min_radius_point"].setData(
+                [min_radius_data["xy"][0]], [min_radius_data["xy"][1]]
+            )
+            text = (f"min(|R|) = {min_radius_data['R_abs_min']:.4f} {self.geo_col.units.current_length_unit()}<br>"
+                    f"min(|R|)/c = {min_radius_data['R_abs_min_over_c']:.4f}")
+            self.sub_dialog.graph.plot_items["min_radius_text"].setHtml(
+                f"<span style='font-family: DejaVu Sans Mono; "
+                f"color: #E8C205; size: 10pt'>{text}</span>"
+            )
+            text_pos = (min_radius_data["xy"][0] - 0.01 * airfoil.measure_chord(),
+                        min_radius_data["xy"][1] - 0.01 * airfoil.measure_chord())
+            self.sub_dialog.graph.plot_items["min_radius_text"].setPos(text_pos[0], text_pos[1])
+
+        def _visualize_max_thickness():
+            max_thickness_data = airfoil.visualize_max_thickness()
+            self.sub_dialog.graph.plot_items["max_thickness_line"].setData(
+                max_thickness_data["xy"][:, 0], max_thickness_data["xy"][:, 1]
+            )
+            text = (f"t_max = {max_thickness_data['t_max']:.6f} {self.geo_col.units.current_length_unit()}<br>"
+                    f"t/c_max = {max_thickness_data['t/c_max']:.6f}<br>")
+            self.sub_dialog.graph.plot_items["max_thickness_text"].setHtml(
+                f"<span style='font-family: DejaVu Sans Mono; "
+                f"color: #32A852; size: 10pt'>{text}</span>"
+            )
+            text_pos = (max_thickness_data["xy"][0, 0], max_thickness_data["xy"][0, 1] + 0.05 * airfoil.measure_chord())
+            self.sub_dialog.graph.plot_items["max_thickness_text"].setPos(text_pos[0], text_pos[1])
+
+        dialog_value = self.value()
         airfoil = self.geo_col.container()["airfoils"][self.airfoil_name]
         airfoil_coords = airfoil.get_coords_selig_format()
         self.sub_dialog = GeometricConstraintGraphDialog(
-            theme=self.theme, grid=self.grid, airfoil_name=self.airfoil_name, parent=self
+            theme=self.theme, geo_col=self.geo_col, grid=self.grid, airfoil_name=self.airfoil_name, parent=self
         )
         self.sub_dialog.sigConstraintGraphClosed.connect(self.onVisualizeClosed)
-        self.sub_dialog.graph.plot_items[0].setData(airfoil_coords[:, 0], airfoil_coords[:, 1])
+        self.sub_dialog.graph.plot_items["airfoil"].setData(airfoil_coords[:, 0], airfoil_coords[:, 1])
+        if dialog_value["min_radius_curvature"][1]:
+            _visualize_min_radius()
+        if dialog_value["min_val_of_max_thickness"][1]:
+            _visualize_max_thickness()
         self.sub_dialog.show()
 
     def onVisualizeClosed(self):
@@ -4002,7 +4036,9 @@ def convert_opt_settings_to_param_dict(opt_settings: dict) -> dict:
 
 
 class GeometricConstraintGraph:
-    def __init__(self, theme: dict, pen=None, size: tuple = (1000, 300), grid: bool = False):
+    def __init__(self, theme: dict, geo_col: GeometryCollection,
+                 pen=None, size: tuple = (1000, 300), grid: bool = False):
+        self.geo_col = geo_col
         pg.setConfigOptions(antialias=True)
 
         if pen is None:
@@ -4018,10 +4054,19 @@ class GeometricConstraintGraph:
         self.v.setAspectLocked(True)
         self.legend = self.v.addLegend(offset=(-5, 5))
 
-        # Set up the residual plot lines
-        self.plot_items = [
-            self.v.plot(pen=pg.mkPen(color="cornflowerblue", width=2), name="Airfoil")
-        ]
+        self.plot_items = {
+            "airfoil": self.v.plot(pen=pg.mkPen(color="cornflowerblue", width=2), name="Airfoil"),
+            "min_radius_point": self.v.plot(
+                symbol="star", symbolSize=20, symbolBrush=pg.mkBrush(color="#e8c205"),
+                symbolPen=pg.mkPen(color="#787366")
+            ),
+            "min_radius_text": pg.TextItem(anchor=(1, 0)),
+            "max_thickness_line": self.v.plot(pen=pg.mkPen(color="#32a852", width=1.5), name="Max Thickness"),
+            "max_thickness_text": pg.TextItem(anchor=(0.5, 0.5))
+        }
+        # Some of the item types must be added explicitly to the plot
+        for item in ["min_radius_text", "max_thickness_text"]:
+            self.v.addItem(self.plot_items[item])
 
         # Set the formatting for the graph based on the current theme
         self.set_formatting(theme=theme)
@@ -4032,16 +4077,15 @@ class GeometricConstraintGraph:
     def set_formatting(self, theme: dict):
         self.w.setBackground(theme["graph-background-color"])
         label_font = f"{get_setting('axis-label-point-size')}pt {get_setting('axis-label-font-family')}"
-        self.v.setLabel(axis="bottom", text=f"x [{UNITS.current_length_unit()}]", font=label_font,
+        self.v.setLabel(axis="bottom", text=f"x [{self.geo_col.units.current_length_unit()}]", font=label_font,
                            color=theme["main-color"])
-        self.v.setLabel(axis="left", text=f"y [{UNITS.current_length_unit()}]", font=label_font, color=theme["main-color"])
+        self.v.setLabel(axis="left", text=f"y [{self.geo_col.units.current_length_unit()}]",
+                        font=label_font, color=theme["main-color"])
         tick_font = QFont(get_setting("axis-tick-font-family"), get_setting("axis-tick-point-size"))
         self.v.getAxis("bottom").setTickFont(tick_font)
         self.v.getAxis("left").setTickFont(tick_font)
         self.v.getAxis("bottom").setTextPen(theme["main-color"])
         self.v.getAxis("left").setTextPen(theme["main-color"])
-        for idx, plot_item in enumerate(self.plot_items):
-            plot_item.setPen(pg.mkPen(color="cornflowerblue", width=2))
         self.set_legend_label_format(theme)
 
     def set_legend_label_format(self, theme: dict):
@@ -4054,8 +4098,8 @@ class GeometricConstraintGraphDialog(PymeadDialog):
 
     sigConstraintGraphClosed = pyqtSignal()
 
-    def __init__(self, theme: dict, grid: bool, airfoil_name: str, parent=None):
-        self.graph = GeometricConstraintGraph(theme=theme, grid=grid)
+    def __init__(self, theme: dict, geo_col: GeometryCollection, grid: bool, airfoil_name: str, parent=None):
+        self.graph = GeometricConstraintGraph(theme=theme, geo_col=geo_col, grid=grid)
         self.widget = self.graph.w
         super().__init__(parent=parent, window_title=f"Geometric Constraint Visualization - {airfoil_name}",
                          widget=self.widget, theme=theme)
