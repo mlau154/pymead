@@ -18,7 +18,6 @@ from PyQt6.QtWidgets import (QWidget, QGridLayout, QLabel, QPushButton, QCheckBo
                              QDoubleSpinBox, QComboBox, QDialog, QVBoxLayout, QSizeGrip, QDialogButtonBox, QMessageBox,
                              QFormLayout, QRadioButton, QGroupBox, QSizePolicy)
 
-from misc import get_setting
 from pymead import GUI_DEFAULTS_DIR, q_settings, GUI_DIALOG_WIDGETS_DIR, TargetPathNotFoundError
 from pymead.analysis import cfd_output_templates
 from pymead.analysis.utils import viscosity_calculator
@@ -2206,8 +2205,12 @@ class OptConstraintsDialogWidget(PymeadDialogWidget2):
         self.sub_dialog = GeometricConstraintGraphDialog(
             theme=self.theme, grid=self.grid, airfoil_name=self.airfoil_name, parent=self
         )
+        self.sub_dialog.sigConstraintGraphClosed.connect(self.onVisualizeClosed)
         self.sub_dialog.graph.plot_items[0].setData(airfoil_coords[:, 0], airfoil_coords[:, 1])
         self.sub_dialog.show()
+
+    def onVisualizeClosed(self):
+        self.sub_dialog = None
 
     def select_data_file(self, line_edit: QLineEdit):
         select_data_file(parent=self.parent(), line_edit=line_edit)
@@ -4048,8 +4051,23 @@ class GeometricConstraintGraph:
 
 
 class GeometricConstraintGraphDialog(PymeadDialog):
+
+    sigConstraintGraphClosed = pyqtSignal()
+
     def __init__(self, theme: dict, grid: bool, airfoil_name: str, parent=None):
         self.graph = GeometricConstraintGraph(theme=theme, grid=grid)
         self.widget = self.graph.w
         super().__init__(parent=parent, window_title=f"Geometric Constraint Visualization - {airfoil_name}",
                          widget=self.widget, theme=theme)
+        self.accepted.connect(self.onAccepted)
+        self.rejected.connect(self.onRejected)
+
+    def closeEvent(self, a0):
+        self.sigConstraintGraphClosed.emit()
+        super().closeEvent(a0)
+
+    def onAccepted(self):
+        self.sigConstraintGraphClosed.emit()
+
+    def onRejected(self):
+        self.sigConstraintGraphClosed.emit()
