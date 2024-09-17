@@ -838,7 +838,7 @@ class GUI(FramelessMainWindow):
             self.geo_col.assign_design_variable_values(param_vec, bounds_normalized=True)
 
     def import_algorithm_pkl_file(self):
-        dialog = LoadAirfoilAlgFile(self)
+        dialog = LoadAirfoilAlgFile(theme=self.themes[self.current_theme], parent=self)
         if dialog.exec():
             inputs = dialog.valuesFromWidgets()
             dialog.load_airfoil_alg_file_widget.assignQSettings(inputs)

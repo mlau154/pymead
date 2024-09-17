@@ -813,7 +813,6 @@ class PymeadDialog(FramelessDialog):
                  theme: dict):
         super().__init__(parent=parent)
         self.setWindowTitle(" " + window_title)
-        self.setWindowFlags(self.windowFlags() | Qt.WindowType.FramelessWindowHint)
         if self.parent() is not None:
             self.setFont(self.parent().font())
 
@@ -849,6 +848,8 @@ class PymeadDialog(FramelessDialog):
             f"""background-color: qlineargradient(x1: 0.0, y1: 0.5, x2: 1.0, y2: 0.5, 
                     stop: 0 {theme['title-gradient-color']}, 
                     stop: 0.6 {theme['background-color']})""")
+
+        self.resize(self.minimumSize())
 
     # def setInputs(self):
     #     self.w.setInputs()
@@ -2992,8 +2993,8 @@ class LoadDialog(QFileDialog):
 
 
 class LoadAirfoilAlgFileWidget(QWidget):
-    def __init__(self, parent):
-        super().__init__(parent)
+    def __init__(self, parent=None):
+        super().__init__(parent=parent)
         layout = QGridLayout(self)
 
         self.pkl_line = QLineEdit("", self)
@@ -3104,24 +3105,11 @@ class LoadAirfoilAlgFileWidget(QWidget):
         q_settings.setValue("pkl_weights", inputs["pkl_weights"])
 
 
-class LoadAirfoilAlgFile(QDialog):
-    def __init__(self, parent):
-        super().__init__(parent=parent)
-
-        self.setWindowTitle("Load Optimized Airfoil")
-        self.setFont(self.parent().font())
-
-        buttonBox = QDialogButtonBox(self)
-        buttonBox.addButton(QDialogButtonBox.StandardButton.Ok)
-        buttonBox.addButton(QDialogButtonBox.StandardButton.Cancel)
-        self.grid_layout = QGridLayout(self)
-
-        self.load_airfoil_alg_file_widget = LoadAirfoilAlgFileWidget(self)
-        self.grid_layout.addWidget(self.load_airfoil_alg_file_widget, 0, 0)
-        self.grid_layout.addWidget(buttonBox, self.grid_layout.rowCount(), 0)
-
-        buttonBox.accepted.connect(self.accept)
-        buttonBox.rejected.connect(self.reject)
+class LoadAirfoilAlgFile(PymeadDialog):
+    def __init__(self, theme: dict, parent=None):
+        self.load_airfoil_alg_file_widget = LoadAirfoilAlgFileWidget()
+        super().__init__(parent=parent, window_title="Load Optimized Airfoil",
+                         widget=self.load_airfoil_alg_file_widget, theme=theme)
 
     def valuesFromWidgets(self):
         return self.load_airfoil_alg_file_widget.valuesFromWidgets()
