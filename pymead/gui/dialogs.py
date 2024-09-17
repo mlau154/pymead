@@ -2229,6 +2229,21 @@ class OptConstraintsDialogWidget(PymeadDialogWidget2):
             text_pos = (max_thickness_data["xy"][0, 0], max_thickness_data["xy"][0, 1] + 0.05 * airfoil.measure_chord())
             self.sub_dialog.graph.plot_items["max_thickness_text"].setPos(text_pos[0], text_pos[1])
 
+        def _visualize_min_area():
+            area_normalized = airfoil.compute_area(airfoil_frame_relative=True)
+            area_absolute = airfoil.compute_area(airfoil_frame_relative=False)
+            text = (f"A = {area_absolute:.6f} {self.geo_col.units.current_length_unit()}<sup>2</sup><br>"
+                    f"A/c<sup>2</sup> = {area_normalized:.6f}")
+            self.sub_dialog.graph.plot_items["min_area_text"].setHtml(
+                f"<span style='font-family: DejaVu Sans Mono; "
+                f"color: cornflowerblue; size: 10pt'>{text}</span>"
+            )
+            text_pos = np.mean((airfoil.leading_edge.as_array(),
+                                airfoil.trailing_edge.as_array()), axis=0) + np.array(
+                [0.0, 0.3 * airfoil.measure_chord()]
+            )
+            self.sub_dialog.graph.plot_items["min_area_text"].setPos(text_pos[0], text_pos[1])
+
         dialog_value = self.value()
         airfoil = self.geo_col.container()["airfoils"][self.airfoil_name]
         airfoil_coords = airfoil.get_coords_selig_format()
@@ -2241,6 +2256,8 @@ class OptConstraintsDialogWidget(PymeadDialogWidget2):
             _visualize_min_radius()
         if dialog_value["min_val_of_max_thickness"][1]:
             _visualize_max_thickness()
+        if dialog_value["min_area"][1]:
+            _visualize_min_area()
         self.sub_dialog.show()
 
     def onVisualizeClosed(self):
@@ -4062,10 +4079,11 @@ class GeometricConstraintGraph:
             ),
             "min_radius_text": pg.TextItem(anchor=(1, 0)),
             "max_thickness_line": self.v.plot(pen=pg.mkPen(color="#32a852", width=1.5), name="Max Thickness"),
-            "max_thickness_text": pg.TextItem(anchor=(0.5, 0.5))
+            "max_thickness_text": pg.TextItem(anchor=(0.5, 0.5)),
+            "min_area_text": pg.TextItem(anchor=(0.5, 0.5))
         }
         # Some of the item types must be added explicitly to the plot
-        for item in ["min_radius_text", "max_thickness_text"]:
+        for item in ["min_radius_text", "max_thickness_text", "min_area_text"]:
             self.v.addItem(self.plot_items[item])
 
         # Set the formatting for the graph based on the current theme
