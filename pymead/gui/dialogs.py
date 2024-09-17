@@ -2096,8 +2096,7 @@ class VisualizeButton(QPushButton):
 
 
 class OptConstraintsDialogWidget(PymeadDialogWidget2):
-    def __init__(self, geo_col: GeometryCollection, gui_obj, airfoil_name: str, theme: dict, grid: bool, parent=None):
-        self.gui_obj = gui_obj
+    def __init__(self, geo_col: GeometryCollection, airfoil_name: str, theme: dict, grid: bool, parent=None):
         self.grid = grid
         self.theme = theme
         self.airfoil_name = airfoil_name
@@ -2254,8 +2253,12 @@ class OptConstraintsDialogWidget(PymeadDialogWidget2):
         def _visualize_thickness_at_points():
             cnstr_spec = dialog_value["thickness_at_points"]
             try:
+                if cnstr_spec[0] == "":
+                    self.geo_col.gui_obj.disp_message_box(f"Must specify thickness distribution file")
+                    return
                 xt_arr = np.loadtxt(cnstr_spec[0])
             except FileNotFoundError:
+                self.geo_col.gui_obj.disp_message_box(f"File {cnstr_spec[0]} not found")
                 return
 
             airfoil_frame_relative = "Non-Dimensional" in cnstr_spec[2]
@@ -2266,8 +2269,44 @@ class OptConstraintsDialogWidget(PymeadDialogWidget2):
             )
             for sl in data["slices"]:
                 self.sub_dialog.graph.v.plot(sl[:, 0], sl[:, 1], pen=pg.mkPen(color="magenta", width=1.5))
-            self.gui_obj.disp_message_box(f"Intersection not found for x-values: {data['warning_x_vals']}",
-                                          message_mode="warn")
+            if len(data["warning_x_vals"]) > 0:
+                self.geo_col.gui_obj.disp_message_box(
+                    f"Thickness check intersection not found for x-values: {data['warning_x_vals']}",message_mode="warn"
+                )
+
+        def _visualize_internal_geometry():
+            cnstr_spec = dialog_value["internal_geometry"]
+            try:
+                if cnstr_spec[0] == "":
+                    self.geo_col.gui_obj.disp_message_box(f"Must specify internal geometry file")
+                    return
+                xy_polyline = np.loadtxt(cnstr_spec[0])
+            except FileNotFoundError:
+                self.geo_col.gui_obj.disp_message_box(f"File {cnstr_spec[0]} not found")
+                return
+
+            airfoil_frame_relative, rotate_with_airfoil, translate_with_airfoil, scale_with_airfoil = True, True, True, True
+            if len(cnstr_spec) > 1:
+                if "Rotate/Translate w/ Airfoil" in cnstr_spec[2]:
+                    scale_with_airfoil = False
+                    airfoil_frame_relative = False
+                elif "Absolute" in cnstr_spec[2]:
+                    airfoil_frame_relative = False
+                    rotate_with_airfoil = False
+                    translate_with_airfoil = False
+                    scale_with_airfoil = False
+
+            data = airfoil.visualize_contains_line_string(
+                xy_polyline,
+                airfoil_frame_relative=airfoil_frame_relative,
+                rotate_with_airfoil=rotate_with_airfoil,
+                scale_with_airfoil=scale_with_airfoil,
+                translate_with_airfoil=translate_with_airfoil
+            )
+
+            self.sub_dialog.graph.plot_items["internal_geometry_line"].setData(
+                data["xy_polyline"][:, 0], data["xy_polyline"][:, 1]
+            )
 
         dialog_value = self.value()
         airfoil = self.geo_col.container()["airfoils"][self.airfoil_name]
@@ -2285,6 +2324,8 @@ class OptConstraintsDialogWidget(PymeadDialogWidget2):
             _visualize_min_area()
         if dialog_value["thickness_at_points"][1]:
             _visualize_thickness_at_points()
+        if dialog_value["internal_geometry"][1]:
+            _visualize_internal_geometry()
         self.sub_dialog.show()
 
     def onVisualizeClosed(self):
@@ -4089,7 +4130,7 @@ class GeometricConstraintGraph:
             pen = pg.mkPen(color="cornflowerblue", width=2)
 
         self.w = pg.GraphicsLayoutWidget(show=True, size=size)
-        self.w.setMinimumWidth(600)
+        self.w.setMinimumWidth(800)
         self.w.setMinimumHeight(400)
 
         self.v = self.w.addPlot(pen=pen)
@@ -4107,7 +4148,8 @@ class GeometricConstraintGraph:
             "min_radius_text": pg.TextItem(anchor=(1, 0)),
             "max_thickness_line": self.v.plot(pen=pg.mkPen(color="#32a852", width=1.5), name="Max Thickness"),
             "max_thickness_text": pg.TextItem(anchor=(0.5, 0.5)),
-            "min_area_text": pg.TextItem(anchor=(0.5, 0.5))
+            "min_area_text": pg.TextItem(anchor=(0.5, 0.5)),
+            "internal_geometry_line": self.v.plot(pen=pg.mkPen(color="#bb76c4", width=1.5), name="Internal Geometry")
         }
         # Some of the item types must be added explicitly to the plot
         for item in ["min_radius_text", "max_thickness_text", "min_area_text"]:

@@ -625,7 +625,7 @@ class Airfoil(PymeadObj):
                 assert isinstance(x_inters, shapely.MultiPoint)
                 xy = np.array([[geom.x, geom.y] for geom in x_inters.geoms])
             else:
-                warning_x_vals.append(x)
+                warning_x_vals.append(float(x))
                 continue
 
             slice_midpoint = np.mean(xy, axis=0)
@@ -762,8 +762,8 @@ class Airfoil(PymeadObj):
 
         if (translate_with_airfoil or scale_with_airfoil or rotate_with_airfoil) and not airfoil_frame_relative:
             transformation = Transformation2D(
-                tx=[self.leading_edge.x()] if translate_with_airfoil else None,
-                ty=[self.leading_edge.y()] if translate_with_airfoil else None,
+                tx=[self.leading_edge.x().value()] if translate_with_airfoil else None,
+                ty=[self.leading_edge.y().value()] if translate_with_airfoil else None,
                 sx=[self.measure_chord()] if scale_with_airfoil else None,
                 sy=[self.measure_chord()] if scale_with_airfoil else None,
                 r=[-self.measure_alpha()] if rotate_with_airfoil else None,
@@ -776,6 +776,32 @@ class Airfoil(PymeadObj):
         )
         line_string = LineString(points)
         return airfoil_polygon.contains(line_string)
+
+    def visualize_contains_line_string(self, points: np.ndarray or list, airfoil_frame_relative: bool = False,
+                                       rotate_with_airfoil: bool = True, translate_with_airfoil: bool = True,
+                                       scale_with_airfoil: bool = True) -> dict:
+        points = np.array(points) if isinstance(points, list) else points
+        assert points.ndim == 2
+
+        if (translate_with_airfoil or scale_with_airfoil or rotate_with_airfoil) and not airfoil_frame_relative:
+            transformation = Transformation2D(
+                tx=[self.leading_edge.x().value()] if translate_with_airfoil else None,
+                ty=[self.leading_edge.y().value()] if translate_with_airfoil else None,
+                sx=[self.measure_chord()] if scale_with_airfoil else None,
+                sy=[self.measure_chord()] if scale_with_airfoil else None,
+                r=[-self.measure_alpha()] if rotate_with_airfoil else None,
+                order="r,s,t", rotation_units="rad"
+            )
+            points = transformation.transform(points)
+
+        airfoil_polygon = Polygon(
+            self.get_chord_relative_coords() if airfoil_frame_relative else self.get_coords_selig_format()
+        )
+        line_string = LineString(points)
+        return {
+            "pass": airfoil_polygon.contains(line_string),
+            "xy_polyline": points
+        }
 
     def downsample(self, max_airfoil_points: int, curvature_exp: float = 2.0):
         r"""
