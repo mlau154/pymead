@@ -17,6 +17,7 @@ from PyQt6.QtGui import QFont
 from PyQt6.QtWidgets import (QWidget, QGridLayout, QLabel, QPushButton, QCheckBox, QTabWidget, QSpinBox,
                              QDoubleSpinBox, QComboBox, QDialog, QVBoxLayout, QSizeGrip, QDialogButtonBox, QMessageBox,
                              QFormLayout, QRadioButton, QGroupBox, QSizePolicy)
+from qframelesswindow import FramelessDialog
 
 from pymead import GUI_DEFAULTS_DIR, q_settings, GUI_DIALOG_WIDGETS_DIR, TargetPathNotFoundError
 from pymead.analysis import cfd_output_templates
@@ -803,7 +804,7 @@ class PymeadDialogVTabWidget(VerticalTabWidget):
         return {k: v.value() for k, v in self.w_dict.items()}
 
 
-class PymeadDialog(QDialog):
+class PymeadDialog(FramelessDialog):
 
     _gripSize = 2
 
@@ -2353,15 +2354,13 @@ class OptConstraintsHTabWidget(PymeadDialogHTabWidget):
 
     OptConstraintsChanged = pyqtSignal()
 
-    def __init__(self, parent, geo_col: GeometryCollection, theme: dict, grid: bool,
-                 mset_dialog_widget: MSETDialogWidget = None):
+    def __init__(self, parent, geo_col: GeometryCollection, theme: dict, grid: bool):
         self.geo_col = geo_col
         self.theme = theme
         self.grid = grid
         super().__init__(parent=parent,
                          widgets={k: OptConstraintsDialogWidget(geo_col=geo_col, airfoil_name=k, theme=self.theme, grid=self.grid)
                                   for k in geo_col.container()["airfoils"]})
-        # mset_dialog_widget.airfoilsChanged.connect(self.onAirfoilListChanged)
         self.label = None
         self.widget = self
         self.push = None
@@ -2376,32 +2375,7 @@ class OptConstraintsHTabWidget(PymeadDialogHTabWidget):
         self.w_dict = temp_dict
         self.regenerateWidgets()
 
-    # def onAirfoilAdded(self, new_airfoil_name_list: list):
-    #     for airfoil_name in new_airfoil_name_list:
-    #         if airfoil_name not in self.w_dict.keys():
-    #             self.w_dict[airfoil_name] = OptConstraintsDialogWidget()
-    #     self.reorderRegenerateWidgets(new_airfoil_name_list=new_airfoil_name_list)
-    #
-    # def onAirfoilRemoved(self, new_airfoil_name_list: list):
-    #     names_to_remove = []
-    #     for airfoil_name in self.w_dict.keys():
-    #         if airfoil_name not in new_airfoil_name_list:
-    #             names_to_remove.append(airfoil_name)
-    #     for airfoil_name in names_to_remove:
-    #         self.w_dict.pop(airfoil_name)
-    #     self.reorderRegenerateWidgets(new_airfoil_name_list=new_airfoil_name_list)
-    #
-    # def onAirfoilListChanged(self, new_airfoil_name_list_str: str):
-    #     new_airfoil_name_list = new_airfoil_name_list_str.split(',')
-    #     if len(new_airfoil_name_list) > len([k for k in self.w_dict.keys()]):
-    #         self.onAirfoilAdded(new_airfoil_name_list)
-    #     elif len(new_airfoil_name_list) < len([k for k in self.w_dict.keys()]):
-    #         self.onAirfoilRemoved(new_airfoil_name_list)
-    #     else:
-    #         self.reorderRegenerateWidgets(new_airfoil_name_list=new_airfoil_name_list)
-
     def setValues(self, values: dict):
-        # self.onAirfoilListChanged(new_airfoil_name_list_str=','.join([k for k in values.keys()]))
         self.setValue(new_values=values)
 
     def values(self):

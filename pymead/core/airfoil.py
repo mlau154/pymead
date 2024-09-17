@@ -622,8 +622,11 @@ class Airfoil(PymeadObj):
             line_string = LineString(np.vstack((slice_start, slice_end)))
             x_inters = line_string.intersection(airfoil_line_string)
             if not x_inters.is_empty:
-                assert isinstance(x_inters, shapely.MultiPoint)
-                xy = np.array([[geom.x, geom.y] for geom in x_inters.geoms])
+                if isinstance(x_inters, shapely.MultiPoint):
+                    xy = np.array([[geom.x, geom.y] for geom in x_inters.geoms])
+                else:
+                    warning_x_vals.append(float(x))
+                    continue
             else:
                 warning_x_vals.append(float(x))
                 continue
