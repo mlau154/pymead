@@ -2171,20 +2171,26 @@ class OptConstraintsDialogWidget(PymeadDialogWidget2):
             v.setToolTip(self.widget_dict[k].widget.toolTip())
 
     def addWidgets(self, *args, **kwargs):
-        self.lay.addWidget(self.widget_dict["active_constraints"], 0, 0, 1, 3)
-        self.lay.addWidget(self.widget_dict["visualize"], 1, 0, 1, 3, alignment=Qt.AlignmentFlag.AlignHCenter)
-        row_count = 2
+        # Add the active constraint and visualization button widgets together and a single VBoxLayout
+        vbox_layout = QVBoxLayout()
+        group_visualize_widget = QWidget(self)
+        group_visualize_widget.setLayout(vbox_layout)
+        vbox_layout.addWidget(self.widget_dict["active_constraints"])
+        vbox_layout.addWidget(self.widget_dict["visualize"], alignment=Qt.AlignmentFlag.AlignHCenter)
+        self.lay.addWidget(group_visualize_widget, 0, 0, 1, 3, alignment=Qt.AlignmentFlag.AlignTop)
+
+        row_count = 1
         column = 0
         for widget_name, widget in self.widget_dict.items():
             if widget_name in ["active_constraints", "visualize"]:
                 continue
             row_span = 1
             col_span = 2 if widget.push is None else 1
-            self.lay.addWidget(widget.label, row_count, column, 1, 1)
-            self.lay.addWidget(widget.widget, row_count, column + 1, row_span, col_span)
+            self.lay.addWidget(widget.label, row_count, column, 1, 1, alignment=Qt.AlignmentFlag.AlignTop)
+            self.lay.addWidget(widget.widget, row_count, column + 1, row_span, col_span, alignment=Qt.AlignmentFlag.AlignTop)
 
             if widget.push is not None:
-                self.lay.addWidget(widget.push, row_count, column + 2, row_span, col_span)
+                self.lay.addWidget(widget.push, row_count, column + 2, row_span, col_span, alignment=Qt.AlignmentFlag.AlignTop)
 
             row_count += 1
 
@@ -2244,6 +2250,22 @@ class OptConstraintsDialogWidget(PymeadDialogWidget2):
             )
             self.sub_dialog.graph.plot_items["min_area_text"].setPos(text_pos[0], text_pos[1])
 
+        def _visualize_thickness_at_points():
+            cnstr_spec = dialog_value["thickness_at_points"]
+            try:
+                xt_arr = np.loadtxt(cnstr_spec[0])
+            except FileNotFoundError:
+                return
+
+            airfoil_frame_relative = "Non-Dimensional" in cnstr_spec[2]
+            x_arr, t_arr = xt_arr[:, 0], xt_arr[:, 1]
+            data = airfoil.visualize_thickness_at_points(
+                x_arr, t_arr, airfoil_frame_relative=airfoil_frame_relative,
+                vertical_check="Vertical" in cnstr_spec[2]
+            )
+            for sl in data["slices"]:
+                self.sub_dialog.graph.v.plot(sl[:, 0], sl[:, 1], pen=pg.mkPen(color="magenta", width=1.5))
+
         dialog_value = self.value()
         airfoil = self.geo_col.container()["airfoils"][self.airfoil_name]
         airfoil_coords = airfoil.get_coords_selig_format()
@@ -2258,6 +2280,8 @@ class OptConstraintsDialogWidget(PymeadDialogWidget2):
             _visualize_max_thickness()
         if dialog_value["min_area"][1]:
             _visualize_min_area()
+        if dialog_value["thickness_at_points"][1]:
+            _visualize_thickness_at_points()
         self.sub_dialog.show()
 
     def onVisualizeClosed(self):

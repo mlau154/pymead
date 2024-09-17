@@ -3,6 +3,7 @@ from copy import deepcopy
 
 import matplotlib.pyplot as plt
 import numpy as np
+import shapely
 from shapely.geometry import Polygon, LineString
 
 from pymead.core.parametric_curve import INTERMEDIATE_NT
@@ -516,12 +517,18 @@ class Airfoil(PymeadObj):
             # Get the start and end of the line used to slice either vertically or perpendicular to the chordline
             # and compute the intersections with the airfoil
             if airfoil_frame_relative:
-                slice_start = np.array([x, -max_dist_from_chord_to_check])
-                slice_end = np.array([x, max_dist_from_chord_to_check])
+                if vertical_check:
+                    slice_start = np.array([x, 0.0]) + max_dist_from_chord_to_check * np.array(
+                        [np.cos(self.measure_alpha() - np.pi / 2), np.sin(self.measure_alpha() - np.pi / 2)])
+                    slice_end = np.array([x, 0.0]) + max_dist_from_chord_to_check * np.array(
+                        [np.cos(self.measure_alpha() + np.pi / 2), np.sin(self.measure_alpha() + np.pi / 2)])
+                else:
+                    slice_start = np.array([x, -max_dist_from_chord_to_check])
+                    slice_end = np.array([x, max_dist_from_chord_to_check])
             else:
                 y_on_chord = np.interp(
-                    x, np.array([self.leading_edge.x(), self.trailing_edge.x()]),
-                    np.array([self.leading_edge.y(), self.trailing_edge.y()])
+                    x, np.array([self.leading_edge.x().value(), self.trailing_edge.x().value()]),
+                    np.array([self.leading_edge.y().value(), self.trailing_edge.y().value()])
                 )
                 if vertical_check:
                     slice_start = np.array([x, y_on_chord]) - np.array([0.0, max_dist_from_chord_to_check])
@@ -546,6 +553,113 @@ class Airfoil(PymeadObj):
                 thickness = np.append(thickness, x_inters.convex_hull.length)
 
         return thickness  # Return an array of t/c values corresponding to the x/c locations
+
+    def visualize_thickness_at_points(self, x_arr: np.ndarray, thickness_constraints,
+                                      airfoil_frame_relative: bool = False,
+                                      vertical_check: bool = False) -> dict:
+        """
+        Computes the thickness at a set of x-locations with additional data for visualization purposes.
+
+        .. warning::
+           If the airfoil's angle of attack is far from zero and ``vertical_check==True``, this method may yield
+           undesirable results.
+
+        Parameters
+        ----------
+        x_arr: float or list or np.ndarray
+            The :math:`x` (or :math:`x/c` if ``airfoil_frame_relative==True``)
+            locations at which to evaluate the thickness
+
+        airfoil_frame_relative: bool
+            Whether to compute the area in the airfoil-relative frame. If ``True``, the thickness
+            based on a chord-relative scaling will be returned. Default: ``False``
+
+        vertical_check: bool
+            Whether to compute the thickness vertically from the chordline (rather than perpendicular).
+            This value is ignored unless``airfoil_frame_relative==False``.
+
+        Returns
+        -------
+        dict
+            Thickness values,
+        """
+        assert len(x_arr) == len(thickness_constraints)
+        airfoil_line_string = LineString(
+            self.get_chord_relative_coords() if airfoil_frame_relative else self.get_coords_selig_format()
+        )
+        thickness = np.array([])
+        slices = []
+        max_dist_from_chord_to_check = 1.0 if airfoil_frame_relative else self.measure_chord()
+        trailing_edge_x = 1.0 if airfoil_frame_relative else self.trailing_edge.x()
+
+        for x, t_cnstr in zip(x_arr, thickness_constraints):
+            # Get the start and end of the line used to slice either vertically or perpendicular to the chordline
+            # and compute the intersections with the airfoil
+            if airfoil_frame_relative:
+                if vertical_check:
+                    slice_start = np.array([x, 0.0]) + max_dist_from_chord_to_check * np.array(
+                        [np.cos(self.measure_alpha() - np.pi / 2), np.sin(self.measure_alpha() - np.pi / 2)])
+                    slice_end = np.array([x, 0.0]) + max_dist_from_chord_to_check * np.array(
+                        [np.cos(self.measure_alpha() + np.pi / 2), np.sin(self.measure_alpha() + np.pi / 2)])
+                else:
+                    slice_start = np.array([x, -max_dist_from_chord_to_check])
+                    slice_end = np.array([x, max_dist_from_chord_to_check])
+            else:
+                y_on_chord = np.interp(
+                    x, np.array([self.leading_edge.x().value(), self.trailing_edge.x().value()]),
+                    np.array([self.leading_edge.y().value(), self.trailing_edge.y().value()])
+                )
+                if vertical_check:
+                    slice_start = np.array([x, y_on_chord]) - np.array([0.0, max_dist_from_chord_to_check])
+                    slice_end = np.array([x, y_on_chord]) + np.array([0.0, max_dist_from_chord_to_check])
+                else:
+                    slice_start = np.array([x, y_on_chord]) + max_dist_from_chord_to_check * np.array(
+                        [np.cos(-self.measure_alpha() - np.pi / 2), np.sin(-self.measure_alpha() - np.pi / 2)])
+                    slice_end = np.array([x, y_on_chord]) + max_dist_from_chord_to_check * np.array(
+                        [np.cos(-self.measure_alpha() + np.pi / 2), np.sin(-self.measure_alpha() + np.pi / 2)])
+
+            line_string = LineString(np.vstack((slice_start, slice_end)))
+            x_inters = line_string.intersection(airfoil_line_string)
+            if isinstance(x_inters, shapely.MultiPoint):
+                xy = np.array([[geom.x, geom.y] for geom in x_inters.geoms])
+            elif isinstance(x_inters, shapely.LineString):
+                xy = np.array(x_inters.coords[:])
+            else:
+                raise ValueError(f"{x_inters} is not of a supported type for conversion to array")
+
+            slice_midpoint = np.mean(xy, axis=0)
+
+            visualize_slice_start = slice_midpoint + 0.5 * t_cnstr * (
+                    slice_start - slice_midpoint) / np.linalg.norm(slice_start - slice_midpoint)
+            visualize_slice_end = slice_midpoint + 0.5 * t_cnstr * (
+                    slice_end - slice_midpoint) / np.linalg.norm(slice_end - slice_midpoint)
+
+            visualize_slice = np.vstack((visualize_slice_start, visualize_slice_end))
+
+            if airfoil_frame_relative:
+                transformation = Transformation2D(
+                    tx=[self.leading_edge.x().value()],
+                    ty=[self.leading_edge.y().value()],
+                    sx=[self.measure_chord()],
+                    sy=[self.measure_chord()],
+                    r=[-self.measure_alpha()],
+                    rotation_units="rad", order="r,s,t"
+                )
+                visualize_slice = transformation.transform(visualize_slice)
+
+            slices.append(visualize_slice)
+            te_thickness = self.lower_surf_end.measure_distance(self.upper_surf_end)
+            if airfoil_frame_relative:
+                te_thickness /= self.measure_chord()
+
+            if trailing_edge_x == trailing_edge_x:
+                thickness = te_thickness
+            elif x_inters.is_empty:  # If no intersection between line and airfoil LineString,
+                thickness = np.append(thickness, 0.0)
+            else:
+                thickness = np.append(thickness, x_inters.convex_hull.length)
+
+        return {"slices": slices}
 
     def compute_camber_at_points(self, x_over_c: np.ndarray, airfoil_frame_relative: bool = False,
                                  start_y_over_c: float = -1.0, end_y_over_c: float = 1.0) -> np.ndarray:
