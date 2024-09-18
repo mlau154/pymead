@@ -35,8 +35,8 @@
             "y": 0.02245489551888563
         },
         "Point-9": {
-            "x": 0.9997782332248053,
-            "y": 0.0017562488115329677
+            "x": 1.0,
+            "y": 0.0
         },
         "Point-10": {
             "x": 0.34557555092878117,
@@ -64,7 +64,8 @@
                 "Point-7",
                 "Point-8",
                 "Point-9"
-            ]
+            ],
+            "default_nt": null
         },
         "Bezier-2": {
             "points": [
@@ -75,7 +76,8 @@
                 "Point-11",
                 "Point-12",
                 "Point-9"
-            ]
+            ],
+            "default_nt": null
         }
     },
     "airfoils": {
@@ -89,8 +91,8 @@
     "mea": {},
     "geocon": {},
     "metadata": {
-        "pymead_version": "2.0.0-beta.9",
-        "save_datetime": "2024-07-11 13:13:24.429727",
+        "pymead_version": "2.0.0-beta.12",
+        "save_datetime": "2024-09-18 15:08:56.523894",
         "length_unit": "mm",
         "angle_unit": "rad",
         "area_unit": "mm2"
