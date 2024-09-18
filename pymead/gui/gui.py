@@ -810,7 +810,8 @@ class GUI(FramelessMainWindow):
             self.disp_message_box("No design variables present", message_mode="info")
             return
         bv_dialog = EditBoundsDialog(geo_col=self.geo_col, theme=self.themes[self.current_theme], parent=self)
-        bv_dialog.exec()
+        bv_dialog.show()
+        bv_dialog.resizetoFit()
 
     def auto_range_geometry(self):
         """
@@ -837,7 +838,7 @@ class GUI(FramelessMainWindow):
             self.geo_col.assign_design_variable_values(param_vec, bounds_normalized=True)
 
     def import_algorithm_pkl_file(self):
-        dialog = LoadAirfoilAlgFile(self)
+        dialog = LoadAirfoilAlgFile(theme=self.themes[self.current_theme], parent=self)
         if dialog.exec():
             inputs = dialog.valuesFromWidgets()
             dialog.load_airfoil_alg_file_widget.assignQSettings(inputs)
@@ -1632,10 +1633,17 @@ class GUI(FramelessMainWindow):
 
     def setup_optimization(self):
         self.dialog = OptimizationSetupDialog(self, settings_override=self.opt_settings,
-                                              geo_col=self.geo_col, theme=self.themes[self.current_theme])
+                                              geo_col=self.geo_col, theme=self.themes[self.current_theme],
+                                              grid=self.main_icon_toolbar.buttons["grid"]["button"].isChecked())
         self.dialog.accepted.connect(self.optimization_accepted)
         self.dialog.rejected.connect(self.optimization_rejected)
         self.dialog.exec()
+
+        # Close all the constraint visualization widgets that have been opened
+        for widget in self.dialog.constraints_widget.widget_dict["constraints"].w_dict.values():
+            if widget.sub_dialog is None:
+                continue
+            widget.sub_dialog.close()
 
     def optimization_accepted(self):
         exit_the_dialog = False
@@ -1736,49 +1744,36 @@ class GUI(FramelessMainWindow):
                 #     early_return = True
                 #     continue
 
-                param_dict['n_var'] = len([k for k in geo_col["desvar"]])
+                param_dict["n_var"] = len([k for k in geo_col["desvar"]])
 
                 # CONSTRAINTS
-                for airfoil_name, constraint_set in param_dict['constraints'].items():
+                for airfoil_name, constraint_set in param_dict["constraints"].items():
 
                     # Thickness distribution check parameters
-                    if constraint_set['check_thickness_at_points']:
-                        thickness_file = constraint_set['thickness_at_points']
+                    if constraint_set["thickness_at_points"][1]:
+                        thickness_file = constraint_set["thickness_at_points"][0]
                         try:
                             data = np.loadtxt(thickness_file)
-                            param_dict['constraints'][airfoil_name]['thickness_at_points'] = data.tolist()
+                            constraint_set["thickness_at_points"][0] = data.tolist()
                         except FileNotFoundError:
-                            message = f'Thickness file {thickness_file} not found'
-                            self.disp_message_box(message=message, message_mode='error')
+                            message = f"Thickness file {thickness_file} not found"
+                            self.disp_message_box(message=message, message_mode="error")
                             raise FileNotFoundError(message)
                     else:
                         constraint_set['thickness_at_points'] = None
 
                     # Internal geometry check parameters
-                    if constraint_set['use_internal_geometry']:
-                        internal_geometry_file = constraint_set['internal_geometry']
+                    if constraint_set["internal_geometry"][1]:
+                        internal_geometry_file = constraint_set["internal_geometry"][0]
                         try:
                             data = np.loadtxt(internal_geometry_file)
-                            constraint_set['internal_geometry'] = data.tolist()
+                            constraint_set["internal_geometry"][0] = data.tolist()
                         except FileNotFoundError:
-                            message = f'Internal geometry file {internal_geometry_file} not found'
-                            self.disp_message_box(message=message, message_mode='error')
+                            message = f"Internal geometry file {internal_geometry_file} not found"
+                            self.disp_message_box(message=message, message_mode="error")
                             raise FileNotFoundError(message)
                     else:
-                        constraint_set['internal_geometry'] = None
-
-                    # External geometry check parameters
-                    if constraint_set['use_external_geometry']:
-                        external_geometry_file = constraint_set['external_geometry']
-                        try:
-                            data = np.loadtxt(external_geometry_file)
-                            constraint_set['external_geometry'] = data.tolist()
-                        except FileNotFoundError:
-                            message = f'External geometry file {external_geometry_file} not found'
-                            self.disp_message_box(message=message, message_mode='error')
-                            raise FileNotFoundError(message)
-                    else:
-                        constraint_set['external_geometry'] = None
+                        constraint_set["internal_geometry"] = None
 
                 # MULTI-POINT OPTIMIZATION
                 multi_point_stencil = None

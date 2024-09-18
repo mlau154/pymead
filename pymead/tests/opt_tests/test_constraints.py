@@ -125,3 +125,33 @@ def test_chromosome_generate_with_invalid_max_thickness_scaled_airfoil():
     chromosome.param_dict["constraints"]["Airfoil-1"]["min_val_of_max_thickness"][0] = 0.17
     chromosome.generate()
     assert not chromosome.valid_geometry
+
+
+def test_chromosome_generate_linestring_enclosure():
+    geo_col_dict = load_data(os.path.join(TEST_DIR, "opt_tests", "thickness_at_points.jmea"))
+
+    param_dict = convert_opt_settings_to_param_dict(load_data(os.path.join(
+        TEST_DIR, "opt_tests", "test_airfoil_thickness_settings.json")))
+    param_dict["constraints"]["Airfoil-1"]["use_internal_geometry"] = True
+    param_dict["constraints"]["Airfoil-1"]["internal_geometry"] = np.array([[0.1, 0.01], [0.5, 0.01], [0.5, -0.01], [0.1, -0.01], [0.1, 0.01]])
+    chromosome = Chromosome(
+        geo_col_dict=deepcopy(geo_col_dict),
+        param_dict=param_dict,
+        generation=0,
+        population_idx=0,
+        airfoil_name="Airfoil-1"
+    )
+    chromosome.generate()
+    assert chromosome.valid_geometry
+
+    param_dict["constraints"]["Airfoil-1"]["internal_geometry"] = np.array(
+        [[0.1, 0.2], [0.5, 0.2], [0.5, -0.2], [0.1, -0.2], [0.1, 0.2]])
+    chromosome = Chromosome(
+        geo_col_dict=deepcopy(geo_col_dict),
+        param_dict=param_dict,
+        generation=0,
+        population_idx=0,
+        airfoil_name="Airfoil-1"
+    )
+    chromosome.generate()
+    assert not chromosome.valid_geometry
