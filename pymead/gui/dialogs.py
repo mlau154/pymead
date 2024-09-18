@@ -809,12 +809,27 @@ class PymeadDialog(FramelessDialog):
     _gripSize = 2
 
     """This subclass of QDialog forces the selection of a WindowTitle and matches the visual format of the GUI"""
-    def __init__(self, parent, window_title: str, widget: PymeadDialogWidget or PymeadDialogVTabWidget,
-                 theme: dict):
+    def __init__(self, parent, window_title: str,
+                 widget: PymeadDialogWidget or PymeadDialogVTabWidget or PymeadDialogWidget2,
+                 theme: dict, minimum_width: int = None, minimum_height: int = None, fixed_width: int = None,
+                 fixed_height: int = None):
         super().__init__(parent=parent)
         self.setWindowTitle(" " + window_title)
         if self.parent() is not None:
             self.setFont(self.parent().font())
+
+        if minimum_width is not None and fixed_width is not None:
+            raise ValueError("Cannot specify both minimum width and fixed width")
+        if minimum_height is not None and fixed_height is not None:
+            raise ValueError("Cannot specify both minimum height and fixed height")
+        if minimum_width is not None:
+            self.setMinimumWidth(minimum_width)
+        if minimum_height is not None:
+            self.setMinimumHeight(minimum_height)
+        if fixed_width is not None:
+            self.setFixedWidth(fixed_width)
+        if fixed_height is not None:
+            self.setFixedHeight(fixed_height)
 
         self.vbox_lay = QVBoxLayout()
         self.setLayout(self.vbox_lay)
@@ -842,17 +857,20 @@ class PymeadDialog(FramelessDialog):
         # alternatively, widget.raise_() can be used
         self.cornerGrips = [QSizeGrip(self) for _ in range(4)]
 
+        if fixed_width is not None and fixed_height is None:
+            self.resize(self.width(), self.minimumHeight())
+        elif fixed_width is None and fixed_height is not None:
+            self.resize(self.minimumWidth(), self.height())
+        elif fixed_width is None and fixed_height is None:
+            self.resize(self.minimumWidth(), self.minimumHeight())
+        else:
+            pass
         self.resize(self.width(), self.title_bar.height() + self.height())
 
         self.title_bar.title.setStyleSheet(
             f"""background-color: qlineargradient(x1: 0.0, y1: 0.5, x2: 1.0, y2: 0.5, 
                     stop: 0 {theme['title-gradient-color']}, 
                     stop: 0.6 {theme['background-color']})""")
-
-        self.resize(self.minimumSize())
-
-    # def setInputs(self):
-    #     self.w.setInputs()
 
     def setValue(self, new_inputs):
         self.w.setValue(new_values=new_inputs)
@@ -1806,7 +1824,6 @@ class PanelDialogWidget(PymeadDialogWidget2):
         super().__init__(parent=parent)
         if settings_override:
             self.setValue(settings_override)
-        self.setMinimumWidth(250)
 
     def initializeWidgets(self, *args, **kwargs):
         self.widget_dict = {
@@ -2815,7 +2832,8 @@ class GeneticAlgorithmDialogWidget(PymeadDialogWidget):
 class PanelDialog(PymeadDialog):
     def __init__(self, parent: QWidget, theme: dict, settings_override: dict = None):
         self.w = PanelDialogWidget(settings_override)
-        super().__init__(parent=parent, window_title="Basic Panel Code Analysis", widget=self.w, theme=theme)
+        super().__init__(parent=parent, window_title="Basic Panel Code Analysis", widget=self.w, theme=theme,
+                         fixed_width=270, fixed_height=130)
 
 
 class XFOILDialog(PymeadDialog):
@@ -2823,7 +2841,7 @@ class XFOILDialog(PymeadDialog):
                  settings_override: dict = None):
         self.w = XFOILDialogWidget(current_airfoils=current_airfoils, settings_override=settings_override)
         super().__init__(parent=parent, window_title="Single Airfoil Viscous Analysis", widget=self.w,
-                         theme=theme)
+                         theme=theme, minimum_width=900, minimum_height=500)
 
 
 class MultiAirfoilDialog(PymeadDialog):
@@ -2840,7 +2858,8 @@ class MultiAirfoilDialog(PymeadDialog):
             "MPOLAR": mpolar_dialog_widget
         }
         widget = PymeadDialogVTabWidget(parent=None, widgets=tab_widgets, settings_override=settings_override)
-        super().__init__(parent=parent, window_title="Multi-Element-Airfoil Analysis", widget=widget, theme=theme)
+        super().__init__(parent=parent, window_title="Multi-Element-Airfoil Analysis", widget=widget, theme=theme,
+                         minimum_width=900, minimum_height=700)
 
 
 class InviscidCpCalcDialog(QDialog):
@@ -2853,7 +2872,8 @@ class ScreenshotDialog(PymeadDialog):
     def __init__(self, parent: QWidget, theme: dict, windows: typing.List[str]):
 
         widget = QWidget()
-        super().__init__(parent=parent, window_title="Screenshot", widget=widget, theme=theme)
+        super().__init__(parent=parent, window_title="Screenshot", widget=widget, theme=theme,
+                         minimum_width=400, fixed_height=175)
         self.grid_widget = {}
         self.grid_layout = QGridLayout()
 
@@ -2861,7 +2881,6 @@ class ScreenshotDialog(PymeadDialog):
         self.grid_widget["window"]["combobox"].addItems(windows)
         widget.setLayout(self.grid_layout)
         self.window_list = windows
-        self.setMinimumWidth(400)
 
     def setInputs(self):
         widget_dict = load_data(os.path.join(GUI_DIALOG_WIDGETS_DIR, "screenshot_dialog.json"))
