@@ -2202,6 +2202,8 @@ class OptConstraintsDialogWidget(PymeadDialogWidget2):
             v.stateChanged.connect(self.widget_dict[k + "_policy"].setShown)
         self.widget_dict["thickness_at_points"].push.clicked.connect(partial(
             self.select_data_file, line_edit=self.widget_dict["thickness_at_points"].widget))
+        self.widget_dict["internal_geometry"].push.clicked.connect(partial(
+            self.select_data_file, line_edit=self.widget_dict["internal_geometry"].widget))
         self.widget_dict["visualize"].clicked.connect(self.visualize)
 
     def visualize(self):

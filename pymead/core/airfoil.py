@@ -795,16 +795,27 @@ class Airfoil(PymeadObj):
         points = np.array(points) if isinstance(points, list) else points
         assert points.ndim == 2
 
-        if (translate_with_airfoil or scale_with_airfoil or rotate_with_airfoil) and not airfoil_frame_relative:
+        if airfoil_frame_relative:
             transformation = Transformation2D(
-                tx=[self.leading_edge.x().value()] if translate_with_airfoil else None,
-                ty=[self.leading_edge.y().value()] if translate_with_airfoil else None,
-                sx=[self.measure_chord()] if scale_with_airfoil else None,
-                sy=[self.measure_chord()] if scale_with_airfoil else None,
-                r=[-self.measure_alpha()] if rotate_with_airfoil else None,
+                tx=[self.leading_edge.x().value()],
+                ty=[self.leading_edge.y().value()],
+                sx=[self.measure_chord()],
+                sy=[self.measure_chord()],
+                r=[-self.measure_alpha()],
                 order="r,s,t", rotation_units="rad"
             )
             points = transformation.transform(points)
+        else:
+            if translate_with_airfoil or scale_with_airfoil or rotate_with_airfoil:
+                transformation = Transformation2D(
+                    tx=[self.leading_edge.x().value()] if translate_with_airfoil else None,
+                    ty=[self.leading_edge.y().value()] if translate_with_airfoil else None,
+                    sx=[self.measure_chord()] if scale_with_airfoil else None,
+                    sy=[self.measure_chord()] if scale_with_airfoil else None,
+                    r=[-self.measure_alpha()] if rotate_with_airfoil else None,
+                    order="r,s,t", rotation_units="rad"
+                )
+                points = transformation.transform(points)
 
         airfoil_polygon = Polygon(
             self.get_chord_relative_coords() if airfoil_frame_relative else self.get_coords_selig_format()
