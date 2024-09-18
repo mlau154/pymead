@@ -57,6 +57,7 @@ Bug fixes
 - Fix no GUI error being thrown when trying to visualize downsampling on an empty/non-existent MEA
 - Fix XFOIL/MSES/Opt settings not updating properly (including loading MSES settings in optimization setup overriding 
   the dialog window title)
+- Add last-resort forceful process termination during closeEvent (especially from terminal `pymead-gui` command)
 
 Aesthetics
 ----------
