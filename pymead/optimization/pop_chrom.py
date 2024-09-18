@@ -265,8 +265,12 @@ class Chromosome:
         )
         if not contains_points:
             self.valid_geometry = False
+            if self.verbose:
+                print(f"Failed internal geometry test.")
             return self.valid_geometry
         self.valid_geometry = True
+        if self.verbose:
+            print(f"Passed internal geometry test. Continuing...")
         return self.valid_geometry
 
 

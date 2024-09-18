@@ -2343,12 +2343,21 @@ class OptConstraintsDialogWidget(PymeadDialogWidget2):
         return d
 
     def setValue(self, d: dict):
+        # Used to ensure backwards compatibility with pymead < 2.0.0-b12
+        if "check_thickness_at_points" in d.keys():
+            d["thickness_at_points"] = [d["thickness_at_points"], d.pop("check_thickness_at_points")]
+        if "use_internal_geometry" in d.keys():
+            d["internal_geometry"] = [d["internal_geometry"], d.pop("use_internal_geometry")]
+        if "external_geometry" in d.keys():
+            d.pop("external_geometry")
+
         for k, v in d.items():
             if k in ["active_constraints", "visualize"]:
                 continue
             self.widget_dict["active_constraints"].widget_dict[k].setChecked(v[1])
             self.widget_dict[k].setValue(v[0])
-            self.widget_dict[k + "_policy"].setValue(v[2])
+            if len(v) > 2:  # Used to ensure backwards compatibility with pymead < 2.0.0-b12
+                self.widget_dict[k + "_policy"].setValue(v[2])
 
 
 class OptConstraintsHTabWidget(PymeadDialogHTabWidget):

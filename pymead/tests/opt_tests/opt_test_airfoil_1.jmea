@@ -93,6 +93,6 @@
         "save_datetime": "2024-07-11 13:13:24.429727",
         "length_unit": "mm",
         "angle_unit": "rad",
-        "area_unit": "m2"
+        "area_unit": "mm2"
     }
 }

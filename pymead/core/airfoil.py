@@ -511,7 +511,7 @@ class Airfoil(PymeadObj):
         )
         thickness = np.array([])
         max_dist_from_chord_to_check = 1.0 if airfoil_frame_relative else self.measure_chord()
-        trailing_edge_x = 1.0 if airfoil_frame_relative else self.trailing_edge.x()
+        trailing_edge_x = 1.0 if airfoil_frame_relative else self.trailing_edge.x().value()
 
         for x in x_arr:
             # Get the start and end of the line used to slice either vertically or perpendicular to the chordline
@@ -545,8 +545,8 @@ class Airfoil(PymeadObj):
             if airfoil_frame_relative:
                 te_thickness /= self.measure_chord()
 
-            if trailing_edge_x == trailing_edge_x:
-                thickness = te_thickness
+            if x == trailing_edge_x:
+                thickness = np.append(thickness, te_thickness)
             elif x_inters.is_empty:  # If no intersection between line and airfoil LineString,
                 thickness = np.append(thickness, 0.0)
             else:

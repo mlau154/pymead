@@ -33,24 +33,29 @@
             "Airfoil-1": {
                 "min_val_of_max_thickness": [
                     0.11,
-                    false
+                    false,
+                    "Non-Dimensional"
                 ],
                 "min_radius_curvature": [
                     0.004,
-                    false
+                    false,
+                    "Non-Dimensional"
                 ],
-                "check_thickness_at_points": false,
-                "thickness_at_points": "",
+                "thickness_at_points": [
+                    "",
+                    false,
+                    "Non-Dimensional, Chord-Perpendicular"
+                ],
                 "min_area": [
                     0.04,
-                    false
+                    false,
+                    "Non-Dimensional"
                 ],
-                "use_internal_geometry": true,
-                "internal_geometry_timing": "Before Aerodynamic Evaluation",
-                "internal_geometry": "",
-                "use_external_geometry": false,
-                "external_geometry_timing": "Before Aerodynamic Evaluation",
-                "external_geometry": ""
+                "internal_geometry": [
+                    "",
+                    false,
+                    "Rotate/Translate/Scale w/ Airfoil, Eval. Before Aerodynamic Evaluation"
+                ]
             }
         },
         "f_tol": 0.0025,
