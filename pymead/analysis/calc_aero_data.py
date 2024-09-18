@@ -898,9 +898,16 @@ def calculate_aero_data(conn: multiprocessing.connection.Connection or None,
 
         if save_aero_data:
             if aero_data["converged"]:
-                for k, v in aero_data["Cp"].items():
-                    if isinstance(v, np.ndarray):
-                        aero_data["Cp"][k] = v.tolist()
+                if isinstance(aero_data["Cp"], list):
+                    for Cp_stencil_idx, Cp_stencil_point in enumerate(aero_data["Cp"]):
+                        for k, v in Cp_stencil_point.items():
+                            if not isinstance(v, np.ndarray):
+                                continue
+                            aero_data["Cp"][Cp_stencil_idx][k] = v.tolist()
+                else:
+                    for k, v in aero_data["Cp"].items():
+                        if isinstance(v, np.ndarray):
+                            aero_data["Cp"][k] = v.tolist()
             save_data(aero_data, os.path.join(base_dir, "aero_data.json"))
 
         return aero_data, xfoil_log
