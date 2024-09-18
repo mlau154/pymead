@@ -943,12 +943,18 @@ def calculate_aero_data(conn: multiprocessing.connection.Connection or None,
         if mpolar_settings is not None and alfa_array is not None:
 
             # Run MSES on the first point
+            mses_settings["target"] = "alfa"
             mses_settings["ALFAIN"] = alfa_array[0]
             converged, mses_log = run_mses(airfoil_name, airfoil_coord_dir, mses_settings,
                                            airfoil_name_order=airfoil_name_order, conn=conn)
-            # write_mses_file(airfoil_name, airfoil_coord_dir, mses_settings, airfoil_name_order=airfoil_name_order)
+
             if not converged:
-                raise ConvergenceFailedError("Failed to converge first point")
+                message = "Failed to converge first point"
+                if conn is None:
+                    raise ConvergenceFailedError(message)
+                else:
+                    send_over_pipe(("disp_message_box", message))
+                    return
 
             # Remove the polar and polarx files if they exist
             polar_file = os.path.join(airfoil_coord_dir, airfoil_name, f"polar.{airfoil_name}")

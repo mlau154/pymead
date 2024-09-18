@@ -1495,9 +1495,11 @@ class GUI(FramelessMainWindow):
         self.output_area_text(
             f" ({mset_settings['mea']}, "
             f"Re = {mses_settings['REYNIN']:.3E}, "  # Reynolds number
-            f"Ma = {mses_settings['MACHIN']:.3f}): "  # Mach number
+            f"Ma = {mses_settings['MACHIN']:.3f})"  # Mach number
         )
-        performance_params = [k for k in ["alf_ZL", "LD_max", "alf_LD_max"] if k is not None]
+        performance_params = [k for k in ["alf_ZL", "LD_max", "alf_LD_max"] if aero_data[k] is not None]
+        if performance_params:
+            self.output_area_text(": ")
         if aero_data["alf_ZL"] is not None:
             line_break = performance_params.index("alf_ZL") == len(performance_params) - 1
             self.output_area_text(f"\u03b1<sub>ZL</sub> = {aero_data['alf_ZL']:.3f}\u00b0".replace(
