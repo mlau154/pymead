@@ -16,7 +16,7 @@ from PyQt6.QtCore import pyqtSlot, QStandardPaths
 from PyQt6.QtGui import QFont
 from PyQt6.QtWidgets import (QWidget, QGridLayout, QLabel, QPushButton, QCheckBox, QTabWidget, QSpinBox,
                              QDoubleSpinBox, QComboBox, QDialog, QVBoxLayout, QSizeGrip, QDialogButtonBox, QMessageBox,
-                             QFormLayout, QRadioButton, QGroupBox, QSizePolicy)
+                             QFormLayout, QRadioButton, QGroupBox, QSizePolicy, QColorDialog)
 from qframelesswindow import FramelessDialog
 
 from pymead import GUI_DEFAULTS_DIR, q_settings, GUI_DIALOG_WIDGETS_DIR, TargetPathNotFoundError
@@ -658,14 +658,25 @@ class PymeadLabeledCheckbox(QObject):
                 self.push.hide()
 
 
+class PymeadColorButton(pg.ColorButton):
+    def __init__(self, parent=None, color=(128, 128, 128), padding=6):
+        super().__init__(parent=parent, color=color, padding=padding)
+        self.colorDialog = QColorDialog(parent=parent)
+        self.colorDialog.setOption(QColorDialog.ColorDialogOption.ShowAlphaChannel, True)
+        self.colorDialog.setOption(QColorDialog.ColorDialogOption.DontUseNativeDialog, True)
+        self.colorDialog.currentColorChanged.connect(self.dialogColorChanged)
+        self.colorDialog.rejected.connect(self.colorRejected)
+        self.colorDialog.colorSelected.connect(self.colorSelected)
+
+
 class PymeadLabeledColorSelector(QObject):
 
     sigValueChanged = pyqtSignal(tuple)
 
-    def __init__(self, label: str = "", tool_tip: str = "", initial_color: tuple = (245, 37, 106),
+    def __init__(self, parent=None, label: str = "", tool_tip: str = "", initial_color: tuple = (245, 37, 106),
                  read_only: bool = False):
         self.label = QLabel(label)
-        self.widget = pg.ColorButton(color=initial_color)
+        self.widget = PymeadColorButton(color=initial_color, parent=parent)
         self.label.setToolTip(tool_tip)
         self.widget.setToolTip(tool_tip)
         self.push = None
@@ -3732,7 +3743,7 @@ class WebAirfoilDialog(PymeadDialog):
                                                                "can be used for comparison"),
             PymeadLabeledColorSelector(label="Reference Color", tool_tip="Color used for the airfoil coordinates; only "
                                                                          "used if 'Reference' is selected",
-                                       read_only=True)
+                                       read_only=True, parent=self)
         ]
         inputs[0].sigValueChanged.connect(self.airfoilTypeChanged)
         inputs[2].push.clicked.connect(self.selectDatFile)
