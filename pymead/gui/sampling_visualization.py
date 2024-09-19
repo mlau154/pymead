@@ -39,9 +39,11 @@ class SamplingVisualizationWidget(QWidget):
         self.spinbox_ws.setDecimals(4)
         self.spinbox_ws.setSingleStep(0.01)
         self.spinbox_ws.setValue(initial_sampling_width)
+        self.spinbox_ws.setKeyboardTracking(False)
 
         self.spinbox_ns.setMaximum(1000)
         self.spinbox_ns.setValue(initial_n_samples)
+        self.spinbox_ns.setKeyboardTracking(False)
 
         self.spinbox_ws.valueChanged.connect(self.spinbox_ws_value_changed)
         self.spinbox_ns.valueChanged.connect(self.spinbox_ns_value_changed)

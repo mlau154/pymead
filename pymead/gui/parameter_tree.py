@@ -72,6 +72,7 @@ class ValueSpin(QDoubleSpinBox):
         self.setValue(self.param.value())
         self.valueChanged.connect(self.onValueChanged)
         self.setEnabled(self.param.enabled())
+        self.setKeyboardTracking(False)
 
     # def setValue(self, val):
     #
@@ -175,6 +176,7 @@ class LowerSpin(QDoubleSpinBox):
         self.setMaximum(1e9)
         self.setValue(self.param.lower())
         self.valueChanged.connect(self.onValueChanged)
+        self.setKeyboardTracking(False)
 
     def onValueChanged(self, lower: float):
         self.param.set_lower(lower)
@@ -191,6 +193,7 @@ class UpperSpin(QDoubleSpinBox):
         self.setMaximum(1e9)
         self.setValue(self.param.upper())
         self.valueChanged.connect(self.onValueChanged)
+        self.setKeyboardTracking(False)
 
     def onValueChanged(self, upper: float):
         self.param.set_upper(upper)
