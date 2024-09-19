@@ -3633,6 +3633,41 @@ class LoadPointsDialog(PymeadDialog):
         return self.inputs[1].widget.text()
 
 
+class MakeAirfoilRelativeDialog(PymeadDialog):
+    def __init__(self, theme: dict, geo_col: GeometryCollection, parent=None):
+        if len(geo_col.container()["airfoils"]) == 0:
+            raise ValueError("An airfoil must be created first before a point can be made airfoil-relative")
+        widget = QWidget()
+        super().__init__(parent=parent, window_title="Airfoil-Relative Point", widget=widget, theme=theme,
+                         minimum_width=250, fixed_height=125)
+        self.lay = QGridLayout()
+        widget.setLayout(self.lay)
+        self.geo_col = geo_col
+        self.inputs = self.setInputs()
+
+        for i in self.inputs:
+            row_count = self.lay.rowCount()
+            self.lay.addWidget(i.label, row_count, 0)
+            if i.push is None:
+                self.lay.addWidget(i.widget, row_count, 1, 1, 2)
+            else:
+                self.lay.addWidget(i.widget, row_count, 1, 1, 1)
+                self.lay.addWidget(i.push, row_count, 2, 1, 1)
+
+    def setInputs(self):
+        airfoil_list = list(self.geo_col.container()["airfoils"].keys())
+        inputs = [
+            PymeadLabeledComboBox(label="Airfoil",
+                                  tool_tip="Select the airfoil to which to bind the selected points",
+                                  items=airfoil_list),
+        ]
+        self.inputs = inputs
+        return inputs
+
+    def value(self):
+        return {"airfoil": self.inputs[0].value()}
+
+
 class AirfoilDialog(PymeadDialog):
     def __init__(self, theme: dict, geo_col: GeometryCollection, parent=None):
         if len(geo_col.container()["points"]) == 0:
@@ -3653,8 +3688,6 @@ class AirfoilDialog(PymeadDialog):
             else:
                 self.lay.addWidget(i.widget, row_count, 1, 1, 1)
                 self.lay.addWidget(i.push, row_count, 2, 1, 1)
-
-        self.setMinimumWidth(300)
 
     def setInputs(self):
         point_list = list(self.geo_col.container()["points"].keys())

@@ -16,7 +16,8 @@ from pymead.core.line import ReferencePolyline
 from pymead.core.parametric_curve import ParametricCurve
 from pymead.core.point import PointSequence
 from pymead.gui.constraint_items import *
-from pymead.gui.dialogs import PlotExportDialog, WebAirfoilDialog, SplitPolylineDialog, AirfoilDialog
+from pymead.gui.dialogs import (PlotExportDialog, WebAirfoilDialog, SplitPolylineDialog, AirfoilDialog,
+                                MakeAirfoilRelativeDialog)
 from pymead.gui.draggable_point import DraggablePoint
 from pymead.gui.hoverable_curve import HoverableCurve
 from pymead.gui.polygon_item import PolygonItem
@@ -876,6 +877,13 @@ class AirfoilCanvas(pg.PlotWidget):
         add_constraint_menu = menu.addMenu("Add Constraint")
 
         removeCurveAction, curve, curves, insertCurvePointAction, splitPolyAction = None, None, None, None, None
+        makeAirfoilRelativeAction = None
+        makeAirfoilAbsoluteAction = None
+
+        if len(self.geo_col.selected_objects["points"]) > 0:
+            makeAirfoilRelativeAction = modify_geometry_menu.addAction("Make Airfoil-Relative")
+            makeAirfoilAbsoluteAction = modify_geometry_menu.addAction("Make Absolute")
+
         if len(self.geo_col.selected_objects["bezier"]) > 0:
             curve = self.geo_col.selected_objects["bezier"][0]
 
@@ -939,6 +947,29 @@ class AirfoilCanvas(pg.PlotWidget):
             self.splitPoly(curve)
         elif res == exportPlotAction:
             self.exportPlot()
+        elif res == makeAirfoilAbsoluteAction:
+            self.makeAbsolute()
+        elif res == makeAirfoilRelativeAction:
+            self.makeAirfoilRelative()
+
+    @undoRedoAction
+    def makeAirfoilRelative(self):
+        self.dialog = MakeAirfoilRelativeDialog(theme=self.gui_obj.themes[self.gui_obj.current_theme],
+                                                geo_col=self.geo_col, parent=self)
+        if self.dialog.exec():
+            airfoil_name = self.dialog.value()["airfoil"]
+            airfoil = self.geo_col.container()["airfoils"][airfoil_name]
+            try:
+                airfoil.add_relative_points(self.geo_col.selected_objects["points"])
+            except ValueError as e:
+                self.gui_obj.disp_message_box(str(e))
+
+    @undoRedoAction
+    def makeAbsolute(self):
+        for point in self.geo_col.selected_objects["points"]:
+            if point.relative_airfoil is None:
+                continue
+            point.relative_airfoil.remove_relative_points([point])
 
     @undoRedoAction
     def removeSelectedPoints(self):

@@ -76,6 +76,29 @@ class Airfoil(PymeadObj):
 
         self.coords = self.get_coords_selig_format()
 
+    def add_relative_points(self, points: typing.List[Point]):
+        points_not_added = []
+        for point in points:
+            if point in self.relative_points:
+                continue
+            if len(point.geo_cons) > 0:
+                points_not_added.append(point)
+                continue
+            self.relative_points.append(point)
+            point.relative_airfoil = self
+            point.relative_airfoil_name = self.name()
+        if points_not_added:
+            raise ValueError(f"Points {points_not_added} not made airfoil-relative because they are a part of "
+                             f"one or more geometric constraints")
+
+    def remove_relative_points(self, points: typing.List[Point]):
+        for point in points:
+            if point not in self.relative_points:
+                continue
+            self.relative_points.remove(point)
+            point.relative_airfoil = None
+            point.relative_airfoil_name = None
+
     def update_relative_points(self, original_geo_col_point_values: typing.Dict[str, np.ndarray]):
         """
         Updates the airfoil-coordinate-system-relative points that are part of this airfoil.
