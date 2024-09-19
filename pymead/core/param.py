@@ -105,7 +105,7 @@ class Param(PymeadObj):
             return self._value
 
     def set_value(self, value: float or int, bounds_normalized: bool = False, force: bool = False,
-                  param_graph_update: bool = False):
+                  param_graph_update: bool = False, from_request_move: bool = False):
         """
         Sets the design variable value, adjusting the value to fit inside the bounds if necessary.
 
@@ -127,7 +127,28 @@ class Param(PymeadObj):
             Whether this value is being set as part of a parameter graph update. Used to prevent the parameter graph
             from triggering multiple updates for the same parameter. This keyword argument should never
             be set to ``True`` when using the API. Default: ``False``
+
+        from_request_move: bool
+            Whether this method was called from ``Point.request_move``. Default: ``False``
         """
+        old_point_vals = {k: v.as_array() for k, v in self.geo_col.container()["points"].items()} \
+            if self.geo_col is not None else {}
+
+        def get_curves_to_update(_points_to_update):
+            _curves_to_update = []
+            for point in _points_to_update:
+                for curve in point.curves:
+                    if curve not in _curves_to_update:
+                        _curves_to_update.append(curve)
+            return _curves_to_update
+
+        def get_airfoils_to_update(_curves_to_update):
+            _airfoils_to_update = []
+            for curve in _curves_to_update:
+                if curve.airfoil is not None and curve.airfoil not in _airfoils_to_update:
+                    _airfoils_to_update.append(curve.airfoil)
+            return _airfoils_to_update
+
         def rotate_cluster(new_v):
             if self.gcs is None:
                 return
@@ -142,26 +163,28 @@ class Param(PymeadObj):
                 if geo_con.canvas_item is not None:
                     geo_con.canvas_item.update()
 
-            curves_to_update = []
+            _curves_to_update = get_curves_to_update(points_to_update)
+
+            _airfoils_to_update = get_airfoils_to_update(_curves_to_update)
+
+            # Update airfoil-relative points
+            for _airfoil in _airfoils_to_update:
+                _airfoil.update_relative_points(old_point_vals)
+
+            # Visual updates to geometric objects
             for point in points_to_update:
                 if point.canvas_item is not None:
                     point.canvas_item.updateCanvasItem(point.x().value(), point.y().value())
 
-                for curve in point.curves:
-                    if curve not in curves_to_update:
-                        curves_to_update.append(curve)
+            for _curve in _curves_to_update:
+                _curve.update()
 
-            airfoils_to_update = []
-            for curve in curves_to_update:
-                if curve.airfoil is not None and curve.airfoil not in airfoils_to_update:
-                    airfoils_to_update.append(curve.airfoil)
-                curve.update()
+            for _airfoil in _airfoils_to_update:
+                _airfoil.update_coords()
+                if _airfoil.canvas_item is not None:
+                    _airfoil.canvas_item.generatePicture()
 
-            for airfoil in airfoils_to_update:
-                airfoil.update_coords()
-                if airfoil.canvas_item is not None:
-                    airfoil.canvas_item.generatePicture()
-
+        points_solved = []
         if not force:
 
             if bounds_normalized:
@@ -191,7 +214,15 @@ class Param(PymeadObj):
                 points_solved = []
                 for gc in self.geo_cons:
                     points_solved.extend(self.gcs.solve(gc))
-                self.gcs.update_canvas_items(list(set(points_solved)))
+
+                curves_to_update = get_curves_to_update(points_solved)
+                airfoils_to_update = get_airfoils_to_update(curves_to_update)
+                # Update airfoil-relative points
+                for airfoil in airfoils_to_update:
+                    airfoil.update_relative_points(old_point_vals)
+
+                if not from_request_move:
+                    self.gcs.update_canvas_items(list(set(points_solved)))
 
             if self.param_graph is not None and not param_graph_update and self in self.param_graph.nodes:
                 for node in networkx.dfs_preorder_nodes(self.param_graph, source=self):
@@ -204,6 +235,8 @@ class Param(PymeadObj):
 
         if self.tree_item is not None:
             self.tree_item.treeWidget().itemWidget(self.tree_item, 1).setValue(self.value())
+
+        return list(set(points_solved))
 
     def lower(self):
         """
@@ -445,14 +478,14 @@ class LengthParam(Param):
         return super().set_lower(lower, force=force)
 
     def set_value(self, value: float, bounds_normalized: bool = False, force: bool = False,
-                  param_graph_update: bool = False):
+                  param_graph_update: bool = False, from_request_move: bool = False):
 
         # Negative lengths are prohibited unless this represents a point
         if self.point is None and value < 0.0:
             return
 
         return super().set_value(value, bounds_normalized=bounds_normalized, force=force,
-                                 param_graph_update=param_graph_update)
+                                 param_graph_update=param_graph_update, from_request_move=from_request_move)
 
     def get_dict_rep(self):
         return {"value": float(self.value()), "lower": self.lower(), "upper": self.upper(),
@@ -518,7 +551,7 @@ class AngleParam(Param):
         return self.geo_col.units.convert_angle_to_base(self._value, self.unit())
 
     def set_value(self, value: float, bounds_normalized: bool = False, force: bool = False,
-                  param_graph_update: bool = False):
+                  param_graph_update: bool = False, from_request_move: bool = False):
 
         if self.unit() is None:
             self.set_unit()
@@ -527,7 +560,7 @@ class AngleParam(Param):
         new_value = self.geo_col.units.convert_angle_from_base(zero_to_2pi_value, self.unit())
 
         return super().set_value(new_value, bounds_normalized=bounds_normalized, force=force,
-                                 param_graph_update=param_graph_update)
+                                 param_graph_update=param_graph_update, from_request_move=from_request_move)
 
     def get_dict_rep(self):
         return {"value": float(self.value()), "lower": self.lower(), "upper": self.upper(),
@@ -679,7 +712,7 @@ class AngleDesVar(AngleParam):
                          rotation_handle=rotation_handle, enabled=enabled, equation_str=equation_str)
 
     def set_value(self, value: float, bounds_normalized: bool = False, force: bool = False,
-                  param_graph_update: bool = False):
+                  param_graph_update: bool = False, from_request_move: bool = False):
         r"""
         In this special case of ``set_value`` for an ``AngleDesVar``, we skip over the call to the ``set_value``
         method in ``AngleParam`` and directly call the ``set_value`` method in ``Param`` (the grandparent class).
@@ -687,7 +720,7 @@ class AngleDesVar(AngleParam):
         logical behavior for a bounded variable. This method eliminates that restriction.
         """
         return Param.set_value(self, value, bounds_normalized=bounds_normalized, force=force,
-                               param_graph_update=param_graph_update)
+                               param_graph_update=param_graph_update, from_request_move=from_request_move)
 
     def get_dict_rep(self):
         return {"value": float(self.value()), "lower": self.lower(), "upper": self.upper(),

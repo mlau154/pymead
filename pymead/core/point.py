@@ -1,4 +1,3 @@
-import sys
 import typing
 
 import networkx
@@ -14,10 +13,14 @@ class Point(PymeadObj):
     objects. For example, instances of this class are used to define the endpoints of finite lines and control points of
     Bézier curves.
     """
-    def __init__(self, x: float, y: float, name: str or None = None, setting_from_geo_col: bool = False):
+    def __init__(self, x: float, y: float, name: str or None = None, relative_airfoil_name: str = None,
+                 setting_from_geo_col: bool = False):
         super().__init__(sub_container="points")
         self._x = None
         self._y = None
+        self.relative_airfoil_name = relative_airfoil_name
+        self.relative_airfoil = None
+        self.csys_airfoil = None  # This point is either an LE or TE of the airfoil specified by this attribute
         self.gcs = None
         self.root = False
         self.rotation_handle = False
@@ -257,7 +260,8 @@ class Point(PymeadObj):
         if not self.is_movement_allowed() and not force:
             return
 
-        points_to_update = None
+        old_point_vals = {k: v.as_array() for k, v in self.geo_col.container()["points"].items()}
+
         if self.root:
             points_to_update = self.gcs.translate_cluster(self, dx=xp - self.x().value(), dy=yp - self.y().value())
             constraints_to_update = []
@@ -272,7 +276,8 @@ class Point(PymeadObj):
         elif self.rotation_handle:
             if self.rotation_param is None:
                 return
-            self.rotation_param.set_value(self.rotation_param.root.measure_angle(Point(xp, yp)))
+            points_to_update = self.rotation_param.set_value(
+                self.rotation_param.root.measure_angle(Point(xp, yp)), from_request_move=True)
         else:
             self.x().set_value(xp)
             self.y().set_value(yp)
@@ -302,9 +307,6 @@ class Point(PymeadObj):
 
         curves_to_update = []
         for point in points_to_update:
-            if point.canvas_item is not None:
-                point.canvas_item.updateCanvasItem(point.x().value(), point.y().value())
-
             for curve in point.curves:
                 if curve not in curves_to_update:
                     curves_to_update.append(curve)
@@ -313,6 +315,18 @@ class Point(PymeadObj):
         for curve in curves_to_update:
             if curve.airfoil is not None and curve.airfoil not in airfoils_to_update:
                 airfoils_to_update.append(curve.airfoil)
+
+        # Update airfoil-relative points
+        if not self.relative_airfoil:
+            for airfoil in airfoils_to_update:
+                airfoil.update_relative_points(old_point_vals)
+
+        # Visual updates to geometric objects
+        for point in points_to_update:
+            if point.canvas_item is not None:
+                point.canvas_item.updateCanvasItem(point.x().value(), point.y().value())
+
+        for curve in curves_to_update:
             curve.update()
 
         for airfoil in airfoils_to_update:
@@ -324,7 +338,8 @@ class Point(PymeadObj):
         return f"Point {self.name()}<x={self.x().value():.6f}, y={self.y().value():.6f}>"
 
     def get_dict_rep(self):
-        return {"x": float(self.x().value()), "y": float(self.y().value())}
+        return {"x": float(self.x().value()), "y": float(self.y().value()),
+                "relative_airfoil_name": self.relative_airfoil_name}
 
 
 class PointSequence:

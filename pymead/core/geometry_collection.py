@@ -566,7 +566,8 @@ class GeometryCollection(DualRep):
         if isinstance(pymead_obj, Airfoil):
             self.gui_obj.permanent_widget.updateAirfoils()
 
-    def add_point(self, x: float, y: float, name: str or None = None, assign_unique_name: bool = True):
+    def add_point(self, x: float, y: float, name: str or None = None, relative_airfoil_name: str = None,
+                  assign_unique_name: bool = True):
         """
         Adds a point by value to the geometry collection
 
@@ -586,7 +587,7 @@ class GeometryCollection(DualRep):
         Point
             Object reference
         """
-        point = Point(x=x, y=y, name=name)
+        point = Point(x=x, y=y, name=name, relative_airfoil_name=relative_airfoil_name)
         point.x().geo_col = self
         point.y().geo_col = self
         point.x().set_unit(unit=self.units.current_length_unit(), old_unit=self.units.current_length_unit())
@@ -1086,6 +1087,14 @@ class GeometryCollection(DualRep):
         for name, mea_dict in d["mea"].items():
             geo_col.add_mea(airfoils=[geo_col.container()["airfoils"][k] for k in mea_dict["airfoils"]],
                             name=name, assign_unique_name=False)
+        for point in geo_col.container()["points"].values():
+            if point.relative_airfoil_name is None:
+                continue
+            airfoil = geo_col.container()["airfoils"][point.relative_airfoil_name]
+            point.relative_airfoil = airfoil
+            if point in airfoil.relative_points:
+                continue
+            airfoil.relative_points.append(point)
         return geo_col
 
     def switch_units(self, unit_type: str, old_unit: str, new_unit: str):

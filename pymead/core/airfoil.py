@@ -3,6 +3,7 @@ from copy import deepcopy
 
 import matplotlib.pyplot as plt
 import numpy as np
+import numpy.linalg as la
 import shapely
 from shapely.geometry import Polygon, LineString
 
@@ -52,6 +53,9 @@ class Airfoil(PymeadObj):
         # Point inputs
         self.leading_edge = leading_edge
         self.trailing_edge = trailing_edge
+        self.leading_edge.csys_airfoil = self
+        self.trailing_edge.csys_airfoil = self
+        self.relative_points = []
         self.upper_surf_end = upper_surf_end if upper_surf_end is not None else trailing_edge
         self.lower_surf_end = lower_surf_end if lower_surf_end is not None else trailing_edge
 
@@ -73,6 +77,47 @@ class Airfoil(PymeadObj):
             curve.airfoil = self
 
         self.coords = self.get_coords_selig_format()
+
+    def update_relative_points(self, original_geo_col_point_values: typing.Dict[str, np.ndarray]):
+        """
+        Updates the airfoil-coordinate-system-relative points that are part of this airfoil.
+        """
+        if len(self.relative_points) == 0:
+            return
+
+        relative_point_abs_vals = np.array([original_geo_col_point_values[rp.name()] for rp in self.relative_points])
+
+        # Transformation into chord-relative coordinates
+        original_le = original_geo_col_point_values[self.leading_edge.name()]  # np.array([x, y])
+        original_te = original_geo_col_point_values[self.trailing_edge.name()]  # np.array([x, y])
+        te_le_diff = original_te - original_le
+        original_chord = la.norm(te_le_diff)
+        original_alpha = -np.arctan2(te_le_diff[1], te_le_diff[0])
+        forward_transform = Transformation2D(
+            tx=[-original_le[0]],
+            ty=[-original_le[1]],
+            r=[original_alpha],
+            sx=[1 / original_chord],
+            sy=[1 / original_chord],
+            rotation_units="rad",
+            order="t,s,r"
+        )
+        xc_yc = forward_transform.transform(relative_point_abs_vals)
+
+        # Transformation back into absolute coordinates
+        reverse_transform = Transformation2D(
+            tx=[self.leading_edge.x().value()],
+            ty=[self.leading_edge.y().value()],
+            r=[-self.measure_alpha()],
+            sx=[self.measure_chord()],
+            sy=[self.measure_chord()],
+            rotation_units="rad",
+            order="r,s,t"
+        )
+        xy = reverse_transform.transform(xc_yc)
+
+        for rp, xy in zip(self.relative_points, xy):
+            rp.request_move(xp=xy[0], yp=xy[1], force=True)
 
     def check_closed(self):
         """
