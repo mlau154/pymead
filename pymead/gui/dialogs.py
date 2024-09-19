@@ -657,6 +657,7 @@ class PymeadLabeledCheckbox(QObject):
             if self.push is not None:
                 self.push.hide()
 
+
 class PymeadLabeledColorSelector(QObject):
 
     sigValueChanged = pyqtSignal(tuple)
@@ -808,7 +809,10 @@ class PymeadDialog(FramelessDialog):
 
     _gripSize = 2
 
-    """This subclass of QDialog forces the selection of a WindowTitle and matches the visual format of the GUI"""
+    """
+    This subclass of FramelessDialog forces the selection of a WindowTitle and matches the visual 
+    format of the GUI
+    """
     def __init__(self, parent, window_title: str,
                  widget: PymeadDialogWidget or PymeadDialogVTabWidget or PymeadDialogWidget2,
                  theme: dict, minimum_width: int = None, minimum_height: int = None, fixed_width: int = None,
@@ -882,7 +886,7 @@ class PymeadDialog(FramelessDialog):
         """Creates a ButtonBox to add to the Layout. Can be overridden to add additional functionality.
 
         Returns
-        =======
+        -------
         QDialogButtonBox
         """
         buttonBox = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel, self)
@@ -2862,12 +2866,6 @@ class MultiAirfoilDialog(PymeadDialog):
                          minimum_width=900, minimum_height=700)
 
 
-class InviscidCpCalcDialog(QDialog):
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        layout = QFormLayout(self)
-
-
 class ScreenshotDialog(PymeadDialog):
     def __init__(self, parent: QWidget, theme: dict, windows: typing.List[str]):
 
@@ -3202,11 +3200,13 @@ class ExitDialog(PymeadDialog):
 class EditBoundsDialog(PymeadDialog):
     def __init__(self, geo_col: GeometryCollection, theme: dict, parent=None):
         self.bv_table = BoundsValuesTable(geo_col=geo_col)
-        super().__init__(parent=parent, window_title="Edit Bounds", widget=self.bv_table, theme=theme)
+        super().__init__(parent=parent, window_title="Edit Bounds", widget=self.bv_table, theme=theme,
+                         minimum_width=466, minimum_height=497)
 
     def resizetoFit(self):
         self.bv_table.resizeColumnsToContents()
         self.resize(self.bv_table.sizeHint())
+
 
 class OptimizationDialogVTabWidget(PymeadDialogVTabWidget):
     def __init__(self, parent, widgets: dict, settings_override: dict):
@@ -3289,8 +3289,8 @@ class ExportCoordinatesDialog(PymeadDialog):
         self.grid_layout = QGridLayout()
         self.setInputs()
         w.setLayout(self.grid_layout)
-        w.setMinimumWidth(600)
-        super().__init__(parent=parent, window_title="Export Airfoil Coordinates", widget=w, theme=theme)
+        super().__init__(parent=parent, window_title="Export Airfoil Coordinates", widget=w, theme=theme,
+                         minimum_width=626, minimum_height=379)
         self.grid_widget["airfoil_order"]["line"].setText(
             ",".join([k for k in self.parent().geo_col.container()["airfoils"].keys()]))
 
@@ -3380,8 +3380,8 @@ class ExportCSVDialogWidget(PymeadDialogWidget2):
 class ExportCSVDialog(PymeadDialog):
     def __init__(self, parent, theme: dict):
         widget = ExportCSVDialogWidget()
-        super().__init__(parent, window_title="Export CSV", widget=widget, theme=theme)
-        self.setMinimumWidth(450)
+        super().__init__(parent, window_title="Export CSV", widget=widget, theme=theme,
+                         minimum_width=450, fixed_height=125)
 
 
 class ExportControlPointsDialog(PymeadDialog):
@@ -3392,7 +3392,8 @@ class ExportControlPointsDialog(PymeadDialog):
         self.setInputs()
         w.setLayout(self.grid_layout)
         w.setMinimumWidth(400)
-        super().__init__(parent=parent, window_title="Export Control Points", widget=w, theme=theme)
+        super().__init__(parent=parent, window_title="Export Control Points", widget=w, theme=theme,
+                         minimum_width=500, fixed_height=185)
         self.grid_widget["airfoil_order"]["line"].setText(
             ",".join([k for k in self.parent().geo_col.container()["airfoils"].keys()]))
 
@@ -3436,14 +3437,14 @@ class ExportControlPointsDialog(PymeadDialog):
 class ExportIGESDialog(PymeadDialog):
     def __init__(self, parent, theme: dict):
         widget = QWidget()
-        super().__init__(parent=parent, window_title="Export IGES", widget=widget, theme=theme)
+        super().__init__(parent=parent, window_title="Export IGES", widget=widget, theme=theme,
+                         minimum_width=600, fixed_height=271)
 
         self.grid_widget = {}
         self.grid_layout = QGridLayout()
 
         self.setInputs()
         widget.setLayout(self.grid_layout)
-        self.setMinimumWidth(600)
 
     def setInputs(self):
         widget_dict = load_data(os.path.join(GUI_DIALOG_WIDGETS_DIR, "export_IGES.json"))
@@ -3499,7 +3500,8 @@ class AirfoilMatchingDialog(PymeadDialog):
     def __init__(self, parent, airfoil_names: typing.List[str], theme: dict):
 
         widget = QWidget()
-        super().__init__(parent, window_title="Choose Airfoil to Match", widget=widget, theme=theme)
+        super().__init__(parent, window_title="Choose Airfoil to Match", widget=widget, theme=theme,
+                         minimum_width=300, minimum_height=200)
 
         self.airfoil_names = airfoil_names
 
@@ -3516,9 +3518,6 @@ class AirfoilMatchingDialog(PymeadDialog):
             else:
                 self.lay.addWidget(i.widget, row_count, 1, 1, 1)
                 self.lay.addWidget(i.push, row_count, 2, 1, 1)
-
-        # self.setMinimumWidth(400)
-        self.setMinimumSize(400, 200)
 
     def setInputs(self):
         inputs = [
@@ -3574,32 +3573,11 @@ class AirfoilMatchingDialog(PymeadDialog):
         return {"tool_airfoil": self.inputs[0].value(), "target_airfoil": target_airfoil}
 
 
-class AirfoilPlotDialog(PymeadDialog):
-    def __init__(self, parent, theme: dict):
-        widget = QWidget()
-        super().__init__(parent, window_title="Select Airfoil to Plot", widget=widget, theme=theme)
-        self.lay = QFormLayout()
-        widget.setLayout(self.lay)
-
-        self.inputs = self.setInputs()
-        for i in self.inputs:
-            self.lay.addRow(i[0], i[1])
-
-        self.setMinimumWidth(300)
-
-    def setInputs(self):
-        r0 = ["Airfoil to Plot", QLineEdit(self)]
-        r0[1].setText('n0012-il')
-        return [r0]
-
-    def value(self):
-        return self.inputs[0][1].text()
-
-
 class LoadPointsDialog(PymeadDialog):
     def __init__(self, parent, theme: dict):
         widget = QWidget()
-        super().__init__(parent, window_title="Load Points", widget=widget, theme=theme)
+        super().__init__(parent, window_title="Load Points", widget=widget, theme=theme,
+                         minimum_width=450, minimum_height=202)
         self.lay = QGridLayout()
         widget.setLayout(self.lay)
         self.inputs = self.setInputs()
@@ -3612,8 +3590,6 @@ class LoadPointsDialog(PymeadDialog):
             else:
                 self.lay.addWidget(i.widget, row_count, 1, 1, 1)
                 self.lay.addWidget(i.push, row_count, 2, 1, 1)
-
-        self.setMinimumWidth(450)
 
     def setInputs(self):
         explanation = PymeadLabeledPlainTextEdit(
@@ -3651,7 +3627,8 @@ class AirfoilDialog(PymeadDialog):
         if len(geo_col.container()["points"]) == 0:
             raise ValueError("An airfoil cannot be created until at least one Point has been added.")
         widget = QWidget()
-        super().__init__(parent=parent, window_title="Create Airfoil", widget=widget, theme=theme)
+        super().__init__(parent=parent, window_title="Create Airfoil", widget=widget, theme=theme,
+                         minimum_width=300, fixed_height=234)
         self.lay = QGridLayout()
         widget.setLayout(self.lay)
         self.geo_col = geo_col
@@ -3721,7 +3698,8 @@ class AirfoilDialog(PymeadDialog):
 class WebAirfoilDialog(PymeadDialog):
     def __init__(self, parent, theme: dict):
         widget = QWidget()
-        super().__init__(parent, window_title="Load Airfoil from Coordinates", widget=widget, theme=theme)
+        super().__init__(parent, window_title="Load Airfoil from Coordinates", widget=widget, theme=theme,
+                         minimum_width=400, fixed_height=236)
         self.lay = QGridLayout()
         widget.setLayout(self.lay)
         self.inputs = self.setInputs()
@@ -3799,8 +3777,8 @@ class MSESFieldPlotDialogWidget(PymeadDialogWidget):
 class MSESFieldPlotDialog(PymeadDialog):
     def __init__(self, parent: QWidget, theme: dict, default_field_dir: str = None):
         w = MSESFieldPlotDialogWidget(default_field_dir=default_field_dir)
-        super().__init__(parent=parent, window_title="MSES Field Plot Settings", widget=w, theme=theme)
-        self.setMinimumWidth(450)
+        super().__init__(parent=parent, window_title="MSES Field Plot Settings", widget=w, theme=theme,
+                         minimum_width=450, fixed_height=155)
 
 
 class GridBounds(QWidget):
@@ -3970,13 +3948,15 @@ class PlotExportDialog(PymeadDialog):
     def __init__(self, parent, gui_obj, theme: dict, current_min_level: float, current_max_level: float):
         widget = PlotExportDialogWidget(gui_obj=gui_obj, current_min_level=current_min_level,
                                         current_max_level=current_max_level)
-        super().__init__(parent, window_title="Plot Export", widget=widget, theme=theme)
+        super().__init__(parent, window_title="Plot Export", widget=widget, theme=theme,
+                         minimum_width=500, fixed_height=300)
 
 
 class ExitOptimizationDialog(PymeadDialog):
     def __init__(self, parent, theme: dict):
         widget = QLabel("An optimization task is running. Quit?")
-        super().__init__(parent=parent, window_title="Terminate Optimization?", widget=widget, theme=theme)
+        super().__init__(parent=parent, window_title="Terminate Optimization?", widget=widget, theme=theme,
+                         fixed_width=264, fixed_height=100)
 
 
 class SplitPolylineDialog(PymeadDialog):
@@ -3984,7 +3964,8 @@ class SplitPolylineDialog(PymeadDialog):
         self.polyline = polyline
         self.geo_col = geo_col
         widget = QWidget()
-        super().__init__(parent=parent, window_title="Split PolyLine", widget=widget, theme=theme)
+        super().__init__(parent=parent, window_title="Split PolyLine", widget=widget, theme=theme,
+                         fixed_width=192, minimum_height=126)
         self.lay = QFormLayout()
         self.spin = QSpinBox()
         self.spin.setMinimum(3)
@@ -4055,7 +4036,8 @@ class SettingsDialog(PymeadDialog):
             "General": GeneralSettingsDialogWidget(geo_col=geo_col)
         }
         w = PymeadDialogVTabWidget(parent=None, widgets=widgets, settings_override=settings_override)
-        super().__init__(parent=parent, window_title="Settings", widget=w, theme=theme)
+        super().__init__(parent=parent, window_title="Settings", widget=w, theme=theme,
+                         minimum_width=256, minimum_height=210)
 
 
 def convert_opt_settings_to_param_dict(opt_settings: dict) -> dict:

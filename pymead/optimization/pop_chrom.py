@@ -79,14 +79,14 @@ class Chromosome:
                     self.chk_max_thickness(airfoil_name=airfoil_name)
             if self.valid_geometry:
                 cnstr_spec = self.param_dict["constraints"][airfoil_name]["thickness_at_points"]
-                if cnstr_spec[1]:
+                if cnstr_spec is not None and cnstr_spec[1]:
                     self.check_thickness_at_points(airfoil_name=airfoil_name)
             if self.valid_geometry:
                 if self.param_dict["constraints"][airfoil_name]["min_area"][1]:
                     self.check_min_area(airfoil_name=airfoil_name)
             if self.valid_geometry:
                 cnstr_spec = self.param_dict["constraints"][airfoil_name]["internal_geometry"]
-                if cnstr_spec[1]:
+                if cnstr_spec is not None and cnstr_spec[1]:
                     if "Before" in cnstr_spec[2]:
                         self.check_contains_points(airfoil_name=airfoil_name)
                     else:
