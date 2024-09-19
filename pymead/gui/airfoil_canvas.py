@@ -414,7 +414,11 @@ class AirfoilCanvas(pg.PlotWidget):
             self.sigStatusBarUpdate.emit("Choose exactly two points to define a distance constraint", 4000)
             return
 
-        self.geo_col.add_constraint("DistanceConstraint", *self.geo_col.selected_objects["points"])
+        try:
+            self.geo_col.add_constraint("DistanceConstraint",
+                                        *self.geo_col.selected_objects["points"])
+        except InvalidPointError as e:
+            self.gui_obj.disp_message_box(str(e))
 
     @undoRedoAction
     @runSelectionEventLoop(drawing_object="RelAngle3Constraint", starting_message="Select any point other than "
@@ -426,7 +430,11 @@ class AirfoilCanvas(pg.PlotWidget):
             self.sigStatusBarUpdate.emit(msg, 4000)
             return
 
-        self.geo_col.add_constraint("RelAngle3Constraint", *self.geo_col.selected_objects["points"])
+        try:
+            self.geo_col.add_constraint("RelAngle3Constraint",
+                                        *self.geo_col.selected_objects["points"])
+        except InvalidPointError as e:
+            self.gui_obj.disp_message_box(str(e))
 
     @undoRedoAction
     @runSelectionEventLoop(drawing_object="AntiParallel3Constraint", starting_message="Select any point other than "
@@ -442,7 +450,11 @@ class AirfoilCanvas(pg.PlotWidget):
             self.sigStatusBarUpdate.emit(msg, 4000)
             return
         if case == 0:
-            self.geo_col.add_constraint("AntiParallel3Constraint", *self.geo_col.selected_objects["points"])
+            try:
+                self.geo_col.add_constraint("AntiParallel3Constraint",
+                                            *self.geo_col.selected_objects["points"])
+            except InvalidPointError as e:
+                self.gui_obj.disp_message_box(str(e))
             return
 
         data = self.geo_col.selected_objects["polylines"][0].evaluate()
@@ -463,9 +475,12 @@ class AirfoilCanvas(pg.PlotWidget):
 
         args = [point, *self.geo_col.selected_objects["points"]] if point_is_first_arg else \
             [*self.geo_col.selected_objects["points"], point]
-        self.geo_col.add_constraint("AntiParallel3Constraint", *args,
-                                                 polyline=self.geo_col.selected_objects["polylines"][0],
-                                                 point_on_curve=point)
+        try:
+            self.geo_col.add_constraint(
+                "AntiParallel3Constraint", *args,
+                polyline=self.geo_col.selected_objects["polylines"][0], point_on_curve=point)
+        except InvalidPointError as e:
+            self.gui_obj.disp_message_box(str(e))
 
     @undoRedoAction
     @runSelectionEventLoop(drawing_object="SymmetryConstraint", starting_message="Select the start point of the "
@@ -477,7 +492,11 @@ class AirfoilCanvas(pg.PlotWidget):
             self.sigStatusBarUpdate.emit(msg, 4000)
             return
 
-        self.geo_col.add_constraint("SymmetryConstraint", *self.geo_col.selected_objects["points"])
+        try:
+            self.geo_col.add_constraint("SymmetryConstraint",
+                                        *self.geo_col.selected_objects["points"])
+        except InvalidPointError as e:
+            self.gui_obj.disp_message_box(str(e))
 
     @undoRedoAction
     @runSelectionEventLoop(drawing_object="Perp3Constraint", starting_message="Select the first point (not the vertex)")
@@ -486,7 +505,11 @@ class AirfoilCanvas(pg.PlotWidget):
             msg = f"Choose exactly three points (start, vertex, and end) for a Perp3Constraint"
             self.sigStatusBarUpdate.emit(msg, 4000)
             return
-        self.geo_col.add_constraint("Perp3Constraint", *self.geo_col.selected_objects["points"])
+        try:
+            self.geo_col.add_constraint("Perp3Constraint",
+                                        *self.geo_col.selected_objects["points"])
+        except InvalidPointError as e:
+            self.gui_obj.disp_message_box(str(e))
 
     @undoRedoAction
     @runSelectionEventLoop(drawing_object="ROCurvatureConstraint", starting_message="Select the curve joint")
@@ -497,7 +520,11 @@ class AirfoilCanvas(pg.PlotWidget):
             self.sigStatusBarUpdate.emit(msg, 4000)
             return
 
-        self.geo_col.add_constraint("ROCurvatureConstraint", *self.geo_col.selected_objects["points"])
+        try:
+            self.geo_col.add_constraint("ROCurvatureConstraint",
+                                        *self.geo_col.selected_objects["points"])
+        except InvalidPointError as e:
+            self.gui_obj.disp_message_box(str(e))
 
     @undoRedoAction
     @runSelectionEventLoop(drawing_object="BezierAddPoint",

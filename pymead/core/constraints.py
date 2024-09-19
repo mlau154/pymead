@@ -63,6 +63,10 @@ class DistanceConstraint(GeoCon):
     default_name = "DistCon-1"
 
     def __init__(self, p1: Point, p2: Point, value: float or LengthParam = None, name: str = None, geo_col=None):
+        if p1.relative_airfoil_name is not None:
+            raise InvalidPointError(f"Constraint could not be added because point p1 is airfoil-relative.")
+        if p2.relative_airfoil_name is not None:
+            raise InvalidPointError(f"Constraint could not be added because point p2 is airfoil-relative.")
         self.p1 = p1
         self.p2 = p2
         value = self.p1.measure_distance(self.p2) if value is None else value
@@ -89,6 +93,12 @@ class AntiParallel3Constraint(GeoCon):
 
     def __init__(self, p1: Point, p2: Point, p3: Point, name: str = None, polyline: PolyLine = None,
                  point_on_curve: Point = None, geo_col=None):
+        if p1.relative_airfoil_name is not None:
+            raise InvalidPointError(f"Constraint could not be added because point p1 is airfoil-relative.")
+        if p2.relative_airfoil_name is not None:
+            raise InvalidPointError(f"Constraint could not be added because point p2 is airfoil-relative.")
+        if p3.relative_airfoil_name is not None:
+            raise InvalidPointError(f"Constraint could not be added because point p3 is airfoil-relative.")
         self.p1 = p1
         self.polyline = polyline
         self.point_on_curve = point_on_curve
@@ -171,6 +181,12 @@ class Perp3Constraint(GeoCon):
     default_name = "Perp3Con-1"
 
     def __init__(self, p1: Point, p2: Point, p3: Point, name: str = None, geo_col=None):
+        if p1.relative_airfoil_name is not None:
+            raise InvalidPointError(f"Constraint could not be added because point p1 is airfoil-relative.")
+        if p2.relative_airfoil_name is not None:
+            raise InvalidPointError(f"Constraint could not be added because point p2 is airfoil-relative.")
+        if p3.relative_airfoil_name is not None:
+            raise InvalidPointError(f"Constraint could not be added because point p3 is airfoil-relative.")
         self.p1 = p1
         self.p2 = p2
         self.p3 = p3
@@ -196,6 +212,12 @@ class RelAngle3Constraint(GeoCon):
 
     def __init__(self, p1: Point, p2: Point, p3: Point, value: float or AngleParam = None, name: str = None,
                  geo_col=None):
+        if p1.relative_airfoil_name is not None:
+            raise InvalidPointError(f"Constraint could not be added because point p1 is airfoil-relative.")
+        if p2.relative_airfoil_name is not None:
+            raise InvalidPointError(f"Constraint could not be added because point p2 is airfoil-relative.")
+        if p3.relative_airfoil_name is not None:
+            raise InvalidPointError(f"Constraint could not be added because point p3 is airfoil-relative.")
         self.p1 = p1
         self.p2 = p2
         self.p3 = p3
@@ -246,6 +268,9 @@ class ROCurvatureConstraint(GeoCon):
     default_name = "ROCCon-1"
 
     def __init__(self, curve_joint: Point, value: float or LengthParam = None, name: str = None, geo_col=None):
+        if curve_joint.relative_airfoil_name is not None:
+            raise InvalidPointError(f"Constraint could not be added because point the curve joint is an "
+                                    f"airfoil-relative point.")
         if len(curve_joint.curves) != 2:
             raise ConstraintValidationError(f"There must be exactly two curves attached to the curve joint. Found "
                                             f"{len(curve_joint.curves)} curves")
@@ -414,6 +439,10 @@ class ROCurvatureConstraint(GeoCon):
 
 
 class ConstraintValidationError(Exception):
+    pass
+
+
+class InvalidPointError(Exception):
     pass
 
 
