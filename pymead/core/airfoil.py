@@ -53,8 +53,6 @@ class Airfoil(PymeadObj):
         # Point inputs
         self.leading_edge = leading_edge
         self.trailing_edge = trailing_edge
-        self.leading_edge.csys_airfoil = self
-        self.trailing_edge.csys_airfoil = self
         self.relative_points = []
         self.upper_surf_end = upper_surf_end if upper_surf_end is not None else trailing_edge
         self.lower_surf_end = lower_surf_end if lower_surf_end is not None else trailing_edge

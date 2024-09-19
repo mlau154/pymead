@@ -20,7 +20,6 @@ class Point(PymeadObj):
         self._y = None
         self.relative_airfoil_name = relative_airfoil_name
         self.relative_airfoil = None
-        self.csys_airfoil = None  # This point is either an LE or TE of the airfoil specified by this attribute
         self.gcs = None
         self.root = False
         self.rotation_handle = False
