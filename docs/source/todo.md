@@ -32,6 +32,7 @@ Planned feature additions
   c, alf, dx, dy
 - Add XFOIL flap deflection feature
 - Use `.jses` extension for MSES settings and `.jopt` for optimization settings files
+- Make geometric classes available from the top-level module
 
 Refactoring
 -----------
@@ -50,7 +51,6 @@ Bug fixes
 - Create GUI error message instead of early terminating for plotting Mach contours etc. with MSES analysis if MuPDF
   or ps2pdf not found
 - Fix visual artifacts of FramelessWindow appearing while dragging
-- Throw GUI error if XFOIL airfoil has more than 495 coordinate points (hard-coded limit)
 - Fix the following `QLayout` warning when loading downsampling preview:
   'Attempting to add QLayout "" to DownsamplingPreviewDialog "", which already has a layout'
 - Fix some airfoils of an MEA occasionally not being added to MSET dialog

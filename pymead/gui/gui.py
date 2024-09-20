@@ -1315,14 +1315,19 @@ class GUI(FramelessMainWindow):
                 return
             coords = self.geo_col.container()["airfoils"][xfoil_settings["airfoil"]].get_scaled_coords()
 
-            aero_data, _ = calculate_aero_data(None,
-                                               xfoil_settings['base_dir'],
-                                               xfoil_settings['airfoil_name'],
-                                               coords=coords,
-                                               tool="XFOIL",
-                                               xfoil_settings=xfoil_settings,
-                                               export_Cp=True
-                                               )
+            try:
+                aero_data, _ = calculate_aero_data(None,
+                                                   xfoil_settings['base_dir'],
+                                                   xfoil_settings['airfoil_name'],
+                                                   coords=coords,
+                                                   tool="XFOIL",
+                                                   xfoil_settings=xfoil_settings,
+                                                   export_Cp=True
+                                                   )
+            except ValueError as e:
+                self.disp_message_box(str(e))
+                return
+
             if not aero_data['converged'] or aero_data['errored_out'] or aero_data['timed_out']:
                 self.disp_message_box("XFOIL Analysis Failed", message_mode='error')
                 self.output_area_text(

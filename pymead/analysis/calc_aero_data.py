@@ -1168,6 +1168,13 @@ def run_xfoil(xfoil_settings: dict or XFOILSettings, coords: np.ndarray, export_
                                       "of the pymead installation page: "
                                       "https://pymead.readthedocs.io/en/latest/install.html#optional")
 
+    if coords.shape[0] > 495:
+        raise ValueError(f"Number of airfoil coordinates {coords.shape[0]} exceeds the hard-coded XFOIL limit (495). "
+                         f"Reduce the number of evaluated coordinates to continue. This can easily be done in the GUI "
+                         f"by double-clicking on Bézier objects in the tree and adjusting the number of "
+                         f"evaluated points. From the API, this can be done by assigning a value to the "
+                         f"'default_nt' argument of the Bézier class constructor.")
+
     aero_data = {}
 
     if isinstance(xfoil_settings, XFOILSettings):
