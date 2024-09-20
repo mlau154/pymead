@@ -32,6 +32,8 @@ Planned feature additions
   yet saved
 - Add asterisk when an undo_redo action is triggered and remove when save is called
 - Add save protection for example files
+- Add a "view data" feature to .jmea, .jses, and .jopt files that allows users to view the JSON
+  data inside a custom text browser
 
 Refactoring
 -----------
