@@ -1049,10 +1049,13 @@ def calculate_aero_data(conn: multiprocessing.connection.Connection or None,
                     mplot_settings["Streamline_Grid"] = 2
 
                 for mplot_output_name in ['Mach', 'Streamline_Grid', 'Grid', 'Grid_Zoom', 'flow_field']:
-                    if mplot_settings[mplot_output_name]:
-                        run_mplot(airfoil_name, airfoil_coord_dir, mplot_settings, mode=mplot_output_name)
-                        if mplot_output_name == 'flow_field':
-                            run_mplot(airfoil_name, airfoil_coord_dir, mplot_settings, mode='grid_stats')
+                    try:
+                        if mplot_settings[mplot_output_name]:
+                            run_mplot(airfoil_name, airfoil_coord_dir, mplot_settings, mode=mplot_output_name)
+                            if mplot_output_name == 'flow_field':
+                                run_mplot(airfoil_name, airfoil_coord_dir, mplot_settings, mode='grid_stats')
+                    except DependencyNotFoundError as e:
+                        send_over_pipe(("disp_message_box", str(e)))
 
                 if mplot_settings["CPK"]:
                     try:

@@ -1606,7 +1606,6 @@ class GUI(FramelessMainWindow):
         self.display_resources_thread = Thread(target=run_cpu_bound_process)
         self.display_resources_thread.start()
 
-
     def match_airfoil(self):
 
         def run_cpu_bound_process():
