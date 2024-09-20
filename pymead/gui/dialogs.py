@@ -1591,6 +1591,8 @@ class DownsamplingPreviewDialog(PymeadDialog):
 
         # Make a copy of the MEA
         geo_col = GeometryCollection.set_from_dict_rep(gui_object.geo_col.get_dict_rep())
+        if len(geo_col.container()["mea"]) == 0:
+            raise ValueError("No multi-element airfoils found in the geometry collection.")
         mea = geo_col.container()["mea"][mea_name]
         if not isinstance(mea, MEA):
             raise TypeError(f"Generated mea was of type {type(mea)} instead of type pymead.core.mea.MEA")
@@ -1826,11 +1828,17 @@ class MSETDialogWidget2(PymeadDialogWidget2):
 
     def showAirfoilCoordinatesPreview(self):
         mset_settings = self.value()
-        preview_dialog = DownsamplingPreviewDialog(
-            theme=self.theme, mea_name=self.widget_dict["mea"].widget.currentText(),
-            max_airfoil_points=mset_settings["downsampling_max_pts"] if bool(mset_settings["use_downsampling"]) else None,
-            curvature_exp=mset_settings["downsampling_curve_exp"],
-            parent=self)
+        try:
+            preview_dialog = DownsamplingPreviewDialog(
+                theme=self.theme, mea_name=self.widget_dict["mea"].widget.currentText(),
+                max_airfoil_points=mset_settings["downsampling_max_pts"] if bool(mset_settings["use_downsampling"]) else None,
+                curvature_exp=mset_settings["downsampling_curve_exp"],
+                parent=self
+            )
+        except ValueError as e:
+            self.geo_col.gui_obj.disp_message_box(str(e))
+            return
+
         preview_dialog.exec()
 
 

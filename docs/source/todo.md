@@ -54,7 +54,6 @@ Bug fixes
 - Fix the following `QLayout` warning when loading downsampling preview:
   'Attempting to add QLayout "" to DownsamplingPreviewDialog "", which already has a layout'
 - Fix some airfoils of an MEA occasionally not being added to MSET dialog
-- Fix no GUI error being thrown when trying to visualize downsampling on an empty/non-existent MEA
 - Fix XFOIL/MSES/Opt settings not updating properly (including loading MSES settings in optimization setup overriding 
   the dialog window title)
 - Add last-resort forceful process termination during closeEvent (especially from terminal `pymead-gui` command)
@@ -64,7 +63,6 @@ Bug fixes
 Aesthetics
 ----------
 - Make airfoil coordinate downsampling preview adhere to the global format
-- Globally disable hover when dragging a point
 
 Testing
 -------
