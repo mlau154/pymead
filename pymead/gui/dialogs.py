@@ -42,11 +42,22 @@ from pymead.utils.misc import get_setting, set_setting
 from pymead.utils.read_write_files import load_data, save_data, load_documents_path
 from pymead.utils.widget_recursion import get_parent
 
-mses_settings_json = load_data(os.path.join(GUI_DEFAULTS_DIR, 'mses_settings.json'))
 
-
-ISMOM_CONVERSION = {item: idx + 1 for idx, item in enumerate(mses_settings_json['ISMOM']['addItems'])}
-IFFBC_CONVERSION = {item: idx + 1 for idx, item in enumerate(mses_settings_json['IFFBC']['addItems'])}
+ISMOM_ITEMS = [
+    "S-momentum equation",
+    "isentropic condition",
+    "S-momentum equation, isentropic @ LE",
+    "isentropic condition, S-mom. where diss. active"
+]
+IFFBC_ITEMS = [
+    "solid wall airfoil far-field BCs",
+    "vortex+source+doublet airfoil far-field BCs",
+    "freestream pressure airfoil far-field BCs",
+    "supersonic wave freestream BCs",
+    "supersonic solid wall far-field BCs"
+]
+ISMOM_CONVERSION = {item: idx + 1 for idx, item in enumerate(ISMOM_ITEMS)}
+IFFBC_CONVERSION = {item: idx + 1 for idx, item in enumerate(IFFBC_ITEMS)}
 
 
 def convert_dialog_to_mset_settings(dialog_input: dict):
@@ -1625,88 +1636,7 @@ class DownsamplingPreviewDialog(PymeadDialog):
             )
 
 
-class MSETDialogWidget(PymeadDialogWidget):
-    airfoilsChanged = pyqtSignal(object)
-
-    def __init__(self, geo_col: GeometryCollection):
-        self.geo_col = geo_col
-        super().__init__(settings_file=os.path.join(GUI_DEFAULTS_DIR, "mset_settings.json"))
-        self.widget_dict["airfoil_analysis_dir"]["widget"].setText(tempfile.gettempdir())
-        mea_names = [k for k in self.geo_col.container()["mea"].keys()]
-        self.widget_dict["mea"]["widget"].addItems(mea_names)
-        if len(mea_names) > 0:
-            self.widget_dict["mea"]["widget"].setCurrentText(mea_names[0])
-
-    def change_airfoils(self, _):
-        if not all([a in self.widget_dict["mea"]["widget"].text().split(',') for a in get_parent(
-                self, 4).geo_col.container()["airfoils"].keys()]):
-            current_airfoil_list = [a for a in get_parent(self, 4).geo_col.container()["airfoils"].keys()]
-        else:
-            current_airfoil_list = self.widget_dict["airfoils"]["widget"].text().split(",")
-        # dialog = AirfoilListDialog(self, current_airfoil_list=current_airfoil_list)
-        # if dialog.exec():
-        #     airfoils = dialog.getData()
-        #     self.widget_dict["airfoils"]["widget"].setText(",".join(airfoils))
-        #     self.airfoilsChanged.emit(",".join(airfoils))
-
-    def select_directory(self, line_edit: QLineEdit):
-        select_directory(parent=self.parent(), line_edit=line_edit)
-
-    def updateDialog(self, new_inputs: dict, w_name: str):
-        if w_name == "mea":
-            if self.widget_dict["mea"]["widget"].currentText() != "":
-                airfoil_names = [a.name() for a in self.geo_col.container()["mea"][
-                    self.widget_dict["mea"]["widget"].currentText()].airfoils]
-            else:
-                airfoil_names = []
-            self.widget_dict["multi_airfoil_grid"]["widget"].onAirfoilListChanged(airfoil_names)
-
-    def saveas_mset_mses_mplot_settings(self):
-        all_inputs = get_parent(self, 2).value()
-        mses_inputs = {k: v for k, v in all_inputs.items() if k in ["MSET", "MSES", "MPLOT"]}
-        json_dialog = select_json_file(parent=self)
-        if json_dialog.exec():
-            input_filename = json_dialog.selectedFiles()[0]
-            if not os.path.splitext(input_filename)[-1] == '.json':
-                input_filename = input_filename + '.json'
-            save_data(mses_inputs, input_filename)
-            # if get_parent(self, 4):
-            #     get_parent(self, 4).current_settings_save_file = input_filename
-            # else:
-            #     self.current_save_file = input_filename
-            get_parent(self, 3).setStatusTip(f"Saved MSES settings to {input_filename}")
-
-    def load_mset_mses_mplot_settings(self):
-        override_inputs = get_parent(self, 2).value()
-        load_dialog = select_existing_json_file(parent=self)
-        if load_dialog.exec():
-            load_file = load_dialog.selectedFiles()[0]
-            new_inputs = load_data(load_file)
-            for k, v in new_inputs.items():
-                override_inputs[k] = v
-            # great_great_grandparent = get_parent(self, depth=4)
-            # if great_great_grandparent:
-            #     great_great_grandparent.current_settings_save_file = load_file
-            # else:
-            #     self.current_save_file = load_file
-            get_parent(self, 3).setWindowTitle(f"Optimization Setup - {os.path.split(load_file)[-1]}")
-            get_parent(self, 2).setValue(override_inputs)  # Overrides the inputs for the whole PymeadDialogVTabWidget
-            get_parent(self, 2).setStatusTip(f"Loaded {load_file}")
-
-    def show_airfoil_coordinates_preview(self, _):
-        inputs = get_parent(self, 2).value()
-        downsampling_max_pts = inputs["MSET"]["downsampling_max_pts"]
-        downsampling_curve_exp = inputs["MSET"]["downsampling_curve_exp"]
-        gui_obj = self.geo_col.gui_obj
-        preview_dialog = DownsamplingPreviewDialog(
-            theme=gui_obj.themes[gui_obj.current_theme], mea_name=inputs["MSET"]["mea"].value(), gui_obj=gui_obj,
-            max_airfoil_points=downsampling_max_pts,
-            curvature_exp=downsampling_curve_exp, parent=self
-        )
-        preview_dialog.exec()
-
-
-class MSETDialogWidget2(PymeadDialogWidget2):
+class MSETDialogWidget(PymeadDialogWidget2):
 
     sigMEAChanged = pyqtSignal(object)
 
@@ -2675,20 +2605,7 @@ class GAGeneralSettingsDialogWidget(PymeadDialogWidget2):
         pass
 
 
-class GAConstraintsTerminationDialogWidget(PymeadDialogWidget):
-    def __init__(self, geo_col: GeometryCollection, mset_dialog_widget: MSETDialogWidget2 = None):
-        self.mset_dialog_widget = mset_dialog_widget
-        super().__init__(settings_file=os.path.join(GUI_DEFAULTS_DIR, 'ga_constraints_termination_settings.json'),
-                         geo_col=geo_col, mset_dialog_widget=mset_dialog_widget)
-
-    def select_data_file(self, line_edit: QLineEdit):
-        select_data_file(parent=self.parent(), line_edit=line_edit)
-
-    def updateDialog(self, new_inputs: dict, w_name: str):
-        pass
-
-
-class GAConstraintsTerminationDialogWidget2(PymeadDialogWidget2):
+class GAConstraintsTerminationDialogWidget(PymeadDialogWidget2):
     def __init__(self, geo_col: GeometryCollection, theme: dict, grid: bool, parent=None):
         self.geo_col = geo_col
         self.theme = theme
@@ -2890,7 +2807,7 @@ class XFOILDialog(PymeadDialog):
 
 class MultiAirfoilDialog(PymeadDialog):
     def __init__(self, parent: QWidget, geo_col: GeometryCollection, theme: dict, settings_override: dict = None):
-        mset_dialog_widget = MSETDialogWidget2(geo_col=geo_col, theme=theme)
+        mset_dialog_widget = MSETDialogWidget(geo_col=geo_col, theme=theme)
         mses_dialog_widget = MSESDialogWidget2(geo_col=geo_col)
         mset_dialog_widget.sigMEAChanged.connect(mses_dialog_widget.widget_dict["xtrs"].onMEAChanged)
         mplot_dialog_widget = MPLOTDialogWidget()
@@ -3259,8 +3176,8 @@ class OptimizationSetupDialog(PymeadDialog):
     def __init__(self, parent, geo_col: GeometryCollection, theme: dict, grid: bool, settings_override: dict = None):
         w0 = GAGeneralSettingsDialogWidget()
         w3 = XFOILDialogWidget(current_airfoils=[k for k in geo_col.container()["airfoils"]])
-        w4 = MSETDialogWidget2(geo_col=geo_col, theme=theme)
-        w2 = GAConstraintsTerminationDialogWidget2(geo_col=geo_col, theme=theme, grid=grid)
+        w4 = MSETDialogWidget(geo_col=geo_col, theme=theme)
+        w2 = GAConstraintsTerminationDialogWidget(geo_col=geo_col, theme=theme, grid=grid)
         w7 = MultiPointOptDialogWidget()
         w5 = MSESDialogWidget2(geo_col=geo_col)
         w1 = GeneticAlgorithmDialogWidget(multi_point_dialog_widget=w7)
