@@ -4249,3 +4249,9 @@ class GeometricConstraintGraphDialog(PymeadDialog):
 
     def onRejected(self):
         self.sigConstraintGraphClosed.emit()
+
+
+class FileOverwriteDialog(PymeadDialog):
+    def __init__(self, theme: dict, parent=None):
+        widget = QLabel("File already exists. Overwrite?")
+        super().__init__(parent=parent, window_title="Overwrite?", widget=widget, theme=theme)

@@ -47,7 +47,7 @@ from pymead.gui.dialogs import LoadDialog, SaveAsDialog, OptimizationSetupDialog
     MultiAirfoilDialog, ExportCoordinatesDialog, ExportControlPointsDialog, \
     AirfoilMatchingDialog, MSESFieldPlotDialog, ExportIGESDialog, XFOILDialog, NewGeoColDialog, EditBoundsDialog, \
     ExitDialog, ScreenshotDialog, LoadAirfoilAlgFile, ExitOptimizationDialog, SettingsDialog, LoadPointsDialog, \
-    PanelDialog
+    PanelDialog, FileOverwriteDialog
 from pymead.gui.dialogs import convert_dialog_to_mset_settings, convert_dialog_to_mses_settings, \
     convert_dialog_to_mplot_settings, convert_dialog_to_mpolar_settings, convert_opt_settings_to_param_dict
 from pymead.gui.main_icon_toolbar import MainIconToolbar
@@ -722,12 +722,22 @@ class GUI(FramelessMainWindow):
     def hideAllPymeadObjs(self):
         self.showHideState = self.airfoil_canvas.hideAllPymeadObjs()
 
-    def save_as_geo_col(self):
+    def save_as_geo_col(self) -> bool:
         dialog = SaveAsDialog(self)
         if dialog.exec():
-            self.current_save_name = dialog.selectedFiles()[0]
-            if self.current_save_name[-5:] != '.jmea':
-                self.current_save_name += '.jmea'
+            current_save_name = dialog.selectedFiles()[0]
+            if current_save_name[-5:] != '.jmea':
+                current_save_name += '.jmea'
+
+            # Handle the case where the file already exists and allow the user to cancel the operation if desired
+            overwrite_code = 1
+            if os.path.exists(current_save_name):
+                self.dialog = FileOverwriteDialog(theme=self.themes[self.current_theme], parent=self)
+                overwrite_code = self.dialog.exec()
+            if not overwrite_code:
+                return False
+
+            self.current_save_name = current_save_name
             self.save_geo_col()
             self.setWindowTitle(f"pymead - {os.path.split(self.current_save_name)[-1]}")
             self.disp_message_box(f"Multi-element airfoil saved as {self.current_save_name}", message_mode='info')
@@ -1107,6 +1117,21 @@ class GUI(FramelessMainWindow):
 
     def disp_message_box(self, message: str, message_mode: str = "error", rich_text: bool = False,
                          dialog_test_action: typing.Callable = None):
+        """
+        Displays a custom message box
+
+        Parameters
+        ----------
+        message: str
+            Message to display
+        message_mode: str
+            Type of message to send (either 'error', 'info', or 'warn')
+        rich_text: bool
+            Whether to display the message using rich text
+        dialog_test_action: typing.Callable or None
+            If not ``None``, a function pointer should be specified that intercepts the call to ``exec`` and
+            performs custom actions. Used for testing only.
+        """
         disp_message_box(message, self, message_mode=message_mode, rich_text=rich_text,
                          theme=self.themes[self.current_theme], dialog_test_action=dialog_test_action)
 
