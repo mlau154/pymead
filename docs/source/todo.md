@@ -64,6 +64,7 @@ Bug fixes
 Aesthetics
 ----------
 - Make airfoil coordinate downsampling preview adhere to the global format
+- Globally disable hover when dragging a point
 
 Testing
 -------

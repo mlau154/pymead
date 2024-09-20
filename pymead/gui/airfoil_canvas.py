@@ -50,6 +50,7 @@ class AirfoilCanvas(pg.PlotWidget):
         self.creating_collinear_constraint = None
         self.curve_hovered_item = None
         self.point_hovered_item = None
+        self.hovering_allowed = True
         self.constraint_hovered_item = None
         self.point_text_item = None
         self.enter_connection = None
@@ -704,10 +705,10 @@ class AirfoilCanvas(pg.PlotWidget):
 
     @undoRedoAction
     def pointStartedMoving(self, point: DraggablePoint):
-        pass
+        self.hovering_allowed = False
 
     def pointFinishedMoving(self, point: DraggablePoint):
-        pass
+        self.hovering_allowed = True
 
     def setItemStyle(self, item, style: str):
         valid_styles = ["default", "hovered", "selected"]
@@ -715,6 +716,8 @@ class AirfoilCanvas(pg.PlotWidget):
             raise ValueError(f"Style found ({style}) is not a valid style. Must be one of {valid_styles}.")
 
         if style == "hovered":
+            if not self.hovering_allowed:
+                return
             if isinstance(item, DraggablePoint):
                 self.point_hovered_item = item
                 point = self.point_hovered_item
@@ -801,6 +804,8 @@ class AirfoilCanvas(pg.PlotWidget):
         y_centroid: float
             y-location of the airfoil's centroid
         """
+        if not self.hovering_allowed:
+            return
 
         # Get the color for the text
         # main_color = None if self.gui_obj is None else self.gui_obj.themes[self.gui_obj.current_theme]["main-color"]
