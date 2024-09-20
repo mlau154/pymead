@@ -50,8 +50,6 @@ Bug fixes
   after a previous optimization to the same name but with additional numbers and strings following the root name
 - Fix draggable constraint handles interfering with each other
 - Fix angle constraints sometimes only responding to movement in the antiparallel direction
-- Create GUI error message instead of early terminating for plotting Mach contours etc. with MSES analysis if MuPDF
-  or ps2pdf not found
 - Fix visual artifacts of FramelessWindow appearing while dragging
 - Fix some airfoils of an MEA occasionally not being added to MSET dialog
 - Fix XFOIL/MSES/Opt settings not updating properly (including loading MSES settings in optimization setup overriding 
