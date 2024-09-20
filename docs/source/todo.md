@@ -38,6 +38,7 @@ Planned feature additions
 Refactoring
 -----------
 - Simplify the `PymeadObj` button implementation
+- Delete obsolete dialogs, dialog widgets, and dialog settings json files
 
 Bug fixes
 ---------
@@ -52,8 +53,6 @@ Bug fixes
 - Create GUI error message instead of early terminating for plotting Mach contours etc. with MSES analysis if MuPDF
   or ps2pdf not found
 - Fix visual artifacts of FramelessWindow appearing while dragging
-- Fix the following `QLayout` warning when loading downsampling preview:
-  'Attempting to add QLayout "" to DownsamplingPreviewDialog "", which already has a layout'
 - Fix some airfoils of an MEA occasionally not being added to MSET dialog
 - Fix XFOIL/MSES/Opt settings not updating properly (including loading MSES settings in optimization setup overriding 
   the dialog window title)

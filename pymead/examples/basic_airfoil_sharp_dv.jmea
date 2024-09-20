@@ -136,45 +136,56 @@
     "points": {
         "Point-1": {
             "x": 0.0,
-            "y": 0.0
+            "y": 0.0,
+            "relative_airfoil_name": null
         },
         "Point-2": {
             "x": 1.0,
-            "y": 0.0
+            "y": 0.0,
+            "relative_airfoil_name": null
         },
         "Point-3": {
             "x": 4.613815649804991e-18,
-            "y": 0.055
+            "y": 0.055,
+            "relative_airfoil_name": null
         },
         "Point-4": {
             "x": -6.349331890928227e-18,
-            "y": -0.04
+            "y": -0.04,
+            "relative_airfoil_name": null
         },
         "Point-5": {
             "x": 0.12604166666666666,
-            "y": 0.09387930883469453
+            "y": 0.0938793088346945,
+            "relative_airfoil_name": null
         },
         "Point-6": {
             "x": 0.06666666666666667,
-            "y": -0.04261491799784628
+            "y": -0.04261491799784628,
+            "relative_airfoil_name": null
         },
         "Point-7": {
             "x": 0.365,
-            "y": 0.105
+            "y": 0.105,
+            "relative_airfoil_name": null
         },
         "Point-8": {
             "x": 0.7334486334885807,
-            "y": 0.04301591578584641
+            "y": 0.043015915785846494,
+            "relative_airfoil_name": null
         },
         "Point-9": {
             "x": 0.4,
-            "y": -0.055
+            "y": -0.055,
+            "relative_airfoil_name": null
         },
         "Point-10": {
             "x": 0.7110027918632669,
-            "y": 0.024095926817073753
+            "y": 0.024095926817074006,
+            "relative_airfoil_name": null
         }
     },
+    "reference": {},
     "lines": {},
     "polylines": {},
     "bezier": {
@@ -186,7 +197,8 @@
                 "Point-7",
                 "Point-8",
                 "Point-2"
-            ]
+            ],
+            "default_nt": null
         },
         "Bezier-2": {
             "points": [
@@ -196,7 +208,8 @@
                 "Point-9",
                 "Point-10",
                 "Point-2"
-            ]
+            ],
+            "default_nt": null
         }
     },
     "airfoils": {
@@ -207,7 +220,13 @@
             "lower_surf_end": "Point-2"
         }
     },
-    "mea": {},
+    "mea": {
+        "MEA-1": {
+            "airfoils": [
+                "Airfoil-1"
+            ]
+        }
+    },
     "geocon": {
         "DistCon-1": {
             "p1": "Point-1",
@@ -288,8 +307,8 @@
         }
     },
     "metadata": {
-        "pymead_version": "2.0.0-beta.5",
-        "save_datetime": "2024-05-30 14:55:58.398156",
+        "pymead_version": "2.0.0-beta.12",
+        "save_datetime": "2024-09-20 14:49:07.022052",
         "length_unit": "m",
         "angle_unit": "rad",
         "area_unit": "m2"
