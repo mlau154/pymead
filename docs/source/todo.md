@@ -33,6 +33,7 @@ Planned feature additions
 - Add XFOIL flap deflection feature
 - Use `.jses` extension for MSES settings and `.jopt` for optimization settings files
 - Make geometric classes available from the top-level module
+- Add downsampling option to make number of sampled points on each curve proportional to arc length
 
 Refactoring
 -----------
@@ -59,10 +60,6 @@ Bug fixes
 - Add last-resort forceful process termination during closeEvent (especially from terminal `pymead-gui` command)
 - Fix bug where updating constraint value by typing text in the canvas leaves the visual value out of sync
   when the constraint parameter is a design variable and the requested value is out of bounds
-
-Aesthetics
-----------
-- Make airfoil coordinate downsampling preview adhere to the global format
 
 Testing
 -------

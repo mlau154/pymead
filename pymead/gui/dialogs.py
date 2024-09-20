@@ -1566,31 +1566,48 @@ class SingleAirfoilViscousDialog(QDialog):
         return self.inputs
 
 
-class DownsamplingPreviewDialog(PymeadDialog):
-    def __init__(self, theme: dict, mea_name: str, max_airfoil_points: int = None, curvature_exp: float = 2.0,
-                 parent: QWidget or None = None):
-        w = QWidget()
+class DownsamplingGraph:
+    def __init__(self, theme: dict, size: tuple = (1000, 300), grid: bool = False):
+        pg.setConfigOptions(antialias=True)
 
-        super().__init__(parent=parent, window_title="Airfoil Coordinates Preview", widget=w, theme=theme)
+        self.w = pg.GraphicsLayoutWidget(show=True, size=size)
 
-        self.setGeometry(300, 300, 700, 250)
-
-        self.grid_widget = {}
-        self.grid_layout = QGridLayout(self)
-        w.setLayout(self.grid_layout)
-
-        # Add pyqtgraph widget
-        self.w = pg.GraphicsLayoutWidget(parent=self, size=(700, 250))
         self.v = self.w.addPlot()
-        self.v.setAspectLocked()
+        self.v.setMenuEnabled(False)
+        self.v.setAspectLocked(True)
+        self.v.showGrid(x=grid, y=grid)
 
-        gui_object = get_parent(self, depth=5)
+        # Set the formatting for the graph based on the current theme
+        self.set_formatting(theme=theme)
 
-        theme = gui_object.themes[gui_object.current_theme]
+    def set_background(self, background_color: str):
+        self.w.setBackground(background_color)
+
+    def set_formatting(self, theme: dict):
         self.w.setBackground(theme["graph-background-color"])
+        label_font = f"{get_setting('axis-label-point-size')}pt {get_setting('axis-label-font-family')}"
+        self.v.setLabel(axis="bottom", text=f"x/c", font=label_font,
+                           color=theme["main-color"])
+        self.v.setLabel(axis="left", text=f"y/c", font=label_font, color=theme["main-color"])
+        tick_font = QFont(get_setting("axis-tick-font-family"), get_setting("axis-tick-point-size"))
+        self.v.getAxis("bottom").setTickFont(tick_font)
+        self.v.getAxis("left").setTickFont(tick_font)
+        self.v.getAxis("bottom").setTextPen(theme["main-color"])
+        self.v.getAxis("left").setTextPen(theme["main-color"])
+
+
+class DownsamplingPreviewDialog(PymeadDialog):
+    def __init__(self, theme: dict, gui_obj, mea_name: str,
+                 max_airfoil_points: int = None, curvature_exp: float = 2.0,
+                 parent: QWidget or None = None):
+
+        graph = DownsamplingGraph(theme=theme, grid=gui_obj.main_icon_toolbar.buttons["grid"]["button"].isChecked())
+
+        super().__init__(parent=parent, window_title="Airfoil Coordinates Preview", widget=graph.w, theme=theme,
+                         minimum_width=800, minimum_height=400)
 
         # Make a copy of the MEA
-        geo_col = GeometryCollection.set_from_dict_rep(gui_object.geo_col.get_dict_rep())
+        geo_col = GeometryCollection.set_from_dict_rep(gui_obj.geo_col.get_dict_rep())
         if len(geo_col.container()["mea"]) == 0:
             raise ValueError("No multi-element airfoils found in the geometry collection.")
         mea = geo_col.container()["mea"][mea_name]
@@ -1601,9 +1618,11 @@ class DownsamplingPreviewDialog(PymeadDialog):
         coords_list = mea.get_coords_list(max_airfoil_points, curvature_exp)
 
         for coords in coords_list:
-            self.v.plot(x=coords[:, 0], y=coords[:, 1], symbol="o")
-
-        self.grid_layout.addWidget(self.w, 0, 0, 3, 3)
+            graph.v.plot(
+                x=coords[:, 0], y=coords[:, 1], symbol="o",
+                symbolPen=pg.mkPen(color="indianred"), symbolBrush=pg.mkBrush(color="indianred"),
+                pen=pg.mkPen(color="cornflowerblue", width=2)
+            )
 
 
 class MSETDialogWidget(PymeadDialogWidget):
@@ -1676,14 +1695,14 @@ class MSETDialogWidget(PymeadDialogWidget):
 
     def show_airfoil_coordinates_preview(self, _):
         inputs = get_parent(self, 2).value()
-        use_downsampling = bool(inputs["MSET"]["use_downsampling"])
         downsampling_max_pts = inputs["MSET"]["downsampling_max_pts"]
         downsampling_curve_exp = inputs["MSET"]["downsampling_curve_exp"]
-        preview_dialog = DownsamplingPreviewDialog(theme=None,
-                                                   mea_name=None,
-                                                   max_airfoil_points=downsampling_max_pts,
-                                                   curvature_exp=downsampling_curve_exp,
-                                                   parent=self)
+        gui_obj = self.geo_col.gui_obj
+        preview_dialog = DownsamplingPreviewDialog(
+            theme=gui_obj.themes[gui_obj.current_theme], mea_name=inputs["MSET"]["mea"].value(), gui_obj=gui_obj,
+            max_airfoil_points=downsampling_max_pts,
+            curvature_exp=downsampling_curve_exp, parent=self
+        )
         preview_dialog.exec()
 
 
@@ -1828,9 +1847,11 @@ class MSETDialogWidget2(PymeadDialogWidget2):
 
     def showAirfoilCoordinatesPreview(self):
         mset_settings = self.value()
+        gui_obj = self.geo_col.gui_obj
         try:
             preview_dialog = DownsamplingPreviewDialog(
                 theme=self.theme, mea_name=self.widget_dict["mea"].widget.currentText(),
+                gui_obj=gui_obj,
                 max_airfoil_points=mset_settings["downsampling_max_pts"] if bool(mset_settings["use_downsampling"]) else None,
                 curvature_exp=mset_settings["downsampling_curve_exp"],
                 parent=self
