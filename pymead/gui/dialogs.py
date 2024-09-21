@@ -402,7 +402,8 @@ class PymeadLabeledDoubleSpinBox(QObject):
     sigValueChanged = pyqtSignal(float)
 
     def __init__(self, label: str = "", tool_tip: str = "", minimum: float = None, maximum: float = None,
-                 value: float = None, decimals: int = None, single_step: float = None, read_only: bool = None):
+                 value: float = None, decimals: int = None, single_step: float = None, push_label: str = None,
+                 read_only: bool = None):
         self.label = QLabel(label)
         self.widget = QDoubleSpinBox()
         self.label.setToolTip(tool_tip)
@@ -420,6 +421,10 @@ class PymeadLabeledDoubleSpinBox(QObject):
         if read_only is not None:
             self.widget.setReadOnly(read_only)
         self.push = None
+
+        if push_label is not None:
+            self.push = QPushButton(push_label)
+
         super().__init__()
         self.widget.valueChanged.connect(self.sigValueChanged)
 
@@ -453,7 +458,8 @@ class PymeadLabeledScientificDoubleSpinBox(QObject):
     sigValueChanged = pyqtSignal(float)
 
     def __init__(self, label: str = "", tool_tip: str = "", minimum: float = None, maximum: float = None,
-                 value: float = None, decimals: int = None, single_step: float = None, read_only: bool = None):
+                 value: float = None, decimals: int = None, single_step: float = None, push_label: str = None,
+                 read_only: bool = None):
         self.label = QLabel(label)
         self.widget = ScientificDoubleSpinBox()
         self.label.setToolTip(tool_tip)
@@ -471,6 +477,10 @@ class PymeadLabeledScientificDoubleSpinBox(QObject):
         if read_only is not None:
             self.widget.setReadOnly(read_only)
         self.push = None
+
+        if push_label is not None:
+            self.push = QPushButton(push_label)
+
         super().__init__()
         self.widget.valueChanged.connect(self.sigValueChanged)
 
@@ -505,6 +515,7 @@ class PymeadLabeledLineEdit(QObject):
 
     def __init__(self, label: str = "", tool_tip: str = "", text: str = "", push_label: str = None,
                  read_only: bool = None):
+
         self.label = QLabel(label)
         self.widget = QLineEdit(text)
         self.label.setToolTip(tool_tip)
@@ -2641,36 +2652,103 @@ class MultiPointOptDialogWidget(PymeadDialogWidget):
         pass
 
 
-class GeneticAlgorithmDialogWidget(PymeadDialogWidget):
-    def __init__(self, multi_point_dialog_widget: MultiPointOptDialogWidget):
-        super().__init__(settings_file=os.path.join(GUI_DEFAULTS_DIR, 'genetic_algorithm_settings.json'))
-        self.widget_dict['J']['widget'].textChanged.connect(partial(self.objectives_changed,
-                                                                    self.widget_dict['J']['widget']))
-        self.widget_dict['G']['widget'].textChanged.connect(partial(self.constraints_changed,
-                                                                    self.widget_dict['G']['widget']))
-        multi_point_active_widget = multi_point_dialog_widget.widget_dict['multi_point_active']['widget']
-        self.multi_point = multi_point_active_widget.isChecked()
-        tool = self.value()['tool']
-        self.cfd_template = tool
-        if self.multi_point:
-            self.cfd_template += '_MULTIPOINT'
-        multi_point_active_widget.stateChanged.connect(self.multi_point_changed)
+class GeneticAlgorithmDialogWidget(PymeadDialogWidget2):
+    def __init__(self, gui_obj, multi_point_dialog_widget: MultiPointOptDialogWidget, parent=None):
+        self.multi_point_dialog_widget = multi_point_dialog_widget
+        self.gui_obj = gui_obj
+        super().__init__(parent=parent)
+        self.multi_point = self.multi_point_dialog_widget.widget_dict["multi_point_active"]["widget"].isChecked()
+
+    def initializeWidgets(self, *args, **kwargs):
+        self.widget_dict = {
+            "tool": PymeadLabeledComboBox(label="CFD Tool", items=["XFOIL", "MSES"], current_item="XFOIL"),
+            "J": PymeadLabeledLineEdit(
+                label="Objective Functions",
+                tool_tip="Enter the objective functions to be minimized, separated by commas.\n"
+                         "Variables can be started with the dollar sign ($).",
+                text="$Cd"
+            ),
+            "G": PymeadLabeledLineEdit(
+                label="Aerodynamic Constraints ",
+                tool_tip="Enter the constraints to be applied, separated by commas.\n"
+                         "Variables can be started with the dollar sign ($).",
+                text=""
+            ),
+            "pop_size": PymeadLabeledSpinBox(label="Population Size", minimum=1, maximum=2147483647, value=50),
+            "n_offspring": PymeadLabeledSpinBox(
+                label="Number of Offspring",
+                tool_tip="Number of offspring to generate to fill out the population.\nOffspring with converged "
+                         "objective functions become members of the\ncurrent population until the population is "
+                         "full. Must be greater\nthan or equal to the population size",
+                minimum=1, maximum=2147483647, value=1500
+            ),
+            "max_sampling_width": PymeadLabeledDoubleSpinBox(
+                label="Max. Sampling Width", decimals=8, minimum=0, maximum=1.0, value=0.2, single_step=0.01,
+                push_label="Visualize sampling",
+                tool_tip="Maximum random distance from original (seed) parameter\n value for each active and "
+                         "unlinked parameter"
+            ),
+            "eta_crossover": PymeadLabeledDoubleSpinBox(
+                label="\u03b7 (crossover)", decimals=3, minimum=0.0, maximum=100000.0, value=20.0,
+                tool_tip="Simulated Binary Crossover parameter as described in\n"
+                         "https://pymoo.org/operators/crossover.html?highlight=eta%20crossover"
+            ),
+            "eta_mutation": PymeadLabeledDoubleSpinBox(
+                label="\u03b7 (mutation)", decimals=3, minimum=0.0, maximum=100000.0, value=15.0,
+                tool_tip="Polynomial Mutation parameter as descrbied in\n"
+                         "https://pymoo.org/operators/mutation.html"
+            ),
+            "random_seed": PymeadLabeledSpinBox(label="Random Seed", minimum=0, maximum=2147483647, value=1),
+            "num_processors": PymeadLabeledSpinBox(
+                label="Number of Processors", minimum=1, maximum=100000, value=os.cpu_count(),
+                tool_tip="Number of logical processors to use for the optimization. The default value is the "
+                         "total number of logical processors available on your machine."
+            ),
+            "algorithm_save_frequency": PymeadLabeledSpinBox(
+                label="State Save Frequency", minimum=1, maximum=1000, value=1,
+                tool_tip="How often to save the setCheckState of the genetic algorithm.\n"
+                         "A setValue of '1' enforces a setCheckState save every generation"
+            ),
+            "root_dir": PymeadLabeledLineEdit(label="Opt. Root Directory", text="", push_label="Choose folder"),
+            "opt_dir_name": PymeadLabeledLineEdit(
+                label="Opt. Directory Name", text="ga_opt",
+                tool_tip="A unique directory will be created inside 'root_dir' with this name\n"
+                         "and followed by an underscore and a number if necessary"
+            ),
+            "temp_analysis_dir_name": PymeadLabeledLineEdit(
+                label="Temp. Analysis Dir. Name", text="analysis_temp",
+                tool_tip="The directory 'root_dir/temp_analysis_dir_name' will be created\n"
+                         "to hold the temporary XFOIL or MSES analysis files"
+            )
+        }
+
+    def establishWidgetConnections(self):
+        self.widget_dict["max_sampling_width"].push.clicked.connect(self.visualize_sampling)
+        self.widget_dict["root_dir"].push.clicked.connect(
+            partial(self.select_directory, self.widget_dict["root_dir"].widget)
+        )
+        self.widget_dict["J"].sigValueChanged.connect(self.objectives_changed)
+        self.widget_dict["G"].sigValueChanged.connect(self.constraints_changed)
+        self.widget_dict["tool"].sigValueChanged.connect(self.update_objectives_and_constraints)
+        self.multi_point_dialog_widget.widget_dict["multi_point_active"]["widget"].stateChanged.connect(
+            self.update_objectives_and_constraints
+        )
 
     def setValue(self, new_values: dict):
         super().setValue(new_values)
         self.update_objectives_and_constraints()
 
-    def update_objectives_and_constraints(self):
-        inputs = self.value()
-        self.objectives_changed(self.widget_dict['J']['widget'], inputs['J'])
-        self.constraints_changed(self.widget_dict['G']['widget'], inputs['G'])
+    def update_objectives_and_constraints(self, *args, **kwargs):
+        self.multi_point = self.multi_point_dialog_widget.widget_dict["multi_point_active"]["widget"].isChecked()
+        value = self.value()
+        self.objectives_changed(value["J"])
+        self.constraints_changed(value["G"])
 
-    def visualize_sampling(self, ws_widget, _):
-        starting_value = ws_widget.value()
-        gui_obj = get_parent(self, depth=4)
-        background_color = gui_obj.themes[gui_obj.current_theme]["graph-background-color"]
-        theme = gui_obj.themes[gui_obj.current_theme]
-        geo_col_dict = gui_obj.geo_col.get_dict_rep()
+    def visualize_sampling(self):
+        starting_value = self.widget_dict["max_sampling_width"].value()
+        background_color = self.gui_obj.themes[self.gui_obj.current_theme]["graph-background-color"]
+        theme = self.gui_obj.themes[self.gui_obj.current_theme]
+        geo_col_dict = self.gui_obj.geo_col.get_dict_rep()
 
         dialog = SamplingVisualizationDialog(geo_col_dict=geo_col_dict, initial_sampling_width=starting_value,
                                              initial_n_samples=20, background_color=background_color, theme=theme,
@@ -2685,50 +2763,44 @@ class GeneticAlgorithmDialogWidget(PymeadDialogWidget):
 
     def multi_point_changed(self, state: int or bool):
         self.multi_point = state
-        self.objectives_changed(self.widget_dict['J']['widget'], self.widget_dict['J']['widget'].text())
-        self.constraints_changed(self.widget_dict['G']['widget'], self.widget_dict['G']['widget'].text())
+        self.objectives_changed(self.widget_dict["J"].widget.text())
+        self.constraints_changed(self.widget_dict["G"].widget.text())
 
-    def objectives_changed(self, widget, text: str):
-        objective_container = get_parent(self, depth=4)
-        if objective_container is None:
-            objective_container = get_parent(self, depth=1)
-        inputs = self.value()
-        tool = inputs['tool']
+    def get_template(self) -> dict:
+        dialog_value = self.value()
+        tool = dialog_value["tool"]
+        assert isinstance(tool, str)
         if self.multi_point:
-            tool += '_MULTIPOINT'
-        objective_container.objectives = []
+            tool += "_MULTIPOINT"
+        return getattr(cfd_output_templates, tool)
+
+    def objectives_changed(self, text: str):
+        widget = self.widget_dict["J"].widget
+        template = self.get_template()
+        self.gui_obj.objectives.clear()
         for obj_func_str in text.split(','):
             objective = Objective(obj_func_str)
-            objective_container.objectives.append(objective)
+            self.gui_obj.objectives.append(objective)
             if text == '':
                 widget.setStyleSheet("QLineEdit {background-color: rgba(176,25,25,50)}")
                 return
             try:
-                function_input_data1 = getattr(cfd_output_templates, tool)
-                function_input_data2 = self.convert_text_array_to_dict(inputs['additional_data'])
-                objective.update({**function_input_data1, **function_input_data2})
+                objective.update(template)
                 widget.setStyleSheet("QLineEdit {background-color: rgba(16,201,87,50)}")
             except FunctionCompileError:
                 widget.setStyleSheet("QLineEdit {background-color: rgba(176,25,25,50)}")
                 return
 
-    def constraints_changed(self, widget, text: str):
-        constraint_container = get_parent(self, depth=4)
-        if constraint_container is None:
-            constraint_container = get_parent(self, depth=1)
-        inputs = self.value()
-        tool = inputs['tool']
-        if self.multi_point:
-            tool += '_MULTIPOINT'
-        constraint_container.constraints = []
+    def constraints_changed(self, text: str):
+        widget = self.widget_dict["J"].widget
+        template = self.get_template()
+        self.gui_obj.objectives.clear()
         for constraint_func_str in text.split(','):
             if len(constraint_func_str) > 0:
                 constraint = Constraint(constraint_func_str)
-                constraint_container.constraints.append(constraint)
+                self.gui_obj.constraints.append(constraint)
                 try:
-                    function_input_data1 = getattr(cfd_output_templates, tool)
-                    function_input_data2 = self.convert_text_array_to_dict(inputs['additional_data'])
-                    constraint.update({**function_input_data1, **function_input_data2})
+                    constraint.update(template)
                     widget.setStyleSheet("QLineEdit {background-color: rgba(16,201,87,50)}")
                 except FunctionCompileError:
                     widget.setStyleSheet("QLineEdit {background-color: rgba(176,25,25,50)}")
@@ -3137,7 +3209,7 @@ class OptimizationSetupDialog(PymeadDialog):
         w2 = GAConstraintsTerminationDialogWidget(geo_col=geo_col, theme=theme, grid=grid)
         w7 = MultiPointOptDialogWidget()
         w5 = MSESDialogWidget2(geo_col=geo_col)
-        w1 = GeneticAlgorithmDialogWidget(multi_point_dialog_widget=w7)
+        w1 = GeneticAlgorithmDialogWidget(gui_obj=geo_col.gui_obj, multi_point_dialog_widget=w7)
         w6 = PymeadDialogWidget(os.path.join(GUI_DEFAULTS_DIR, 'mplot_settings.json'))
         w = OptimizationDialogVTabWidget(parent=self, widgets={'General Settings': w0,
                                                         'Genetic Algorithm': w1,
@@ -3146,8 +3218,8 @@ class OptimizationSetupDialog(PymeadDialog):
                                                         'XFOIL': w3, 'MSET': w4, 'MSES': w5, 'MPLOT': w6},
                                          settings_override=settings_override)
         super().__init__(parent=parent, window_title='Optimization Setup', widget=w, theme=theme)
-        w.objectives = self.parent().objectives
-        w.constraints = self.parent().constraints
+        w.objectives = geo_col.gui_obj.objectives
+        w.constraints = geo_col.gui_obj.constraints
 
         w1.update_objectives_and_constraints()  # IMPORTANT: makes sure that the objectives/constraints get stored
 
