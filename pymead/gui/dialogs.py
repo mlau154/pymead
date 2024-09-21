@@ -2629,49 +2629,6 @@ class GAConstraintsTerminationDialogWidget(PymeadDialogWidget2):
         }
 
 
-class GASaveLoadDialogWidget(PymeadDialogWidget):
-    def __init__(self):
-        super().__init__(settings_file=os.path.join(GUI_DEFAULTS_DIR, 'ga_save_load_settings.json'))
-        self.current_save_file = None
-
-    def select_json_file(self, line_edit: QLineEdit):
-        select_json_file(parent=self.parent(), line_edit=line_edit)
-
-    def select_existing_json_file(self, line_edit: QLineEdit):
-        select_existing_json_file(parent=self.parent(), line_edit=line_edit)
-
-    def select_directory(self, line_edit: QLineEdit):
-        select_directory(parent=self.parent(), line_edit=line_edit)
-
-    def save_opt_settings(self):
-        if self.current_save_file is not None:
-            new_inputs = self.parent().value()  # Gets the inputs from the PymeadDialogVTabWidget
-            save_data(new_inputs, self.current_save_file)
-            msg_box = PymeadMessageBox(parent=self, msg=f"Settings saved as {self.current_save_file}",
-                                       window_title='Save Notification', msg_mode='info')
-            msg_box.exec()
-        else:
-            self.saveas_opt_settings()
-
-    def load_opt_settings(self):
-        new_inputs = load_data(self.widget_dict['settings_load_dir']['widget'].text())
-        self.current_save_file = new_inputs['Save/Load']['settings_save_dir']
-        self.parent().setValue(new_inputs)  # Overrides the inputs for the whole PymeadDialogVTabWidget
-
-    def saveas_opt_settings(self):
-        inputs_to_save = self.parent().value()
-        input_filename = os.path.join(self.widget_dict['settings_saveas_dir']['widget'].text(),
-                                      self.widget_dict['settings_saveas_filename']['widget'].text())
-        save_data(inputs_to_save, input_filename)
-        self.current_save_file = input_filename
-        msg_box = PymeadMessageBox(parent=self, msg=f"Settings saved as {input_filename}",
-                                   window_title='Save Notification', msg_mode='info')
-        msg_box.exec()
-
-    def updateDialog(self, new_inputs: dict, w_name: str):
-        pass
-
-
 class MultiPointOptDialogWidget(PymeadDialogWidget):
     def __init__(self):
         super().__init__(settings_file=os.path.join(GUI_DEFAULTS_DIR, 'multi_point_opt_settings.json'))
