@@ -668,6 +668,8 @@ class LengthDesVar(LengthParam):
             Whether this method is being called directly from the geometric collection. Default: ``False``.
         """
 
+        self.assignable = True
+
         # Default behavior for lower bound
         if lower is None:
             lower = default_lower(value)
@@ -711,6 +713,8 @@ class AngleDesVar(AngleParam):
         setting_from_geo_col: bool
             Whether this method is being called directly from the geometric collection. Default: ``False``.
         """
+
+        self.assignable = True
 
         # Default behavior for lower bound
         if lower is None:

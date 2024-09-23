@@ -124,8 +124,8 @@
         },
         "ClusterAngle-1": {
             "value": 6.233185,
-            "lower": 4.986548,
-            "upper": 7.4798219999999995,
+            "lower": 6.0,
+            "upper": 6.4,
             "unit_type": "angle",
             "root": "Point-1",
             "rotation_handle": "Point-2",
@@ -171,7 +171,7 @@
             "relative_airfoil_name": null
         },
         "Point-3": {
-            "x": -0.014139396657403411,
+            "x": -0.01413939665740341,
             "y": 0.2531514577614256,
             "relative_airfoil_name": null
         },
@@ -197,7 +197,7 @@
         },
         "Point-8": {
             "x": 0.7346819153561801,
-            "y": 0.20630477800848196,
+            "y": 0.20630477800848193,
             "relative_airfoil_name": null
         },
         "Point-9": {
@@ -207,7 +207,7 @@
         },
         "Point-10": {
             "x": 0.7106058553349066,
-            "y": 0.18277431272411349,
+            "y": 0.18277431272411374,
             "relative_airfoil_name": null
         },
         "Point-11": {
@@ -227,7 +227,7 @@
         },
         "Point-14": {
             "x": 0.7106058553349066,
-            "y": -0.18277431272411349,
+            "y": -0.18277431272411374,
             "relative_airfoil_name": null
         },
         "Point-15": {
@@ -251,7 +251,7 @@
             "relative_airfoil_name": null
         },
         "Point-19": {
-            "x": -0.01413939665740338,
+            "x": -0.014139396657403379,
             "y": -0.2531514577614256,
             "relative_airfoil_name": null
         },
@@ -267,7 +267,7 @@
         },
         "Point-22": {
             "x": 0.7346819153561801,
-            "y": -0.20630477800848196,
+            "y": -0.20630477800848193,
             "relative_airfoil_name": null
         },
         "Point-23": {
@@ -579,7 +579,7 @@
     },
     "metadata": {
         "pymead_version": "2.0.0-beta.12",
-        "save_datetime": "2024-09-23 15:43:00.745919",
+        "save_datetime": "2024-09-23 15:47:29.715538",
         "length_unit": "m",
         "angle_unit": "rad",
         "area_unit": "m2"
