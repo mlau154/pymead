@@ -725,6 +725,19 @@ def update_mses_settings_from_stencil(mses_settings: dict, stencil: typing.List[
             mses_settings[stencil_var['variable']][stencil_var['index']] = stencil_var['points'][idx]
         else:
             mses_settings[stencil_var['variable']] = stencil_var['points'][idx]
+
+    if "PTRHIN-DesVar" not in mses_settings:
+        return mses_settings
+
+    if all([len(fpr_dv_list) == 0 for fpr_dv_list in mses_settings["PTRHIN-DesVar"]]):
+        return mses_settings
+
+    # Update the FPR from the list of fan pressure ratio design variables
+    for ad_idx, fpr_dv_list in enumerate(mses_settings["PTRHIN-DesVar"]):
+        if len(fpr_dv_list) == 0:
+            continue
+        mses_settings["PTRHIN"][idx] = fpr_dv_list[idx]
+
     return mses_settings
 
 
@@ -995,6 +1008,10 @@ def calculate_aero_data(conn: multiprocessing.connection.Connection or None,
         if 'multi_point_stencil' in mses_settings.keys() and mses_settings['multi_point_stencil'] is not None:
             stencil = mses_settings['multi_point_stencil']
             mset_mplot_loop_iterations = len(stencil[0]['points'])
+            aero_data_list = []
+        elif "PTRHIN-DesVar" in mses_settings.keys() and not all([len(fpr_dv_list) == 0 for fpr_dv_list in mses_settings["PTRHIN-DesVar"]]):
+            stencil = []
+            mset_mplot_loop_iterations = max([len(fpr_dv_list) for fpr_dv_list in mses_settings["PTRHIN-DesVar"]])
             aero_data_list = []
 
         # Multipoint Loop

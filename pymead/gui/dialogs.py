@@ -766,14 +766,12 @@ class PymeadLabeledListWidget:
         if items is not None:
             self.widget.addItems(items)
 
-    def value(self) -> dict:
-        return {
-            "items": [self.widget.item(i).text() for i in range(self.widget.count())]
-        }
+    def value(self) -> list:
+        return [self.widget.item(i).text() for i in range(self.widget.count())]
 
-    def setValue(self, d: dict):
+    def setValue(self, items: list):
         self.widget.clear()
-        for item in d["items"]:
+        for item in items:
             self.widget.addItem(item)
 
 
@@ -1277,18 +1275,16 @@ class DesVarListSelectionWidget(PymeadDialogWidget2):
                 self.widget_dict["selected_list"].takeItem(self.widget_dict["selected_list"].row(item))
             )
 
-    def value(self) -> dict:
+    def value(self) -> list:
         selected_list = self.widget_dict["selected_list"]
-        return {
-            "items": [selected_list.item(i).text() for i in range(selected_list.count())]
-        }
+        return [selected_list.item(i).text() for i in range(selected_list.count())]
 
-    def setValue(self, d: dict):
+    def setValue(self, items: list):
         available_list = self.widget_dict["main_list"]
         available_items = [available_list.item(i).text() for i in range(available_list.count())]
         selected_list = self.widget_dict["selected_list"]
         selected_list.clear()
-        for item in d["items"]:
+        for item in items:
             # Only move the item to the list on the right if it was found in the available list (on the left)
             if item not in available_items:
                 continue
@@ -1342,12 +1338,12 @@ class ADWidget(QTabWidget):
                                                  value=1.1, single_step=0.01, decimals=6),
             "ETAH": PymeadLabeledDoubleSpinBox(label="AD Thermal Efficiency", minimum=0.0, maximum=1.0,
                                                value=0.95, single_step=0.01),
-            "PTHRIN-DesVar": PymeadLabeledListWidget(
+            "PTRHIN-DesVar": PymeadLabeledListWidget(
                 label="FPR Design Variables",
                 tool_tip="Design variables used to define the fan pressure ratio at each point\nin the "
                          "multipoint stencil. Disabled if multipoint is not active."
             ),
-            "PTHRIN-DVSelect": PymeadLabeledPushButton(
+            "PTRHIN-DVSelect": PymeadLabeledPushButton(
                 label="FPR DV Selector",
                 text="Select",
                 tool_tip="Design variables used to define the fan pressure ratio at each point\nin the "
@@ -1357,7 +1353,7 @@ class ADWidget(QTabWidget):
 
         # Add connections
         self.widget_dict[name]["XCDELH-Param"].sigValueChanged.connect(partial(self.param_changed, name))
-        self.widget_dict[name]["PTHRIN-DVSelect"].widget.clicked.connect(self.openSelector)
+        self.widget_dict[name]["PTRHIN-DVSelect"].widget.clicked.connect(self.openSelector)
 
         for widget in self.widget_dict[name].values():
             row_count = self.grid_layout.rowCount()
@@ -1373,18 +1369,18 @@ class ADWidget(QTabWidget):
         tab_name = self.tabText(self.currentIndex())
         dialog = DesVarListSelectionDialog(
             window_title="Fan Pressure Ratio Design Variables", geo_col=self.geo_col, parent=self,
-            initial_items=self.widget_dict[tab_name]["PTHRIN-DesVar"].value()["items"]
+            initial_items=self.widget_dict[tab_name]["PTRHIN-DesVar"].value()["items"]
         )
         old_dialog_value = dialog.value()
         if dialog.exec():
             new_dialog_value = dialog.value()
-            self.widget_dict[tab_name]["PTHRIN-DesVar"].setValue(new_dialog_value)
-            for dv_name in old_dialog_value["items"]:
-                if dv_name in new_dialog_value["items"]:
+            self.widget_dict[tab_name]["PTRHIN-DesVar"].setValue(new_dialog_value)
+            for dv_name in old_dialog_value:
+                if dv_name in new_dialog_value:
                     continue
                 self.geo_col.container()["desvar"][dv_name].assignable = True
-            for dv_name in new_dialog_value["items"]:
-                if dv_name in old_dialog_value["items"]:
+            for dv_name in new_dialog_value:
+                if dv_name in old_dialog_value:
                     continue
                 self.geo_col.container()["desvar"][dv_name].assignable = False
 

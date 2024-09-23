@@ -124,17 +124,24 @@ class Chromosome:
     def update_param_dict(self):
         if self.param_dict["tool"] != "MSES":
             return
-        if "XCDELH-Param" not in self.param_dict["mses_settings"]:
-            return
-        xcdelh_params = self.param_dict["mses_settings"]["XCDELH-Param"]
-        for idx, xcdelh_param in enumerate(xcdelh_params):
-            if xcdelh_param:
-                if xcdelh_param in self.geo_col.container()["params"]:
-                    self.param_dict["mses_settings"]["XCDELH"][idx] = self.geo_col.container()["params"][xcdelh_param].value()
-                elif xcdelh_param in self.geo_col.container()["desvar"]:
-                    self.param_dict["mses_settings"]["XCDELH"][idx] = self.geo_col.container()["desvar"][xcdelh_param].value()
-                else:
-                    raise ValueError(f"Could not find XCDELH parameter {xcdelh_param}")
+
+        # Update the x/c-location of the actuator disks from the geometry collection value if necessary
+        if "XCDELH-Param" in self.param_dict["mses_settings"]:
+            xcdelh_params = self.param_dict["mses_settings"]["XCDELH-Param"]
+            for idx, xcdelh_param in enumerate(xcdelh_params):
+                if xcdelh_param:
+                    if xcdelh_param in self.geo_col.container()["params"]:
+                        self.param_dict["mses_settings"]["XCDELH"][idx] = self.geo_col.container()["params"][xcdelh_param].value()
+                    elif xcdelh_param in self.geo_col.container()["desvar"]:
+                        self.param_dict["mses_settings"]["XCDELH"][idx] = self.geo_col.container()["desvar"][xcdelh_param].value()
+                    else:
+                        raise ValueError(f"Could not find XCDELH parameter {xcdelh_param}")
+
+        # Update the fan pressure ratio from the updated design variable values if necessary
+        if "PTRHIN-DesVar" in self.param_dict["mses_settings"]:
+            for ad_idx, fpr_dv_list in enumerate(self.param_dict["mses_settings"]["PTRHIN-DesVar"]):
+                for fpr_idx, fpr_dv in enumerate(fpr_dv_list):
+                    self.param_dict["mses_settings"]["PTRHIN-DesVar"][ad_idx][fpr_idx] = self.geo_col.container["desvar"][fpr_dv].value()
 
     def chk_self_intersection(self) -> bool:
         """

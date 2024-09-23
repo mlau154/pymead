@@ -850,13 +850,15 @@ class GeometryCollection(DualRep):
         """
         # First check that the length of the input vector and the number of design variables are equal
         dv_val_len = len(dv_values)
-        num_dv = len(self.container()["desvar"])
-        if dv_val_len != num_dv:
+        num_assignable_dvs = len([dv for dv in self.container()["desvar"] if dv.assignable])
+        if dv_val_len != num_assignable_dvs:
             raise ValueError(f"Length of design variable values to assign ({dv_val_len}) is different than the "
-                             f"number of design variables ({num_dv})")
+                             f"number of assignable design variables ({num_assignable_dvs})")
 
         # Set the values
         for dv, dv_value in zip(self.container()["desvar"].values(), dv_values):
+            if not dv.assignable:
+                continue
             dv.set_value(dv_value, bounds_normalized=bounds_normalized)
 
     def alphabetical_sub_container_key_list(self, sub_container: str):
