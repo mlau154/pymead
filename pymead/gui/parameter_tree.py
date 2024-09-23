@@ -957,7 +957,12 @@ class ParameterTree(QTreeWidget):
             if pymead_obj is not None:
                 self.geo_col.hover_leave_obj(pymead_obj)
             else:
-                self.setItemStyle(self.previous_item_hovered, "default")
+                try:
+                    self.setItemStyle(self.previous_item_hovered, "default")
+                except RuntimeError:
+                    # Occasionally, this event still gets called after the item is deleted.
+                    # In this case, just exit the method.
+                    pass
 
         if not isinstance(tree_item, PymeadTreeWidgetItem):
             self.previous_item_hovered = tree_item
@@ -969,7 +974,12 @@ class ParameterTree(QTreeWidget):
             if pymead_obj is not None:
                 self.geo_col.hover_enter_obj(pymead_obj)
             else:
-                self.setItemStyle(tree_item, "hovered")
+                try:
+                    self.setItemStyle(tree_item, "hovered")
+                except RuntimeError:
+                    # Occasionally, this event still gets called after the item is deleted.
+                    # In this case, just exit the method.
+                    pass
 
         # Assign the current tree widget item to the previous item hovered
         self.previous_item_hovered = tree_item
