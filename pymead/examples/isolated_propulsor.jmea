@@ -121,6 +121,16 @@
             "rotation_handle": null,
             "enabled": true,
             "equation_str": null
+        },
+        "ClusterAngle-1": {
+            "value": 6.233185,
+            "lower": 4.986548,
+            "upper": 7.4798219999999995,
+            "unit_type": "angle",
+            "root": "Point-1",
+            "rotation_handle": "Point-2",
+            "enabled": true,
+            "equation_str": null
         }
     },
     "params": {
@@ -129,16 +139,6 @@
             "lower": null,
             "upper": null,
             "unit_type": "length",
-            "enabled": true,
-            "equation_str": null
-        },
-        "ClusterAngle-1": {
-            "value": 6.233185,
-            "lower": null,
-            "upper": null,
-            "unit_type": "angle",
-            "root": "Point-1",
-            "rotation_handle": "Point-2",
             "enabled": true,
             "equation_str": null
         },
@@ -171,7 +171,7 @@
             "relative_airfoil_name": null
         },
         "Point-3": {
-            "x": -0.014139396657403413,
+            "x": -0.014139396657403411,
             "y": 0.2531514577614256,
             "relative_airfoil_name": null
         },
@@ -181,8 +181,8 @@
             "relative_airfoil_name": null
         },
         "Point-5": {
-            "x": 0.09767093702684357,
-            "y": 0.3231268225192604,
+            "x": 0.09767093702684361,
+            "y": 0.32312682251926034,
             "relative_airfoil_name": null
         },
         "Point-6": {
@@ -197,7 +197,7 @@
         },
         "Point-8": {
             "x": 0.7346819153561801,
-            "y": 0.206304778008482,
+            "y": 0.20630477800848196,
             "relative_airfoil_name": null
         },
         "Point-9": {
@@ -207,7 +207,7 @@
         },
         "Point-10": {
             "x": 0.7106058553349066,
-            "y": 0.18277431272411374,
+            "y": 0.18277431272411349,
             "relative_airfoil_name": null
         },
         "Point-11": {
@@ -227,7 +227,7 @@
         },
         "Point-14": {
             "x": 0.7106058553349066,
-            "y": -0.18277431272411374,
+            "y": -0.18277431272411349,
             "relative_airfoil_name": null
         },
         "Point-15": {
@@ -251,13 +251,13 @@
             "relative_airfoil_name": null
         },
         "Point-19": {
-            "x": -0.014139396657403382,
+            "x": -0.01413939665740338,
             "y": -0.2531514577614256,
             "relative_airfoil_name": null
         },
         "Point-20": {
-            "x": 0.09767093702684361,
-            "y": -0.3231268225192604,
+            "x": 0.09767093702684365,
+            "y": -0.32312682251926034,
             "relative_airfoil_name": null
         },
         "Point-21": {
@@ -267,7 +267,7 @@
         },
         "Point-22": {
             "x": 0.7346819153561801,
-            "y": -0.206304778008482,
+            "y": -0.20630477800848196,
             "relative_airfoil_name": null
         },
         "Point-23": {
@@ -579,7 +579,7 @@
     },
     "metadata": {
         "pymead_version": "2.0.0-beta.12",
-        "save_datetime": "2024-09-23 15:29:01.304286",
+        "save_datetime": "2024-09-23 15:43:00.745919",
         "length_unit": "m",
         "angle_unit": "rad",
         "area_unit": "m2"
