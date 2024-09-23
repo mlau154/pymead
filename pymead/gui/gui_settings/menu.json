@@ -4,6 +4,7 @@
     "Open": ["load_geo_col", "Ctrl+O"],
     "Load Example": {
       "Aero-Propulsion": {
+        "Isolated Propulsor": "load_example_isolated_propulsor",
         "Underwing Propulsor": "load_example_underwing_propulsor"
       },
       "Airfoil Matching": {
