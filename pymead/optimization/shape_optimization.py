@@ -134,8 +134,8 @@ def shape_optimization(conn: multiprocessing.connection.Connection or None, para
 
         J, G, forces = compute_objectives_and_forces_from_evaluated_population(population, objectives, constraints)
 
-        if all([obj_value == 1000.0 for obj_value in J[:, 0]]) is None:
-            send_over_pipe(("text", f"Could not converge any individuals in the population. Optimization terminated."))
+        if all([obj_value == 1000.0 for obj_value in J[:, 0]]):
+            send_over_pipe(("disp_message_box", f"Could not converge any individuals in the population. Optimization terminated."))
             return
 
         pop_initial = pymoo.core.population.Population.new("X", np.array(X_list))
@@ -204,9 +204,9 @@ def shape_optimization(conn: multiprocessing.connection.Connection or None, para
 
             algorithm.evaluator.n_eval += n_eval
 
-            if all([obj_value == 1000.0 for obj_value in J[:, 0]]) is None:
+            if all([obj_value == 1000.0 for obj_value in J[:, 0]]):
                 send_over_pipe(
-                    ("text", f"Could not converge any individuals in the population. Optimization terminated."))
+                    ("disp_message_box", f"Could not converge any individuals in the population. Optimization terminated."))
                 return
 
             pop.set("F", J)
