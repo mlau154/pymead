@@ -16,7 +16,7 @@ from PyQt6.QtCore import pyqtSlot, QStandardPaths
 from PyQt6.QtGui import QFont
 from PyQt6.QtWidgets import (QWidget, QGridLayout, QLabel, QPushButton, QCheckBox, QTabWidget, QSpinBox,
                              QDoubleSpinBox, QComboBox, QDialog, QVBoxLayout, QSizeGrip, QDialogButtonBox, QMessageBox,
-                             QFormLayout, QRadioButton, QGroupBox, QSizePolicy, QColorDialog)
+                             QFormLayout, QRadioButton, QGroupBox, QSizePolicy, QColorDialog, QListWidget)
 from qframelesswindow import FramelessDialog
 
 from pymead import GUI_DEFAULTS_DIR, q_settings, GUI_DIALOG_WIDGETS_DIR, TargetPathNotFoundError
@@ -756,6 +756,27 @@ class PymeadLabeledPushButton:
                 self.push.hide()
 
 
+class PymeadLabeledListWidget:
+    def __init__(self, label: str = "", items: typing.List[str] = None, tool_tip: str = None):
+        self.label = QLabel(label)
+        self.widget = QListWidget()
+        if tool_tip is not None:
+            self.label.setToolTip(tool_tip)
+            self.widget.setToolTip(tool_tip)
+        if items is not None:
+            self.widget.addItems(items)
+
+    def value(self) -> dict:
+        return {
+            "items": [self.widget.item(i).text() for i in range(self.widget.count())]
+        }
+
+    def setValue(self, d: dict):
+        self.widget.clear()
+        for item in d["items"]:
+            self.widget.addItem(item)
+
+
 class PymeadDialogWidget2(QWidget):
     def __init__(self, parent=None, **kwargs):
         super().__init__(parent=parent)
@@ -1211,6 +1232,86 @@ class XTRSWidget(QTabWidget):
         return value
 
 
+class DesVarListSelectionWidget(PymeadDialogWidget2):
+    def __init__(self, geo_col: GeometryCollection, initial_items: list = None, parent=None):
+        self.geo_col = geo_col
+        initial_items = [] if initial_items is None else initial_items
+        super().__init__(parent=parent, initial_items=initial_items)
+
+    def initializeWidgets(self, *args, **kwargs):
+        self.widget_dict = {
+            "main_list": QListWidget(self),
+            "selected_list": QListWidget(self),
+            "add_button": QPushButton("Add >>", self),
+            "remove_button": QPushButton("<< Remove", self)
+        }
+
+        self.widget_dict["main_list"].addItems([
+            k for k in self.geo_col.container()["desvar"].keys() if k not in kwargs["initial_items"]
+        ])
+        self.widget_dict["selected_list"].addItems(kwargs["initial_items"])
+        self.widget_dict["main_list"].setSelectionMode(QListWidget.SelectionMode.MultiSelection)
+        self.widget_dict["selected_list"].setSelectionMode(QListWidget.SelectionMode.MultiSelection)
+
+    def addWidgets(self, *args, **kwargs):
+        self.lay.addWidget(self.widget_dict["main_list"], 0, 0, 4, 1)
+        self.lay.addWidget(self.widget_dict["add_button"], 0, 1, 1, 1)
+        self.lay.addWidget(self.widget_dict["remove_button"], 1, 1, 1, 1)
+        self.lay.addWidget(self.widget_dict["selected_list"], 0, 2, 4, 1)
+
+    def establishWidgetConnections(self):
+        self.widget_dict["add_button"].clicked.connect(self.onAddPressed)
+        self.widget_dict["remove_button"].clicked.connect(self.onRemovePressed)
+
+    def onAddPressed(self):
+        selected_items = self.widget_dict["main_list"].selectedItems()
+        for item in selected_items:
+            self.widget_dict["selected_list"].addItem(
+                self.widget_dict["main_list"].takeItem(self.widget_dict["main_list"].row(item))
+            )
+
+    def onRemovePressed(self):
+        selected_items = self.widget_dict["selected_list"].selectedItems()
+        for item in selected_items:
+            self.widget_dict["main_list"].addItem(
+                self.widget_dict["selected_list"].takeItem(self.widget_dict["selected_list"].row(item))
+            )
+
+    def value(self) -> dict:
+        selected_list = self.widget_dict["selected_list"]
+        return {
+            "items": [selected_list.item(i).text() for i in range(selected_list.count())]
+        }
+
+    def setValue(self, d: dict):
+        available_list = self.widget_dict["main_list"]
+        available_items = [available_list.item(i).text() for i in range(available_list.count())]
+        selected_list = self.widget_dict["selected_list"]
+        selected_list.clear()
+        for item in d["items"]:
+            # Only move the item to the list on the right if it was found in the available list (on the left)
+            if item not in available_items:
+                continue
+
+            selected_list.addItem(item)
+
+
+class DesVarListSelectionDialog(PymeadDialog):
+    def __init__(self, window_title: str, geo_col: GeometryCollection, initial_items: list = None, parent=None):
+        theme = geo_col.gui_obj.themes[geo_col.gui_obj.current_theme]
+        widget = DesVarListSelectionWidget(geo_col=geo_col, initial_items=initial_items)
+        super().__init__(parent=parent, window_title=window_title, widget=widget, theme=theme,
+                         minimum_width=400, minimum_height=500)
+
+    def create_button_box(self):
+        buttonBox = QDialogButtonBox(
+            QDialogButtonBox.StandardButton.Save | QDialogButtonBox.StandardButton.Cancel, self
+        )
+        buttonBox.accepted.connect(self.accept)
+        buttonBox.rejected.connect(self.reject)
+        return buttonBox
+
+
 class ADWidget(QTabWidget):
 
     ADChanged = pyqtSignal()
@@ -1240,11 +1341,23 @@ class ADWidget(QTabWidget):
             "PTRHIN": PymeadLabeledDoubleSpinBox(label="AD Total Pres. Ratio", minimum=1.0, maximum=np.inf,
                                                  value=1.1, single_step=0.01, decimals=6),
             "ETAH": PymeadLabeledDoubleSpinBox(label="AD Thermal Efficiency", minimum=0.0, maximum=1.0,
-                                               value=0.95, single_step=0.01)
+                                               value=0.95, single_step=0.01),
+            "PTHRIN-DesVar": PymeadLabeledListWidget(
+                label="FPR Design Variables",
+                tool_tip="Design variables used to define the fan pressure ratio at each point\nin the "
+                         "multipoint stencil. Disabled if multipoint is not active."
+            ),
+            "PTHRIN-DVSelect": PymeadLabeledPushButton(
+                label="FPR DV Selector",
+                text="Select",
+                tool_tip="Design variables used to define the fan pressure ratio at each point\nin the "
+                         "multipoint stencil. Disabled if multipoint is not active."
+            )
         }
 
-        # Add the connection between XCDELH-Param and XCDELH
+        # Add connections
         self.widget_dict[name]["XCDELH-Param"].sigValueChanged.connect(partial(self.param_changed, name))
+        self.widget_dict[name]["PTHRIN-DVSelect"].widget.clicked.connect(self.openSelector)
 
         for widget in self.widget_dict[name].values():
             row_count = self.grid_layout.rowCount()
@@ -1252,6 +1365,18 @@ class ADWidget(QTabWidget):
             self.grid_layout.addWidget(widget.widget, row_count, 1)
         self.grid_widgets[name] = self.grid_widget
         self.addTab(self.grid_widget, name)
+
+    def openSelector(self):
+        """
+        Opens a selection widget that allows the user to safely set the list of fan pressure ratio design variables.
+        """
+        tab_name = self.tabText(self.currentIndex())
+        dialog = DesVarListSelectionDialog(
+            window_title="Fan Pressure Ratio Design Variables", geo_col=self.geo_col, parent=self,
+            initial_items=self.widget_dict[tab_name]["PTHRIN-DesVar"].value()["items"]
+        )
+        if dialog.exec():
+            self.widget_dict[tab_name]["PTHRIN-DesVar"].setValue(dialog.value())
 
     def param_changed(self, ad_idx: str, param_name: str):
         if param_name == "":
