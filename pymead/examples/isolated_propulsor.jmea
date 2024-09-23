@@ -193,7 +193,7 @@
         "Point-7": {
             "x": 0.369791,
             "y": 0.286627,
-            "relative_airfoil_name": "Airfoil-1"
+            "relative_airfoil_name": null
         },
         "Point-8": {
             "x": 0.7346819153561801,
@@ -203,7 +203,7 @@
         "Point-9": {
             "x": 0.2608702834232352,
             "y": 0.24713519999999997,
-            "relative_airfoil_name": "Airfoil-1"
+            "relative_airfoil_name": null
         },
         "Point-10": {
             "x": 0.7106058553349066,
