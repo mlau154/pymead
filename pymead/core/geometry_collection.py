@@ -850,7 +850,7 @@ class GeometryCollection(DualRep):
         """
         # First check that the length of the input vector and the number of design variables are equal
         dv_val_len = len(dv_values)
-        num_assignable_dvs = len([dv for dv in self.container()["desvar"] if dv.assignable])
+        num_assignable_dvs = len([dv for dv in self.container()["desvar"].values() if dv.assignable])
         if dv_val_len != num_assignable_dvs:
             raise ValueError(f"Length of design variable values to assign ({dv_val_len}) is different than the "
                              f"number of assignable design variables ({num_assignable_dvs})")
