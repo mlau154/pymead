@@ -2256,8 +2256,14 @@ class GUI(FramelessMainWindow):
     def load_example_basic_airfoil_sharp(self):
         self.load_example("basic_airfoil_sharp.jmea")
 
+    def load_example_basic_airfoil_blunt(self):
+        self.load_example("basic_airfoil_blunt.jmea")
+
     def load_example_basic_airfoil_sharp_dv(self):
         self.load_example("basic_airfoil_sharp_dv.jmea")
+
+    def load_example_basic_airfoil_blunt_dv(self):
+        self.load_example("basic_airfoil_blunt_dv.jmea")
 
     def load_example_underwing_propulsor(self):
         self.load_example("underwing_propulsor.jmea")
