@@ -1375,8 +1375,18 @@ class ADWidget(QTabWidget):
             window_title="Fan Pressure Ratio Design Variables", geo_col=self.geo_col, parent=self,
             initial_items=self.widget_dict[tab_name]["PTHRIN-DesVar"].value()["items"]
         )
+        old_dialog_value = dialog.value()
         if dialog.exec():
-            self.widget_dict[tab_name]["PTHRIN-DesVar"].setValue(dialog.value())
+            new_dialog_value = dialog.value()
+            self.widget_dict[tab_name]["PTHRIN-DesVar"].setValue(new_dialog_value)
+            for dv_name in old_dialog_value["items"]:
+                if dv_name in new_dialog_value["items"]:
+                    continue
+                self.geo_col.container()["desvar"][dv_name].assignable = True
+            for dv_name in new_dialog_value["items"]:
+                if dv_name in old_dialog_value["items"]:
+                    continue
+                self.geo_col.container()["desvar"][dv_name].assignable = False
 
     def param_changed(self, ad_idx: str, param_name: str):
         if param_name == "":
@@ -1433,7 +1443,7 @@ class ADWidget(QTabWidget):
         self.remove_tabs(ads_to_remove)
 
     def value(self):
-        return {ad_idx: {ad_key: ad_spin.value() for ad_key, ad_spin in ad_data.items()}
+        return {ad_idx: {ad_key: ad_widget.value() for ad_key, ad_widget in ad_data.items()}
                 for ad_idx, ad_data in self.widget_dict.items()}
 
     def setAllActive(self, active: int):

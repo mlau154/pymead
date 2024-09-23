@@ -1017,7 +1017,7 @@ class ParameterTree(QTreeWidget):
         if style == "default":
             # item.setBackground(0, background_color)
             # item.setBackground(1, background_color)
-            brush = QBrush(QColor(self.parent().parent().themes[self.parent().parent().current_theme]['main-color']))
+            brush = QBrush(QColor(self.gui_obj.themes[self.gui_obj.current_theme]['main-color']))
             item.setForeground(0, brush)
         elif style == "hovered" and item.hoverable:
             # gradient = QtGui.QLinearGradient(0, 0, 150, 0)

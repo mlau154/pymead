@@ -596,7 +596,7 @@ class DesVar(Param):
     """
     def __init__(self, value: float, name: str, lower: float or None = None, upper: float or None = None,
                  sub_container: str = "desvar", setting_from_geo_col: bool = False, point=None, root=None,
-                 rotation_handle=None, enabled: bool = True, equation_str: str = None):
+                 rotation_handle=None, enabled: bool = True, equation_str: str = None, assignable: bool = True):
         """
         Parameters
         ==========
@@ -616,6 +616,8 @@ class DesVar(Param):
             Whether this method is being called directly from the geometric collection. Default: ``False``.
         """
 
+        self._assignable = None
+
         # Default behavior for lower bound
         if lower is None:
             lower = default_lower(value)
@@ -627,6 +629,17 @@ class DesVar(Param):
         super().__init__(value=value, name=name, lower=lower, upper=upper, sub_container=sub_container,
                          setting_from_geo_col=setting_from_geo_col, point=point, root=root,
                          rotation_handle=rotation_handle, enabled=enabled, equation_str=equation_str)
+
+        self.assignable = assignable
+
+    @property
+    def assignable(self):
+        return self._assignable
+
+    @assignable.setter
+    def assignable(self, assignable: bool):
+        """Currently used just for Fan Pressure Ratio design variables."""
+        self._assignable = assignable
 
 
 class LengthDesVar(LengthParam):
