@@ -774,6 +774,9 @@ class PymeadLabeledListWidget:
         for item in items:
             self.widget.addItem(item)
 
+    def setReadOnly(self, read_only: bool):
+        self.widget.setEnabled(not read_only)
+
 
 class PymeadDialogWidget2(QWidget):
     def __init__(self, parent=None, **kwargs):
