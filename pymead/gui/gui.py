@@ -798,12 +798,13 @@ class GUI(FramelessMainWindow):
         else:
             load_blank_geo_col()
 
-    def edit_bounds(self):
+    def edit_bounds(self, dialog_test_action: typing.Callable = None):
         if len(self.geo_col.container()["desvar"]) == 0:
             self.disp_message_box("No design variables present", message_mode="info")
             return
-        bv_dialog = EditBoundsDialog(geo_col=self.geo_col, theme=self.themes[self.current_theme], parent=self)
-        bv_dialog.exec()
+        self.dialog = EditBoundsDialog(geo_col=self.geo_col, theme=self.themes[self.current_theme], parent=self)
+        if (dialog_test_action is not None and not dialog_test_action(self.dialog)) or self.dialog.exec():
+            pass
 
     def auto_range_geometry(self):
         """
