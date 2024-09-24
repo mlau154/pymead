@@ -50,8 +50,28 @@ def test_upper_bound(app):
 
 
 def test_lower_bound_too_high(app):
-    pass
+    app.load_example_basic_airfoil_sharp_dv()
+
+    def dialog_action(dialog):
+        dialog.setModal(False)
+        dialog.show()
+        og = dialog.bv_table.item(0, 1).text()
+        dialog.bv_table.item(0, 1).setText(str(0.5))
+        dialog.accept()
+        assert (dialog.bv_table.item(0, 1).text() == og)
+
+    app.edit_bounds(dialog_test_action=dialog_action)
 
 
 def test_upper_bound_too_low(app):
-    pass
+    app.load_example_basic_airfoil_sharp_dv()
+
+    def dialog_action(dialog):
+        dialog.setModal(False)
+        dialog.show()
+        og = dialog.bv_table.item(0, 3).text()
+        dialog.bv_table.item(0, 3).setText(str(0.002))
+        dialog.accept()
+        assert (dialog.bv_table.item(0, 3).text() == og)
+
+    app.edit_bounds(dialog_test_action=dialog_action)
