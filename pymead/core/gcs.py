@@ -757,6 +757,10 @@ class GCS(networkx.DiGraph):
 
         for child_node in constraint.child_nodes:
             child_node.geo_cons.remove(constraint)
+            if constraint in child_node.x().geo_cons:
+                child_node.x().geo_cons.remove(constraint)
+            if constraint in child_node.y().geo_cons:
+                child_node.y().geo_cons.remove(constraint)
 
     def _solve_distance_constraint(self, source: DistanceConstraint):
         points_solved = []

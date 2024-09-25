@@ -98,16 +98,16 @@
         },
         "Point-9.x": {
             "value": 0.2608702834232352,
-            "lower": 0.2608702834232352,
-            "upper": 0.3913054251348527,
+            "lower": 0.2,
+            "upper": 0.4,
             "unit_type": "length",
             "enabled": true,
             "equation_str": null
         },
         "Point-9.y": {
             "value": 0.24713519999999997,
-            "lower": 0.1647568,
-            "upper": 0.24713519999999997,
+            "lower": 0.15,
+            "upper": 0.3,
             "unit_type": "length",
             "enabled": true,
             "equation_str": null
@@ -124,8 +124,8 @@
         },
         "ClusterAngle-1": {
             "value": 6.233185,
-            "lower": 6.0,
-            "upper": 6.4,
+            "lower": 6.12,
+            "upper": 6.32,
             "unit_type": "angle",
             "root": "Point-1",
             "rotation_handle": "Point-2",
@@ -157,6 +157,16 @@
             "unit_type": "length",
             "enabled": true,
             "equation_str": null
+        },
+        "Angle-6": {
+            "value": 1.5007960000000082,
+            "lower": null,
+            "upper": null,
+            "unit_type": "angle",
+            "root": null,
+            "rotation_handle": null,
+            "enabled": true,
+            "equation_str": null
         }
     },
     "points": {
@@ -171,7 +181,7 @@
             "relative_airfoil_name": null
         },
         "Point-3": {
-            "x": -0.01413939665740341,
+            "x": -0.014139396657403403,
             "y": 0.2531514577614256,
             "relative_airfoil_name": null
         },
@@ -181,8 +191,8 @@
             "relative_airfoil_name": null
         },
         "Point-5": {
-            "x": 0.09767093702684361,
-            "y": 0.32312682251926034,
+            "x": 0.09767093702684358,
+            "y": 0.3231268225192603,
             "relative_airfoil_name": null
         },
         "Point-6": {
@@ -211,18 +221,18 @@
             "relative_airfoil_name": null
         },
         "Point-11": {
-            "x": 0.9990001424226705,
-            "y": 0.15501427515884378,
+            "x": 0.9986502516108151,
+            "y": 0.15501952396500357,
             "relative_airfoil_name": null
         },
         "Point-12": {
-            "x": 0.9985003476620068,
-            "y": 0.14502677270842038,
+            "x": 0.9988502384738622,
+            "y": 0.14502152390226059,
             "relative_airfoil_name": null
         },
         "Point-13": {
-            "x": 0.9985003476620068,
-            "y": -0.14502677270842038,
+            "x": 0.9988502384738622,
+            "y": -0.14502152390226059,
             "relative_airfoil_name": null
         },
         "Point-14": {
@@ -251,13 +261,13 @@
             "relative_airfoil_name": null
         },
         "Point-19": {
-            "x": -0.014139396657403379,
+            "x": -0.014139396657403372,
             "y": -0.2531514577614256,
             "relative_airfoil_name": null
         },
         "Point-20": {
-            "x": 0.09767093702684365,
-            "y": -0.32312682251926034,
+            "x": 0.09767093702684362,
+            "y": -0.3231268225192603,
             "relative_airfoil_name": null
         },
         "Point-21": {
@@ -271,8 +281,8 @@
             "relative_airfoil_name": null
         },
         "Point-23": {
-            "x": 0.9990001424226705,
-            "y": -0.15501427515884378,
+            "x": 0.9986502516108151,
+            "y": -0.15501952396500357,
             "relative_airfoil_name": null
         },
         "Point-24": {
@@ -471,20 +481,6 @@
             "value": "Length-7",
             "constraint_type": "DistanceConstraint"
         },
-        "Perp3Con-2": {
-            "p1": "Point-1",
-            "p2": "Point-2",
-            "p3": "Point-11",
-            "constraint_type": "Perp3Constraint"
-        },
-        "AntiPar3Con-2": {
-            "p1": "Point-11",
-            "p2": "Point-2",
-            "p3": "Point-12",
-            "constraint_type": "AntiParallel3Constraint",
-            "polyline": null,
-            "point_on_curve": null
-        },
         "SymCon-1": {
             "p1": "AxisStart",
             "p2": "AxisEnd",
@@ -575,11 +571,26 @@
             "p3": "Point-2",
             "value": "Angle-5",
             "constraint_type": "RelAngle3Constraint"
+        },
+        "RelAng3Con-6": {
+            "p1": "Point-1",
+            "p2": "Point-2",
+            "p3": "Point-11",
+            "value": "Angle-6",
+            "constraint_type": "RelAngle3Constraint"
+        },
+        "AntiPar3Con-2": {
+            "p1": "Point-11",
+            "p2": "Point-2",
+            "p3": "Point-12",
+            "constraint_type": "AntiParallel3Constraint",
+            "polyline": null,
+            "point_on_curve": null
         }
     },
     "metadata": {
         "pymead_version": "2.0.0-beta.12",
-        "save_datetime": "2024-09-23 15:47:29.715538",
+        "save_datetime": "2024-09-24 11:41:54.474485",
         "length_unit": "m",
         "angle_unit": "rad",
         "area_unit": "m2"

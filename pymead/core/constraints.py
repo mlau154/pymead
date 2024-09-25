@@ -137,6 +137,11 @@ class SymmetryConstraint(GeoCon):
         self.p4 = p4  # Target point
         super().__init__(param=None, name=name, child_nodes=[self.p1, self.p2, self.p3, self.p4], kind="a4|d",
                          geo_col=geo_col)
+        for point in self.child_nodes:
+            if self not in point.x().geo_cons:
+                point.x().geo_cons.append(self)
+            if self not in point.y().geo_cons:
+                point.y().geo_cons.append(self)
 
     @staticmethod
     def check_if_point_is_symmetric_target(p: Point):
@@ -242,7 +247,7 @@ class RelAngle3Constraint(GeoCon):
         a1 = self.p2.measure_angle(self.p1)
         a2 = self.p2.measure_angle(self.p3)
         measured_angle = (a1 - a2) % (2 * np.pi)
-        return np.isclose(measured_angle, self.param().rad(), rtol=1e-14)
+        return np.isclose(measured_angle, self.param().rad() % (2 * np.pi), rtol=1e-14)
 
 
 @dataclass
@@ -435,7 +440,7 @@ class ROCurvatureConstraint(GeoCon):
 
     def verify(self) -> bool:
         data = self.calculate_curvature_data(self.curve_joint)
-        return np.isclose(data.R1, data.R2, rtol=1e-14)
+        return np.isclose(data.R1, data.R2, rtol=1e-14)  # TODO: account for infinite
 
 
 class ConstraintValidationError(Exception):

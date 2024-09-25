@@ -1731,136 +1731,15 @@ class GUI(FramelessMainWindow):
                 else:
                     opt_settings = self.opt_settings
 
-                param_dict = deepcopy(convert_opt_settings_to_param_dict(opt_settings))
-
-                # First check to make sure MSET, MSES, and MPLOT can be found on system path and marked as executable:
-                if param_dict["tool"] == "XFOIL" and shutil.which('xfoil') is None:
-                    self.disp_message_box('XFOIL executable \'xfoil\' not found on system path')
-                    return
-                if param_dict["tool"] == "MSES" and shutil.which('mset') is None:
-                    self.disp_message_box('MSES suite executable \'mset\' not found on system path')
-                    return
-                if param_dict["tool"] == "MSES" and shutil.which('mses') is None:
-                    self.disp_message_box('MSES suite executable \'mses\' not found on system path')
-                    return
-                if param_dict["tool"] == "MSES" and shutil.which('mplot') is None:
-                    self.disp_message_box('MPLOT suite executable \'mplot\' not found on system path')
-                    return
-
-                # print(f"{opt_settings['General Settings']['use_current_mea'] = }")
-                # if opt_settings['General Settings']['use_current_mea']:
-                #     # mea_dict = self.mea.copy_as_param_dict(deactivate_airfoil_graphs=True)
-                #     geo_col = self.geo_col.get_dict_rep()
-                # else:
-                #     mea_file = opt_settings['General Settings']['mea_file']
-                #     if not os.path.exists(mea_file):
-                #         self.disp_message_box('JMEA parametrization file not found', message_mode='error')
-                #         exit_the_dialog = True
-                #         early_return = True
-                #         continue
-                #     else:
-                #         # mea_dict = load_data(mea_file)
-                #         geo_col = load_data(mea_file)
                 geo_col = self.geo_col.get_dict_rep()
 
-                # # Generate the multi-element airfoil from the dictionary
-                # mea = MEA.generate_from_param_dict(mea_dict)
-
-                # TODO: reimplement this logic
-                # norm_val_list = geo_col.extract_design_variable_values(bounds_normalized=True)
-                # if isinstance(norm_val_list, str):
-                #     error_message = norm_val_list
-                #     self.disp_message_box(error_message, message_mode='error')
-                #     exit_the_dialog = True
-                #     early_return = True
-                #     continue
-
-                param_dict["n_var"] = len([k for k in geo_col["desvar"]])
-
-                # CONSTRAINTS
-                for airfoil_name, constraint_set in param_dict["constraints"].items():
-
-                    # Thickness distribution check parameters
-                    if constraint_set["thickness_at_points"][1]:
-                        thickness_file = constraint_set["thickness_at_points"][0]
-                        try:
-                            data = np.loadtxt(thickness_file)
-                            constraint_set["thickness_at_points"][0] = data.tolist()
-                        except FileNotFoundError:
-                            message = f"Thickness file {thickness_file} not found"
-                            self.disp_message_box(message=message, message_mode="error")
-                            raise FileNotFoundError(message)
-                    else:
-                        constraint_set['thickness_at_points'] = None
-
-                    # Internal geometry check parameters
-                    if constraint_set["internal_geometry"][1]:
-                        internal_geometry_file = constraint_set["internal_geometry"][0]
-                        try:
-                            data = np.loadtxt(internal_geometry_file)
-                            constraint_set["internal_geometry"][0] = data.tolist()
-                        except FileNotFoundError:
-                            message = f"Internal geometry file {internal_geometry_file} not found"
-                            self.disp_message_box(message=message, message_mode="error")
-                            raise FileNotFoundError(message)
-                    else:
-                        constraint_set["internal_geometry"] = None
-
-                # MULTI-POINT OPTIMIZATION
-                multi_point_stencil = None
-                if opt_settings['Multi-Point Optimization']['multi_point_active']:
-                    try:
-                        multi_point_data = np.loadtxt(param_dict['multi_point_stencil'], delimiter=',')
-                        multi_point_stencil = read_stencil_from_array(multi_point_data, tool=param_dict["tool"])
-                    except FileNotFoundError:
-                        message = f'Multi-point stencil file {param_dict["multi_point_stencil"]} not found'
-                        self.disp_message_box(message=message, message_mode='error')
-                        raise FileNotFoundError(message)
-                if param_dict['tool'] == 'MSES':
-                    param_dict['mses_settings']['multi_point_stencil'] = multi_point_stencil
-                elif param_dict['tool'] == 'XFOIL':
-                    param_dict['xfoil_settings']['multi_point_stencil'] = multi_point_stencil
-                else:
-                    raise ValueError(f"Currently only MSES and XFOIL are supported as analysis tools for "
-                                     f"aerodynamic shape optimization. Tool selected was {param_dict['tool']}")
-
-                # Warm start parameters
-                if opt_settings['General Settings']['warm_start_active']:
-                    opt_dir = opt_settings['General Settings']['warm_start_dir']
-                else:
-                    opt_dir = make_ga_opt_dir(opt_settings['Genetic Algorithm']['root_dir'],
-                                              opt_settings['Genetic Algorithm']['opt_dir_name'])
-
-                param_dict['opt_dir'] = opt_dir
-                self.current_opt_folder = opt_dir.replace(os.sep, "/")
-
-                name_base = 'ga_airfoil'
-                name = [f"{name_base}_{i}" for i in range(opt_settings['Genetic Algorithm']['n_offspring'])]
-                param_dict['name'] = name
-
-                # for airfoil in mea.airfoils.values():
-                #     airfoil.airfoil_graphs_active = False
-                # mea.airfoil_graphs_active = False
-                base_folder = os.path.join(opt_settings['Genetic Algorithm']['root_dir'],
-                                           opt_settings['Genetic Algorithm']['temp_analysis_dir_name'])
-                param_dict['base_folder'] = base_folder
-                if not os.path.exists(base_folder):
-                    os.mkdir(base_folder)
-
-                if opt_settings['General Settings']['warm_start_active']:
-                    param_dict['warm_start_generation'] = calculate_warm_start_index(
-                        opt_settings['General Settings']['warm_start_generation'], opt_dir)
-                    if param_dict['warm_start_generation'] == 0:
-                        opt_settings['General Settings']['warm_start_active'] = False
-                param_dict_save = deepcopy(param_dict)
-                if not opt_settings['General Settings']['warm_start_active']:
-                    save_data(param_dict_save, os.path.join(opt_dir, 'param_dict.json'))
-                    save_data(opt_settings, os.path.join(opt_dir, "opt_settings.json"))
-                else:
-                    save_data(param_dict_save, os.path.join(
-                        opt_dir, f'param_dict_{param_dict["warm_start_generation"]}.json'))
-                    save_data(opt_settings, os.path.join(
-                        opt_dir, f"opt_settings_{param_dict['warm_start_generation']}.json"))
+                try:
+                    param_dict = deepcopy(convert_opt_settings_to_param_dict(
+                        opt_settings, len(list(geo_col["desvar"].keys()))
+                    ))
+                except (ValueError, FileNotFoundError) as e:
+                    self.disp_message_box(str(e))
+                    return
 
                 if not loop_through_settings:
                     opt_settings_list = [opt_settings]
@@ -2282,6 +2161,14 @@ class GUI(FramelessMainWindow):
             self.showMaximized()
         else:
             self.showNormal()
+
+    def verify_constraints(self):
+        geo_col_copy = GeometryCollection.set_from_dict_rep(self.geo_col.get_dict_rep())
+        try:
+            geo_col_copy.verify_all()
+            self.disp_message_box("Constraint Verification Passed", message_mode="info")
+        except AssertionError:
+            self.disp_message_box("Constraint Verification Failed")
 
     def keyPressEvent(self, a0):
         if a0.key() == Qt.Key.Key_Escape:

@@ -71,6 +71,7 @@
   },
   "Dev": {
     "Show Constraint Graph": "show_constraint_graph",
-    "Show Param Graph": "show_param_graph"
+    "Show Param Graph": "show_param_graph",
+    "Verify Constraints": "verify_constraints"
   }
 }

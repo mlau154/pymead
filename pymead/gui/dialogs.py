@@ -1,4 +1,5 @@
 import os
+import shutil
 import sys
 import tempfile
 import typing
@@ -37,8 +38,9 @@ from pymead.gui.separation_lines import QHSeperationLine
 from pymead.gui.side_grip import SideGrip
 from pymead.gui.title_bar import DialogTitleBar
 from pymead.optimization.objectives_and_constraints import Objective, Constraint, FunctionCompileError
+from pymead.optimization.opt_setup import calculate_warm_start_index, read_stencil_from_array
 from pymead.utils.dict_recursion import recursive_get
-from pymead.utils.misc import get_setting, set_setting
+from pymead.utils.misc import get_setting, set_setting, make_ga_opt_dir
 from pymead.utils.read_write_files import load_data, save_data, load_documents_path
 from pymead.utils.widget_recursion import get_parent
 
@@ -1372,7 +1374,7 @@ class ADWidget(QTabWidget):
         tab_name = self.tabText(self.currentIndex())
         dialog = DesVarListSelectionDialog(
             window_title="Fan Pressure Ratio Design Variables", geo_col=self.geo_col, parent=self,
-            initial_items=self.widget_dict[tab_name]["PTRHIN-DesVar"].value()["items"]
+            initial_items=self.widget_dict[tab_name]["PTRHIN-DesVar"].value()
         )
         old_dialog_value = dialog.value()
         if dialog.exec():
@@ -2491,6 +2493,8 @@ class OptConstraintsDialogWidget(PymeadDialogWidget2):
 
         for k, v in d.items():
             if k in ["active_constraints", "visualize"]:
+                continue
+            if v is None:
                 continue
             self.widget_dict["active_constraints"].widget_dict[k].setChecked(v[1])
             self.widget_dict[k].setValue(v[0])
@@ -4193,7 +4197,7 @@ class SettingsDialog(PymeadDialog):
                          minimum_width=256, minimum_height=210)
 
 
-def convert_opt_settings_to_param_dict(opt_settings: dict) -> dict:
+def convert_opt_settings_to_param_dict(opt_settings: dict, n_var: int) -> dict:
     param_dict = {'tool': opt_settings['Genetic Algorithm']['tool'],
                   'algorithm_save_frequency': opt_settings['Genetic Algorithm']['algorithm_save_frequency'],
                   'n_obj': len(opt_settings['Genetic Algorithm']['J'].split(',')),
@@ -4244,6 +4248,107 @@ def convert_opt_settings_to_param_dict(opt_settings: dict) -> dict:
     elif opt_settings['XFOIL']['prescribe'] == 'Viscous Cl':
         param_dict['xfoil_settings']['CLI'] = opt_settings['XFOIL']['CLI']
     param_dict['mses_settings']['n_airfoils'] = param_dict['mset_settings']['n_airfoils']
+
+    # First check to make sure MSET, MSES, and MPLOT can be found on system path and marked as executable:
+    if param_dict["tool"] == "XFOIL" and shutil.which('xfoil') is None:
+        raise ValueError('XFOIL executable \'xfoil\' not found on system path')
+    if param_dict["tool"] == "MSES" and shutil.which('mset') is None:
+        raise ValueError('MSES suite executable \'mset\' not found on system path')
+    if param_dict["tool"] == "MSES" and shutil.which('mses') is None:
+        raise ValueError('MSES suite executable \'mses\' not found on system path')
+    if param_dict["tool"] == "MSES" and shutil.which('mplot') is None:
+        raise ValueError('MPLOT suite executable \'mplot\' not found on system path')
+
+    # TODO: reimplement this logic
+    # norm_val_list = geo_col.extract_design_variable_values(bounds_normalized=True)
+    # if isinstance(norm_val_list, str):
+    #     error_message = norm_val_list
+    #     self.disp_message_box(error_message, message_mode='error')
+    #     exit_the_dialog = True
+    #     early_return = True
+    #     continue
+
+    param_dict["n_var"] = n_var
+
+    # CONSTRAINTS
+    for airfoil_name, constraint_set in param_dict["constraints"].items():
+
+        # Thickness distribution check parameters
+        if constraint_set["thickness_at_points"][1]:
+            thickness_file = constraint_set["thickness_at_points"][0]
+            try:
+                data = np.loadtxt(thickness_file)
+                constraint_set["thickness_at_points"][0] = data.tolist()
+            except FileNotFoundError:
+                message = f"Thickness file {thickness_file} not found"
+                raise FileNotFoundError(message)
+        else:
+            constraint_set['thickness_at_points'] = None
+
+        # Internal geometry check parameters
+        if constraint_set["internal_geometry"][1]:
+            internal_geometry_file = constraint_set["internal_geometry"][0]
+            try:
+                data = np.loadtxt(internal_geometry_file)
+                constraint_set["internal_geometry"][0] = data.tolist()
+            except FileNotFoundError:
+                message = f"Internal geometry file {internal_geometry_file} not found"
+                raise FileNotFoundError(message)
+        else:
+            constraint_set["internal_geometry"] = None
+
+    # MULTI-POINT OPTIMIZATION
+    multi_point_stencil = None
+    if opt_settings['Multi-Point Optimization']['multi_point_active']:
+        try:
+            multi_point_data = np.loadtxt(param_dict['multi_point_stencil'], delimiter=',')
+            multi_point_stencil = read_stencil_from_array(multi_point_data, tool=param_dict["tool"])
+        except FileNotFoundError:
+            message = f'Multi-point stencil file {param_dict["multi_point_stencil"]} not found'
+            raise FileNotFoundError(message)
+    if param_dict['tool'] == 'MSES':
+        param_dict['mses_settings']['multi_point_stencil'] = multi_point_stencil
+    elif param_dict['tool'] == 'XFOIL':
+        param_dict['xfoil_settings']['multi_point_stencil'] = multi_point_stencil
+    else:
+        raise ValueError(f"Currently only MSES and XFOIL are supported as analysis tools for "
+                         f"aerodynamic shape optimization. Tool selected was {param_dict['tool']}")
+
+    # Warm start parameters
+    if opt_settings['General Settings']['warm_start_active']:
+        opt_dir = opt_settings['General Settings']['warm_start_dir']
+    else:
+        opt_dir = make_ga_opt_dir(opt_settings['Genetic Algorithm']['root_dir'],
+                                  opt_settings['Genetic Algorithm']['opt_dir_name'])
+
+    param_dict['opt_dir'] = opt_dir
+    # self.current_opt_folder = opt_dir.replace(os.sep, "/")
+
+    name_base = 'ga_airfoil'
+    name = [f"{name_base}_{i}" for i in range(opt_settings['Genetic Algorithm']['n_offspring'])]
+    param_dict['name'] = name
+
+    base_folder = os.path.join(opt_settings['Genetic Algorithm']['root_dir'],
+                               opt_settings['Genetic Algorithm']['temp_analysis_dir_name'])
+    param_dict['base_folder'] = base_folder
+    if not os.path.exists(base_folder):
+        os.mkdir(base_folder)
+
+    if opt_settings['General Settings']['warm_start_active']:
+        param_dict['warm_start_generation'] = calculate_warm_start_index(
+            opt_settings['General Settings']['warm_start_generation'], opt_dir)
+        if param_dict['warm_start_generation'] == 0:
+            opt_settings['General Settings']['warm_start_active'] = False
+    param_dict_save = deepcopy(param_dict)
+    if not opt_settings['General Settings']['warm_start_active']:
+        save_data(param_dict_save, os.path.join(opt_dir, 'param_dict.json'))
+        save_data(opt_settings, os.path.join(opt_dir, "opt_settings.json"))
+    else:
+        save_data(param_dict_save, os.path.join(
+            opt_dir, f'param_dict_{param_dict["warm_start_generation"]}.json'))
+        save_data(opt_settings, os.path.join(
+            opt_dir, f"opt_settings_{param_dict['warm_start_generation']}.json"))
+
     return param_dict
 
 
