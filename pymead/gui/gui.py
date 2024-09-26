@@ -1425,7 +1425,7 @@ class GUI(FramelessMainWindow):
             else:
                 self.n_analyses += 1
 
-    def multi_airfoil_analysis_setup(self):
+    def multi_airfoil_analysis_setup(self, dialog_test_action: typing.Callable = None):
 
         # First check to make sure MSET, MSES, and MPLOT can be found on system path and marked as executable:
         if shutil.which('mset') is None:
@@ -1444,7 +1444,8 @@ class GUI(FramelessMainWindow):
         )
         self.dialog.accepted.connect(self.multi_airfoil_analysis_accepted)
         self.dialog.rejected.connect(self.multi_airfoil_analysis_rejected)
-        self.dialog.exec()
+        if (dialog_test_action is not None and not dialog_test_action(self.dialog)) or self.dialog.exec():
+            pass
 
     def multi_airfoil_analysis_accepted(self):
 
