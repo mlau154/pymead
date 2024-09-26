@@ -4271,6 +4271,10 @@ def convert_opt_settings_to_param_dict(opt_settings: dict, n_var: int) -> dict:
     param_dict["n_var"] = n_var
 
     # CONSTRAINTS
+    # First set the param dict constraints as a deepcopy to ensure that the thickness distribution constraint
+    # file paths do not get overridden by the data.tolist() call
+    opt_settings["Constraints/Termination"]["constraints"] = deepcopy(param_dict["constraints"])
+
     for airfoil_name, constraint_set in param_dict["constraints"].items():
 
         # Thickness distribution check parameters

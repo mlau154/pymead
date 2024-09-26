@@ -57,6 +57,7 @@ Bug fixes
 - Add last-resort forceful process termination during closeEvent (especially from terminal `pymead-gui` command)
 - Fix bug where updating constraint value by typing text in the canvas leaves the visual value out of sync
   when the constraint parameter is a design variable and the requested value is out of bounds
+- Point.x and Point.y desvar/params possibly do not get deleted properly after their parent point is deleted
 
 Testing
 -------
