@@ -1300,130 +1300,132 @@ class GUI(FramelessMainWindow):
                                                         transformation_order=inputs["transformation_order"])
             self.disp_message_box(f"Airfoil geometry saved to {iges_file_path}", message_mode="info")
 
-    def single_airfoil_viscous_analysis(self):
+    def single_airfoil_viscous_analysis(self, dialog_test_action: typing.Callable = None) -> dict:
         self.dialog = XFOILDialog(parent=self, current_airfoils=[k for k in self.geo_col.container()["airfoils"]],
                                   theme=self.themes[self.current_theme], settings_override=self.xfoil_settings)
         current_airfoils = [k for k in self.geo_col.container()["airfoils"].keys()]
         self.dialog.w.widget_dict["airfoil"]["widget"].addItems(current_airfoils)
-        if self.dialog.exec():
+        if (dialog_test_action is not None and not dialog_test_action(self.dialog)) or self.dialog.exec():
             inputs = self.dialog.value()
             self.xfoil_settings = inputs
         else:
-            inputs = None
+            return {}
 
-        if inputs is not None:
-            xfoil_settings = {'Re': inputs['Re'],
-                              'Ma': inputs['Ma'],
-                              'prescribe': inputs['prescribe'],
-                              'timeout': inputs['timeout'],
-                              'iter': inputs['iter'],
-                              'xtr': [inputs['xtr_lower'], inputs['xtr_upper']],
-                              'N': inputs['N'],
-                              'base_dir': inputs['base_dir'],
-                              'airfoil_name': inputs['airfoil_name'],
-                              'airfoil': inputs['airfoil'],
-                              "visc": inputs["viscous_flag"]}
-            if xfoil_settings['prescribe'] == 'Angle of Attack (deg)':
-                xfoil_settings['alfa'] = inputs['alfa']
-            elif xfoil_settings['prescribe'] == 'Viscous Cl':
-                xfoil_settings['Cl'] = inputs['Cl']
-            elif xfoil_settings['prescribe'] == 'Inviscid Cl':
-                xfoil_settings['CLI'] = inputs['CLI']
+        xfoil_settings = {'Re': inputs['Re'],
+                          'Ma': inputs['Ma'],
+                          'prescribe': inputs['prescribe'],
+                          'timeout': inputs['timeout'],
+                          'iter': inputs['iter'],
+                          'xtr': [inputs['xtr_lower'], inputs['xtr_upper']],
+                          'N': inputs['N'],
+                          'base_dir': inputs['base_dir'],
+                          'airfoil_name': inputs['airfoil_name'],
+                          'airfoil': inputs['airfoil'],
+                          "visc": inputs["viscous_flag"]}
+        if xfoil_settings['prescribe'] == 'Angle of Attack (deg)':
+            xfoil_settings['alfa'] = inputs['alfa']
+        elif xfoil_settings['prescribe'] == 'Viscous Cl':
+            xfoil_settings['Cl'] = inputs['Cl']
+        elif xfoil_settings['prescribe'] == 'Inviscid Cl':
+            xfoil_settings['CLI'] = inputs['CLI']
 
-            # TODO: insert downsampling step here
+        # TODO: insert downsampling step here
 
-            # coords = tuple(self.mea.deepcopy().airfoils[xfoil_settings['airfoil']].get_coords(
-            #     body_fixed_csys=False, as_tuple=True))
+        # coords = tuple(self.mea.deepcopy().airfoils[xfoil_settings['airfoil']].get_coords(
+        #     body_fixed_csys=False, as_tuple=True))
 
-            if xfoil_settings["airfoil"] == "":
-                self.disp_message_box("An airfoil was not chosen for analysis")
-                return
-            coords = self.geo_col.container()["airfoils"][xfoil_settings["airfoil"]].get_scaled_coords()
+        if xfoil_settings["airfoil"] == "":
+            self.disp_message_box("An airfoil was not chosen for analysis")
+            return {}
 
-            try:
-                aero_data, _ = calculate_aero_data(None,
-                                                   xfoil_settings['base_dir'],
-                                                   xfoil_settings['airfoil_name'],
-                                                   coords=coords,
-                                                   tool="XFOIL",
-                                                   xfoil_settings=xfoil_settings,
-                                                   export_Cp=True
-                                                   )
-            except ValueError as e:
-                self.disp_message_box(str(e))
-                return
+        coords = self.geo_col.container()["airfoils"][xfoil_settings["airfoil"]].get_scaled_coords()
 
-            if not aero_data['converged'] or aero_data['errored_out'] or aero_data['timed_out']:
-                self.disp_message_box("XFOIL Analysis Failed", message_mode='error')
-                self.output_area_text(
-                    f"[{str(self.n_analyses).zfill(2)}] ")
-                self.output_area_text(
-                    f"<a href='file:///{os.path.join(xfoil_settings['base_dir'], xfoil_settings['airfoil_name'])}'><font family='DejaVu Sans Mono' size='3'>XFOIL</font></a>",
-                    mode="html")
-                self.output_area_text(
-                    f" Converged = {aero_data['converged']} | Errored out = "
-                    f"{aero_data['errored_out']} | Timed out = {aero_data['timed_out']}", line_break=True)
+        try:
+            aero_data, _ = calculate_aero_data(None,
+                                               xfoil_settings['base_dir'],
+                                               xfoil_settings['airfoil_name'],
+                                               coords=coords,
+                                               tool="XFOIL",
+                                               xfoil_settings=xfoil_settings,
+                                               export_Cp=True
+                                               )
+        except ValueError as e:
+            self.disp_message_box(str(e))
+            return {}
+
+        if not aero_data['converged'] or aero_data['errored_out'] or aero_data['timed_out']:
+            self.disp_message_box("XFOIL Analysis Failed", message_mode='error')
+            self.output_area_text(
+                f"[{str(self.n_analyses).zfill(2)}] ")
+            self.output_area_text(
+                f"<a href='file:///{os.path.join(xfoil_settings['base_dir'], xfoil_settings['airfoil_name'])}'><font family='DejaVu Sans Mono' size='3'>XFOIL</font></a>",
+                mode="html")
+            self.output_area_text(
+                f" Converged = {aero_data['converged']} | Errored out = "
+                f"{aero_data['errored_out']} | Timed out = {aero_data['timed_out']}", line_break=True)
+        else:
+            self.output_area_text(
+                f"[{str(self.n_analyses).zfill(2)}] ")
+            self.output_area_text(
+                f"<a href='file:///{os.path.join(xfoil_settings['base_dir'], xfoil_settings['airfoil_name'])}'><font family='DejaVu Sans Mono' size='3'>XFOIL</font></a>",
+                mode="html")
+            if xfoil_settings["visc"]:
+                self.output_area_text(f" ({xfoil_settings['airfoil']}, "
+                                      f"\u03b1 = {aero_data['alf']:.3f}\u00b0, Re = {xfoil_settings['Re']:.3E}, "
+                                      f"Ma = {xfoil_settings['Ma']:.3f}): "
+                                      f"Cl = {aero_data['Cl']:+7.4f} | Cd = {aero_data['Cd']:+.5f} | Cm = {aero_data['Cm']:+7.4f} "
+                                      f"| L/D = {aero_data['L/D']:+8.4f}".replace("-", "\u2212"), line_break=True)
             else:
-                self.output_area_text(
-                    f"[{str(self.n_analyses).zfill(2)}] ")
-                self.output_area_text(
-                    f"<a href='file:///{os.path.join(xfoil_settings['base_dir'], xfoil_settings['airfoil_name'])}'><font family='DejaVu Sans Mono' size='3'>XFOIL</font></a>",
-                    mode="html")
-                if xfoil_settings["visc"]:
-                    self.output_area_text(f" ({xfoil_settings['airfoil']}, "
-                                          f"\u03b1 = {aero_data['alf']:.3f}\u00b0, Re = {xfoil_settings['Re']:.3E}, "
-                                          f"Ma = {xfoil_settings['Ma']:.3f}): "
-                                          f"Cl = {aero_data['Cl']:+7.4f} | Cd = {aero_data['Cd']:+.5f} | Cm = {aero_data['Cm']:+7.4f} "
-                                          f"| L/D = {aero_data['L/D']:+8.4f}".replace("-", "\u2212"), line_break=True)
-                else:
-                    self.output_area_text(f" ({xfoil_settings['airfoil']}, "
-                                          f"\u03b1 = {aero_data['alf']:.3f}\u00b0, "
-                                          f"Ma = {xfoil_settings['Ma']:.3f}): "
-                                          f"Cl = {aero_data['Cl']:+7.4f} | Cm = {aero_data['Cm']:+7.4f}".replace("-",
-                                                                                                                 "\u2212"),
-                                          line_break=True)
-            bar = self.text_area.verticalScrollBar()
-            sb = bar
-            sb.setValue(sb.maximum())
+                self.output_area_text(f" ({xfoil_settings['airfoil']}, "
+                                      f"\u03b1 = {aero_data['alf']:.3f}\u00b0, "
+                                      f"Ma = {xfoil_settings['Ma']:.3f}): "
+                                      f"Cl = {aero_data['Cl']:+7.4f} | Cm = {aero_data['Cm']:+7.4f}".replace("-",
+                                                                                                             "\u2212"),
+                                      line_break=True)
+        bar = self.text_area.verticalScrollBar()
+        sb = bar
+        sb.setValue(sb.maximum())
 
-            if aero_data['converged'] and not aero_data['errored_out'] and not aero_data['timed_out']:
-                if self.analysis_graph is None:
-                    # TODO: Need to set analysis_graph to None if analysis window is closed! Might also not want to allow geometry docking window to be closed
-                    self.analysis_graph = AnalysisGraph(
-                        theme=self.themes[self.current_theme],
-                        gui_obj=self,
-                        background_color=self.themes[self.current_theme]["graph-background-color"],
-                        grid=self.main_icon_toolbar.buttons["grid"]["button"].isChecked()
-                    )
-                    self.add_new_tab_widget(self.analysis_graph.w, "Analysis")
+        if aero_data['converged'] and not aero_data['errored_out'] and not aero_data['timed_out']:
+            if self.analysis_graph is None:
+                # TODO: Need to set analysis_graph to None if analysis window is closed! Might also not want to allow geometry docking window to be closed
+                self.analysis_graph = AnalysisGraph(
+                    theme=self.themes[self.current_theme],
+                    gui_obj=self,
+                    background_color=self.themes[self.current_theme]["graph-background-color"],
+                    grid=self.main_icon_toolbar.buttons["grid"]["button"].isChecked()
+                )
+                self.add_new_tab_widget(self.analysis_graph.w, "Analysis")
 
-                if xfoil_settings["visc"]:
-                    name = (
-                        f"[{str(self.n_analyses)}] X ({xfoil_settings['airfoil']}, \u03b1 = {aero_data['alf']:.1f}\u00b0,"
-                        f" Re = {xfoil_settings['Re']:.1E}, Ma = {xfoil_settings['Ma']:.2f})")
-                else:
-                    name = (
-                        f"[{str(self.n_analyses)}] X ({xfoil_settings['airfoil']}, \u03b1 = {aero_data['alf']:.1f}\u00b0,"
-                        f" Ma = {xfoil_settings['Ma']:.2f})")
-
-                pg_plot_handle = self.analysis_graph.v.plot(pen=pg.mkPen(color=self.pen(self.n_converged_analyses)[0],
-                                                                         style=self.pen(self.n_converged_analyses)[1]),
-                                                            name=name)
-                self.analysis_graph.set_legend_label_format(self.themes[self.current_theme])
-
-                self.cached_cp_data.append({
-                    "tool": "XFOIL",
-                    "index": self.n_analyses,
-                    "xc": aero_data["Cp"]["x"],
-                    "Cp": aero_data["Cp"]["Cp"]
-                })
-
-                pg_plot_handle.setData(aero_data['Cp']['x'], aero_data['Cp']['Cp'])
-                # pen = pg.mkPen(color='green')
-                self.n_converged_analyses += 1
-                self.n_analyses += 1
+            if xfoil_settings["visc"]:
+                name = (
+                    f"[{str(self.n_analyses)}] X ({xfoil_settings['airfoil']}, \u03b1 = {aero_data['alf']:.1f}\u00b0,"
+                    f" Re = {xfoil_settings['Re']:.1E}, Ma = {xfoil_settings['Ma']:.2f})")
             else:
-                self.n_analyses += 1
+                name = (
+                    f"[{str(self.n_analyses)}] X ({xfoil_settings['airfoil']}, \u03b1 = {aero_data['alf']:.1f}\u00b0,"
+                    f" Ma = {xfoil_settings['Ma']:.2f})")
+
+            pg_plot_handle = self.analysis_graph.v.plot(pen=pg.mkPen(color=self.pen(self.n_converged_analyses)[0],
+                                                                     style=self.pen(self.n_converged_analyses)[1]),
+                                                        name=name)
+            self.analysis_graph.set_legend_label_format(self.themes[self.current_theme])
+
+            self.cached_cp_data.append({
+                "tool": "XFOIL",
+                "index": self.n_analyses,
+                "xc": aero_data["Cp"]["x"],
+                "Cp": aero_data["Cp"]["Cp"]
+            })
+
+            pg_plot_handle.setData(aero_data['Cp']['x'], aero_data['Cp']['Cp'])
+            # pen = pg.mkPen(color='green')
+            self.n_converged_analyses += 1
+            self.n_analyses += 1
+        else:
+            self.n_analyses += 1
+
+        return aero_data
 
     def multi_airfoil_analysis_setup(self, dialog_test_action: typing.Callable = None):
 
