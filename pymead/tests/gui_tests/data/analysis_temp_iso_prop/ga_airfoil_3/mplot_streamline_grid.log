@@ -1,0 +1,49 @@
+Output:
+
+ ===================================
+
+    1  Airfoil surface  plots
+    2  Streamtube       plots
+    3  Contour/grid     plots
+    4  Outer streamline plots
+    5  Wake profile     plots
+  
+    6  Zoom
+    7  Unzoom
+    8  Plotting options
+  
+    9  Re-read mdat.xxx
+   10  Dump streamline grid
+   11  Dump flowfield
+   12  Dump BLs
+   13  Dump outer streamline Cp
+  
+   21  Dump stagnation-streamline points
+
+ Select MPLOT option (0=Exit):  
+ Enter output filename: grid.ga_airfoil_3                                 
+ File exists.  Overwrite?  Y
+
+ ===================================
+
+    1  Airfoil surface  plots
+    2  Streamtube       plots
+    3  Contour/grid     plots
+    4  Outer streamline plots
+    5  Wake profile     plots
+  
+    6  Zoom
+    7  Unzoom
+    8  Plotting options
+  
+    9  Re-read mdat.xxx
+   10  Dump streamline grid
+   11  Dump flowfield
+   12  Dump BLs
+   13  Dump outer streamline Cp
+  
+   21  Dump stagnation-streamline points
+
+ Select MPLOT option (0=Exit):  
+Errors:
+Note: The following floating-point exceptions are signalling: IEEE_DENORMAL

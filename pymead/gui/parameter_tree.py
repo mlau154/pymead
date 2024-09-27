@@ -50,8 +50,8 @@ class ValueSpin(QDoubleSpinBox):
     def __init__(self, parent, param: Param):
         super().__init__(parent)
         self.pymead_obj = param
-        self.setMaximumWidth(150)
-        self.setDecimals(6)
+        self.setMaximumWidth(200)
+        self.setDecimals(16)
         self.setSingleStep(0.01)
         if isinstance(param, LengthParam) or isinstance(param, AngleParam):
             self.setSuffix(f" {param.unit()}")
@@ -865,9 +865,9 @@ class ParameterTree(QTreeWidget):
         self.setHeader(self.headerRow)
 
         # Set the tree widget geometry
-        self.setMinimumWidth(300)
+        self.setMinimumWidth(400)
         self.header().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
-        self.setColumnWidth(1, 120)
+        self.setColumnWidth(1, 200)
 
         # Set the tree to be expanded by default
         self.expandAll()

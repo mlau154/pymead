@@ -65,7 +65,6 @@ def do_sampling(param_dict: dict, norm_parm_list: list) -> list or np.ndarray:
     ----------
     param_dict: dict
         Parameter dictionary assigned to the population and chromosomes (copied and modified form of the optimization settings)
-
     norm_parm_list: list
         List of normalized geometry collection design variable values (from the baseline geometry)
     """

@@ -1,0 +1,201 @@
+Output:
+
+ Machine epsilon =   2.2204460492503131E-016
+
+ MSES v 3.13
+
+ ga_airfoil_3                    
+ Element 1:   Jtop = 40  Jbot = 39    iLE =  42  iTE = 222
+ Element 2:   Jtop = 24  Jbot = 23    iLE =  41  iTE = 223
+
+ Vortex + doublet far field
+
+ Analysis mode
+ Boundary Layer coupling with
+    envelope transition prediction
+ S-momentum will be conserved, except near near leading edge
+ 2nd-order upwinding will be used
+
+ Actuator disk plane at x/c = 0.400   i = 118   j =  24 ..  38
+ pt2/pt1 =   1.04000       dCpo =  0.675829    
+ ht2/ht1 =   1.01186       etah =  0.950000    
+
+ Active global variables ...
+  3  DCIRC  far-field vortex strength
+  4  DALFA  angle of attack
+  5  DSBLE  LE stagnation point for element            1
+  5  DSBLE  LE stagnation point for element            2
+     DMAS1  mass fraction DOF   for element            1
+  7  DDOUB  x,y-doublet, source strengths
+
+ Number of global variables :  8
+
+ Active global constraints ...
+  3  Set LE Kutta condition for           2   Elements
+  4  Set TE Kutta condition for           2   Elements
+  5  Drive alpha from    0.0000000000000000       to    0.0000000000000000     
+  7  Drive x,y-doublets,source to farfield match
+
+ Number of global constraints :  8
+
+ 100 Newton iterations will be performed
+
+ Initializing BL ...
+
+ OSMAP:  OS database file not found:                                                                                                                                                                                                                                                                 
+         Will return zero amplification rates
+  
+ Side 1  free  transition at  X (x/c) i =    0.1822 (0.1780)   90
+ Side 2  free  transition at  X (x/c) i =    0.1027 (0.1044)   68
+ Side 3  free  transition at  X (x/c) i =    0.1058 (0.1075)   68
+ Side 4  free  transition at  X (x/c) i =    0.1843 (0.1801)   90
+ Wake smoothed for element            1
+
+ RLXS: 0.664033
+ RLXQ: 0.379798    Q clamped at   42  38
+ RLXV: 0.419285    H clamped at I =  43, side   3
+
+    1 G rms(dR): 0.195E-01  Max(dR): -.509E-01  at   90  40
+        rms(dA): 0.106E+00  Max(dA): -.668E+00  at   67  24
+        rms(dV): 0.182E+00  Max(dH): 0.256E+01  at   43   3
+        dsLE 1 : -.870E-02  df/f 1 : 0.000E+00  df/f 2 : 0.000E+00
+        dsLE 2 : 0.106E-01  df/f 3 : 0.000E+00  df/f 4 : 0.000E+00
+        dGamma : 0.930E-03  dAlpha : 0.000E+00    dCDv : -0.001534
+        dDoubx : -.172E+00  dDouby : -.351E-02   dSrce : -.666E-01
+        dmfr/m :  -0.104E-01
+  
+ Side 1  free  transition at  X (x/c) i =    0.2211 (0.2167)   96
+ Side 2  free  transition at  X (x/c) i =    0.0794 (0.0813)   65
+ Side 3  free  transition at  X (x/c) i =    0.0813 (0.0832)   64
+ Side 4  free  transition at  X (x/c) i =    0.2197 (0.2153)   95
+
+ RLXV: 0.272672    H clamped at I =  67, side   3
+
+    2   rms(dR): 0.124E-01  Max(dR): -.316E-01  at   91  40
+        rms(dA): 0.467E-01  Max(dA): -.775E+00  at   68  24
+        rms(dV): 0.160E+00  Max(dH): -.940E+01  at   67   3
+        dsLE 1 : -.447E-02  df/f 1 : 0.000E+00  df/f 2 : 0.000E+00
+        dsLE 2 : 0.461E-02  df/f 3 : 0.000E+00  df/f 4 : 0.000E+00
+        dGamma : 0.522E-03  dAlpha : 0.000E+00    dCDv : -0.001060
+        dDoubx : -.923E-01  dDouby : -.937E-03   dSrce : -.395E-01
+        dmfr/m :  -0.534E-02
+  
+ Side 1  free  transition at  X (x/c) i =    0.2282 (0.2238)   97
+ Side 2  free  transition at  X (x/c) i =    0.0733 (0.0752)   64
+ Side 3  free  transition at  X (x/c) i =    0.0748 (0.0767)   64
+ Side 4  free  transition at  X (x/c) i =    0.2286 (0.2242)   97
+
+ RLXV: 0.349243    H clamped at I =  64, side   3
+
+    3 G rms(dR): 0.905E-02  Max(dR): -.234E-01  at   74  22
+        rms(dA): 0.298E-01  Max(dA): 0.945E+00  at   67  24
+        rms(dV): 0.106E+00  Max(dH): -.454E+01  at   64   3
+        dsLE 1 : -.314E-02  df/f 1 : 0.000E+00  df/f 2 : 0.000E+00
+        dsLE 2 : 0.308E-02  df/f 3 : 0.000E+00  df/f 4 : 0.000E+00
+        dGamma : -.620E-03  dAlpha : 0.000E+00    dCDv : -0.000665
+        dDoubx : -.652E-01  dDouby : -.360E-03   dSrce : -.279E-01
+        dmfr/m :  -0.371E-02
+  
+ Side 1  free  transition at  X (x/c) i =    0.2319 (0.2275)   98
+ Side 2  free  transition at  X (x/c) i =    0.0654 (0.0675)   62
+ Side 3  free  transition at  X (x/c) i =    0.0677 (0.0697)   62
+ Side 4  free  transition at  X (x/c) i =    0.2339 (0.2294)   97
+
+ RLXV: 0.665937    H clamped at I =  63, side   3
+
+    4   rms(dR): 0.591E-02  Max(dR): -.155E-01  at   74  22
+        rms(dA): 0.188E-01  Max(dA): -.184E+00  at   64  24
+        rms(dV): 0.568E-01  Max(dH): -.315E+01  at   63   3
+        dsLE 1 : -.210E-02  df/f 1 : 0.000E+00  df/f 2 : 0.000E+00
+        dsLE 2 : 0.173E-02  df/f 3 : 0.000E+00  df/f 4 : 0.000E+00
+        dGamma : -.511E-04  dAlpha : 0.000E+00    dCDv : -0.000255
+        dDoubx : -.416E-01  dDouby : -.743E-05   dSrce : -.175E-01
+        dmfr/m :  -0.233E-02
+  
+ Side 1  free  transition at  X (x/c) i =    0.2380 (0.2336)   98
+ Side 2  free  transition at  X (x/c) i =    0.0594 (0.0614)   62
+ Side 3  free  transition at  X (x/c) i =    0.0600 (0.0620)   61
+ Side 4  free  transition at  X (x/c) i =    0.2392 (0.2347)   98
+
+    5 S rms(dR): 0.198E-02  Max(dR): -.537E-02  at   72  22
+        rms(dA): 0.594E-02  Max(dA): -.123E+00  at   63  24
+        rms(dV): 0.249E-01  Max(dH): -.164E+01  at   62   2
+        dsLE 1 : -.789E-03  df/f 1 : 0.000E+00  df/f 2 : 0.000E+00
+        dsLE 2 : 0.570E-03  df/f 3 : 0.000E+00  df/f 4 : 0.000E+00
+        dGamma : -.739E-03  dAlpha : 0.000E+00    dCDv :  0.000015
+        dDoubx : -.134E-01  dDouby : 0.199E-03   dSrce : -.549E-02
+        dmfr/m :  -0.734E-03
+  
+ Side 1  free  transition at  X (x/c) i =    0.2406 (0.2362)   99
+ Side 2  free  transition at  X (x/c) i =    0.0568 (0.0588)   61
+ Side 3  free  transition at  X (x/c) i =    0.0563 (0.0584)   61
+ Side 4  free  transition at  X (x/c) i =    0.2408 (0.2363)   98
+
+    6   rms(dR): 0.103E-03  Max(dR): 0.133E-02  at   44  37
+        rms(dA): 0.436E-02  Max(dA): 0.145E+00  at   40  24
+        rms(dV): 0.117E-01  Max(dH): -.555E+00  at   61   3
+        dsLE 1 : -.216E-03  df/f 1 : 0.000E+00  df/f 2 : 0.000E+00
+        dsLE 2 : -.782E-04  df/f 3 : 0.000E+00  df/f 4 : 0.000E+00
+        dGamma : -.515E-04  dAlpha : 0.000E+00    dCDv :  0.000008
+        dDoubx : 0.107E-04  dDouby : 0.262E-04   dSrce : 0.292E-04
+        dmfr/m :   0.257E-05
+  
+ Side 1  free  transition at  X (x/c) i =    0.2408 (0.2364)   99
+ Side 2  free  transition at  X (x/c) i =    0.0565 (0.0586)   61
+ Side 3  free  transition at  X (x/c) i =    0.0562 (0.0583)   61
+ Side 4  free  transition at  X (x/c) i =    0.2409 (0.2365)   98
+
+    7   rms(dR): 0.865E-05  Max(dR): -.291E-03  at   43  38
+        rms(dA): 0.613E-03  Max(dA): 0.253E-01  at   39  24
+        rms(dV): 0.196E-02  Max(dH): 0.898E-01  at   61   3
+        dsLE 1 : -.404E-04  df/f 1 : 0.000E+00  df/f 2 : 0.000E+00
+        dsLE 2 : 0.401E-04  df/f 3 : 0.000E+00  df/f 4 : 0.000E+00
+        dGamma : -.131E-04  dAlpha : 0.000E+00    dCDv :  0.000000
+        dDoubx : 0.105E-04  dDouby : 0.335E-05   dSrce : 0.149E-05
+        dmfr/m :   0.812E-07
+  
+ Side 1  free  transition at  X (x/c) i =    0.2408 (0.2364)   99
+ Side 2  free  transition at  X (x/c) i =    0.0564 (0.0584)   61
+ Side 3  free  transition at  X (x/c) i =    0.0562 (0.0583)   61
+ Side 4  free  transition at  X (x/c) i =    0.2409 (0.2365)   98
+
+    8   rms(dR): 0.393E-06  Max(dR): 0.116E-04  at   37  24
+        rms(dA): 0.177E-04  Max(dA): 0.932E-03  at   40  24
+        rms(dV): 0.580E-04  Max(dH): -.109E-02  at   62   3
+        dsLE 1 : -.531E-06  df/f 1 : 0.000E+00  df/f 2 : 0.000E+00
+        dsLE 2 : 0.134E-05  df/f 3 : 0.000E+00  df/f 4 : 0.000E+00
+        dGamma : -.702E-06  dAlpha : 0.000E+00    dCDv : -0.000000
+        dDoubx : -.145E-06  dDouby : 0.159E-06   dSrce : 0.260E-07
+        dmfr/m :  -0.115E-07
+  
+ Side 1  free  transition at  X (x/c) i =    0.2408 (0.2364)   99
+ Side 2  free  transition at  X (x/c) i =    0.0564 (0.0584)   61
+ Side 3  free  transition at  X (x/c) i =    0.0562 (0.0583)   61
+ Side 4  free  transition at  X (x/c) i =    0.2409 (0.2365)   98
+
+    9   rms(dR): 0.164E-06  Max(dR): 0.536E-05  at   37  24
+        rms(dA): 0.397E-05  Max(dA): 0.218E-03  at   40  24
+        rms(dV): 0.750E-05  Max(dH): -.519E-04  at   44   1
+        dsLE 1 : -.401E-06  df/f 1 : 0.000E+00  df/f 2 : 0.000E+00
+        dsLE 2 : 0.181E-06  df/f 3 : 0.000E+00  df/f 4 : 0.000E+00
+        dGamma : 0.703E-08  dAlpha : 0.000E+00    dCDv : -0.000000
+        dDoubx : 0.272E-09  dDouby : -.351E-08   dSrce : 0.284E-10
+        dmfr/m :  -0.172E-10
+  
+ Side 1  free  transition at  X (x/c) i =    0.2408 (0.2364)   99
+ Side 2  free  transition at  X (x/c) i =    0.0564 (0.0584)   61
+ Side 3  free  transition at  X (x/c) i =    0.0562 (0.0583)   61
+ Side 4  free  transition at  X (x/c) i =    0.2409 (0.2365)   98
+
+   10   rms(dR): 0.777E-07  Max(dR): 0.264E-05  at   37  24
+        rms(dA): 0.185E-05  Max(dA): 0.107E-03  at   40  24
+        rms(dV): 0.163E-05  Max(dH): -.895E-05  at   44   1
+        dsLE 1 : -.142E-06  df/f 1 : 0.000E+00  df/f 2 : 0.000E+00
+        dsLE 2 : 0.286E-07  df/f 3 : 0.000E+00  df/f 4 : 0.000E+00
+        dGamma : -.242E-08  dAlpha : 0.000E+00    dCDv :  0.000000
+        dDoubx : 0.407E-09  dDouby : -.819E-10   dSrce : 0.707E-11
+        dmfr/m :  -0.142E-10
+ Converged on tolerance
+
+Errors:
+Note: The following floating-point exceptions are signalling: IEEE_UNDERFLOW_FLAG IEEE_DENORMAL

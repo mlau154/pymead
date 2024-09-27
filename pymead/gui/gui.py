@@ -84,13 +84,19 @@ warnings.filterwarnings("ignore", category=DeprecationWarning)
 class GUI(FramelessMainWindow):
     _gripSize = 5
 
-    def __init__(self, path=None, parent=None, bypass_vercheck: bool = False):
+    def __init__(self,
+                 path=None,
+                 parent=None,
+                 bypass_vercheck: bool = False,
+                 bypass_exit_save_dialog: bool = False
+                 ):
         # try:
         #     import pyi_splash
         #     pyi_splash.update_text("Initializing constants...")
         # except:
         #     pass
         super().__init__(parent=parent)
+        self.bypass_exit_save_dialog = bypass_exit_save_dialog
         self.showHideState = None
         self.windowMaximized = False
         self.pool = None
@@ -355,7 +361,7 @@ class GUI(FramelessMainWindow):
         Close Event handling for the GUI, allowing changes to be saved before exiting the program.
 
         Parameters
-        ==========
+        ----------
         a0: QCloseEvent
             Qt CloseEvent object
         """
@@ -367,22 +373,23 @@ class GUI(FramelessMainWindow):
                 a0.ignore()
                 return
 
-        if self.changes_made():  # Only run this code if changes have been made
-            save_dialog = NewGeoColDialog(theme=self.themes[self.current_theme], parent=self)
-            exit_dialog = ExitDialog(theme=self.themes[self.current_theme], parent=self)
-            while True:
-                if save_dialog.exec():  # If "Yes" to "Save Changes,"
-                    if save_dialog.save_successful:  # If the changes were saved successfully, close the program.
-                        return
-                    else:
-                        if exit_dialog.exec():  # Otherwise, If "Yes" to "Exit the Program Anyway," close the program.
-                            return
-                        else:
-                            a0.ignore()
-                            return
-                else:  # If "Cancel" to "Save Changes," end the CloseEvent and keep the program running.
-                    a0.ignore()
+        # Only run the save/exit dialogs if changes have been made and not running from a test
+        if not self.changes_made() or self.bypass_exit_save_dialog:
+            return
+
+        save_dialog = NewGeoColDialog(theme=self.themes[self.current_theme], parent=self)
+        exit_dialog = ExitDialog(theme=self.themes[self.current_theme], parent=self)
+        while True:
+            if save_dialog.exec():  # If "Yes" to "Save Changes,"
+                if save_dialog.save_successful:  # If the changes were saved successfully, close the program.
                     return
+                if exit_dialog.exec():  # Otherwise, If "Yes" to "Exit the Program Anyway," close the program.
+                    return
+                a0.ignore()
+                return
+            # If "Cancel" to "Save Changes," end the CloseEvent and keep the program running.
+            a0.ignore()
+            return
 
     def changeEvent(self, a0):
         if a0.type() == QEvent.Type.WindowStateChange:
@@ -847,11 +854,13 @@ class GUI(FramelessMainWindow):
                 param_vec = [param_vec]
             self.geo_col.assign_design_variable_values(param_vec, bounds_normalized=True)
 
-    def import_algorithm_pkl_file(self):
-        dialog = LoadAirfoilAlgFile(theme=self.themes[self.current_theme], parent=self)
-        if dialog.exec():
-            inputs = dialog.valuesFromWidgets()
-            dialog.load_airfoil_alg_file_widget.assignQSettings(inputs)
+    def import_algorithm_pkl_file(self, dialog_test_action: typing.Callable = None):
+        self.dialog = LoadAirfoilAlgFile(theme=self.themes[self.current_theme], parent=self)
+        if (dialog_test_action is not None and not dialog_test_action(self.dialog)) or self.dialog.exec():
+            inputs = self.dialog.valuesFromWidgets()
+
+            if dialog_test_action is None:
+                self.dialog.load_airfoil_alg_file_widget.assignQSettings(inputs)
 
             try:
                 alg = load_data(inputs["pkl_file"])
@@ -895,6 +904,7 @@ class GUI(FramelessMainWindow):
                     raise ValueError("Either 'index' or 'weights' must be selected in the dialog")
 
             self.geo_col.assign_design_variable_values(x, bounds_normalized=True)
+            return x
 
     def export_design_variable_values(self):
         """This function imports a list of parameters normalized by their bounds"""

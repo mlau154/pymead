@@ -58,6 +58,7 @@ Bug fixes
 - Fix bug where updating constraint value by typing text in the canvas leaves the visual value out of sync
   when the constraint parameter is a design variable and the requested value is out of bounds
 - Point.x and Point.y desvar/params possibly do not get deleted properly after their parent point is deleted
+- MPOLAR key error when loading MSES settings into optimization settings (maybe make MPOLAR a feature here?)
 
 Testing
 -------

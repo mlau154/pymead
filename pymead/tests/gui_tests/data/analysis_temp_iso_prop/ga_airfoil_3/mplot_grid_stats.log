@@ -1,0 +1,71 @@
+Output:
+
+ ===================================
+
+    1  Airfoil surface  plots
+    2  Streamtube       plots
+    3  Contour/grid     plots
+    4  Outer streamline plots
+    5  Wake profile     plots
+  
+    6  Zoom
+    7  Unzoom
+    8  Plotting options
+  
+    9  Re-read mdat.xxx
+   10  Dump streamline grid
+   11  Dump flowfield
+   12  Dump BLs
+   13  Dump outer streamline Cp
+  
+   21  Dump stagnation-streamline points
+
+ Select MPLOT option (0=Exit):  
+ -----------------------------------------------------------
+
+ 1  Grid                     11  BL profile plots with data
+ 2  Characteristic waves     12  BL profile plots from cursor
+ 3  Flow contours (MPRQCLT)  13  Change BL profile U scaling
+ 4  LE Nhats                 14  BL edge overlay flag
+ 5  Window                   15  Annotation menu
+ 6  Blowup                   16  Delta* slide lines
+ 7  Reset plot scaling       17  Shade mom.-conserving cells
+ 8  Hardcopy current plot    18  Locate cell i,j
+ 9  Plotting options         19  Toggle color-bar plotting
+10  Grid statistics          20  Toggle disp. body shading
+
+ Select contour/grid plot option:  
+ Grid size: I  ,J   =          263          56
+ Number of elments:            2
+
+  Element :           1
+  Jside1 =          40   ILE1 =          42   ITE1 =         222
+  Jside2 =          39   ILE2 =          42   ITE2 =         222
+  Element :           2
+  Jside1 =          24   ILE1 =          41   ITE1 =         223
+  Jside2 =          23   ILE2 =          41   ITE2 =         223
+
+ Select contour/grid plot option:  
+ ===================================
+
+    1  Airfoil surface  plots
+    2  Streamtube       plots
+    3  Contour/grid     plots
+    4  Outer streamline plots
+    5  Wake profile     plots
+  
+    6  Zoom
+    7  Unzoom
+    8  Plotting options
+  
+    9  Re-read mdat.xxx
+   10  Dump streamline grid
+   11  Dump flowfield
+   12  Dump BLs
+   13  Dump outer streamline Cp
+  
+   21  Dump stagnation-streamline points
+
+ Select MPLOT option (0=Exit):  
+Errors:
+Note: The following floating-point exceptions are signalling: IEEE_DENORMAL

@@ -16,3 +16,7 @@ include pymead/tests/misc_tests/ps_svg_pdf_conversion/*.ps
 include pymead/tests/opt_tests/*.json
 include pymead/tests/opt_tests/*.jmea
 include pymead/tests/gui_tests/*.txt
+include pymead/tests/gui_tests/*.json
+include pymead/tests/gui_tests/iso_prop/*
+include pymead/tests/gui_tests/iso_prop_test_0/*
+include pymead/tests/gui_tests/analysis_temp_iso_prop/ga_airfoil_3/*

@@ -1,0 +1,20 @@
+{
+    "tx": [
+        0.0
+    ],
+    "ty": [
+        0.0
+    ],
+    "r": [
+        0.0
+    ],
+    "sx": [
+        1.0
+    ],
+    "sy": [
+        1.0
+    ],
+    "rotation_units": "rad",
+    "order": "t,s,r",
+    "length_unit": "m"
+}
