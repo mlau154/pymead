@@ -34,8 +34,10 @@ def translate_points(geo_col: GeometryCollection, tx: float, ty: float):
 
 def test_thickness_check():
     geo_col_dict = load_data(os.path.join(EXAMPLES_DIR, "basic_airfoil_sharp_dv.jmea"))
-    param_dict = convert_opt_settings_to_param_dict(load_data(os.path.join(
-        TEST_DIR, "opt_tests", "test_airfoil_thickness_settings.json")))
+    opt_settings = load_data(os.path.join(TEST_DIR, "opt_tests", "test_airfoil_thickness_settings.json"))
+    opt_settings["Genetic Algorithm"]["root_dir"] = os.path.join(TEST_DIR, "opt_tests", "test_opt")
+
+    param_dict = convert_opt_settings_to_param_dict(opt_settings, n_var=len(geo_col_dict["desvar"]))
     chromosome = Chromosome(
         geo_col_dict=deepcopy(geo_col_dict),
         param_dict=param_dict,
@@ -59,8 +61,10 @@ def test_thickness_check():
 
 def test_thickness_at_points_check():
     geo_col_dict = load_data(os.path.join(TEST_DIR, "opt_tests", "opt_test_airfoil_1.jmea"))
-    param_dict = convert_opt_settings_to_param_dict(load_data(os.path.join(
-        TEST_DIR, "opt_tests", "test_airfoil_thickness_settings.json")))
+    opt_settings = load_data(os.path.join(TEST_DIR, "opt_tests", "test_airfoil_thickness_settings.json"))
+    opt_settings["Genetic Algorithm"]["root_dir"] = os.path.join(TEST_DIR, "opt_tests", "test_opt")
+
+    param_dict = convert_opt_settings_to_param_dict(opt_settings, n_var=len(geo_col_dict["desvar"]))
     chromosome = Chromosome(
         geo_col_dict=deepcopy(geo_col_dict),
         param_dict=param_dict,
@@ -92,8 +96,10 @@ def test_thickness_at_points_check():
 
 def test_chromosome_eval_fitness_with_invalid_max_thickness():
     geo_col_dict = load_data(os.path.join(EXAMPLES_DIR, "basic_airfoil_sharp_dv.jmea"))
-    param_dict = convert_opt_settings_to_param_dict(load_data(os.path.join(
-        TEST_DIR, "opt_tests", "test_airfoil_thickness_settings.json")))
+    opt_settings = load_data(os.path.join(TEST_DIR, "opt_tests", "test_airfoil_thickness_settings.json"))
+    opt_settings["Genetic Algorithm"]["root_dir"] = os.path.join(TEST_DIR, "opt_tests", "test_opt")
+
+    param_dict = convert_opt_settings_to_param_dict(opt_settings, n_var=len(geo_col_dict["desvar"]))
     chromosome = Chromosome(
         geo_col_dict=deepcopy(geo_col_dict),
         param_dict=param_dict,
@@ -110,8 +116,10 @@ def test_chromosome_eval_fitness_with_invalid_max_thickness():
 
 def test_eval_pop_fitness_with_invalid_max_thickness():
     geo_col_dict = load_data(os.path.join(EXAMPLES_DIR, "basic_airfoil_sharp_dv.jmea"))
-    param_dict = convert_opt_settings_to_param_dict(load_data(os.path.join(
-        TEST_DIR, "opt_tests", "test_airfoil_thickness_settings.json")))
+    opt_settings = load_data(os.path.join(TEST_DIR, "opt_tests", "test_airfoil_thickness_settings.json"))
+    opt_settings["Genetic Algorithm"]["root_dir"] = os.path.join(TEST_DIR, "opt_tests", "test_opt")
+
+    param_dict = convert_opt_settings_to_param_dict(opt_settings, n_var=len(geo_col_dict["desvar"]))
     chromosome = Chromosome(
         geo_col_dict=deepcopy(geo_col_dict),
         param_dict=param_dict,
@@ -132,8 +140,10 @@ def test_chromosome_generate_with_invalid_max_thickness_scaled_airfoil():
     geo_col = GeometryCollection.set_from_dict_rep(geo_col_dict)
     scale_points(geo_col, scale_factor)
     geo_col_dict = geo_col.get_dict_rep()
-    param_dict = convert_opt_settings_to_param_dict(load_data(os.path.join(
-        TEST_DIR, "opt_tests", "test_airfoil_thickness_settings.json")))
+    opt_settings = load_data(os.path.join(TEST_DIR, "opt_tests", "test_airfoil_thickness_settings.json"))
+    opt_settings["Genetic Algorithm"]["root_dir"] = os.path.join(TEST_DIR, "opt_tests", "test_opt")
+
+    param_dict = convert_opt_settings_to_param_dict(opt_settings, n_var=len(geo_col_dict["desvar"]))
     chromosome = Chromosome(
         geo_col_dict=deepcopy(geo_col_dict),
         param_dict=param_dict,
@@ -151,8 +161,10 @@ def test_chromosome_generate_internal_geometry_nondimensional():
 
     small_internal_geometry = np.array([[0.1, 0.01], [0.5, 0.01], [0.5, -0.01], [0.1, -0.01], [0.1, 0.01]])
     large_internal_geometry = np.array([[0.1, 0.2], [0.5, 0.2], [0.5, -0.2], [0.1, -0.2], [0.1, 0.2]])
-    param_dict = convert_opt_settings_to_param_dict(load_data(os.path.join(
-        TEST_DIR, "opt_tests", "test_internal_geometry_settings.json")))
+    opt_settings = load_data(os.path.join(TEST_DIR, "opt_tests", "test_internal_geometry_settings.json"))
+    opt_settings["Genetic Algorithm"]["root_dir"] = os.path.join(TEST_DIR, "opt_tests", "test_opt")
+
+    param_dict = convert_opt_settings_to_param_dict(opt_settings, n_var=len(geo_col_dict["desvar"]))
     param_dict["constraints"]["Airfoil-1"]["internal_geometry"] = [
         small_internal_geometry,
         True, "Rotate/Translate/Scale w/ Airfoil, Eval. Before Aerodynamic Evaluation"
@@ -198,9 +210,10 @@ def test_chromosome_generate_internal_geometry_nondimensional():
 
 def test_chromosome_generate_internal_geometry_dimensional():
     geo_col_dict = load_data(os.path.join(TEST_DIR, "opt_tests", "opt_test_airfoil_1.jmea"))
+    opt_settings = load_data(os.path.join(TEST_DIR, "opt_tests", "test_internal_geometry_settings.json"))
+    opt_settings["Genetic Algorithm"]["root_dir"] = os.path.join(TEST_DIR, "opt_tests", "test_opt")
 
-    param_dict = convert_opt_settings_to_param_dict(load_data(os.path.join(
-        TEST_DIR, "opt_tests", "test_internal_geometry_settings.json")))
+    param_dict = convert_opt_settings_to_param_dict(opt_settings, n_var=len(geo_col_dict["desvar"]))
     param_dict["constraints"]["Airfoil-1"]["internal_geometry"] = [
         np.array([[0.1, 0.01], [0.5, 0.01], [0.5, -0.01], [0.1, -0.01], [0.1, 0.01]]),
         True, "Rotate/Translate w/ Airfoil, Eval. Before Aerodynamic Evaluation"
