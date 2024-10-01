@@ -1,0 +1,210 @@
+Output:
+
+ Reading in coordinate file for: ga_airfoil_3                    
+
+
+ Grid parameters read from file  gridpar.ga_airfoil_3                    
+
+ Calculating unit vorticity distributions ...
+ Initial Dx,Dy =  0.38651603399952345       -4.1598163684957341E-007
+
+ Using default alpha ...
+
+ alpha =  0.000    CL =  0.0000
+
+ Setting wake for element  1
+ Setting wake for element  2
+ Setting inlet streamline for element  1
+ Setting inlet streamline for element  2
+ Setting farfield streamline  1
+ Setting farfield streamline  2
+ Writing   PostScript to file  plot.ps ...
+
+ =============================================
+
+    1  Specify alpha and generate streamlines
+    2  Generate spacing and initialize grid
+    3  Elliptic grid smoother
+    4  Write  mdat.ga_airfoil_3
+
+    5  Plot grid
+    6  Plot Cp vs x/c
+
+    7  Modify grid parameters
+    8  Write  grid parameters to gridpar.ga_airfoil_3
+
+    9  Change plot size
+   11  Zoom
+   12  Unzoom
+
+   13  Write  blade.ga_airfoil_3
+   14  Write  mses.ga_airfoil_3  with defaults
+   15  Change  "ga_airfoil_3"  suffix for output
+   16  Hardcopy plot
+
+ Select grid generation option (0=Exit):  
+ Enter new alpha (deg):    0.000
+
+ alpha =  0.000    CL =  0.0000
+
+ Setting wake for element  1
+ Setting wake for element  2
+ Setting inlet streamline for element  1
+ Setting inlet streamline for element  2
+ Setting farfield streamline  1
+ Setting farfield streamline  2
+ Appending PostScript to file  plot.ps ...
+
+ =============================================
+
+    1  Specify alpha and generate streamlines
+    2  Generate spacing and initialize grid
+    3  Elliptic grid smoother
+    4  Write  mdat.ga_airfoil_3
+
+    5  Plot grid
+    6  Plot Cp vs x/c
+
+    7  Modify grid parameters
+    8  Write  grid parameters to gridpar.ga_airfoil_3
+
+    9  Change plot size
+   11  Zoom
+   12  Unzoom
+
+   13  Write  blade.ga_airfoil_3
+   14  Write  mses.ga_airfoil_3  with defaults
+   15  Change  "ga_airfoil_3"  suffix for output
+   16  Hardcopy plot
+
+ Select grid generation option (0=Exit):   Generating unresolved point spacings ...
+ Appending PostScript to file  plot.ps ...
+
+   Prescribed grid node spacing parameters ...
+     dsLE/dsAvg = 0.3500   dsTE/dsAvg = 0.8000    curvature exponent =   1.3000
+
+ Actual resulting surface spacings ...
+  U: dsLE/dsAvg =  0.350   dsTE/dsAvg =  0.642  | ds/dsAvg  min max:  0.350  1.117
+  L: dsLE/dsAvg =  0.350   dsTE/dsAvg =  0.629  | ds/dsAvg  min max:  0.350  1.035
+ __________________________________________
+
+  D sLE/dsAvg, dsTE/dsAvg  spacing ratios  
+  C urvature exponent                      
+  U pper side spacing refinement           |   B lowup plot
+  L ower side spacing refinement           |   R eset plot 
+
+ Change what? (<Return> if spacing OK):   Appending PostScript to file  plot.ps ...
+
+   Prescribed grid node spacing parameters ...
+     dsLE/dsAvg = 0.3500   dsTE/dsAvg = 0.8000    curvature exponent =   1.3000
+
+ Actual resulting surface spacings ...
+  U: dsLE/dsAvg =  0.350   dsTE/dsAvg =  0.629  | ds/dsAvg  min max:  0.350  1.035
+  L: dsLE/dsAvg =  0.350   dsTE/dsAvg =  0.642  | ds/dsAvg  min max:  0.350  1.117
+ __________________________________________
+
+  D sLE/dsAvg, dsTE/dsAvg  spacing ratios  
+  C urvature exponent                      
+  U pper side spacing refinement           |   B lowup plot
+  L ower side spacing refinement           |   R eset plot 
+
+ Change what? (<Return> if spacing OK):   is ilLE ilTE NLIN  1    3    4    6     39   2 181   2  39   0
+ is ilLE ilTE NLIN  2    3    4    6     39   2 181   2  39   0
+ is ilLE ilTE NLIN  3    2    5    6     41   2 179   2  41   0
+ is ilLE ilTE NLIN  4    2    3    4     41 181  41   0
+ SGFUDG: Increasing element  2  point number from 180  to  182
+ SETEXP: N=2 passed in.  Specified DS1 is not set.
+ SETEXP: N=2 passed in.  Specified DS1 is not set.
+
+ is ilLE ilTE NLIN  1    3    4    6     41   2 181   2  41   0
+ is ilLE ilTE NLIN  2    3    4    6     41   2 181   2  41   0
+ is ilLE ilTE NLIN  3    2    5    6     41   2 181   2  41   0
+ is ilLE ilTE NLIN  4    2    3    4     41 183  41   0
+
+ Number of streamlines :  56  ( max:  99 )
+ Number of normal lines: 263  ( max:1001 )
+
+ =============================================
+
+    1  Specify alpha and generate streamlines
+    2  Generate spacing and initialize grid
+    3  Elliptic grid smoother
+    4  Write  mdat.ga_airfoil_3
+
+    5  Plot grid
+    6  Plot Cp vs x/c
+
+    7  Modify grid parameters
+    8  Write  grid parameters to gridpar.ga_airfoil_3
+
+    9  Change plot size
+   11  Zoom
+   12  Unzoom
+
+   13  Write  blade.ga_airfoil_3
+   14  Write  mses.ga_airfoil_3  with defaults
+   15  Change  "ga_airfoil_3"  suffix for output
+   16  Hardcopy plot
+
+ Select grid generation option (0=Exit):   Smoothing grid ...
+ Dmax =   0.10797889004817952        1.3000000000000000     
+ Dmax =    6.2432673578356433E-002   1.5000000000000000     
+ Dmax =    3.6623525500055383E-002   1.5000000000000000     
+ Dmax =    2.2162718696489715E-002   1.5000000000000000     
+ Dmax =    1.3372626777778488E-002   1.5000000000000000     
+ Dmax =    8.5226139665376139E-003   1.6000000000000001     
+ Dmax =    5.2287335740531316E-003   1.6000000000000001     
+ Dmax =    3.1991451057349790E-003   1.6000000000000001     
+ Dmax =    1.9525353353791670E-003   1.6000000000000001     
+ Dmax =    1.1874640137740262E-003   1.6000000000000001     
+ Dmax =    7.1665201080875669E-004   1.6000000000000001     
+ Dmax =    4.6876844291147686E-004   1.6000000000000001     
+ Dmax =    3.4939656772333826E-004   1.6000000000000001     
+
+ =============================================
+
+    1  Specify alpha and generate streamlines
+    2  Generate spacing and initialize grid
+    3  Elliptic grid smoother
+    4  Write  mdat.ga_airfoil_3
+
+    5  Plot grid
+    6  Plot Cp vs x/c
+
+    7  Modify grid parameters
+    8  Write  grid parameters to gridpar.ga_airfoil_3
+
+    9  Change plot size
+   11  Zoom
+   12  Unzoom
+
+   13  Write  blade.ga_airfoil_3
+   14  Write  mses.ga_airfoil_3  with defaults
+   15  Change  "ga_airfoil_3"  suffix for output
+   16  Hardcopy plot
+
+ Select grid generation option (0=Exit):  
+ =============================================
+
+    1  Specify alpha and generate streamlines
+    2  Generate spacing and initialize grid
+    3  Elliptic grid smoother
+    4  Write  mdat.ga_airfoil_3
+
+    5  Plot grid
+    6  Plot Cp vs x/c
+
+    7  Modify grid parameters
+    8  Write  grid parameters to gridpar.ga_airfoil_3
+
+    9  Change plot size
+   11  Zoom
+   12  Unzoom
+
+   13  Write  blade.ga_airfoil_3
+   14  Write  mses.ga_airfoil_3  with defaults
+   15  Change  "ga_airfoil_3"  suffix for output
+   16  Hardcopy plot
+
+ Select grid generation option (0=Exit):  
+Errors:

@@ -37,7 +37,8 @@ from pymead.core.geometry_collection import GeometryCollection
 from pymead.core.mea import MEA
 from pymead.gui.airfoil_canvas import AirfoilCanvas
 from pymead.gui.airfoil_statistics import AirfoilStatisticsDialog, AirfoilStatistics
-from pymead.gui.analysis_graph import AnalysisGraph, ResidualGraph, PolarGraphCollection, AirfoilMatchingGraphCollection
+from pymead.gui.analysis_graph import AnalysisGraph, ResidualGraph, PolarGraphCollection, \
+    AirfoilMatchingGraphCollection, ResourcesGraph
 from pymead.gui.concurrency import CPUBoundProcess
 from pymead.gui.custom_graphics_view import CustomGraphicsView
 from pymead.gui.dockable_tab_widget import PymeadDockWidget
@@ -46,7 +47,7 @@ from pymead.gui.dialogs import LoadDialog, SaveAsDialog, OptimizationSetupDialog
     MultiAirfoilDialog, ExportCoordinatesDialog, ExportControlPointsDialog, \
     AirfoilMatchingDialog, MSESFieldPlotDialog, ExportIGESDialog, XFOILDialog, NewGeoColDialog, EditBoundsDialog, \
     ExitDialog, ScreenshotDialog, LoadAirfoilAlgFile, ExitOptimizationDialog, SettingsDialog, LoadPointsDialog, \
-    PanelDialog
+    PanelDialog, FileOverwriteDialog
 from pymead.gui.dialogs import convert_dialog_to_mset_settings, convert_dialog_to_mses_settings, \
     convert_dialog_to_mplot_settings, convert_dialog_to_mpolar_settings, convert_opt_settings_to_param_dict
 from pymead.gui.main_icon_toolbar import MainIconToolbar
@@ -62,6 +63,7 @@ from pymead.gui.opt_callback import PlotAirfoilCallback, ParallelCoordsCallback,
     DragPlotCallbackXFOIL, CpPlotCallbackXFOIL, DragPlotCallbackMSES, CpPlotCallbackMSES, TextCallback
 from pymead.optimization.opt_setup import calculate_warm_start_index
 from pymead.optimization.opt_setup import read_stencil_from_array
+from pymead.optimization.resources import display_resources
 from pymead.optimization.shape_optimization import shape_optimization as shape_optimization_static
 from pymead.post.mses_field import flow_var_label
 from pymead.optimization.airfoil_matching import match_airfoil
@@ -82,13 +84,19 @@ warnings.filterwarnings("ignore", category=DeprecationWarning)
 class GUI(FramelessMainWindow):
     _gripSize = 5
 
-    def __init__(self, path=None, parent=None, bypass_vercheck: bool = False):
+    def __init__(self,
+                 path=None,
+                 parent=None,
+                 bypass_vercheck: bool = False,
+                 bypass_exit_save_dialog: bool = False
+                 ):
         # try:
         #     import pyi_splash
         #     pyi_splash.update_text("Initializing constants...")
         # except:
         #     pass
         super().__init__(parent=parent)
+        self.bypass_exit_save_dialog = bypass_exit_save_dialog
         self.showHideState = None
         self.windowMaximized = False
         self.pool = None
@@ -106,6 +114,10 @@ class GUI(FramelessMainWindow):
         # Set up match airfoil process
         self.match_airfoil_process = None
         self.match_airfoil_thread = None
+
+        # Set up resources process
+        self.display_resources_process = None
+        self.display_resources_thread = None
 
         self.closer = None  # This is a string of equal signs used to close out the optimization text progress
         self.menu_bar = None
@@ -143,6 +155,7 @@ class GUI(FramelessMainWindow):
         self.field_plot_variable = None
         self.analysis_graph = None
         self.cached_cp_data = []
+        self.resources_graph = None
         self.residual_graph = None
         self.residual_data = None
         self.polar_graph_collection = None
@@ -348,7 +361,7 @@ class GUI(FramelessMainWindow):
         Close Event handling for the GUI, allowing changes to be saved before exiting the program.
 
         Parameters
-        ==========
+        ----------
         a0: QCloseEvent
             Qt CloseEvent object
         """
@@ -360,22 +373,23 @@ class GUI(FramelessMainWindow):
                 a0.ignore()
                 return
 
-        if self.changes_made():  # Only run this code if changes have been made
-            save_dialog = NewGeoColDialog(theme=self.themes[self.current_theme], parent=self)
-            exit_dialog = ExitDialog(theme=self.themes[self.current_theme], parent=self)
-            while True:
-                if save_dialog.exec():  # If "Yes" to "Save Changes,"
-                    if save_dialog.save_successful:  # If the changes were saved successfully, close the program.
-                        return
-                    else:
-                        if exit_dialog.exec():  # Otherwise, If "Yes" to "Exit the Program Anyway," close the program.
-                            return
-                        else:
-                            a0.ignore()
-                            return
-                else:  # If "Cancel" to "Save Changes," end the CloseEvent and keep the program running.
-                    a0.ignore()
+        # Only run the save/exit dialogs if changes have been made and not running from a test
+        if not self.changes_made() or self.bypass_exit_save_dialog:
+            return
+
+        save_dialog = NewGeoColDialog(theme=self.themes[self.current_theme], parent=self)
+        exit_dialog = ExitDialog(theme=self.themes[self.current_theme], parent=self)
+        while True:
+            if save_dialog.exec():  # If "Yes" to "Save Changes,"
+                if save_dialog.save_successful:  # If the changes were saved successfully, close the program.
                     return
+                if exit_dialog.exec():  # Otherwise, If "Yes" to "Exit the Program Anyway," close the program.
+                    return
+                a0.ignore()
+                return
+            # If "Cancel" to "Save Changes," end the CloseEvent and keep the program running.
+            a0.ignore()
+            return
 
     def changeEvent(self, a0):
         if a0.type() == QEvent.Type.WindowStateChange:
@@ -505,7 +519,7 @@ class GUI(FramelessMainWindow):
 
         graphs_to_update = [self.analysis_graph, self.residual_graph, self.polar_graph_collection,
                             self.airfoil_matching_graph_collection, self.opt_airfoil_graph,
-                            self.parallel_coords_graph, self.drag_graph, self.Cp_graph]
+                            self.parallel_coords_graph, self.drag_graph, self.Cp_graph, self.resources_graph]
 
         for graph_to_update in graphs_to_update:
             if graph_to_update is None:
@@ -715,12 +729,22 @@ class GUI(FramelessMainWindow):
     def hideAllPymeadObjs(self):
         self.showHideState = self.airfoil_canvas.hideAllPymeadObjs()
 
-    def save_as_geo_col(self):
+    def save_as_geo_col(self) -> bool:
         dialog = SaveAsDialog(self)
         if dialog.exec():
-            self.current_save_name = dialog.selectedFiles()[0]
-            if self.current_save_name[-5:] != '.jmea':
-                self.current_save_name += '.jmea'
+            current_save_name = dialog.selectedFiles()[0]
+            if current_save_name[-5:] != '.jmea':
+                current_save_name += '.jmea'
+
+            # Handle the case where the file already exists and allow the user to cancel the operation if desired
+            overwrite_code = 1
+            if os.path.exists(current_save_name):
+                self.dialog = FileOverwriteDialog(theme=self.themes[self.current_theme], parent=self)
+                overwrite_code = self.dialog.exec()
+            if not overwrite_code:
+                return False
+
+            self.current_save_name = current_save_name
             self.save_geo_col()
             self.setWindowTitle(f"pymead - {os.path.split(self.current_save_name)[-1]}")
             self.disp_message_box(f"Multi-element airfoil saved as {self.current_save_name}", message_mode='info')
@@ -798,13 +822,13 @@ class GUI(FramelessMainWindow):
         else:
             load_blank_geo_col()
 
-    def edit_bounds(self, dialog_test_action: typing.Callable = None):
+    def edit_bounds(self):
         if len(self.geo_col.container()["desvar"]) == 0:
             self.disp_message_box("No design variables present", message_mode="info")
             return
-        self.dialog = EditBoundsDialog(geo_col=self.geo_col, theme=self.themes[self.current_theme], parent=self)
-        if (dialog_test_action is not None and not dialog_test_action(self.dialog)) or self.dialog.exec():
-            pass
+        bv_dialog = EditBoundsDialog(geo_col=self.geo_col, theme=self.themes[self.current_theme], parent=self)
+        bv_dialog.show()
+        bv_dialog.resizetoFit()
 
     def auto_range_geometry(self):
         """
@@ -830,11 +854,13 @@ class GUI(FramelessMainWindow):
                 param_vec = [param_vec]
             self.geo_col.assign_design_variable_values(param_vec, bounds_normalized=True)
 
-    def import_algorithm_pkl_file(self):
-        dialog = LoadAirfoilAlgFile(self)
-        if dialog.exec():
-            inputs = dialog.valuesFromWidgets()
-            dialog.load_airfoil_alg_file_widget.assignQSettings(inputs)
+    def import_algorithm_pkl_file(self, dialog_test_action: typing.Callable = None):
+        self.dialog = LoadAirfoilAlgFile(theme=self.themes[self.current_theme], parent=self)
+        if (dialog_test_action is not None and not dialog_test_action(self.dialog)) or self.dialog.exec():
+            inputs = self.dialog.valuesFromWidgets()
+
+            if dialog_test_action is None:
+                self.dialog.load_airfoil_alg_file_widget.assignQSettings(inputs)
 
             try:
                 alg = load_data(inputs["pkl_file"])
@@ -878,6 +904,7 @@ class GUI(FramelessMainWindow):
                     raise ValueError("Either 'index' or 'weights' must be selected in the dialog")
 
             self.geo_col.assign_design_variable_values(x, bounds_normalized=True)
+            return x
 
     def export_design_variable_values(self):
         """This function imports a list of parameters normalized by their bounds"""
@@ -1100,6 +1127,21 @@ class GUI(FramelessMainWindow):
 
     def disp_message_box(self, message: str, message_mode: str = "error", rich_text: bool = False,
                          dialog_test_action: typing.Callable = None):
+        """
+        Displays a custom message box
+
+        Parameters
+        ----------
+        message: str
+            Message to display
+        message_mode: str
+            Type of message to send (either 'error', 'info', or 'warn')
+        rich_text: bool
+            Whether to display the message using rich text
+        dialog_test_action: typing.Callable or None
+            If not ``None``, a function pointer should be specified that intercepts the call to ``exec`` and
+            performs custom actions. Used for testing only.
+        """
         disp_message_box(message, self, message_mode=message_mode, rich_text=rich_text,
                          theme=self.themes[self.current_theme], dialog_test_action=dialog_test_action)
 
@@ -1268,46 +1310,47 @@ class GUI(FramelessMainWindow):
                                                         transformation_order=inputs["transformation_order"])
             self.disp_message_box(f"Airfoil geometry saved to {iges_file_path}", message_mode="info")
 
-    def single_airfoil_viscous_analysis(self):
+    def single_airfoil_viscous_analysis(self, dialog_test_action: typing.Callable = None) -> dict:
         self.dialog = XFOILDialog(parent=self, current_airfoils=[k for k in self.geo_col.container()["airfoils"]],
                                   theme=self.themes[self.current_theme], settings_override=self.xfoil_settings)
         current_airfoils = [k for k in self.geo_col.container()["airfoils"].keys()]
         self.dialog.w.widget_dict["airfoil"]["widget"].addItems(current_airfoils)
-        if self.dialog.exec():
+        if (dialog_test_action is not None and not dialog_test_action(self.dialog)) or self.dialog.exec():
             inputs = self.dialog.value()
             self.xfoil_settings = inputs
         else:
-            inputs = None
+            return {}
 
-        if inputs is not None:
-            xfoil_settings = {'Re': inputs['Re'],
-                              'Ma': inputs['Ma'],
-                              'prescribe': inputs['prescribe'],
-                              'timeout': inputs['timeout'],
-                              'iter': inputs['iter'],
-                              'xtr': [inputs['xtr_lower'], inputs['xtr_upper']],
-                              'N': inputs['N'],
-                              'base_dir': inputs['base_dir'],
-                              'airfoil_name': inputs['airfoil_name'],
-                              'airfoil': inputs['airfoil'],
-                              "visc": inputs["viscous_flag"]}
-            if xfoil_settings['prescribe'] == 'Angle of Attack (deg)':
-                xfoil_settings['alfa'] = inputs['alfa']
-            elif xfoil_settings['prescribe'] == 'Viscous Cl':
-                xfoil_settings['Cl'] = inputs['Cl']
-            elif xfoil_settings['prescribe'] == 'Inviscid Cl':
-                xfoil_settings['CLI'] = inputs['CLI']
+        xfoil_settings = {'Re': inputs['Re'],
+                          'Ma': inputs['Ma'],
+                          'prescribe': inputs['prescribe'],
+                          'timeout': inputs['timeout'],
+                          'iter': inputs['iter'],
+                          'xtr': [inputs['xtr_lower'], inputs['xtr_upper']],
+                          'N': inputs['N'],
+                          'base_dir': inputs['base_dir'],
+                          'airfoil_name': inputs['airfoil_name'],
+                          'airfoil': inputs['airfoil'],
+                          "visc": inputs["viscous_flag"]}
+        if xfoil_settings['prescribe'] == 'Angle of Attack (deg)':
+            xfoil_settings['alfa'] = inputs['alfa']
+        elif xfoil_settings['prescribe'] == 'Viscous Cl':
+            xfoil_settings['Cl'] = inputs['Cl']
+        elif xfoil_settings['prescribe'] == 'Inviscid Cl':
+            xfoil_settings['CLI'] = inputs['CLI']
 
-            # TODO: insert downsampling step here
+        # TODO: insert downsampling step here
 
-            # coords = tuple(self.mea.deepcopy().airfoils[xfoil_settings['airfoil']].get_coords(
-            #     body_fixed_csys=False, as_tuple=True))
+        # coords = tuple(self.mea.deepcopy().airfoils[xfoil_settings['airfoil']].get_coords(
+        #     body_fixed_csys=False, as_tuple=True))
 
-            if xfoil_settings["airfoil"] == "":
-                self.disp_message_box("An airfoil was not chosen for analysis")
-                return
-            coords = self.geo_col.container()["airfoils"][xfoil_settings["airfoil"]].get_scaled_coords()
+        if xfoil_settings["airfoil"] == "":
+            self.disp_message_box("An airfoil was not chosen for analysis")
+            return {}
 
+        coords = self.geo_col.container()["airfoils"][xfoil_settings["airfoil"]].get_scaled_coords()
+
+        try:
             aero_data, _ = calculate_aero_data(None,
                                                xfoil_settings['base_dir'],
                                                xfoil_settings['airfoil_name'],
@@ -1316,79 +1359,85 @@ class GUI(FramelessMainWindow):
                                                xfoil_settings=xfoil_settings,
                                                export_Cp=True
                                                )
-            if not aero_data['converged'] or aero_data['errored_out'] or aero_data['timed_out']:
-                self.disp_message_box("XFOIL Analysis Failed", message_mode='error')
-                self.output_area_text(
-                    f"[{str(self.n_analyses).zfill(2)}] ")
-                self.output_area_text(
-                    f"<a href='file:///{os.path.join(xfoil_settings['base_dir'], xfoil_settings['airfoil_name'])}'><font family='DejaVu Sans Mono' size='3'>XFOIL</font></a>",
-                    mode="html")
-                self.output_area_text(
-                    f" Converged = {aero_data['converged']} | Errored out = "
-                    f"{aero_data['errored_out']} | Timed out = {aero_data['timed_out']}", line_break=True)
+        except ValueError as e:
+            self.disp_message_box(str(e))
+            return {}
+
+        if not aero_data['converged'] or aero_data['errored_out'] or aero_data['timed_out']:
+            self.disp_message_box("XFOIL Analysis Failed", message_mode='error')
+            self.output_area_text(
+                f"[{str(self.n_analyses).zfill(2)}] ")
+            self.output_area_text(
+                f"<a href='file:///{os.path.join(xfoil_settings['base_dir'], xfoil_settings['airfoil_name'])}'><font family='DejaVu Sans Mono' size='3'>XFOIL</font></a>",
+                mode="html")
+            self.output_area_text(
+                f" Converged = {aero_data['converged']} | Errored out = "
+                f"{aero_data['errored_out']} | Timed out = {aero_data['timed_out']}", line_break=True)
+        else:
+            self.output_area_text(
+                f"[{str(self.n_analyses).zfill(2)}] ")
+            self.output_area_text(
+                f"<a href='file:///{os.path.join(xfoil_settings['base_dir'], xfoil_settings['airfoil_name'])}'><font family='DejaVu Sans Mono' size='3'>XFOIL</font></a>",
+                mode="html")
+            if xfoil_settings["visc"]:
+                self.output_area_text(f" ({xfoil_settings['airfoil']}, "
+                                      f"\u03b1 = {aero_data['alf']:.3f}\u00b0, Re = {xfoil_settings['Re']:.3E}, "
+                                      f"Ma = {xfoil_settings['Ma']:.3f}): "
+                                      f"Cl = {aero_data['Cl']:+7.4f} | Cd = {aero_data['Cd']:+.5f} | Cm = {aero_data['Cm']:+7.4f} "
+                                      f"| L/D = {aero_data['L/D']:+8.4f}".replace("-", "\u2212"), line_break=True)
             else:
-                self.output_area_text(
-                    f"[{str(self.n_analyses).zfill(2)}] ")
-                self.output_area_text(
-                    f"<a href='file:///{os.path.join(xfoil_settings['base_dir'], xfoil_settings['airfoil_name'])}'><font family='DejaVu Sans Mono' size='3'>XFOIL</font></a>",
-                    mode="html")
-                if xfoil_settings["visc"]:
-                    self.output_area_text(f" ({xfoil_settings['airfoil']}, "
-                                          f"\u03b1 = {aero_data['alf']:.3f}\u00b0, Re = {xfoil_settings['Re']:.3E}, "
-                                          f"Ma = {xfoil_settings['Ma']:.3f}): "
-                                          f"Cl = {aero_data['Cl']:+7.4f} | Cd = {aero_data['Cd']:+.5f} | Cm = {aero_data['Cm']:+7.4f} "
-                                          f"| L/D = {aero_data['L/D']:+8.4f}".replace("-", "\u2212"), line_break=True)
-                else:
-                    self.output_area_text(f" ({xfoil_settings['airfoil']}, "
-                                          f"\u03b1 = {aero_data['alf']:.3f}\u00b0, "
-                                          f"Ma = {xfoil_settings['Ma']:.3f}): "
-                                          f"Cl = {aero_data['Cl']:+7.4f} | Cm = {aero_data['Cm']:+7.4f}".replace("-",
-                                                                                                                 "\u2212"),
-                                          line_break=True)
-            bar = self.text_area.verticalScrollBar()
-            sb = bar
-            sb.setValue(sb.maximum())
+                self.output_area_text(f" ({xfoil_settings['airfoil']}, "
+                                      f"\u03b1 = {aero_data['alf']:.3f}\u00b0, "
+                                      f"Ma = {xfoil_settings['Ma']:.3f}): "
+                                      f"Cl = {aero_data['Cl']:+7.4f} | Cm = {aero_data['Cm']:+7.4f}".replace("-",
+                                                                                                             "\u2212"),
+                                      line_break=True)
+        bar = self.text_area.verticalScrollBar()
+        sb = bar
+        sb.setValue(sb.maximum())
 
-            if aero_data['converged'] and not aero_data['errored_out'] and not aero_data['timed_out']:
-                if self.analysis_graph is None:
-                    # TODO: Need to set analysis_graph to None if analysis window is closed! Might also not want to allow geometry docking window to be closed
-                    self.analysis_graph = AnalysisGraph(
-                        theme=self.themes[self.current_theme],
-                        gui_obj=self,
-                        background_color=self.themes[self.current_theme]["graph-background-color"],
-                        grid=self.main_icon_toolbar.buttons["grid"]["button"].isChecked()
-                    )
-                    self.add_new_tab_widget(self.analysis_graph.w, "Analysis")
+        if aero_data['converged'] and not aero_data['errored_out'] and not aero_data['timed_out']:
+            if self.analysis_graph is None:
+                # TODO: Need to set analysis_graph to None if analysis window is closed! Might also not want to allow geometry docking window to be closed
+                self.analysis_graph = AnalysisGraph(
+                    theme=self.themes[self.current_theme],
+                    gui_obj=self,
+                    background_color=self.themes[self.current_theme]["graph-background-color"],
+                    grid=self.main_icon_toolbar.buttons["grid"]["button"].isChecked()
+                )
+                self.add_new_tab_widget(self.analysis_graph.w, "Analysis")
 
-                if xfoil_settings["visc"]:
-                    name = (
-                        f"[{str(self.n_analyses)}] X ({xfoil_settings['airfoil']}, \u03b1 = {aero_data['alf']:.1f}\u00b0,"
-                        f" Re = {xfoil_settings['Re']:.1E}, Ma = {xfoil_settings['Ma']:.2f})")
-                else:
-                    name = (
-                        f"[{str(self.n_analyses)}] X ({xfoil_settings['airfoil']}, \u03b1 = {aero_data['alf']:.1f}\u00b0,"
-                        f" Ma = {xfoil_settings['Ma']:.2f})")
-
-                pg_plot_handle = self.analysis_graph.v.plot(pen=pg.mkPen(color=self.pen(self.n_converged_analyses)[0],
-                                                                         style=self.pen(self.n_converged_analyses)[1]),
-                                                            name=name)
-                self.analysis_graph.set_legend_label_format(self.themes[self.current_theme])
-
-                self.cached_cp_data.append({
-                    "tool": "XFOIL",
-                    "index": self.n_analyses,
-                    "xc": aero_data["Cp"]["x"],
-                    "Cp": aero_data["Cp"]["Cp"]
-                })
-
-                pg_plot_handle.setData(aero_data['Cp']['x'], aero_data['Cp']['Cp'])
-                # pen = pg.mkPen(color='green')
-                self.n_converged_analyses += 1
-                self.n_analyses += 1
+            if xfoil_settings["visc"]:
+                name = (
+                    f"[{str(self.n_analyses)}] X ({xfoil_settings['airfoil']}, \u03b1 = {aero_data['alf']:.1f}\u00b0,"
+                    f" Re = {xfoil_settings['Re']:.1E}, Ma = {xfoil_settings['Ma']:.2f})")
             else:
-                self.n_analyses += 1
+                name = (
+                    f"[{str(self.n_analyses)}] X ({xfoil_settings['airfoil']}, \u03b1 = {aero_data['alf']:.1f}\u00b0,"
+                    f" Ma = {xfoil_settings['Ma']:.2f})")
 
-    def multi_airfoil_analysis_setup(self):
+            pg_plot_handle = self.analysis_graph.v.plot(pen=pg.mkPen(color=self.pen(self.n_converged_analyses)[0],
+                                                                     style=self.pen(self.n_converged_analyses)[1]),
+                                                        name=name)
+            self.analysis_graph.set_legend_label_format(self.themes[self.current_theme])
+
+            self.cached_cp_data.append({
+                "tool": "XFOIL",
+                "index": self.n_analyses,
+                "xc": aero_data["Cp"]["x"],
+                "Cp": aero_data["Cp"]["Cp"]
+            })
+
+            pg_plot_handle.setData(aero_data['Cp']['x'], aero_data['Cp']['Cp'])
+            # pen = pg.mkPen(color='green')
+            self.n_converged_analyses += 1
+            self.n_analyses += 1
+        else:
+            self.n_analyses += 1
+
+        return aero_data
+
+    def multi_airfoil_analysis_setup(self, dialog_test_action: typing.Callable = None):
 
         # First check to make sure MSET, MSES, and MPLOT can be found on system path and marked as executable:
         if shutil.which('mset') is None:
@@ -1407,7 +1456,8 @@ class GUI(FramelessMainWindow):
         )
         self.dialog.accepted.connect(self.multi_airfoil_analysis_accepted)
         self.dialog.rejected.connect(self.multi_airfoil_analysis_rejected)
-        self.dialog.exec()
+        if (dialog_test_action is not None and not dialog_test_action(self.dialog)) or self.dialog.exec():
+            pass
 
     def multi_airfoil_analysis_accepted(self):
 
@@ -1488,9 +1538,11 @@ class GUI(FramelessMainWindow):
         self.output_area_text(
             f" ({mset_settings['mea']}, "
             f"Re = {mses_settings['REYNIN']:.3E}, "  # Reynolds number
-            f"Ma = {mses_settings['MACHIN']:.3f}): "  # Mach number
+            f"Ma = {mses_settings['MACHIN']:.3f})"  # Mach number
         )
-        performance_params = [k for k in ["alf_ZL", "LD_max", "alf_LD_max"] if k is not None]
+        performance_params = [k for k in ["alf_ZL", "LD_max", "alf_LD_max"] if aero_data[k] is not None]
+        if performance_params:
+            self.output_area_text(": ")
         if aero_data["alf_ZL"] is not None:
             line_break = performance_params.index("alf_ZL") == len(performance_params) - 1
             self.output_area_text(f"\u03b1<sub>ZL</sub> = {aero_data['alf_ZL']:.3f}\u00b0".replace(
@@ -1579,6 +1631,19 @@ class GUI(FramelessMainWindow):
             pg_plot_handle.setData(x[np.where(x <= x_max)[0]], Cp[np.where(x <= x_max)[0]])
             self.analysis_graph.set_legend_label_format(self.themes[self.current_theme])
 
+    def display_resources(self):
+
+        def run_cpu_bound_process():
+            self.display_resources_process = CPUBoundProcess(
+                display_resources
+            )
+            self.display_resources_process.progress_emitter.signals.progress.connect(self.progress_update)
+            self.display_resources_process.start()
+
+        # Start running the CPU-bound process from a worker thread (separate from the main GUI thread)
+        self.display_resources_thread = Thread(target=run_cpu_bound_process)
+        self.display_resources_thread.start()
+
     def match_airfoil(self):
 
         def run_cpu_bound_process():
@@ -1612,10 +1677,17 @@ class GUI(FramelessMainWindow):
 
     def setup_optimization(self):
         self.dialog = OptimizationSetupDialog(self, settings_override=self.opt_settings,
-                                              geo_col=self.geo_col, theme=self.themes[self.current_theme])
+                                              geo_col=self.geo_col, theme=self.themes[self.current_theme],
+                                              grid=self.main_icon_toolbar.buttons["grid"]["button"].isChecked())
         self.dialog.accepted.connect(self.optimization_accepted)
         self.dialog.rejected.connect(self.optimization_rejected)
         self.dialog.exec()
+
+        # Close all the constraint visualization widgets that have been opened
+        for widget in self.dialog.constraints_widget.widget_dict["constraints"].w_dict.values():
+            if widget.sub_dialog is None:
+                continue
+            widget.sub_dialog.close()
 
     def optimization_accepted(self):
         exit_the_dialog = False
@@ -1672,149 +1744,15 @@ class GUI(FramelessMainWindow):
                 else:
                     opt_settings = self.opt_settings
 
-                param_dict = deepcopy(convert_opt_settings_to_param_dict(opt_settings))
-
-                # First check to make sure MSET, MSES, and MPLOT can be found on system path and marked as executable:
-                if param_dict["tool"] == "XFOIL" and shutil.which('xfoil') is None:
-                    self.disp_message_box('XFOIL executable \'xfoil\' not found on system path')
-                    return
-                if param_dict["tool"] == "MSES" and shutil.which('mset') is None:
-                    self.disp_message_box('MSES suite executable \'mset\' not found on system path')
-                    return
-                if param_dict["tool"] == "MSES" and shutil.which('mses') is None:
-                    self.disp_message_box('MSES suite executable \'mses\' not found on system path')
-                    return
-                if param_dict["tool"] == "MSES" and shutil.which('mplot') is None:
-                    self.disp_message_box('MPLOT suite executable \'mplot\' not found on system path')
-                    return
-
-                # print(f"{opt_settings['General Settings']['use_current_mea'] = }")
-                # if opt_settings['General Settings']['use_current_mea']:
-                #     # mea_dict = self.mea.copy_as_param_dict(deactivate_airfoil_graphs=True)
-                #     geo_col = self.geo_col.get_dict_rep()
-                # else:
-                #     mea_file = opt_settings['General Settings']['mea_file']
-                #     if not os.path.exists(mea_file):
-                #         self.disp_message_box('JMEA parametrization file not found', message_mode='error')
-                #         exit_the_dialog = True
-                #         early_return = True
-                #         continue
-                #     else:
-                #         # mea_dict = load_data(mea_file)
-                #         geo_col = load_data(mea_file)
                 geo_col = self.geo_col.get_dict_rep()
 
-                # # Generate the multi-element airfoil from the dictionary
-                # mea = MEA.generate_from_param_dict(mea_dict)
-
-                # TODO: reimplement this logic
-                # norm_val_list = geo_col.extract_design_variable_values(bounds_normalized=True)
-                # if isinstance(norm_val_list, str):
-                #     error_message = norm_val_list
-                #     self.disp_message_box(error_message, message_mode='error')
-                #     exit_the_dialog = True
-                #     early_return = True
-                #     continue
-
-                param_dict['n_var'] = len([k for k in geo_col["desvar"]])
-
-                # CONSTRAINTS
-                for airfoil_name, constraint_set in param_dict['constraints'].items():
-
-                    # Thickness distribution check parameters
-                    if constraint_set['check_thickness_at_points']:
-                        thickness_file = constraint_set['thickness_at_points']
-                        try:
-                            data = np.loadtxt(thickness_file)
-                            param_dict['constraints'][airfoil_name]['thickness_at_points'] = data.tolist()
-                        except FileNotFoundError:
-                            message = f'Thickness file {thickness_file} not found'
-                            self.disp_message_box(message=message, message_mode='error')
-                            raise FileNotFoundError(message)
-                    else:
-                        constraint_set['thickness_at_points'] = None
-
-                    # Internal geometry check parameters
-                    if constraint_set['use_internal_geometry']:
-                        internal_geometry_file = constraint_set['internal_geometry']
-                        try:
-                            data = np.loadtxt(internal_geometry_file)
-                            constraint_set['internal_geometry'] = data.tolist()
-                        except FileNotFoundError:
-                            message = f'Internal geometry file {internal_geometry_file} not found'
-                            self.disp_message_box(message=message, message_mode='error')
-                            raise FileNotFoundError(message)
-                    else:
-                        constraint_set['internal_geometry'] = None
-
-                    # External geometry check parameters
-                    if constraint_set['use_external_geometry']:
-                        external_geometry_file = constraint_set['external_geometry']
-                        try:
-                            data = np.loadtxt(external_geometry_file)
-                            constraint_set['external_geometry'] = data.tolist()
-                        except FileNotFoundError:
-                            message = f'External geometry file {external_geometry_file} not found'
-                            self.disp_message_box(message=message, message_mode='error')
-                            raise FileNotFoundError(message)
-                    else:
-                        constraint_set['external_geometry'] = None
-
-                # MULTI-POINT OPTIMIZATION
-                multi_point_stencil = None
-                if opt_settings['Multi-Point Optimization']['multi_point_active']:
-                    try:
-                        multi_point_data = np.loadtxt(param_dict['multi_point_stencil'], delimiter=',')
-                        multi_point_stencil = read_stencil_from_array(multi_point_data, tool=param_dict["tool"])
-                    except FileNotFoundError:
-                        message = f'Multi-point stencil file {param_dict["multi_point_stencil"]} not found'
-                        self.disp_message_box(message=message, message_mode='error')
-                        raise FileNotFoundError(message)
-                if param_dict['tool'] == 'MSES':
-                    param_dict['mses_settings']['multi_point_stencil'] = multi_point_stencil
-                elif param_dict['tool'] == 'XFOIL':
-                    param_dict['xfoil_settings']['multi_point_stencil'] = multi_point_stencil
-                else:
-                    raise ValueError(f"Currently only MSES and XFOIL are supported as analysis tools for "
-                                     f"aerodynamic shape optimization. Tool selected was {param_dict['tool']}")
-
-                # Warm start parameters
-                if opt_settings['General Settings']['warm_start_active']:
-                    opt_dir = opt_settings['General Settings']['warm_start_dir']
-                else:
-                    opt_dir = make_ga_opt_dir(opt_settings['Genetic Algorithm']['root_dir'],
-                                              opt_settings['Genetic Algorithm']['opt_dir_name'])
-
-                param_dict['opt_dir'] = opt_dir
-                self.current_opt_folder = opt_dir.replace(os.sep, "/")
-
-                name_base = 'ga_airfoil'
-                name = [f"{name_base}_{i}" for i in range(opt_settings['Genetic Algorithm']['n_offspring'])]
-                param_dict['name'] = name
-
-                # for airfoil in mea.airfoils.values():
-                #     airfoil.airfoil_graphs_active = False
-                # mea.airfoil_graphs_active = False
-                base_folder = os.path.join(opt_settings['Genetic Algorithm']['root_dir'],
-                                           opt_settings['Genetic Algorithm']['temp_analysis_dir_name'])
-                param_dict['base_folder'] = base_folder
-                if not os.path.exists(base_folder):
-                    os.mkdir(base_folder)
-
-                if opt_settings['General Settings']['warm_start_active']:
-                    param_dict['warm_start_generation'] = calculate_warm_start_index(
-                        opt_settings['General Settings']['warm_start_generation'], opt_dir)
-                    if param_dict['warm_start_generation'] == 0:
-                        opt_settings['General Settings']['warm_start_active'] = False
-                param_dict_save = deepcopy(param_dict)
-                if not opt_settings['General Settings']['warm_start_active']:
-                    save_data(param_dict_save, os.path.join(opt_dir, 'param_dict.json'))
-                    save_data(opt_settings, os.path.join(opt_dir, "opt_settings.json"))
-                else:
-                    save_data(param_dict_save, os.path.join(
-                        opt_dir, f'param_dict_{param_dict["warm_start_generation"]}.json'))
-                    save_data(opt_settings, os.path.join(
-                        opt_dir, f"opt_settings_{param_dict['warm_start_generation']}.json"))
+                try:
+                    param_dict = deepcopy(convert_opt_settings_to_param_dict(
+                        opt_settings, len(list(geo_col["desvar"].keys()))
+                    ))
+                except (ValueError, FileNotFoundError) as e:
+                    self.disp_message_box(str(e))
+                    return
 
                 if not loop_through_settings:
                     opt_settings_list = [opt_settings]
@@ -1841,6 +1779,7 @@ class GUI(FramelessMainWindow):
                                             geo_col_dict,
                                             new_obj_list, new_constr_list,
                                             )
+                self.display_resources()
 
     def optimization_rejected(self):
         self.opt_settings = self.dialog.value()
@@ -1998,6 +1937,15 @@ class GUI(FramelessMainWindow):
                                       line_break=True)
                 message = f"{res.message}. Geometry canvas updated with new design variable values."
             self.disp_message_box(message=message, message_mode=msg_mode)
+        elif status == "resources_update":
+            assert isinstance(data, tuple)
+            if self.resources_graph is None:
+                self.resources_graph = ResourcesGraph(
+                    theme=self.themes[self.current_theme],
+                    grid=self.main_icon_toolbar.buttons["grid"]["button"].isChecked()
+                )
+                self.add_new_tab_widget(self.resources_graph.w, "Resources")
+            self.resources_graph.update(time_array=data[0], cpu_percent_array=data[1], mem_percent_array=data[2])
 
     def clear_opt_plots(self):
         def clear_handles(h_list: list):
@@ -2090,27 +2038,28 @@ class GUI(FramelessMainWindow):
 
     def stop_process(self):
 
-        if self.shape_opt_process is None and self.mses_process is None and self.match_airfoil_process is None:
-            self.disp_message_box("No analysis or optimization to terminate")
+        processes = [self.shape_opt_process, self.mses_process, self.match_airfoil_process,
+                     self.display_resources_process]
+        if all([process is None for process in processes]):
+            # self.disp_message_box("No process to terminate")
             return
 
-        if self.shape_opt_process is not None:
-            self.shape_opt_process.terminate()
-        if self.mses_process is not None:
-            self.mses_process.terminate()
-        if self.match_airfoil_process is not None:
-            self.match_airfoil_process.terminate()
+        for process in processes:
+            if process is None:
+                continue
+            process.terminate()
 
-        if self.opt_thread is not None:
-            self.opt_thread.join()
-        if self.mses_thread is not None:
-            self.mses_thread.join()
-        if self.match_airfoil_thread is not None:
-            self.match_airfoil_thread.join()
+        threads = [self.opt_thread, self.mses_thread, self.match_airfoil_thread, self.display_resources_thread]
+
+        for thread in threads:
+            if thread is None:
+                continue
+            thread.join()
 
         self.shape_opt_process = None
         self.mses_process = None
         self.match_airfoil_process = None
+        self.display_resources_process = None
 
     @staticmethod
     def generate_output_folder_link_text(folder: str):
@@ -2199,8 +2148,17 @@ class GUI(FramelessMainWindow):
     def load_example_basic_airfoil_sharp(self):
         self.load_example("basic_airfoil_sharp.jmea")
 
+    def load_example_basic_airfoil_blunt(self):
+        self.load_example("basic_airfoil_blunt.jmea")
+
     def load_example_basic_airfoil_sharp_dv(self):
         self.load_example("basic_airfoil_sharp_dv.jmea")
+
+    def load_example_basic_airfoil_blunt_dv(self):
+        self.load_example("basic_airfoil_blunt_dv.jmea")
+
+    def load_example_isolated_propulsor(self):
+        self.load_example("isolated_propulsor.jmea")
 
     def load_example_underwing_propulsor(self):
         self.load_example("underwing_propulsor.jmea")
@@ -2216,6 +2174,14 @@ class GUI(FramelessMainWindow):
             self.showMaximized()
         else:
             self.showNormal()
+
+    def verify_constraints(self):
+        geo_col_copy = GeometryCollection.set_from_dict_rep(self.geo_col.get_dict_rep())
+        try:
+            geo_col_copy.verify_all()
+            self.disp_message_box("Constraint Verification Passed", message_mode="info")
+        except AssertionError:
+            self.disp_message_box("Constraint Verification Failed")
 
     def keyPressEvent(self, a0):
         if a0.key() == Qt.Key.Key_Escape:

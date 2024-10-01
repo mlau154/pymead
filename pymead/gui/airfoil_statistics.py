@@ -18,7 +18,7 @@ class AirfoilStatistics:
         index = []
         self.data = {k: [] for k in cols}
         for airfoil_name, airfoil in self.geo_col.container()["airfoils"].items():
-            thickness_data = airfoil.compute_thickness()
+            thickness_data = airfoil.compute_thickness(airfoil_frame_relative=True)
             self.data[cols[0]].append(thickness_data["t/c_max"])
             self.data[cols[1]].append(thickness_data["t/c_max_x/c_loc"])
             self.data[cols[2]].append(airfoil.compute_area())
@@ -45,6 +45,6 @@ class AirfoilStatistics:
 
 class AirfoilStatisticsDialog(PymeadDialog):
     def __init__(self, parent, airfoil_stats: AirfoilStatistics, theme: dict):
-        self.stats_widget = airfoil_stats.generate_text_edit_widget(parent=parent, float_format="{:.8f}".format)
+        self.stats_widget = airfoil_stats.generate_text_edit_widget(parent=None, float_format="{:.8f}".format)
         super().__init__(parent=parent, window_title="Airfoil Statistics", widget=self.stats_widget,
                          theme=theme)

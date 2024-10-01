@@ -1,15 +1,11 @@
-from pymoo.operators.sampling.lhs import LatinHypercubeSampling
-from pymoo.core.problem import Problem
-from pymead.utils.read_write_files import load_data, save_data
-from pymead.core.mea import MEA
-from matplotlib import pyplot as plt
-from random import randint, random
-import numpy as np
-from copy import deepcopy
-import os
 import typing
-from pymead.optimization.pop_chrom import Chromosome, Population
 from abc import abstractmethod
+from copy import deepcopy
+from random import randint, random
+
+import numpy as np
+from pymoo.core.problem import Problem
+from pymoo.operators.sampling.lhs import LatinHypercubeSampling
 
 
 class Sampling:
@@ -18,7 +14,7 @@ class Sampling:
         High-level generic class for any sampling method.
 
         Parameters
-        ==========
+        ----------
         n_samples: int
             Number of samples
 
@@ -45,7 +41,6 @@ class ConstrictedRandomSampling(Sampling):
         ==========
         n_samples: int
             Number of samples
-
         norm_param_list: list
             List of normalized parameter values (usually from ``extract_parameters`` in ``MEA``).
 
@@ -56,14 +51,17 @@ class ConstrictedRandomSampling(Sampling):
         self.max_sampling_width = max_sampling_width
         super().__init__(n_samples, norm_param_list)
 
-    def sample(self):
+    def sample(self) -> typing.List[typing.List[float]]:
         """
         Randomly samples the design space.
 
         Returns
-        =======
-        list
-            A new list of normalized parameter values to be used to update the airfoil system.
+        -------
+        typing.List[typing.List[float]]
+            A new nested list of normalized parameter values to be used to update the airfoil system. Each row
+            of the 2-D list represents a set of genes to apply to each Chromosome, and each value in the row
+            represents an individual gene. These individual genes are bounds-normalized values representing a new value
+            for a particular design variable in the geometry collection.
         """
         X_list = [self.norm_param_list]
         for i in range(self.n_samples - 1):
@@ -95,10 +93,9 @@ class PymooLHS(Sampling):
         Latin-Hypercube sampling method from the ``pymoo`` package.
 
         Parameters
-        ==========
+        ----------
         n_samples: int
             Number of samples
-
         norm_param_list: list
             List of normalized parameter values (usually from ``extract_parameters`` in ``MEA``).
         """
@@ -109,93 +106,10 @@ class PymooLHS(Sampling):
         Randomly samples the design space.
 
         Returns
-        =======
+        -------
         norm_param_list: np.ndarray
             1-D array of normalized parameter values (usually from ``extract_parameters`` in ``MEA``).
         """
         problem = Problem(n_var=len(self.norm_param_list), l=0.0, xu=1.0)
         sampling = LatinHypercubeSampling()
         return sampling._do(problem, self.n_samples)
-
-
-def _run_analysis(analysis_dir: str, index: typing.Iterable, X_list, mea: dict, param_dict: dict, evaluate: bool = True,
-                 save_coords: bool = False,
-                 save_control_points: bool = False,
-                 save_airfoil_state: bool = False):
-
-    chromosomes = []
-
-    if not os.path.exists(os.path.join(analysis_dir, 'analysis')):
-        os.mkdir(os.path.join(analysis_dir, 'analysis'))
-
-    for i in index:
-        param_set = deepcopy(param_dict)
-        param_set['mset_settings']['airfoil_analysis_dir'] = os.path.join(
-            analysis_dir, 'analysis', f'analysis_{i}')
-        param_set['mset_settings']['airfoil_coord_file_name'] = f'analysis_{i}'
-        param_set['base_folder'] = os.path.join(analysis_dir, 'analysis')
-        param_set['name'] = [f"analysis_{j}" for j in index]
-
-        # parent_chromosomes.append(Chromosome(param_set=param_set, population_idx=s, mea=mea, X=X))
-        chromosomes.append(Chromosome(param_dict=param_set, population_idx=i, mea=mea, genes=X_list[i],
-                                      ga_settings=None, category=None, generation=0))
-
-    population = Population(param_dict=param_dict, ga_settings=None, generation=0, parents=chromosomes,
-                            mea=mea, verbose=True, skip_parent_assignment=False)
-    population.generate_chromosomes_parallel()
-    if save_coords:
-        if not os.path.exists(os.path.join(analysis_dir, 'coords')):
-            os.mkdir(os.path.join(analysis_dir, 'coords'))
-        for idx, c in enumerate(population.population):
-            save_data(c.coords, os.path.join(analysis_dir, 'coords', f'coords_{idx}.json'))
-    if save_control_points:
-        if not os.path.exists(os.path.join(analysis_dir, 'control_points')):
-            os.mkdir(os.path.join(analysis_dir, 'control_points'))
-        for idx, c in enumerate(population.population):
-            save_data(c.control_points, os.path.join(analysis_dir,
-                                                     'control_points', f'control_points_{idx}.json'))
-    if save_airfoil_state:
-        if not os.path.exists(os.path.join(analysis_dir, 'airfoil_state')):
-            os.mkdir(os.path.join(analysis_dir, 'airfoil_state'))
-        for idx, c in enumerate(population.population):
-            save_data(c.airfoil_state, os.path.join(analysis_dir,
-                                                    'airfoil_state', f'airfoil_state_{idx}.json'))
-
-    if evaluate:
-        population.eval_pop_fitness()
-        # population_forces = {k: [c.forces[k] for c in population.population]
-        #                      for k in population.population[0].forces.keys()}
-        # print(f"{population_forces = }")
-        # save_data(population_forces, post_process_force_file)
-
-
-def _main():
-    parametrization = r'C:\Users\mlauer2\Documents\pymead\pymead\pymead\tests\pai\root_underwing_opt\opt_runs\2023_03_16_A\pai_underwing.jmea'
-    jmea_dict = load_data(parametrization)
-    jmea_dict['airfoil_graphs_active'] = False
-    analysis_dir = r'C:\Users\mlauer2\Documents\pymead\pymead\pymead\tests\pai\root_underwing_opt\opt_runs\test'
-    param_dict = load_data(r'C:\Users\mlauer2\Documents\pymead\pymead\pymead\tests\pai\root_underwing_opt\opt_runs\test\param_dict.json')
-    param_dict['mplot_settings']['flow_field'] = 2
-    if param_dict['mses_settings']['multi_point_stencil'] is not None:
-        for idx, stencil_var in enumerate(param_dict['mses_settings']['multi_point_stencil']):
-            stencil_var['points'] = stencil_var['points'][:2]  # Stop at the design point (idx = 1)
-            param_dict['mses_settings']['multi_point_stencil'][idx] = stencil_var
-    param_dict['mses_settings']['timeout'] = 40.0
-    mea = MEA.generate_from_param_dict(jmea_dict)
-    norm_param_list, _ = mea.extract_parameters()
-    sampling = ConstrictedRandomSampling(n_samples=50, norm_param_list=norm_param_list, max_sampling_width=0.08)
-    fig, axs = plt.subplots()
-    X_list = sampling.sample()
-    for individual in X_list:
-        mea.update_parameters(individual)
-        color = np.random.choice(range(256), size=3) / 255
-        for a in mea.airfoils.values():
-            a.plot_airfoil(axs, color=color, lw=1.0)
-    axs.set_aspect('equal')
-    plt.show()
-    # _run_analysis(analysis_dir=analysis_dir, index=[i for i in range(n_samples)], X_list=X_list,
-    #              mea=jmea_dict, param_dict=param_dict)
-
-
-if __name__ == '__main__':
-    _main()

@@ -725,6 +725,19 @@ def update_mses_settings_from_stencil(mses_settings: dict, stencil: typing.List[
             mses_settings[stencil_var['variable']][stencil_var['index']] = stencil_var['points'][idx]
         else:
             mses_settings[stencil_var['variable']] = stencil_var['points'][idx]
+
+    if "PTRHIN-DesVar" not in mses_settings:
+        return mses_settings
+
+    if all([len(fpr_dv_list) == 0 for fpr_dv_list in mses_settings["PTRHIN-DesVar"]]):
+        return mses_settings
+
+    # Update the FPR from the list of fan pressure ratio design variables
+    for ad_idx, fpr_dv_list in enumerate(mses_settings["PTRHIN-DesVar"]):
+        if len(fpr_dv_list) == 0:
+            continue
+        mses_settings["PTRHIN"][idx] = fpr_dv_list[idx]
+
     return mses_settings
 
 
@@ -898,9 +911,16 @@ def calculate_aero_data(conn: multiprocessing.connection.Connection or None,
 
         if save_aero_data:
             if aero_data["converged"]:
-                for k, v in aero_data["Cp"].items():
-                    if isinstance(v, np.ndarray):
-                        aero_data["Cp"][k] = v.tolist()
+                if isinstance(aero_data["Cp"], list):
+                    for Cp_stencil_idx, Cp_stencil_point in enumerate(aero_data["Cp"]):
+                        for k, v in Cp_stencil_point.items():
+                            if not isinstance(v, np.ndarray):
+                                continue
+                            aero_data["Cp"][Cp_stencil_idx][k] = v.tolist()
+                else:
+                    for k, v in aero_data["Cp"].items():
+                        if isinstance(v, np.ndarray):
+                            aero_data["Cp"][k] = v.tolist()
             save_data(aero_data, os.path.join(base_dir, "aero_data.json"))
 
         return aero_data, xfoil_log
@@ -936,12 +956,18 @@ def calculate_aero_data(conn: multiprocessing.connection.Connection or None,
         if mpolar_settings is not None and alfa_array is not None:
 
             # Run MSES on the first point
+            mses_settings["target"] = "alfa"
             mses_settings["ALFAIN"] = alfa_array[0]
             converged, mses_log = run_mses(airfoil_name, airfoil_coord_dir, mses_settings,
                                            airfoil_name_order=airfoil_name_order, conn=conn)
-            # write_mses_file(airfoil_name, airfoil_coord_dir, mses_settings, airfoil_name_order=airfoil_name_order)
+
             if not converged:
-                raise ConvergenceFailedError("Failed to converge first point")
+                message = "Failed to converge first point"
+                if conn is None:
+                    raise ConvergenceFailedError(message)
+                else:
+                    send_over_pipe(("disp_message_box", message))
+                    return
 
             # Remove the polar and polarx files if they exist
             polar_file = os.path.join(airfoil_coord_dir, airfoil_name, f"polar.{airfoil_name}")
@@ -982,6 +1008,10 @@ def calculate_aero_data(conn: multiprocessing.connection.Connection or None,
         if 'multi_point_stencil' in mses_settings.keys() and mses_settings['multi_point_stencil'] is not None:
             stencil = mses_settings['multi_point_stencil']
             mset_mplot_loop_iterations = len(stencil[0]['points'])
+            aero_data_list = []
+        elif "PTRHIN-DesVar" in mses_settings.keys() and not all([len(fpr_dv_list) == 0 for fpr_dv_list in mses_settings["PTRHIN-DesVar"]]):
+            stencil = []
+            mset_mplot_loop_iterations = max([len(fpr_dv_list) for fpr_dv_list in mses_settings["PTRHIN-DesVar"]])
             aero_data_list = []
 
         # Multipoint Loop
@@ -1036,10 +1066,13 @@ def calculate_aero_data(conn: multiprocessing.connection.Connection or None,
                     mplot_settings["Streamline_Grid"] = 2
 
                 for mplot_output_name in ['Mach', 'Streamline_Grid', 'Grid', 'Grid_Zoom', 'flow_field']:
-                    if mplot_settings[mplot_output_name]:
-                        run_mplot(airfoil_name, airfoil_coord_dir, mplot_settings, mode=mplot_output_name)
-                        if mplot_output_name == 'flow_field':
-                            run_mplot(airfoil_name, airfoil_coord_dir, mplot_settings, mode='grid_stats')
+                    try:
+                        if mplot_settings[mplot_output_name]:
+                            run_mplot(airfoil_name, airfoil_coord_dir, mplot_settings, mode=mplot_output_name)
+                            if mplot_output_name == 'flow_field':
+                                run_mplot(airfoil_name, airfoil_coord_dir, mplot_settings, mode='grid_stats')
+                    except DependencyNotFoundError as e:
+                        send_over_pipe(("disp_message_box", str(e)))
 
                 if mplot_settings["CPK"]:
                     try:
@@ -1154,6 +1187,13 @@ def run_xfoil(xfoil_settings: dict or XFOILSettings, coords: np.ndarray, export_
         raise DependencyNotFoundError("XFOIL not found on the system path. Please see the optional section "
                                       "of the pymead installation page: "
                                       "https://pymead.readthedocs.io/en/latest/install.html#optional")
+
+    if coords.shape[0] > 495:
+        raise ValueError(f"Number of airfoil coordinates {coords.shape[0]} exceeds the hard-coded XFOIL limit (495). "
+                         f"Reduce the number of evaluated coordinates to continue. This can easily be done in the GUI "
+                         f"by double-clicking on Bézier objects in the tree and adjusting the number of "
+                         f"evaluated points. From the API, this can be done by assigning a value to the "
+                         f"'default_nt' argument of the Bézier class constructor.")
 
     aero_data = {}
 

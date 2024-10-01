@@ -256,7 +256,7 @@ the airfoil surfaces according to the set of input parameters.
            * - Max Streamlines Between
              - Maximum number of stream-normal cells between any two airfoil elements.
            * - Elliptic Parameter
-             - Used in the MSET ``gridpar`` file, must does not seem to have an impact on the grid.
+             - Used in the MSET ``gridpar`` file, does not seem to have an impact on the grid.
            * - Stag. Pt. Aspect Ratio
              - Aspect ratio of the cells at the stagnation points.
            * - X-Spacing Parameter

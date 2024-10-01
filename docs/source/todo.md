@@ -12,31 +12,33 @@ Planned feature additions
 - Tie parameter hover to associated constraint hover events
 - Write the XFOIL analysis code using the same `CPUBoundProcess` architecture used by optimization and MSES
 - Create a custom context menu for all callback plots (similar to airfoil canvas context menu) with a subset of the
-  original context menu actions
-- Make a "File Already Exists. Overwrite?" dialog
-- Add save protection for example files
+  original context menu action
 - Add modifiable perpendicular constraint handle positioning
 - Add handle offsets to `.jmea` files
 - Add the ability to hide individual objects
-- Display RAM/CPU usage live during optimization (using `psutil.virtual_memory().percent` and `psutil.cpu_percent()`)
 - Direct & inverse airfoil design modules
 - Add polyline from GUI
-- Make function tolerance default value dependent on number of objectives
 - Add downsampling feature to XFOIL
 - Make downsampling also apply to polylines
-- Add variable number of Bezier evaluation points in the `BezierButton` dialog
 - Make single-step unit aware for spin-boxes and arrow-key movements
-- Make airfoil-relative points an option, either by adding this as a new constraint option
-  or by adding a list of airfoil-relative points to that particular airfoil. Either way,
-  the points would need to be added to the graph
 - Add XFOIL polar feature
 - Make web airfoils transformable (dialog and canvas-dynamic?) and create design variables based on
   c, alf, dx, dy
 - Add XFOIL flap deflection feature
+- Use `.jses` extension for MSES settings and `.jopt` for optimization settings files
+- Make geometric classes available from the top-level module
+- Add downsampling option to make number of sampled points on each curve proportional to arc length
+- Show "Untitled" instead of nothing for the current save name if a new file was created and not
+  yet saved
+- Add asterisk when an undo_redo action is triggered and remove when save is called
+- Add save protection for example files
+- Add a "view data" feature to .jmea, .jses, and .jopt files that allows users to view the JSON
+  data inside a custom text browser
 
 Refactoring
 -----------
 - Simplify the `PymeadObj` button implementation
+- Delete obsolete dialogs, dialog widgets, and dialog settings json files
 
 Bug fixes
 ---------
@@ -48,19 +50,15 @@ Bug fixes
   after a previous optimization to the same name but with additional numbers and strings following the root name
 - Fix draggable constraint handles interfering with each other
 - Fix angle constraints sometimes only responding to movement in the antiparallel direction
-- Create GUI error message instead of early terminating for plotting Mach contours etc. with MSES analysis if MuPDF
-  or ps2pdf not found
 - Fix visual artifacts of FramelessWindow appearing while dragging
-- Throw GUI error if XFOIL airfoil has more than 495 coordinate points (hard-coded limit)
-- Fix the following `QLayout` warning when loading downsampling preview:
-  'Attempting to add QLayout "" to DownsamplingPreviewDialog "", which already has a layout'
 - Fix some airfoils of an MEA occasionally not being added to MSET dialog
-- Fix no GUI error being thrown when trying to visualize downsampling on an empty/non-existent MEA
-- Fix bug where multiprocessing pool does not properly terminate
-
-Aesthetics
-----------
-- Make airfoil coordinate downsampling preview adhere to the global format
+- Fix XFOIL/MSES/Opt settings not updating properly (including loading MSES settings in optimization setup overriding 
+  the dialog window title)
+- Add last-resort forceful process termination during closeEvent (especially from terminal `pymead-gui` command)
+- Fix bug where updating constraint value by typing text in the canvas leaves the visual value out of sync
+  when the constraint parameter is a design variable and the requested value is out of bounds
+- Point.x and Point.y desvar/params possibly do not get deleted properly after their parent point is deleted
+- MPOLAR key error when loading MSES settings into optimization settings (maybe make MPOLAR a feature here?)
 
 Testing
 -------

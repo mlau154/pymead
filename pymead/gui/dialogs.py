@@ -1,4 +1,5 @@
 import os
+import shutil
 import sys
 import tempfile
 import typing
@@ -16,12 +17,12 @@ from PyQt6.QtCore import pyqtSlot, QStandardPaths
 from PyQt6.QtGui import QFont
 from PyQt6.QtWidgets import (QWidget, QGridLayout, QLabel, QPushButton, QCheckBox, QTabWidget, QSpinBox,
                              QDoubleSpinBox, QComboBox, QDialog, QVBoxLayout, QSizeGrip, QDialogButtonBox, QMessageBox,
-                             QFormLayout, QRadioButton)
+                             QFormLayout, QRadioButton, QGroupBox, QSizePolicy, QColorDialog, QListWidget)
+from qframelesswindow import FramelessDialog
 
 from pymead import GUI_DEFAULTS_DIR, q_settings, GUI_DIALOG_WIDGETS_DIR, TargetPathNotFoundError
 from pymead.analysis import cfd_output_templates
 from pymead.analysis.utils import viscosity_calculator
-from pymead.core import UNITS
 from pymead.core.airfoil import Airfoil
 from pymead.core.geometry_collection import GeometryCollection
 from pymead.core.line import PolyLine
@@ -37,16 +38,28 @@ from pymead.gui.separation_lines import QHSeperationLine
 from pymead.gui.side_grip import SideGrip
 from pymead.gui.title_bar import DialogTitleBar
 from pymead.optimization.objectives_and_constraints import Objective, Constraint, FunctionCompileError
+from pymead.optimization.opt_setup import calculate_warm_start_index, read_stencil_from_array
 from pymead.utils.dict_recursion import recursive_get
-from pymead.utils.misc import get_setting, set_setting
+from pymead.utils.misc import get_setting, set_setting, make_ga_opt_dir
 from pymead.utils.read_write_files import load_data, save_data, load_documents_path
 from pymead.utils.widget_recursion import get_parent
 
-mses_settings_json = load_data(os.path.join(GUI_DEFAULTS_DIR, 'mses_settings.json'))
 
-
-ISMOM_CONVERSION = {item: idx + 1 for idx, item in enumerate(mses_settings_json['ISMOM']['addItems'])}
-IFFBC_CONVERSION = {item: idx + 1 for idx, item in enumerate(mses_settings_json['IFFBC']['addItems'])}
+ISMOM_ITEMS = [
+    "S-momentum equation",
+    "isentropic condition",
+    "S-momentum equation, isentropic @ LE",
+    "isentropic condition, S-mom. where diss. active"
+]
+IFFBC_ITEMS = [
+    "solid wall airfoil far-field BCs",
+    "vortex+source+doublet airfoil far-field BCs",
+    "freestream pressure airfoil far-field BCs",
+    "supersonic wave freestream BCs",
+    "supersonic solid wall far-field BCs"
+]
+ISMOM_CONVERSION = {item: idx + 1 for idx, item in enumerate(ISMOM_ITEMS)}
+IFFBC_CONVERSION = {item: idx + 1 for idx, item in enumerate(IFFBC_ITEMS)}
 
 
 def convert_dialog_to_mset_settings(dialog_input: dict):
@@ -332,7 +345,7 @@ class PymeadDialogHTabWidget(QTabWidget):
 
     def setValue(self, new_values: dict):
         for k, v in new_values.items():
-            self.w_dict[k].setValue(new_values=v)
+            self.w_dict[k].setValue(v)
 
     def value(self):
         return {k: v.value() for k, v in self.w_dict.items()}
@@ -373,13 +386,26 @@ class PymeadLabeledSpinBox(QObject):
     def setActive(self, active: int):
         self.widget.setReadOnly(not active)
 
+    def setShown(self, shown: bool):
+        if shown:
+            self.label.show()
+            self.widget.show()
+            if self.push is not None:
+                self.push.show()
+        else:
+            self.label.hide()
+            self.widget.hide()
+            if self.push is not None:
+                self.push.hide()
+
 
 class PymeadLabeledDoubleSpinBox(QObject):
 
     sigValueChanged = pyqtSignal(float)
 
     def __init__(self, label: str = "", tool_tip: str = "", minimum: float = None, maximum: float = None,
-                 value: float = None, decimals: int = None, single_step: float = None, read_only: bool = None):
+                 value: float = None, decimals: int = None, single_step: float = None, push_label: str = None,
+                 read_only: bool = None):
         self.label = QLabel(label)
         self.widget = QDoubleSpinBox()
         self.label.setToolTip(tool_tip)
@@ -397,6 +423,10 @@ class PymeadLabeledDoubleSpinBox(QObject):
         if read_only is not None:
             self.widget.setReadOnly(read_only)
         self.push = None
+
+        if push_label is not None:
+            self.push = QPushButton(push_label)
+
         super().__init__()
         self.widget.valueChanged.connect(self.sigValueChanged)
 
@@ -412,13 +442,26 @@ class PymeadLabeledDoubleSpinBox(QObject):
     def setActive(self, active: bool):
         self.widget.setReadOnly(not active)
 
+    def setShown(self, shown: bool):
+        if shown:
+            self.label.show()
+            self.widget.show()
+            if self.push is not None:
+                self.push.show()
+        else:
+            self.label.hide()
+            self.widget.hide()
+            if self.push is not None:
+                self.push.hide()
+
 
 class PymeadLabeledScientificDoubleSpinBox(QObject):
 
     sigValueChanged = pyqtSignal(float)
 
     def __init__(self, label: str = "", tool_tip: str = "", minimum: float = None, maximum: float = None,
-                 value: float = None, decimals: int = None, single_step: float = None, read_only: bool = None):
+                 value: float = None, decimals: int = None, single_step: float = None, push_label: str = None,
+                 read_only: bool = None):
         self.label = QLabel(label)
         self.widget = ScientificDoubleSpinBox()
         self.label.setToolTip(tool_tip)
@@ -436,6 +479,10 @@ class PymeadLabeledScientificDoubleSpinBox(QObject):
         if read_only is not None:
             self.widget.setReadOnly(read_only)
         self.push = None
+
+        if push_label is not None:
+            self.push = QPushButton(push_label)
+
         super().__init__()
         self.widget.valueChanged.connect(self.sigValueChanged)
 
@@ -451,6 +498,18 @@ class PymeadLabeledScientificDoubleSpinBox(QObject):
     def setActive(self, active: bool):
         self.widget.setReadOnly(not active)
 
+    def setShown(self, shown: bool):
+        if shown:
+            self.label.show()
+            self.widget.show()
+            if self.push is not None:
+                self.push.show()
+        else:
+            self.label.hide()
+            self.widget.hide()
+            if self.push is not None:
+                self.push.hide()
+
 
 class PymeadLabeledLineEdit(QObject):
 
@@ -458,6 +517,7 @@ class PymeadLabeledLineEdit(QObject):
 
     def __init__(self, label: str = "", tool_tip: str = "", text: str = "", push_label: str = None,
                  read_only: bool = None):
+
         self.label = QLabel(label)
         self.widget = QLineEdit(text)
         self.label.setToolTip(tool_tip)
@@ -482,6 +542,18 @@ class PymeadLabeledLineEdit(QObject):
         self.widget.setReadOnly(read_only)
         if self.push is not None:
             self.push.setEnabled(not read_only)
+
+    def setShown(self, shown: bool):
+        if shown:
+            self.label.show()
+            self.widget.show()
+            if self.push is not None:
+                self.push.show()
+        else:
+            self.label.hide()
+            self.widget.hide()
+            if self.push is not None:
+                self.push.hide()
 
 
 class PymeadLabeledPlainTextEdit(QObject):
@@ -513,6 +585,17 @@ class PymeadLabeledPlainTextEdit(QObject):
     def setReadOnly(self, read_only: bool):
         self.widget.setReadOnly(read_only)
 
+    def setShown(self, shown: bool):
+        if shown:
+            self.label.show()
+            self.widget.show()
+            if self.push is not None:
+                self.push.show()
+        else:
+            self.label.hide()
+            self.widget.hide()
+            if self.push is not None:
+                self.push.hide()
 
 class PymeadLabeledComboBox(QObject):
 
@@ -542,6 +625,18 @@ class PymeadLabeledComboBox(QObject):
 
     def setReadOnly(self, read_only: bool):
         self.widget.setEnabled(not read_only)
+
+    def setShown(self, shown: bool):
+        if shown:
+            self.label.show()
+            self.widget.show()
+            if self.push is not None:
+                self.push.show()
+        else:
+            self.label.hide()
+            self.widget.hide()
+            if self.push is not None:
+                self.push.hide()
 
 
 class PymeadLabeledCheckbox(QObject):
@@ -574,15 +669,38 @@ class PymeadLabeledCheckbox(QObject):
         if self.push is not None:
             self.push.setEnabled(not read_only)
 
+    def setShown(self, shown: bool):
+        if shown:
+            self.label.show()
+            self.widget.show()
+            if self.push is not None:
+                self.push.show()
+        else:
+            self.label.hide()
+            self.widget.hide()
+            if self.push is not None:
+                self.push.hide()
+
+
+class PymeadColorButton(pg.ColorButton):
+    def __init__(self, parent=None, color=(128, 128, 128), padding=6):
+        super().__init__(parent=parent, color=color, padding=padding)
+        self.colorDialog = QColorDialog(parent=parent)
+        self.colorDialog.setOption(QColorDialog.ColorDialogOption.ShowAlphaChannel, True)
+        self.colorDialog.setOption(QColorDialog.ColorDialogOption.DontUseNativeDialog, True)
+        self.colorDialog.currentColorChanged.connect(self.dialogColorChanged)
+        self.colorDialog.rejected.connect(self.colorRejected)
+        self.colorDialog.colorSelected.connect(self.colorSelected)
+
 
 class PymeadLabeledColorSelector(QObject):
 
     sigValueChanged = pyqtSignal(tuple)
 
-    def __init__(self, label: str = "", tool_tip: str = "", initial_color: tuple = (245, 37, 106),
+    def __init__(self, parent=None, label: str = "", tool_tip: str = "", initial_color: tuple = (245, 37, 106),
                  read_only: bool = False):
         self.label = QLabel(label)
-        self.widget = pg.ColorButton(color=initial_color)
+        self.widget = PymeadColorButton(color=initial_color, parent=parent)
         self.label.setToolTip(tool_tip)
         self.widget.setToolTip(tool_tip)
         self.push = None
@@ -597,6 +715,18 @@ class PymeadLabeledColorSelector(QObject):
 
     def value(self):
         return self.widget.color(mode="byte")
+
+    def setShown(self, shown: bool):
+        if shown:
+            self.label.show()
+            self.widget.show()
+            if self.push is not None:
+                self.push.show()
+        else:
+            self.label.hide()
+            self.widget.hide()
+            if self.push is not None:
+                self.push.hide()
 
 
 class PymeadLabeledPushButton:
@@ -615,6 +745,40 @@ class PymeadLabeledPushButton:
     def value():
         return None
 
+    def setShown(self, shown: bool):
+        if shown:
+            self.label.show()
+            self.widget.show()
+            if self.push is not None:
+                self.push.show()
+        else:
+            self.label.hide()
+            self.widget.hide()
+            if self.push is not None:
+                self.push.hide()
+
+
+class PymeadLabeledListWidget:
+    def __init__(self, label: str = "", items: typing.List[str] = None, tool_tip: str = None):
+        self.label = QLabel(label)
+        self.widget = QListWidget()
+        if tool_tip is not None:
+            self.label.setToolTip(tool_tip)
+            self.widget.setToolTip(tool_tip)
+        if items is not None:
+            self.widget.addItems(items)
+
+    def value(self) -> list:
+        return [self.widget.item(i).text() for i in range(self.widget.count())]
+
+    def setValue(self, items: list):
+        self.widget.clear()
+        for item in items:
+            self.widget.addItem(item)
+
+    def setReadOnly(self, read_only: bool):
+        self.widget.setEnabled(not read_only)
+
 
 class PymeadDialogWidget2(QWidget):
     def __init__(self, parent=None, **kwargs):
@@ -625,6 +789,7 @@ class PymeadDialogWidget2(QWidget):
         self.initializeWidgets(**kwargs)
         self.addWidgets(**kwargs)
         self.establishWidgetConnections()
+        self._widgets_excluded_from_value = []
 
     @abstractmethod
     def initializeWidgets(self, *args, **kwargs):
@@ -636,27 +801,48 @@ class PymeadDialogWidget2(QWidget):
         column = 0
         for widget_name, widget in self.widget_dict.items():
             row_span = 1
-            col_span = 2 if widget.push is None else 1
-            self.lay.addWidget(widget.label, row_count, column, 1, 1)
-            self.lay.addWidget(widget.widget, row_count, column + 1, row_span, col_span)
+            if widget.push is None and widget.label is None:
+                col_span = 3
+            elif widget.push is None and widget.label is not None:
+                col_span = 2
+            elif widget.push is not None and widget.label is None:
+                col_span = 2
+            else:
+                col_span = 1
+
+            if widget.label is not None:
+                self.lay.addWidget(widget.label, row_count, column, 1, 1)
+
+            if widget.label is None:
+                self.lay.addWidget(widget.widget, row_count, column, row_span, col_span)
+            else:
+                self.lay.addWidget(widget.widget, row_count, column + 1, row_span, col_span)
 
             if widget.push is not None:
-                self.lay.addWidget(widget.push, row_count, column + 2, row_span, col_span)
+                if widget.label is None:
+                    self.lay.addWidget(widget.push, row_count, column + 1, row_span, col_span)
+                else:
+                    self.lay.addWidget(widget.push, row_count, column + 2, row_span, col_span)
 
             row_count += 1
 
     def establishWidgetConnections(self):
         pass
 
+    def excludeWidgetsFromValue(self, widgets: typing.List[str]):
+        self._widgets_excluded_from_value = widgets
+
     def setValue(self, d: dict):
         for d_name, d_value in d.items():
+            if d_name in self._widgets_excluded_from_value:
+                continue
             try:
                 self.widget_dict[d_name].setValue(d_value)
             except KeyError:
                 pass
 
     def value(self) -> dict:
-        return {k: v.value() for k, v in self.widget_dict.items()}
+        return {k: v.value() for k, v in self.widget_dict.items() if k not in self._widgets_excluded_from_value}
 
 
 class PymeadDialogVTabWidget(VerticalTabWidget):
@@ -676,18 +862,35 @@ class PymeadDialogVTabWidget(VerticalTabWidget):
         return {k: v.value() for k, v in self.w_dict.items()}
 
 
-class PymeadDialog(QDialog):
+class PymeadDialog(FramelessDialog):
 
     _gripSize = 2
 
-    """This subclass of QDialog forces the selection of a WindowTitle and matches the visual format of the GUI"""
-    def __init__(self, parent, window_title: str, widget: PymeadDialogWidget or PymeadDialogVTabWidget,
-                 theme: dict):
+    """
+    This subclass of FramelessDialog forces the selection of a WindowTitle and matches the visual 
+    format of the GUI
+    """
+    def __init__(self, parent, window_title: str,
+                 widget: PymeadDialogWidget or PymeadDialogVTabWidget or PymeadDialogWidget2,
+                 theme: dict, minimum_width: int = None, minimum_height: int = None, fixed_width: int = None,
+                 fixed_height: int = None):
         super().__init__(parent=parent)
         self.setWindowTitle(" " + window_title)
-        self.setWindowFlags(self.windowFlags() | Qt.WindowType.FramelessWindowHint)
         if self.parent() is not None:
             self.setFont(self.parent().font())
+
+        if minimum_width is not None and fixed_width is not None:
+            raise ValueError("Cannot specify both minimum width and fixed width")
+        if minimum_height is not None and fixed_height is not None:
+            raise ValueError("Cannot specify both minimum height and fixed height")
+        if minimum_width is not None:
+            self.setMinimumWidth(minimum_width)
+        if minimum_height is not None:
+            self.setMinimumHeight(minimum_height)
+        if fixed_width is not None:
+            self.setFixedWidth(fixed_width)
+        if fixed_height is not None:
+            self.setFixedHeight(fixed_height)
 
         self.vbox_lay = QVBoxLayout()
         self.setLayout(self.vbox_lay)
@@ -715,15 +918,20 @@ class PymeadDialog(QDialog):
         # alternatively, widget.raise_() can be used
         self.cornerGrips = [QSizeGrip(self) for _ in range(4)]
 
+        if fixed_width is not None and fixed_height is None:
+            self.resize(self.width(), self.minimumHeight())
+        elif fixed_width is None and fixed_height is not None:
+            self.resize(self.minimumWidth(), self.height())
+        elif fixed_width is None and fixed_height is None:
+            self.resize(self.minimumWidth(), self.minimumHeight())
+        else:
+            pass
         self.resize(self.width(), self.title_bar.height() + self.height())
 
         self.title_bar.title.setStyleSheet(
             f"""background-color: qlineargradient(x1: 0.0, y1: 0.5, x2: 1.0, y2: 0.5, 
                     stop: 0 {theme['title-gradient-color']}, 
                     stop: 0.6 {theme['background-color']})""")
-
-    # def setInputs(self):
-    #     self.w.setInputs()
 
     def setValue(self, new_inputs):
         self.w.setValue(new_values=new_inputs)
@@ -735,7 +943,7 @@ class PymeadDialog(QDialog):
         """Creates a ButtonBox to add to the Layout. Can be overridden to add additional functionality.
 
         Returns
-        =======
+        -------
         QDialogButtonBox
         """
         buttonBox = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel, self)
@@ -1027,6 +1235,84 @@ class XTRSWidget(QTabWidget):
         return value
 
 
+class DesVarListSelectionWidget(PymeadDialogWidget2):
+    def __init__(self, geo_col: GeometryCollection, initial_items: list = None, parent=None):
+        self.geo_col = geo_col
+        initial_items = [] if initial_items is None else initial_items
+        super().__init__(parent=parent, initial_items=initial_items)
+
+    def initializeWidgets(self, *args, **kwargs):
+        self.widget_dict = {
+            "main_list": QListWidget(self),
+            "selected_list": QListWidget(self),
+            "add_button": QPushButton("Add >>", self),
+            "remove_button": QPushButton("<< Remove", self)
+        }
+
+        self.widget_dict["main_list"].addItems([
+            k for k in self.geo_col.container()["desvar"].keys() if k not in kwargs["initial_items"]
+        ])
+        self.widget_dict["selected_list"].addItems(kwargs["initial_items"])
+        self.widget_dict["main_list"].setSelectionMode(QListWidget.SelectionMode.MultiSelection)
+        self.widget_dict["selected_list"].setSelectionMode(QListWidget.SelectionMode.MultiSelection)
+
+    def addWidgets(self, *args, **kwargs):
+        self.lay.addWidget(self.widget_dict["main_list"], 0, 0, 4, 1)
+        self.lay.addWidget(self.widget_dict["add_button"], 0, 1, 1, 1)
+        self.lay.addWidget(self.widget_dict["remove_button"], 1, 1, 1, 1)
+        self.lay.addWidget(self.widget_dict["selected_list"], 0, 2, 4, 1)
+
+    def establishWidgetConnections(self):
+        self.widget_dict["add_button"].clicked.connect(self.onAddPressed)
+        self.widget_dict["remove_button"].clicked.connect(self.onRemovePressed)
+
+    def onAddPressed(self):
+        selected_items = self.widget_dict["main_list"].selectedItems()
+        for item in selected_items:
+            self.widget_dict["selected_list"].addItem(
+                self.widget_dict["main_list"].takeItem(self.widget_dict["main_list"].row(item))
+            )
+
+    def onRemovePressed(self):
+        selected_items = self.widget_dict["selected_list"].selectedItems()
+        for item in selected_items:
+            self.widget_dict["main_list"].addItem(
+                self.widget_dict["selected_list"].takeItem(self.widget_dict["selected_list"].row(item))
+            )
+
+    def value(self) -> list:
+        selected_list = self.widget_dict["selected_list"]
+        return [selected_list.item(i).text() for i in range(selected_list.count())]
+
+    def setValue(self, items: list):
+        available_list = self.widget_dict["main_list"]
+        available_items = [available_list.item(i).text() for i in range(available_list.count())]
+        selected_list = self.widget_dict["selected_list"]
+        selected_list.clear()
+        for item in items:
+            # Only move the item to the list on the right if it was found in the available list (on the left)
+            if item not in available_items:
+                continue
+
+            selected_list.addItem(item)
+
+
+class DesVarListSelectionDialog(PymeadDialog):
+    def __init__(self, window_title: str, geo_col: GeometryCollection, initial_items: list = None, parent=None):
+        theme = geo_col.gui_obj.themes[geo_col.gui_obj.current_theme]
+        widget = DesVarListSelectionWidget(geo_col=geo_col, initial_items=initial_items)
+        super().__init__(parent=parent, window_title=window_title, widget=widget, theme=theme,
+                         minimum_width=400, minimum_height=500)
+
+    def create_button_box(self):
+        buttonBox = QDialogButtonBox(
+            QDialogButtonBox.StandardButton.Save | QDialogButtonBox.StandardButton.Cancel, self
+        )
+        buttonBox.accepted.connect(self.accept)
+        buttonBox.rejected.connect(self.reject)
+        return buttonBox
+
+
 class ADWidget(QTabWidget):
 
     ADChanged = pyqtSignal()
@@ -1054,13 +1340,25 @@ class ADWidget(QTabWidget):
                                                  single_step=0.05, decimals=8),
             "XCDELH-Param": PymeadLabeledComboBox(label="AD X-Location Param", items=self.param_list),
             "PTRHIN": PymeadLabeledDoubleSpinBox(label="AD Total Pres. Ratio", minimum=1.0, maximum=np.inf,
-                                                 value=1.1, single_step=0.01),
+                                                 value=1.1, single_step=0.01, decimals=6),
             "ETAH": PymeadLabeledDoubleSpinBox(label="AD Thermal Efficiency", minimum=0.0, maximum=1.0,
-                                               value=0.95, single_step=0.01)
+                                               value=0.95, single_step=0.01),
+            "PTRHIN-DesVar": PymeadLabeledListWidget(
+                label="FPR Design Variables",
+                tool_tip="Design variables used to define the fan pressure ratio at each point\nin the "
+                         "multipoint stencil. Disabled if multipoint is not active."
+            ),
+            "PTRHIN-DVSelect": PymeadLabeledPushButton(
+                label="FPR DV Selector",
+                text="Select",
+                tool_tip="Design variables used to define the fan pressure ratio at each point\nin the "
+                         "multipoint stencil. Disabled if multipoint is not active."
+            )
         }
 
-        # Add the connection between XCDELH-Param and XCDELH
+        # Add connections
         self.widget_dict[name]["XCDELH-Param"].sigValueChanged.connect(partial(self.param_changed, name))
+        self.widget_dict[name]["PTRHIN-DVSelect"].widget.clicked.connect(self.openSelector)
 
         for widget in self.widget_dict[name].values():
             row_count = self.grid_layout.rowCount()
@@ -1068,6 +1366,28 @@ class ADWidget(QTabWidget):
             self.grid_layout.addWidget(widget.widget, row_count, 1)
         self.grid_widgets[name] = self.grid_widget
         self.addTab(self.grid_widget, name)
+
+    def openSelector(self):
+        """
+        Opens a selection widget that allows the user to safely set the list of fan pressure ratio design variables.
+        """
+        tab_name = self.tabText(self.currentIndex())
+        dialog = DesVarListSelectionDialog(
+            window_title="Fan Pressure Ratio Design Variables", geo_col=self.geo_col, parent=self,
+            initial_items=self.widget_dict[tab_name]["PTRHIN-DesVar"].value()
+        )
+        old_dialog_value = dialog.value()
+        if dialog.exec():
+            new_dialog_value = dialog.value()
+            self.widget_dict[tab_name]["PTRHIN-DesVar"].setValue(new_dialog_value)
+            for dv_name in old_dialog_value:
+                if dv_name in new_dialog_value:
+                    continue
+                self.geo_col.container()["desvar"][dv_name].assignable = True
+            for dv_name in new_dialog_value:
+                if dv_name in old_dialog_value:
+                    continue
+                self.geo_col.container()["desvar"][dv_name].assignable = False
 
     def param_changed(self, ad_idx: str, param_name: str):
         if param_name == "":
@@ -1124,7 +1444,7 @@ class ADWidget(QTabWidget):
         self.remove_tabs(ads_to_remove)
 
     def value(self):
-        return {ad_idx: {ad_key: ad_spin.value() for ad_key, ad_spin in ad_data.items()}
+        return {ad_idx: {ad_key: ad_widget.value() for ad_key, ad_widget in ad_data.items()}
                 for ad_idx, ad_data in self.widget_dict.items()}
 
     def setAllActive(self, active: int):
@@ -1404,31 +1724,50 @@ class SingleAirfoilViscousDialog(QDialog):
         return self.inputs
 
 
-class DownsamplingPreviewDialog(PymeadDialog):
-    def __init__(self, theme: dict, mea_name: str, max_airfoil_points: int = None, curvature_exp: float = 2.0,
-                 parent: QWidget or None = None):
-        w = QWidget()
+class DownsamplingGraph:
+    def __init__(self, theme: dict, size: tuple = (1000, 300), grid: bool = False):
+        pg.setConfigOptions(antialias=True)
 
-        super().__init__(parent=parent, window_title="Airfoil Coordinates Preview", widget=w, theme=theme)
+        self.w = pg.GraphicsLayoutWidget(show=True, size=size)
 
-        self.setGeometry(300, 300, 700, 250)
-
-        self.grid_widget = {}
-        self.grid_layout = QGridLayout(self)
-        w.setLayout(self.grid_layout)
-
-        # Add pyqtgraph widget
-        self.w = pg.GraphicsLayoutWidget(parent=self, size=(700, 250))
         self.v = self.w.addPlot()
-        self.v.setAspectLocked()
+        self.v.setMenuEnabled(False)
+        self.v.setAspectLocked(True)
+        self.v.showGrid(x=grid, y=grid)
 
-        gui_object = get_parent(self, depth=5)
+        # Set the formatting for the graph based on the current theme
+        self.set_formatting(theme=theme)
 
-        theme = gui_object.themes[gui_object.current_theme]
+    def set_background(self, background_color: str):
+        self.w.setBackground(background_color)
+
+    def set_formatting(self, theme: dict):
         self.w.setBackground(theme["graph-background-color"])
+        label_font = f"{get_setting('axis-label-point-size')}pt {get_setting('axis-label-font-family')}"
+        self.v.setLabel(axis="bottom", text=f"x/c", font=label_font,
+                           color=theme["main-color"])
+        self.v.setLabel(axis="left", text=f"y/c", font=label_font, color=theme["main-color"])
+        tick_font = QFont(get_setting("axis-tick-font-family"), get_setting("axis-tick-point-size"))
+        self.v.getAxis("bottom").setTickFont(tick_font)
+        self.v.getAxis("left").setTickFont(tick_font)
+        self.v.getAxis("bottom").setTextPen(theme["main-color"])
+        self.v.getAxis("left").setTextPen(theme["main-color"])
+
+
+class DownsamplingPreviewDialog(PymeadDialog):
+    def __init__(self, theme: dict, gui_obj, mea_name: str,
+                 max_airfoil_points: int = None, curvature_exp: float = 2.0,
+                 parent: QWidget or None = None):
+
+        graph = DownsamplingGraph(theme=theme, grid=gui_obj.main_icon_toolbar.buttons["grid"]["button"].isChecked())
+
+        super().__init__(parent=parent, window_title="Airfoil Coordinates Preview", widget=graph.w, theme=theme,
+                         minimum_width=800, minimum_height=400)
 
         # Make a copy of the MEA
-        geo_col = GeometryCollection.set_from_dict_rep(gui_object.geo_col.get_dict_rep())
+        geo_col = GeometryCollection.set_from_dict_rep(gui_obj.geo_col.get_dict_rep())
+        if len(geo_col.container()["mea"]) == 0:
+            raise ValueError("No multi-element airfoils found in the geometry collection.")
         mea = geo_col.container()["mea"][mea_name]
         if not isinstance(mea, MEA):
             raise TypeError(f"Generated mea was of type {type(mea)} instead of type pymead.core.mea.MEA")
@@ -1437,93 +1776,14 @@ class DownsamplingPreviewDialog(PymeadDialog):
         coords_list = mea.get_coords_list(max_airfoil_points, curvature_exp)
 
         for coords in coords_list:
-            self.v.plot(x=coords[:, 0], y=coords[:, 1], symbol="o")
-
-        self.grid_layout.addWidget(self.w, 0, 0, 3, 3)
-
-
-class MSETDialogWidget(PymeadDialogWidget):
-    airfoilsChanged = pyqtSignal(object)
-
-    def __init__(self, geo_col: GeometryCollection):
-        self.geo_col = geo_col
-        super().__init__(settings_file=os.path.join(GUI_DEFAULTS_DIR, "mset_settings.json"))
-        self.widget_dict["airfoil_analysis_dir"]["widget"].setText(tempfile.gettempdir())
-        mea_names = [k for k in self.geo_col.container()["mea"].keys()]
-        self.widget_dict["mea"]["widget"].addItems(mea_names)
-        if len(mea_names) > 0:
-            self.widget_dict["mea"]["widget"].setCurrentText(mea_names[0])
-
-    def change_airfoils(self, _):
-        if not all([a in self.widget_dict["mea"]["widget"].text().split(',') for a in get_parent(
-                self, 4).geo_col.container()["airfoils"].keys()]):
-            current_airfoil_list = [a for a in get_parent(self, 4).geo_col.container()["airfoils"].keys()]
-        else:
-            current_airfoil_list = self.widget_dict["airfoils"]["widget"].text().split(",")
-        # dialog = AirfoilListDialog(self, current_airfoil_list=current_airfoil_list)
-        # if dialog.exec():
-        #     airfoils = dialog.getData()
-        #     self.widget_dict["airfoils"]["widget"].setText(",".join(airfoils))
-        #     self.airfoilsChanged.emit(",".join(airfoils))
-
-    def select_directory(self, line_edit: QLineEdit):
-        select_directory(parent=self.parent(), line_edit=line_edit)
-
-    def updateDialog(self, new_inputs: dict, w_name: str):
-        if w_name == "mea":
-            if self.widget_dict["mea"]["widget"].currentText() != "":
-                airfoil_names = [a.name() for a in self.geo_col.container()["mea"][
-                    self.widget_dict["mea"]["widget"].currentText()].airfoils]
-            else:
-                airfoil_names = []
-            self.widget_dict["multi_airfoil_grid"]["widget"].onAirfoilListChanged(airfoil_names)
-
-    def saveas_mset_mses_mplot_settings(self):
-        all_inputs = get_parent(self, 2).value()
-        mses_inputs = {k: v for k, v in all_inputs.items() if k in ["MSET", "MSES", "MPLOT"]}
-        json_dialog = select_json_file(parent=self)
-        if json_dialog.exec():
-            input_filename = json_dialog.selectedFiles()[0]
-            if not os.path.splitext(input_filename)[-1] == '.json':
-                input_filename = input_filename + '.json'
-            save_data(mses_inputs, input_filename)
-            # if get_parent(self, 4):
-            #     get_parent(self, 4).current_settings_save_file = input_filename
-            # else:
-            #     self.current_save_file = input_filename
-            get_parent(self, 3).setStatusTip(f"Saved MSES settings to {input_filename}")
-
-    def load_mset_mses_mplot_settings(self):
-        override_inputs = get_parent(self, 2).value()
-        load_dialog = select_existing_json_file(parent=self)
-        if load_dialog.exec():
-            load_file = load_dialog.selectedFiles()[0]
-            new_inputs = load_data(load_file)
-            for k, v in new_inputs.items():
-                override_inputs[k] = v
-            # great_great_grandparent = get_parent(self, depth=4)
-            # if great_great_grandparent:
-            #     great_great_grandparent.current_settings_save_file = load_file
-            # else:
-            #     self.current_save_file = load_file
-            get_parent(self, 3).setWindowTitle(f"Optimization Setup - {os.path.split(load_file)[-1]}")
-            get_parent(self, 2).setValue(override_inputs)  # Overrides the inputs for the whole PymeadDialogVTabWidget
-            get_parent(self, 2).setStatusTip(f"Loaded {load_file}")
-
-    def show_airfoil_coordinates_preview(self, _):
-        inputs = get_parent(self, 2).value()
-        use_downsampling = bool(inputs["MSET"]["use_downsampling"])
-        downsampling_max_pts = inputs["MSET"]["downsampling_max_pts"]
-        downsampling_curve_exp = inputs["MSET"]["downsampling_curve_exp"]
-        preview_dialog = DownsamplingPreviewDialog(theme=None,
-                                                   mea_name=None,
-                                                   max_airfoil_points=downsampling_max_pts,
-                                                   curvature_exp=downsampling_curve_exp,
-                                                   parent=self)
-        preview_dialog.exec()
+            graph.v.plot(
+                x=coords[:, 0], y=coords[:, 1], symbol="o",
+                symbolPen=pg.mkPen(color="indianred"), symbolBrush=pg.mkBrush(color="indianred"),
+                pen=pg.mkPen(color="cornflowerblue", width=2)
+            )
 
 
-class MSETDialogWidget2(PymeadDialogWidget2):
+class MSETDialogWidget(PymeadDialogWidget2):
 
     sigMEAChanged = pyqtSignal(object)
 
@@ -1664,11 +1924,19 @@ class MSETDialogWidget2(PymeadDialogWidget2):
 
     def showAirfoilCoordinatesPreview(self):
         mset_settings = self.value()
-        preview_dialog = DownsamplingPreviewDialog(
-            theme=self.theme, mea_name=self.widget_dict["mea"].widget.currentText(),
-            max_airfoil_points=mset_settings["downsampling_max_pts"] if bool(mset_settings["use_downsampling"]) else None,
-            curvature_exp=mset_settings["downsampling_curve_exp"],
-            parent=self)
+        gui_obj = self.geo_col.gui_obj
+        try:
+            preview_dialog = DownsamplingPreviewDialog(
+                theme=self.theme, mea_name=self.widget_dict["mea"].widget.currentText(),
+                gui_obj=gui_obj,
+                max_airfoil_points=mset_settings["downsampling_max_pts"] if bool(mset_settings["use_downsampling"]) else None,
+                curvature_exp=mset_settings["downsampling_curve_exp"],
+                parent=self
+            )
+        except ValueError as e:
+            self.geo_col.gui_obj.disp_message_box(str(e))
+            return
+
         preview_dialog.exec()
 
 
@@ -1677,7 +1945,6 @@ class PanelDialogWidget(PymeadDialogWidget2):
         super().__init__(parent=parent)
         if settings_override:
             self.setValue(settings_override)
-        self.setMinimumWidth(250)
 
     def initializeWidgets(self, *args, **kwargs):
         self.widget_dict = {
@@ -1927,26 +2194,326 @@ class MPOLARDialogWidget(PymeadDialogWidget2):
             partial(select_data_file, self, line_edit=self.widget_dict["alfa_array"].widget))
 
 
-class OptConstraintsDialogWidget(PymeadDialogWidget):
-    def __init__(self):
-        super().__init__(settings_file=os.path.join(GUI_DEFAULTS_DIR, 'opt_constraints_settings.json'))
+class OptConstraintsMultiCheckbox(QGroupBox):
+    def __init__(self, parent=None):
+        super().__init__(parent=parent)
+        self.widget_dict = {
+            "min_val_of_max_thickness": QCheckBox("Minimum Thickness", self),
+            "min_radius_curvature": QCheckBox("Min. Radius of Curvature", self),
+            "thickness_at_points": QCheckBox("Thickness Distribution", self),
+            "min_area": QCheckBox("Minimum Area", self),
+            "internal_geometry": QCheckBox("Internal Geometry", self),
+        }
+        self.lay = QGridLayout()
+
+        grid_mapping = {
+            0: [0, 0],
+            1: [0, 1],
+            2: [0, 2],
+            3: [1, 0],
+            4: [1, 1],
+        }
+
+        for idx, widget in enumerate(self.widget_dict.values()):
+            self.lay.addWidget(widget, grid_mapping[idx][0], grid_mapping[idx][1])
+        self.setLayout(self.lay)
+        self.setTitle("Active Constraints")
+        self.setSizePolicy(QSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed))
+
+    def value(self) -> dict:
+        return {k: v.isChecked() for k, v in self.widget_dict.items()}
+
+    def setValue(self, d: dict):
+        for k, v in d.items():
+            self.widget_dict[k].setChecked(v)
+
+
+class VisualizeButton(QPushButton):
+    def __init__(self, parent=None):
+        super().__init__("Visualize Constraints", parent=parent)
+        self.setStyleSheet("color: #1ed8e6; font-size: 18px;")
+        # self.setMaximumWidth(300)
+
+
+class OptConstraintsDialogWidget(PymeadDialogWidget2):
+    def __init__(self, geo_col: GeometryCollection, airfoil_name: str, theme: dict, grid: bool, parent=None):
+        self.grid = grid
+        self.theme = theme
+        self.airfoil_name = airfoil_name
+        self.geo_col = geo_col
+        self.sub_dialog = None
+        super().__init__(parent=parent)
+        self.graph = None
+
+    def initializeWidgets(self, *args, **kwargs):
+        self.widget_dict = {
+            "active_constraints": OptConstraintsMultiCheckbox(self),
+            "visualize": VisualizeButton(self),
+            "min_val_of_max_thickness": PymeadLabeledDoubleSpinBox(
+                label="Minimum Thickness", decimals=16, minimum=0.0, maximum=np.inf, single_step=0.01, value=0.1
+            ),
+            "min_val_of_max_thickness_policy": PymeadLabeledComboBox(
+                label="Min. Thickness Policy", items=["Non-Dimensional", "Dimensional"], current_item="Non-Dimensional"
+            ),
+            "min_radius_curvature": PymeadLabeledDoubleSpinBox(
+                label="Min. Radius of Curvature", decimals=16, minimum=0.0, maximum=np.inf, single_step=0.001,
+                value=0.004
+            ),
+            "min_radius_curvature_policy": PymeadLabeledComboBox(
+                label="Min. Radius of Curvature Policy", items=["Non-Dimensional", "Dimensional"],
+                current_item="Non-Dimensional"
+            ),
+            "thickness_at_points": PymeadLabeledLineEdit(label="Thickness Dist. File", push_label="Select File"),
+            "thickness_at_points_policy": PymeadLabeledComboBox(
+                label="Thickness Distribution Policy",
+                items=[
+                    "Non-Dimensional, Chord-Perpendicular",
+                    "Dimensional, Chord-Perpendicular",
+                    "Non-Dimensional, Vertical",
+                    "Dimensional, Vertical"
+                ]
+            ),
+            "min_area": PymeadLabeledDoubleSpinBox(
+                label="Minimum Area", decimals=16, minimum=0.0, maximum=np.inf, single_step=0.01, value=0.04
+            ),
+            "min_area_policy": PymeadLabeledComboBox(
+                label="Minimum Area Policy", items=["Non-Dimensional", "Dimensional"], current_item="Non-Dimensional"
+            ),
+            "internal_geometry": PymeadLabeledLineEdit(
+                label="Internal Geometry File", push_label="Select File",
+                tool_tip="Ensure that the given convex hull of x-y coordinates (preferably closed) "
+                         "fits inside the airfoil"
+            ),
+            "internal_geometry_policy": PymeadLabeledComboBox(
+                label="Int. Geometry Timing",
+                items=[
+                    "Rotate/Translate/Scale w/ Airfoil, Eval. Before Aerodynamic Evaluation",
+                    "Rotate/Translate w/ Airfoil, Eval. Before Aerodynamic Evaluation",
+                    "Absolute, Eval. Before Aerodynamic Evaluation",
+                    "Absolute, Eval. After Aerodynamic Evaluation",
+                ],
+                current_item="Rotate/Translate/Scale w/ Airfoil, Eval. Before Aerodynamic Evaluation",
+                tool_tip="The timing of the internal geometry fit check can be important\ndepending on whether the "
+                         "internal geometry should be rotated\nwith the airfoil angle of attack. If the internal "
+                         "geometry\ncan move with the airfoil angle of attack, choose 'Before Aerodynamic Evaluation' "
+                         "(faster).\nOtherwise, choose 'After Aerodynamic Evaluation' (slower)."
+            )
+        }
+
+        # Hide all the constraint widgets on initialization
+        for k, v in self.widget_dict.items():
+            if k in ["active_constraints", "visualize"]:
+                continue
+            v.setShown(False)
+
+        # Set the tool tip from each of the constraint types to the checkboxes
+        for k, v in self.widget_dict["active_constraints"].widget_dict.items():
+            v.setToolTip(self.widget_dict[k].widget.toolTip())
+
+    def addWidgets(self, *args, **kwargs):
+        # Add the active constraint and visualization button widgets together and a single VBoxLayout
+        vbox_layout = QVBoxLayout()
+        group_visualize_widget = QWidget(self)
+        group_visualize_widget.setLayout(vbox_layout)
+        vbox_layout.addWidget(self.widget_dict["active_constraints"])
+        vbox_layout.addWidget(self.widget_dict["visualize"], alignment=Qt.AlignmentFlag.AlignHCenter)
+        self.lay.addWidget(group_visualize_widget, 0, 0, 1, 3, alignment=Qt.AlignmentFlag.AlignTop)
+
+        row_count = 1
+        column = 0
+        for widget_name, widget in self.widget_dict.items():
+            if widget_name in ["active_constraints", "visualize"]:
+                continue
+            row_span = 1
+            col_span = 2 if widget.push is None else 1
+            self.lay.addWidget(widget.label, row_count, column, 1, 1, alignment=Qt.AlignmentFlag.AlignTop)
+            self.lay.addWidget(widget.widget, row_count, column + 1, row_span, col_span, alignment=Qt.AlignmentFlag.AlignTop)
+
+            if widget.push is not None:
+                self.lay.addWidget(widget.push, row_count, column + 2, row_span, col_span, alignment=Qt.AlignmentFlag.AlignTop)
+
+            row_count += 1
+
+    def establishWidgetConnections(self):
+        for k, v in self.widget_dict["active_constraints"].widget_dict.items():
+            v.stateChanged.connect(self.widget_dict[k].setShown)
+            v.stateChanged.connect(self.widget_dict[k + "_policy"].setShown)
+        self.widget_dict["thickness_at_points"].push.clicked.connect(partial(
+            self.select_data_file, line_edit=self.widget_dict["thickness_at_points"].widget))
+        self.widget_dict["internal_geometry"].push.clicked.connect(partial(
+            self.select_data_file, line_edit=self.widget_dict["internal_geometry"].widget))
+        self.widget_dict["visualize"].clicked.connect(self.visualize)
+
+    def visualize(self):
+        if self.sub_dialog is not None:
+            return
+
+        def _visualize_min_radius():
+            min_radius_data = airfoil.visualize_min_radius()
+            self.sub_dialog.graph.plot_items["min_radius_point"].setData(
+                [min_radius_data["xy"][0]], [min_radius_data["xy"][1]]
+            )
+            text = (f"min(|R|) = {min_radius_data['R_abs_min']:.4f} {self.geo_col.units.current_length_unit()}<br>"
+                    f"min(|R|)/c = {min_radius_data['R_abs_min_over_c']:.4f}")
+            self.sub_dialog.graph.plot_items["min_radius_text"].setHtml(
+                f"<span style='font-family: DejaVu Sans Mono; "
+                f"color: #E8C205; size: 10pt'>{text}</span>"
+            )
+            text_pos = (min_radius_data["xy"][0] - 0.01 * airfoil.measure_chord(),
+                        min_radius_data["xy"][1] - 0.01 * airfoil.measure_chord())
+            self.sub_dialog.graph.plot_items["min_radius_text"].setPos(text_pos[0], text_pos[1])
+
+        def _visualize_max_thickness():
+            max_thickness_data = airfoil.visualize_max_thickness()
+            self.sub_dialog.graph.plot_items["max_thickness_line"].setData(
+                max_thickness_data["xy"][:, 0], max_thickness_data["xy"][:, 1]
+            )
+            text = (f"t_max = {max_thickness_data['t_max']:.6f} {self.geo_col.units.current_length_unit()}<br>"
+                    f"t/c_max = {max_thickness_data['t/c_max']:.6f}<br>")
+            self.sub_dialog.graph.plot_items["max_thickness_text"].setHtml(
+                f"<span style='font-family: DejaVu Sans Mono; "
+                f"color: #32A852; size: 10pt'>{text}</span>"
+            )
+            text_pos = (max_thickness_data["xy"][0, 0], max_thickness_data["xy"][0, 1] + 0.05 * airfoil.measure_chord())
+            self.sub_dialog.graph.plot_items["max_thickness_text"].setPos(text_pos[0], text_pos[1])
+
+        def _visualize_min_area():
+            area_normalized = airfoil.compute_area(airfoil_frame_relative=True)
+            area_absolute = airfoil.compute_area(airfoil_frame_relative=False)
+            text = (f"A = {area_absolute:.6f} {self.geo_col.units.current_length_unit()}<sup>2</sup><br>"
+                    f"A/c<sup>2</sup> = {area_normalized:.6f}")
+            self.sub_dialog.graph.plot_items["min_area_text"].setHtml(
+                f"<span style='font-family: DejaVu Sans Mono; "
+                f"color: cornflowerblue; size: 10pt'>{text}</span>"
+            )
+            text_pos = np.mean((airfoil.leading_edge.as_array(),
+                                airfoil.trailing_edge.as_array()), axis=0) + np.array(
+                [0.0, 0.3 * airfoil.measure_chord()]
+            )
+            self.sub_dialog.graph.plot_items["min_area_text"].setPos(text_pos[0], text_pos[1])
+
+        def _visualize_thickness_at_points():
+            cnstr_spec = dialog_value["thickness_at_points"]
+            try:
+                if cnstr_spec[0] == "":
+                    self.geo_col.gui_obj.disp_message_box(f"Must specify thickness distribution file")
+                    return
+                xt_arr = np.loadtxt(cnstr_spec[0])
+            except FileNotFoundError:
+                self.geo_col.gui_obj.disp_message_box(f"File {cnstr_spec[0]} not found")
+                return
+
+            airfoil_frame_relative = "Non-Dimensional" in cnstr_spec[2]
+            x_arr, t_arr = xt_arr[:, 0], xt_arr[:, 1]
+            data = airfoil.visualize_thickness_at_points(
+                x_arr, t_arr, airfoil_frame_relative=airfoil_frame_relative,
+                vertical_check="Vertical" in cnstr_spec[2]
+            )
+            for sl in data["slices"]:
+                self.sub_dialog.graph.v.plot(sl[:, 0], sl[:, 1], pen=pg.mkPen(color="magenta", width=1.5))
+            if len(data["warning_x_vals"]) > 0:
+                self.geo_col.gui_obj.disp_message_box(
+                    f"Thickness check intersection not found for x-values: {data['warning_x_vals']}",message_mode="warn"
+                )
+
+        def _visualize_internal_geometry():
+            cnstr_spec = dialog_value["internal_geometry"]
+            try:
+                if cnstr_spec[0] == "":
+                    self.geo_col.gui_obj.disp_message_box(f"Must specify internal geometry file")
+                    return
+                xy_polyline = np.loadtxt(cnstr_spec[0])
+            except FileNotFoundError:
+                self.geo_col.gui_obj.disp_message_box(f"File {cnstr_spec[0]} not found")
+                return
+
+            airfoil_frame_relative, rotate_with_airfoil, translate_with_airfoil, scale_with_airfoil = True, True, True, True
+            if len(cnstr_spec) > 1:
+                if "Rotate/Translate w/ Airfoil" in cnstr_spec[2]:
+                    scale_with_airfoil = False
+                    airfoil_frame_relative = False
+                elif "Absolute" in cnstr_spec[2]:
+                    airfoil_frame_relative = False
+                    rotate_with_airfoil = False
+                    translate_with_airfoil = False
+                    scale_with_airfoil = False
+
+            data = airfoil.visualize_contains_line_string(
+                xy_polyline,
+                airfoil_frame_relative=airfoil_frame_relative,
+                rotate_with_airfoil=rotate_with_airfoil,
+                scale_with_airfoil=scale_with_airfoil,
+                translate_with_airfoil=translate_with_airfoil
+            )
+
+            self.sub_dialog.graph.plot_items["internal_geometry_line"].setData(
+                data["xy_polyline"][:, 0], data["xy_polyline"][:, 1]
+            )
+
+        dialog_value = self.value()
+        airfoil = self.geo_col.container()["airfoils"][self.airfoil_name]
+        airfoil_coords = airfoil.get_coords_selig_format()
+        self.sub_dialog = GeometricConstraintGraphDialog(
+            theme=self.theme, geo_col=self.geo_col, grid=self.grid, airfoil_name=self.airfoil_name, parent=self
+        )
+        self.sub_dialog.sigConstraintGraphClosed.connect(self.onVisualizeClosed)
+        self.sub_dialog.graph.plot_items["airfoil"].setData(airfoil_coords[:, 0], airfoil_coords[:, 1])
+        if dialog_value["min_radius_curvature"][1]:
+            _visualize_min_radius()
+        if dialog_value["min_val_of_max_thickness"][1]:
+            _visualize_max_thickness()
+        if dialog_value["min_area"][1]:
+            _visualize_min_area()
+        if dialog_value["thickness_at_points"][1]:
+            _visualize_thickness_at_points()
+        if dialog_value["internal_geometry"][1]:
+            _visualize_internal_geometry()
+        self.sub_dialog.show()
+
+    def onVisualizeClosed(self):
+        self.sub_dialog = None
 
     def select_data_file(self, line_edit: QLineEdit):
         select_data_file(parent=self.parent(), line_edit=line_edit)
 
-    def updateDialog(self, new_inputs: dict, w_name: str):
-        pass
+    def value(self) -> dict:
+        d = {}
+        for k, v in self.widget_dict["active_constraints"].widget_dict.items():
+            d[k] = [self.widget_dict[k].value(), v.isChecked(), self.widget_dict[k + "_policy"].value()]
+        return d
+
+    def setValue(self, d: dict):
+        # Used to ensure backwards compatibility with pymead < 2.0.0-b12
+        if "check_thickness_at_points" in d.keys():
+            d["thickness_at_points"] = [d["thickness_at_points"], d.pop("check_thickness_at_points")]
+        if "use_internal_geometry" in d.keys():
+            d["internal_geometry"] = [d["internal_geometry"], d.pop("use_internal_geometry")]
+        if "external_geometry" in d.keys():
+            d.pop("external_geometry")
+
+        for k, v in d.items():
+            if k in ["active_constraints", "visualize"]:
+                continue
+            if v is None:
+                continue
+            self.widget_dict["active_constraints"].widget_dict[k].setChecked(v[1])
+            self.widget_dict[k].setValue(v[0])
+            if len(v) > 2:  # Used to ensure backwards compatibility with pymead < 2.0.0-b12
+                self.widget_dict[k + "_policy"].setValue(v[2])
 
 
 class OptConstraintsHTabWidget(PymeadDialogHTabWidget):
 
     OptConstraintsChanged = pyqtSignal()
 
-    def __init__(self, parent, geo_col: GeometryCollection, mset_dialog_widget: MSETDialogWidget = None):
+    def __init__(self, parent, geo_col: GeometryCollection, theme: dict, grid: bool):
+        self.geo_col = geo_col
+        self.theme = theme
+        self.grid = grid
         super().__init__(parent=parent,
-                         widgets={k: OptConstraintsDialogWidget() for k in geo_col.container()["airfoils"]})
-        # mset_dialog_widget.airfoilsChanged.connect(self.onAirfoilListChanged)
-        self.label = QLabel("Optimization Constraints")
+                         widgets={k: OptConstraintsDialogWidget(geo_col=geo_col, airfoil_name=k, theme=self.theme, grid=self.grid)
+                                  for k in geo_col.container()["airfoils"]})
+        self.label = None
         self.widget = self
         self.push = None
 
@@ -1954,37 +2521,13 @@ class OptConstraintsHTabWidget(PymeadDialogHTabWidget):
         temp_dict = {}
         for airfoil_name in new_airfoil_name_list:
             if airfoil_name not in self.w_dict:
-                self.w_dict[airfoil_name] = OptConstraintsDialogWidget()
+                self.w_dict[airfoil_name] = OptConstraintsDialogWidget(geo_col=self.geo_col, airfoil_name=airfoil_name,
+                                                                       theme=self.theme, grid=self.grid)
             temp_dict[airfoil_name] = self.w_dict[airfoil_name]
         self.w_dict = temp_dict
         self.regenerateWidgets()
 
-    # def onAirfoilAdded(self, new_airfoil_name_list: list):
-    #     for airfoil_name in new_airfoil_name_list:
-    #         if airfoil_name not in self.w_dict.keys():
-    #             self.w_dict[airfoil_name] = OptConstraintsDialogWidget()
-    #     self.reorderRegenerateWidgets(new_airfoil_name_list=new_airfoil_name_list)
-    #
-    # def onAirfoilRemoved(self, new_airfoil_name_list: list):
-    #     names_to_remove = []
-    #     for airfoil_name in self.w_dict.keys():
-    #         if airfoil_name not in new_airfoil_name_list:
-    #             names_to_remove.append(airfoil_name)
-    #     for airfoil_name in names_to_remove:
-    #         self.w_dict.pop(airfoil_name)
-    #     self.reorderRegenerateWidgets(new_airfoil_name_list=new_airfoil_name_list)
-    #
-    # def onAirfoilListChanged(self, new_airfoil_name_list_str: str):
-    #     new_airfoil_name_list = new_airfoil_name_list_str.split(',')
-    #     if len(new_airfoil_name_list) > len([k for k in self.w_dict.keys()]):
-    #         self.onAirfoilAdded(new_airfoil_name_list)
-    #     elif len(new_airfoil_name_list) < len([k for k in self.w_dict.keys()]):
-    #         self.onAirfoilRemoved(new_airfoil_name_list)
-    #     else:
-    #         self.reorderRegenerateWidgets(new_airfoil_name_list=new_airfoil_name_list)
-
     def setValues(self, values: dict):
-        # self.onAirfoilListChanged(new_airfoil_name_list_str=','.join([k for k in values.keys()]))
         self.setValue(new_values=values)
 
     def values(self):
@@ -2211,28 +2754,17 @@ class GAGeneralSettingsDialogWidget(PymeadDialogWidget2):
         pass
 
 
-class GAConstraintsTerminationDialogWidget(PymeadDialogWidget):
-    def __init__(self, geo_col: GeometryCollection, mset_dialog_widget: MSETDialogWidget2 = None):
-        self.mset_dialog_widget = mset_dialog_widget
-        super().__init__(settings_file=os.path.join(GUI_DEFAULTS_DIR, 'ga_constraints_termination_settings.json'),
-                         geo_col=geo_col, mset_dialog_widget=mset_dialog_widget)
-
-    def select_data_file(self, line_edit: QLineEdit):
-        select_data_file(parent=self.parent(), line_edit=line_edit)
-
-    def updateDialog(self, new_inputs: dict, w_name: str):
-        pass
-
-
-class GAConstraintsTerminationDialogWidget2(PymeadDialogWidget2):
-    def __init__(self, geo_col: GeometryCollection, parent=None):
+class GAConstraintsTerminationDialogWidget(PymeadDialogWidget2):
+    def __init__(self, geo_col: GeometryCollection, theme: dict, grid: bool, parent=None):
         self.geo_col = geo_col
+        self.theme = theme
+        self.grid = grid
         super().__init__(parent=parent)
 
     def initializeWidgets(self, *args, **kwargs):
         self.widget_dict = {
-            "constraints": OptConstraintsHTabWidget(parent=None, geo_col=self.geo_col),
-            "f_tol": PymeadLabeledScientificDoubleSpinBox(label="Function Tolerance", value=0.0025, minimum=0.0,
+            "constraints": OptConstraintsHTabWidget(parent=None, geo_col=self.geo_col, theme=self.theme, grid=self.grid),
+            "f_tol": PymeadLabeledScientificDoubleSpinBox(label="Function Tolerance", value=1e-6, minimum=0.0,
                                                           maximum=100000.0),
             "cv_tol": PymeadLabeledScientificDoubleSpinBox(label="Constraint Violation Tol.", value=1.0e-6,
                                                            minimum=0.0, maximum=100000.0),
@@ -2244,49 +2776,6 @@ class GAConstraintsTerminationDialogWidget2(PymeadDialogWidget2):
             "n_max_evals": PymeadLabeledSpinBox(label="Maximum Function Calls", value=100000, minimum=1,
                                                 maximum=10000000)
         }
-
-
-class GASaveLoadDialogWidget(PymeadDialogWidget):
-    def __init__(self):
-        super().__init__(settings_file=os.path.join(GUI_DEFAULTS_DIR, 'ga_save_load_settings.json'))
-        self.current_save_file = None
-
-    def select_json_file(self, line_edit: QLineEdit):
-        select_json_file(parent=self.parent(), line_edit=line_edit)
-
-    def select_existing_json_file(self, line_edit: QLineEdit):
-        select_existing_json_file(parent=self.parent(), line_edit=line_edit)
-
-    def select_directory(self, line_edit: QLineEdit):
-        select_directory(parent=self.parent(), line_edit=line_edit)
-
-    def save_opt_settings(self):
-        if self.current_save_file is not None:
-            new_inputs = self.parent().value()  # Gets the inputs from the PymeadDialogVTabWidget
-            save_data(new_inputs, self.current_save_file)
-            msg_box = PymeadMessageBox(parent=self, msg=f"Settings saved as {self.current_save_file}",
-                                       window_title='Save Notification', msg_mode='info')
-            msg_box.exec()
-        else:
-            self.saveas_opt_settings()
-
-    def load_opt_settings(self):
-        new_inputs = load_data(self.widget_dict['settings_load_dir']['widget'].text())
-        self.current_save_file = new_inputs['Save/Load']['settings_save_dir']
-        self.parent().setValue(new_inputs)  # Overrides the inputs for the whole PymeadDialogVTabWidget
-
-    def saveas_opt_settings(self):
-        inputs_to_save = self.parent().value()
-        input_filename = os.path.join(self.widget_dict['settings_saveas_dir']['widget'].text(),
-                                      self.widget_dict['settings_saveas_filename']['widget'].text())
-        save_data(inputs_to_save, input_filename)
-        self.current_save_file = input_filename
-        msg_box = PymeadMessageBox(parent=self, msg=f"Settings saved as {input_filename}",
-                                   window_title='Save Notification', msg_mode='info')
-        msg_box.exec()
-
-    def updateDialog(self, new_inputs: dict, w_name: str):
-        pass
 
 
 class MultiPointOptDialogWidget(PymeadDialogWidget):
@@ -2301,36 +2790,103 @@ class MultiPointOptDialogWidget(PymeadDialogWidget):
         pass
 
 
-class GeneticAlgorithmDialogWidget(PymeadDialogWidget):
-    def __init__(self, multi_point_dialog_widget: MultiPointOptDialogWidget):
-        super().__init__(settings_file=os.path.join(GUI_DEFAULTS_DIR, 'genetic_algorithm_settings.json'))
-        self.widget_dict['J']['widget'].textChanged.connect(partial(self.objectives_changed,
-                                                                    self.widget_dict['J']['widget']))
-        self.widget_dict['G']['widget'].textChanged.connect(partial(self.constraints_changed,
-                                                                    self.widget_dict['G']['widget']))
-        multi_point_active_widget = multi_point_dialog_widget.widget_dict['multi_point_active']['widget']
-        self.multi_point = multi_point_active_widget.isChecked()
-        tool = self.value()['tool']
-        self.cfd_template = tool
-        if self.multi_point:
-            self.cfd_template += '_MULTIPOINT'
-        multi_point_active_widget.stateChanged.connect(self.multi_point_changed)
+class GeneticAlgorithmDialogWidget(PymeadDialogWidget2):
+    def __init__(self, gui_obj, multi_point_dialog_widget: MultiPointOptDialogWidget, parent=None):
+        self.multi_point_dialog_widget = multi_point_dialog_widget
+        self.gui_obj = gui_obj
+        super().__init__(parent=parent)
+        self.multi_point = self.multi_point_dialog_widget.widget_dict["multi_point_active"]["widget"].isChecked()
+
+    def initializeWidgets(self, *args, **kwargs):
+        self.widget_dict = {
+            "tool": PymeadLabeledComboBox(label="CFD Tool", items=["XFOIL", "MSES"], current_item="XFOIL"),
+            "J": PymeadLabeledLineEdit(
+                label="Objective Functions",
+                tool_tip="Enter the objective functions to be minimized, separated by commas.\n"
+                         "Variables can be started with the dollar sign ($).",
+                text="$Cd"
+            ),
+            "G": PymeadLabeledLineEdit(
+                label="Aerodynamic Constraints ",
+                tool_tip="Enter the constraints to be applied, separated by commas.\n"
+                         "Variables can be started with the dollar sign ($).",
+                text=""
+            ),
+            "pop_size": PymeadLabeledSpinBox(label="Population Size", minimum=1, maximum=2147483647, value=50),
+            "n_offspring": PymeadLabeledSpinBox(
+                label="Number of Offspring",
+                tool_tip="Number of offspring to generate to fill out the population.\nOffspring with converged "
+                         "objective functions become members of the\ncurrent population until the population is "
+                         "full. Must be greater\nthan or equal to the population size",
+                minimum=1, maximum=2147483647, value=1500
+            ),
+            "max_sampling_width": PymeadLabeledDoubleSpinBox(
+                label="Max. Sampling Width", decimals=8, minimum=0, maximum=1.0, value=0.2, single_step=0.01,
+                push_label="Visualize sampling",
+                tool_tip="Maximum random distance from original (seed) parameter\n value for each active and "
+                         "unlinked parameter"
+            ),
+            "eta_crossover": PymeadLabeledDoubleSpinBox(
+                label="\u03b7 (crossover)", decimals=3, minimum=0.0, maximum=100000.0, value=20.0,
+                tool_tip="Simulated Binary Crossover parameter as described in\n"
+                         "https://pymoo.org/operators/crossover.html?highlight=eta%20crossover"
+            ),
+            "eta_mutation": PymeadLabeledDoubleSpinBox(
+                label="\u03b7 (mutation)", decimals=3, minimum=0.0, maximum=100000.0, value=15.0,
+                tool_tip="Polynomial Mutation parameter as descrbied in\n"
+                         "https://pymoo.org/operators/mutation.html"
+            ),
+            "random_seed": PymeadLabeledSpinBox(label="Random Seed", minimum=0, maximum=2147483647, value=1),
+            "num_processors": PymeadLabeledSpinBox(
+                label="Number of Processors", minimum=1, maximum=100000, value=os.cpu_count(),
+                tool_tip="Number of logical processors to use for the optimization. The default value is the "
+                         "total number of logical processors available on your machine."
+            ),
+            "algorithm_save_frequency": PymeadLabeledSpinBox(
+                label="State Save Frequency", minimum=1, maximum=1000, value=1,
+                tool_tip="How often to save the setCheckState of the genetic algorithm.\n"
+                         "A setValue of '1' enforces a setCheckState save every generation"
+            ),
+            "root_dir": PymeadLabeledLineEdit(label="Opt. Root Directory", text="", push_label="Choose folder"),
+            "opt_dir_name": PymeadLabeledLineEdit(
+                label="Opt. Directory Name", text="ga_opt",
+                tool_tip="A unique directory will be created inside 'root_dir' with this name\n"
+                         "and followed by an underscore and a number if necessary"
+            ),
+            "temp_analysis_dir_name": PymeadLabeledLineEdit(
+                label="Temp. Analysis Dir. Name", text="analysis_temp",
+                tool_tip="The directory 'root_dir/temp_analysis_dir_name' will be created\n"
+                         "to hold the temporary XFOIL or MSES analysis files"
+            )
+        }
+
+    def establishWidgetConnections(self):
+        self.widget_dict["max_sampling_width"].push.clicked.connect(self.visualize_sampling)
+        self.widget_dict["root_dir"].push.clicked.connect(
+            partial(self.select_directory, self.widget_dict["root_dir"].widget)
+        )
+        self.widget_dict["J"].sigValueChanged.connect(self.objectives_changed)
+        self.widget_dict["G"].sigValueChanged.connect(self.constraints_changed)
+        self.widget_dict["tool"].sigValueChanged.connect(self.update_objectives_and_constraints)
+        self.multi_point_dialog_widget.widget_dict["multi_point_active"]["widget"].stateChanged.connect(
+            self.update_objectives_and_constraints
+        )
 
     def setValue(self, new_values: dict):
         super().setValue(new_values)
         self.update_objectives_and_constraints()
 
-    def update_objectives_and_constraints(self):
-        inputs = self.value()
-        self.objectives_changed(self.widget_dict['J']['widget'], inputs['J'])
-        self.constraints_changed(self.widget_dict['G']['widget'], inputs['G'])
+    def update_objectives_and_constraints(self, *args, **kwargs):
+        self.multi_point = self.multi_point_dialog_widget.widget_dict["multi_point_active"]["widget"].isChecked()
+        value = self.value()
+        self.objectives_changed(value["J"])
+        self.constraints_changed(value["G"])
 
-    def visualize_sampling(self, ws_widget, _):
-        starting_value = ws_widget.value()
-        gui_obj = get_parent(self, depth=4)
-        background_color = gui_obj.themes[gui_obj.current_theme]["graph-background-color"]
-        theme = gui_obj.themes[gui_obj.current_theme]
-        geo_col_dict = gui_obj.geo_col.get_dict_rep()
+    def visualize_sampling(self):
+        starting_value = self.widget_dict["max_sampling_width"].value()
+        background_color = self.gui_obj.themes[self.gui_obj.current_theme]["graph-background-color"]
+        theme = self.gui_obj.themes[self.gui_obj.current_theme]
+        geo_col_dict = self.gui_obj.geo_col.get_dict_rep()
 
         dialog = SamplingVisualizationDialog(geo_col_dict=geo_col_dict, initial_sampling_width=starting_value,
                                              initial_n_samples=20, background_color=background_color, theme=theme,
@@ -2345,50 +2901,44 @@ class GeneticAlgorithmDialogWidget(PymeadDialogWidget):
 
     def multi_point_changed(self, state: int or bool):
         self.multi_point = state
-        self.objectives_changed(self.widget_dict['J']['widget'], self.widget_dict['J']['widget'].text())
-        self.constraints_changed(self.widget_dict['G']['widget'], self.widget_dict['G']['widget'].text())
+        self.objectives_changed(self.widget_dict["J"].widget.text())
+        self.constraints_changed(self.widget_dict["G"].widget.text())
 
-    def objectives_changed(self, widget, text: str):
-        objective_container = get_parent(self, depth=4)
-        if objective_container is None:
-            objective_container = get_parent(self, depth=1)
-        inputs = self.value()
-        tool = inputs['tool']
+    def get_template(self) -> dict:
+        dialog_value = self.value()
+        tool = dialog_value["tool"]
+        assert isinstance(tool, str)
         if self.multi_point:
-            tool += '_MULTIPOINT'
-        objective_container.objectives = []
+            tool += "_MULTIPOINT"
+        return getattr(cfd_output_templates, tool)
+
+    def objectives_changed(self, text: str):
+        widget = self.widget_dict["J"].widget
+        template = self.get_template()
+        self.gui_obj.objectives.clear()
         for obj_func_str in text.split(','):
             objective = Objective(obj_func_str)
-            objective_container.objectives.append(objective)
+            self.gui_obj.objectives.append(objective)
             if text == '':
                 widget.setStyleSheet("QLineEdit {background-color: rgba(176,25,25,50)}")
                 return
             try:
-                function_input_data1 = getattr(cfd_output_templates, tool)
-                function_input_data2 = self.convert_text_array_to_dict(inputs['additional_data'])
-                objective.update({**function_input_data1, **function_input_data2})
+                objective.update(template)
                 widget.setStyleSheet("QLineEdit {background-color: rgba(16,201,87,50)}")
             except FunctionCompileError:
                 widget.setStyleSheet("QLineEdit {background-color: rgba(176,25,25,50)}")
                 return
 
-    def constraints_changed(self, widget, text: str):
-        constraint_container = get_parent(self, depth=4)
-        if constraint_container is None:
-            constraint_container = get_parent(self, depth=1)
-        inputs = self.value()
-        tool = inputs['tool']
-        if self.multi_point:
-            tool += '_MULTIPOINT'
-        constraint_container.constraints = []
+    def constraints_changed(self, text: str):
+        widget = self.widget_dict["J"].widget
+        template = self.get_template()
+        self.gui_obj.constraints.clear()
         for constraint_func_str in text.split(','):
             if len(constraint_func_str) > 0:
                 constraint = Constraint(constraint_func_str)
-                constraint_container.constraints.append(constraint)
+                self.gui_obj.constraints.append(constraint)
                 try:
-                    function_input_data1 = getattr(cfd_output_templates, tool)
-                    function_input_data2 = self.convert_text_array_to_dict(inputs['additional_data'])
-                    constraint.update({**function_input_data1, **function_input_data2})
+                    constraint.update(template)
                     widget.setStyleSheet("QLineEdit {background-color: rgba(16,201,87,50)}")
                 except FunctionCompileError:
                     widget.setStyleSheet("QLineEdit {background-color: rgba(176,25,25,50)}")
@@ -2410,7 +2960,8 @@ class GeneticAlgorithmDialogWidget(PymeadDialogWidget):
 class PanelDialog(PymeadDialog):
     def __init__(self, parent: QWidget, theme: dict, settings_override: dict = None):
         self.w = PanelDialogWidget(settings_override)
-        super().__init__(parent=parent, window_title="Basic Panel Code Analysis", widget=self.w, theme=theme)
+        super().__init__(parent=parent, window_title="Basic Panel Code Analysis", widget=self.w, theme=theme,
+                         fixed_width=270, fixed_height=130)
 
 
 class XFOILDialog(PymeadDialog):
@@ -2418,12 +2969,12 @@ class XFOILDialog(PymeadDialog):
                  settings_override: dict = None):
         self.w = XFOILDialogWidget(current_airfoils=current_airfoils, settings_override=settings_override)
         super().__init__(parent=parent, window_title="Single Airfoil Viscous Analysis", widget=self.w,
-                         theme=theme)
+                         theme=theme, minimum_width=900, minimum_height=500)
 
 
 class MultiAirfoilDialog(PymeadDialog):
     def __init__(self, parent: QWidget, geo_col: GeometryCollection, theme: dict, settings_override: dict = None):
-        mset_dialog_widget = MSETDialogWidget2(geo_col=geo_col, theme=theme)
+        mset_dialog_widget = MSETDialogWidget(geo_col=geo_col, theme=theme)
         mses_dialog_widget = MSESDialogWidget2(geo_col=geo_col)
         mset_dialog_widget.sigMEAChanged.connect(mses_dialog_widget.widget_dict["xtrs"].onMEAChanged)
         mplot_dialog_widget = MPLOTDialogWidget()
@@ -2435,20 +2986,16 @@ class MultiAirfoilDialog(PymeadDialog):
             "MPOLAR": mpolar_dialog_widget
         }
         widget = PymeadDialogVTabWidget(parent=None, widgets=tab_widgets, settings_override=settings_override)
-        super().__init__(parent=parent, window_title="Multi-Element-Airfoil Analysis", widget=widget, theme=theme)
-
-
-class InviscidCpCalcDialog(QDialog):
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        layout = QFormLayout(self)
+        super().__init__(parent=parent, window_title="Multi-Element-Airfoil Analysis", widget=widget, theme=theme,
+                         minimum_width=900, minimum_height=700)
 
 
 class ScreenshotDialog(PymeadDialog):
     def __init__(self, parent: QWidget, theme: dict, windows: typing.List[str]):
 
         widget = QWidget()
-        super().__init__(parent=parent, window_title="Screenshot", widget=widget, theme=theme)
+        super().__init__(parent=parent, window_title="Screenshot", widget=widget, theme=theme,
+                         minimum_width=400, fixed_height=175)
         self.grid_widget = {}
         self.grid_layout = QGridLayout()
 
@@ -2456,7 +3003,6 @@ class ScreenshotDialog(PymeadDialog):
         self.grid_widget["window"]["combobox"].addItems(windows)
         widget.setLayout(self.grid_layout)
         self.window_list = windows
-        self.setMinimumWidth(400)
 
     def setInputs(self):
         widget_dict = load_data(os.path.join(GUI_DIALOG_WIDGETS_DIR, "screenshot_dialog.json"))
@@ -2599,8 +3145,8 @@ class LoadDialog(QFileDialog):
 
 
 class LoadAirfoilAlgFileWidget(QWidget):
-    def __init__(self, parent):
-        super().__init__(parent)
+    def __init__(self, parent=None):
+        super().__init__(parent=parent)
         layout = QGridLayout(self)
 
         self.pkl_line = QLineEdit("", self)
@@ -2711,24 +3257,11 @@ class LoadAirfoilAlgFileWidget(QWidget):
         q_settings.setValue("pkl_weights", inputs["pkl_weights"])
 
 
-class LoadAirfoilAlgFile(QDialog):
-    def __init__(self, parent):
-        super().__init__(parent=parent)
-
-        self.setWindowTitle("Load Optimized Airfoil")
-        self.setFont(self.parent().font())
-
-        buttonBox = QDialogButtonBox(self)
-        buttonBox.addButton(QDialogButtonBox.StandardButton.Ok)
-        buttonBox.addButton(QDialogButtonBox.StandardButton.Cancel)
-        self.grid_layout = QGridLayout(self)
-
-        self.load_airfoil_alg_file_widget = LoadAirfoilAlgFileWidget(self)
-        self.grid_layout.addWidget(self.load_airfoil_alg_file_widget, 0, 0)
-        self.grid_layout.addWidget(buttonBox, self.grid_layout.rowCount(), 0)
-
-        buttonBox.accepted.connect(self.accept)
-        buttonBox.rejected.connect(self.reject)
+class LoadAirfoilAlgFile(PymeadDialog):
+    def __init__(self, theme: dict, parent=None):
+        self.load_airfoil_alg_file_widget = LoadAirfoilAlgFileWidget()
+        super().__init__(parent=parent, window_title="Load Optimized Airfoil",
+                         widget=self.load_airfoil_alg_file_widget, theme=theme)
 
     def valuesFromWidgets(self):
         return self.load_airfoil_alg_file_widget.valuesFromWidgets()
@@ -2791,7 +3324,11 @@ class ExitDialog(PymeadDialog):
 class EditBoundsDialog(PymeadDialog):
     def __init__(self, geo_col: GeometryCollection, theme: dict, parent=None):
         self.bv_table = BoundsValuesTable(geo_col=geo_col)
-        super().__init__(parent=parent, window_title="Edit Bounds", widget=self.bv_table, theme=theme)
+        super().__init__(parent=parent, window_title="Edit Bounds", widget=self.bv_table, theme=theme,
+                         minimum_width=466, minimum_height=497)
+
+    def resizetoFit(self):
+        self.bv_table.resizeColumnsToContents()
         self.resize(self.bv_table.sizeHint())
 
 
@@ -2803,14 +3340,14 @@ class OptimizationDialogVTabWidget(PymeadDialogVTabWidget):
 
 
 class OptimizationSetupDialog(PymeadDialog):
-    def __init__(self, parent, geo_col: GeometryCollection, theme: dict, settings_override: dict = None):
+    def __init__(self, parent, geo_col: GeometryCollection, theme: dict, grid: bool, settings_override: dict = None):
         w0 = GAGeneralSettingsDialogWidget()
         w3 = XFOILDialogWidget(current_airfoils=[k for k in geo_col.container()["airfoils"]])
-        w4 = MSETDialogWidget2(geo_col=geo_col, theme=theme)
-        w2 = GAConstraintsTerminationDialogWidget2(geo_col=geo_col)
+        w4 = MSETDialogWidget(geo_col=geo_col, theme=theme)
+        w2 = GAConstraintsTerminationDialogWidget(geo_col=geo_col, theme=theme, grid=grid)
         w7 = MultiPointOptDialogWidget()
         w5 = MSESDialogWidget2(geo_col=geo_col)
-        w1 = GeneticAlgorithmDialogWidget(multi_point_dialog_widget=w7)
+        w1 = GeneticAlgorithmDialogWidget(gui_obj=geo_col.gui_obj, multi_point_dialog_widget=w7)
         w6 = PymeadDialogWidget(os.path.join(GUI_DEFAULTS_DIR, 'mplot_settings.json'))
         w = OptimizationDialogVTabWidget(parent=self, widgets={'General Settings': w0,
                                                         'Genetic Algorithm': w1,
@@ -2819,8 +3356,8 @@ class OptimizationSetupDialog(PymeadDialog):
                                                         'XFOIL': w3, 'MSET': w4, 'MSES': w5, 'MPLOT': w6},
                                          settings_override=settings_override)
         super().__init__(parent=parent, window_title='Optimization Setup', widget=w, theme=theme)
-        w.objectives = self.parent().objectives
-        w.constraints = self.parent().constraints
+        w.objectives = geo_col.gui_obj.objectives
+        w.constraints = geo_col.gui_obj.constraints
 
         w1.update_objectives_and_constraints()  # IMPORTANT: makes sure that the objectives/constraints get stored
 
@@ -2876,8 +3413,8 @@ class ExportCoordinatesDialog(PymeadDialog):
         self.grid_layout = QGridLayout()
         self.setInputs()
         w.setLayout(self.grid_layout)
-        w.setMinimumWidth(600)
-        super().__init__(parent=parent, window_title="Export Airfoil Coordinates", widget=w, theme=theme)
+        super().__init__(parent=parent, window_title="Export Airfoil Coordinates", widget=w, theme=theme,
+                         minimum_width=626, minimum_height=379)
         self.grid_widget["airfoil_order"]["line"].setText(
             ",".join([k for k in self.parent().geo_col.container()["airfoils"].keys()]))
 
@@ -2967,8 +3504,8 @@ class ExportCSVDialogWidget(PymeadDialogWidget2):
 class ExportCSVDialog(PymeadDialog):
     def __init__(self, parent, theme: dict):
         widget = ExportCSVDialogWidget()
-        super().__init__(parent, window_title="Export CSV", widget=widget, theme=theme)
-        self.setMinimumWidth(450)
+        super().__init__(parent, window_title="Export CSV", widget=widget, theme=theme,
+                         minimum_width=450, fixed_height=125)
 
 
 class ExportControlPointsDialog(PymeadDialog):
@@ -2979,7 +3516,8 @@ class ExportControlPointsDialog(PymeadDialog):
         self.setInputs()
         w.setLayout(self.grid_layout)
         w.setMinimumWidth(400)
-        super().__init__(parent=parent, window_title="Export Control Points", widget=w, theme=theme)
+        super().__init__(parent=parent, window_title="Export Control Points", widget=w, theme=theme,
+                         minimum_width=500, fixed_height=185)
         self.grid_widget["airfoil_order"]["line"].setText(
             ",".join([k for k in self.parent().geo_col.container()["airfoils"].keys()]))
 
@@ -3023,14 +3561,14 @@ class ExportControlPointsDialog(PymeadDialog):
 class ExportIGESDialog(PymeadDialog):
     def __init__(self, parent, theme: dict):
         widget = QWidget()
-        super().__init__(parent=parent, window_title="Export IGES", widget=widget, theme=theme)
+        super().__init__(parent=parent, window_title="Export IGES", widget=widget, theme=theme,
+                         minimum_width=600, fixed_height=271)
 
         self.grid_widget = {}
         self.grid_layout = QGridLayout()
 
         self.setInputs()
         widget.setLayout(self.grid_layout)
-        self.setMinimumWidth(600)
 
     def setInputs(self):
         widget_dict = load_data(os.path.join(GUI_DIALOG_WIDGETS_DIR, "export_IGES.json"))
@@ -3086,7 +3624,8 @@ class AirfoilMatchingDialog(PymeadDialog):
     def __init__(self, parent, airfoil_names: typing.List[str], theme: dict):
 
         widget = QWidget()
-        super().__init__(parent, window_title="Choose Airfoil to Match", widget=widget, theme=theme)
+        super().__init__(parent, window_title="Choose Airfoil to Match", widget=widget, theme=theme,
+                         minimum_width=300, minimum_height=200)
 
         self.airfoil_names = airfoil_names
 
@@ -3103,9 +3642,6 @@ class AirfoilMatchingDialog(PymeadDialog):
             else:
                 self.lay.addWidget(i.widget, row_count, 1, 1, 1)
                 self.lay.addWidget(i.push, row_count, 2, 1, 1)
-
-        # self.setMinimumWidth(400)
-        self.setMinimumSize(400, 200)
 
     def setInputs(self):
         inputs = [
@@ -3161,32 +3697,11 @@ class AirfoilMatchingDialog(PymeadDialog):
         return {"tool_airfoil": self.inputs[0].value(), "target_airfoil": target_airfoil}
 
 
-class AirfoilPlotDialog(PymeadDialog):
-    def __init__(self, parent, theme: dict):
-        widget = QWidget()
-        super().__init__(parent, window_title="Select Airfoil to Plot", widget=widget, theme=theme)
-        self.lay = QFormLayout()
-        widget.setLayout(self.lay)
-
-        self.inputs = self.setInputs()
-        for i in self.inputs:
-            self.lay.addRow(i[0], i[1])
-
-        self.setMinimumWidth(300)
-
-    def setInputs(self):
-        r0 = ["Airfoil to Plot", QLineEdit(self)]
-        r0[1].setText('n0012-il')
-        return [r0]
-
-    def value(self):
-        return self.inputs[0][1].text()
-
-
 class LoadPointsDialog(PymeadDialog):
     def __init__(self, parent, theme: dict):
         widget = QWidget()
-        super().__init__(parent, window_title="Load Points", widget=widget, theme=theme)
+        super().__init__(parent, window_title="Load Points", widget=widget, theme=theme,
+                         minimum_width=450, minimum_height=202)
         self.lay = QGridLayout()
         widget.setLayout(self.lay)
         self.inputs = self.setInputs()
@@ -3199,8 +3714,6 @@ class LoadPointsDialog(PymeadDialog):
             else:
                 self.lay.addWidget(i.widget, row_count, 1, 1, 1)
                 self.lay.addWidget(i.push, row_count, 2, 1, 1)
-
-        self.setMinimumWidth(450)
 
     def setInputs(self):
         explanation = PymeadLabeledPlainTextEdit(
@@ -3233,12 +3746,13 @@ class LoadPointsDialog(PymeadDialog):
         return self.inputs[1].widget.text()
 
 
-class AirfoilDialog(PymeadDialog):
+class MakeAirfoilRelativeDialog(PymeadDialog):
     def __init__(self, theme: dict, geo_col: GeometryCollection, parent=None):
-        if len(geo_col.container()["points"]) == 0:
-            raise ValueError("An airfoil cannot be created until at least one Point has been added.")
+        if len(geo_col.container()["airfoils"]) == 0:
+            raise ValueError("An airfoil must be created first before a point can be made airfoil-relative")
         widget = QWidget()
-        super().__init__(parent=parent, window_title="Create Airfoil", widget=widget, theme=theme)
+        super().__init__(parent=parent, window_title="Airfoil-Relative Point", widget=widget, theme=theme,
+                         minimum_width=250, fixed_height=125)
         self.lay = QGridLayout()
         widget.setLayout(self.lay)
         self.geo_col = geo_col
@@ -3253,7 +3767,40 @@ class AirfoilDialog(PymeadDialog):
                 self.lay.addWidget(i.widget, row_count, 1, 1, 1)
                 self.lay.addWidget(i.push, row_count, 2, 1, 1)
 
-        self.setMinimumWidth(300)
+    def setInputs(self):
+        airfoil_list = list(self.geo_col.container()["airfoils"].keys())
+        inputs = [
+            PymeadLabeledComboBox(label="Airfoil",
+                                  tool_tip="Select the airfoil to which to bind the selected points",
+                                  items=airfoil_list),
+        ]
+        self.inputs = inputs
+        return inputs
+
+    def value(self):
+        return {"airfoil": self.inputs[0].value()}
+
+
+class AirfoilDialog(PymeadDialog):
+    def __init__(self, theme: dict, geo_col: GeometryCollection, parent=None):
+        if len(geo_col.container()["points"]) == 0:
+            raise ValueError("An airfoil cannot be created until at least one Point has been added.")
+        widget = QWidget()
+        super().__init__(parent=parent, window_title="Create Airfoil", widget=widget, theme=theme,
+                         minimum_width=300, fixed_height=234)
+        self.lay = QGridLayout()
+        widget.setLayout(self.lay)
+        self.geo_col = geo_col
+        self.inputs = self.setInputs()
+
+        for i in self.inputs:
+            row_count = self.lay.rowCount()
+            self.lay.addWidget(i.label, row_count, 0)
+            if i.push is None:
+                self.lay.addWidget(i.widget, row_count, 1, 1, 2)
+            else:
+                self.lay.addWidget(i.widget, row_count, 1, 1, 1)
+                self.lay.addWidget(i.push, row_count, 2, 1, 1)
 
     def setInputs(self):
         point_list = list(self.geo_col.container()["points"].keys())
@@ -3308,7 +3855,8 @@ class AirfoilDialog(PymeadDialog):
 class WebAirfoilDialog(PymeadDialog):
     def __init__(self, parent, theme: dict):
         widget = QWidget()
-        super().__init__(parent, window_title="Load Airfoil from Coordinates", widget=widget, theme=theme)
+        super().__init__(parent, window_title="Load Airfoil from Coordinates", widget=widget, theme=theme,
+                         minimum_width=400, fixed_height=236)
         self.lay = QGridLayout()
         widget.setLayout(self.lay)
         self.inputs = self.setInputs()
@@ -3341,7 +3889,7 @@ class WebAirfoilDialog(PymeadDialog):
                                                                "can be used for comparison"),
             PymeadLabeledColorSelector(label="Reference Color", tool_tip="Color used for the airfoil coordinates; only "
                                                                          "used if 'Reference' is selected",
-                                       read_only=True)
+                                       read_only=True, parent=self)
         ]
         inputs[0].sigValueChanged.connect(self.airfoilTypeChanged)
         inputs[2].push.clicked.connect(self.selectDatFile)
@@ -3386,8 +3934,8 @@ class MSESFieldPlotDialogWidget(PymeadDialogWidget):
 class MSESFieldPlotDialog(PymeadDialog):
     def __init__(self, parent: QWidget, theme: dict, default_field_dir: str = None):
         w = MSESFieldPlotDialogWidget(default_field_dir=default_field_dir)
-        super().__init__(parent=parent, window_title="MSES Field Plot Settings", widget=w, theme=theme)
-        self.setMinimumWidth(450)
+        super().__init__(parent=parent, window_title="MSES Field Plot Settings", widget=w, theme=theme,
+                         minimum_width=450, fixed_height=155)
 
 
 class GridBounds(QWidget):
@@ -3557,13 +4105,15 @@ class PlotExportDialog(PymeadDialog):
     def __init__(self, parent, gui_obj, theme: dict, current_min_level: float, current_max_level: float):
         widget = PlotExportDialogWidget(gui_obj=gui_obj, current_min_level=current_min_level,
                                         current_max_level=current_max_level)
-        super().__init__(parent, window_title="Plot Export", widget=widget, theme=theme)
+        super().__init__(parent, window_title="Plot Export", widget=widget, theme=theme,
+                         minimum_width=500, fixed_height=300)
 
 
 class ExitOptimizationDialog(PymeadDialog):
     def __init__(self, parent, theme: dict):
         widget = QLabel("An optimization task is running. Quit?")
-        super().__init__(parent=parent, window_title="Terminate Optimization?", widget=widget, theme=theme)
+        super().__init__(parent=parent, window_title="Terminate Optimization?", widget=widget, theme=theme,
+                         fixed_width=264, fixed_height=100)
 
 
 class SplitPolylineDialog(PymeadDialog):
@@ -3571,7 +4121,8 @@ class SplitPolylineDialog(PymeadDialog):
         self.polyline = polyline
         self.geo_col = geo_col
         widget = QWidget()
-        super().__init__(parent=parent, window_title="Split PolyLine", widget=widget, theme=theme)
+        super().__init__(parent=parent, window_title="Split PolyLine", widget=widget, theme=theme,
+                         fixed_width=192, minimum_height=126)
         self.lay = QFormLayout()
         self.spin = QSpinBox()
         self.spin.setMinimum(3)
@@ -3642,10 +4193,11 @@ class SettingsDialog(PymeadDialog):
             "General": GeneralSettingsDialogWidget(geo_col=geo_col)
         }
         w = PymeadDialogVTabWidget(parent=None, widgets=widgets, settings_override=settings_override)
-        super().__init__(parent=parent, window_title="Settings", widget=w, theme=theme)
+        super().__init__(parent=parent, window_title="Settings", widget=w, theme=theme,
+                         minimum_width=256, minimum_height=210)
 
 
-def convert_opt_settings_to_param_dict(opt_settings: dict) -> dict:
+def convert_opt_settings_to_param_dict(opt_settings: dict, n_var: int) -> dict:
     param_dict = {'tool': opt_settings['Genetic Algorithm']['tool'],
                   'algorithm_save_frequency': opt_settings['Genetic Algorithm']['algorithm_save_frequency'],
                   'n_obj': len(opt_settings['Genetic Algorithm']['J'].split(',')),
@@ -3696,4 +4248,199 @@ def convert_opt_settings_to_param_dict(opt_settings: dict) -> dict:
     elif opt_settings['XFOIL']['prescribe'] == 'Viscous Cl':
         param_dict['xfoil_settings']['CLI'] = opt_settings['XFOIL']['CLI']
     param_dict['mses_settings']['n_airfoils'] = param_dict['mset_settings']['n_airfoils']
+
+    # First check to make sure MSET, MSES, and MPLOT can be found on system path and marked as executable:
+    if param_dict["tool"] == "XFOIL" and shutil.which('xfoil') is None:
+        raise ValueError('XFOIL executable \'xfoil\' not found on system path')
+    if param_dict["tool"] == "MSES" and shutil.which('mset') is None:
+        raise ValueError('MSES suite executable \'mset\' not found on system path')
+    if param_dict["tool"] == "MSES" and shutil.which('mses') is None:
+        raise ValueError('MSES suite executable \'mses\' not found on system path')
+    if param_dict["tool"] == "MSES" and shutil.which('mplot') is None:
+        raise ValueError('MPLOT suite executable \'mplot\' not found on system path')
+
+    # TODO: reimplement this logic
+    # norm_val_list = geo_col.extract_design_variable_values(bounds_normalized=True)
+    # if isinstance(norm_val_list, str):
+    #     error_message = norm_val_list
+    #     self.disp_message_box(error_message, message_mode='error')
+    #     exit_the_dialog = True
+    #     early_return = True
+    #     continue
+
+    param_dict["n_var"] = n_var
+
+    # CONSTRAINTS
+    # First set the param dict constraints as a deepcopy to ensure that the thickness distribution constraint
+    # file paths do not get overridden by the data.tolist() call
+    opt_settings["Constraints/Termination"]["constraints"] = deepcopy(param_dict["constraints"])
+
+    for airfoil_name, constraint_set in param_dict["constraints"].items():
+
+        # Thickness distribution check parameters
+        if constraint_set["thickness_at_points"][1]:
+            thickness_file = constraint_set["thickness_at_points"][0]
+            try:
+                data = np.loadtxt(thickness_file)
+                constraint_set["thickness_at_points"][0] = data.tolist()
+            except FileNotFoundError:
+                message = f"Thickness file {thickness_file} not found"
+                raise FileNotFoundError(message)
+        else:
+            constraint_set['thickness_at_points'] = None
+
+        # Internal geometry check parameters
+        if constraint_set["internal_geometry"][1]:
+            internal_geometry_file = constraint_set["internal_geometry"][0]
+            try:
+                data = np.loadtxt(internal_geometry_file)
+                constraint_set["internal_geometry"][0] = data.tolist()
+            except FileNotFoundError:
+                message = f"Internal geometry file {internal_geometry_file} not found"
+                raise FileNotFoundError(message)
+        else:
+            constraint_set["internal_geometry"] = None
+
+    # MULTI-POINT OPTIMIZATION
+    multi_point_stencil = None
+    if opt_settings['Multi-Point Optimization']['multi_point_active']:
+        try:
+            multi_point_data = np.loadtxt(param_dict['multi_point_stencil'], delimiter=',')
+            multi_point_stencil = read_stencil_from_array(multi_point_data, tool=param_dict["tool"])
+        except FileNotFoundError:
+            message = f'Multi-point stencil file {param_dict["multi_point_stencil"]} not found'
+            raise FileNotFoundError(message)
+    if param_dict['tool'] == 'MSES':
+        param_dict['mses_settings']['multi_point_stencil'] = multi_point_stencil
+    elif param_dict['tool'] == 'XFOIL':
+        param_dict['xfoil_settings']['multi_point_stencil'] = multi_point_stencil
+    else:
+        raise ValueError(f"Currently only MSES and XFOIL are supported as analysis tools for "
+                         f"aerodynamic shape optimization. Tool selected was {param_dict['tool']}")
+
+    # Warm start parameters
+    if opt_settings['General Settings']['warm_start_active']:
+        opt_dir = opt_settings['General Settings']['warm_start_dir']
+    else:
+        opt_dir = make_ga_opt_dir(opt_settings['Genetic Algorithm']['root_dir'],
+                                  opt_settings['Genetic Algorithm']['opt_dir_name'])
+
+    param_dict['opt_dir'] = opt_dir
+    # self.current_opt_folder = opt_dir.replace(os.sep, "/")
+
+    name_base = 'ga_airfoil'
+    name = [f"{name_base}_{i}" for i in range(opt_settings['Genetic Algorithm']['n_offspring'])]
+    param_dict['name'] = name
+
+    base_folder = os.path.join(opt_settings['Genetic Algorithm']['root_dir'],
+                               opt_settings['Genetic Algorithm']['temp_analysis_dir_name'])
+    param_dict['base_folder'] = base_folder
+    if not os.path.exists(base_folder):
+        os.mkdir(base_folder)
+
+    if opt_settings['General Settings']['warm_start_active']:
+        param_dict['warm_start_generation'] = calculate_warm_start_index(
+            opt_settings['General Settings']['warm_start_generation'], opt_dir)
+        if param_dict['warm_start_generation'] == 0:
+            opt_settings['General Settings']['warm_start_active'] = False
+    param_dict_save = deepcopy(param_dict)
+    if not opt_settings['General Settings']['warm_start_active']:
+        save_data(param_dict_save, os.path.join(opt_dir, 'param_dict.json'))
+        save_data(opt_settings, os.path.join(opt_dir, "opt_settings.json"))
+    else:
+        save_data(param_dict_save, os.path.join(
+            opt_dir, f'param_dict_{param_dict["warm_start_generation"]}.json'))
+        save_data(opt_settings, os.path.join(
+            opt_dir, f"opt_settings_{param_dict['warm_start_generation']}.json"))
+
     return param_dict
+
+
+class GeometricConstraintGraph:
+    def __init__(self, theme: dict, geo_col: GeometryCollection,
+                 pen=None, size: tuple = (1000, 300), grid: bool = False):
+        self.geo_col = geo_col
+        pg.setConfigOptions(antialias=True)
+
+        if pen is None:
+            pen = pg.mkPen(color="cornflowerblue", width=2)
+
+        self.w = pg.GraphicsLayoutWidget(show=True, size=size)
+        self.w.setMinimumWidth(800)
+        self.w.setMinimumHeight(400)
+
+        self.v = self.w.addPlot(pen=pen)
+        self.v.setMenuEnabled(False)
+        self.v.showGrid(x=grid, y=grid)
+        self.v.setAspectLocked(True)
+        self.legend = self.v.addLegend(offset=(-5, 5))
+
+        self.plot_items = {
+            "airfoil": self.v.plot(pen=pg.mkPen(color="cornflowerblue", width=2), name="Airfoil"),
+            "min_radius_point": self.v.plot(
+                symbol="star", symbolSize=20, symbolBrush=pg.mkBrush(color="#e8c205"),
+                symbolPen=pg.mkPen(color="#787366")
+            ),
+            "min_radius_text": pg.TextItem(anchor=(1, 0)),
+            "max_thickness_line": self.v.plot(pen=pg.mkPen(color="#32a852", width=1.5), name="Max Thickness"),
+            "max_thickness_text": pg.TextItem(anchor=(0.5, 0.5)),
+            "min_area_text": pg.TextItem(anchor=(0.5, 0.5)),
+            "internal_geometry_line": self.v.plot(pen=pg.mkPen(color="#bb76c4", width=1.5), name="Internal Geometry")
+        }
+        # Some of the item types must be added explicitly to the plot
+        for item in ["min_radius_text", "max_thickness_text", "min_area_text"]:
+            self.v.addItem(self.plot_items[item])
+
+        # Set the formatting for the graph based on the current theme
+        self.set_formatting(theme=theme)
+
+    def set_background(self, background_color: str):
+        self.w.setBackground(background_color)
+
+    def set_formatting(self, theme: dict):
+        self.w.setBackground(theme["graph-background-color"])
+        label_font = f"{get_setting('axis-label-point-size')}pt {get_setting('axis-label-font-family')}"
+        self.v.setLabel(axis="bottom", text=f"x [{self.geo_col.units.current_length_unit()}]", font=label_font,
+                           color=theme["main-color"])
+        self.v.setLabel(axis="left", text=f"y [{self.geo_col.units.current_length_unit()}]",
+                        font=label_font, color=theme["main-color"])
+        tick_font = QFont(get_setting("axis-tick-font-family"), get_setting("axis-tick-point-size"))
+        self.v.getAxis("bottom").setTickFont(tick_font)
+        self.v.getAxis("left").setTickFont(tick_font)
+        self.v.getAxis("bottom").setTextPen(theme["main-color"])
+        self.v.getAxis("left").setTextPen(theme["main-color"])
+        self.set_legend_label_format(theme)
+
+    def set_legend_label_format(self, theme: dict):
+        for _, label in self.legend.items:
+            label.item.setHtml(f"<span style='font-family: DejaVu Sans; color: "
+                               f"{theme['main-color']}; size: 8pt'>{label.text}</span>")
+
+
+class GeometricConstraintGraphDialog(PymeadDialog):
+
+    sigConstraintGraphClosed = pyqtSignal()
+
+    def __init__(self, theme: dict, geo_col: GeometryCollection, grid: bool, airfoil_name: str, parent=None):
+        self.graph = GeometricConstraintGraph(theme=theme, geo_col=geo_col, grid=grid)
+        self.widget = self.graph.w
+        super().__init__(parent=parent, window_title=f"Geometric Constraint Visualization - {airfoil_name}",
+                         widget=self.widget, theme=theme)
+        self.accepted.connect(self.onAccepted)
+        self.rejected.connect(self.onRejected)
+
+    def closeEvent(self, a0):
+        self.sigConstraintGraphClosed.emit()
+        super().closeEvent(a0)
+
+    def onAccepted(self):
+        self.sigConstraintGraphClosed.emit()
+
+    def onRejected(self):
+        self.sigConstraintGraphClosed.emit()
+
+
+class FileOverwriteDialog(PymeadDialog):
+    def __init__(self, theme: dict, parent=None):
+        widget = QLabel("File already exists. Overwrite?")
+        super().__init__(parent=parent, window_title="Overwrite?", widget=widget, theme=theme)

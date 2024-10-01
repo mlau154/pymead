@@ -5,7 +5,8 @@ import pyqtgraph as pg
 from PyQt6.QtCore import Qt, pyqtSignal, pyqtSlot, QRegularExpression
 from PyQt6.QtGui import QValidator, QBrush, QColor
 from PyQt6.QtWidgets import QTreeWidget, QTreeWidgetItem, QPushButton, QHBoxLayout, QHeaderView, QDialog, QGridLayout, \
-    QDoubleSpinBox, QLineEdit, QLabel, QMenu, QAbstractItemView, QTreeWidgetItemIterator, QWidget, QCompleter, QSpinBox
+    QDoubleSpinBox, QLineEdit, QLabel, QMenu, QAbstractItemView, QTreeWidgetItemIterator, QWidget, QCompleter, QSpinBox, \
+    QCheckBox
 from pymead.core.parametric_curve import INTERMEDIATE_NT
 
 from pymead.core.airfoil import Airfoil
@@ -17,7 +18,7 @@ from pymead.core.mea import MEA
 from pymead.core.param import Param, DesVar, LengthParam, AngleParam, LengthDesVar, AngleDesVar, EquationCompileError
 from pymead.core.point import Point
 from pymead.core.pymead_obj import PymeadObj
-from pymead.gui.dialogs import PymeadDialog
+from pymead.gui.dialogs import PymeadDialog, MakeAirfoilRelativeDialog
 
 
 class HeaderButtonRow(QHeaderView):
@@ -49,8 +50,8 @@ class ValueSpin(QDoubleSpinBox):
     def __init__(self, parent, param: Param):
         super().__init__(parent)
         self.pymead_obj = param
-        self.setMaximumWidth(150)
-        self.setDecimals(6)
+        self.setMaximumWidth(200)
+        self.setDecimals(16)
         self.setSingleStep(0.01)
         if isinstance(param, LengthParam) or isinstance(param, AngleParam):
             self.setSuffix(f" {param.unit()}")
@@ -72,6 +73,7 @@ class ValueSpin(QDoubleSpinBox):
         self.setValue(self.param.value())
         self.valueChanged.connect(self.onValueChanged)
         self.setEnabled(self.param.enabled())
+        self.setKeyboardTracking(False)
 
     # def setValue(self, val):
     #
@@ -175,6 +177,7 @@ class LowerSpin(QDoubleSpinBox):
         self.setMaximum(1e9)
         self.setValue(self.param.lower())
         self.valueChanged.connect(self.onValueChanged)
+        self.setKeyboardTracking(False)
 
     def onValueChanged(self, lower: float):
         self.param.set_lower(lower)
@@ -191,6 +194,7 @@ class UpperSpin(QDoubleSpinBox):
         self.setMaximum(1e9)
         self.setValue(self.param.upper())
         self.valueChanged.connect(self.onValueChanged)
+        self.setKeyboardTracking(False)
 
     def onValueChanged(self, upper: float):
         self.param.set_upper(upper)
@@ -403,6 +407,7 @@ class PointButton(TreeButton):
         self.point = point
         self.x_button = None
         self.y_button = None
+        self.relative_check = None
 
     def modifyDialogInternals(self, dialog: QDialog, layout: QGridLayout) -> None:
         name_label = QLabel("Name", self)
@@ -414,18 +419,42 @@ class PointButton(TreeButton):
         y_label = QLabel("y", self)
         self.y_button = ParamButton(self.point.y(), self.tree, name_editable=False)
         self.y_button.sigValueChanged.connect(self.onYChanged)
+        self.relative_check = QCheckBox("Airfoil-Relative", self)
+        self.relative_check.setChecked(self.point.relative_airfoil is not None)
+        self.relative_check.toggled.connect(self.onCheckChanged)
         layout.addWidget(name_label, 0, 0)
         layout.addWidget(name_edit, 0, 1)
         layout.addWidget(x_label, 1, 0)
         layout.addWidget(self.x_button, 1, 1)
         layout.addWidget(y_label, 2, 0)
         layout.addWidget(self.y_button, 2, 1)
+        layout.addWidget(self.relative_check, 3, 0, 1, 2)
 
     def onXChanged(self, x: float):
         self.point.request_move(x, self.point.y().value())
 
     def onYChanged(self, y: float):
         self.point.request_move(self.point.x().value(), y)
+
+    def onCheckChanged(self, airfoil_relative: bool):
+        if airfoil_relative:
+            dialog = MakeAirfoilRelativeDialog(theme=self.tree.gui_obj.themes[self.tree.gui_obj.current_theme],
+                                               geo_col=self.tree.geo_col, parent=self)
+            if dialog.exec():
+                airfoil_name = dialog.value()["airfoil"]
+                airfoil = self.tree.geo_col.container()["airfoils"][airfoil_name]
+                try:
+                    airfoil.add_relative_points(self.tree.geo_col.selected_objects["points"])
+                except ValueError as e:
+                    self.tree.gui_obj.disp_message_box(str(e))
+                    self.relative_check.setChecked(False)
+            else:
+                self.relative_check.setChecked(False)
+        else:
+            for point in self.tree.geo_col.selected_objects["points"]:
+                if point.relative_airfoil is None:
+                    continue
+                point.relative_airfoil.remove_relative_points([point])
 
     def onNameChange(self, name: str):
         self.x_button.setText(f"{name}.x")
@@ -836,9 +865,9 @@ class ParameterTree(QTreeWidget):
         self.setHeader(self.headerRow)
 
         # Set the tree widget geometry
-        self.setMinimumWidth(300)
+        self.setMinimumWidth(400)
         self.header().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
-        self.setColumnWidth(1, 120)
+        self.setColumnWidth(1, 200)
 
         # Set the tree to be expanded by default
         self.expandAll()
@@ -861,7 +890,10 @@ class ParameterTree(QTreeWidget):
         self.previous_item_hovered = None
 
     def getPymeadObjFromItem(self, item: QTreeWidgetItem):
-        pymead_obj_name = item.data(0, Qt.ItemDataRole.DisplayRole)
+        try:
+            pymead_obj_name = item.data(0, Qt.ItemDataRole.DisplayRole)
+        except RuntimeError:  # Fix for the wrapped C/C++ object (item) being deleted and then access attempted
+            return
         pymead_obj_parent_tree_item = item.parent()
         if pymead_obj_parent_tree_item is None:
             return
@@ -925,7 +957,12 @@ class ParameterTree(QTreeWidget):
             if pymead_obj is not None:
                 self.geo_col.hover_leave_obj(pymead_obj)
             else:
-                self.setItemStyle(self.previous_item_hovered, "default")
+                try:
+                    self.setItemStyle(self.previous_item_hovered, "default")
+                except RuntimeError:
+                    # Occasionally, this event still gets called after the item is deleted.
+                    # In this case, just exit the method.
+                    pass
 
         if not isinstance(tree_item, PymeadTreeWidgetItem):
             self.previous_item_hovered = tree_item
@@ -937,7 +974,12 @@ class ParameterTree(QTreeWidget):
             if pymead_obj is not None:
                 self.geo_col.hover_enter_obj(pymead_obj)
             else:
-                self.setItemStyle(tree_item, "hovered")
+                try:
+                    self.setItemStyle(tree_item, "hovered")
+                except RuntimeError:
+                    # Occasionally, this event still gets called after the item is deleted.
+                    # In this case, just exit the method.
+                    pass
 
         # Assign the current tree widget item to the previous item hovered
         self.previous_item_hovered = tree_item
@@ -985,7 +1027,7 @@ class ParameterTree(QTreeWidget):
         if style == "default":
             # item.setBackground(0, background_color)
             # item.setBackground(1, background_color)
-            brush = QBrush(QColor(self.parent().parent().themes[self.parent().parent().current_theme]['main-color']))
+            brush = QBrush(QColor(self.gui_obj.themes[self.gui_obj.current_theme]['main-color']))
             item.setForeground(0, brush)
         elif style == "hovered" and item.hoverable:
             # gradient = QtGui.QLinearGradient(0, 0, 150, 0)

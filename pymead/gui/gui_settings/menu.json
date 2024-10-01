@@ -4,16 +4,19 @@
     "Open": ["load_geo_col", "Ctrl+O"],
     "Load Example": {
       "Aero-Propulsion": {
+        "Isolated Propulsor": "load_example_isolated_propulsor",
         "Underwing Propulsor": "load_example_underwing_propulsor"
       },
       "Airfoil Matching": {
         "NASA SC20612": "load_example_sc20612_match"
       },
       "Basic": {
-        "Single Airfoil (Sharp TE)": "load_example_basic_airfoil_sharp"
+        "Single Airfoil (Sharp TE)": "load_example_basic_airfoil_sharp",
+        "Single Airfoil (Blunt TE)": "load_example_basic_airfoil_blunt"
       },
       "Shape Optimization": {
-        "Single Airfoil (Sharp TE)": "load_example_basic_airfoil_sharp_dv"
+        "Single Airfoil (Sharp TE)": "load_example_basic_airfoil_sharp_dv",
+        "Single Airfoil (Blunt TE)": "load_example_basic_airfoil_blunt_dv"
       },
       "Web Airfoils": {
         "NACA 0012": "load_example_n0012",
@@ -68,6 +71,7 @@
   },
   "Dev": {
     "Show Constraint Graph": "show_constraint_graph",
-    "Show Param Graph": "show_param_graph"
+    "Show Param Graph": "show_param_graph",
+    "Verify Constraints": "verify_constraints"
   }
 }

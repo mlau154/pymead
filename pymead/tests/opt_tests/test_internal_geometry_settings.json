@@ -1,0 +1,169 @@
+{
+    "General Settings": {
+        "save": null,
+        "save_as": null,
+        "load": null,
+        "warm_start_active": false,
+        "warm_start_generation": -1,
+        "warm_start_dir": "",
+        "use_initial_settings": true,
+        "mea_file": "",
+        "batch_mode_active": false,
+        "batch_mode_files": ""
+    },
+    "Genetic Algorithm": {
+        "tool": "XFOIL",
+        "J": "$Cd",
+        "G": "",
+        "additional_data": "",
+        "pop_size": 50,
+        "n_offspring": 150,
+        "max_sampling_width": 0.08,
+        "eta_crossover": 20.0,
+        "eta_mutation": 15.0,
+        "random_seed": 1,
+        "num_processors": 10,
+        "algorithm_save_frequency": 1,
+        "root_dir": "",
+        "opt_dir_name": "ga_opt",
+        "temp_analysis_dir_name": "analysis_temp"
+    },
+    "Constraints/Termination": {
+        "constraints": {
+            "Airfoil-1": {
+                "min_val_of_max_thickness": [
+                    0.11,
+                    false,
+                    "Non-Dimensional"
+                ],
+                "min_radius_curvature": [
+                    0.004,
+                    false,
+                    "Non-Dimensional"
+                ],
+                "thickness_at_points": [
+                    "",
+                    false,
+                    "Non-Dimensional, Chord-Perpendicular"
+                ],
+                "min_area": [
+                    0.04,
+                    false,
+                    "Non-Dimensional"
+                ],
+                "internal_geometry": [
+                    "",
+                    false,
+                    "Rotate/Translate/Scale w/ Airfoil, Eval. Before Aerodynamic Evaluation"
+                ]
+            }
+        },
+        "f_tol": 0.0025,
+        "cv_tol": 1e-06,
+        "x_tol": 1e-08,
+        "nth_gen": 10,
+        "n_last": 30,
+        "n_max_gen": 500,
+        "n_max_evals": 100000
+    },
+    "Multi-Point Optimization": {
+        "multi_point_active": false,
+        "multi_point_stencil": "",
+        "design_idx": 0,
+        "information": null
+    },
+    "XFOIL": {
+        "viscous_flag": true,
+        "spec_Re": false,
+        "Re": 2213243.6863567196,
+        "Ma": 0.1,
+        "spec_P_T_rho": "Specify Pressure, Temperature",
+        "P": 101325.0,
+        "T": 300.0,
+        "rho": 1.1768292682926829,
+        "gam": 1.4,
+        "L": 1.0,
+        "R": 287.05,
+        "prescribe": "Angle of Attack (deg)",
+        "alfa": 0.0,
+        "Cl": 0.0,
+        "CLI": 0.0,
+        "xtr_upper": 1.0,
+        "xtr_lower": 1.0,
+        "N": 9.0,
+        "iter": 150,
+        "timeout": 8.0,
+        "airfoil": "Airfoil-1",
+        "base_dir": "",
+        "airfoil_name": "x_airfoil"
+    },
+    "MSET": {
+        "mea": "",
+        "grid_bounds": [
+            -5.0,
+            5.0,
+            -5.0,
+            5.0
+        ],
+        "airfoil_side_points": 180,
+        "exp_side_points": 0.9,
+        "inlet_pts_left_stream": 41,
+        "outlet_pts_right_stream": 41,
+        "num_streams_top": 17,
+        "num_streams_bot": 23,
+        "max_streams_between": 15,
+        "elliptic_param": 1.3,
+        "stag_pt_aspect_ratio": 2.5,
+        "x_spacing_param": 0.85,
+        "alf0_stream_gen": 0.0,
+        "timeout": 10.0,
+        "multi_airfoil_grid": {},
+        "airfoil_analysis_dir": "",
+        "airfoil_coord_file_name": "default_airfoil",
+        "save_as_mses_settings": null,
+        "load_mses_settings": null,
+        "use_downsampling": false,
+        "downsampling_max_pts": 200,
+        "downsampling_curve_exp": 2.0
+    },
+    "MSES": {
+        "viscous_flag": true,
+        "spec_Re": false,
+        "REYNIN": 15492705.804497035,
+        "MACHIN": 0.7,
+        "spec_P_T_rho": "Specify Pressure, Temperature",
+        "P": 101325.0,
+        "T": 300.0,
+        "rho": 1.1768292682926829,
+        "gam": 1.4,
+        "L": 1.0,
+        "R": 287.05,
+        "spec_alfa_Cl": "Specify Angle of Attack",
+        "ALFAIN": 0.0,
+        "CLIFIN": 0.0,
+        "ISMOM": "S-momentum equation, isentropic @ LE",
+        "IFFBC": "vortex+source+doublet airfoil far-field BCs",
+        "ACRIT": 9.0,
+        "MCRIT": 0.95,
+        "MUCON": 1.05,
+        "timeout": 15.0,
+        "iter": 100,
+        "verbose": false,
+        "xtrs": {
+            "XTRSupper": {},
+            "XTRSlower": {}
+        },
+        "AD_active": false,
+        "AD_number": 0,
+        "AD": {}
+    },
+    "MPLOT": {
+        "timeout": 15.0,
+        "Mach": false,
+        "Streamline_Grid": false,
+        "Grid": false,
+        "Grid_Zoom": false,
+        "Output_Field": true,
+        "CPK": false
+    }
+}

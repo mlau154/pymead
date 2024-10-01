@@ -1,4 +1,3 @@
-import logging
 import multiprocessing.connection
 import typing
 
@@ -56,6 +55,35 @@ def compute_objectives_and_forces_from_evaluated_population(
             G[pop_idx, cnstr_idx] = constraint.value
 
     return J, G, forces
+
+
+def do_sampling(param_dict: dict, norm_parm_list: list) -> list or np.ndarray:
+    """
+    Performs the sampling stage for the genetic algorithm.
+
+    Parameters
+    ----------
+    param_dict: dict
+        Parameter dictionary assigned to the population and chromosomes (copied and modified form of the optimization settings)
+    norm_parm_list: list
+        List of normalized geometry collection design variable values (from the baseline geometry)
+    """
+    # Set the psuedo-random seeds
+    if param_dict["seed"] is not None:
+        np.random.seed(param_dict["seed"])
+        random.seed(param_dict["seed"])
+
+    # Create the sampling object
+    sampling = ConstrictedRandomSampling(
+        n_samples=param_dict["n_offsprings"],
+        norm_param_list=norm_parm_list,
+        max_sampling_width=param_dict["max_sampling_width"]
+    )
+
+    # Perform the sampling
+    X_list = sampling.sample()
+
+    return X_list
 
 
 def shape_optimization(conn: multiprocessing.connection.Connection or None, param_dict: dict, opt_settings: dict,
@@ -117,13 +145,9 @@ def shape_optimization(conn: multiprocessing.connection.Connection or None, para
                       xl=param_dict['xl'], xu=param_dict['xu'], param_dict=param_dict)
 
     if not opt_settings['General Settings']['warm_start_active']:
-        if param_dict['seed'] is not None:
-            np.random.seed(param_dict['seed'])
-            random.seed(param_dict['seed'])
 
-        sampling = ConstrictedRandomSampling(n_samples=param_dict['n_offsprings'], norm_param_list=parameter_list,
-                                             max_sampling_width=param_dict['max_sampling_width'])
-        X_list = sampling.sample()
+        X_list = do_sampling(param_dict, norm_parm_list=parameter_list)
+
         parents = [Chromosome(geo_col_dict=geo_col_dict, param_dict=param_dict, generation=0,
                               airfoil_name=airfoil_name, mea_name=mea_name, population_idx=idx, genes=individual)
                    for idx, individual in enumerate(X_list)]
@@ -135,8 +159,8 @@ def shape_optimization(conn: multiprocessing.connection.Connection or None, para
 
         J, G, forces = compute_objectives_and_forces_from_evaluated_population(population, objectives, constraints)
 
-        if all([obj_value == 1000.0 for obj_value in J[:, 0]]) is None:
-            send_over_pipe(("text", f"Could not converge any individuals in the population. Optimization terminated."))
+        if all([obj_value == 1000.0 for obj_value in J[:, 0]]):
+            send_over_pipe(("disp_message_box", f"Could not converge any individuals in the population. Optimization terminated."))
             return
 
         pop_initial = pymoo.core.population.Population.new("X", np.array(X_list))
@@ -205,9 +229,9 @@ def shape_optimization(conn: multiprocessing.connection.Connection or None, para
 
             algorithm.evaluator.n_eval += n_eval
 
-            if all([obj_value == 1000.0 for obj_value in J[:, 0]]) is None:
+            if all([obj_value == 1000.0 for obj_value in J[:, 0]]):
                 send_over_pipe(
-                    ("text", f"Could not converge any individuals in the population. Optimization terminated."))
+                    ("disp_message_box", f"Could not converge any individuals in the population. Optimization terminated."))
                 return
 
             pop.set("F", J)

@@ -1,0 +1,118 @@
+{
+    "MSET": {
+        "mea": "MEA-1",
+        "grid_bounds": [
+            -5.0,
+            5.0,
+            -5.0,
+            5.0
+        ],
+        "airfoil_side_points": 180,
+        "exp_side_points": 0.9,
+        "inlet_pts_left_stream": 41,
+        "outlet_pts_right_stream": 41,
+        "num_streams_top": 17,
+        "num_streams_bot": 23,
+        "max_streams_between": 15,
+        "elliptic_param": 1.3,
+        "stag_pt_aspect_ratio": 2.5,
+        "x_spacing_param": 0.85,
+        "alf0_stream_gen": 0.0,
+        "timeout": 10.0,
+        "multi_airfoil_grid": {
+            "TopAirfoil": {
+                "dsLE_dsAvg": 0.35,
+                "dsTE_dsAvg": 0.8,
+                "curvature_exp": 1.3,
+                "U_s_smax_min": 1.0,
+                "U_s_smax_max": 1.0,
+                "L_s_smax_min": 1.0,
+                "L_s_smax_max": 1.0,
+                "U_local_avg_spac_ratio": 0.0,
+                "L_local_avg_spac_ratio": 0.0
+            },
+            "BottomAirfoil": {
+                "dsLE_dsAvg": 0.35,
+                "dsTE_dsAvg": 0.8,
+                "curvature_exp": 1.3,
+                "U_s_smax_min": 1.0,
+                "U_s_smax_max": 1.0,
+                "L_s_smax_min": 1.0,
+                "L_s_smax_max": 1.0,
+                "U_local_avg_spac_ratio": 0.0,
+                "L_local_avg_spac_ratio": 0.0
+            }
+        },
+        "airfoil_analysis_dir": "",
+        "airfoil_coord_file_name": "iso_prop",
+        "save_as_mses_settings": null,
+        "load_mses_settings": null,
+        "use_downsampling": false,
+        "downsampling_max_pts": 200,
+        "downsampling_curve_exp": 2.0
+    },
+    "MSES": {
+        "viscous_flag": true,
+        "spec_Re": true,
+        "REYNIN": 2500000.0,
+        "MACHIN": 0.3,
+        "spec_P_T_rho": "Specify Pressure, Temperature",
+        "P": 101325.0,
+        "T": 300.0,
+        "rho": 1.176624281484062,
+        "gam": 1.4,
+        "L": 1.0,
+        "R": 287.05,
+        "spec_alfa_Cl": "Specify Angle of Attack",
+        "ALFAIN": 0.0,
+        "CLIFIN": 0.0,
+        "ISMOM": "S-momentum equation, isentropic @ LE",
+        "IFFBC": "vortex+source+doublet airfoil far-field BCs",
+        "ACRIT": 4.0,
+        "MCRIT": 0.99,
+        "MUCON": 1.0,
+        "timeout": 15.0,
+        "iter": 100,
+        "verbose": false,
+        "xtrs": {
+            "XTRSupper": {
+                "TopAirfoil": 1.0,
+                "BottomAirfoil": 1.0
+            },
+            "XTRSlower": {
+                "TopAirfoil": 1.0,
+                "BottomAirfoil": 1.0
+            }
+        },
+        "AD_active": true,
+        "AD_number": 1,
+        "AD": {
+            "1": {
+                "ISDELH": 2,
+                "XCDELH": 0.4,
+                "XCDELH-Param": "",
+                "PTRHIN": 1.04,
+                "ETAH": 0.95,
+                "PTRHIN-DesVar": [],
+                "PTRHIN-DVSelect": null
+            }
+        }
+    },
+    "MPLOT": {
+        "timeout": 15.0,
+        "Mach": false,
+        "Streamline_Grid": false,
+        "Grid": false,
+        "Grid_Zoom": false,
+        "Output_Field": true,
+        "CPK": false
+    },
+    "MPOLAR": {
+        "timeout": 300.0,
+        "polar_mode": "No Polar Analysis",
+        "alfa_array": "",
+        "alfa_start": -2.0,
+        "alfa_end": 14.0,
+        "alfa_inc": 1.0
+    }
+}

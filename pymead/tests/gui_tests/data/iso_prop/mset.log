@@ -1,0 +1,211 @@
+Output:
+
+ Reading in coordinate file for: iso_prop                        
+
+
+ Grid parameters read from file  gridpar.iso_prop                        
+
+ Calculating unit vorticity distributions ...
+ Initial Dx,Dy =  0.38651622026635146        1.5440161635739036E-006
+
+ Using default alpha ...
+
+ alpha =  0.000    CL = -0.0000
+
+ Setting wake for element  1
+ Setting wake for element  2
+ Setting inlet streamline for element  1
+ Setting inlet streamline for element  2
+ Setting farfield streamline  1
+ Setting farfield streamline  2
+ Writing   PostScript to file  plot.ps ...
+
+ =============================================
+
+    1  Specify alpha and generate streamlines
+    2  Generate spacing and initialize grid
+    3  Elliptic grid smoother
+    4  Write  mdat.iso_prop
+
+    5  Plot grid
+    6  Plot Cp vs x/c
+
+    7  Modify grid parameters
+    8  Write  grid parameters to gridpar.iso_prop
+
+    9  Change plot size
+   11  Zoom
+   12  Unzoom
+
+   13  Write  blade.iso_prop
+   14  Write  mses.iso_prop  with defaults
+   15  Change  "iso_prop"  suffix for output
+   16  Hardcopy plot
+
+ Select grid generation option (0=Exit):  
+ Enter new alpha (deg):    0.000
+
+ alpha =  0.000    CL = -0.0000
+
+ Setting wake for element  1
+ Setting wake for element  2
+ Setting inlet streamline for element  1
+ Setting inlet streamline for element  2
+ Setting farfield streamline  1
+ Setting farfield streamline  2
+ Appending PostScript to file  plot.ps ...
+
+ =============================================
+
+    1  Specify alpha and generate streamlines
+    2  Generate spacing and initialize grid
+    3  Elliptic grid smoother
+    4  Write  mdat.iso_prop
+
+    5  Plot grid
+    6  Plot Cp vs x/c
+
+    7  Modify grid parameters
+    8  Write  grid parameters to gridpar.iso_prop
+
+    9  Change plot size
+   11  Zoom
+   12  Unzoom
+
+   13  Write  blade.iso_prop
+   14  Write  mses.iso_prop  with defaults
+   15  Change  "iso_prop"  suffix for output
+   16  Hardcopy plot
+
+ Select grid generation option (0=Exit):   Generating unresolved point spacings ...
+ Appending PostScript to file  plot.ps ...
+
+   Prescribed grid node spacing parameters ...
+     dsLE/dsAvg = 0.3500   dsTE/dsAvg = 0.8000    curvature exponent =   1.3000
+
+ Actual resulting surface spacings ...
+  U: dsLE/dsAvg =  0.350   dsTE/dsAvg =  0.642  | ds/dsAvg  min max:  0.350  1.117
+  L: dsLE/dsAvg =  0.350   dsTE/dsAvg =  0.629  | ds/dsAvg  min max:  0.350  1.035
+ __________________________________________
+
+  D sLE/dsAvg, dsTE/dsAvg  spacing ratios  
+  C urvature exponent                      
+  U pper side spacing refinement           |   B lowup plot
+  L ower side spacing refinement           |   R eset plot 
+
+ Change what? (<Return> if spacing OK):   Appending PostScript to file  plot.ps ...
+
+   Prescribed grid node spacing parameters ...
+     dsLE/dsAvg = 0.3500   dsTE/dsAvg = 0.8000    curvature exponent =   1.3000
+
+ Actual resulting surface spacings ...
+  U: dsLE/dsAvg =  0.350   dsTE/dsAvg =  0.629  | ds/dsAvg  min max:  0.350  1.035
+  L: dsLE/dsAvg =  0.350   dsTE/dsAvg =  0.642  | ds/dsAvg  min max:  0.350  1.117
+ __________________________________________
+
+  D sLE/dsAvg, dsTE/dsAvg  spacing ratios  
+  C urvature exponent                      
+  U pper side spacing refinement           |   B lowup plot
+  L ower side spacing refinement           |   R eset plot 
+
+ Change what? (<Return> if spacing OK):   is ilLE ilTE NLIN  1    2    3    4     41 181  40   0
+ is ilLE ilTE NLIN  2    2    5    6     41   2 179   2  40   0
+ is ilLE ilTE NLIN  3    3    4    6     39   2 181   2  39   0
+ is ilLE ilTE NLIN  4    3    4    6     39   2 181   2  39   0
+ SETEXP: N=2 passed in.  Specified DS1 is not set.
+ SGFUDG: Increasing element  1  point number from 180  to  182
+ SETEXP: N=2 passed in.  Specified DS1 is not set.
+
+ is ilLE ilTE NLIN  1    2    3    4     41 183  40   0
+ is ilLE ilTE NLIN  2    2    5    6     41   2 181   2  40   0
+ is ilLE ilTE NLIN  3    3    4    6     41   2 181   2  40   0
+ is ilLE ilTE NLIN  4    3    4    6     41   2 181   2  40   0
+
+ Number of streamlines :  56  ( max:  99 )
+ Number of normal lines: 262  ( max:1001 )
+
+ =============================================
+
+    1  Specify alpha and generate streamlines
+    2  Generate spacing and initialize grid
+    3  Elliptic grid smoother
+    4  Write  mdat.iso_prop
+
+    5  Plot grid
+    6  Plot Cp vs x/c
+
+    7  Modify grid parameters
+    8  Write  grid parameters to gridpar.iso_prop
+
+    9  Change plot size
+   11  Zoom
+   12  Unzoom
+
+   13  Write  blade.iso_prop
+   14  Write  mses.iso_prop  with defaults
+   15  Change  "iso_prop"  suffix for output
+   16  Hardcopy plot
+
+ Select grid generation option (0=Exit):   Smoothing grid ...
+ Dmax =   0.11787274810501115        1.3000000000000000     
+ Dmax =    6.4488900786874401E-002   1.5000000000000000     
+ Dmax =    3.6545602968359348E-002   1.5000000000000000     
+ Dmax =    2.1235027170626575E-002   1.5000000000000000     
+ Dmax =    1.2278476018824537E-002   1.5000000000000000     
+ Dmax =    7.4307635875502280E-003   1.6000000000000001     
+ Dmax =    4.3705997532365983E-003   1.6000000000000001     
+ Dmax =    2.5634347713857780E-003   1.6000000000000001     
+ Dmax =    1.5996116205479684E-003   1.6000000000000001     
+ Dmax =    1.1897262996908534E-003   1.6000000000000001     
+ Dmax =    8.9680270338297430E-004   1.6000000000000001     
+ Dmax =    6.8324986555855639E-004   1.6000000000000001     
+ Dmax =    5.2580459668356502E-004   1.6000000000000001     
+ Dmax =    4.0827215764911847E-004   1.6000000000000001     
+
+ =============================================
+
+    1  Specify alpha and generate streamlines
+    2  Generate spacing and initialize grid
+    3  Elliptic grid smoother
+    4  Write  mdat.iso_prop
+
+    5  Plot grid
+    6  Plot Cp vs x/c
+
+    7  Modify grid parameters
+    8  Write  grid parameters to gridpar.iso_prop
+
+    9  Change plot size
+   11  Zoom
+   12  Unzoom
+
+   13  Write  blade.iso_prop
+   14  Write  mses.iso_prop  with defaults
+   15  Change  "iso_prop"  suffix for output
+   16  Hardcopy plot
+
+ Select grid generation option (0=Exit):  
+ =============================================
+
+    1  Specify alpha and generate streamlines
+    2  Generate spacing and initialize grid
+    3  Elliptic grid smoother
+    4  Write  mdat.iso_prop
+
+    5  Plot grid
+    6  Plot Cp vs x/c
+
+    7  Modify grid parameters
+    8  Write  grid parameters to gridpar.iso_prop
+
+    9  Change plot size
+   11  Zoom
+   12  Unzoom
+
+   13  Write  blade.iso_prop
+   14  Write  mses.iso_prop  with defaults
+   15  Change  "iso_prop"  suffix for output
+   16  Hardcopy plot
+
+ Select grid generation option (0=Exit):  
+Errors:

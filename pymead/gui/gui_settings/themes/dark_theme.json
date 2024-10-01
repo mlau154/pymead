@@ -1,6 +1,6 @@
 {
   "theme-name": "dark",
-  "background-color":  "#3e3f40",
+  "background-color": "#3e3f40",
   "main-color": "#dce1e6",
   "dock-widget-background-color": "#2a2a2b",
   "font-size": "10pt",
@@ -31,6 +31,10 @@
   "residual-color-2": "aqua",
   "residual-color-3": "yellow",
   "residual-target-color": "#dce1e6",
+  "cpu-color": "#00FFFF",
+  "mem-color": "#f08080",
+  "cpu-fill-color": "#00FFFF77",
+  "mem-fill-color": "#f0808077",
   "polar-color-1": "lightcoral",
   "polar-color-2": "aqua",
   "polar-color-3": "yellow",

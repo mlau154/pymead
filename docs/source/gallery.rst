@@ -13,11 +13,11 @@ Click on any image to zoom. Press the "back" button to return to the gallery.
 
           Aero-propulsive analysis of an optimized multi-element airfoil
 
-     - .. figure:: user/images/gui_customize_dark.*
+     - .. figure:: images/xfoil_opt_10x_dark.*
           :width: 100%
           :class: only-dark
 
-          Customization of the GUI
+          Optimization using XFOIL (10x speed)
 
    * - .. figure:: images/n0012_analysis_xfoil_dark.*
           :width: 100%
@@ -61,7 +61,11 @@ Click on any image to zoom. Press the "back" button to return to the gallery.
 
           Matching a NASA SC20612 airfoil with Bézier curves (4x speed)
 
-     -
+     - .. figure:: user/images/gui_customize_dark.*
+          :width: 100%
+          :class: only-dark
+
+          Customization of the GUI
 
 
 .. list-table::
@@ -70,14 +74,15 @@ Click on any image to zoom. Press the "back" button to return to the gallery.
 
    * - .. figure:: images/pymead_main_screenshot_light.*
           :width: 100%
+          :class: only-light
 
           Aero-propulsive analysis of an optimized multi-element airfoil
 
-     - .. figure:: user/images/gui_customize_light.*
+     - .. figure:: images/xfoil_opt_10x_light.*
           :width: 100%
           :class: only-light
 
-          Customization of the GUI
+          Optimization using XFOIL (10x speed)
 
    * - .. figure:: images/n0012_analysis_xfoil_light.*
           :width: 100%
@@ -121,4 +126,8 @@ Click on any image to zoom. Press the "back" button to return to the gallery.
 
           Matching a NASA SC20612 airfoil with Bézier curves (4x speed)
 
-     -
+     - .. figure:: user/images/gui_customize_light.*
+          :width: 100%
+          :class: only-light
+
+          Customization of the GUI

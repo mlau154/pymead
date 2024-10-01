@@ -1,6 +1,6 @@
 {
   "theme-name": "light",
-  "background-color":  "#ffffff",
+  "background-color": "#ffffff",
   "main-color": "#000000",
   "dock-widget-background-color": "#faf9f6",
   "font-size": "10pt",
@@ -31,6 +31,10 @@
   "residual-color-2": "lightseagreen",
   "residual-color-3": "goldenrod",
   "residual-target-color": "#000000",
+  "cpu-color": "#20b2aa",
+  "mem-color": "#cd5c5c",
+  "cpu-fill-color": "#20b2aa77",
+  "mem-fill-color": "#cd5c5c77",
   "polar-color-1": "indianred",
   "polar-color-2": "lightseagreen",
   "polar-color-3": "goldenrod",

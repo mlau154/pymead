@@ -1,0 +1,109 @@
+Output:
+
+ ===================================
+
+    1  Airfoil surface  plots
+    2  Streamtube       plots
+    3  Contour/grid     plots
+    4  Outer streamline plots
+    5  Wake profile     plots
+  
+    6  Zoom
+    7  Unzoom
+    8  Plotting options
+  
+    9  Re-read mdat.xxx
+   10  Dump streamline grid
+   11  Dump flowfield
+   12  Dump BLs
+   13  Dump outer streamline Cp
+  
+   21  Dump stagnation-streamline points
+
+ Select MPLOT option (0=Exit):  
+ -----------------------------------------------------
+
+  1    Mach vs x
+  2      Cp vs x
+                   ____________________
+  3       H vs x
+  4 top D,T vs x      BL data 
+  5 bot D,T vs x            on
+  6      Cf vs x             airfoil
+  7      Ue vs x              and
+  8    A/Ao vs x               wake
+  9      Ct vs x
+ 10  Rtheta vs x
+ 11   CDiss vs x
+                   ____________________
+ 12   List CL, CD ...
+ 13   Change settings
+ 14   Hardcopy current plot
+ 15   Place symbol at specified grid location
+  
+ 16   Change x-axis limits for element BL plots
+ 17   Change y-axis limits for current element BL plot
+ 18   Cursor blowup for current BL plot
+ 19   Reset x,y-axis limits for element BL plots
+  
+ 20   Annotation menu
+ 21   Plotting options
+ 22   Specify/Change element for plotting
+ 99   Re-load mdat.xxx and replot
+
+ Select surface plot option:  
+ Ma  =    0.3000    alpha =  0.0000 deg.
+ Re  =   2.500e6    Ncrit =    4.00
+
+ CL  = -0.001344264205     CD  = -0.166451116202    CM  =  0.000241297259 L/D =     0.008
+
+  CD breakdown
+ viscous ,wave    :  CDv =  0.014309819225    CDw =  0.000000000000
+ friction,pressure:  CDf =  0.011866738301    CDp =  0.002443080924
+
+ Actuator disk:  d(ht)/htinf =  0.000000
+              :  mh / rho V  =  0.322835
+              :  CDh = -0.180761
+              :  Cxd = -0.000000    Cyd = -0.000000
+
+ Gamma = -0.0006    Sigma = -0.0629    at x,y =   0.27942  -0.00000
+ Doubx =  0.2910    Douby = -0.0015
+
+ dCL/da =  0.1849    dCD/da =  0.000125    dCM/da = -0.00109
+ dCL/dM =  0.0000    dCD/dM =  0.000000    dCM/dM =  0.00000
+
+ Element : 1
+   CL  =   1.09243   CDv =  0.007147        Cx =  0.044826    Cy =  1.092435
+   CM  =  -0.22837   CDf =  0.005931        Cm = -0.501474 about origin
+ top Xtr =  0.2408  bot Xtr =   0.0564
+
+ Element : 2
+   CL  =  -1.09301   CDv =  0.007163        Cx =  0.044833    Cy = -1.093007
+   CM  =   0.22849   CDf =  0.005935        Cm =  0.501747 about origin
+ top Xtr =  0.0562  bot Xtr =   0.2409
+
+
+ Select surface plot option:  
+ ===================================
+
+    1  Airfoil surface  plots
+    2  Streamtube       plots
+    3  Contour/grid     plots
+    4  Outer streamline plots
+    5  Wake profile     plots
+  
+    6  Zoom
+    7  Unzoom
+    8  Plotting options
+  
+    9  Re-read mdat.xxx
+   10  Dump streamline grid
+   11  Dump flowfield
+   12  Dump BLs
+   13  Dump outer streamline Cp
+  
+   21  Dump stagnation-streamline points
+
+ Select MPLOT option (0=Exit):  
+Errors:
+Note: The following floating-point exceptions are signalling: IEEE_DENORMAL

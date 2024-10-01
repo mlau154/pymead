@@ -16,7 +16,8 @@ from pymead.core.line import ReferencePolyline
 from pymead.core.parametric_curve import ParametricCurve
 from pymead.core.point import PointSequence
 from pymead.gui.constraint_items import *
-from pymead.gui.dialogs import PlotExportDialog, WebAirfoilDialog, SplitPolylineDialog, AirfoilDialog
+from pymead.gui.dialogs import (PlotExportDialog, WebAirfoilDialog, SplitPolylineDialog, AirfoilDialog,
+                                MakeAirfoilRelativeDialog)
 from pymead.gui.draggable_point import DraggablePoint
 from pymead.gui.hoverable_curve import HoverableCurve
 from pymead.gui.polygon_item import PolygonItem
@@ -49,6 +50,7 @@ class AirfoilCanvas(pg.PlotWidget):
         self.creating_collinear_constraint = None
         self.curve_hovered_item = None
         self.point_hovered_item = None
+        self.hovering_allowed = True
         self.constraint_hovered_item = None
         self.point_text_item = None
         self.enter_connection = None
@@ -414,7 +416,11 @@ class AirfoilCanvas(pg.PlotWidget):
             self.sigStatusBarUpdate.emit("Choose exactly two points to define a distance constraint", 4000)
             return
 
-        self.geo_col.add_constraint("DistanceConstraint", *self.geo_col.selected_objects["points"])
+        try:
+            self.geo_col.add_constraint("DistanceConstraint",
+                                        *self.geo_col.selected_objects["points"])
+        except InvalidPointError as e:
+            self.gui_obj.disp_message_box(str(e))
 
     @undoRedoAction
     @runSelectionEventLoop(drawing_object="RelAngle3Constraint", starting_message="Select any point other than "
@@ -426,7 +432,11 @@ class AirfoilCanvas(pg.PlotWidget):
             self.sigStatusBarUpdate.emit(msg, 4000)
             return
 
-        self.geo_col.add_constraint("RelAngle3Constraint", *self.geo_col.selected_objects["points"])
+        try:
+            self.geo_col.add_constraint("RelAngle3Constraint",
+                                        *self.geo_col.selected_objects["points"])
+        except InvalidPointError as e:
+            self.gui_obj.disp_message_box(str(e))
 
     @undoRedoAction
     @runSelectionEventLoop(drawing_object="AntiParallel3Constraint", starting_message="Select any point other than "
@@ -442,7 +452,11 @@ class AirfoilCanvas(pg.PlotWidget):
             self.sigStatusBarUpdate.emit(msg, 4000)
             return
         if case == 0:
-            self.geo_col.add_constraint("AntiParallel3Constraint", *self.geo_col.selected_objects["points"])
+            try:
+                self.geo_col.add_constraint("AntiParallel3Constraint",
+                                            *self.geo_col.selected_objects["points"])
+            except InvalidPointError as e:
+                self.gui_obj.disp_message_box(str(e))
             return
 
         data = self.geo_col.selected_objects["polylines"][0].evaluate()
@@ -463,9 +477,12 @@ class AirfoilCanvas(pg.PlotWidget):
 
         args = [point, *self.geo_col.selected_objects["points"]] if point_is_first_arg else \
             [*self.geo_col.selected_objects["points"], point]
-        self.geo_col.add_constraint("AntiParallel3Constraint", *args,
-                                                 polyline=self.geo_col.selected_objects["polylines"][0],
-                                                 point_on_curve=point)
+        try:
+            self.geo_col.add_constraint(
+                "AntiParallel3Constraint", *args,
+                polyline=self.geo_col.selected_objects["polylines"][0], point_on_curve=point)
+        except InvalidPointError as e:
+            self.gui_obj.disp_message_box(str(e))
 
     @undoRedoAction
     @runSelectionEventLoop(drawing_object="SymmetryConstraint", starting_message="Select the start point of the "
@@ -477,7 +494,11 @@ class AirfoilCanvas(pg.PlotWidget):
             self.sigStatusBarUpdate.emit(msg, 4000)
             return
 
-        self.geo_col.add_constraint("SymmetryConstraint", *self.geo_col.selected_objects["points"])
+        try:
+            self.geo_col.add_constraint("SymmetryConstraint",
+                                        *self.geo_col.selected_objects["points"])
+        except InvalidPointError as e:
+            self.gui_obj.disp_message_box(str(e))
 
     @undoRedoAction
     @runSelectionEventLoop(drawing_object="Perp3Constraint", starting_message="Select the first point (not the vertex)")
@@ -486,7 +507,11 @@ class AirfoilCanvas(pg.PlotWidget):
             msg = f"Choose exactly three points (start, vertex, and end) for a Perp3Constraint"
             self.sigStatusBarUpdate.emit(msg, 4000)
             return
-        self.geo_col.add_constraint("Perp3Constraint", *self.geo_col.selected_objects["points"])
+        try:
+            self.geo_col.add_constraint("Perp3Constraint",
+                                        *self.geo_col.selected_objects["points"])
+        except InvalidPointError as e:
+            self.gui_obj.disp_message_box(str(e))
 
     @undoRedoAction
     @runSelectionEventLoop(drawing_object="ROCurvatureConstraint", starting_message="Select the curve joint")
@@ -497,7 +522,11 @@ class AirfoilCanvas(pg.PlotWidget):
             self.sigStatusBarUpdate.emit(msg, 4000)
             return
 
-        self.geo_col.add_constraint("ROCurvatureConstraint", *self.geo_col.selected_objects["points"])
+        try:
+            self.geo_col.add_constraint("ROCurvatureConstraint",
+                                        *self.geo_col.selected_objects["points"])
+        except InvalidPointError as e:
+            self.gui_obj.disp_message_box(str(e))
 
     @undoRedoAction
     @runSelectionEventLoop(drawing_object="BezierAddPoint",
@@ -676,10 +705,10 @@ class AirfoilCanvas(pg.PlotWidget):
 
     @undoRedoAction
     def pointStartedMoving(self, point: DraggablePoint):
-        pass
+        self.hovering_allowed = False
 
     def pointFinishedMoving(self, point: DraggablePoint):
-        pass
+        self.hovering_allowed = True
 
     def setItemStyle(self, item, style: str):
         valid_styles = ["default", "hovered", "selected"]
@@ -687,6 +716,8 @@ class AirfoilCanvas(pg.PlotWidget):
             raise ValueError(f"Style found ({style}) is not a valid style. Must be one of {valid_styles}.")
 
         if style == "hovered":
+            if not self.hovering_allowed:
+                return
             if isinstance(item, DraggablePoint):
                 self.point_hovered_item = item
                 point = self.point_hovered_item
@@ -773,6 +804,8 @@ class AirfoilCanvas(pg.PlotWidget):
         y_centroid: float
             y-location of the airfoil's centroid
         """
+        if not self.hovering_allowed:
+            return
 
         # Get the color for the text
         # main_color = None if self.gui_obj is None else self.gui_obj.themes[self.gui_obj.current_theme]["main-color"]
@@ -849,6 +882,13 @@ class AirfoilCanvas(pg.PlotWidget):
         add_constraint_menu = menu.addMenu("Add Constraint")
 
         removeCurveAction, curve, curves, insertCurvePointAction, splitPolyAction = None, None, None, None, None
+        makeAirfoilRelativeAction = None
+        makeAirfoilAbsoluteAction = None
+
+        if len(self.geo_col.selected_objects["points"]) > 0:
+            makeAirfoilRelativeAction = modify_geometry_menu.addAction("Make Airfoil-Relative")
+            makeAirfoilAbsoluteAction = modify_geometry_menu.addAction("Make Absolute")
+
         if len(self.geo_col.selected_objects["bezier"]) > 0:
             curve = self.geo_col.selected_objects["bezier"][0]
 
@@ -912,6 +952,29 @@ class AirfoilCanvas(pg.PlotWidget):
             self.splitPoly(curve)
         elif res == exportPlotAction:
             self.exportPlot()
+        elif res == makeAirfoilAbsoluteAction:
+            self.makeAbsolute()
+        elif res == makeAirfoilRelativeAction:
+            self.makeAirfoilRelative()
+
+    @undoRedoAction
+    def makeAirfoilRelative(self):
+        self.dialog = MakeAirfoilRelativeDialog(theme=self.gui_obj.themes[self.gui_obj.current_theme],
+                                                geo_col=self.geo_col, parent=self)
+        if self.dialog.exec():
+            airfoil_name = self.dialog.value()["airfoil"]
+            airfoil = self.geo_col.container()["airfoils"][airfoil_name]
+            try:
+                airfoil.add_relative_points(self.geo_col.selected_objects["points"])
+            except ValueError as e:
+                self.gui_obj.disp_message_box(str(e))
+
+    @undoRedoAction
+    def makeAbsolute(self):
+        for point in self.geo_col.selected_objects["points"]:
+            if point.relative_airfoil is None:
+                continue
+            point.relative_airfoil.remove_relative_points([point])
 
     @undoRedoAction
     def removeSelectedPoints(self):
