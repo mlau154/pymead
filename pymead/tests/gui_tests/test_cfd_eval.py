@@ -9,7 +9,7 @@ from pymead import TEST_DIR
 
 
 def test_xfoil_evaluate(app):
-    # Make sure that XFOIL is found on the system path. Print a warning if is is not.
+    # Make sure that XFOIL is found on the system path. Print a warning if is not.
     if shutil.which("xfoil") is None:
         warnings.warn("XFOIL executable ('xfoil') not found on system path. Skipping this test.")
         return
