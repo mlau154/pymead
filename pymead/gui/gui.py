@@ -1187,7 +1187,7 @@ class GUI(FramelessMainWindow):
                                          theme=self.themes[self.current_theme])
         dialog.exec()
 
-    def single_airfoil_inviscid_analysis(self, plot_cp: bool):
+    def single_airfoil_inviscid_analysis(self, plot_cp: bool) -> (np.ndarray, np.ndarray, float) or None:
         selected_airfoil_name = self.permanent_widget.inviscid_cl_combo.currentText()
 
         if selected_airfoil_name == "":
@@ -1218,7 +1218,7 @@ class GUI(FramelessMainWindow):
             self.statusBar().showMessage(f"CL = {CL:.3f}", 4000)
 
         if not plot_cp:
-            return
+            return xy, CP, CL
 
         if self.analysis_graph is None:
             self.analysis_graph = AnalysisGraph(
@@ -1237,6 +1237,8 @@ class GUI(FramelessMainWindow):
         self.analysis_graph.set_legend_label_format(self.themes[self.current_theme])
         self.n_converged_analyses += 1
         self.n_analyses += 1
+
+        return xy, CP, CL
 
     def export_coordinates(self):
         """Airfoil coordinate exporter"""
