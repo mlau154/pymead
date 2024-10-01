@@ -1,5 +1,6 @@
 import os
 import shutil
+import warnings
 from copy import deepcopy
 
 from pymead.core.geometry_collection import GeometryCollection
@@ -10,6 +11,17 @@ from pymead import TEST_DIR, EXAMPLES_DIR
 
 
 def test_isolated_propulsor_evaluate():
+
+    if shutil.which("mset") is None:
+        warnings.warn("MSES suite executable 'mset' not found on system path. Skipping this test.")
+        return
+    if shutil.which("mses") is None:
+        warnings.warn("MSES suite executable 'mses' not found on system path. Skipping this test.")
+        return
+    if shutil.which("mplot") is None:
+        warnings.warn("MPLOT suite executable 'mplot' not found on system path. Skipping this test.")
+        return
+
     jmea_file = os.path.join(EXAMPLES_DIR, "isolated_propulsor.jmea")
     geo_col_dict = load_data(jmea_file)
     settings_file = os.path.join(TEST_DIR, "opt_tests", "iso_prop_test_fpr104.json")
@@ -47,6 +59,17 @@ def test_isolated_propulsor_evaluate():
 
 
 def test_isolated_propulsor_opt_evaluate():
+
+    if shutil.which("mset") is None:
+        warnings.warn("MSES suite executable 'mset' not found on system path. Skipping this test.")
+        return
+    if shutil.which("mses") is None:
+        warnings.warn("MSES suite executable 'mses' not found on system path. Skipping this test.")
+        return
+    if shutil.which("mplot") is None:
+        warnings.warn("MPLOT suite executable 'mplot' not found on system path. Skipping this test.")
+        return
+
     jmea_file = os.path.join(EXAMPLES_DIR, "isolated_propulsor.jmea")
     geo_col_dict = load_data(jmea_file)
     geo_col = GeometryCollection.set_from_dict_rep(geo_col_dict)

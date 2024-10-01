@@ -59,6 +59,8 @@ Bug fixes
   when the constraint parameter is a design variable and the requested value is out of bounds
 - Point.x and Point.y desvar/params possibly do not get deleted properly after their parent point is deleted
 - MPOLAR key error when loading MSES settings into optimization settings (maybe make MPOLAR a feature here?)
+- Store algorithm data as JSON to fix package version error when loading in `.pkl` files from
+  a different environment than they were saved on
 
 Testing
 -------
