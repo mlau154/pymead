@@ -1,5 +1,4 @@
 from pymead.tests.gui_tests.utils import app
-from pymead.utils.read_write_files import load_data
 
 
 def test_edit_bounds_lower(app):
