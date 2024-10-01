@@ -595,9 +595,11 @@ class GeometryCollection(DualRep):
 
         return point
 
-    def add_bezier(self, point_sequence: PointSequence or typing.List[Point], name: str or None = None,
+    def add_bezier(self, point_sequence: PointSequence or typing.List[Point],
+                   default_nt: int or None = None,
+                   name: str or None = None,
                    t_start: float = None, t_end: float = None, assign_unique_name: bool = True):
-        bezier = Bezier(point_sequence=point_sequence, name=name, t_start=t_start, t_end=t_end)
+        bezier = Bezier(point_sequence=point_sequence, default_nt=default_nt, name=name, t_start=t_start, t_end=t_end)
 
         return self.add_pymead_obj_by_ref(bezier, assign_unique_name=assign_unique_name)
 
@@ -1050,7 +1052,8 @@ class GeometryCollection(DualRep):
         for name, bezier_dict in d["bezier"].items():
             geo_col.add_bezier(point_sequence=PointSequence(
                 points=[geo_col.container()["points"][k] for k in bezier_dict["points"]]),
-                name=name, assign_unique_name=False
+                name=name, assign_unique_name=False,
+                default_nt=bezier_dict["default_nt"] if "default_nt" in bezier_dict else None
             )
 
         constraints_added = []

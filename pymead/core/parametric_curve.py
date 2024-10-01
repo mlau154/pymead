@@ -58,6 +58,8 @@ class ParametricCurve(PymeadObj, ABC):
     def generate_t_vec(nt: int = INTERMEDIATE_NT, spacing: str = "linear", start: int = 0.0, end: int = 1.0):
         if spacing == "linear":
             return np.linspace(start, end, nt)
+        else:
+            raise ValueError("The only currently implemented spacing is 'linear.'")
 
     @abstractmethod
     def point_removal_deletes_curve(self) -> bool:
