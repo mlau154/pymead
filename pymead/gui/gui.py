@@ -1187,14 +1187,14 @@ class GUI(FramelessMainWindow):
                                          theme=self.themes[self.current_theme])
         dialog.exec()
 
-    def single_airfoil_inviscid_analysis(self, plot_cp: bool) -> (np.ndarray, np.ndarray, float) or None:
+    def single_airfoil_inviscid_analysis(self, plot_cp: bool) -> (np.ndarray, np.ndarray, float) or (None, None, None):
         selected_airfoil_name = self.permanent_widget.inviscid_cl_combo.currentText()
 
         if selected_airfoil_name == "":
             if plot_cp:
                 self.disp_message_box("Choose an airfoil in the bottom right-hand corner of the screen "
                                       "to perform an incompressible, inviscid analysis", message_mode="info")
-            return
+            return None, None, None
 
         dialog = PanelDialog(self, theme=self.themes[self.current_theme], settings_override=self.panel_settings)
 
@@ -1202,7 +1202,7 @@ class GUI(FramelessMainWindow):
             alpha_add = dialog.value()["alfa"]
             self.panel_settings = dialog.value()
         else:
-            return
+            return None, None, None
 
         selected_airfoil = self.geo_col.container()["airfoils"][selected_airfoil_name]
         body_fixed_coords = selected_airfoil.get_chord_relative_coords()
