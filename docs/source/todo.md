@@ -34,6 +34,7 @@ Planned feature additions
 - Add save protection for example files
 - Add a "view data" feature to .jmea, .jses, and .jopt files that allows users to view the JSON
   data inside a custom text browser
+- Autofocus angle of attack value when loading Ctrl+Alt+I inviscid analysis
 
 Refactoring
 -----------
