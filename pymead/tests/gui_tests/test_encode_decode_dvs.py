@@ -2,7 +2,7 @@ import os
 
 import numpy as np
 
-from geometry_collection import GeometryCollection
+from pymead.core.geometry_collection import GeometryCollection
 from pymead import EXAMPLES_DIR, TEST_DIR
 from pymead.tests.gui_tests.utils import app
 from pymead.utils.read_write_files import load_data
