@@ -366,6 +366,10 @@ class ROCurvatureConstraint(GeoCon):
 
     @staticmethod
     def calculate_curvature_data(curve_joint):
+
+        Lt1, Lc1, n1, theta1, phi1, psi1, R1 = None, None, None, None, None, None, None
+        Lt2, Lc2, n2, theta2, phi2, psi2, R2 = None, None, None, None, None, None, None
+
         curve_1 = curve_joint.curves[0]
         if curve_1.__class__.__name__ == "Bezier":
             curve_joint_index_curve_1 = curve_1.point_sequence().points().index(curve_joint)
@@ -380,9 +384,10 @@ class ROCurvatureConstraint(GeoCon):
             phi1 = curve_joint.measure_angle(g1_point_curve_1)
             theta1 = g1_point_curve_1.measure_angle(g2_point_curve_1)
             psi1 = theta1 - phi1
-            R1 = np.abs(np.true_divide((Lt1 * Lt1), (Lc1 * (1 - 1 / n1) * np.sin(psi1))))
-        else:
-            Lt1, Lc1, n1, theta1, phi1, psi1, R1 = None, None, None, None, None, None, None
+            with np.errstate(divide="ignore"):
+                R1 = np.abs(np.true_divide((Lt1 * Lt1), (Lc1 * (1 - 1 / n1) * np.sin(psi1))))
+        elif curve_1.__class__.__name__ == "LineSegment":
+            R1 = np.inf
 
         curve_2 = curve_joint.curves[1]
         if curve_2.__class__.__name__ == "Bezier":
@@ -398,9 +403,10 @@ class ROCurvatureConstraint(GeoCon):
             phi2 = curve_joint.measure_angle(g1_point_curve_2)
             theta2 = g1_point_curve_2.measure_angle(g2_point_curve_2)
             psi2 = theta2 - phi2
-            R2 = np.abs(np.true_divide((Lt2 * Lt2), (Lc2 * (1 - 1 / n2) * np.sin(psi2))))
-        else:
-            Lt2, Lc2, n2, theta2, phi2, psi2, R2 = None, None, None, None, None, None, None
+            with np.errstate(divide="ignore"):
+                R2 = np.abs(np.true_divide((Lt2 * Lt2), (Lc2 * (1 - 1 / n2) * np.sin(psi2))))
+        elif curve_2.__class__.__name__ == "LineSegment":
+            R2 = np.inf
 
         if curve_1.__class__.__name__ == "PolyLine":
             data = curve_1.evaluate()
@@ -440,7 +446,9 @@ class ROCurvatureConstraint(GeoCon):
 
     def verify(self) -> bool:
         data = self.calculate_curvature_data(self.curve_joint)
-        return np.isclose(data.R1, data.R2, rtol=1e-14)  # TODO: account for infinite
+        if np.isinf(data.R1) and np.isinf(data.R2):
+            return True
+        return np.isclose(data.R1, data.R2, rtol=1e-14)
 
 
 class ConstraintValidationError(Exception):
