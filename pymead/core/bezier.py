@@ -367,34 +367,3 @@ class Bezier(ParametricCurve):
 
     def get_dict_rep(self):
         return {"points": [pt.name() for pt in self.point_sequence().points()], "default_nt": self.default_nt}
-
-
-def main():
-    points = np.array([
-        [0.0, 0.0],
-        [0.1, -0.15],
-        [0.2, 0.13],
-        [0.4, 0.2],
-        [0.7, -0.1],
-        [0.9, -0.05],
-        [1.0, 0.0]
-    ])
-    original_point_seq = PointSequence.generate_from_array(points)
-    bez = Bezier(original_point_seq)
-    bez1, bez2 = bez.split(0.7)
-    bez_xy = bez.evaluate().xy
-    bez1_xy = bez1.evaluate().xy
-    bez2_xy = bez2.evaluate().xy
-
-    import matplotlib.pyplot as plt
-    plt.plot(bez_xy[:, 0], bez_xy[:, 1], color="steelblue", ls="solid", lw=4)
-    plt.plot(bez1_xy[:, 0], bez1_xy[:, 1], color="white", ls="dotted", lw=2)
-    plt.plot(bez2_xy[:, 0], bez2_xy[:, 1], color="indianred", ls="dashdot", lw=2)
-    plt.plot(original_point_seq.as_array()[:, 0], original_point_seq.as_array()[:, 1], color="grey", ls="dotted", marker="x")
-    plt.plot(bez1.point_sequence().as_array()[:, 0], bez1.point_sequence().as_array()[:, 1], color="black", ls="dotted", marker="s")
-    plt.plot(bez2.point_sequence().as_array()[:, 0], bez2.point_sequence().as_array()[:, 1], color="gold", ls="dotted", marker="d")
-    plt.show()
-
-
-if __name__ == "__main__":
-    main()

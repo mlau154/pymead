@@ -340,6 +340,21 @@ class Point(PymeadObj):
         return {"x": float(self.x().value()), "y": float(self.y().value()),
                 "relative_airfoil_name": self.relative_airfoil_name}
 
+    def __add__(self, other: "Point"):
+        return Point(x=self.x().value() + other.x().value(), y=self.y().value() + other.y().value())
+
+    def __sub__(self, other: "Point"):
+        return Point(x=self.x().value() - other.x().value(), y=self.y().value() - other.y().value())
+
+    def __mul__(self, other: float):
+        if isinstance(other, float):
+            return Point(x=self.x().value() * other, y=self.y().value() * other)
+        else:
+            raise ValueError("Only multiplication between points and scalars is currently supported")
+
+    def __rmul__(self, other: float):
+        return self.__mul__(other)
+
 
 class PointSequence:
     def __init__(self, points: typing.List[Point]):
