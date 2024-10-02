@@ -34,7 +34,6 @@ def test_take_screenshot(app):
             break
 
     app.geo_col.clear_container()
-    #check that all of them are actually checked
 
 
 def test_take_screenshot_bad_path(app):
