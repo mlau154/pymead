@@ -6,6 +6,7 @@ import sys
 import typing
 from copy import copy
 
+from pymead.core.ferguson import Ferguson
 from pymead.core.param_graph import ParamGraph
 from pymead.core.units import Units
 from pymead.core.airfoil import Airfoil
@@ -39,6 +40,7 @@ class GeometryCollection(DualRep):
             "lines": {},
             "polylines": {},
             "bezier": {},
+            "ferguson": {},
             "airfoils": {},
             "mea": {},
             "geocon": {},
@@ -604,6 +606,14 @@ class GeometryCollection(DualRep):
 
         return self.add_pymead_obj_by_ref(bezier, assign_unique_name=assign_unique_name)
 
+    def add_ferguson(self, point_sequence: PointSequence or typing.List[Point],
+                     default_nt: int or None = None, name: str or None = None,
+                     t_start: float = None, t_end: float = None, assign_unique_name: bool = True):
+        ferguson = Ferguson(point_sequence=point_sequence, default_nt=default_nt, name=name,
+                            t_start=t_start, t_end=t_end)
+
+        return self.add_pymead_obj_by_ref(ferguson, assign_unique_name=assign_unique_name)
+
     def add_line(self, point_sequence: PointSequence or typing.List[Point], name: str or None = None,
                  assign_unique_name: bool = True):
         line = LineSegment(point_sequence=point_sequence, name=name)
@@ -1058,6 +1068,13 @@ class GeometryCollection(DualRep):
                 name=name, assign_unique_name=False,
                 default_nt=bezier_dict["default_nt"] if "default_nt" in bezier_dict else None
             )
+        if "ferguson" in d:
+            for name, ferguson_dict in d["ferguson"].items():
+                geo_col.add_ferguson(point_sequence=PointSequence(
+                    points=[geo_col.container()["points"][k] for k in ferguson_dict["points"]]),
+                    name=name, assign_unique_name=False,
+                    default_nt=ferguson_dict["default_nt"] if "default_nt" in ferguson_dict else None
+                )
 
         constraints_added = []
         for name, geocon_dict in d["geocon"].items():
@@ -1074,6 +1091,8 @@ class GeometryCollection(DualRep):
                     geocon_dict[k] = geo_col.container()["polylines"][v]
                 elif v in d["bezier"].keys():
                     geocon_dict[k] = geo_col.container()["bezier"][v]
+                elif v in d["ferguson"].keys():
+                    geocon_dict[k] = geo_col.container()["ferguson"][v]
                 else:
                     pass
             constraint_type = geocon_dict.pop("constraint_type")
