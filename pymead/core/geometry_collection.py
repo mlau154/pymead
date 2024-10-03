@@ -1091,7 +1091,7 @@ class GeometryCollection(DualRep):
                     geocon_dict[k] = geo_col.container()["polylines"][v]
                 elif v in d["bezier"].keys():
                     geocon_dict[k] = geo_col.container()["bezier"][v]
-                elif v in d["ferguson"].keys():
+                elif "ferguson" in d and v in d["ferguson"].keys():
                     geocon_dict[k] = geo_col.container()["ferguson"][v]
                 else:
                     pass
