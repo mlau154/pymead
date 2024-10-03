@@ -52,8 +52,8 @@ class ValueSpin(QDoubleSpinBox):
     def __init__(self, parent, param: Param):
         super().__init__(parent)
         self.pymead_obj = param
-        self.setMaximumWidth(200)
-        self.setDecimals(16)
+        self.setMaximumWidth(130)
+        self.setDecimals(8)
         self.setSingleStep(0.01)
         if isinstance(param, LengthParam) or isinstance(param, AngleParam):
             self.setSuffix(f" {param.unit()}")
@@ -130,7 +130,6 @@ class ValueSpin(QDoubleSpinBox):
                 self.param.point.request_move(value, self.param.point.y().value())
             elif self.param is self.param.point.y():
                 self.param.point.request_move(self.param.point.x().value(), value)
-        self.setValue(self.param.value())
 
 
 class NameValidator(QValidator):
@@ -913,9 +912,9 @@ class ParameterTree(QTreeWidget):
         self.setHeader(self.headerRow)
 
         # Set the tree widget geometry
-        self.setMinimumWidth(400)
+        self.setMinimumWidth(320)
         self.header().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
-        self.setColumnWidth(1, 200)
+        self.setColumnWidth(1, 130)
 
         # Set the tree to be expanded by default
         self.expandAll()

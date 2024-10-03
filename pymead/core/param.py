@@ -1,5 +1,6 @@
 import networkx
 import numpy as np
+from PyQt6.QtCore import QSignalBlocker
 
 from pymead.core.pymead_obj import PymeadObj
 
@@ -80,6 +81,9 @@ class Param(PymeadObj):
             self.set_upper(upper)
 
         self.set_name(name)
+
+    def _get_value_spin(self):
+        return self.tree_item.treeWidget().itemWidget(self.tree_item, 1)
 
     def value(self, bounds_normalized: bool = False):
         """
@@ -234,7 +238,9 @@ class Param(PymeadObj):
             self._value = value
 
         if self.tree_item is not None:
-            self.tree_item.treeWidget().itemWidget(self.tree_item, 1).setValue(self.value())
+            value_spin = self._get_value_spin()
+            with QSignalBlocker(value_spin):
+                self.tree_item.treeWidget().itemWidget(self.tree_item, 1).setValue(self.value())
 
         return list(set(points_solved))
 
@@ -279,7 +285,9 @@ class Param(PymeadObj):
         self._lower = lower
 
         if self.tree_item is not None:
-            self.tree_item.treeWidget().itemWidget(self.tree_item, 1).setMinimum(self.lower())
+            value_spin = self._get_value_spin()
+            with QSignalBlocker(value_spin):
+                value_spin.setMinimum(self.lower())
 
     def set_upper(self, upper: float, force: bool = False):
         """
@@ -300,7 +308,9 @@ class Param(PymeadObj):
         self._upper = upper
 
         if self.tree_item is not None:
-            self.tree_item.treeWidget().itemWidget(self.tree_item, 1).setMaximum(self.upper())
+            value_spin = self._get_value_spin()
+            with QSignalBlocker(value_spin):
+                value_spin.setMaximum(self.upper())
 
     def enabled(self):
         return self._enabled
@@ -308,7 +318,9 @@ class Param(PymeadObj):
     def set_enabled(self, enabled: bool):
         self._enabled = enabled
         if self.tree_item is not None:
-            self.tree_item.treeWidget().itemWidget(self.tree_item, 1).setEnabled(enabled)
+            value_spin = self._get_value_spin()
+            with QSignalBlocker(value_spin):
+                value_spin.setEnabled(enabled)
 
     def update_equation(self, equation_str: str = None):
         if not equation_str:  # Handles both the None and empty-string cases
