@@ -7,6 +7,8 @@ from PyQt6.QtGui import QValidator, QBrush, QColor
 from PyQt6.QtWidgets import QTreeWidget, QTreeWidgetItem, QPushButton, QHBoxLayout, QHeaderView, QDialog, QGridLayout, \
     QDoubleSpinBox, QLineEdit, QLabel, QMenu, QAbstractItemView, QTreeWidgetItemIterator, QWidget, QCompleter, QSpinBox, \
     QCheckBox
+
+from pymead.core.ferguson import Ferguson
 from pymead.core.parametric_curve import INTERMEDIATE_NT
 
 from pymead.core.airfoil import Airfoil
@@ -519,6 +521,51 @@ class BezierButton(TreeButton):
         self.bezier.update()
 
 
+class FergusonButton(TreeButton):
+
+    def __init__(self, ferguson: Ferguson, tree, top_level: bool = False):
+        self.ferguson = ferguson
+        super().__init__(pymead_obj=ferguson, tree=tree, top_level=top_level)
+
+    def modifyDialogInternals(self, dialog: QDialog, layout: QGridLayout) -> None:
+        # Add name widget
+        name_label = QLabel("Name", self)
+        name_edit = NameEdit(self, self.ferguson, self.tree)
+        name_edit.textChanged.connect(self.onNameChange)
+        layout.addWidget(name_label, 1, 0)
+        layout.addWidget(name_edit, 1, 1)
+
+        # Add default nt widget
+        nt_label = QLabel("Evaluated Points", self)
+        nt_spin = QSpinBox(self)
+        nt_spin.setMinimum(2)
+        nt_spin.setMaximum(100000)
+        nt_spin.setValue(INTERMEDIATE_NT if self.ferguson.default_nt is None else self.ferguson.default_nt)
+        nt_spin.valueChanged.connect(self.onSpinChange)
+        layout.addWidget(nt_label, 2, 0)
+        layout.addWidget(nt_spin, 2, 1)
+
+        # Add the point buttons
+        for point in self.ferguson.point_sequence().points():
+            point_button = PointButton(point, self.tree)
+            point_button.sigNameChanged.connect(self.onPointNameChange)
+            layout.addWidget(point_button, layout.rowCount(), 0)
+
+    def onPointNameChange(self, name: str, point: Point):
+        if point.tree_item is not None:
+            self.tree.itemWidget(point.tree_item, 0).setText(name)
+
+    def enterEvent(self, a0):
+        self.ferguson.canvas_item.setItemStyle("hovered")
+
+    def leaveEvent(self, a0):
+        self.ferguson.canvas_item.setItemStyle("default")
+
+    def onSpinChange(self, new_val: int):
+        self.ferguson.default_nt = new_val
+        self.ferguson.update()
+
+
 class LineSegmentButton(TreeButton):
 
     def __init__(self, line: LineSegment, tree, top_level: bool = False):
@@ -844,6 +891,7 @@ class ParameterTree(QTreeWidget):
             "points": "Points",
             "lines": "Lines",
             "bezier": "Bézier Curves",
+            "ferguson": "Ferguson Curves",
             "airfoils": "Airfoils",
             "polylines": "Polylines",
             "mea": "Multi-Element Airfoils",

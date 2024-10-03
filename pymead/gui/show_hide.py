@@ -23,6 +23,7 @@ class ShowHideDialog(PymeadDialog):
             "points": "Points",
             "lines": "Lines",
             "bezier": "Bezier",
+            "ferguson": "Ferguson",
             "airfoils": "Airfoils",
             "geocon": "Constraints",
             "polylines": "Polylines",

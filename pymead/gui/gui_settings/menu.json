@@ -12,11 +12,13 @@
       },
       "Basic": {
         "Single Airfoil (Sharp TE)": "load_example_basic_airfoil_sharp",
-        "Single Airfoil (Blunt TE)": "load_example_basic_airfoil_blunt"
+        "Single Airfoil (Blunt TE)": "load_example_basic_airfoil_blunt",
+        "Ferguson Airfoil (Sharp TE)": "load_example_ferguson_airfoil_sharp"
       },
       "Shape Optimization": {
         "Single Airfoil (Sharp TE)": "load_example_basic_airfoil_sharp_dv",
-        "Single Airfoil (Blunt TE)": "load_example_basic_airfoil_blunt_dv"
+        "Single Airfoil (Blunt TE)": "load_example_basic_airfoil_blunt_dv",
+        "Ferguson Airfoil (Sharp TE)": "load_example_ferguson_airfoil_sharp_dv"
       },
       "Web Airfoils": {
         "NACA 0012": "load_example_n0012",
