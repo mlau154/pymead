@@ -64,7 +64,7 @@ from pymead.gui.opt_callback import PlotAirfoilCallback, ParallelCoordsCallback,
 from pymead.optimization.opt_setup import calculate_warm_start_index
 from pymead.optimization.opt_setup import read_stencil_from_array
 from pymead.optimization.resources import display_resources
-from pymead.optimization.shape_optimization import shape_optimization as shape_optimization_static
+from pymead.optimization.shape_optimization import shape_optimization as shape_optimization_static, read_alg_data
 from pymead.post.mses_field import flow_var_label
 from pymead.optimization.airfoil_matching import match_airfoil
 from pymead.utils.dict_recursion import compare_dicts_floating_precision
@@ -862,26 +862,40 @@ class GUI(FramelessMainWindow):
             if dialog_test_action is None:
                 self.dialog.load_airfoil_alg_file_widget.assignQSettings(inputs)
 
-            try:
-                alg = load_data(inputs["pkl_file"])
-            except:
-                self.disp_message_box("Could not load .pkl file. Check that the file selected is of the form"
-                                      " algorithm_gen_XX.pkl.")
-                return
-
-            try:
-                X = alg.opt.get("X")
-                F = alg.opt.get("F")
-            except AttributeError:
-                self.disp_message_box("Algorithm file not recognized. Check that the file selected is of the form"
-                                      " algorithm_gen_XX.pkl.")
-                return
+            alg_pkl_legacy_file = os.path.join(
+                inputs["opt_load_dir"],  f"algorithm_gen_{inputs['opt_load_generation']}.pkl")
+            if os.path.exists(alg_pkl_legacy_file):
+                try:
+                    alg = load_data(alg_pkl_legacy_file)
+                    X = alg.opt.get("X")
+                    F = alg.opt.get("F")
+                    n_obj = alg.problem.n_obj
+                except:
+                    self.disp_message_box(
+                        "Could not load legacy .pkl file. You may need to use the same Python environment to "
+                        "load the .pkl file as the environment used to save the .pkl file"
+                    )
+                    return
+            else:
+                alg_data_csv_file = os.path.join(
+                    inputs["opt_load_dir"], f"alg_data_{inputs['opt_load_generation']}.csv"
+                )
+                if not os.path.exists(alg_data_csv_file):
+                    self.disp_message_box(
+                        f"Could not load the data file {alg_data_csv_file}. Make sure that the optimization directory "
+                        f"(Opt Dir) selected is the directory containing one or more files of the "
+                        f"form 'alg_data_XX.csv'."
+                    )
+                    return
+                alg_data = read_alg_data(alg_data_csv_file)
+                F, X = alg_data["opt_J"], alg_data["opt_X"]
+                n_obj = alg_data["n_obj"]
 
             if len(F) == 0:
                 self.disp_message_box("Empty optimization result")
                 return
 
-            if alg.problem.n_obj == 1:  # If single-objective:
+            if n_obj == 1:  # If single-objective:
                 x = X[0, :]
             else:  # If multi-objective
                 if inputs["pkl_use_index"]:

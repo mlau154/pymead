@@ -9,7 +9,7 @@ import os
 import random
 
 from pymead.core.geometry_collection import GeometryCollection
-from pymead.optimization.opt_setup import CustomDisplay, TPAIOPT
+from pymead.optimization.opt_setup import CustomDisplay, PymeadGAProblem
 from pymead.utils.read_write_files import load_data, save_data
 from pymead.optimization.pop_chrom import Chromosome, Population
 from pymead.optimization.objectives_and_constraints import Objective, Constraint
@@ -18,11 +18,13 @@ from pymead.optimization.opt_setup import termination_condition
 
 import pymoo.core.population
 from pymoo.algorithms.moo.unsga3 import UNSGA3
+from pymoo.core.algorithm import Algorithm
 from pymoo.operators.mutation.pm import PolynomialMutation
 from pymoo.operators.crossover.sbx import SimulatedBinaryCrossover
 from pymoo.config import Config
 from pymoo.core.evaluator import Evaluator
 from pymoo.decomposition.asf import ASF
+
 try:
     from pymoo.factory import get_reference_directions
 except ModuleNotFoundError:
@@ -30,11 +32,118 @@ except ModuleNotFoundError:
 from pymoo.core.evaluator import set_cv
 
 
+def write_alg_data(algorithm: Algorithm, param_dict: dict):
+    opt, pop, off = algorithm.opt, algorithm.pop, algorithm.off
+    opt_dir = param_dict["opt_dir"]
+    header = (f"n_gen={algorithm.n_gen},n_eval={algorithm.evaluator.n_eval},n_obj={algorithm.problem.n_obj},"
+              f"n_constr={algorithm.problem.n_constr},n_var={algorithm.problem.n_var},n_opt={len(opt)},"
+              f"n_pop={len(pop)},n_off={len(off)}")
+
+    # Get the data stacks for objectives, constraints, and design variables
+    J = np.vstack((opt.get("F"), pop.get("F"), off.get("F")))
+    G = None
+    if algorithm.problem.n_constr > 0:
+        G = np.vstack((opt.get("G"), pop.get("G"), off.get("G")))
+    X = np.vstack((opt.get("X"), pop.get("X"), off.get("X")))
+
+    # Combine the data
+    if G is not None:
+        data_coalesced = np.column_stack((J, G, X))
+    else:
+        data_coalesced = np.column_stack((J, X))
+
+    # Save the data
+    data_file_name = os.path.join(opt_dir, f"alg_data_{algorithm.n_gen}.csv")
+    np.savetxt(data_file_name, data_coalesced, header=header, delimiter=",", comments="")
+
+
+def read_alg_data(file_name: str) -> dict:
+    data_dict = {}
+
+    # Read the header data into the dictionary
+    with open(file_name, "r") as f:
+        header_line = f.readline().strip()
+    for header_item in header_line.split(","):
+        equal_split = header_item.split("=")
+        data_dict[equal_split[0]] = int(equal_split[1])  # Key-value pair from header
+
+    # Read the optimum, population, and offspring data into the dictionary
+    n_opt, n_pop, n_off = data_dict["n_opt"], data_dict["n_pop"], data_dict["n_off"]
+    n_obj, n_constr, n_var = data_dict["n_obj"], data_dict["n_constr"], data_dict["n_var"]
+    data_dict["opt_G"], data_dict["pop_G"], data_dict["off_G"] = None, None, None
+    data_arr = np.loadtxt(fname=file_name, skiprows=1, delimiter=",")
+    data_dict["opt_J"] = data_arr[:n_opt, :n_obj]
+    data_dict["pop_J"] = data_arr[n_opt:n_opt + n_pop, :n_obj]
+    data_dict["off_J"] = data_arr[n_opt + n_pop:, :n_obj]
+    if n_constr > 0:
+        data_dict["opt_G"] = data_arr[:n_opt, n_obj:n_obj + n_constr]
+        data_dict["pop_G"] = data_arr[n_opt:n_opt + n_pop, n_obj:n_obj + n_constr]
+        data_dict["off_G"] = data_arr[n_opt + n_pop:, n_obj:n_obj + n_constr]
+    data_dict["opt_X"] = data_arr[:n_opt, n_obj + n_constr:]
+    data_dict["pop_X"] = data_arr[n_opt:n_opt + n_pop, n_obj + n_constr:]
+    data_dict["off_X"] = data_arr[n_opt + n_pop:, n_obj + n_constr:]
+
+    return data_dict
+
+
+def setup_ga_optimization(param_dict: dict, J: np.ndarray, G: np.ndarray or None, X: np.ndarray,
+                          n_eval: int, n_gen: int) -> Algorithm:
+    # Get the reference directions for the problem
+    ref_dirs = get_reference_directions("energy", param_dict['n_obj'], param_dict['n_ref_dirs'],
+                                        seed=param_dict['seed'])
+
+    # Set up the problem statement
+    problem = PymeadGAProblem(n_var=param_dict['n_var'], n_obj=param_dict['n_obj'], n_constr=param_dict['n_constr'],
+                              xl=param_dict['xl'], xu=param_dict['xu'], param_dict=param_dict)
+
+    # Create the initial or warm-start population and set the evaluated values
+    pop_initial = pymoo.core.population.Population.new("X", X)
+    pop_initial.set("F", J)
+    if G is not None:
+        pop_initial.set("G", G)
+    set_cv(pop_initial)
+    for individual in pop_initial:
+        individual.evaluated = {"F", "G", "CV", "feasible"}
+    Evaluator(skip_already_evaluated=True).eval(problem, pop_initial)
+
+    # Create the algorithm objects
+    algorithm = UNSGA3(
+        ref_dirs=ref_dirs,
+        sampling=pop_initial,
+        n_offsprings=param_dict['n_offsprings'],
+        crossover=SimulatedBinaryCrossover(eta=param_dict['eta_crossover']),
+        mutation=PolynomialMutation(eta=param_dict['eta_mutation'])
+    )
+
+    # Set up the termination conditions and display
+    termination = termination_condition(param_dict)
+    display = CustomDisplay()
+
+    # Set up the algorithm
+    algorithm.setup(problem, termination, display=display, seed=param_dict['seed'], verbose=True,
+                    save_history=False)
+
+    # Set the number of evaluations and the current generation number
+    algorithm.evaluator.n_eval = n_eval
+    algorithm.n_gen = n_gen
+
+    return algorithm
+
+
+def patch_termination(algorithm: Algorithm, param_dict: dict):
+    """Needed for legacy algorithm load method (.pkl) only"""
+    term = deepcopy(algorithm.termination.terminations)
+    term = list(term)
+    term[0].n_max_gen = param_dict['n_max_gen']
+    term = tuple(term)
+    algorithm.termination.terminations = term
+    algorithm.has_terminated = False
+
+
 def compute_objectives_and_forces_from_evaluated_population(
         evaluated_population: Population,
         objectives: typing.List[Objective],
         constraints: typing.List[Constraint] or None) -> (np.ndarray, np.ndarray, typing.List[dict]):
-
     n_offspring = len(evaluated_population.population)
     forces = []
     constraints = [] if constraints is None else constraints
@@ -55,6 +164,15 @@ def compute_objectives_and_forces_from_evaluated_population(
             G[pop_idx, cnstr_idx] = constraint.value
 
     return J, G, forces
+
+
+def get_airfoil_and_mea_names(opt_settings: dict, param_dict: dict) -> (str or None, str or None):
+    airfoil_name, mea_name = None, None
+    if param_dict["tool"] == "XFOIL":
+        airfoil_name = opt_settings["XFOIL"]["airfoil"]
+    elif param_dict["tool"] == "MSES":
+        mea_name = opt_settings["MSET"]["mea"]
+    return airfoil_name, mea_name
 
 
 def do_sampling(param_dict: dict, norm_parm_list: list) -> list or np.ndarray:
@@ -89,7 +207,6 @@ def do_sampling(param_dict: dict, norm_parm_list: list) -> list or np.ndarray:
 def shape_optimization(conn: multiprocessing.connection.Connection or None, param_dict: dict, opt_settings: dict,
                        geo_col_dict: dict,
                        objectives: typing.List[str], constraints: typing.List[str]):
-
     objectives = [Objective(func_str=func_str) for func_str in objectives]
     constraints = [Constraint(func_str=func_str) for func_str in constraints]
 
@@ -128,21 +245,13 @@ def shape_optimization(conn: multiprocessing.connection.Connection or None, para
     send_over_pipe(("text", start_message(opt_settings["General Settings"]["warm_start_active"])))
 
     Config.show_compile_hint = False
-    ref_dirs = get_reference_directions("energy", param_dict['n_obj'], param_dict['n_ref_dirs'],
-                                        seed=param_dict['seed'])
+
     geo_col = GeometryCollection.set_from_dict_rep(deepcopy(geo_col_dict))
-    airfoil_name, mea_name = None, None
-    if param_dict["tool"] == "XFOIL":
-        airfoil_name = opt_settings["XFOIL"]["airfoil"]
-    elif param_dict["tool"] == "MSES":
-        mea_name = opt_settings["MSET"]["mea"]
     parameter_list = geo_col.extract_design_variable_values(bounds_normalized=True)
     num_parameters = len(parameter_list)
-
     send_over_pipe(("text", f"Number of design variables: {num_parameters}"))
 
-    problem = TPAIOPT(n_var=param_dict['n_var'], n_obj=param_dict['n_obj'], n_constr=param_dict['n_constr'],
-                      xl=param_dict['xl'], xu=param_dict['xu'], param_dict=param_dict)
+    airfoil_name, mea_name = get_airfoil_and_mea_names(opt_settings, param_dict)
 
     if not opt_settings['General Settings']['warm_start_active']:
 
@@ -160,53 +269,39 @@ def shape_optimization(conn: multiprocessing.connection.Connection or None, para
         J, G, forces = compute_objectives_and_forces_from_evaluated_population(population, objectives, constraints)
 
         if all([obj_value == 1000.0 for obj_value in J[:, 0]]):
-            send_over_pipe(("disp_message_box", f"Could not converge any individuals in the population. Optimization terminated."))
+            send_over_pipe(("disp_message_box",
+                            f"Could not converge any individuals in the population. Optimization terminated."))
             return
 
-        pop_initial = pymoo.core.population.Population.new("X", np.array(X_list))
-        pop_initial.set("F", J)
-        if len(constraints) > 0 and G is not None:
-            pop_initial.set("G", G)
-        set_cv(pop_initial)
-
-        for individual in pop_initial:
-            individual.evaluated = {"F", "G", "CV", "feasible"}
-        Evaluator(skip_already_evaluated=True).eval(problem, pop_initial)
-
-        algorithm = UNSGA3(ref_dirs=ref_dirs, sampling=pop_initial,
-                           n_offsprings=param_dict['n_offsprings'],
-                           crossover=SimulatedBinaryCrossover(eta=param_dict['eta_crossover']),
-                           mutation=PolynomialMutation(eta=param_dict['eta_mutation']))
-
-        termination = termination_condition(param_dict)
-
-        display = CustomDisplay()
-
-        algorithm.setup(problem, termination, display=display, seed=param_dict['seed'], verbose=True,
-                        save_history=False)
-
-        algorithm.evaluator.n_eval += n_eval
-
         n_generation = 0
+
+        algorithm = setup_ga_optimization(param_dict, J, G, np.array(X_list), n_eval, n_gen=n_generation)
     else:
         warm_start_index = param_dict['warm_start_generation']
         n_generation = warm_start_index
-        warm_start_alg_file = os.path.join(opt_settings['General Settings']['warm_start_dir'],
-                                           f'algorithm_gen_{warm_start_index}.pkl')
-        algorithm = load_data(warm_start_alg_file)
+        warm_start_alg_file_legacy = os.path.join(
+            opt_settings["General Settings"]["warm_start_dir"], f"algorithm_gen_{warm_start_index}.pkl"
+        )
+        if os.path.exists(warm_start_alg_file_legacy):
+            algorithm = load_data(warm_start_alg_file_legacy)
+            patch_termination(algorithm, param_dict)
+        else:
+            warm_start_file = os.path.join(
+                opt_settings["General Settings"]["warm_start_dir"], f"alg_data_{warm_start_index}.csv"
+            )
+            alg_data_dict = read_alg_data(warm_start_file)
+            algorithm = setup_ga_optimization(
+                param_dict, alg_data_dict["off_J"], alg_data_dict["off_G"], alg_data_dict["off_X"],
+                n_eval=alg_data_dict["n_eval"], n_gen=alg_data_dict["n_gen"]
+            )
+
         forces_dict = read_force_dict_from_file(os.path.join(param_dict["opt_dir"], "force_history.json"))
         forces = []
+
         if not opt_settings['General Settings']['use_initial_settings']:
             # Currently only set up to change n_offsprings
-            previous_offsprings = deepcopy(algorithm.n_offsprings)
             algorithm.n_offsprings = opt_settings['Genetic Algorithm']['n_offspring']
             algorithm.problem.param_dict['n_offsprings'] = algorithm.n_offsprings
-        term = deepcopy(algorithm.termination.terminations)
-        term = list(term)
-        term[0].n_max_gen = param_dict['n_max_gen']
-        term = tuple(term)
-        algorithm.termination.terminations = term
-        algorithm.has_terminated = False
 
     while algorithm.has_next():
 
@@ -221,7 +316,7 @@ def shape_optimization(conn: multiprocessing.connection.Connection or None, para
             parents = [Chromosome(param_dict=param_dict, generation=n_generation, population_idx=idx,
                                   airfoil_name=airfoil_name, mea_name=mea_name,
                                   geo_col_dict=geo_col_dict, genes=individual) for idx, individual in enumerate(X)]
-            population = Population(problem.param_dict, generation=n_generation,
+            population = Population(algorithm.problem.param_dict, generation=n_generation,
                                     parents=parents, verbose=param_dict['verbose'])
             n_eval = population.eval_pop_fitness(sig=conn)
 
@@ -231,7 +326,8 @@ def shape_optimization(conn: multiprocessing.connection.Connection or None, para
 
             if all([obj_value == 1000.0 for obj_value in J[:, 0]]):
                 send_over_pipe(
-                    ("disp_message_box", f"Could not converge any individuals in the population. Optimization terminated."))
+                    ("disp_message_box",
+                     f"Could not converge any individuals in the population. Optimization terminated."))
                 return
 
             pop.set("F", J)
@@ -335,11 +431,11 @@ def shape_optimization(conn: multiprocessing.connection.Connection or None, para
             send_over_pipe(("drag_mses", (Cd, Cdp, Cdf, Cdv, Cdw)))
 
         if n_generation % param_dict['algorithm_save_frequency'] == 0:
-            save_data(algorithm, os.path.join(param_dict['opt_dir'], f'algorithm_gen_{n_generation}.pkl'))
+            # write_alg_data(algorithm, param_dict)
+            save_data(algorithm, os.path.join(param_dict['opt_dir'], f'algorithm_gen_{n_generation}.pkl'))  # Legacy
 
     # obtain the result objective from the algorithm
     res = algorithm.result()
-    save_data(res, os.path.join(param_dict['opt_dir'], 'res.pkl'))
     write_force_dict_to_file(forces_dict, os.path.join(param_dict["opt_dir"], "force_history.json"))
     np.savetxt(os.path.join(param_dict['opt_dir'], 'opt_X.dat'), res.X)
 
