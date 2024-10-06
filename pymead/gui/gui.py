@@ -1181,11 +1181,12 @@ class GUI(FramelessMainWindow):
         line_break = "<br>" if line_break else ""
         self.text_area.insertHtml(f'<head><style> ')
 
-    def display_airfoil_statistics(self):
+    def display_airfoil_statistics(self, dialog_test_action: typing.Callable = None):
         airfoil_stats = AirfoilStatistics(geo_col=self.geo_col)
-        dialog = AirfoilStatisticsDialog(parent=self, airfoil_stats=airfoil_stats,
+        self.dialog = AirfoilStatisticsDialog(parent=self, airfoil_stats=airfoil_stats,
                                          theme=self.themes[self.current_theme])
-        dialog.exec()
+        if (dialog_test_action is not None and not dialog_test_action(self.dialog)) or self.dialog.exec():
+            pass
 
     def single_airfoil_inviscid_analysis(self, plot_cp: bool) -> (np.ndarray, np.ndarray, float) or None:
         selected_airfoil_name = self.permanent_widget.inviscid_cl_combo.currentText()
