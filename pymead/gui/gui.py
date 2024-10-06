@@ -1188,18 +1188,23 @@ class GUI(FramelessMainWindow):
         if (dialog_test_action is not None and not dialog_test_action(self.dialog)) or self.dialog.exec():
             pass
 
-    def single_airfoil_inviscid_analysis(self, plot_cp: bool) -> (np.ndarray, np.ndarray, float) or None:
+    def single_airfoil_inviscid_analysis(self, plot_cp: bool,
+                                         info_dialog_action: typing.Callable = None,
+                                         dialog_test_action: typing.Callable = None
+                                         ) -> (np.ndarray, np.ndarray, float) or None:
+
         selected_airfoil_name = self.permanent_widget.inviscid_cl_combo.currentText()
 
         if selected_airfoil_name == "":
             if plot_cp:
                 self.disp_message_box("Choose an airfoil in the bottom right-hand corner of the screen "
-                                      "to perform an incompressible, inviscid analysis", message_mode="info")
+                                      "to perform an incompressible, inviscid analysis", message_mode="info",
+                                      dialog_test_action=info_dialog_action)
             return
 
         dialog = PanelDialog(self, theme=self.themes[self.current_theme], settings_override=self.panel_settings)
 
-        if dialog.exec():
+        if (dialog_test_action is not None and not dialog_test_action(self.dialog)) or self.dialog.exec():
             alpha_add = dialog.value()["alfa"]
             self.panel_settings = dialog.value()
         else:
