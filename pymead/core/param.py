@@ -72,7 +72,8 @@ class Param(PymeadObj):
             raise ValueError(f"Specified upper bound ({upper}) smaller than current parameter value ({value})"
                              f"for {name}")
 
-        self.set_value(value, direct_user_request=False)
+        kwargs = dict(direct_user_request=False) if isinstance(self, LengthParam) else {}
+        self.set_value(value, **kwargs)
 
         if lower is not None:
             self.set_lower(lower)
@@ -109,7 +110,7 @@ class Param(PymeadObj):
             return self._value
 
     def set_value(self, value: float or int, bounds_normalized: bool = False, force: bool = False,
-                  param_graph_update: bool = False, from_request_move: bool = False, direct_user_request: bool = True):
+                  param_graph_update: bool = False, from_request_move: bool = False):
         """
         Sets the design variable value, adjusting the value to fit inside the bounds if necessary.
 
@@ -135,12 +136,6 @@ class Param(PymeadObj):
         from_request_move: bool
             Whether this method was called from ``Point.request_move``. Default: ``False``
         """
-        if direct_user_request and self.point and self.point.x() and self.point.y():
-            if self is self.point.x():
-                self.point.request_move(xp=value, yp=self.point.y().value())
-            if self is self.point.y():
-                self.point.request_move(xp=self.point.x().value(), yp=value)
-            return
 
         old_point_vals = {k: v.as_array() for k, v in self.geo_col.container()["points"].items()} \
             if self.geo_col is not None else {}
@@ -503,11 +498,18 @@ class LengthParam(Param):
 
         # Negative lengths are prohibited unless this represents a point
         if self.point is None and value < 0.0:
+            value = self.value()  # Can only happen if not bounds-normalized, so no need to pass this argument
+
+        if direct_user_request and self.point and self.point.x() and self.point.y():
+            value = value * (self._upper - self._lower) + self._lower if bounds_normalized else value
+            if self is self.point.x():
+                self.point.request_move(xp=value, yp=self.point.y().value())
+            if self is self.point.y():
+                self.point.request_move(xp=self.point.x().value(), yp=value)
             return
 
         return super().set_value(value, bounds_normalized=bounds_normalized, force=force,
-                                 param_graph_update=param_graph_update, from_request_move=from_request_move,
-                                 direct_user_request=direct_user_request)
+                                 param_graph_update=param_graph_update, from_request_move=from_request_move)
 
     def get_dict_rep(self):
         return {"value": float(self.value()), "lower": self.lower(), "upper": self.upper(),
@@ -556,7 +558,7 @@ class AngleParam(Param):
             base_upper = self.geo_col.units.convert_angle_to_base(upper, old_unit)
             self.set_upper(self.geo_col.units.convert_angle_from_base(base_upper, unit), force=True)
         base_value = self.geo_col.units.convert_angle_to_base(value, old_unit)
-        self.set_value(self.geo_col.units.convert_angle_from_base(base_value, unit), direct_user_request=False)
+        self.set_value(self.geo_col.units.convert_angle_from_base(base_value, unit))
 
         if self.tree_item is not None:
             self.tree_item.treeWidget().itemWidget(self.tree_item, 1).setSuffix(f" {unit}")
@@ -573,7 +575,7 @@ class AngleParam(Param):
         return self.geo_col.units.convert_angle_to_base(self._value, self.unit())
 
     def set_value(self, value: float, bounds_normalized: bool = False, force: bool = False,
-                  param_graph_update: bool = False, from_request_move: bool = False, direct_user_request: bool = True):
+                  param_graph_update: bool = False, from_request_move: bool = False):
 
         if self.unit() is None:
             self.set_unit()
@@ -582,8 +584,7 @@ class AngleParam(Param):
         new_value = self.geo_col.units.convert_angle_from_base(zero_to_2pi_value, self.unit())
 
         return super().set_value(new_value, bounds_normalized=bounds_normalized, force=force,
-                                 param_graph_update=param_graph_update, from_request_move=from_request_move,
-                                 direct_user_request=direct_user_request)
+                                 param_graph_update=param_graph_update, from_request_move=from_request_move)
 
     def get_dict_rep(self):
         return {"value": float(self.value()), "lower": self.lower(), "upper": self.upper(),
@@ -752,7 +753,7 @@ class AngleDesVar(AngleParam):
                          rotation_handle=rotation_handle, enabled=enabled, equation_str=equation_str)
 
     def set_value(self, value: float, bounds_normalized: bool = False, force: bool = False,
-                  param_graph_update: bool = False, from_request_move: bool = False, direct_user_request: bool = True):
+                  param_graph_update: bool = False, from_request_move: bool = False):
         r"""
         In this special case of ``set_value`` for an ``AngleDesVar``, we skip over the call to the ``set_value``
         method in ``AngleParam`` and directly call the ``set_value`` method in ``Param`` (the grandparent class).
@@ -760,8 +761,7 @@ class AngleDesVar(AngleParam):
         logical behavior for a bounded variable. This method eliminates that restriction.
         """
         return Param.set_value(self, value, bounds_normalized=bounds_normalized, force=force,
-                               param_graph_update=param_graph_update, from_request_move=from_request_move,
-                               direct_user_request=direct_user_request)
+                               param_graph_update=param_graph_update, from_request_move=from_request_move)
 
     def get_dict_rep(self):
         return {"value": float(self.value()), "lower": self.lower(), "upper": self.upper(),

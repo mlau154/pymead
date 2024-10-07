@@ -285,7 +285,7 @@ class Point(PymeadObj):
             if self.rotation_param is None:
                 return
             points_to_update = self.rotation_param.set_value(
-                self.rotation_param.root.measure_angle(Point(xp, yp)), from_request_move=True, direct_user_request=False)
+                self.rotation_param.root.measure_angle(Point(xp, yp)), from_request_move=True)
         else:
             self.x().set_value(xp, direct_user_request=False)
             self.y().set_value(yp, direct_user_request=False)
