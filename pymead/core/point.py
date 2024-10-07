@@ -259,9 +259,18 @@ class Point(PymeadObj):
         if not self.is_movement_allowed() and not force:
             return
 
-        old_point_vals = {k: v.as_array() for k, v in self.geo_col.container()["points"].items()}
+        old_point_vals = {k: v.as_array() for k, v in self.geo_col.container()["points"].items()} \
+            if self.geo_col is not None else {}
 
         if self.root:
+            # Bounds checks
+            if (self.x().lower() is not None and self.x().upper() is not None and
+                    not self.x().lower() <= xp <= self.x().upper()):
+                return
+            if (self.y().lower() is not None and self.y().upper() is not None and
+                    not self.y().lower() <= yp <= self.y().upper()):
+                return
+
             points_to_update = self.gcs.translate_cluster(self, dx=xp - self.x().value(), dy=yp - self.y().value())
             constraints_to_update = []
             for point in networkx.dfs_preorder_nodes(self.gcs, source=self):
@@ -276,10 +285,10 @@ class Point(PymeadObj):
             if self.rotation_param is None:
                 return
             points_to_update = self.rotation_param.set_value(
-                self.rotation_param.root.measure_angle(Point(xp, yp)), from_request_move=True)
+                self.rotation_param.root.measure_angle(Point(xp, yp)), from_request_move=True, direct_user_request=False)
         else:
-            self.x().set_value(xp)
-            self.y().set_value(yp)
+            self.x().set_value(xp, direct_user_request=False)
+            self.y().set_value(yp, direct_user_request=False)
             points_to_update = [self]
             symmetry_constraints = self._is_symmetry_123_and_no_edges()
             if symmetry_constraints:

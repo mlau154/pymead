@@ -777,8 +777,8 @@ class GCS(networkx.DiGraph):
         dy = (new_distance - old_distance) * np.sin(angle)
 
         for point in networkx.bfs_tree(self, source=start):
-            point.x().set_value(point.x().value() + dx)
-            point.y().set_value(point.y().value() + dy)
+            point.x().set_value(point.x().value() + dx, direct_user_request=False)
+            point.y().set_value(point.y().value() + dy, direct_user_request=False)
             if point not in points_solved:
                 points_solved.append(point)
 
@@ -845,7 +845,6 @@ class GCS(networkx.DiGraph):
 
         all_downstream_points = []
         rotation_handle = None
-        # print(f"{start = }, {additional_branch_starting_points = }")
         for source_point in [start, *additional_branch_starting_points]:
             for point in networkx.bfs_tree(self, source=source_point):
                 # if point not in points_to_exclude:
@@ -864,8 +863,8 @@ class GCS(networkx.DiGraph):
             dx_dy = np.array([[point.x().value() - rotation_point.x().value()],
                               [point.y().value() - rotation_point.y().value()]])
             new_xy = (rotation_mat @ dx_dy + rotation_point_mat).flatten()
-            point.x().set_value(new_xy[0])
-            point.y().set_value(new_xy[1])
+            point.x().set_value(new_xy[0], direct_user_request=False)
+            point.y().set_value(new_xy[1], direct_user_request=False)
             if point not in points_solved:
                 points_solved.append(point)
         return points_solved
@@ -901,8 +900,8 @@ class GCS(networkx.DiGraph):
             raise ValueError("Cannot move a point that is not a root of a constraint cluster")
         points_solved = []
         for point in networkx.bfs_tree(self, source=root):
-            point.x().set_value(point.x().value() + dx)
-            point.y().set_value(point.y().value() + dy)
+            point.x().set_value(point.x().value() + dx, direct_user_request=False)
+            point.y().set_value(point.y().value() + dy, direct_user_request=False)
             if point not in points_solved:
                 points_solved.append(point)
         self.solve_other_constraints(points_solved)
@@ -931,8 +930,8 @@ class GCS(networkx.DiGraph):
             old_y = point.y().value()
             new_x = (old_x - root_x) * np.cos(delta_angle) - (old_y - root_y) * np.sin(delta_angle) + root_x
             new_y = (old_x - root_x) * np.sin(delta_angle) + (old_y - root_y) * np.cos(delta_angle) + root_y
-            point.x().set_value(new_x)
-            point.y().set_value(new_y)
+            point.x().set_value(new_x, direct_user_request=False)
+            point.y().set_value(new_y, direct_user_request=False)
             if point not in points_solved:
                 points_solved.append(point)
         self.solve_other_constraints(points_solved)
