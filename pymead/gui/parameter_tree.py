@@ -61,66 +61,15 @@ class ValueSpin(QDoubleSpinBox):
         if self.param.lower() is not None:
             self.setMinimum(self.param.lower())
         else:
-            # if isinstance(self.param, LengthParam) or isinstance(self.param, AngleParam):
-            #     self.setMinimum(0.0)
-            # else:
             self.setMinimum(-1.0e9)
         if self.param.upper() is not None:
             self.setMaximum(self.param.upper())
         else:
-            # if isinstance(self.param, AngleParam):
-            #     self.setMaximum(UNITS.convert_angle_to_base(2 * np.pi, self.param.unit()))
-            # else:
             self.setMaximum(1.0e9)
         self.setValue(self.param.value())
         self.valueChanged.connect(self.onValueChanged)
         self.setEnabled(self.param.enabled())
         self.setKeyboardTracking(False)
-
-    # def setValue(self, val):
-    #
-    #     print(f"{val = }")
-    #
-    #     if isinstance(self.param, LengthParam) and self.param.point is None and val < 0.0:
-    #         return
-    #     elif isinstance(self.param, AngleParam):
-    #         val = val % (2 * np.pi)
-    #
-    #     super().setValue(val)
-
-    # def validate(self, inp, pos):
-    #     if not hasattr(self, "param"):
-    #         return QValidator.Acceptable
-    #     elif isinstance(self.param, LengthParam) or isinstance(self.param, AngleParam) and len(inp.split()) > 1:
-    #
-    #         print(f"{inp = }, {pos = }")
-    #         val = float(inp.split()[0])
-    #         print(f"{val = }")
-    #
-    #         if isinstance(self.param, LengthParam) and val > 0.0:
-    #             return QValidator.Acceptable
-    #
-    #         if isinstance(self.param, AngleParam) and 0.0 <= val < UNITS.convert_angle_to_base(2 * np.pi,
-    #                                                                                            self.param.unit()):
-    #             return QValidator.Acceptable
-    #
-    #         return QValidator.Intermediate
-    #     else:
-    #         return QValidator.Acceptable
-    #
-    # def fixup(self, s):
-    #     suffix = None
-    #     s_split = s.split()
-    #     number = float(s_split[0])
-    #     if len(s_split) > 1:
-    #         suffix = s_split[1]
-    #     print(f"{s = }")
-    #
-    #     if (isinstance(self.param, LengthParam) or isinstance(self.param, AngleParam)) and number < 0.0:
-    #         return f"0.0 {suffix}"
-    #
-    #     if isinstance(self.param, AngleParam) and number > UNITS.convert_angle_from_base(2 * np.pi, self.param.unit()):
-    #         return f"{UNITS.convert_angle_from_base(2 * np.pi)} {suffix}"
 
     def onValueChanged(self, value: float):
         self.param.set_value(value)
