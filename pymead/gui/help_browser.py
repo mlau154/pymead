@@ -8,6 +8,9 @@ from PyQt6.QtWidgets import QToolBar, QLineEdit, QWidget, QVBoxLayout, QToolButt
 from pymead import ICON_DIR
 
 
+HOME_URL = "https://pymead.readthedocs.io/en/latest/user.html"
+
+
 class HelpBrowserToolBar(QToolBar):
     def __init__(self, parent):
         super().__init__(parent=parent)
@@ -38,7 +41,7 @@ class HelpBrowser(QWebEngineView):
     """
     def __init__(self, parent):
         super().__init__(parent=parent)
-        self.setUrl(QUrl("https://pymead.readthedocs.io/en/latest/gui.html"))
+        self.setUrl(QUrl(HOME_URL))
 
 
 class HelpBrowserWidget(QWidget):
@@ -61,13 +64,11 @@ class HelpBrowserWidget(QWidget):
         self.toolbar.url_bar.returnPressed.connect(self.navigate_to_url)
         self.toolbar.stop_button.clicked.connect(self.help_browser.stop)
 
-    # method called by the home action
+    # Method called by the home action
     def navigate_home(self):
+        self.help_browser.setUrl(QUrl(HOME_URL))
 
-        # open the google
-        self.help_browser.setUrl(QUrl("https://pymead.readthedocs.io/en/latest/gui.html"))
-
-    # method called by the line edit when return key is pressed
+    # Method called by the line edit when return key is pressed
     def navigate_to_url(self):
 
         # getting url and converting it to QUrl object
