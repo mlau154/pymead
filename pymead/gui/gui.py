@@ -2176,6 +2176,9 @@ class GUI(FramelessMainWindow):
     def load_example_ferguson_airfoil_sharp(self):
         self.load_example("ferguson_airfoil_sharp.jmea")
 
+    def load_example_ferguson_airfoil_sharp_4(self):
+        self.load_example("ferguson_airfoil_sharp_4.jmea")
+
     def load_example_ferguson_airfoil_sharp_dv(self):
         self.load_example("ferguson_airfoil_sharp_dv.jmea")
 

@@ -13,7 +13,8 @@
       "Basic": {
         "Single Airfoil (Sharp TE)": "load_example_basic_airfoil_sharp",
         "Single Airfoil (Blunt TE)": "load_example_basic_airfoil_blunt",
-        "Ferguson Airfoil (Sharp TE)": "load_example_ferguson_airfoil_sharp"
+        "Ferguson Airfoil (Sharp TE)": "load_example_ferguson_airfoil_sharp",
+        "Ferguson Airfoil 4 (Sharp TE)": "load_example_ferguson_airfoil_sharp_4"
       },
       "Shape Optimization": {
         "Single Airfoil (Sharp TE)": "load_example_basic_airfoil_sharp_dv",
