@@ -1,3 +1,5 @@
+import numpy as np
+
 from pymead.tests.gui_tests.utils import app
 
 
@@ -12,7 +14,11 @@ def test_single_airfoil_inviscid_analysis(app):
         dialog.w.widget_dict["alfa"].setValue(5.0)
         dialog.accept()
 
-    app.single_airfoil_inviscid_analysis(plot_cp=True, dialog_test_action=dialog_action)
+    xy, CP, CL = app.single_airfoil_inviscid_analysis(plot_cp=True, dialog_test_action=dialog_action)
+    cl_real = 0.9682
+    assert np.isclose(cl_real, CL, atol=1e-4)
+    assert isinstance(xy, np.ndarray)
+    assert isinstance(CP, np.ndarray)
 
 
 def test_single_airfoil_inviscid_analysis_empty(app):
