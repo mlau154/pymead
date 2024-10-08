@@ -1,5 +1,6 @@
 import networkx
 import numpy as np
+from PyQt6.QtCore import QSignalBlocker
 
 from pymead.core.pymead_obj import PymeadObj
 
@@ -71,7 +72,8 @@ class Param(PymeadObj):
             raise ValueError(f"Specified upper bound ({upper}) smaller than current parameter value ({value})"
                              f"for {name}")
 
-        self.set_value(value)
+        kwargs = dict(direct_user_request=False) if isinstance(self, LengthParam) else {}
+        self.set_value(value, **kwargs)
 
         if lower is not None:
             self.set_lower(lower)
@@ -80,6 +82,9 @@ class Param(PymeadObj):
             self.set_upper(upper)
 
         self.set_name(name)
+
+    def _get_value_spin(self):
+        return self.tree_item.treeWidget().itemWidget(self.tree_item, 1)
 
     def value(self, bounds_normalized: bool = False):
         """
@@ -131,6 +136,7 @@ class Param(PymeadObj):
         from_request_move: bool
             Whether this method was called from ``Point.request_move``. Default: ``False``
         """
+
         old_point_vals = {k: v.as_array() for k, v in self.geo_col.container()["points"].items()} \
             if self.geo_col is not None else {}
 
@@ -192,6 +198,7 @@ class Param(PymeadObj):
                     raise ValueError("Lower and upper bounds must be set to assign a bounds-normalized value.")
                 value = value * (self._upper - self._lower) + self._lower
 
+            # Bounds clipping
             if self._lower is not None and value < self._lower:  # If below the lower bound,
                 # set the value equal to the lower bound
                 self._value = self._lower
@@ -234,7 +241,9 @@ class Param(PymeadObj):
             self._value = value
 
         if self.tree_item is not None:
-            self.tree_item.treeWidget().itemWidget(self.tree_item, 1).setValue(self.value())
+            value_spin = self._get_value_spin()
+            with QSignalBlocker(value_spin):
+                self.tree_item.treeWidget().itemWidget(self.tree_item, 1).setValue(self.value())
 
         return list(set(points_solved))
 
@@ -279,7 +288,9 @@ class Param(PymeadObj):
         self._lower = lower
 
         if self.tree_item is not None:
-            self.tree_item.treeWidget().itemWidget(self.tree_item, 1).setMinimum(self.lower())
+            value_spin = self._get_value_spin()
+            with QSignalBlocker(value_spin):
+                value_spin.setMinimum(self.lower())
 
     def set_upper(self, upper: float, force: bool = False):
         """
@@ -300,7 +311,9 @@ class Param(PymeadObj):
         self._upper = upper
 
         if self.tree_item is not None:
-            self.tree_item.treeWidget().itemWidget(self.tree_item, 1).setMaximum(self.upper())
+            value_spin = self._get_value_spin()
+            with QSignalBlocker(value_spin):
+                value_spin.setMaximum(self.upper())
 
     def enabled(self):
         return self._enabled
@@ -308,7 +321,9 @@ class Param(PymeadObj):
     def set_enabled(self, enabled: bool):
         self._enabled = enabled
         if self.tree_item is not None:
-            self.tree_item.treeWidget().itemWidget(self.tree_item, 1).setEnabled(enabled)
+            value_spin = self._get_value_spin()
+            with QSignalBlocker(value_spin):
+                value_spin.setEnabled(enabled)
 
     def update_equation(self, equation_str: str = None):
         if not equation_str:  # Handles both the None and empty-string cases
@@ -464,7 +479,7 @@ class LengthParam(Param):
         base_value = self.geo_col.units.convert_length_to_base(value, old_unit)
         new_value = self.geo_col.units.convert_length_from_base(base_value, unit)
         if modify_value:
-            self.set_value(new_value)
+            self.set_value(new_value, direct_user_request=False)
 
         if self.tree_item is not None:
             self.tree_item.treeWidget().itemWidget(self.tree_item, 1).setSuffix(f" {unit}")
@@ -478,10 +493,19 @@ class LengthParam(Param):
         return super().set_lower(lower, force=force)
 
     def set_value(self, value: float, bounds_normalized: bool = False, force: bool = False,
-                  param_graph_update: bool = False, from_request_move: bool = False):
+                  param_graph_update: bool = False, from_request_move: bool = False,
+                  direct_user_request: bool = True):
 
         # Negative lengths are prohibited unless this represents a point
         if self.point is None and value < 0.0:
+            value = self.value()  # Can only happen if not bounds-normalized, so no need to pass this argument
+
+        if direct_user_request and self.point and self.point.x() and self.point.y():
+            value = value * (self._upper - self._lower) + self._lower if bounds_normalized else value
+            if self is self.point.x():
+                self.point.request_move(xp=value, yp=self.point.y().value())
+            if self is self.point.y():
+                self.point.request_move(xp=self.point.x().value(), yp=value)
             return
 
         return super().set_value(value, bounds_normalized=bounds_normalized, force=force,

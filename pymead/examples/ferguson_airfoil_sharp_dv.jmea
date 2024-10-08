@@ -1,0 +1,178 @@
+{
+    "desvar": {
+        "LtU": {
+            "value": 0.4,
+            "lower": 0.32000000000000006,
+            "upper": 0.48,
+            "unit_type": "length",
+            "enabled": true,
+            "equation_str": null
+        },
+        "LtL": {
+            "value": 0.3,
+            "lower": 0.24,
+            "upper": 0.36,
+            "unit_type": "length",
+            "enabled": true,
+            "equation_str": null
+        },
+        "UpperBoat.x": {
+            "value": 0.3784994283692014,
+            "lower": 0.30279954269536113,
+            "upper": 0.4541993140430417,
+            "unit_type": "length",
+            "enabled": true,
+            "equation_str": null
+        },
+        "UpperBoat.y": {
+            "value": 0.1344747265393958,
+            "lower": 0.10757978123151664,
+            "upper": 0.16136967184727494,
+            "unit_type": "length",
+            "enabled": true,
+            "equation_str": null
+        },
+        "LowerBoat.x": {
+            "value": 0.4018176110913135,
+            "lower": 0.3214540888730508,
+            "upper": 0.4821811333095761,
+            "unit_type": "length",
+            "enabled": true,
+            "equation_str": null
+        },
+        "LowerBoat.y": {
+            "value": -0.0238841085186453,
+            "lower": -0.0438841085186453,
+            "upper": -0.003884108518645301,
+            "unit_type": "length",
+            "enabled": true,
+            "equation_str": null
+        }
+    },
+    "params": {
+        "ChordLength": {
+            "value": 1.0,
+            "lower": null,
+            "upper": null,
+            "unit_type": "length",
+            "enabled": true,
+            "equation_str": null
+        },
+        "negAoA": {
+            "value": 0.0,
+            "lower": null,
+            "upper": null,
+            "unit_type": "angle",
+            "root": "Point-1",
+            "rotation_handle": "Point-2",
+            "enabled": true,
+            "equation_str": null
+        }
+    },
+    "points": {
+        "Point-1": {
+            "x": 0.0,
+            "y": 0.0,
+            "relative_airfoil_name": null
+        },
+        "Point-2": {
+            "x": 0.9999999999999937,
+            "y": 1.734723475976807e-18,
+            "relative_airfoil_name": null
+        },
+        "Point-3": {
+            "x": -1.5785983631388945e-16,
+            "y": 0.4,
+            "relative_airfoil_name": null
+        },
+        "Point-4": {
+            "x": -9.740472317609772e-16,
+            "y": -0.3,
+            "relative_airfoil_name": null
+        },
+        "UpperBoat": {
+            "x": 0.3784994283692014,
+            "y": 0.1344747265393958,
+            "relative_airfoil_name": null
+        },
+        "LowerBoat": {
+            "x": 0.4018176110913135,
+            "y": -0.0238841085186453,
+            "relative_airfoil_name": null
+        }
+    },
+    "reference": {},
+    "lines": {},
+    "polylines": {},
+    "bezier": {},
+    "ferguson": {
+        "Ferguson-1": {
+            "points": [
+                "Point-1",
+                "Point-3",
+                "UpperBoat",
+                "Point-2"
+            ],
+            "default_nt": null
+        },
+        "Ferguson-2": {
+            "points": [
+                "Point-1",
+                "Point-4",
+                "LowerBoat",
+                "Point-2"
+            ],
+            "default_nt": null
+        }
+    },
+    "airfoils": {
+        "Airfoil-1": {
+            "leading_edge": "Point-1",
+            "trailing_edge": "Point-2",
+            "upper_surf_end": "Point-2",
+            "lower_surf_end": "Point-2"
+        }
+    },
+    "mea": {},
+    "geocon": {
+        "DistCon-1": {
+            "p1": "Point-1",
+            "p2": "Point-2",
+            "value": "ChordLength",
+            "constraint_type": "DistanceConstraint"
+        },
+        "DistCon-2": {
+            "p1": "Point-1",
+            "p2": "Point-3",
+            "value": "LtU",
+            "constraint_type": "DistanceConstraint"
+        },
+        "DistCon-3": {
+            "p1": "Point-1",
+            "p2": "Point-4",
+            "value": "LtL",
+            "constraint_type": "DistanceConstraint"
+        },
+        "Perp3Con-1": {
+            "p1": "Point-3",
+            "p2": "Point-1",
+            "p3": "Point-2",
+            "constraint_type": "Perp3Constraint"
+        },
+        "AntiPar3Con-1": {
+            "p1": "Point-3",
+            "p2": "Point-1",
+            "p3": "Point-4",
+            "constraint_type": "AntiParallel3Constraint",
+            "polyline": null,
+            "point_on_curve": null
+        }
+    },
+    "metadata": {
+        "pymead_version": "2.0.0-beta.12",
+        "save_datetime": "2024-10-03 15:04:30.632403",
+        "length_unit": "m",
+        "angle_unit": "rad",
+        "area_unit": "m2"
+    }
+}

@@ -31,6 +31,12 @@
     "checkable": false,
     "function": "on_draw_bezier_pressed"
   },
+  "draw-fergusons": {
+    "icon": "ferguson_dark.svg",
+    "status_tip": "Draw Ferguson curves",
+    "checkable": false,
+    "function": "on_draw_ferguson_pressed"
+  },
   "generate-airfoil": {
     "icon": "airfoil_dark.svg",
     "status_tip": "Generate airfoil",

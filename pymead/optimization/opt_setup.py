@@ -118,7 +118,7 @@ def calculate_warm_start_index(warm_start_generation: int, warm_start_directory:
     for root, _, files in os.walk(warm_start_directory):
         for idx, f in enumerate(files):
             file_without_ext = os.path.splitext(f)[0]
-            if re.split('_', file_without_ext)[0] == 'algorithm':
+            if re.split('_', file_without_ext)[0] in ["alg", "algorithm"]:
                 idx = re.split('_', file_without_ext)[-1]
                 generations.append(int(idx))
     generations = sorted(generations)
@@ -133,7 +133,7 @@ def calculate_warm_start_index(warm_start_generation: int, warm_start_directory:
     return warm_start_index
 
 
-class TPAIOPT(Problem):
+class PymeadGAProblem(Problem):
     def __init__(self, n_var: int, n_obj: int, n_constr: int, xl: int or list or np.ndarray,
                  xu: int or list or np.ndarray, param_dict: dict):
         """
@@ -165,6 +165,10 @@ class TPAIOPT(Problem):
 
     def _evaluate(self, X, out, *args, **kwargs):
         pass
+
+
+class TPAIOPT(PymeadGAProblem):  # Included for legacy serialized algorithm data import
+    pass
 
 
 class CustomDisplay(Display):

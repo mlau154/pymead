@@ -5,6 +5,7 @@ import pyqtgraph as pg
 from PyQt6.QtCore import pyqtSignal
 
 from pymead.core.bezier import Bezier
+from pymead.core.ferguson import Ferguson
 from pymead.core.line import LineSegment, PolyLine
 from pymead.core.parametric_curve import PCurveData, ParametricCurve
 from pymead.core.point import PointSequence, Point
@@ -23,6 +24,7 @@ class HoverableCurve(pg.PlotCurveItem):
     sigCurveNotHovered = pyqtSignal(object, object)
     sigRemove = pyqtSignal(object)
     sigBezierAdded = pyqtSignal(object)
+    sigFergusonAdded = pyqtSignal(object)
     sigLineAdded = pyqtSignal(object)
     sigPolyLineAdded = pyqtSignal(object)
     sigLineItemAdded = pyqtSignal(object)
@@ -40,7 +42,7 @@ class HoverableCurve(pg.PlotCurveItem):
         kwargs
             Keyword arguments which are passed to ``pyqtgraph.PlotCurveItem``
         """
-        implemented_curve_types = ["Bezier", "LineSegment", "PolyLine"]
+        implemented_curve_types = ["Bezier", "LineSegment", "PolyLine", "Ferguson"]
         if curve_type not in implemented_curve_types:
             raise NotImplementedError(f"Curve type {curve_type} either incorrectly labeled or not yet implemented."
                                       f"Currently implemented curve types: {implemented_curve_types}.")
@@ -87,6 +89,12 @@ class HoverableCurve(pg.PlotCurveItem):
             if self.parametric_curve is None:
                 self.parametric_curve = Bezier(point_sequence)
                 self.sigBezierAdded.emit(self.parametric_curve)
+            else:
+                self.parametric_curve.set_point_sequence(point_sequence)
+        elif self.curve_type == "Ferguson":
+            if self.parametric_curve is None:
+                self.parametric_curve = Ferguson(point_sequence)
+                self.sigFergusonAdded.emit(self.parametric_curve)
             else:
                 self.parametric_curve.set_point_sequence(point_sequence)
         elif self.curve_type == "LineSegment":

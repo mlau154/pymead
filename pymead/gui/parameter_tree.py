@@ -7,6 +7,8 @@ from PyQt6.QtGui import QValidator, QBrush, QColor
 from PyQt6.QtWidgets import QTreeWidget, QTreeWidgetItem, QPushButton, QHBoxLayout, QHeaderView, QDialog, QGridLayout, \
     QDoubleSpinBox, QLineEdit, QLabel, QMenu, QAbstractItemView, QTreeWidgetItemIterator, QWidget, QCompleter, QSpinBox, \
     QCheckBox
+
+from pymead.core.ferguson import Ferguson
 from pymead.core.parametric_curve import INTERMEDIATE_NT
 
 from pymead.core.airfoil import Airfoil
@@ -50,8 +52,8 @@ class ValueSpin(QDoubleSpinBox):
     def __init__(self, parent, param: Param):
         super().__init__(parent)
         self.pymead_obj = param
-        self.setMaximumWidth(200)
-        self.setDecimals(16)
+        self.setMaximumWidth(130)
+        self.setDecimals(8)
         self.setSingleStep(0.01)
         if isinstance(param, LengthParam) or isinstance(param, AngleParam):
             self.setSuffix(f" {param.unit()}")
@@ -59,76 +61,18 @@ class ValueSpin(QDoubleSpinBox):
         if self.param.lower() is not None:
             self.setMinimum(self.param.lower())
         else:
-            # if isinstance(self.param, LengthParam) or isinstance(self.param, AngleParam):
-            #     self.setMinimum(0.0)
-            # else:
             self.setMinimum(-1.0e9)
         if self.param.upper() is not None:
             self.setMaximum(self.param.upper())
         else:
-            # if isinstance(self.param, AngleParam):
-            #     self.setMaximum(UNITS.convert_angle_to_base(2 * np.pi, self.param.unit()))
-            # else:
             self.setMaximum(1.0e9)
         self.setValue(self.param.value())
         self.valueChanged.connect(self.onValueChanged)
         self.setEnabled(self.param.enabled())
         self.setKeyboardTracking(False)
 
-    # def setValue(self, val):
-    #
-    #     print(f"{val = }")
-    #
-    #     if isinstance(self.param, LengthParam) and self.param.point is None and val < 0.0:
-    #         return
-    #     elif isinstance(self.param, AngleParam):
-    #         val = val % (2 * np.pi)
-    #
-    #     super().setValue(val)
-
-    # def validate(self, inp, pos):
-    #     if not hasattr(self, "param"):
-    #         return QValidator.Acceptable
-    #     elif isinstance(self.param, LengthParam) or isinstance(self.param, AngleParam) and len(inp.split()) > 1:
-    #
-    #         print(f"{inp = }, {pos = }")
-    #         val = float(inp.split()[0])
-    #         print(f"{val = }")
-    #
-    #         if isinstance(self.param, LengthParam) and val > 0.0:
-    #             return QValidator.Acceptable
-    #
-    #         if isinstance(self.param, AngleParam) and 0.0 <= val < UNITS.convert_angle_to_base(2 * np.pi,
-    #                                                                                            self.param.unit()):
-    #             return QValidator.Acceptable
-    #
-    #         return QValidator.Intermediate
-    #     else:
-    #         return QValidator.Acceptable
-    #
-    # def fixup(self, s):
-    #     suffix = None
-    #     s_split = s.split()
-    #     number = float(s_split[0])
-    #     if len(s_split) > 1:
-    #         suffix = s_split[1]
-    #     print(f"{s = }")
-    #
-    #     if (isinstance(self.param, LengthParam) or isinstance(self.param, AngleParam)) and number < 0.0:
-    #         return f"0.0 {suffix}"
-    #
-    #     if isinstance(self.param, AngleParam) and number > UNITS.convert_angle_from_base(2 * np.pi, self.param.unit()):
-    #         return f"{UNITS.convert_angle_from_base(2 * np.pi)} {suffix}"
-
     def onValueChanged(self, value: float):
-        if self.param.point is None:
-            self.param.set_value(value)
-        else:
-            if self.param is self.param.point.x():
-                self.param.point.request_move(value, self.param.point.y().value())
-            elif self.param is self.param.point.y():
-                self.param.point.request_move(self.param.point.x().value(), value)
-        self.setValue(self.param.value())
+        self.param.set_value(value)
 
 
 class NameValidator(QValidator):
@@ -519,6 +463,51 @@ class BezierButton(TreeButton):
         self.bezier.update()
 
 
+class FergusonButton(TreeButton):
+
+    def __init__(self, ferguson: Ferguson, tree, top_level: bool = False):
+        self.ferguson = ferguson
+        super().__init__(pymead_obj=ferguson, tree=tree, top_level=top_level)
+
+    def modifyDialogInternals(self, dialog: QDialog, layout: QGridLayout) -> None:
+        # Add name widget
+        name_label = QLabel("Name", self)
+        name_edit = NameEdit(self, self.ferguson, self.tree)
+        name_edit.textChanged.connect(self.onNameChange)
+        layout.addWidget(name_label, 1, 0)
+        layout.addWidget(name_edit, 1, 1)
+
+        # Add default nt widget
+        nt_label = QLabel("Evaluated Points", self)
+        nt_spin = QSpinBox(self)
+        nt_spin.setMinimum(2)
+        nt_spin.setMaximum(100000)
+        nt_spin.setValue(INTERMEDIATE_NT if self.ferguson.default_nt is None else self.ferguson.default_nt)
+        nt_spin.valueChanged.connect(self.onSpinChange)
+        layout.addWidget(nt_label, 2, 0)
+        layout.addWidget(nt_spin, 2, 1)
+
+        # Add the point buttons
+        for point in self.ferguson.point_sequence().points():
+            point_button = PointButton(point, self.tree)
+            point_button.sigNameChanged.connect(self.onPointNameChange)
+            layout.addWidget(point_button, layout.rowCount(), 0)
+
+    def onPointNameChange(self, name: str, point: Point):
+        if point.tree_item is not None:
+            self.tree.itemWidget(point.tree_item, 0).setText(name)
+
+    def enterEvent(self, a0):
+        self.ferguson.canvas_item.setItemStyle("hovered")
+
+    def leaveEvent(self, a0):
+        self.ferguson.canvas_item.setItemStyle("default")
+
+    def onSpinChange(self, new_val: int):
+        self.ferguson.default_nt = new_val
+        self.ferguson.update()
+
+
 class LineSegmentButton(TreeButton):
 
     def __init__(self, line: LineSegment, tree, top_level: bool = False):
@@ -844,6 +833,7 @@ class ParameterTree(QTreeWidget):
             "points": "Points",
             "lines": "Lines",
             "bezier": "Bézier Curves",
+            "ferguson": "Ferguson Curves",
             "airfoils": "Airfoils",
             "polylines": "Polylines",
             "mea": "Multi-Element Airfoils",
@@ -865,9 +855,9 @@ class ParameterTree(QTreeWidget):
         self.setHeader(self.headerRow)
 
         # Set the tree widget geometry
-        self.setMinimumWidth(400)
+        self.setMinimumWidth(320)
         self.header().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
-        self.setColumnWidth(1, 200)
+        self.setColumnWidth(1, 130)
 
         # Set the tree to be expanded by default
         self.expandAll()

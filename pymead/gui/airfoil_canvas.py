@@ -75,13 +75,13 @@ class AirfoilCanvas(pg.PlotWidget):
             pymead_obj.canvas_item.hide()
 
     def showAllPymeadObjs(self):
-        sub_containers = ("points", "bezier", "lines", "airfoils", "geocon", "polylines", "reference")
+        sub_containers = ("points", "bezier", "ferguson", "lines", "airfoils", "geocon", "polylines", "reference")
         for sub_container in sub_containers:
             self.showPymeadObjs(sub_container)
         return {sub_container: True for sub_container in sub_containers}
 
     def hideAllPymeadObjs(self):
-        sub_containers = ("points", "bezier", "lines", "airfoils", "geocon", "polylines", "reference")
+        sub_containers = ("points", "bezier", "ferguson", "lines", "airfoils", "geocon", "polylines", "reference")
         for sub_container in sub_containers:
             self.hidePymeadObjs(sub_container)
         return {sub_container: False for sub_container in sub_containers}
@@ -314,6 +314,38 @@ class AirfoilCanvas(pg.PlotWidget):
     def drawBeziers(self):
         if len(self.geo_col.selected_objects["points"]) < 2:
             msg = f"Choose at least 2 points to define a curve"
+            self.sigStatusBarUpdate.emit(msg, 2000)
+            return
+
+    @undoRedoAction
+    def drawFergusonNoEvent(self):
+        if len(self.geo_col.selected_objects["points"]) != 4:
+            msg = f"Choose exactly 4 points to define a Ferguson curve"
+            self.sigStatusBarUpdate.emit(msg, 2000)
+            return
+
+        point_sequence = PointSequence([pt for pt in self.geo_col.selected_objects["points"]])
+        self.geo_col.add_ferguson(point_sequence=point_sequence)
+
+        self.clearSelectedObjects()
+        self.sigStatusBarUpdate.emit("Select the starting point for the next Ferguson curve", 0)
+
+    @undoRedoAction
+    @runSelectionEventLoop(drawing_object="Ferguson", starting_message="Select the starting point for the Ferugson curve")
+    def drawFerguson(self):
+        if len(self.geo_col.selected_objects["points"]) != 4:
+            msg = f"Choose exactly 4 points to define a Ferguson curve"
+            self.sigStatusBarUpdate.emit(msg, 2000)
+            return
+
+        point_sequence = PointSequence([pt for pt in self.geo_col.selected_objects["points"]])
+        self.geo_col.add_ferguson(point_sequence=point_sequence)
+
+    @runSelectionEventLoop(drawing_object="Fergusons", starting_message="Select the starting point for the Ferugson curve",
+                           enter_callback=drawFergusonNoEvent)
+    def drawFergusons(self):
+        if len(self.geo_col.selected_objects["points"]) != 4:
+            msg = f"Choose exactly 4 points to define a Ferguson curve"
             self.sigStatusBarUpdate.emit(msg, 2000)
             return
 
@@ -628,6 +660,16 @@ class AirfoilCanvas(pg.PlotWidget):
                    f"{len(self.geo_col.selected_objects['points'])} "
                    f"(degree: {degree}). Press 'Enter' to generate the curve.")
             self.sigStatusBarUpdate.emit(msg, 0)
+        elif self.drawing_object in ["Ferguson", "Fergusons"]:
+            self.geo_col.select_object(point_item.point)
+            if len(self.geo_col.selected_objects["points"]) == 1:
+                self.sigStatusBarUpdate.emit("Next, choose the starting tangent control point", 0)
+            if len(self.geo_col.selected_objects["points"]) == 2:
+                self.sigStatusBarUpdate.emit("Next, choose the ending tangent control point", 0)
+            if len(self.geo_col.selected_objects["points"]) == 3:
+                self.sigStatusBarUpdate.emit("Finally, choose the ending point for the Ferguson curve", 0)
+            if len(self.geo_col.selected_objects["points"]) == 4:
+                self.sigEnterPressed.emit()
         elif self.drawing_object == "LineSegment":
             if len(self.geo_col.selected_objects["points"]) < 2:
                 self.geo_col.select_object(point_item.point)
@@ -907,6 +949,7 @@ class AirfoilCanvas(pg.PlotWidget):
 
         drawPointAction = create_geometry_menu.addAction("Insert Point")
         drawBezierCurveThroughPointsAction = create_geometry_menu.addAction("Bezier Curve Through Points")
+        drawFergusonCurveThroughPointsAction = create_geometry_menu.addAction("Ferguson Curve Through Points")
         drawLineSegmentThroughPointsAction = create_geometry_menu.addAction("Line Segment Through Points")
         generateAirfoilAction = create_geometry_menu.addAction("Generate Airfoil")
         generateMEAAction = create_geometry_menu.addAction("Generate MEA")
@@ -925,6 +968,8 @@ class AirfoilCanvas(pg.PlotWidget):
             self.drawPoint(x=[view_pos.x()], y=[view_pos.y()])
         elif res == drawBezierCurveThroughPointsAction:
             self.drawBezier()
+        elif res == drawFergusonCurveThroughPointsAction:
+            self.drawFerguson()
         elif res == drawLineSegmentThroughPointsAction:
             self.drawLineSegment()
         elif res == generateAirfoilAction:
@@ -1031,6 +1076,7 @@ class AirfoilCanvas(pg.PlotWidget):
             Qt.Key.Key_P: self.drawPoints,
             Qt.Key.Key_L: self.drawLines,
             Qt.Key.Key_B: self.drawBeziers,
+            Qt.Key.Key_G: self.drawFergusons,
             Qt.Key.Key_F: self.generateAirfoil,
             Qt.Key.Key_W: self.generateWebAirfoil,
             Qt.Key.Key_M: self.generateMEA,

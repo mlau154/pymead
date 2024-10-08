@@ -35,6 +35,7 @@ Planned feature additions
 - Add a "view data" feature to .jmea, .jses, and .jopt files that allows users to view the JSON
   data inside a custom text browser
 - Autofocus angle of attack value when loading Ctrl+Alt+I inviscid analysis
+- Make a "jump to tree location" option in context menu when any `PymeadObj` is selected
 
 Refactoring
 -----------
