@@ -1195,26 +1195,32 @@ class GUI(FramelessMainWindow):
         line_break = "<br>" if line_break else ""
         self.text_area.insertHtml(f'<head><style> ')
 
-    def display_airfoil_statistics(self):
+    def display_airfoil_statistics(self, dialog_test_action: typing.Callable = None):
         airfoil_stats = AirfoilStatistics(geo_col=self.geo_col)
-        dialog = AirfoilStatisticsDialog(parent=self, airfoil_stats=airfoil_stats,
+        self.dialog = AirfoilStatisticsDialog(parent=self, airfoil_stats=airfoil_stats,
                                          theme=self.themes[self.current_theme])
-        dialog.exec()
+        if (dialog_test_action is not None and not dialog_test_action(self.dialog)) or self.dialog.exec():
+            pass
 
-    def single_airfoil_inviscid_analysis(self, plot_cp: bool) -> (np.ndarray, np.ndarray, float) or (None, None, None):
+    def single_airfoil_inviscid_analysis(self, plot_cp: bool,
+                                         info_dialog_action: typing.Callable = None,
+                                         dialog_test_action: typing.Callable = None
+                                         ) -> (np.ndarray, np.ndarray, float) or (None, None, None):
+
         selected_airfoil_name = self.permanent_widget.inviscid_cl_combo.currentText()
 
         if selected_airfoil_name == "":
             if plot_cp:
                 self.disp_message_box("Choose an airfoil in the bottom right-hand corner of the screen "
-                                      "to perform an incompressible, inviscid analysis", message_mode="info")
+                                      "to perform an incompressible, inviscid analysis", message_mode="info",
+                                      dialog_test_action=info_dialog_action)
             return None, None, None
 
-        dialog = PanelDialog(self, theme=self.themes[self.current_theme], settings_override=self.panel_settings)
+        self.dialog = PanelDialog(self, theme=self.themes[self.current_theme], settings_override=self.panel_settings)
 
-        if dialog.exec():
-            alpha_add = dialog.value()["alfa"]
-            self.panel_settings = dialog.value()
+        if (dialog_test_action is not None and not dialog_test_action(self.dialog)) or self.dialog.exec():
+            alpha_add = self.dialog.value()["alfa"]
+            self.panel_settings = self.dialog.value()
         else:
             return None, None, None
 
