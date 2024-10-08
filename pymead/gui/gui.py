@@ -1216,11 +1216,11 @@ class GUI(FramelessMainWindow):
                                       dialog_test_action=info_dialog_action)
             return None, None, None
 
-        dialog = PanelDialog(self, theme=self.themes[self.current_theme], settings_override=self.panel_settings)
+        self.dialog = PanelDialog(self, theme=self.themes[self.current_theme], settings_override=self.panel_settings)
 
         if (dialog_test_action is not None and not dialog_test_action(self.dialog)) or self.dialog.exec():
-            alpha_add = dialog.value()["alfa"]
-            self.panel_settings = dialog.value()
+            alpha_add = self.dialog.value()["alfa"]
+            self.panel_settings = self.dialog.value()
         else:
             return None, None, None
 
