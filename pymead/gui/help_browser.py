@@ -1,6 +1,6 @@
 import os
 
-from PyQt6.QtCore import QUrl
+from PyQt6.QtCore import QUrl, pyqtSignal
 from PyQt6.QtGui import QIcon
 from PyQt6.QtWebEngineWidgets import QWebEngineView
 from PyQt6.QtWidgets import QToolBar, QLineEdit, QWidget, QVBoxLayout, QToolButton, QDialog
@@ -39,9 +39,16 @@ class HelpBrowser(QWebEngineView):
     """
     Help browser as inspired by https://www.geeksforgeeks.org/creating-a-simple-browser-using-pyqt5/
     """
+
+    sigLoadStatusEmitted = pyqtSignal(bool)
+
     def __init__(self, parent):
         super().__init__(parent=parent)
         self.setUrl(QUrl(HOME_URL))
+        self.loadFinished.connect(self.loadStatus)
+
+    def loadStatus(self, ok: bool):
+        self.sigLoadStatusEmitted.emit(ok)
 
 
 class HelpBrowserWidget(QWidget):
@@ -106,4 +113,3 @@ class HelpBrowserWindow(QDialog):
         self.lay = QVBoxLayout()
         self.setLayout(self.lay)
         self.lay.addWidget(self.help_browser_widget)
-        self.show()

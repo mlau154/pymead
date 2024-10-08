@@ -1313,8 +1313,11 @@ class GUI(FramelessMainWindow):
             save_data(control_point_dict, f_)
             self.disp_message_box(f"Airfoil control points saved to {f_}", message_mode='info')
 
-    def show_help(self):
-        HelpBrowserWindow(parent=self)
+    def show_help(self, dialog_test_action: typing.Callable = None):
+
+        self.dialog = HelpBrowserWindow(parent=self)
+        if (dialog_test_action and dialog_test_action(self.dialog)) or self.dialog.show():
+            pass
 
     def export_IGES(self):
         self.dialog = ExportIGESDialog(parent=self, theme=self.themes[self.current_theme])
