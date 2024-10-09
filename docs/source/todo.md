@@ -36,6 +36,7 @@ Planned feature additions
   data inside a custom text browser
 - Autofocus angle of attack value when loading Ctrl+Alt+I inviscid analysis
 - Make a "jump to tree location" option in context menu when any `PymeadObj` is selected
+- Add a unit selector to the Export IGES dialog
 
 Refactoring
 -----------
