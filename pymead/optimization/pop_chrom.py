@@ -141,7 +141,7 @@ class Chromosome:
         if "PTRHIN-DesVar" in self.param_dict["mses_settings"]:
             for ad_idx, fpr_dv_list in enumerate(self.param_dict["mses_settings"]["PTRHIN-DesVar"]):
                 for fpr_idx, fpr_dv in enumerate(fpr_dv_list):
-                    self.param_dict["mses_settings"]["PTRHIN-DesVar"][ad_idx][fpr_idx] = self.geo_col.container["desvar"][fpr_dv].value()
+                    self.param_dict["mses_settings"]["PTRHIN-DesVar"][ad_idx][fpr_idx] = self.geo_col.container()["desvar"][fpr_dv].value()
 
     def chk_self_intersection(self) -> bool:
         """

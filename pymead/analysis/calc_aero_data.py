@@ -736,7 +736,7 @@ def update_mses_settings_from_stencil(mses_settings: dict, stencil: typing.List[
     for ad_idx, fpr_dv_list in enumerate(mses_settings["PTRHIN-DesVar"]):
         if len(fpr_dv_list) == 0:
             continue
-        mses_settings["PTRHIN"][idx] = fpr_dv_list[idx]
+        mses_settings["PTRHIN"][ad_idx] = fpr_dv_list[idx]
 
     return mses_settings
 
