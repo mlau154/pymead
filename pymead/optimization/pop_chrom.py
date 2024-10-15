@@ -116,7 +116,7 @@ class Chromosome:
         """
         if self.genes is not None:
             self.geo_col.assign_design_variable_values(dv_values=self.genes, bounds_normalized=True)
-            self.update_param_dict()  # updates the MSES settings from the geometry (just for XCDELH right now)
+        self.update_param_dict()  # updates the MSES settings from the geometry (just for XCDELH right now)
         self.coords = self.get_coords()
         self.airfoil_sys_generated = True
         return self.param_dict
