@@ -445,7 +445,8 @@ class GeometryCollection(DualRep):
             if pymead_obj in self.param_graph.nodes:
                 self.param_graph.remove_node(pymead_obj)
 
-        elif isinstance(pymead_obj, Bezier) or isinstance(pymead_obj, LineSegment) or isinstance(pymead_obj, PolyLine):
+        elif isinstance(pymead_obj, Bezier) or isinstance(pymead_obj, LineSegment) or isinstance(
+                pymead_obj, PolyLine) or isinstance(pymead_obj, Ferguson):
             # Remove all the references to this curve in each of the curve's points
             for pt in pymead_obj.point_sequence().points():
                 if pymead_obj in pt.curves:
