@@ -37,6 +37,7 @@ Planned feature additions
 - Autofocus angle of attack value when loading Ctrl+Alt+I inviscid analysis
 - Make a "jump to tree location" option in context menu when any `PymeadObj` is selected
 - Add a unit selector to the Export IGES dialog
+- More verbose reasons for why MSES is failing (diverged, timeout, etc.)
 
 Refactoring
 -----------

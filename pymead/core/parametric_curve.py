@@ -25,7 +25,8 @@ class PCurveData:
     def plot(self, ax: plt.Axes, **kwargs):
         ax.plot(self.xy[:, 0], self.xy[:, 1], **kwargs)
 
-    def get_curvature_comb(self, max_k_normalized_scale_factor, interval: int = 1):
+    def get_curvature_comb(self, max_k_normalized_scale_factor, interval: int = 1, filter_large_values: bool = True,
+                           filter_magnitude: float = 1e5):
         first_deriv_mag = np.hypot(self.xpyp[:, 0], self.xpyp[:, 1])
         comb_heads_x = self.xy[:, 0] - self.xpyp[:, 1] / first_deriv_mag * self.k * max_k_normalized_scale_factor
         comb_heads_y = self.xy[:, 1] + self.xpyp[:, 0] / first_deriv_mag * self.k * max_k_normalized_scale_factor
@@ -36,6 +37,16 @@ class PCurveData:
         # Add the last x and y values onto the end (to make sure they do not get skipped with input interval)
         comb_tails = np.row_stack((comb_tails, np.array([self.xy[-1, 0], self.xy[-1, 1]])))
         comb_heads = np.row_stack((comb_heads, np.array([comb_heads_x[-1], comb_heads_y[-1]])))
+
+        if filter_large_values:
+            filter_indices = []
+            for comb_idx, (comb_tail, comb_head) in enumerate(zip(comb_tails, comb_heads)):
+                if np.hypot(comb_head[0] - comb_tail[0], comb_head[1] - comb_tail[1]) > filter_magnitude:
+                    filter_indices.append(comb_idx)
+            for filter_index in filter_indices[::-1]:
+                comb_tails = np.delete(comb_tails, filter_index, axis=0)
+                comb_heads = np.delete(comb_heads, filter_index, axis=0)
+
         return comb_tails, comb_heads
 
     def approximate_arc_length(self):
