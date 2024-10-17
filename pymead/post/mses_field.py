@@ -27,18 +27,30 @@ def generate_field_matplotlib(axs: plt.Axes or None,
                               vmax: float = None,
                               arrow_start_J_idx: int = 20,
                               arrow_spacing: int = 60,
-                              field_scaling_factor: float = None):
-    pcolormesh_handles = {'field': None, 'airfoil': []}
-    field_file = os.path.join(analysis_subdir, f'field.{os.path.split(analysis_subdir)[-1]}')
-    grid_stats_file = os.path.join(analysis_subdir, 'mplot_grid_stats.log')
-    grid_file = os.path.join(analysis_subdir, f'grid.{os.path.split(analysis_subdir)[-1]}')
-    mses_file = os.path.join(analysis_subdir, f"mses.{os.path.split(analysis_subdir)[-1]}")
+                              field_scaling_factor: float = None,
+                              multipoint_tag: str = None):
+    pcolormesh_handles = {"field": None, "airfoil": []}
+
+    # Field file
+    field_name = "field" if multipoint_tag is None else f"field_{multipoint_tag}"
+    field_file = os.path.join(analysis_subdir, f"{field_name}.{os.path.split(analysis_subdir)[-1]}")
     if not os.path.exists(field_file):
         raise OSError(f"Field file {field_file} not found")
+
+    # Grid statistics file
+    grid_stats_name = "mplot_grid_stats" if multipoint_tag is None else f"mplot_grid_stats_{multipoint_tag}"
+    grid_stats_file = os.path.join(analysis_subdir, f"{grid_stats_name}.log")
     if not os.path.exists(grid_stats_file):
         raise OSError(f"Grid statistics log {grid_stats_file} not found")
+
+    # Grid file
+    grid_name = "grid" if multipoint_tag is None else f"grid_{multipoint_tag}"
+    grid_file = os.path.join(analysis_subdir, f"{grid_name}.{os.path.split(analysis_subdir)[-1]}")
     if not os.path.exists(grid_file):
         raise OSError(f"Grid file {grid_file} not found")
+
+    # MSES file (should always exist if an analysis was run)
+    mses_file = os.path.join(analysis_subdir, f"mses.{os.path.split(analysis_subdir)[-1]}")
 
     M_inf = read_Mach_from_mses_file(mses_file)
     gam = 1.4

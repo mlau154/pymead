@@ -17,7 +17,7 @@ class CustomGASettings:
 class Chromosome:
     def __init__(self, geo_col_dict: dict, param_dict: dict, generation: int,
                  population_idx: int, mea_name: str = None, airfoil_name: str = None,
-                 genes: list or None = None, verbose: bool = True):
+                 genes: list or None = None, verbose: bool = True, evaluate_geometric_constraints: bool = True):
         """
         Chromosome class constructor. Each Chromosome is the member of a particular Population.
         """
@@ -41,6 +41,7 @@ class Chromosome:
         self.genes = deepcopy(genes)
         self.generation = generation
         self.population_idx = population_idx
+        self.evaluate_geometric_constraints = evaluate_geometric_constraints
 
         # Might be able to remove a number of these attributes
         self.coords = None
@@ -68,29 +69,32 @@ class Chromosome:
         if self.verbose:
             print(f'Generating chromosome idx = {self.population_idx}, gen = {self.generation}')
         self.generate_airfoil_sys_from_genes()
-        self.chk_self_intersection()
-        for airfoil in self.airfoil_list:
-            airfoil_name = airfoil.name()
-            if self.valid_geometry:
-                if self.param_dict["constraints"][airfoil_name]['min_radius_curvature'][1]:
-                    self.chk_min_radius(airfoil_name=airfoil_name)
-            if self.valid_geometry:
-                if self.param_dict["constraints"][airfoil_name]['min_val_of_max_thickness'][1]:
-                    self.chk_max_thickness(airfoil_name=airfoil_name)
-            if self.valid_geometry:
-                cnstr_spec = self.param_dict["constraints"][airfoil_name]["thickness_at_points"]
-                if cnstr_spec is not None and cnstr_spec[1]:
-                    self.check_thickness_at_points(airfoil_name=airfoil_name)
-            if self.valid_geometry:
-                if self.param_dict["constraints"][airfoil_name]["min_area"][1]:
-                    self.check_min_area(airfoil_name=airfoil_name)
-            if self.valid_geometry:
-                cnstr_spec = self.param_dict["constraints"][airfoil_name]["internal_geometry"]
-                if cnstr_spec is not None and cnstr_spec[1]:
-                    if "Before" in cnstr_spec[2]:
-                        self.check_contains_points(airfoil_name=airfoil_name)
-                    else:
-                        raise ValueError('Internal geometry timing after aerodynamic evaluation not yet implemented')
+
+        if self.evaluate_geometric_constraints:
+            self.chk_self_intersection()
+            for airfoil in self.airfoil_list:
+                airfoil_name = airfoil.name()
+                if self.valid_geometry:
+                    if self.param_dict["constraints"][airfoil_name]['min_radius_curvature'][1]:
+                        self.chk_min_radius(airfoil_name=airfoil_name)
+                if self.valid_geometry:
+                    if self.param_dict["constraints"][airfoil_name]['min_val_of_max_thickness'][1]:
+                        self.chk_max_thickness(airfoil_name=airfoil_name)
+                if self.valid_geometry:
+                    cnstr_spec = self.param_dict["constraints"][airfoil_name]["thickness_at_points"]
+                    if cnstr_spec is not None and cnstr_spec[1]:
+                        self.check_thickness_at_points(airfoil_name=airfoil_name)
+                if self.valid_geometry:
+                    if self.param_dict["constraints"][airfoil_name]["min_area"][1]:
+                        self.check_min_area(airfoil_name=airfoil_name)
+                if self.valid_geometry:
+                    cnstr_spec = self.param_dict["constraints"][airfoil_name]["internal_geometry"]
+                    if cnstr_spec is not None and cnstr_spec[1]:
+                        if "Before" in cnstr_spec[2]:
+                            self.check_contains_points(airfoil_name=airfoil_name)
+                        else:
+                            raise ValueError("Internal geometry timing after "
+                                             "aerodynamic evaluation not yet implemented")
 
         # Set the equation_dict to None because it contains the unpicklable __builtins__ module
         for param in self.geo_col.container()["params"].values():
@@ -305,12 +309,15 @@ class Population:
         """
         # print(f"Generating {chromosome.population_idx}...")
         chromosome.generate()
-        if not chromosome.valid_geometry:
-            print(f"Geometry invalid for chromosome {chromosome.population_idx} "
-                  f"(either self-intersecting or fails to meet a constraint)")
-            return chromosome
+        if chromosome.evaluate_geometric_constraints:
+            if not chromosome.valid_geometry:
+                print(f"Geometry invalid for chromosome {chromosome.population_idx} "
+                      f"(either self-intersecting or fails to meet a constraint)")
+                return chromosome
+            else:
+                print(f"Geometry {chromosome.population_idx} passed all the tests. Continuing on to evaluation...")
         else:
-            print(f"Geometry {chromosome.population_idx} passed all the tests. Continuing on to evaluation...")
+            print("Skipped evaluating geometric constraints. Continuing...")
         if chromosome.fitness is None:
             if self.verbose:
                 print(f'Chromosome {chromosome.population_idx} '
@@ -329,6 +336,10 @@ class Population:
             else:
                 raise ValueError('Only XFOIL and MSES are supported as tools in the optimization framework')
 
+            # Multipoint Tags
+            multipoint_tags = chromosome.param_dict["multipoint_tags"] \
+                if "multipoint_tags" in chromosome.param_dict else None
+
             chromosome.forces, _ = calculate_aero_data(None,
                                                        chromosome.param_dict['base_folder'],
                                                        chromosome.param_dict['name'][chromosome.population_idx],
@@ -338,7 +349,8 @@ class Population:
                                                        mset_settings=mset_settings,
                                                        mses_settings=mses_settings,
                                                        mplot_settings=mplot_settings,
-                                                       export_Cp=True)
+                                                       export_Cp=True,
+                                                       multipoint_tags=multipoint_tags)
 
             if (xfoil_settings is not None and xfoil_settings["multi_point_stencil"] is None) or (
                     mses_settings is not None and mses_settings['multi_point_stencil'] is None):
@@ -389,7 +401,8 @@ class Population:
         for chromosome in pool.imap_unordered(self.eval_chromosome_fitness, self.population):
 
             if chromosome.fitness is not None:
-                assert chromosome.valid_geometry
+                if chromosome.evaluate_geometric_constraints:
+                    assert chromosome.valid_geometry
                 self.converged_chromosomes.append(chromosome)
                 n_converged_chromosomes += 1
 

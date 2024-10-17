@@ -755,7 +755,8 @@ def calculate_aero_data(conn: multiprocessing.connection.Connection or None,
                         mpolar_settings: dict or MPOLARSettings = None,
                         export_Cp: bool = True,
                         save_aero_data: bool = True,
-                        alfa_array: np.ndarray = None):
+                        alfa_array: np.ndarray = None,
+                        multipoint_tags: typing.List[str] = None):
     r"""
     Convenience function calling either XFOIL or MSES depending on the ``tool`` specified
 
@@ -817,6 +818,12 @@ def calculate_aero_data(conn: multiprocessing.connection.Connection or None,
     alfa_array: np.ndarray or None
         An array of angles of attack (degrees) to sweep through. Ignored unless ``mpolar_settings`` is specified.
         Default: ``None``
+
+    multipoint_tags: typing.List[str] or None
+        Multipoint stencil tags that will modify the name of the field, grid, and grid stats files if they are
+        generated to allow for field plots of each point in the stencil. These names will appear
+        as ``"field_<multipoint_tags[stencil_idx]>.<airfoil_name>"``, etc. If specified, this list must have a length
+        equal to the number of stencil points. Default: ``None``
 
     Returns
     -------
@@ -1068,9 +1075,11 @@ def calculate_aero_data(conn: multiprocessing.connection.Connection or None,
                 for mplot_output_name in ['Mach', 'Streamline_Grid', 'Grid', 'Grid_Zoom', 'flow_field']:
                     try:
                         if mplot_settings[mplot_output_name]:
-                            run_mplot(airfoil_name, airfoil_coord_dir, mplot_settings, mode=mplot_output_name)
+                            run_mplot(airfoil_name, airfoil_coord_dir, mplot_settings, mode=mplot_output_name,
+                                      multipoint_tag=multipoint_tags[i])
                             if mplot_output_name == 'flow_field':
-                                run_mplot(airfoil_name, airfoil_coord_dir, mplot_settings, mode='grid_stats')
+                                run_mplot(airfoil_name, airfoil_coord_dir, mplot_settings, mode="grid_stats",
+                                          multipoint_tag=multipoint_tags[i])
                     except DependencyNotFoundError as e:
                         send_over_pipe(("disp_message_box", str(e)))
 
@@ -1542,7 +1551,8 @@ def run_mses(name: str, base_folder: str, mses_settings: dict or MSESSettings, a
 
 
 def run_mplot(name: str, base_dir: str, mplot_settings: dict or MPLOTSettings, mode: str = "forces",
-              min_contour: float = 0.0, max_contour: float = 1.5, n_intervals: int = 0) -> str:
+              min_contour: float = 0.0, max_contour: float = 1.5, n_intervals: int = 0,
+              multipoint_tag: str = None) -> str:
     r"""
     A Python wrapper for MPLOT
 
@@ -1572,6 +1582,10 @@ def run_mplot(name: str, base_dir: str, mplot_settings: dict or MPLOTSettings, m
         Number of contour levels (only affects the result if ``mode=="Mach contours"``). A value of ``0`` results in
         MPLOT automatically setting a "nice" value for the number of contour levels. Default: ``0``
 
+    multipoint_tag: str or None
+        Whether to add a multipoint tag that modifies the name of certain MPLOT output files, including ``"field"``,
+        ``"grid"``, and ``"mplot_grid_stats"``. Default: ``None``
+
     Returns
     -------
     str
@@ -1597,7 +1611,10 @@ def run_mplot(name: str, base_dir: str, mplot_settings: dict or MPLOTSettings, m
         mplot_log = os.path.join(base_dir, name, 'mplot_cp.log')
     elif mode in ['flowfield', 'Flowfield', 'FlowField', 'flow_field']:
         mplot_input_name = "mplot_dump_flowfield.txt"
-        mplot_input_list = ['11', '', 'Y', '', '0']
+        if multipoint_tag is None:
+            mplot_input_list = ['11', '', 'Y', '', '0']
+        else:
+            mplot_input_list = ["11", f"field_{multipoint_tag}.{name}", "Y", "", "0"]
         mplot_log = os.path.join(base_dir, name, 'mplot_flowfield.log')
     elif mode in ['grid_zoom', 'Grid_Zoom', 'GRID_ZOOM']:
         mplot_input_name = "mplot_input_grid_zoom.txt"
@@ -1611,10 +1628,16 @@ def run_mplot(name: str, base_dir: str, mplot_settings: dict or MPLOTSettings, m
     elif mode in ['grid_stats', 'GridStats', 'Grid_Stats']:
         mplot_input_name = "mplot_input_grid_stats.txt"
         mplot_input_list = ['3', '10', '', '0']
-        mplot_log = os.path.join(base_dir, name, 'mplot_grid_stats.log')
+        if multipoint_tag is None:
+            mplot_log = os.path.join(base_dir, name, "mplot_grid_stats.log")
+        else:
+            mplot_log = os.path.join(base_dir, name, f"mplot_grid_stats_{multipoint_tag}.log")
     elif mode in ["Streamline_Grid"]:
         mplot_input_name = "mplot_streamline_grid.txt"
-        mplot_input_list = ['10', '', '', '0']
+        if multipoint_tag is None:
+            mplot_input_list = ['10', '', '', '0']
+        else:
+            mplot_input_list = ["10", f"grid_{multipoint_tag}.{name}", "", "0"]
         mplot_log = os.path.join(base_dir, name, 'mplot_streamline_grid.log')
     elif mode in ["Mach", "mach", "M", "m", "Mach contours", "Mach Contours", "mach contours"]:
         mplot_input_name = "mplot_inputMachContours.txt"
@@ -1626,7 +1649,7 @@ def run_mplot(name: str, base_dir: str, mplot_settings: dict or MPLOTSettings, m
                                 f'{min_contour} {max_contour} {n_intervals}', '8', '', '0']
         mplot_log = os.path.join(base_dir, name, 'mplot_mach.log')
     else:
-        raise Exception("Invalid MPLOT mode!")
+        raise Exception(f"Invalid MPLOT mode {mode}")
     mplot_input_file = os.path.join(base_dir, name, mplot_input_name)
     write_input_file(mplot_input_file, mplot_input_list)
 
