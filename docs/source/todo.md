@@ -65,6 +65,7 @@ Bug fixes
 - MPOLAR key error when loading MSES settings into optimization settings (maybe make MPOLAR a feature here?)
 - Store algorithm data as JSON to fix package version error when loading in `.pkl` files from
   a different environment than they were saved on
+- Fix bug where loading in an airfoil coordinate file with a header changes the result instead of erroring out
 
 Testing
 -------
