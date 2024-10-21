@@ -1076,10 +1076,10 @@ def calculate_aero_data(conn: multiprocessing.connection.Connection or None,
                     try:
                         if mplot_settings[mplot_output_name]:
                             run_mplot(airfoil_name, airfoil_coord_dir, mplot_settings, mode=mplot_output_name,
-                                      multipoint_tag=multipoint_tags[i])
+                                      multipoint_tag=multipoint_tags[i] if multipoint_tags else None)
                             if mplot_output_name == 'flow_field':
                                 run_mplot(airfoil_name, airfoil_coord_dir, mplot_settings, mode="grid_stats",
-                                          multipoint_tag=multipoint_tags[i])
+                                          multipoint_tag=multipoint_tags[i] if multipoint_tags else None)
                     except DependencyNotFoundError as e:
                         send_over_pipe(("disp_message_box", str(e)))
 
