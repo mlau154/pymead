@@ -137,3 +137,11 @@ def count_lines_of_code():
         total_lines += subpackage_lines
         print(f"Subpackage {file_path}: {subpackage_lines}")
     print(f"Total Lines: {total_lines}")
+
+
+class GeometryError(Exception):
+    pass
+
+
+class ConvergenceFailedError(Exception):
+    pass

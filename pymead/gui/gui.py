@@ -107,7 +107,6 @@ class GUI(FramelessMainWindow):
         self.mses_process = None
 
         # Set up optimization process
-        self.cpu_bound_process = None
         self.opt_thread = None
         self.shape_opt_process = None
 
@@ -1810,6 +1809,21 @@ class GUI(FramelessMainWindow):
         self.opt_settings = self.dialog.value()
         return
 
+    def get_process_list(self) -> list:
+        return [
+            self.mses_process,
+            self.shape_opt_process,
+            self.match_airfoil_process,
+            self.display_resources_process
+        ]
+
+    def handle_process_error(self, error_message: str):
+        self.disp_message_box(error_message, message_mode="error")
+        for process in self.get_process_list():
+            if process is None:
+                continue
+            process.terminate()
+
     @pyqtSlot(str, object)
     def progress_update(self, status: str, data: object):
         bcolor = self.themes[self.current_theme]["graph-background-color"]
@@ -1819,6 +1833,8 @@ class GUI(FramelessMainWindow):
             self.message_callback_fn(data)
         elif status == "disp_message_box" and isinstance(data, str):
             self.disp_message_box(data)
+        elif status == "error" and isinstance(data, str):
+            self.handle_process_error(data)
         elif status == "opt_progress" and isinstance(data, dict):
             callback = TextCallback(parent=self, text_list=data["text"], completed=data["completed"],
                                     warm_start_gen=data["warm_start_gen"])
@@ -1930,6 +1946,7 @@ class GUI(FramelessMainWindow):
                 self.permanent_widget.progress_bar.show()
             self.permanent_widget.progress_bar.setValue(data)
         elif status == "polar_complete":
+            self.permanent_widget.progress_bar.setValue(0)
             self.permanent_widget.progress_bar.hide()
         elif status == "clear_airfoil_matching_plots":
             if self.airfoil_matching_graph_collection is not None:

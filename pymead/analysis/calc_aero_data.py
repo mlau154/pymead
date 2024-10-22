@@ -14,7 +14,7 @@ from pymead.analysis.read_aero_data import read_aero_data_from_xfoil, read_Cp_fr
 from pymead.core.mea import MEA
 from pymead.utils.file_conversion import convert_ps_to_svg
 from pymead.utils.read_write_files import save_data
-from pymead import DependencyNotFoundError
+from pymead import DependencyNotFoundError, ConvergenceFailedError
 
 SVG_PLOTS = ['Mach_contours', 'grid', 'grid_zoom']
 SVG_SETTINGS_TR = {
@@ -1760,23 +1760,44 @@ def run_mpolar(name: str, base_dir: str, alfa_array: np.ndarray, mpolar_settings
     mpolar_max_attempts = 100
     while mpolar_attempts < mpolar_max_attempts:
         try:
-            with open(mpolar_log, "wb") as f:
+            with (open(mpolar_log, "wb") as f):
                 process = subprocess.Popen(["mpolar", name], stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                                            cwd=os.path.join(base_dir, name))
                 try:
                     if conn is not None:
                         iteration, rms_dR, rms_dA, rms_dV, alpha = None, None, None, None, None
+                        last_two_alphas = [None, None]
                         for line in process.stdout:
                             decoded_line = line.decode("utf-8")
                             if "Convergence failed." in decoded_line:
-                                raise ConvergenceFailedError
+                                base_message = "MPOLAR diverged."
+                                additional_message = (
+                                    f" Last converged angle of attack: "
+                                    f"{last_two_alphas[0]:.2f}\u00b0") if last_two_alphas[0] is not None else ""
+                                error_message = base_message + additional_message
+                                if conn is None:
+                                    raise ConvergenceFailedError(error_message)
+                                else:
+                                    conn.send(("polar_complete", None))  # For proper progress bar cleanup
+                                    conn.send(("error", error_message))
+                                    return mpolar_log
                             f.write(line)
                             if "rms(dR):" in decoded_line:
                                 decoded_line_split = decoded_line.split()
                                 iteration = decoded_line_split[0]
                                 rms_dR = decoded_line_split[decoded_line_split.index("rms(dR):") + 1]
                                 if rms_dR == "NaN":
-                                    raise ConvergenceFailedError
+                                    base_message = "NaNs detected in MPOLAR output."
+                                    additional_message = (
+                                        f" Last converged angle of attack: "
+                                        f"{last_two_alphas[0]:.2f}\u00b0") if last_two_alphas[0] is not None else ""
+                                    error_message = base_message + additional_message
+                                    if conn is None:
+                                        raise ConvergenceFailedError(error_message)
+                                    else:
+                                        conn.send(("polar_complete", None))  # For proper progress bar cleanup
+                                        conn.send(("error", error_message))
+                                        return mpolar_log
                             elif "rms(dA):" in decoded_line:
                                 decoded_line_split = decoded_line.split()
                                 rms_dA = decoded_line_split[decoded_line_split.index("rms(dA):") + 1]
@@ -1791,6 +1812,13 @@ def run_mpolar(name: str, base_dir: str, alfa_array: np.ndarray, mpolar_settings
                             elif "Specified parameter:" in decoded_line:
                                 decoded_line_split = decoded_line.split()
                                 alpha = float(decoded_line_split[-1])
+
+                                # Set this angle of attack as the most recent, and make the previous angle of attack
+                                # the last angle of attack since the value of current angle of attack is detected
+                                # before convergence.
+                                if last_two_alphas[1] is not None:
+                                    last_two_alphas[0] = last_two_alphas[1]
+                                last_two_alphas[1] = alpha
 
                     # Execute MPOLAR
                     outs, errs = process.communicate(timeout=mpolar_settings["timeout"])
@@ -2440,11 +2468,3 @@ def calculate_performance_parameters_from_polar(aero_data: dict) -> dict:
     performance_params["LD_max"], performance_params["alf_LD_max"] = estimate_LD_max(alf_deg, Cl, Cd)
 
     return performance_params
-
-
-class GeometryError(Exception):
-    pass
-
-
-class ConvergenceFailedError(Exception):
-    pass
