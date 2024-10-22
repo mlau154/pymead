@@ -239,6 +239,36 @@ def shape_optimization(conn: multiprocessing.connection.Connection or None, para
         except BrokenPipeError:
             pass
 
+    def save_baseline_airfoil_system(current_geo_col: GeometryCollection):
+        """
+        Saves the currently loaded airfoil system as the baseline airfoil system in the optimization directory
+
+        Parameters
+        ----------
+        current_geo_col: GeometryCollection
+            Currently loaded geometry collection
+        """
+        save_data(current_geo_col.get_dict_rep(), os.path.join(param_dict["opt_dir"], "baseline.jmea"))
+
+    def save_opt_airfoil_system(current_geo_col: GeometryCollection, generation: int,
+                                dv_norm_list: typing.List[float]):
+        """
+        Loads in a set of intermediate normalized design variable values from the optimization, updates the currently
+        loaded geometry collection, and saves the geometry collection to the optimization directory.
+
+        Parameters
+        ----------
+        current_geo_col: GeometryCollection
+            Currently loaded geometry collection
+        generation: int
+            Genetic algorithm generation corresponding to the design variable list
+        dv_norm_list: typing.List[float]
+            List of normalized design variable values used to update the ``GeometryCollection``
+        """
+        geo_col_copy = deepcopy(current_geo_col)
+        geo_col_copy.assign_design_variable_values(dv_norm_list, bounds_normalized=True)
+        save_data(geo_col_copy.get_dict_rep(), os.path.join(param_dict["opt_dir"], f"opt_gen_{generation}.jmea"))
+
     forces_dict = {} if not opt_settings["General Settings"]["warm_start_active"] \
         else read_force_dict_from_file(os.path.join(param_dict["opt_dir"], "force_history.json"))
 
@@ -247,6 +277,7 @@ def shape_optimization(conn: multiprocessing.connection.Connection or None, para
     Config.show_compile_hint = False
 
     geo_col = GeometryCollection.set_from_dict_rep(deepcopy(geo_col_dict))
+    save_baseline_airfoil_system(geo_col)
     parameter_list = geo_col.extract_design_variable_values(bounds_normalized=True)
     num_parameters = len(parameter_list)
     send_over_pipe(("text", f"Number of design variables: {num_parameters}"))
@@ -362,6 +393,9 @@ def shape_optimization(conn: multiprocessing.connection.Connection or None, para
             decomp = ASF()
             I = decomp.do(F, weights).argmin()
             X = X[I, :]
+
+        # Save the optimized airfoil system
+        save_opt_airfoil_system(geo_col, n_generation, X.tolist())
 
         best_in_previous_generation = False
         forces_index = 0
