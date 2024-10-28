@@ -39,6 +39,8 @@ Planned feature additions
 - Make a "jump to tree location" option in context menu when any `PymeadObj` is selected
 - Add a unit selector to the Export IGES dialog
 - More verbose reasons for why MSES is failing (diverged, timeout, etc.)
+- Send an email when optimization is complete
+- Trigger a sound when a polar run is complete
 
 Refactoring
 -----------
