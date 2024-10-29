@@ -125,6 +125,8 @@ class NACA4(ParametricCurve):
         """
         m, p = self.max_camber.value(), self.max_camber_loc.value()
         yc = np.zeros(x.shape)
+        if m == 0.0:
+            return yc
         for idx in range(len(x)):
             if x[idx] < p:
                 yc[idx] = m / p**2 * (2 * p * x[idx] - x[idx]**2)
@@ -155,6 +157,8 @@ class NACA4(ParametricCurve):
         """
         if order == 1:
             dyc_dt = np.zeros(x.shape)
+            if m == 0.0:
+                return dyc_dt
             for idx in range(len(x)):
                 if x[idx] < p:
                     dyc_dt[idx] = 2 * m / p**2 * (p - x[idx])
@@ -163,6 +167,8 @@ class NACA4(ParametricCurve):
             return dyc_dt
         elif order == 2:
             d2yc_dt2 = np.zeros(x.shape)
+            if m == 0.0:
+                return d2yc_dt2
             for idx in range(len(x)):
                 if x[idx] < p:
                     d2yc_dt2[idx] = -2 * m / p ** 2
@@ -195,6 +201,8 @@ class NACA4(ParametricCurve):
         """
         if order == 1:
             dtheta_dt = np.zeros(x.shape)
+            if m == 0.0:
+                return dtheta_dt
             for idx in range(len(x)):
                 if x[idx] < p:
                     # dtheta_dt[idx] = 2 * p * (p - x[idx]) / (m * (2 * p * x[idx] - x[idx]**2)**2 + 1)
@@ -205,6 +213,8 @@ class NACA4(ParametricCurve):
             return dtheta_dt
         elif order == 2:
             d2theta_dt2 = np.zeros(x.shape)
+            if m == 0.0:
+                return d2theta_dt2
             for idx in range(len(x)):
                 if x[idx] < p:
                     # k1 = m * x[idx] * (8 * p**3 - 16 * p**2 * x[idx] + 12 * p * x[idx]**2 - 3 * x[idx]**3) + 1
