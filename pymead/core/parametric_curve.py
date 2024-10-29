@@ -13,7 +13,7 @@ HIGH_RES_NT = 200
 
 class PCurveData:
     def __init__(self, t: np.ndarray, xy: np.ndarray, xpyp: np.ndarray, xppypp: np.ndarray, k: np.ndarray,
-                 R: np.ndarray):
+                 R: np.ndarray, dxdy_start: np.ndarray = None):
         self.t = t
         self.xy = xy
         self.xpyp = xpyp
@@ -21,15 +21,23 @@ class PCurveData:
         self.k = k
         self.R = R
         self.R_abs_min = np.min(np.abs(self.R))
+        self.dxdy_start = dxdy_start  # Accounts for possibly infinite dx/dt or dy/dt value but finite dy/dx
 
     def plot(self, ax: plt.Axes, **kwargs):
         ax.plot(self.xy[:, 0], self.xy[:, 1], **kwargs)
 
     def get_curvature_comb(self, max_k_normalized_scale_factor, interval: int = 1, filter_large_values: bool = True,
-                           filter_magnitude: float = 1e5):
+                           flip_leading_edge_normal: bool = False, filter_magnitude: float = 1e5):
         first_deriv_mag = np.hypot(self.xpyp[:, 0], self.xpyp[:, 1])
-        comb_heads_x = self.xy[:, 0] - self.xpyp[:, 1] / first_deriv_mag * self.k * max_k_normalized_scale_factor
-        comb_heads_y = self.xy[:, 1] + self.xpyp[:, 0] / first_deriv_mag * self.k * max_k_normalized_scale_factor
+        with np.errstate(divide="ignore", invalid="ignore"):
+            comb_heads_x = self.xy[:, 0] - np.true_divide(self.xpyp[:, 1], first_deriv_mag) * self.k * max_k_normalized_scale_factor
+            comb_heads_y = self.xy[:, 1] + np.true_divide(self.xpyp[:, 0], first_deriv_mag) * self.k * max_k_normalized_scale_factor
+        if self.dxdy_start is not None:
+            normal_dir = 1 if flip_leading_edge_normal else -1
+            comb_head_0 = self.xy[0, :] + normal_dir * self.dxdy_start / np.hypot(
+                self.dxdy_start[0], self.dxdy_start[1]) * self.k[0] * max_k_normalized_scale_factor
+            comb_heads_x[0] = comb_head_0[0]
+            comb_heads_y[0] = comb_head_0[1]
         # Stack the x and y columns (except for the last x and y values) horizontally and keep only the rows by the
         # specified interval:
         comb_tails = np.column_stack((self.xy[:, 0], self.xy[:, 1]))[:-1:interval, :]
@@ -69,8 +77,10 @@ class ParametricCurve(PymeadObj, ABC):
     def generate_t_vec(nt: int = INTERMEDIATE_NT, spacing: str = "linear", start: int = 0.0, end: int = 1.0):
         if spacing == "linear":
             return np.linspace(start, end, nt)
+        elif spacing == "cosine":
+            return 0.5 * (1 - np.cos(np.pi * np.linspace(start, end, nt)))
         else:
-            raise ValueError("The only currently implemented spacing is 'linear.'")
+            raise ValueError("The only currently implemented spacing are 'linear' and 'cosine'.")
 
     @abstractmethod
     def point_removal_deletes_curve(self) -> bool:
