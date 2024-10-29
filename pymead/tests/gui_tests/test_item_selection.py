@@ -336,11 +336,11 @@ def test_clear_selected_objects_ferguson(app):
     ferguson_one = app.geo_col.add_ferguson(point_sequence=PointSequence(points=[le, upper1, upper3, upper4]))
     ferguson_two = app.geo_col.add_ferguson(point_sequence=PointSequence(points=[le, upper1, upper3, upper5]))
 
-    app.geo_col.select_object(ferguson_one)
+    app.geo_col.select_object(upper1)
     app.geo_col.select_object(ferguson_two)
 
-    assert len(app.geo_col.selected_objects["ferguson"]) == 2
-    assert not ferguson_one.tree_item.hoverable
+    assert len(app.geo_col.selected_objects["ferguson"]) == 1
+    assert ferguson_one.tree_item.hoverable
     assert not ferguson_two.tree_item.hoverable
 
     app.geo_col.clear_selected_objects()
@@ -581,9 +581,9 @@ def test_remove_pymead_obj_ferguson(app):
     ferguson_two = app.geo_col.add_ferguson(point_sequence=PointSequence(points=[le, upper1, upper3, upper5]))
 
     app.geo_col.remove_pymead_obj(ferguson_two)
-    #app.geo_col.remove_pymead_obj(upper3)
-    #assert len(point_container) == 3
-    assert len(ferg_container) == 1
+    app.geo_col.remove_pymead_obj(upper3)
+    assert len(point_container) == 4
+    assert len(ferg_container) == 0
 
 
 def test_remove_pymead_obj_airfoil_thin(app):
