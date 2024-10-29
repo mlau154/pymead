@@ -54,14 +54,11 @@ class NACA4(ParametricCurve):
         self.curve_connections = []
         self._add_references()
 
-    def get_4_digit_designation(self) -> int:
+    def get_4_digit_designation(self) -> str:
         digit_1 = int(round(100 * self.max_camber.value(), 0))
         digit_2 = int(round(10 * self.max_camber_loc.value(), 0))
         digits_34 = int(round(100 * self.max_thickness.value(), 0))
-        return digit_1 * 1000 + digit_2 * 100 + digits_34
-
-    def get_4_digit_name(self) -> str:
-        return str(self.get_4_digit_designation())
+        return str(digit_1) + str(digit_2) + str(digits_34)
 
     def _add_references(self):
         for idx, point in enumerate(self.point_sequence().points()):
