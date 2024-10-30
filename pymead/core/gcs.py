@@ -1,4 +1,5 @@
 import networkx
+from pymead.core.param import LengthDesVar
 
 from pymead.core.constraints import *
 from pymead.core.constraint_equations import *
@@ -580,14 +581,27 @@ class GCS(networkx.DiGraph):
         subgraph = self.subgraph([node for node in networkx.dfs_preorder_nodes(self, source=root_node)])
         return networkx.is_branching(subgraph)
 
-    def _merge_clusters_with_constraint(self, unique_roots: typing.List[Point]):
+    def _determine_merged_cluster_root(self, unique_roots: typing.List[Point]) -> Point:
+        """
+        Determines which point should be used as the new constraint cluster root after merging two constraint clusters.
+        Parameters
+        ----------
+        unique_roots: typing.List[Point]
+            List of unique cluster roots from which a new single cluster root will be chosen. Most likely should
+            be the output of a call to ``self._get_unique_roots_from_constraint``.
 
-        def _determine_merged_cluster_root():
-            current_roots = [r[0] for r in self.roots]
-            if current_roots.index(unique_roots[0]) < current_roots.index(unique_roots[1]):
-                return unique_roots[0]
-            else:
-                return unique_roots[1]
+        Returns
+        -------
+        Point
+            The root to use for the single output constraint cluster
+        """
+        current_roots = [r[0] for r in self.roots]
+        if current_roots.index(unique_roots[0]) < current_roots.index(unique_roots[1]):
+            return unique_roots[0]
+        else:
+            return unique_roots[1]
+
+    def _merge_clusters_with_constraint(self, unique_roots: typing.List[Point]):
 
         def _delete_root_status_of_other_roots(new_root: Point):
             for root in unique_roots:
@@ -596,7 +610,7 @@ class GCS(networkx.DiGraph):
                 self._identify_and_delete_root(root)
                 break
 
-        merged_cluster_root = _determine_merged_cluster_root()
+        merged_cluster_root = self._determine_merged_cluster_root(unique_roots)
         _delete_root_status_of_other_roots(merged_cluster_root)
         constraints_needing_reassign = self._orient_flow_away_from_root(merged_cluster_root)
         self._reassign_constraints(constraints_needing_reassign)
@@ -630,11 +644,48 @@ class GCS(networkx.DiGraph):
 
         if isinstance(constraint, DistanceConstraint) or isinstance(constraint, AntiParallel3Constraint) or isinstance(
                 constraint, Perp3Constraint) or isinstance(constraint, RelAngle3Constraint):
+
+            # Get a list of child nodes that are both associated with the constraint and promoted to design variables
+            promoted_child_nodes = []
+            for child_node in constraint.child_nodes:
+                if isinstance(child_node.x(), LengthDesVar) or isinstance(child_node.y(), LengthDesVar):
+                    promoted_child_nodes.append(child_node)
+
             unique_roots = self._get_unique_roots_from_constraint(constraint)
             merge_clusters = False if len(unique_roots) < 2 else True
             if merge_clusters:
+                if len(promoted_child_nodes) > 0:
+                    potential_new_root = self._determine_merged_cluster_root(unique_roots)
+                    if potential_new_root not in constraint.child_nodes:
+                        raise ValueError(f"The following points associated with this constraint have x- or y-values "
+                                         f"that have been promoted to design variables, which is not compatible with "
+                                         f"the constraint being added: {[promoted_child_node.name() for promoted_child_node in promoted_child_nodes]}. "
+                                         f"Please demote each of these points to add this constraint.")
+                    else:
+                        if len(set(promoted_child_nodes) - {potential_new_root}) > 0:
+                            raise ValueError(
+                                f"The following points associated with this constraint have x- or y-values "
+                                f"that have been promoted to design variables, which is not compatible with "
+                                f"the constraint being added: {[node.name() for node in promoted_child_nodes if node is not potential_new_root]}. "
+                                f"Please demote each of these points to add this constraint."
+                            )
                 root = self._merge_clusters_with_constraint(unique_roots)
             else:
+                if len(promoted_child_nodes) > 0:
+                    potential_new_root = unique_roots[0]
+                    if potential_new_root not in constraint.child_nodes:
+                        raise ValueError(f"The following points associated with this constraint have x- or y-values "
+                                         f"that have been promoted to design variables, which is not compatible with "
+                                         f"the constraint being added: {[promoted_child_node.name() for promoted_child_node in promoted_child_nodes]}. "
+                                         f"Please demote each of these points to add this constraint.")
+                    else:
+                        if len(set(promoted_child_nodes) - {potential_new_root}) > 0:
+                            raise ValueError(
+                                f"The following points associated with this constraint have x- or y-values "
+                                f"that have been promoted to design variables, which is not compatible with "
+                                f"the constraint being added: {[node.name() for node in promoted_child_nodes if node is not potential_new_root]}. "
+                                f"Please demote each of these points to add this constraint."
+                            )
                 constraints_to_reassign = self._orient_flow_away_from_root(unique_roots[0])
                 self._reassign_constraints(constraints_to_reassign)
                 root = self._discover_root_from_node(constraint.p1)
@@ -643,13 +694,21 @@ class GCS(networkx.DiGraph):
             is_branching = self._test_if_cluster_is_branching(root)
             if not is_branching:
                 raise ValueError("Detected a closed loop in the constraint graph. Closed loop sets of constraints "
-                                 "are currently not supported in pymead")
+                                 "are currently not supported in pymead.")
 
             new_root = self._check_if_root_flows_into_polyline(root)
             if new_root:
                 self.move_root(new_root)
 
         elif isinstance(constraint, SymmetryConstraint):
+            if isinstance(constraint.p4.x(), LengthDesVar):
+                raise ValueError(f"Cannot create constraint because the x-value of the target point "
+                                 f"({constraint.p4.name()}) is a design variable. Demote the x-value to a "
+                                 f"parameter to add this constraint.")
+            if isinstance(constraint.p4.y(), LengthDesVar):
+                raise ValueError(f"Cannot create constraint because the y-value of the target point "
+                                 f"({constraint.p4.name()}) is a design variable. Demote the y-value to a "
+                                 f"parameter to add this constraint.")
             points_solved = self.solve_symmetry_constraint(constraint)
             self.update_canvas_items(points_solved)
         elif isinstance(constraint, ROCurvatureConstraint):

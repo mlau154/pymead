@@ -72,7 +72,7 @@ Bug fixes
   "'PymeadLabeledPushButton' object has no attribute 'setReadOnly'"
 - Throw an error if a user accidentally overconstrains a set of points by adding a constraint between a pair of
   points in a symmetry constraint point set
-- Throw an error if a user tries to add a constraint to a point that has either x or y as design variables
+- Throw an error if a second, incompatible symmetry constraint is added
 
 Testing
 -------
