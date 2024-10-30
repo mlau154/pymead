@@ -70,6 +70,9 @@ Bug fixes
 - Fix bug where loading in an airfoil coordinate file with a header changes the result instead of erroring out
 - Unselecting "Actuator Disks Active" after adding an actuator disk gives attribute error:
   "'PymeadLabeledPushButton' object has no attribute 'setReadOnly'"
+- Throw an error if a user accidentally overconstrains a set of points by adding a constraint between a pair of
+  points in a symmetry constraint point set
+- Throw an error if a user tries to add a constraint to a point that has either x or y as design variables
 
 Testing
 -------
