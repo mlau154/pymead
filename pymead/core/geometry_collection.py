@@ -747,6 +747,12 @@ class GeometryCollection(DualRep):
         """
         param = param if isinstance(param, Param) else self.container()["params"][param]
 
+        if param.point is not None and len(param.point.geo_cons) > 0 and not param.point.root:
+            raise ValueError(f"Promotion of {param.name()} to a design variable is not allowed because the "
+                             f"parent point ({param.point.name()}) contains direct constraints to one or "
+                             f"more other points and is not the root of a constraint cluster. "
+                             f"Try removing the constraints to allow promotion.")
+
         if isinstance(param, LengthParam):
             unit_type = "length"
         elif isinstance(param, AngleParam):

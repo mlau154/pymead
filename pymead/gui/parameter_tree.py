@@ -1050,7 +1050,11 @@ class ParameterTree(QTreeWidget):
     @undoRedoAction
     def promoteParamsToDesvar(self, pymead_objs: typing.List[Param]):
         for pymead_obj in pymead_objs:
-            self.geo_col.promote_param_to_desvar(pymead_obj)
+            try:
+                self.geo_col.promote_param_to_desvar(pymead_obj)
+            except ValueError as e:
+                self.gui_obj.disp_message_box(str(e))
+                continue
 
     @undoRedoAction
     def demoteDesvarsToParam(self, pymead_objs: typing.List[DesVar]):
