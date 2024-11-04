@@ -82,6 +82,30 @@ def test_select_deselect_object_bezier(app):
     app.geo_col.clear_container()
 
 
+def test_select_deselect_object_ferguson(app):
+    le = app.geo_col.add_point(0.0, 0.0)
+    upper1 = app.geo_col.add_point(0.0, 0.04)
+    upper3 = app.geo_col.add_point(0.6, 0.02)
+    upper4 = app.geo_col.add_point(0.9, 0.04)
+
+    ferguson = app.geo_col.add_ferguson(point_sequence=PointSequence(points=[le, upper1, upper3, upper4]))
+
+    app.geo_col.select_object(ferguson)
+    assert ferguson.tree_item.isSelected()
+    assert not ferguson.tree_item.hoverable
+
+    point_scatter_color_hex_6_digit = convert_rgba_to_hex(ferguson.canvas_item.opts["pen"].color().getRgb())[:-2]
+    point_scatter_color_setting = matplotlib.colors.cnames[get_setting(f"curve_selected_pen_color")].lower()
+    assert point_scatter_color_hex_6_digit == point_scatter_color_setting
+
+    app.geo_col.deselect_object(ferguson)
+    assert not ferguson.tree_item.isSelected()
+
+    point_scatter_color_hex_6_digit_d = convert_rgba_to_hex(ferguson.canvas_item.opts["pen"].color().getRgb())[:-2]
+    point_scatter_color_setting_d = matplotlib.colors.cnames[get_setting(f"curve_default_pen_color")].lower()
+    assert point_scatter_color_hex_6_digit_d == point_scatter_color_setting_d
+
+
 def test_select_deselect_object_airfoil_thin(app):
     upper_curve_array = np.array([
         [0.0, 0.0],
@@ -302,6 +326,30 @@ def test_clear_selected_objects_bezier(app):
     app.geo_col.clear_container()
 
 
+def test_clear_selected_objects_ferguson(app):
+    le = app.geo_col.add_point(0.0, 0.0)
+    upper1 = app.geo_col.add_point(0.0, 0.04)
+    upper3 = app.geo_col.add_point(0.6, 0.02)
+    upper4 = app.geo_col.add_point(0.9, 0.04)
+    upper5 = app.geo_col.add_point(1, 0.5)
+
+    ferguson_one = app.geo_col.add_ferguson(point_sequence=PointSequence(points=[le, upper1, upper3, upper4]))
+    ferguson_two = app.geo_col.add_ferguson(point_sequence=PointSequence(points=[le, upper1, upper3, upper5]))
+
+    app.geo_col.select_object(upper1)
+    app.geo_col.select_object(ferguson_two)
+
+    assert len(app.geo_col.selected_objects["ferguson"]) == 1
+    assert ferguson_one.tree_item.hoverable
+    assert not ferguson_two.tree_item.hoverable
+
+    app.geo_col.clear_selected_objects()
+
+    assert len(app.geo_col.selected_objects["ferguson"]) == 0
+    assert ferguson_one.tree_item.hoverable
+    assert ferguson_two.tree_item.hoverable
+
+
 def test_clear_selected_objects_airfoils(app):
     airfoil_container = app.geo_col.container()["airfoils"]
 
@@ -410,6 +458,22 @@ def test_bezier_hover(app, qtbot: QtBot):
     app.geo_col.clear_container()
 
 
+def test_ferguson_hover(app, qtbot: QtBot):
+    le = app.geo_col.add_point(0.0, 0.0)
+    upper1 = app.geo_col.add_point(0.0, 0.04)
+    upper3 = app.geo_col.add_point(0.6, 0.02)
+    upper4 = app.geo_col.add_point(0.9, 0.04)
+
+    ferguson = app.geo_col.add_ferguson(point_sequence=PointSequence(points=[le, upper1, upper3, upper4]))
+
+    point_og = app.geo_col.add_point(0.0, 0.0)
+    point = pointer(app, point_og, qtbot)
+
+    bezier_color_hex_6_digit = convert_rgba_to_hex(ferguson.canvas_item.opts["pen"].color().getRgb())[:-2]
+    bezier_scatter_color_setting = matplotlib.colors.cnames[get_setting(f"curve_hovered_pen_color")].lower()
+    assert bezier_color_hex_6_digit == bezier_scatter_color_setting
+
+
 def test_airfoil_hover(app, qtbot: QtBot):
     upper_curve_array = np.array([
         [0.0, 0.0],
@@ -501,6 +565,25 @@ def test_remove_pymead_obj_bezier(app):
     assert len(bez_container) == 0
 
     app.geo_col.clear_container()
+
+
+def test_remove_pymead_obj_ferguson(app):
+    point_container = app.geo_col.container()["points"]
+    ferg_container = app.geo_col.container()["ferguson"]
+
+    le = app.geo_col.add_point(0.0, 0.0)
+    upper1 = app.geo_col.add_point(0.0, 0.04)
+    upper3 = app.geo_col.add_point(0.6, 0.02)
+    upper4 = app.geo_col.add_point(0.9, 0.04)
+    upper5 = app.geo_col.add_point(1, 0.5)
+
+    ferguson_one = app.geo_col.add_ferguson(point_sequence=PointSequence(points=[le, upper1, upper3, upper4]))
+    ferguson_two = app.geo_col.add_ferguson(point_sequence=PointSequence(points=[le, upper1, upper3, upper5]))
+
+    app.geo_col.remove_pymead_obj(ferguson_two)
+    app.geo_col.remove_pymead_obj(upper3)
+    assert len(point_container) == 4
+    assert len(ferg_container) == 0
 
 
 def test_remove_pymead_obj_airfoil_thin(app):
