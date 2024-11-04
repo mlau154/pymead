@@ -1669,7 +1669,7 @@ class GUI(FramelessMainWindow):
         self.display_resources_thread = Thread(target=run_cpu_bound_process)
         self.display_resources_thread.start()
 
-    def match_airfoil(self):
+    def match_airfoil(self, dialog_test_action: typing.Callable = None):
 
         def run_cpu_bound_process():
 
@@ -1685,10 +1685,10 @@ class GUI(FramelessMainWindow):
             self.match_airfoil_process.start()
 
         airfoil_names = [a for a in self.geo_col.container()["airfoils"].keys()]
-        dialog = AirfoilMatchingDialog(self, airfoil_names=airfoil_names, theme=self.themes[self.current_theme])
-        if dialog.exec():
+        self.dialog = AirfoilMatchingDialog(self, airfoil_names=airfoil_names, theme=self.themes[self.current_theme])
+        if (dialog_test_action is not None and not dialog_test_action(self.dialog)) or self.dialog.exec():
             try:
-                airfoil_match_settings = dialog.value()
+                airfoil_match_settings = self.dialog.value()
             except TargetPathNotFoundError as e:
                 self.disp_message_box(f"{str(e)}")
                 return
