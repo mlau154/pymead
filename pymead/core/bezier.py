@@ -210,21 +210,32 @@ class Bezier(ParametricCurve):
 
         return finite_diff_recursive(k, i)
 
-    def derivative(self, P: np.ndarray, t: np.ndarray, degree: int, order: int):
+    def hodograph(self) -> "Bezier":
+        """
+        Generates another ``Bezier`` object representing the derivative ("hodograph") of the original curve
+
+        Returns
+        -------
+        Bezier
+            Hodograph of the curve
+        """
+        P = self.get_control_point_array()
+        if len(P) <= 1:
+            point_sequence = PointSequence.generate_from_array(np.array([[0.0, 0.0]]))
+            return Bezier(point_sequence, default_nt=self.default_nt)
+        point_sequence = PointSequence.generate_from_array(np.array([
+            [self.degree * (p1[0] - p0[0]), self.degree * (p1[1] - p0[1])] for p0, p1 in zip(P[:-1, :], P[1:, :])
+        ]))
+        return Bezier(point_sequence, default_nt=self.default_nt)
+
+    def derivative(self, t: np.ndarray, order: int):
         r"""
-        Calculates an arbitrary-order derivative of the Bézier curve
+        Calculates an arbitrary-order derivative of the Bézier curve.
 
         Parameters
         ==========
-        P: np.ndarray
-            The control point array
-
         t: np.ndarray
             The parameter vector
-
-        degree: int
-            The degree of the Bézier curve
-
         order: int
             The derivative order. For example, ``order=2`` returns the second derivative.
 
@@ -235,10 +246,30 @@ class Bezier(ParametricCurve):
             The columns represent :math:`C^{(m)}_x(t)` and :math:`C^{(m)}_y(t)`, where :math:`m` is the
             derivative order.
         """
-        return np.sum(np.array([np.prod(np.array([degree - idx for idx in range(order)])) *
-                                np.array([self.finite_diff_P(P, order, i)]).T *
-                                np.array([self.bernstein_poly(degree - order, i, t)])
-                                for i in range(degree + 1 - order)]), axis=0).T
+        assert order >= 0
+        curve = self
+        for n in range(order):
+            curve = curve.hodograph()
+        return curve.evaluate_xy(t)
+
+    def evaluate_xy(self, t: np.ndarray or None = None, **kwargs) -> np.ndarray:
+        # Generate the parameter vector
+        if self.default_nt is not None:
+            kwargs["nt"] = self.default_nt
+        t = ParametricCurve.generate_t_vec(**kwargs) if t is None else t
+
+        # Number of control points, curve degree, control point array
+        n_ctrl_points = len(self.point_sequence())
+        degree = n_ctrl_points - 1
+        P = self.point_sequence().as_array()
+
+        # Evaluate the curve
+        x, y = np.zeros(t.shape), np.zeros(t.shape)
+        for i in range(n_ctrl_points):
+            # Calculate the x- and y-coordinates of the Bézier curve given the input vector t
+            x += P[i, 0] * self.bernstein_poly(degree, i, t)
+            y += P[i, 1] * self.bernstein_poly(degree, i, t)
+        return np.column_stack((x, y))
 
     def evaluate(self, t: np.array or None = None, **kwargs):
         r"""
@@ -282,12 +313,12 @@ class Bezier(ParametricCurve):
         xy = np.column_stack((x, y))
 
         # Calculate the first derivative
-        first_deriv = self.derivative(P=P, t=t, degree=degree, order=1)
+        first_deriv = self.derivative(t=t, order=1)
         xp = first_deriv[:, 0]
         yp = first_deriv[:, 1]
 
         # Calculate the second derivative
-        second_deriv = self.derivative(P=P, t=t, degree=degree, order=2)
+        second_deriv = self.derivative(t=t, order=2)
         xpp = second_deriv[:, 0]
         ypp = second_deriv[:, 1]
 
@@ -367,3 +398,27 @@ class Bezier(ParametricCurve):
 
     def get_dict_rep(self):
         return {"points": [pt.name() for pt in self.point_sequence().points()], "default_nt": self.default_nt}
+
+
+def main():
+    # import matplotlib.pyplot as plt
+    bez = Bezier(PointSequence.generate_from_array(np.array([[0.0, 0.0], [0.0, 0.2], [0.2, 0.3], [0.7, 0.1], [1.0, 0.0]])))
+    # hodo = bez.hodograph()
+    # hodo2 = hodo.hodograph()
+    # fig, ax = plt.subplots()
+    bez_data = bez.evaluate()
+    print(f"{bez_data.xpyp = }")
+    print(f"{bez_data.xppypp = }")
+    # hodo_data = hodo.evaluate()
+    # hodo2_data = hodo2.evaluate()
+    # bez_data.plot(ax)
+    # hodo_data.plot(ax)
+    # hodo2_data.plot(ax)
+    # ax.plot(bez.get_control_point_array()[:, 0], bez.get_control_point_array()[:, 1], ls=":", color="grey", marker="s")
+    # ax.plot(hodo.get_control_point_array()[:, 0], hodo.get_control_point_array()[:, 1], ls="-.", color="grey", marker="d")
+    # ax.plot(hodo2.get_control_point_array()[:, 0], hodo2.get_control_point_array()[:, 1], ls=":", color="black", marker="+")
+    # plt.show()
+
+
+if __name__ == "__main__":
+    main()

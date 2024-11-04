@@ -1,3 +1,5 @@
+import typing
+
 import networkx
 import numpy as np
 from PyQt6.QtCore import QSignalBlocker
@@ -769,6 +771,60 @@ class AngleDesVar(AngleParam):
                 "root": self.root.name() if self.root is not None else None,
                 "rotation_handle": self.rotation_handle.name() if self.rotation_handle is not None else None,
                 "enabled": self.enabled(), "equation_str": self.equation_str}
+
+
+class ParamSequence:
+    def __init__(self, params: typing.List[Param]):
+        self._params = None
+        self.set_params(params)
+
+    def __getitem__(self, idx):
+        if isinstance(idx, slice):
+            return self.generate_from_slice(self, idx)
+        else:
+            return self.params()[idx]
+
+    def __setitem__(self, idx, val):
+        self.params()[idx] = val
+
+    def __len__(self):
+        return len(self.params())
+
+    @classmethod
+    def generate_from_slice(cls, original_param_seq, s):
+        return cls(params=original_param_seq.params()[s].copy())
+
+    @classmethod
+    def generate_from_array(cls, arr: np.ndarray):
+        assert arr.ndim == 1
+        return cls(params=[Param(value=arr_val, name=f"Param-{idx}") for idx, arr_val in enumerate(arr)])
+
+    def params(self):
+        return self._params
+
+    def param_idx_from_ref(self, param: Param):
+        return self.params().index(param)
+
+    def reverse(self):
+        self.params().reverse()
+
+    def set_params(self, params: typing.List[Param]):
+        self._params = params
+
+    def insert_param(self, idx: int, param: Param):
+        self._params.insert(idx, param)
+
+    def append_param(self, param: Param):
+        self._params.append(param)
+
+    def remove_param(self, idx: int):
+        self._params.pop(idx)
+
+    def as_array(self):
+        return np.array([p.value() for p in self.params()])
+
+    def extract_subsequence(self, indices: list):
+        return ParamSequence(params=[self.params()[idx] for idx in indices])
 
 
 class EquationCompileError(Exception):
