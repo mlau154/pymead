@@ -262,7 +262,6 @@ class BSpline(ParametricCurve):
         """
         Compute the non-zero basis functions at parameter t
         """
-        print(f"{len(self.points()) = }, {p = }")
         return np.array([self._cox_de_boor(t, i, p) for i in range(len(self.points()))])
 
     def _find_span(self, t: float):
