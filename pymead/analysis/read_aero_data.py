@@ -451,6 +451,83 @@ def read_field_from_mses(src_file: str, M_inf: float or None = None, gam: float 
     return field_array
 
 
+def read_field_variables_names_mses(field_file: str) -> typing.List[str]:
+    with open(field_file, "r") as src_file:
+        line = src_file.readline()
+    headers = line.replace("#", "").replace("\n", "").split()
+    return headers
+
+
+def export_mses_field_to_tecplot_ascii(output_file: str, field_file: str, grid_stats_file: str,
+                                       grid_file: str, **kwargs):
+
+    field_array = read_field_from_mses(field_file, **kwargs)
+    grid_stats = read_grid_stats_from_mses(grid_stats_file)
+    x_grid, y_grid = read_streamline_grid_from_mses(grid_file, grid_stats)
+    headers = read_field_variables_names_mses(field_file)
+    with open(output_file, "w") as ascii_file:
+        ascii_file.write(f'VARIABLES = ')
+        for header_idx, header in enumerate(headers):
+            if header_idx < len(headers) - 1:
+                ascii_file.write(f'"{header}", ')
+            else:
+                ascii_file.write(f'"{header}"\n')
+        starting_streamline = 0
+        for zone_idx in range(len(x_grid)):
+            i_max, j_max = x_grid[zone_idx].shape[0], x_grid[zone_idx].shape[1]
+            ascii_file.write(f'ZONE T="ZONE {zone_idx + 1}", I={x_grid[zone_idx].shape[0]}, J={x_grid[zone_idx].shape[1]}, DATAPACKING=BLOCK, VARLOCATION=(')
+            entry_counter = 5  # Used to limit the line length less than 4000 characters, as required by Tecplot
+            for header_idx in range(2, len(headers)):
+                if header_idx < len(headers) - 1:
+                    if entry_counter < 6:
+                        ascii_file.write(f"{header_idx + 1}=CELLCENTERED, ")
+                    else:
+                        ascii_file.write(f"{header_idx + 1}=CELLCENTERED,\n")
+                        entry_counter = 0
+                    entry_counter += 1
+                else:
+                    ascii_file.write(f"{header_idx + 1}=CELLCENTERED)\n")
+
+            # Write the x values (node-centered)
+            entry_counter = 0  # Used to limit the line length less than 4000 characters, as required by Tecplot
+            for j in range(j_max):
+                for i in range(i_max):
+                    if entry_counter < 10:
+                        ascii_file.write(str(x_grid[zone_idx][i, j]) + " ")
+                        entry_counter += 1
+                    else:
+                        ascii_file.write(str(x_grid[zone_idx][i, j]) + "\n")
+                        entry_counter = 0
+            ascii_file.write("\n")
+
+            # Write the y values (node-centered)
+            entry_counter = 0  # Used to limit the line length less than 4000 characters, as required by Tecplot
+            for j in range(j_max):
+                for i in range(i_max):
+                    if entry_counter < 10:
+                        ascii_file.write(str(y_grid[zone_idx][i, j]) + " ")
+                        entry_counter += 1
+                    else:
+                        ascii_file.write(str(y_grid[zone_idx][i, j]) + "\n")
+                        entry_counter = 0
+            ascii_file.write("\n")
+
+            # Write the other variables (cell-centered)
+            entry_counter = 0  # Used to limit the line length less than 4000 characters, as required by Tecplot
+            for header_idx in range(2, len(headers)):
+                for j in range(starting_streamline, j_max + starting_streamline - 1):
+                    for i in range(0, i_max - 1):
+                        if entry_counter < 10:
+                            ascii_file.write(str(field_array[header_idx, i, j]) + " ")
+                            entry_counter += 1
+                        else:
+                            ascii_file.write(str(field_array[header_idx, i, j]) + "\n")
+                            entry_counter = 0
+                ascii_file.write("\n")
+            starting_streamline += x_grid[zone_idx].shape[1] - 1
+    pass
+
+
 def read_streamline_grid_from_mses(src_file: str, grid_stats: dict):
     r"""
     Reads the grid of streamlines from an MSES ``grid.*`` file
@@ -540,3 +617,13 @@ def read_polar(airfoil_name: str, base_dir: str) -> typing.Dict[str, typing.List
     data = np.loadtxt(os.path.join(base_dir, airfoil_name, f"polar.{airfoil_name}"), skiprows=13)
     keys = ["alf", "Cl", "Cd", "Cm", "Cdw", "Cdv", "Cdp", "Ma", "Re", "top_xtr", "bot_xtr"]
     return {k: v.tolist() for (k, v) in zip(keys, data.T)}
+
+
+if __name__ == "__main__":
+    my_folder = r"C:\Users\mlauer2\Documents\dissertation\data\MSESRuns\OptUnderwingFreeTransition"
+    export_mses_field_to_tecplot_ascii(
+        os.path.join(my_folder, "OptUnderwingFreeTransition.dat"),
+        os.path.join(my_folder, "field.OptUnderwingFreeTransition"),
+        os.path.join(my_folder, "mplot_grid_stats.log"),
+        os.path.join(my_folder, "grid.OptUnderwingFreeTransition")
+    )
