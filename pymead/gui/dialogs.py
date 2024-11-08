@@ -11,7 +11,7 @@ from typing import List
 import numpy as np
 import pyqtgraph as pg
 import PyQt6.QtWidgets
-from PyQt6.QtCore import QEvent
+from PyQt6.QtCore import QEvent, QSignalBlocker
 from PyQt6.QtCore import Qt, pyqtSignal, QObject, QRect
 from PyQt6.QtCore import pyqtSlot, QStandardPaths
 from PyQt6.QtGui import QFont
@@ -24,6 +24,7 @@ from pymead import GUI_DEFAULTS_DIR, q_settings, GUI_DIALOG_WIDGETS_DIR, TargetP
 from pymead.analysis import cfd_output_templates
 from pymead.analysis.utils import viscosity_calculator
 from pymead.core.airfoil import Airfoil
+from pymead.core.bezier import Bezier
 from pymead.core.geometry_collection import GeometryCollection
 from pymead.core.line import PolyLine
 from pymead.core.mea import MEA
@@ -4116,6 +4117,71 @@ class ExitOptimizationDialog(PymeadDialog):
         widget = QLabel("An optimization task is running. Quit?")
         super().__init__(parent=parent, window_title="Terminate Optimization?", widget=widget, theme=theme,
                          fixed_width=264, fixed_height=100)
+
+
+class SplitBezierDialogWidget(PymeadDialogWidget2):
+    def __init__(self, bezier: Bezier, parent=None):
+        self.bezier = bezier
+        self.geo_col = self.bezier.geo_col
+        self.split_point = None
+        super().__init__(parent=parent)
+
+    def initializeWidgets(self, *args, **kwargs):
+        t = 0.5
+        x = self.bezier.evaluate_xy(np.array([t]))[0, 0]
+        assert isinstance(x, float)
+        self.widget_dict = {
+            "t": PymeadLabeledDoubleSpinBox(label="t", tool_tip="Parameter value where the curve will be split",
+                                            minimum=0.0, maximum=1.0, value=t, decimals=15, single_step=0.01),
+            "x": PymeadLabeledDoubleSpinBox(label="x", tool_tip="Value along the x-axis where the curve will be split",
+                                            minimum=-np.inf, maximum=np.inf, value=x, decimals=15, single_step=0.01)
+        }
+
+    def establishWidgetConnections(self):
+        self.widget_dict["t"].sigValueChanged.connect(self.onTChanged)
+        self.widget_dict["x"].sigValueChanged.connect(self.onXChanged)
+
+    def onTChanged(self, t: float):
+        x = self.bezier.evaluate_xy(np.array([t]))[0, 0]
+        assert isinstance(x, float)
+        with QSignalBlocker(self.widget_dict["x"]):
+            self.widget_dict["x"].setValue(x)
+        self.onSpinValueChanged(t)
+
+    def onXChanged(self, x: float):
+        t = self.bezier.compute_t_corresponding_to_x(x)
+        with QSignalBlocker(self.widget_dict["t"]):
+            self.widget_dict["t"].setValue(t)
+        self.onSpinValueChanged(t)
+
+    def removeSplitPoint(self):
+        if self.split_point is None:
+            return
+        self.geo_col.remove_pymead_obj(self.split_point)
+
+    def onSpinValueChanged(self, t: float):
+        self.removeSplitPoint()
+        point_loc = self.bezier.evaluate_xy(np.array([t]))[0]
+        self.split_point = self.geo_col.add_point(point_loc[0], point_loc[1])
+
+
+class SplitBezierDialog(PymeadDialog):
+    def __init__(self, bezier: Bezier, parent=None):
+        w = SplitBezierDialogWidget(bezier)
+        theme = bezier.gui_obj.themes[bezier.gui_obj.current_theme]
+        super().__init__(parent=parent, window_title="Split Bézier", widget=w, theme=theme)
+
+    def accept(self):
+        self.w.removeSplitPoint()
+        super().accept()
+
+    def reject(self):
+        self.w.removeSplitPoint()
+        super().reject()
+
+    def close(self):
+        self.w.removeSplitPoint()
+        super().close()
 
 
 class SplitPolylineDialog(PymeadDialog):
