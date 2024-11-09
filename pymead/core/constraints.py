@@ -4,6 +4,7 @@ from abc import abstractmethod
 
 import numpy as np
 
+from pymead.core.bezier import Bezier
 from pymead.core.constraint_equations import measure_rel_angle3, measure_point_line_distance_unsigned
 from pymead.core.line import PolyLine
 from pymead.core.param import Param, AngleParam, LengthParam
@@ -272,7 +273,8 @@ class ROCurvatureConstraint(GeoCon):
 
     default_name = "ROCCon-1"
 
-    def __init__(self, curve_joint: Point, value: float or LengthParam = None, name: str = None, geo_col=None):
+    def __init__(self, curve_joint: Point, value: float or LengthParam = None, name: str = None, geo_col=None,
+                 curve_to_modify: Bezier = None):
         if curve_joint.relative_airfoil_name is not None:
             raise InvalidPointError(f"Constraint could not be added because point the curve joint is an "
                                     f"airfoil-relative point.")
@@ -350,10 +352,10 @@ class ROCurvatureConstraint(GeoCon):
             if value is None:
                 curvature_data = self.calculate_curvature_data(self.curve_joint)
 
-                if not self.is_solving_allowed(self.g2_point_curve_1):
+                if not self.is_solving_allowed(self.g2_point_curve_1) or curve_to_modify is self.curve_2:
                     value = curvature_data.R1
                     enabled = False
-                elif not self.is_solving_allowed(self.g2_point_curve_2):
+                elif not self.is_solving_allowed(self.g2_point_curve_2) or curve_to_modify is self.curve_1:
                     value = curvature_data.R2
                     enabled = False
                 else:
@@ -448,7 +450,7 @@ class ROCurvatureConstraint(GeoCon):
         data = self.calculate_curvature_data(self.curve_joint)
         if np.isinf(data.R1) and np.isinf(data.R2):
             return True
-        return np.isclose(data.R1, data.R2, rtol=1e-14)
+        return np.isclose(data.R1, data.R2, rtol=1e-10)
 
 
 class ConstraintValidationError(Exception):
