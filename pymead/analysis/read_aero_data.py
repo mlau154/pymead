@@ -459,8 +459,8 @@ def read_field_variables_names_mses(field_file: str) -> typing.List[str]:
 
 
 def export_mses_field_to_tecplot_ascii(output_file: str, field_file: str, grid_stats_file: str,
-                                       grid_file: str, **kwargs):
-
+                                       grid_file: str, blade_file: str, **kwargs):
+    blade = convert_blade_file_to_3d_array(blade_file)
     field_array = read_field_from_mses(field_file, **kwargs)
     grid_stats = read_grid_stats_from_mses(grid_stats_file)
     x_grid, y_grid = read_streamline_grid_from_mses(grid_file, grid_stats)
@@ -525,7 +525,16 @@ def export_mses_field_to_tecplot_ascii(output_file: str, field_file: str, grid_s
                             entry_counter = 0
                 ascii_file.write("\n")
             starting_streamline += x_grid[zone_idx].shape[1] - 1
-    pass
+
+        # Write geometry to the file
+        ascii_file.write("GEOMETRY X=0, Y=0, T=LINE, F=BLOCK, C=BLACK, FC=CUST2, CS=GRID\n")
+        ascii_file.write(f"{len(blade)}\n")  # Number of airfoils (each represented by a unique polyline)
+        for airfoil in blade:
+            X_strings = [str(x) for x in airfoil[:, 0].tolist()]
+            Y_strings = [str(y) for y in airfoil[:, 1].tolist()]
+            ascii_file.write(f"{len(airfoil)}\n")
+            ascii_file.write(f"{' '.join(X_strings)}\n")  # X-coords (block format)
+            ascii_file.write(f"{' '.join(Y_strings)}\n")  # Y-coords (block format)
 
 
 def read_streamline_grid_from_mses(src_file: str, grid_stats: dict):
@@ -620,10 +629,12 @@ def read_polar(airfoil_name: str, base_dir: str) -> typing.Dict[str, typing.List
 
 
 if __name__ == "__main__":
-    my_folder = r"C:\Users\mlauer2\Documents\dissertation\data\MSESRuns\OptUnderwingFreeTransition"
+    name = "OptUnderwingFreeTransition"
+    my_folder = os.path.join(r"C:\Users\mlauer2\Documents\dissertation\data\MSESRuns", name)
     export_mses_field_to_tecplot_ascii(
-        os.path.join(my_folder, "OptUnderwingFreeTransition.dat"),
-        os.path.join(my_folder, "field.OptUnderwingFreeTransition"),
+        os.path.join(my_folder, f"{name}.dat"),
+        os.path.join(my_folder, f"field.{name}"),
         os.path.join(my_folder, "mplot_grid_stats.log"),
-        os.path.join(my_folder, "grid.OptUnderwingFreeTransition")
+        os.path.join(my_folder, f"grid.{name}"),
+        os.path.join(my_folder, f"blade.{name}")
     )
