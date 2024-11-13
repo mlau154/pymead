@@ -1,18 +1,19 @@
 import typing
 
 import numpy as np
-from scipy.optimize import fsolve
 
+from pymead.core.param import ParamSequence, Param
 from pymead.core.parametric_curve import ParametricCurve, PCurveData
 from pymead.core.point import PointSequence, Point
 from pymead.utils.nchoosek import nchoosek
 
 
-class Bezier(ParametricCurve):
+class RBezier(ParametricCurve):
 
     def __init__(self, point_sequence: PointSequence or typing.List[Point],
+                 weight_sequence: ParamSequence or typing.List[Param],
                  default_nt: int or None = None, name: str or None = None,
-                 t_start: float = None, t_end: float = None, **kwargs):
+                 **kwargs):
         r"""
         Computes the Bézier curve through the control points ``P`` according to
 
@@ -84,13 +85,14 @@ class Bezier(ParametricCurve):
         """
         super().__init__(sub_container="bezier", **kwargs)
         self._point_sequence = None
+        self._weight_sequence = None
         self.degree = None
         self.default_nt = default_nt
         point_sequence = PointSequence(point_sequence) if isinstance(point_sequence, list) else point_sequence
+        weight_sequence = ParamSequence(weight_sequence) if isinstance(weight_sequence, list) else weight_sequence
         self.set_point_sequence(point_sequence)
-        self.t_start = t_start
-        self.t_end = t_end
-        name = "Bezier-1" if name is None else name
+        self.set_weight_sequence(weight_sequence)
+        name = "RBezier-1" if name is None else name
         self.set_name(name)
         self.curve_connections = []
         self._add_references()
@@ -116,21 +118,38 @@ class Bezier(ParametricCurve):
     def point_sequence(self):
         return self._point_sequence
 
+    def weight_sequence(self):
+        return self._weight_sequence
+
     def points(self):
         return self.point_sequence().points()
 
+    def weights(self):
+        return self.weight_sequence().params()
+
     def get_control_point_array(self):
         return self.point_sequence().as_array()
+
+    def get_weight_vector(self):
+        return self.weight_sequence().as_array()
 
     def set_point_sequence(self, point_sequence: PointSequence):
         self._point_sequence = point_sequence
         self.degree = len(point_sequence) - 1
 
+    def set_weight_sequence(self, weight_sequence: ParamSequence):
+        self._weight_sequence = weight_sequence
+
     def reverse_point_sequence(self):
         self.point_sequence().reverse()
+        self.weight_sequence().reverse()
 
-    def insert_point(self, idx: int, point: Point):
+    def reverse_weight_sequence(self):
+        self.reverse_point_sequence()
+
+    def insert_point(self, idx: int, point: Point, weight: Param):
         self.point_sequence().insert_point(idx, point)
+        self.weight_sequence().insert_param(idx, weight)
         self.degree += 1
         if self not in point.curves:
             point.curves.append(self)
@@ -138,9 +157,9 @@ class Bezier(ParametricCurve):
             self.canvas_item.point_items.insert(idx, point.canvas_item)
             self.canvas_item.updateCurveItem(self.evaluate())
 
-    def insert_point_after_point(self, point_to_add: Point, preceding_point: Point):
+    def insert_point_after_point(self, point_to_add: Point, preceding_point: Point, weight: Param):
         idx = self.point_sequence().point_idx_from_ref(preceding_point) + 1
-        self.insert_point(idx, point_to_add)
+        self.insert_point(idx, point_to_add, weight)
 
     def point_removal_deletes_curve(self):
         return len(self.point_sequence()) <= 3
@@ -149,6 +168,7 @@ class Bezier(ParametricCurve):
         if isinstance(point, Point):
             idx = self.point_sequence().point_idx_from_ref(point)
         self.point_sequence().remove_point(idx)
+        self.weight_sequence().remove_param(idx)
         self.degree -= 1
 
         if len(self.point_sequence()) > 2:
@@ -211,23 +231,51 @@ class Bezier(ParametricCurve):
 
         return finite_diff_recursive(k, i)
 
-    def hodograph(self) -> "Bezier":
+    def _evaluate_denominator(self, t: np.ndarray):
+        w = self.get_weight_vector()
+        return np.sum(
+            np.array([w[i] * self.bernstein_poly(self.degree, i, t) for i in range(len(self.points()))]), axis=0
+        )
+
+    def hodograph(self, t: np.ndarray) -> np.ndarray:
         """
-        Generates another ``Bezier`` object representing the derivative ("hodograph") of the original curve
+        Evaluates the hodograph of the rational Bézier curve using a specified parameter vector. Note that unlike
+        in the case of the non-rational Bézier, the hodograph is not itself a rational Bézier curve. Therefore,
+        only an array of :math:`x`- and :math:`y`-values is returned
+
+        t: np.ndarray
+            Parameter vector along which the hodograph will be evaluated
 
         Returns
         -------
-        Bezier
-            Hodograph of the curve
+        np.ndarray
+            Evaluated hodograph of the curve, dimensions :math:`N_t \times 2`, where :math:`N_t` is the length
+            of the input parameter vector, and columns represent the first derivative with respect to :math:`x` and
+            :math:`y`, respectively.
         """
         P = self.get_control_point_array()
+        w = self.get_weight_vector()
         if len(P) <= 1:
-            point_sequence = PointSequence.generate_from_array(np.array([[0.0, 0.0]]))
-            return Bezier(point_sequence, default_nt=self.default_nt)
-        point_sequence = PointSequence.generate_from_array(np.array([
-            [self.degree * (p1[0] - p0[0]), self.degree * (p1[1] - p0[1])] for p0, p1 in zip(P[:-1, :], P[1:, :])
-        ]))
-        return Bezier(point_sequence, default_nt=self.default_nt)
+            return np.zeros((len(t), 2))
+        D2 = self._evaluate_denominator(t) ** 2
+        hodo = np.zeros((len(t), 2))
+        for k in range(0, 2 * self.degree - 1):
+            print(f"{k = }")
+            Rk = np.array([0.0, 0.0])
+            # print(f"{int(np.floor(k * 0.5)) + 1 = }")
+            for i in range(max(0, k - self.degree + 1), int(np.floor(k * 0.5)) + 1):
+                print(f"{i = }")
+                print(f"{P[i, :] = }")
+                print(f"{k - i + 1 = }")
+                print(f"{P[k - i + 1, :] = }")
+                Rk += (k - 2 * i + 1) * nchoosek(self.degree, i) * nchoosek(
+                    self.degree, k - i + 1) * w[i] * w[k - i + 1] * (P[k - i + 1, :] - P[i, :])
+            Rk /= nchoosek(2 * self.degree - 2, k)
+            print(f"{Rk.shape = }")
+            hodo += np.outer(self.bernstein_poly(2 * self.degree - 2, k, t), Rk)
+            print(f"{hodo.shape = }")
+        print("Made it here")
+        return hodo / np.column_stack((D2, D2))
 
     def derivative(self, t: np.ndarray, order: int):
         r"""
@@ -248,10 +296,11 @@ class Bezier(ParametricCurve):
             derivative order.
         """
         assert order >= 0
-        curve = self
-        for n in range(order):
-            curve = curve.hodograph()
-        return curve.evaluate_xy(t)
+        if order == 0:
+            return self.evaluate_xy(t)
+        if order == 1:
+            return self.hodograph(t)
+        return np.ones((len(t), 2))
 
     def evaluate_xy(self, t: np.ndarray or None = None, **kwargs) -> np.ndarray:
         # Generate the parameter vector
@@ -262,15 +311,17 @@ class Bezier(ParametricCurve):
         # Number of control points, curve degree, control point array
         n_ctrl_points = len(self.point_sequence())
         degree = n_ctrl_points - 1
-        P = self.point_sequence().as_array()
+        P = self.get_control_point_array()
+        w = self.get_weight_vector()
 
         # Evaluate the curve
         x, y = np.zeros(t.shape), np.zeros(t.shape)
         for i in range(n_ctrl_points):
             # Calculate the x- and y-coordinates of the Bézier curve given the input vector t
-            x += P[i, 0] * self.bernstein_poly(degree, i, t)
-            y += P[i, 1] * self.bernstein_poly(degree, i, t)
-        return np.column_stack((x, y))
+            x += w[i] * P[i, 0] * self.bernstein_poly(degree, i, t)
+            y += w[i] * P[i, 1] * self.bernstein_poly(degree, i, t)
+        D = self._evaluate_denominator(t)
+        return np.column_stack((x, y)) / np.column_stack((D, D))
 
     def evaluate(self, t: np.array or None = None, **kwargs):
         r"""
@@ -303,15 +354,17 @@ class Bezier(ParametricCurve):
         # Number of control points, curve degree, control point array
         n_ctrl_points = len(self.point_sequence())
         degree = n_ctrl_points - 1
-        P = self.point_sequence().as_array()
+        P = self.get_control_point_array()
+        w = self.get_weight_vector()
 
         # Evaluate the curve
         x, y = np.zeros(t.shape), np.zeros(t.shape)
         for i in range(n_ctrl_points):
             # Calculate the x- and y-coordinates of the Bézier curve given the input vector t
-            x += P[i, 0] * self.bernstein_poly(degree, i, t)
-            y += P[i, 1] * self.bernstein_poly(degree, i, t)
-        xy = np.column_stack((x, y))
+            x += w[i] * P[i, 0] * self.bernstein_poly(degree, i, t)
+            y += w[i] * P[i, 1] * self.bernstein_poly(degree, i, t)
+        D = self._evaluate_denominator(t)
+        xy = np.column_stack((x, y)) / np.column_stack((D, D))
 
         # Calculate the first derivative
         first_deriv = self.derivative(t=t, order=1)
@@ -338,101 +391,30 @@ class Bezier(ParametricCurve):
 
         return PCurveData(t=t, xy=xy, xpyp=xpyp, xppypp=xppypp, k=k, R=R)
 
-    def compute_t_corresponding_to_x(self, x_seek: float, t0: float = 0.5):
-        def bez_root_find_func(t):
-            point = self.evaluate_xy(t[0])[0]
-            return np.array([point[0] - x_seek])
-
-        return fsolve(bez_root_find_func, x0=np.array([t0]))[0]
-
-    def compute_t_corresponding_to_y(self, y_seek: float, t0: float = 0.5):
-        def bez_root_find_func(t):
-            point = self.evaluate_xy(t[0])[0]
-            return np.array([point[1] - y_seek])
-
-        return fsolve(bez_root_find_func, x0=np.array([t0]))[0]
-
-    def split(self, t_split: float):
-
-        # Number of control points, curve degree, control point array
-        n_ctrl_points = len(self.point_sequence())
-        degree = n_ctrl_points - 1
-        P = self.point_sequence().as_array()
-
-        def de_casteljau(i: int, j: int) -> np.ndarray:
-            """
-            Based on https://en.wikipedia.org/wiki/De_Casteljau%27s_algorithm. Recursive algorithm where the
-            base case is just the value of the ith original control point.
-
-            Parameters
-            ----------
-            i: int
-                Lower index
-            j: int
-                Upper index
-
-            Returns
-            -------
-            np.ndarray
-                A one-dimensional array containing the :math:`x` and :math:`y` values of a control point evaluated
-                at :math:`(i,j)` for a Bézier curve split at the parameter value ``t_split``
-            """
-            if j == 0:
-                return P[i, :]
-            return de_casteljau(i, j - 1) * (1 - t_split) + de_casteljau(i + 1, j - 1) * t_split
-
-        bez_split_1_P = np.array([de_casteljau(i=0, j=i) for i in range(n_ctrl_points)])
-        bez_split_2_P = np.array([de_casteljau(i=i, j=degree - i) for i in range(n_ctrl_points)])
-
-        if self.geo_col is None:
-            bez_1_points = [self.point_sequence().points()[0]] + [Point(*xy.tolist()) for xy in bez_split_1_P[1:, :]]
-            bez_2_points = [bez_1_points[-1]] + [Point(*xy.tolist()) for xy in bez_split_2_P[1:-1, :]] + [
-                self.point_sequence().points()[-1]]
-        else:
-            bez_1_points = [self.point_sequence().points()[0]] + [
-                self.geo_col.add_point(*xy.tolist()) for xy in bez_split_1_P[1:, :]]
-            bez_2_points = [bez_1_points[-1]] + [
-                self.geo_col.add_point(*xy.tolist()) for xy in bez_split_2_P[1:-1, :]] + [
-                self.point_sequence().points()[-1]]
-
-        bez_1_point_seq = PointSequence(bez_1_points)
-        bez_2_point_seq = PointSequence(bez_2_points)
-
-        if self.geo_col is None:
-            return (
-                Bezier(point_sequence=bez_1_point_seq),
-                Bezier(point_sequence=bez_2_point_seq)
-            )
-        else:
-            for point in self.point_sequence().points()[1:-1]:
-                self.geo_col.remove_pymead_obj(point)
-            return (
-                self.geo_col.add_bezier(point_sequence=bez_1_point_seq, name="BezSplit"),
-                self.geo_col.add_bezier(point_sequence=bez_2_point_seq, name="BezSplit")
-            )
-
     def get_dict_rep(self):
         return {"points": [pt.name() for pt in self.point_sequence().points()], "default_nt": self.default_nt}
 
 
 def main():
-    # import matplotlib.pyplot as plt
-    bez = Bezier(PointSequence.generate_from_array(np.array([[0.0, 0.0], [0.0, 0.2], [0.2, 0.3], [0.7, 0.1], [1.0, 0.0]])))
-    # hodo = bez.hodograph()
-    # hodo2 = hodo.hodograph()
-    # fig, ax = plt.subplots()
-    bez_data = bez.evaluate()
-    print(f"{bez_data.xpyp = }")
-    print(f"{bez_data.xppypp = }")
-    # hodo_data = hodo.evaluate()
-    # hodo2_data = hodo2.evaluate()
-    # bez_data.plot(ax)
-    # hodo_data.plot(ax)
-    # hodo2_data.plot(ax)
-    # ax.plot(bez.get_control_point_array()[:, 0], bez.get_control_point_array()[:, 1], ls=":", color="grey", marker="s")
-    # ax.plot(hodo.get_control_point_array()[:, 0], hodo.get_control_point_array()[:, 1], ls="-.", color="grey", marker="d")
-    # ax.plot(hodo2.get_control_point_array()[:, 0], hodo2.get_control_point_array()[:, 1], ls=":", color="black", marker="+")
-    # plt.show()
+    import matplotlib.pyplot as plt
+    fig, ax = plt.subplots()
+    points = np.array([[0.0, 1.0], [1.0, 1.0], [1.0, 0.0]])
+    weights = np.array([1.0, 1 / np.sqrt(2.0), 1.0])
+    rbez = RBezier(PointSequence.generate_from_array(points), ParamSequence.generate_from_array(weights),
+                   default_nt=151)
+    hodo = rbez.hodograph(np.linspace(0.0, 1.0, rbez.default_nt))
+    data = rbez.evaluate()
+    data.plot(ax)
+    x_circ = np.cos(2 * np.pi * np.linspace(0.0, 0.25, 25))
+    y_circ = np.sin(2 * np.pi * np.linspace(0.0, 0.25, 25))
+    ax.plot(x_circ, y_circ, ls="none", color="black", marker="o")
+    ax.plot(hodo[:, 0], hodo[:, 1])
+    # ax.plot((hodo[:, 1] / hodo[:, 0])[5:-5])
+    tails, heads = data.get_curvature_comb(0.05)
+    for tail, head in zip(tails, heads):
+        ax.plot([tail[0], head[0]], [tail[1], head[1]], color="steelblue")
+    ax.set_aspect("equal")
+    plt.show()
 
 
 if __name__ == "__main__":

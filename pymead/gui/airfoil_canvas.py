@@ -546,7 +546,9 @@ class AirfoilCanvas(pg.PlotWidget):
             self.gui_obj.disp_message_box(str(e))
 
     @undoRedoAction
-    @runSelectionEventLoop(drawing_object="ROCurvatureConstraint", starting_message="Select the curve joint")
+    @runSelectionEventLoop(drawing_object="ROCurvatureConstraint",
+                           starting_message="Select the curve that should be modified, if necessary. "
+                                            "Then, select the curve joint.")
     def addROCurvatureConstraint(self):
         if len(self.geo_col.selected_objects["points"]) != 1:
             msg = (f"Choose exactly one point (the curve joint) for a "
@@ -555,8 +557,12 @@ class AirfoilCanvas(pg.PlotWidget):
             return
 
         try:
-            self.geo_col.add_constraint("ROCurvatureConstraint",
-                                        *self.geo_col.selected_objects["points"])
+            self.geo_col.add_constraint(
+                "ROCurvatureConstraint",
+                *self.geo_col.selected_objects["points"],
+                curve_to_modify=self.geo_col.selected_objects["bezier"][0] if len(
+                    self.geo_col.selected_objects["bezier"]) > 0 else None
+            )
         except InvalidPointError as e:
             self.gui_obj.disp_message_box(str(e))
 

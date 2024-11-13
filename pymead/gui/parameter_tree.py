@@ -20,7 +20,7 @@ from pymead.core.mea import MEA
 from pymead.core.param import Param, DesVar, LengthParam, AngleParam, LengthDesVar, AngleDesVar, EquationCompileError
 from pymead.core.point import Point
 from pymead.core.pymead_obj import PymeadObj
-from pymead.gui.dialogs import PymeadDialog, MakeAirfoilRelativeDialog
+from pymead.gui.dialogs import PymeadDialog, MakeAirfoilRelativeDialog, SplitBezierDialog
 
 
 class HeaderButtonRow(QHeaderView):
@@ -1082,7 +1082,10 @@ class ParameterTree(QTreeWidget):
         for pymead_obj in pymead_objs:
             if not isinstance(pymead_obj, Bezier):
                 continue
-            pymead_obj.split(0.5)
+            self.gui_obj.dialog = SplitBezierDialog(pymead_obj, parent=self.gui_obj)
+            if self.gui_obj.dialog.exec():
+                pymead_obj.split(self.gui_obj.dialog.value()["t"])
+            break  # Only split the first selected Bézier curve
 
     def contextMenuEvent(self, a0):
         # item = self.itemAt(a0.x(), a0.y())
