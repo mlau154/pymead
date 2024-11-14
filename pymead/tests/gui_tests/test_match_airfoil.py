@@ -1,15 +1,15 @@
 from pymead.tests.gui_tests.utils import app
+from pytestqt.qtbot import QtBot
 
-import shutil
-import time
-import warnings
+import numpy as np
 
 
-def test_match_airfoil(app):
+def test_match_airfoil(app, qtbot: QtBot):
     app.load_example_basic_airfoil_blunt_dv()
     params_container = app.geo_col.container()["params"]
-    params_container["Length-6"].v = 0.00126
-    params_container["Length-7"].v = 0.00126
+    desvar_container = app.geo_col.container()["desvar"]
+    params_container["Length-6"].set_value(0.00126)
+    params_container["Length-7"].set_value(0.00126)
 
     def dialog_action(dialog):
         dialog.setModal(False)
@@ -17,22 +17,18 @@ def test_match_airfoil(app):
         dialog.inputs[2].setValue('n0012-il')
         dialog.accept()
 
-    app.match_airfoil(dialog_test_action=dialog_action)
+    def info_dialog_action(dialog):
+        dialog.setModal(False)
+        dialog.show()
+        assert dialog.windowTitle() == "Information"
+        dialog.accept()
 
-    t_increment, max_time = 0.1, 60.0
-    t = 0.0
+    app.match_airfoil(dialog_test_action=dialog_action, info_dialog_test_action=info_dialog_action)
 
-    start_time = time.time()
-    while (time.time() - start_time) < max_time:
-        if len(app.text_area.toPlainText()) > 1:
-            text_box = app.text_area.toPlainText()
-            print(text_box)
-            break
-        else:
-            time.sleep(t_increment)
+    def check_label():
+        assert len(app.text_area.toPlainText()) != 0
 
-    if len(app.text_area.toPlainText()) == 0:
-        print("Test timed out")
+    qtbot.wait_until(check_label, timeout=90000)
 
-    #how do hit enter second time after test runs (get rid of info box)
-    #not correctly entering if block (not correctly getting text from console?)
+    assert np.isclose(desvar_container["Length-5"].value(), 0.2638, atol=1e-4)
+

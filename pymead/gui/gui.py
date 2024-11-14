@@ -863,7 +863,7 @@ class GUI(FramelessMainWindow):
                 self.dialog.load_airfoil_alg_file_widget.assignQSettings(inputs)
 
             alg_pkl_legacy_file = os.path.join(
-                inputs["opt_load_dir"],  f"algorithm_gen_{inputs['opt_load_generation']}.pkl")
+                inputs["opt_load_dir"], f"algorithm_gen_{inputs['opt_load_generation']}.pkl")
             if os.path.exists(alg_pkl_legacy_file):
                 try:
                     alg = load_data(alg_pkl_legacy_file)
@@ -1198,7 +1198,7 @@ class GUI(FramelessMainWindow):
     def display_airfoil_statistics(self, dialog_test_action: typing.Callable = None):
         airfoil_stats = AirfoilStatistics(geo_col=self.geo_col)
         self.dialog = AirfoilStatisticsDialog(parent=self, airfoil_stats=airfoil_stats,
-                                         theme=self.themes[self.current_theme])
+                                              theme=self.themes[self.current_theme])
         if (dialog_test_action is not None and not dialog_test_action(self.dialog)) or self.dialog.exec():
             pass
 
@@ -1669,7 +1669,8 @@ class GUI(FramelessMainWindow):
         self.display_resources_thread = Thread(target=run_cpu_bound_process)
         self.display_resources_thread.start()
 
-    def match_airfoil(self, dialog_test_action: typing.Callable = None):
+    def match_airfoil(self, dialog_test_action: typing.Callable = None,
+                      info_dialog_test_action: typing.Callable = None):
 
         def run_cpu_bound_process():
 
@@ -1681,7 +1682,12 @@ class GUI(FramelessMainWindow):
                     airfoil_match_settings["target_airfoil"]
                 )
             )
-            self.match_airfoil_process.progress_emitter.signals.progress.connect(self.progress_update)
+            if info_dialog_test_action:
+                self.match_airfoil_process.progress_emitter.signals.progress.connect(partial(
+                    self.progress_update, info_dialog_test_action=info_dialog_test_action))
+
+            else:
+                self.match_airfoil_process.progress_emitter.signals.progress.connect(self.progress_update)
             self.match_airfoil_process.start()
 
         airfoil_names = [a for a in self.geo_col.container()["airfoils"].keys()]
@@ -1811,7 +1817,7 @@ class GUI(FramelessMainWindow):
         return
 
     @pyqtSlot(str, object)
-    def progress_update(self, status: str, data: object):
+    def progress_update(self, status: str, data: object, info_dialog_test_action: typing.Callable = None):
         bcolor = self.themes[self.current_theme]["graph-background-color"]
         if status == "text" and isinstance(data, str):
             self.output_area_text(data, line_break=True)
@@ -1961,7 +1967,7 @@ class GUI(FramelessMainWindow):
                                       f"Function evaluations: {res.nfev}. Gradient evaluations: {res.njev}.",
                                       line_break=True)
                 message = f"{res.message}. Geometry canvas updated with new design variable values."
-            self.disp_message_box(message=message, message_mode=msg_mode)
+            self.disp_message_box(message=message, message_mode=msg_mode, dialog_test_action=info_dialog_test_action)
         elif status == "resources_update":
             assert isinstance(data, tuple)
             if self.resources_graph is None:
