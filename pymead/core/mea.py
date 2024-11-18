@@ -73,8 +73,12 @@ class MEA(PymeadObj):
         header = airfoil_sys_name + "\n" + " ".join([str(gb) for gb in grid_bounds])
 
         # Determine the correct ordering for the airfoils. MSES expects airfoils to be ordered from top to bottom
-        max_y = [np.max(coords[:, 1]) for coords in mea_coords_list]
-        airfoil_order = np.argsort(max_y)[::-1]
+        # max_y = [np.max(coords[:, 1]) for coords in mea_coords_list]
+        # airfoil_order = np.argsort(max_y)[::-1]
+        le_y_vals = []
+        for airfoil in self.airfoils:
+            le_y_vals.append(airfoil.leading_edge.y().value())
+        airfoil_order = np.argsort(np.array(le_y_vals))[::-1]
 
         # Loop through the airfoils in the correct order
         mea_coords = None
