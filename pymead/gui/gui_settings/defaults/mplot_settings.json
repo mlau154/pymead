@@ -32,6 +32,11 @@
         "widget_type": "QCheckBox",
         "setChecked": 2
     },
+    "Tecplot": {
+        "label": "Output Tecplot ASCII",
+        "widget_type": "QCheckBox",
+        "setChecked": 0
+    },
     "CPK": {
         "label": "Output CPK",
         "widget_type": "QCheckBox",

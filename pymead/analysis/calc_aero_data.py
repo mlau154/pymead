@@ -10,7 +10,7 @@ import multiprocessing.connection
 
 from pymead.analysis.read_aero_data import read_aero_data_from_xfoil, read_Cp_from_file_xfoil, read_bl_data_from_mses, \
     read_forces_from_mses, read_grid_stats_from_mses, read_field_from_mses, read_streamline_grid_from_mses, \
-    flow_var_idx, read_actuator_disk_data_mses, read_polar
+    flow_var_idx, read_actuator_disk_data_mses, read_polar, export_mses_field_to_tecplot_ascii
 from pymead.core.mea import MEA
 from pymead.utils.file_conversion import convert_ps_to_svg
 from pymead.utils.read_write_files import save_data
@@ -570,6 +570,7 @@ class MPLOTSettings:
                  Grid: bool = False,
                  Grid_Zoom: bool = False,
                  flow_field: bool = False,
+                 Tecplot: bool = False,
                  CPK: bool = False):
         """
         Defines the inputs for MPLOT. If directly running from ``run_mplot``, only the ``timeout`` argument is used.
@@ -580,31 +581,26 @@ class MPLOTSettings:
         ----------
         timeout: float
             The time in seconds allotted to MPLOT before premature termination. Default: ``15.0``
-
         grid_stats: bool
             Whether to output the grid statistics to the analysis directory.
             Ignored if executing ``run_mplot`` directly instead of ``calculate_aero_data``. Default: ``False``
-
         Mach: bool
             Whether to output the Mach contour image in PDF format to the analysis directory.
             Ignored if executing ``run_mplot`` directly instead of ``calculate_aero_data``. Default: ``False``
-
         streamline_grid: bool
             Whether to output the streamline grid data to the analysis directory.
             Ignored if executing ``run_mplot`` directly instead of ``calculate_aero_data``. Default: ``False``
-
         Grid: bool
             Whether to output an image of the MSET grid in PDF format to the analysis directory.
             Ignored if executing ``run_mplot`` directly instead of ``calculate_aero_data``. Default: ``False``
-
         Grid_Zoom: bool
             Whether to output a zoomed image of the MSET grid in PDF format to the analysis directory.
             Ignored if executing ``run_mplot`` directly instead of ``calculate_aero_data``. Default: ``False``
-
         flow_field: bool
             Whether to dump the flow field data to the analysis directory.
             Ignored if executing ``run_mplot`` directly instead of ``calculate_aero_data``. Default: ``False``
-
+        Tecplot: bool
+            Whether to output field data to a ``Tecplot`` ASCII file. Default: ``False``
         CPK: bool
             Whether to calculate the mechanical flow power coefficient and append the data to ``aero_data.json``.
             Ignored if executing ``run_mplot`` directly instead of ``calculate_aero_data``. Default: ``False``
@@ -616,6 +612,7 @@ class MPLOTSettings:
         self.Grid = Grid
         self.Grid_Zoom = Grid_Zoom
         self.flow_field = flow_field
+        self.Tecplot = Tecplot
         self.CPK = CPK
 
     def get_dict_rep(self) -> dict:
@@ -635,6 +632,7 @@ class MPLOTSettings:
             "Grid": self.Grid,
             "Grid_Zoom": self.Grid_Zoom,
             "flow_field": self.flow_field,
+            "Tecplot": self.Tecplot,
             "CPK": self.CPK
         }
 
@@ -1065,7 +1063,7 @@ def calculate_aero_data(conn: multiprocessing.connection.Connection or None,
                         except KeyError:
                             time.sleep(0.01)
 
-                if mplot_settings["CPK"]:
+                if mplot_settings["CPK"] or mplot_settings["Tecplot"]:
                     mplot_settings["flow_field"] = 2
                     mplot_settings["Streamline_Grid"] = 2
 
@@ -1082,6 +1080,15 @@ def calculate_aero_data(conn: multiprocessing.connection.Connection or None,
                                           multipoint_tag=multipoint_tags[i] if multipoint_tags else None)
                     except DependencyNotFoundError as e:
                         send_over_pipe(("disp_message_box", str(e)))
+
+                if mplot_settings["Tecplot"]:
+                    export_mses_field_to_tecplot_ascii(
+                        os.path.join(airfoil_coord_dir, airfoil_name, f"{airfoil_name}.dat"),
+                        os.path.join(airfoil_coord_dir, airfoil_name, f"field.{airfoil_name}"),
+                        os.path.join(airfoil_coord_dir, airfoil_name, "mplot_grid_stats.log"),
+                        os.path.join(airfoil_coord_dir, airfoil_name, f"grid.{airfoil_name}"),
+                        os.path.join(airfoil_coord_dir, airfoil_name, f"blade.{airfoil_name}")
+                    )
 
                 if mplot_settings["CPK"]:
                     try:
