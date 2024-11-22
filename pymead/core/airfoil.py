@@ -425,7 +425,8 @@ class Airfoil(PymeadObj):
         return transformation.transform(coords)
 
     def compute_area(self, airfoil_frame_relative: bool = False) -> float:
-        """Computes the area of the airfoil as the area of a many-sided polygon enclosed by the airfoil coordinates
+        """
+        Computes the area of the airfoil as the area of a many-sided polygon enclosed by the airfoil coordinates
         using the `shapely <https://shapely.readthedocs.io/en/stable/manual.html>`_ library.
 
         Parameters
