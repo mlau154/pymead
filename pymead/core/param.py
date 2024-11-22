@@ -86,6 +86,14 @@ class Param(PymeadObj):
         self.set_name(name)
 
     def _get_value_spin(self):
+        """
+        Gets the GUI spinbox associated with this parameter.
+
+        Returns
+        -------
+        pymead.gui.parameter_tree.ValueSpin
+            Spinbox associated with this parameter
+        """
         return self.tree_item.treeWidget().itemWidget(self.tree_item, 1)
 
     def value(self, bounds_normalized: bool = False):
@@ -117,28 +125,23 @@ class Param(PymeadObj):
         Sets the design variable value, adjusting the value to fit inside the bounds if necessary.
 
         Parameters
-        ==========
+        ----------
         value: float or int
             Design variable value
-
         bounds_normalized: bool
             Whether the specified value is normalized by the bounds (e.g., 0 if the value is equal to the lower bound,
             1 if the value is equal to the upper bound, or a float between 0.0 and 1.0 if the value is somewhere
             between the bounds). Default: ``False``
-
         force: bool
             Whether to force the change in value. This keyword argument should never be set to ``True`` when using
             the API. Default: ``False``
-
         param_graph_update: bool
             Whether this value is being set as part of a parameter graph update. Used to prevent the parameter graph
             from triggering multiple updates for the same parameter. This keyword argument should never
             be set to ``True`` when using the API. Default: ``False``
-
         from_request_move: bool
             Whether this method was called from ``Point.request_move``. Default: ``False``
         """
-
         old_point_vals = {k: v.as_array() for k, v in self.geo_col.container()["points"].items()} \
             if self.geo_col is not None else {}
 
@@ -249,23 +252,23 @@ class Param(PymeadObj):
 
         return list(set(points_solved))
 
-    def lower(self):
+    def lower(self) -> float:
         """
         Returns the lower bound for the design variable
 
         Returns
-        =======
+        -------
         float
             DV lower bound
         """
         return self._lower
 
-    def upper(self):
+    def upper(self) -> float:
         """
         Returns the upper bound for the design variable
 
         Returns
-        =======
+        -------
         float
             DV upper bound
         """
@@ -277,7 +280,7 @@ class Param(PymeadObj):
         variable value to fit inside the bounds if necessary.
 
         Parameters
-        ==========
+        ----------
         lower: float
             Lower bound for the design variable
 
@@ -300,7 +303,7 @@ class Param(PymeadObj):
         variable value to fit inside the bounds if necessary.
 
         Parameters
-        ==========
+        ----------
         upper: float
             Upper bound for the design variable
 
@@ -317,10 +320,26 @@ class Param(PymeadObj):
             with QSignalBlocker(value_spin):
                 value_spin.setMaximum(self.upper())
 
-    def enabled(self):
+    def enabled(self) -> bool:
+        """
+        Whether this parameter is enabled (whether it can change)
+
+        Returns
+        -------
+        bool
+            Whether this parameter is enabled
+        """
         return self._enabled
 
     def set_enabled(self, enabled: bool):
+        """
+        Sets this parameter to be enabled or disabled
+
+        Parameters
+        ----------
+        enabled: bool
+            ``True`` if this parameter should be enabled, ``False`` otherwise
+        """
         self._enabled = enabled
         if self.tree_item is not None:
             value_spin = self._get_value_spin()
@@ -328,6 +347,15 @@ class Param(PymeadObj):
                 value_spin.setEnabled(enabled)
 
     def update_equation(self, equation_str: str = None):
+        """
+        Updates the equation defining the value of this parameter.
+
+        Parameters
+        ----------
+        equation_str: str or None
+            The equation to assign to the parameter. If ``None``, the parameter will no longer be defined by an equation
+            and the value is free to change independently of all other parameters. Default: ``None``
+        """
         if not equation_str:  # Handles both the None and empty-string cases
             self.equation_str = equation_str
             self.equation = None
@@ -362,6 +390,10 @@ class Param(PymeadObj):
         self.equation_str = equation_str
 
     def evaluate_equation(self):
+        """
+        Evaluates this parameter's equation, taking into account other parameter values. Raises an
+        ``EquationCompileError`` if the equation cannot be compiled due to a naming or syntax error.
+        """
         try:
             exec(self.equation, self.equation_dict)
             self.set_value(self.equation_dict["f"](), param_graph_update=True)
@@ -436,7 +468,15 @@ class LengthParam(Param):
                          point=point, root=root, rotation_handle=rotation_handle, enabled=enabled,
                          equation_str=equation_str, geo_col=geo_col)
 
-    def unit(self):
+    def unit(self) -> str or None:
+        """
+        The value of this parameter's length unit.
+
+        Returns
+        -------
+        str or None
+            ``None`` if the unit should be the default, ``str`` otherwise.
+        """
         return self._unit
 
     def set_unit(self, unit: str or None = None, old_unit: str = None, modify_value: bool = True) -> float or None:
@@ -539,6 +579,14 @@ class AngleParam(Param):
                          geo_col=geo_col)
 
     def unit(self):
+        """
+        The value of this parameter's angle unit.
+
+        Returns
+        -------
+        str or None
+            ``None`` if the unit should be the default, ``str`` otherwise.
+        """
         return self._unit
 
     def set_unit(self, unit: str or None = None, old_unit: str or None = None):
@@ -565,12 +613,12 @@ class AngleParam(Param):
         if self.tree_item is not None:
             self.tree_item.treeWidget().itemWidget(self.tree_item, 1).setSuffix(f" {unit}")
 
-    def rad(self):
+    def rad(self) -> float:
         """
         Returns the value of the angle parameter in radians, the base angle unit of pymead
 
         Returns
-        =======
+        -------
         float
             Angle in radians
         """
@@ -596,7 +644,21 @@ class AngleParam(Param):
                 "enabled": self.enabled(), "equation_str": self.equation_str}
 
 
-def default_lower(value: float):
+def default_lower(value: float) -> float:
+    """
+    Sets the default value for a design variable lower bound based on the design variable's value. For values close to
+    zero, an offset is used. For other values, a multiplier is used.
+
+    Parameters
+    ----------
+    value: float
+        The value of the design variable
+
+    Returns
+    -------
+    float
+        The default lower bound to use for the design variable
+    """
     if -0.1 <= value <= 0.1:
         return value - 0.02
     else:
@@ -607,6 +669,20 @@ def default_lower(value: float):
 
 
 def default_upper(value: float):
+    """
+    Sets the default value for a design variable upper bound based on the design variable's value. For values close to
+    zero, an offset is used. For other values, a multiplier is used.
+
+    Parameters
+    ----------
+    value: float
+        The value of the design variable
+
+    Returns
+    -------
+    float
+        The default upper bound to use for the design variable
+    """
     if -0.1 <= value <= 0.1:
         return value + 0.02
     else:
@@ -625,19 +701,15 @@ class DesVar(Param):
                  rotation_handle=None, enabled: bool = True, equation_str: str = None, assignable: bool = True):
         """
         Parameters
-        ==========
+        ----------
         value: float
             Starting value of the design variable
-
         name: str
             Name of the design variable
-
         lower: float or None
             Lower bound for the design variable. If ``None``, a reasonable value is chosen. Default: ``None``.
-
         upper: float or None
             Upper bound for the design variable. If ``None``, a reasonable value is chosen. Default: ``None``.
-
         setting_from_geo_col: bool
             Whether this method is being called directly from the geometric collection. Default: ``False``.
         """
@@ -659,12 +731,29 @@ class DesVar(Param):
         self.assignable = assignable
 
     @property
-    def assignable(self):
+    def assignable(self) -> bool:
+        """
+        Whether this design variable can be assigned a value from a list of design variable values.
+        Currently used just for Fan Pressure Ratio design variables.
+
+        Returns
+        -------
+        bool
+            Whether this design variable can be assigned a value from a list of design variable values
+        """
         return self._assignable
 
     @assignable.setter
     def assignable(self, assignable: bool):
-        """Currently used just for Fan Pressure Ratio design variables."""
+        """
+        Sets whether this design variable can be assigned a value from a list of design variable values.
+        Currently used just for Fan Pressure Ratio design variables.
+
+        Parameters
+        ----------
+        assignable: bool
+            Whether this design variable should be assignable from a list of design variable values
+        """
         self._assignable = assignable
 
 
