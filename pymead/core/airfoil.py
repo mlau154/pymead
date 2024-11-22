@@ -77,6 +77,14 @@ class Airfoil(PymeadObj):
         self.coords = self.get_coords_selig_format()
 
     def add_relative_points(self, points: typing.List[Point]):
+        """
+        Marks a list of control points tied to an airfoil as airfoil-relative
+
+        Parameters
+        ----------
+        points: typing.List[Point]
+            List of airfoil points to mark as airfoil-relative
+        """
         points_not_added = []
         for point in points:
             if point in self.relative_points:
@@ -92,6 +100,14 @@ class Airfoil(PymeadObj):
                              f"one or more geometric constraints")
 
     def remove_relative_points(self, points: typing.List[Point]):
+        """
+        Removes the relative assignment of a list of points in an airfoil.
+
+        Parameters
+        ----------
+        points: typing.List[Point]
+            List of airfoil points to mark as non-airfoil-relative
+        """
         for point in points:
             if point not in self.relative_points:
                 continue
@@ -102,6 +118,12 @@ class Airfoil(PymeadObj):
     def update_relative_points(self, original_geo_col_point_values: typing.Dict[str, np.ndarray]):
         """
         Updates the airfoil-coordinate-system-relative points that are part of this airfoil.
+
+        Parameters
+        ----------
+        original_geo_col_point_values: typing.Dict[str, np.ndarray]
+            Dictionary of all point values in the geometry collection, where each key in the dictionary corresponds
+            to the name of the point and each value is a ``numpy`` array of the form ``np.array([x, y])``
         """
         if len(self.relative_points) == 0:
             return
@@ -140,7 +162,7 @@ class Airfoil(PymeadObj):
         for rp, xy in zip(self.relative_points, xy):
             rp.request_move(xp=xy[0], yp=xy[1], force=True)
 
-    def check_closed(self):
+    def check_closed(self) -> None:
         """
         This method checks if the airfoil is composed of a closed set of curves.
         If the airfoil is closed, the method passes, but if the airfoil is not closed, a ``ClosureError`` is raised.
@@ -149,7 +171,9 @@ class Airfoil(PymeadObj):
 
         Returns
         -------
-
+        None
+            Nothing is returned if the closure check passes, but an error is raised pre-return if the closure
+            check does not pass
         """
         # Get the trailing edge upper curve
         if self.trailing_edge is self.upper_surf_end:
@@ -453,6 +477,19 @@ class Airfoil(PymeadObj):
         return R_abs_min / self.measure_chord()
 
     def visualize_min_radius(self) -> dict:
+        """
+        Gets airfoil data necessary to visualize the minimum radius of curvature.
+
+        Returns
+        -------
+        dict
+            Data for minimum radius of curvature with the following fields:
+
+            - ``"R_abs_min"``: absolute value of the minimum radius of curvature
+            - ``"R_abs_min_over_c"``: absolute value of the minimum radius of curvature normalized by the chord length
+            - ``"xy"``: Two-element 1-D ``numpy`` array containing the :math:`x`- and :math:`y`-values of the
+              point on the airfoil surface corresponding to the minimum radius of curvature
+        """
         R_abs_min, R_abs_min_coord_idx, R_abs_curve_idx = None, None, None
         for curve_idx, curve in enumerate(self.curves):
             R_abs = np.abs(curve.evaluate().R)
@@ -523,6 +560,21 @@ class Airfoil(PymeadObj):
             }
 
     def visualize_max_thickness(self):
+        """
+        Gets airfoil data necessary to visualize the maximum thickness.
+
+        Returns
+        -------
+        dict
+            Data for maximum thickness with the following fields:
+
+            - ``"xy"``: ``numpy`` array of the form ``np.array([[x1, y1], [x2, y2]])`` where ``x1`` and ``y1``
+              are the :math:`x`- and :math:`y`-locations of the starting point of the maximum thickness line,
+              and ``x2`` and ``y2`` are the :math:`x`- and :math:`y`-locations of the maximum thickness line
+            - ``"t_max"``: dimensional maximum thickness value
+            - ``"t/c_max"``: non-dimensional maximum thickness value (maximum thickness divided by the chord length)
+            - ``"x/c"``: non-dimensional :math:`x`-location corresponding where the maximum thickness was found
+        """
         data = self.compute_thickness(airfoil_frame_relative=True)
         airfoil_line_string = LineString(self.get_chord_relative_coords())
         line_string = LineString([(data["t/c_max_x/c_loc"], -1.0), (data["t/c_max_x/c_loc"], 1.0)])
@@ -647,7 +699,15 @@ class Airfoil(PymeadObj):
         Returns
         -------
         dict
-            Thickness values,
+            Data with the following fields:
+
+            - ``"slices"``: List of slices for visualization of the form
+              ``[np.array([[x1, y1], [x2, y2]]), np.array([[x3, y3], [x4, y4]]), ...]``, where each pair of points
+              corresponds to a line of length equal to the value of a thickness constraint at an angle corresponding
+              to the thickness evaluation direction (either chord-normal or vertical) and centered about the midpoint
+              between the intersections of a line passing through that :math:`x`-value on the airfoil
+            - ``"warning_x_vals"``: :math:`x`-locations of the input set where an individual thickness test does not
+            pass
         """
         assert len(x_arr) == len(thickness_constraints)
         airfoil_line_string = LineString(
@@ -858,6 +918,35 @@ class Airfoil(PymeadObj):
     def visualize_contains_line_string(self, points: np.ndarray or list, airfoil_frame_relative: bool = False,
                                        rotate_with_airfoil: bool = True, translate_with_airfoil: bool = True,
                                        scale_with_airfoil: bool = True) -> dict:
+        """
+        Gets the data necessary to visualize the containment of an input line string inside the airfoil.
+
+        Parameters
+        ----------
+        points: np.ndarray or list
+            Array of points of the form ``[[x1, y1], [x2, y2], ...]`` corresponding to the sequence of points
+            defining a line string that must be contained inside the airfoil for the constraint test to pass
+        airfoil_frame_relative: bool
+            Whether the line string is defined in the airfoil-relative frame. Default: ``False``
+        rotate_with_airfoil: bool
+            Whether the line string should be rotated by the angle corresponding to the opposite of the airfoil
+            angle of attack before performing the line string containment check. Default: ``True``
+        translate_with_airfoil: bool
+            Whether the line string should be translated by ``(x_LE, y_LE)``, which is the point corresponding to the
+            airfoil leading edge, before performing the line string containment check. Default: ``True``
+        scale_with_airfoil: bool
+            Whether the line string should be scaled by the airfoil chord length before performing the line string
+            containment check. Default: ``True``
+
+        Returns
+        -------
+        dict
+            Data with the following fields:
+
+            - ``"pass"``: a ``bool`` describing whether the line string containment check passed
+            - ``"xy_polyline"``: a ``numpy`` array of the form ``np.array([[x1, y1], [x2, y2], ...])`` matching
+              the points input to the method
+        """
         points = np.array(points) if isinstance(points, list) else points
         assert points.ndim == 2
 
