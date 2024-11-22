@@ -476,9 +476,18 @@ class GeometryCollection(DualRep):
 
         elif isinstance(pymead_obj, Point):
 
+            # Demote and cover both x and y parameters if necessary
+            if pymead_obj.x() in self.container()["desvar"].values():
+                self.demote_desvar_to_param(pymead_obj.x())
+            if pymead_obj.y() in self.container()["desvar"].values():
+                self.demote_desvar_to_param(pymead_obj.y())
+            if pymead_obj.x() in self.container()["params"].values() or pymead_obj.y() in self.container()["params"].values():
+                self.cover_point_xy(pymead_obj)
+
             # Remove the x and y parameters from the parameter graph
             for param in [pymead_obj.x(), pymead_obj.y()]:
-                param.param_graph.param_list.remove(param)
+                if param in param.param_graph.param_list:
+                    param.param_graph.param_list.remove(param)
                 if param in param.param_graph.nodes:
                     param.param_graph.remove_node(param)
 
