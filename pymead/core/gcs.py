@@ -1180,10 +1180,39 @@ class GCS(networkx.DiGraph):
         self.solve_other_constraints(points_solved)
         return points_solved
 
-    def rotate_cluster(self, rotation_handle: Point, new_rotation_handle_x: float = None,
+    def rotate_cluster(self,
+                       rotation_handle: Point,
+                       new_rotation_handle_x: float = None,
                        new_rotation_handle_y: float = None,
-                       new_rotation_angle: float = None):
+                       new_rotation_angle: float = None) -> (typing.List[Point], Point):
+        """
+        Rotates the constraint cluster defined by the input rotation handle by either the angle specified
+        by ``new_rotation_angle`` or by the angle difference specified by the angle between the cluster root and
+        (``new_rotation_handle_x``, ``new_rotation_handle_y``) and the initial angle between the root and rotation
+        handle.
 
+        Parameters
+        ----------
+        rotation_handle: Point
+            Rotation handle of the constraint cluster
+        new_rotation_handle_x: float or None
+            :math:`x`-location of the new rotation handle point position. Default: ``None``
+        new_rotation_handle_y: float or None
+            :math:`y`-location of the new rotation handle point position. Default: ``None``
+        new_rotation_angle: float or None
+            New rotation angle for the cluster. Can only be specified if ``new_rotation_handle_x`` and
+            ``new_rotation_handle_y`` are not specified.
+
+        Returns
+        -------
+        typing.List[Point], Point
+            List of points solved after rotating the constraint cluster and the root point of the constraint cluster
+        """
+        x_and_y_specified = new_rotation_handle_x is not None and new_rotation_handle_y is not None
+        if not (x_and_y_specified or new_rotation_angle is not None) and not (
+                x_and_y_specified and new_rotation_angle is not None):
+            raise ValueError("Must specify either 'new_rotation_handle_x` and `new_rotation_handle_y` or"
+                             "'new_rotation_angle'")
         root = self._identify_root_from_rotation_handle(rotation_handle)
         if not root.root:
             raise ValueError("Cannot move a point that is not a root of a constraint cluster")
@@ -1211,7 +1240,21 @@ class GCS(networkx.DiGraph):
         self.solve_other_constraints(points_solved)
         return points_solved, root
 
-    def solve_symmetry_constraint(self, constraint: SymmetryConstraint):
+    def solve_symmetry_constraint(self, constraint: SymmetryConstraint) -> typing.List[Point]:
+        """
+        Solves a symmetry constraint by modifying the position of the target point to be the mirror of the tool point
+        about the line defined by the first two points in the constraint.
+
+        Parameters
+        ----------
+        constraint: SymmetryConstraint
+            The symmetry constraint to solve
+
+        Returns
+        -------
+        typing.List[Point]
+            The child nodes of the symmetry constraint (the line-defining points, the tool point, and the target point)
+        """
         # This code prevents recursion errors for the case where a new cluster is created from a symmetry constraint
         # target. The symmetry constraint only gets solved if it has not yet been added to the list of partial solves
         if constraint in self.partial_symmetry_solves:
@@ -1244,9 +1287,33 @@ class GCS(networkx.DiGraph):
         return constraint.child_nodes
 
     @staticmethod
-    def solve_roc_constraint(constraint: ROCurvatureConstraint):
+    def solve_roc_constraint(constraint: ROCurvatureConstraint) -> typing.List[Point]:
+        """
+        Solves a radius of curvature constraint by translating the :math:`G^2` points along a fixed angle.
 
-        def solve_for_single_curve(p_g1: Point, p_g2: Point, n: int):
+        Parameters
+        ----------
+        constraint: ROCurvatureConstraint
+            Radius of curvature constraint to solve
+
+        Returns
+        -------
+        typing.List[Point]
+            The child nodes of the radius of curvature constraint (the :math:`G^1` and :math:`G^2` points)
+        """
+        def solve_for_single_bezier(p_g1: Point, p_g2: Point, n: int):
+            """
+            Solves a radius of curvature constraint for a single Bézier curve.
+
+            Parameters
+            ----------
+            p_g1: Point
+                :math:`G^1` (second point or second-to-last point) of the Bézier curve
+            p_g2: Point
+                :math:`G^2` (third point or third-to-last-point) of the Bézier curve
+            n: int
+                Bézier curve degree (one less than the number of control points)
+            """
             Lc = measure_curvature_length_bezier(
                 constraint.curve_joint.x().value(), constraint.curve_joint.y().value(),
                 p_g1.x().value(), p_g1.y().value(),
@@ -1257,6 +1324,17 @@ class GCS(networkx.DiGraph):
                               p_g1.y().value() + Lc * np.sin(angle), force=True)
 
         def solve_for_single_curve_zero_curvature(p_g1: Point, p_g2: Point):
+            """
+            Solves a radius of curvature constraint with zero curvature (infinite radius of curvature)
+            for a single Bézier curve by setting the :math:`G^2` points coincident with the :math:`G^1` points.
+
+            Parameters
+            ----------
+            p_g1: Point
+                :math:`G^1` (second point or second-to-last point) of the Bézier curve
+            p_g2: Point
+                :math:`G^2` (third point or third-to-last-point) of the Bézier curve
+            """
             p_g2.request_move(p_g1.x().value(), p_g1.y().value(), force=True)
 
         if constraint.curve_type_1 == "Bezier" and constraint.curve_type_2 == "LineSegment":
@@ -1269,20 +1347,34 @@ class GCS(networkx.DiGraph):
 
         if constraint.curve_type_1 == "Bezier":
             if constraint.is_solving_allowed(constraint.g2_point_curve_1):
-                solve_for_single_curve(constraint.g1_point_curve_1, constraint.g2_point_curve_1, constraint.curve_1.degree)
+                solve_for_single_bezier(constraint.g1_point_curve_1, constraint.g2_point_curve_1, constraint.curve_1.degree)
             else:
                 R1 = ROCurvatureConstraint.calculate_curvature_data(constraint.curve_joint).R1
                 constraint.param().set_value(R1, force=True)
         if constraint.curve_type_2 == "Bezier":
             if constraint.is_solving_allowed(constraint.g2_point_curve_2):
-                solve_for_single_curve(constraint.g1_point_curve_2, constraint.g2_point_curve_2, constraint.curve_2.degree)
+                solve_for_single_bezier(constraint.g1_point_curve_2, constraint.g2_point_curve_2, constraint.curve_2.degree)
             else:
                 R2 = ROCurvatureConstraint.calculate_curvature_data(constraint.curve_joint).R2
                 constraint.param().set_value(R2, force=True)
 
         return constraint.child_nodes
 
-    def solve_symmetry_constraints(self, points: typing.List[Point]):
+    def solve_symmetry_constraints(self, points: typing.List[Point]) -> typing.List[Point]:
+        """
+        Solves all symmetry constraints associated with a list of points that was modified in some way, either by
+        direct user input or indirectly via constraint solving.
+
+        Parameters
+        ----------
+        points: typing.List[Point]
+            Points for which to solve symmetry constraints if needed
+
+        Returns
+        -------
+        typing.List[Point]
+            Points solved during the solution process
+        """
         points_solved = []
         symmetry_constraints_solved = []
         for point in points:
@@ -1300,7 +1392,21 @@ class GCS(networkx.DiGraph):
 
         return points_solved
 
-    def solve_roc_constraints(self, points: typing.List[Point]):
+    def solve_roc_constraints(self, points: typing.List[Point]) -> typing.List[Point]:
+        """
+        Solves all radius of curvature constraints associated with a list of points that was modified in some way,
+        either by direct user input or indirectly via constraint solving.
+
+        Parameters
+        ----------
+        points: typing.List[Point]
+            Points for which to solve radius of curvature constraints if needed
+
+        Returns
+        -------
+        typing.List[Point]
+            Points solved during the solution process
+        """
         points_solved = []
         roc_constraints_solved = []
         for point in points:
@@ -1318,40 +1424,66 @@ class GCS(networkx.DiGraph):
 
         return points_solved
 
-    def solve_other_constraints(self, points: typing.List[Point]):
+    def solve_other_constraints(self, points: typing.List[Point]) -> typing.List[Point]:
+        """
+        Solves all radius of curvature and symmetry constraints associated with a list of points that was modified
+        in some way, either by direct user input or indirectly via constraint solving.
+
+        Parameters
+        ----------
+        points: typing.List[Point]
+            Points for which to solve radius of curvature or symmetry constraints if needed
+
+        Returns
+        -------
+        typing.List[Point]
+            Points solved during the solution process
+        """
         roc_points_solved = self.solve_roc_constraints(points)
         symmetry_points_solved = self.solve_symmetry_constraints(points)
         return list(set(symmetry_points_solved).union(roc_points_solved))
 
     @staticmethod
     def update_canvas_items(points_solved: typing.List[Point]):
+        """
+        Updates the visual representation in the airfoil canvas of all geometric objects modified by the process of
+        solving the constraint system.
 
+        Parameters
+        ----------
+        points_solved: typing.List[Point]
+            A list of all the points solved in the constraint system
+        """
+        # Update all the graphical point objects and collect the curves affected
         curves_to_update = []
         for point in points_solved:
             if point.canvas_item is not None:
                 point.canvas_item.updateCanvasItem(point.x().value(), point.y().value())
-
             for curve in point.curves:
                 if curve not in curves_to_update:
                     curves_to_update.append(curve)
 
+        # Update all the graphical curve objects and collect the airfoils affected
         airfoils_to_update = []
         for curve in curves_to_update:
             if curve.airfoil is not None and curve.airfoil not in airfoils_to_update:
                 airfoils_to_update.append(curve.airfoil)
             curve.update()
 
+        # Update all the graphical airfoil objects
         for airfoil in airfoils_to_update:
             airfoil.update_coords()
             if airfoil.canvas_item is not None:
                 airfoil.canvas_item.generatePicture()
 
+        # Collect all the graphical constraint objects that need to be updated
         constraints_to_update = []
         for point in points_solved:
             for geo_con in point.geo_cons:
                 if geo_con not in constraints_to_update:
                     constraints_to_update.append(geo_con)
 
+        # Update all the graphical constraint objects than need to be updated
         for geo_con in constraints_to_update:
             if isinstance(geo_con, GeoCon) and geo_con.canvas_item is not None:
                 geo_con.canvas_item.update()
