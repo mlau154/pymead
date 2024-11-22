@@ -262,7 +262,8 @@ class GCS(networkx.DiGraph):
     def _discover_root_from_node(self, source_node: Point):
         """
         Traverse backward along the constraint graph from the ``source_node`` until the root node is reached.
-        Returns ``None`` if the root was not found.
+        If no root was found when traversing backward, try traversing forward along the constraint graph.
+        Returns ``None`` if the root was still not found.
 
         Parameters
         ----------
@@ -753,37 +754,82 @@ class GCS(networkx.DiGraph):
 
     def _remove_angle_constraint_from_directed_edge(
             self, constraint: RelAngle3Constraint or AntiParallel3Constraint or Perp3Constraint):
+
+        def _check_if_other_angle_constraint_attached(outer: Point) -> bool:
+            """
+            Determines if there is another angle constraint using the edge ``(vertex, outer)`` as a ghost edge.
+
+            Parameters
+            ----------
+            outer: Point
+                Main endpoint of the current angle constraint
+
+            Returns
+            -------
+            bool
+                Whether there is another angle constraint using the edge ``(vertex, outer)`` as a ghost edge
+            """
+            for nbr, datadict in self.adj[outer].items():
+                if "angle" not in datadict:
+                    continue
+                return True
+            return False
+
+        def _remove_edges(vertex: Point, outer: Point, other: Point):
+            """
+            Removes edges as needed depending on the configuration of the angle constraint and whether
+            there is an attached distance constraint.
+
+            Parameters
+            ----------
+            vertex: Point
+                Vertex of the angle constraint. Normally ``constraint.p2``
+            outer: Point
+                Endpoint of the angle constraint where the target edge is found. Either ``constraint.p1`` or
+                ``constraint.p3``
+            other: Point
+                The other endpoint of the angle constraint that may have a ghost constraint attached. Either
+                ``constraint.p1`` or ``constraint.p3``, whichever one is not ``outer``
+            """
+            edge_data = self.get_edge_data(vertex, outer)
+            if "distance" in edge_data.keys() or _check_if_other_angle_constraint_attached(outer):
+                # Remove the angle data but keep the edge if there is a distance constraint here or if this edge
+                # should be used as a ghost edge for another angle constraint
+                edge_data.pop("angle")
+            else:
+                # Otherwise, remove the edge
+                self.remove_edge(vertex, outer)
+                edges_removed.append((vertex, outer))
+
+            # Remove the inward-facing ghost edge if there is one
+            ghost_edge_data = self.get_edge_data(other, vertex)
+            if ghost_edge_data is not None and len(ghost_edge_data) == 0:
+                self.remove_edge(other, vertex)
+                edges_removed.append((other, vertex))
+
+            # Remove the outward-facing ghost edge if there is one and there are no other angle constraint attached
+            outward_ghost_edge_data = self.get_edge_data(vertex, other)
+            if outward_ghost_edge_data is not None and len(
+                    outward_ghost_edge_data) == 0 and not _check_if_other_angle_constraint_attached(other):
+                self.remove_edge(vertex, other)
+                edges_removed.append((vertex, other))
+
         edges_removed = []
         edge_data_21 = self.get_edge_data(constraint.p2, constraint.p1)
+        edge_data_23 = self.get_edge_data(constraint.p2, constraint.p3)
+
+        # IF THERE IS A GHOST EDGE AND THE OTHER EDGE IS DESIGNED TO BE A GHOST EDGE FOR ANOTHER ANGLE CONSTRAINT,
+        # DELETE THE GHOST EDGE AND EMPTY THE OTHER EDGE OF ITS DATA BUT KEEP THE EDGE ITSELF
+        # CHECK IF THE OTHER EDGE IS DESIGNED TO BE A GHOST EDGE BY ANALYZING THE NEIGHBORS OF THE OUTER POINT OF THAT
+        # EDGE TO SEE IF ANY CONTAINS AN ANGLE CONSTRAINT. MAYBE NEED TO SET A NEW ROOT IN THIS CASE? OR PERHAPS
+        # THE CODE DOES THIS ALREADY.
+
         if edge_data_21 is not None and "angle" in edge_data_21.keys() and edge_data_21["angle"] is constraint:
-            if "distance" in edge_data_21.keys():
-                edge_data_21.pop("angle")
-            else:
-                self.remove_edge(constraint.p2, constraint.p1)
-                edges_removed = [(constraint.p2, constraint.p1)]
-
-            # Remove the ghost edge if there is one
-            edge_data_32 = self.get_edge_data(constraint.p3, constraint.p2)
-            if edge_data_32 is not None and len(edge_data_32) == 0:
-                self.remove_edge(constraint.p3, constraint.p2)
-                edges_removed.append((constraint.p3, constraint.p2))
-
+            _remove_edges(constraint.p2, constraint.p1, constraint.p3)
             return edges_removed
 
-        edge_data_23 = self.get_edge_data(constraint.p2, constraint.p3)
         if edge_data_23 is not None and "angle" in edge_data_23.keys() and edge_data_23["angle"] is constraint:
-            if "distance" in edge_data_23.keys():
-                edge_data_23.pop("angle")
-            else:
-                self.remove_edge(constraint.p2, constraint.p3)
-                edges_removed = [(constraint.p2, constraint.p3)]
-
-            # Remove the ghost edge if there is one
-            edge_data_12 = self.get_edge_data(constraint.p1, constraint.p2)
-            if edge_data_12 is not None and len(edge_data_12) == 0:
-                self.remove_edge(constraint.p1, constraint.p2)
-                edges_removed.append((constraint.p1, constraint.p2))
-
+            _remove_edges(constraint.p2, constraint.p3, constraint.p1)
             return edges_removed
 
     def _assign_new_root_if_required(self, v_of_edge_removed: Point):

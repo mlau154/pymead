@@ -119,7 +119,7 @@ def convert_dialog_to_mplot_settings(dialog_input: dict):
         'Grid': dialog_input['Grid'],
         'Grid_Zoom': dialog_input['Grid_Zoom'],
         'flow_field': dialog_input['Output_Field'],
-        "Tecplot": dialog_input["Tecplot"],
+        "Tecplot": dialog_input["Tecplot"] if "Tecplot" in dialog_input else False,
         'Streamline_Grid': dialog_input["Streamline_Grid"],
         'CPK': dialog_input['CPK'],
     }

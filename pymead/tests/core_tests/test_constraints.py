@@ -1,4 +1,5 @@
 import os
+from copy import deepcopy
 from unittest import TestCase
 
 from pymead import TEST_DIR
@@ -77,3 +78,36 @@ class GCSTests(TestCase):
         geo_col_file = os.path.join(TEST_DIR, "core_tests", "alt_fp_parametrization_p7_last.jmea")
         geo_col = GeometryCollection.set_from_dict_rep(load_data(geo_col_file))
         self.assertTrue(geo_col.verify_all())
+
+    def test_delete_constraint_1_forward(self):
+        # Test deleting the constraints of a particular system in forward order
+        geo_col_file = os.path.join(TEST_DIR, "core_tests", "constraint_deletion_1.jmea")
+        geo_col = GeometryCollection.set_from_dict_rep(load_data(geo_col_file))
+        geocon_container = geo_col.container()["geocon"]
+        param_container = geo_col.container()["params"]
+
+        self.assertIn("ClusterAngle-1", param_container)
+
+        geocon_keys = deepcopy(list(geocon_container.keys()))
+        for geocon_key in geocon_keys:
+            geo_col.remove_pymead_obj(geocon_container[geocon_key])
+            self.assertTrue(geo_col.verify_all())
+
+        self.assertNotIn("ClusterAngle-1", param_container)
+
+    def test_delete_constraint_1_reverse(self):
+        # Test deleting the constraints of a particular system in reverse order
+        geo_col_file = os.path.join(TEST_DIR, "core_tests", "constraint_deletion_1.jmea")
+        geo_col = GeometryCollection.set_from_dict_rep(load_data(geo_col_file))
+        geocon_container = geo_col.container()["geocon"]
+        param_container = geo_col.container()["params"]
+
+        self.assertIn("ClusterAngle-1", param_container)
+
+        geocon_keys = deepcopy(list(geocon_container.keys())[::-1])
+        for geocon_key in geocon_keys:
+            geo_col.remove_pymead_obj(geocon_container[geocon_key])
+            self.assertTrue(geo_col.verify_all())
+
+        self.assertNotIn("ClusterAngle-1", param_container)
+
