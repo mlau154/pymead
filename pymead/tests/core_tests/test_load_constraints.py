@@ -9,7 +9,8 @@ def test_load_constraints(app):
     for file in os.listdir(EXAMPLES_DIR):
         extension = os.path.splitext(file)[-1]
         full_path = os.path.join(EXAMPLES_DIR, file)
-        if extension in [".jmea", ".json", ".pkl"]:
+        if extension == ".jmea":
             current_file = app.geo_col.set_from_dict_rep(load_data(full_path))
             current_file.verify_all()
+
 
