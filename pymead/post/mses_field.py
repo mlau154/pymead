@@ -81,12 +81,14 @@ def generate_field_matplotlib(axs: plt.Axes or None,
             arrow_idxs.append(arrow_idxs[-1] + arrow_spacing)
 
     start_idx, end_idx = 0, x_grid[0].shape[1] - 1
+    if norm is None:
+        norm = mpl_colors.Normalize(vmin=vmin, vmax=vmax)
     for flow_section_idx in range(grid_stats["numel"] + 1):
 
         flow_var_section = flow_var[:, start_idx:end_idx]
 
         args = (x_grid[flow_section_idx], y_grid[flow_section_idx], flow_var_section)
-        kwargs = dict(cmap=cmap_field, vmin=vmin, vmax=vmax, norm=norm)
+        kwargs = dict(cmap=cmap_field, norm=norm)
 
         if axs is None:
             pcolormesh_handles[f'field_{flow_section_idx}'] = plt.pcolormesh(*args, **kwargs)
