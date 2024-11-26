@@ -728,7 +728,7 @@ def export_geom_and_mses_field_to_paraview(analysis_dir: str,
                                            grid_file: str, blade_file: str, **kwargs) -> (typing.List[str], str):
     """
     Exports both airfoil geometry and MSES field data to Paraview XML files. The airfoil geometry is exported to
-    a PolyData (``.vtp``) file, and each zone of the MSES data (two for each surface) is exported to its own
+    a PolyData (``.vtp``) file, and each zone of the MSES data (number of airfoils plus one) is exported to its own
     Structured Grid (``.vts``) file. These files get exported to ``<analysis_dir>/ParaviewData``.
 
     Parameters
