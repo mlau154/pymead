@@ -6,6 +6,7 @@ import sys
 import typing
 from copy import copy
 
+from pymead import EXAMPLES_DIR
 from pymead.core.ferguson import Ferguson
 from pymead.core.param_graph import ParamGraph
 from pymead.core.units import Units
@@ -22,6 +23,7 @@ from pymead.core.point import Point, PointSequence
 from pymead.core.transformation import Transformation3D
 from pymead.plugins.IGES.curves import BezierIGES
 from pymead.plugins.IGES.iges_generator import IGESGenerator
+from pymead.utils.read_write_files import load_data
 from pymead.version import __version__
 
 
@@ -1133,6 +1135,70 @@ class GeometryCollection(DualRep):
                 continue
             airfoil.relative_points.append(point)
         return geo_col
+
+    @classmethod
+    def load_file(cls, jmea_file: str, **kwargs):
+        """
+        Class method that creates a ``GeometryCollection`` object directly from a ``.jmea`` file.
+
+        Parameters
+        ----------
+        jmea_file: str
+            Absolute path to a ``.jmea`` file
+        kwargs
+            Additional keyword arguments to pass to ``GeometryCollection.set_from_dict_rep``. Should only be specified
+            if this method is called from the GUI
+
+        Returns
+        -------
+        GeometryCollection
+            A new geometry collection object with the data loaded from the ``.jmea`` file
+        """
+        return cls.set_from_dict_rep(load_data(jmea_file), **kwargs)
+
+    @classmethod
+    def load_example(cls, example_name: str, **kwargs):
+        """
+        Class method that creates a ``GeometryCollection`` object directly from a ``.jmea`` file.
+
+        Parameters
+        ----------
+        example_name: str
+            Name of an example file (with or without the ``.jmea`` extension). See
+            ``GeometryCollection.list_examples`` for a complete list of example names
+        kwargs
+            Additional keyword arguments to pass to ``GeometryCollection.set_from_dict_rep``. Should only be specified
+            if this method is called from the GUI
+
+        Returns
+        -------
+        GeometryCollection
+            A new geometry collection object with the data loaded from the example file
+        """
+        ext_to_add = ".jmea" if not os.path.splitext(example_name)[-1] == ".jmea" else ""
+        example_file = os.path.join(EXAMPLES_DIR, example_name + ext_to_add)
+        if not os.path.exists(example_file):
+            raise FileNotFoundError(f"Example {example_name} does not exist. Use ")
+        return cls.load_file(example_file, **kwargs)
+
+    @staticmethod
+    def list_examples() -> typing.List[str]:
+        """
+        Gets a list of available example file names that can be used to create a new ``GeometryCollection`` object
+        using the ``GeometryCollection.load_example`` method.
+
+        Returns
+        -------
+        typing.List[str]
+            A list of ``.jmea`` example names (without the extension)
+        """
+        examples = []
+        for _, _, filenames in os.walk(EXAMPLES_DIR):
+            for filename in filenames:
+                if not os.path.splitext(filename)[-1] == ".jmea":
+                    continue
+                examples.append(os.path.splitext(filename)[0])
+        return examples
 
     def switch_units(self, unit_type: str, old_unit: str, new_unit: str):
 

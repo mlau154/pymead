@@ -2,9 +2,9 @@ import typing
 import multiprocessing.connection
 
 import numpy as np
+import shapely
 import shapely.errors
 from scipy.optimize import minimize
-from shapely.geometry import Polygon
 
 from pymead.core.geometry_collection import GeometryCollection
 from pymead.utils.get_airfoil import extract_data_from_airfoiltools
@@ -61,10 +61,8 @@ def airfoil_symmetric_area_difference(parameters: list,
     # which prevents Polygon.area() from running, then make the symmetric area difference a large value to discourage
     # the optimizer from continuing in that direction.
     try:
-        airfoil_shapely_points = list(map(tuple, coords))
-        airfoil_polygon = Polygon(airfoil_shapely_points)
-        airfoil_to_match_shapely_points = list(map(tuple, airfoil_to_match_xy))
-        airfoil_to_match_polygon = Polygon(airfoil_to_match_shapely_points)
+        airfoil_polygon = shapely.Polygon(coords)
+        airfoil_to_match_polygon = shapely.Polygon(airfoil_to_match_xy)
         symmetric_area_difference_polygon = airfoil_polygon.symmetric_difference(airfoil_to_match_polygon)
         symmetric_area_difference = symmetric_area_difference_polygon.area
     except (shapely.errors.TopologicalError, shapely.errors.GEOSException):
@@ -94,8 +92,9 @@ def match_airfoil(conn: multiprocessing.connection.Connection or None,
         If not ``None``, a connection established between the worker thread deployed by the GUI over which
         data can be passed to update the user on the state of the analysis
 
-    geo_col_dict: GeometryCollection
-        Geometry collection from which the ``Airfoil`` is selected by the ``target_airfoil`` name and where the
+    geo_col_dict: dict
+        Dictionary produced by the ``GeometryCollection.get_dict_rep`` method
+        from which the ``Airfoil`` is selected by the ``target_airfoil`` name and where the
         design variables are stored. During the optimization, any values in the design variable sub-container will
         be updated to produce an airfoil geometry that closely matches the airfoil coordinates specified by
         ``airfoil_to_match``.
