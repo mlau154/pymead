@@ -1,3 +1,5 @@
+.. _geo-objs:
+
 Geometric Objects
 #################
 

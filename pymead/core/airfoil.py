@@ -688,11 +688,9 @@ class Airfoil(PymeadObj):
         x_arr: float or list or np.ndarray
             The :math:`x` (or :math:`x/c` if ``airfoil_frame_relative==True``)
             locations at which to evaluate the thickness
-
         airfoil_frame_relative: bool
             Whether to compute the area in the airfoil-relative frame. If ``True``, the thickness
             based on a chord-relative scaling will be returned. Default: ``False``
-
         vertical_check: bool
             Whether to compute the thickness vertically from the chordline (rather than perpendicular).
             This value is ignored unless``airfoil_frame_relative==False``.
@@ -708,7 +706,7 @@ class Airfoil(PymeadObj):
               to the thickness evaluation direction (either chord-normal or vertical) and centered about the midpoint
               between the intersections of a line passing through that :math:`x`-value on the airfoil
             - ``"warning_x_vals"``: :math:`x`-locations of the input set where an individual thickness test does not
-            pass
+               pass
         """
         assert len(x_arr) == len(thickness_constraints)
         airfoil_line_string = LineString(
