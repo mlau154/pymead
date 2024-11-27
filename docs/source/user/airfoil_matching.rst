@@ -1,6 +1,8 @@
 Airfoil Matching
 ################
 
+.. |rarrow|   unicode:: U+02192 .. RIGHT ARROW
+
 A common problem in airfoil design is matching an existing set of airfoil coordinates with a parametrization. For
 example, a design strategy might call for optimizing an airfoil using a NACA 0012 as a baseline airfoil. However,
 the NACA 0012 is defined by a simple polynomial function that might not be a useful parametrization scheme for more
@@ -41,7 +43,38 @@ A tutorial for matching the NACA 0012 using a built-in example in ``pymead`` is 
     .. tab-item:: GUI
         :sync: gui
 
-        *Construction Zone*
+        To get a parametrization to start with, load in an airfoil ``pymead``'s example directory by selecting
+        **File** |rarrow| **Load Example** |rarrow| **Shape Optimization** |rarrow| **Single Airfoil (Blunt TE)**.
+
+        Next, we see from inspection that the NACA 0012 has its trailing edge upper surface point located at
+        :math:`(1.0,0.00126)` and its trailing edge lower surface point at :math:`(1.0,-0.00126)`. To set the trailing
+        edge thickness accordingly, we need to set the values of ``"Length-6"`` and ``"Length-7"``, which control
+        the distances between the :math:`(1,0)` point and the trailing edge upper surface point and trailing edge
+        lower point, respectively. To do this, either double-click on the trailing edge thickness lengths in the canvas,
+        change each value to ``0.00126``, and left-click elsewhere on the canvas, or simply type in this number
+        in the parameter tree in the spin boxes for both ``"Length-7"``.
+
+        The airfoil is now ready to be matched. To match the airfoil, open the airfoil-matching dialog using
+        **Tools** |rarrow| **Match Airfoil**. Make sure that ``Airfoil-1`` is selected as the tool airfoil,
+        the "Airfoil Type" is set to ``AirfoilTools``, and the "Web Airfoil" is set to ``n0012-il``. Then, press "OK."
+
+        .. figure:: images/airfoil_matching_dialog_dark.*
+           :width: 300px
+           :align: center
+           :class: only-dark
+
+           Airfoil matching dialog
+
+        .. figure:: images/airfoil_matching_dialog_light.*
+           :width: 300px
+           :align: center
+           :class: only-light
+
+           Airfoil matching dialog
+
+        A new tab should appear that shows the morphing of the airfoil shape during the optimization and a graph of the
+        objective function value. In this case, the optimizer gives a final objective function value of
+        :math:`\Delta A_\text{sym}=1.211 \times 10^{-4}`.
 
     .. tab-item:: API
         :sync: api
@@ -127,3 +160,18 @@ A tutorial for matching the NACA 0012 using a built-in example in ``pymead`` is 
         added (note that we started from the result of the very first optimization with the original bounds on the
         design variables at index 0 and index 10), we get a better match with
         :math:`\Delta A_\text{sym}=8.371 \times 10^{-5}`.
+
+
+.. raw:: html
+
+   <script type="text/javascript">
+      var images = document.getElementsByTagName("img")
+      for (let i = 0; i < images.length; i++) {
+          if (images[i].classList.contains("only-light")) {
+            images[i].parentNode.classList.add("only-light")
+          } else if (images[i].classList.contains("only-dark")) {
+            images[i].parentNode.classList.add("only-dark")
+            } else {
+            }
+      }
+   </script>
