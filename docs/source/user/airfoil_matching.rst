@@ -54,6 +54,20 @@ A tutorial for matching the NACA 0012 using a built-in example in ``pymead`` is 
         change each value to ``0.00126``, and left-click elsewhere on the canvas, or simply type in this number
         in the parameter tree in the spin boxes for both ``"Length-7"``.
 
+        .. figure:: images/length_67_dark.*
+           :width: 300px
+           :align: center
+           :class: only-dark
+
+           Modifying trailing edge thickness
+
+        .. figure:: images/length_67_light.*
+           :width: 300px
+           :align: center
+           :class: only-light
+
+           Modifying trailing edge thickness
+
         The airfoil is now ready to be matched. To match the airfoil, open the airfoil-matching dialog using
         **Tools** |rarrow| **Match Airfoil**. Make sure that ``Airfoil-1`` is selected as the tool airfoil,
         the "Airfoil Type" is set to ``AirfoilTools``, and the "Web Airfoil" is set to ``n0012-il``. Then, press "OK."
@@ -74,7 +88,80 @@ A tutorial for matching the NACA 0012 using a built-in example in ``pymead`` is 
 
         A new tab should appear that shows the morphing of the airfoil shape during the optimization and a graph of the
         objective function value. In this case, the optimizer gives a final objective function value of
-        :math:`\Delta A_\text{sym}=1.211 \times 10^{-4}`.
+        :math:`\Delta A_\text{sym}=1.211 \times 10^{-4}`. Save the updated airfoil using **File** |rarrow| **Save As**.
+
+        .. figure:: images/airfoil_matching_graph_dark.*
+           :width: 600px
+           :align: center
+           :class: only-dark
+
+           Airfoil matching graph
+
+        .. figure:: images/airfoil_matching_graph_light.*
+           :width: 600px
+           :align: center
+           :class: only-light
+
+           Airfoil matching graph
+
+        This is a good match for an airfoil with a chord length of 1. We can potentially achieve a better match
+        by expanding the variable bounds and adding control points. We can pull up the design variables bounds
+        editor using **Edit** |rarrow| **Bounds** or by pressing ``Ctrl+B``. Notice that both design variable 1
+        (``Length-2``) and design variable 11 (``Point-7.x``) have values equal to their lower bounds, which
+        means that expanding the bounds could potentially allow the optimizer to achieve a better match. Modify the
+        lower bounds by double-clicking and replacing the lower bounds of ``Length-2`` and ``Point-7.x`` with
+        ``0.02`` and ``0.2``, respectively.
+
+        .. figure:: images/edit_bounds_matching_dark.*
+           :width: 400px
+           :align: center
+           :class: only-dark
+
+           Editing variable bounds
+
+        .. figure:: images/edit_bounds_matching_light.*
+           :width: 400px
+           :align: center
+           :class: only-light
+
+           Editing variable bounds
+
+        Matching the airfoil again with these modified lower bounds gives a slightly higher objective function value
+        than before, which indicates that the optimization might be getting stuck in a local minimum.
+        However, tuning these bounds and the bounds of other design variables can possibly drive the objective
+        function value further down.
+
+        Another strategy to get a closer match is the addition of curve control points. First, load in the previously
+        saved ``.jmea`` file from the first matching using **File** |rarrow| **Open**.
+        We can add one control point to each of the airfoil surfaces by left-clicking inside the airfoil canvas,
+        pressing **p** (or by clicking on the `Point` button in the tool bar), and placing points somewhere
+        near :math:`(0.6,0.08)` and :math:`(0.6,-0.08)`. Double-click
+        on the newly created point references in the Parameter Tree to set the :math:`x`- and :math:`y`-values equal
+        to these numbers if desired. Next, add the points to their respective curves by left-clicking the curve,
+        then right-clicking and selecting **Modify Geometry** |rarrow| **Insert Curve Point** and following
+        the instructions that appear in the status bar (lower left-hand corner of the GUI).
+
+        .. figure:: images/airfoil_matching_graph_2_dark.*
+           :width: 600px
+           :align: center
+           :class: only-dark
+
+           Airfoil matching graph after adding two control points
+
+        .. figure:: images/airfoil_matching_graph_2_light.*
+           :width: 600px
+           :align: center
+           :class: only-light
+
+           Airfoil matching graph after adding two control points
+
+        To add the :math:`x`- and :math:`y`-locations of these points as design variables,
+        right-click on their references in the parameter tree and select "Expose x and y Parameters" from the context
+        menu. Then, select the newly created parameters (``Point-13.x``, ``Point-13.y``, ``Point-14.x``, and
+        ``Point-14.y``), right-click on their references, and select "Promote to Design Variable" from the context
+        menu. Matching this airfoil with four additional design variables gives an improved objective function
+        value of :math:`\Delta A_\text{sym}=8.371 \times 10^{-5}`, an excellent match. Do not forget to save
+        the matched airfoil if necessary!
 
     .. tab-item:: API
         :sync: api
