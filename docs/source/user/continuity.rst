@@ -74,9 +74,9 @@ A derivation of the above equation is reserved for a journal paper (coming soon)
       var images = document.getElementsByTagName("img")
       for (let i = 0; i < images.length; i++) {
           if (images[i].classList.contains("only-light")) {
-            images[i].parentNode.classList.add("only-light")
+            images[i].parentNode.parentNode.classList.add("only-light")
           } else if (images[i].classList.contains("only-dark")) {
-            images[i].parentNode.classList.add("only-dark")
+            images[i].parentNode.parentNode.classList.add("only-dark")
             } else {
             }
       }
