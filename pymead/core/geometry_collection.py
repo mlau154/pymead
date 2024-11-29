@@ -577,7 +577,7 @@ class GeometryCollection(DualRep):
             else:
                 self.canvas.removeItem(pymead_obj.canvas_item)
 
-        if isinstance(pymead_obj, Airfoil):
+        if isinstance(pymead_obj, Airfoil) and self.gui_obj is not None:
             self.gui_obj.permanent_widget.updateAirfoils()
 
     def add_point(self, x: float, y: float, name: str or None = None, relative_airfoil_name: str = None,
