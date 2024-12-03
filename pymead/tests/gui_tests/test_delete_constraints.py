@@ -12,14 +12,14 @@ def test_load_constraints_forward():
         full_path = os.path.join(EXAMPLES_DIR, file)
         if extension == ".jmea":
             geo_col = GeometryCollection.set_from_dict_rep(load_data(full_path))
-            print(full_path)
             geocons = deepcopy(list(geo_col.container()["geocon"].keys()))
             for geocon in geocons:
                 if geocon not in geo_col.container()["geocon"]:
                     continue
                 geo_col.remove_pymead_obj(geo_col.container()["geocon"][geocon])
-                print(geocon)
-                geo_col.verify_all()
+            geo_col.verify_all()
+            assert(key for key in geo_col.container()["desvar"] if key.startswith('ClusterAngle'))
+
 
 
 def test_load_constraints_backward():
@@ -34,3 +34,4 @@ def test_load_constraints_backward():
                     continue
                 geo_col.remove_pymead_obj(geo_col.container()["geocon"][geocon])
             geo_col.verify_all()
+            assert (key for key in geo_col.container()["desvar"] if key.startswith('ClusterAngle'))
