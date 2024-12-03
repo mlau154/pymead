@@ -826,7 +826,7 @@ class GUI(FramelessMainWindow):
             self.disp_message_box("No design variables present", message_mode="info")
             return
         self.dialog = EditBoundsDialog(geo_col=self.geo_col, theme=self.themes[self.current_theme], parent=self)
-        if (dialog_test_action is not None and not dialog_test_action(self.dialog)) or self.dialog.show():
+        if (dialog_test_action is not None and not dialog_test_action(self.dialog)) or not self.dialog.show():
             self.dialog.resizetoFit()
 
     def auto_range_geometry(self):
