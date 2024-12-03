@@ -4,6 +4,8 @@ import typing
 
 import pandas as pd
 import numpy as np
+import shapely
+import triangle
 
 
 flow_var_idx = {"M": 7, "Cp": 8, "p": 3, "rho": 2, "u": 4, "v": 5, "V": 6, "Cpt": 9, "dCpt": 10, "dCp": 11}
@@ -460,7 +462,7 @@ def read_field_variables_names_mses(field_file: str) -> typing.List[str]:
 
 def export_mses_field_to_tecplot_ascii(output_file: str, field_file: str, grid_stats_file: str,
                                        grid_file: str, blade_file: str, **kwargs):
-    blade = convert_blade_file_to_3d_array(blade_file)
+    blade = convert_blade_file_to_array_list(blade_file)
     field_array = read_field_from_mses(field_file, **kwargs)
     grid_stats = read_grid_stats_from_mses(grid_stats_file)
     x_grid, y_grid = read_streamline_grid_from_mses(grid_file, grid_stats)
@@ -537,6 +539,234 @@ def export_mses_field_to_tecplot_ascii(output_file: str, field_file: str, grid_s
             ascii_file.write(f"{' '.join(Y_strings)}\n")  # Y-coords (block format)
 
 
+def export_mses_field_to_paraview_xml(analysis_dir: str,
+                                      x_grid: typing.List[np.ndarray],
+                                      y_grid: typing.List[np.ndarray],
+                                      headers: typing.List[str],
+                                      field_array: np.ndarray) -> typing.List[str]:
+    """
+    Writes MSES field data to the Paraview XML Structured Grid file type (``.vts``). A separate file is created for
+    each "zone," the cells where the Euler equations are solved on each side of the displacement thickness streamlines.
+    These files get stored in ``<analysis_dir>/Paraviewdata``
+
+    Parameters
+    ----------
+    analysis_dir: str
+        Directory where the ``ParaviewData`` directory will be created
+    x_grid: typing.List[np.ndarray]
+        List of grid :math:`x`-coordinate arrays (one for each zone). Stored in a "meshgrid"-like format
+    y_grid: typing.List[np.ndarray]
+        List of grid :math:`x`-coordinate arrays (one for each zone). Stored in a "meshgrid"-like format
+    headers: typing.List[str]
+        List of variable names ("Cp", "M", etc.)
+    field_array: np.ndarray
+        3-D ``numpy.ndarray`` where the first dimension represents a given flow variable, and the second and
+        third dimensions represent the value of the flow variable at indices ``i`` and ``j``, respectively
+
+    Returns
+    -------
+    typing.List[str]
+        Absolute file path to each of the generated ``.vts`` files
+    """
+
+    # Get the folder in which the structured data files will be stored, creating it if it does not yet exist
+    output_vts_dir = os.path.join(analysis_dir, "ParaviewData")
+    if not os.path.exists(output_vts_dir):
+        os.mkdir(output_vts_dir)
+
+    # Make a storage container for the vts file locations
+    vts_files = []
+
+    starting_streamline = 0
+    for zone_idx in range(len(x_grid)):
+        output_vts_file = os.path.join(output_vts_dir, f"mses_field_zone_{zone_idx}.vts")
+        vts_files.append(output_vts_file)
+        with open(output_vts_file, "w") as vts_file:
+            vts_file.write('<?xml version="1.0"?>\n')
+            vts_file.write('<VTKFile type="StructuredGrid" version="0.1" byte_order="LittleEndian">\n')
+
+            # Get the grid extents
+            i_max, j_max = x_grid[zone_idx].shape[0], x_grid[zone_idx].shape[1]
+            whole_extent = [0, i_max - 1, 0, j_max - 1, 0, 0]
+            whole_extent_str = ' '.join([str(ext_val) for ext_val in whole_extent])
+
+            vts_file.write(f'<StructuredGrid WholeExtent="{whole_extent_str}">\n')
+            vts_file.write(f'<Piece Extent="{whole_extent_str}">\n')
+
+            # Write the grid values (node-centered)
+            vts_file.write('<Points>\n')
+            vts_file.write('<DataArray type="Float64" NumberOfComponents="3" format="ascii">\n')
+            for j in range(j_max):
+                for i in range(i_max):
+                    vts_file.write(str(x_grid[zone_idx][i, j]) + ' ')
+                    vts_file.write(str(y_grid[zone_idx][i, j]) + ' ')
+                    vts_file.write('0 ')
+            vts_file.write('\n')
+            vts_file.write('</DataArray>\n')
+            vts_file.write('</Points>\n')
+
+            # Write the other variables (cell-centered)
+            vts_file.write('<CellData Scalars="Cp" Normals="cell_normals">\n')
+            for header_idx in range(2, len(headers)):
+                vts_file.write(f'<DataArray type="Float64" Name="{headers[header_idx]}" format="ascii">\n')
+                for j in range(starting_streamline, j_max + starting_streamline - 1):
+                    for i in range(0, i_max - 1):
+                        vts_file.write(str(field_array[header_idx, i, j]) + " ")
+                vts_file.write("\n")
+                vts_file.write('</DataArray>\n')
+
+            # # Write the cell normals to another data array
+            # vts_file.write(f'<DataArray type="Float64" Name="cell_normals" format="ascii" NumberOfComponents="3">\n')
+            # for j in range(starting_streamline, j_max + starting_streamline - 1):
+            #     for i in range(0, i_max - 1):
+            #         vts_file.write("0 0 1 ")
+            # vts_file.write('\n')
+            # vts_file.write('</DataArray>\n')
+
+            vts_file.write('</CellData>\n')
+            starting_streamline += x_grid[zone_idx].shape[1] - 1
+
+            vts_file.write('</Piece>\n')
+            vts_file.write('</StructuredGrid>\n')
+            vts_file.write('</VTKFile>\n')
+
+    return vts_files
+
+
+def export_blade_to_paraview_xml(analysis_dir: str, blade: typing.List[np.ndarray]) -> str:
+    """
+    Exports an array of multi-element airfoil coordinates to the Paraview XML PolyData (``.vtp``) format.
+
+    Parameters
+    ----------
+    analysis_dir: str
+        Absolute path of the location where the newly created ``.vtp`` file will be stored
+    blade:
+        Each array in the list describes the coordinates of a different airfoil, and each array has shape
+        :math:`M \times 2`, where :math:`M` is the number of discrete airfoil coordinates in a given airfoil
+
+    Returns
+    -------
+    str
+        Absolute path to the newly created ``.vtp`` file
+    """
+    # Get the folder in which the polydata will be stored, creating it if it does not yet exist
+    output_vtp_dir = os.path.join(analysis_dir, "ParaviewData")
+    if not os.path.exists(output_vtp_dir):
+        os.mkdir(output_vtp_dir)
+
+    output_vtp_file = os.path.join(output_vtp_dir, "mses_geom.vtp")
+
+    with open(output_vtp_file, "w") as vtp_file:
+        # File header and opening tags
+        vtp_file.write('<?xml version="1.0"?>\n')
+        vtp_file.write('<VTKFile type="PolyData" version="0.1" byte_order="LittleEndian">\n')
+        vtp_file.write('<PolyData>\n')
+
+        for airfoil in blade:
+            # Perform a Delaunay triangulation (convex hull)
+            segments = np.array([[i, i + 1] for i in range(airfoil.shape[0] - 1)])
+            tri = triangle.triangulate({"vertices": airfoil, "segments": segments})
+            vertices = tri['vertices']
+            triangles = tri['triangles']
+
+            # Get a buffered version of a polygon defined by the airfoil points.
+            # This helps avoid floating point precision issues with the shapely `contains` method
+            shapely_poly = shapely.Polygon(airfoil).buffer(1e-11)
+
+            # Get the triangles outside the airfoil polygon
+            triangles_to_remove = []
+            for tri_idx, tri_indices in enumerate(triangles):
+                for edge_pair_combo in [[0, 1], [1, 2], [2, 0]]:
+                    xy = np.mean((vertices[tri_indices[edge_pair_combo[0]]],
+                                  vertices[tri_indices[edge_pair_combo[1]]]), axis=0)
+                    if not shapely.contains(shapely_poly, shapely.Point(xy[0], xy[1])):
+                        triangles_to_remove.append(tri_idx)
+                        break
+
+            # Remove these triangles to obtain a triangulated concave hull
+            for triangles_to_remove in triangles_to_remove[::-1]:
+                triangles = np.delete(triangles, triangles_to_remove, axis=0)
+
+            vtp_file.write(f'<Piece NumberOfPoints="{len(vertices)}" '
+                           f'NumberOfVerts="0" NumberOfLines="0" NumberOfStrips="0" '
+                           f'NumberOfPolys="{len(triangles)}">\n')
+
+            # Write the coordinates of each vertex to the file inside a DataArray
+            vtp_file.write('<Points>\n')
+            vtp_file.write('<DataArray type="Float64" NumberOfComponents="3" format="ascii">\n')
+            for point in vertices:
+                vtp_file.write(f"{point[0]} {point[1]} 0 ")
+            vtp_file.write('\n')
+            vtp_file.write('</DataArray>\n')
+            vtp_file.write('</Points>\n')
+
+            # Write the connectivity of each triangle to the file as well as an offset array that describes
+            # how many connectivity points should be extracted from the array for each triangle
+            vtp_file.write('<Polys>\n')
+            vtp_file.write('<DataArray type="Int32" Name="connectivity" format="ascii">\n')
+            for tri_indices in triangles:
+                vtp_file.write(f"{tri_indices[0]} {tri_indices[1]} {tri_indices[2]} ")
+            vtp_file.write('\n')
+            vtp_file.write('</DataArray>\n')
+            vtp_file.write('<DataArray type="Int32" Name="offsets" format="ascii">\n')
+            offsets = 3 * np.arange(1, len(triangles) + 1)
+            vtp_file.write(f'{" ".join([str(offset) for offset in offsets])}\n')
+            vtp_file.write('</DataArray>\n')
+            vtp_file.write('</Polys>\n')
+
+        # Finish up by writing the closing tags
+            vtp_file.write('</Piece>\n')
+        vtp_file.write('</PolyData>\n')
+        vtp_file.write('</VTKFile>\n')
+
+    return output_vtp_file
+
+
+def export_geom_and_mses_field_to_paraview(analysis_dir: str,
+                                           field_file: str, grid_stats_file: str,
+                                           grid_file: str, blade_file: str, **kwargs) -> (typing.List[str], str):
+    """
+    Exports both airfoil geometry and MSES field data to Paraview XML files. The airfoil geometry is exported to
+    a PolyData (``.vtp``) file, and each zone of the MSES data (number of airfoils plus one) is exported to its own
+    Structured Grid (``.vts``) file. These files get exported to ``<analysis_dir>/ParaviewData``.
+
+    Parameters
+    ----------
+    analysis_dir: str
+        Directory where the ``ParaviewData`` directory will be created
+    field_file: str
+        Path to the ``field.<airfoil-name>`` file created by MSES
+    grid_stats_file: str
+        Path to the ``mplot_grid_stats.log`` file created by running MSES through ``pymead``
+    grid_file: str
+        Path to the ``grid.<airfoil-name>`` file created by MSES
+    blade_file: str
+        Path to the ``blade.<airfoil-name>`` file generated by ``pymead``
+    kwargs
+        Additional keyword arguments that are passed to ``read_field_from_mses``
+
+    Returns
+    -------
+    typing.List[str], str
+        List of absolute file paths to each of the ``.vts`` files and the absolute file path to the ``.vtp`` file
+    """
+
+    blade = convert_blade_file_to_array_list(blade_file)
+    field_array = read_field_from_mses(field_file, **kwargs)
+    grid_stats = read_grid_stats_from_mses(grid_stats_file)
+    x_grid, y_grid = read_streamline_grid_from_mses(grid_file, grid_stats)
+    headers = read_field_variables_names_mses(field_file)
+
+    # Export the field data to the Paraview XML-style format (.vts files)
+    vts_files = export_mses_field_to_paraview_xml(analysis_dir, x_grid, y_grid, headers, field_array)
+
+    # Export the airfoil geometry to the Paraview XML-style format (.vtp file)
+    vtp_file = export_blade_to_paraview_xml(analysis_dir, blade)
+
+    return vts_files, vtp_file
+
+
 def read_streamline_grid_from_mses(src_file: str, grid_stats: dict):
     r"""
     Reads the grid of streamlines from an MSES ``grid.*`` file
@@ -576,29 +806,39 @@ def read_streamline_grid_from_mses(src_file: str, grid_stats: dict):
     return split_x_grid, split_y_grid
 
 
-def convert_blade_file_to_3d_array(src_file: str):
+def convert_blade_file_to_array_list(src_file: str) -> typing.List[np.ndarray]:
     r"""
-    Converts an MSES blade file (by default of the form ``blade.*``) to an array.
-    The array has shape :math:`N \times M \times 2`, where :math:`N` is the number of airfoils
-    and :math:`M` is the number of discrete airfoil coordinates in a given airfoil.
+    Converts an MSES blade file (by default of the form ``blade.*``) to a list of arrays describing the airfoil
+    coordinates.
 
     Parameters
-    ==========
+    ----------
     src_file: str
         Source file containing the MSES blade information (usually ``blade.*``)
 
     Returns
-    =======
-    np.ndarray
-        Array of the shape :math:`N \times M \times 2`
+    -------
+    typing.List[np.ndarray]
+        Each array represents a different airfoil, and each array has shape :math:`M \times 2`,
+        where :math:`M` is the number of discrete airfoil coordinates in a given airfoil.
     """
+    # Load the text file as a single 2-D array containing all the airfoil coordinates
     blade = np.loadtxt(src_file, skiprows=2)
+
+    # Get each row of "999s" that divide the blade file into separate airfoils
     airfoil_delimiter_rows = np.argwhere(blade == 999.0)
+
+    # Split the array at these rows
     array_3d = np.split(blade, np.unique(airfoil_delimiter_rows[:, 0]))
+
+    # Because the first split array is guaranteed not to contain a 999 row, we can just set it as the first list element
     new_airfoils = [array_3d[0]]
+
+    # Remove the "999" rows and append the airfoil coordinate array to the list
     for airfoil in array_3d[1:]:
         new_airfoil = np.delete(airfoil, 0, axis=0)
         new_airfoils.append(new_airfoil)
+
     return new_airfoils
 
 
@@ -629,10 +869,20 @@ def read_polar(airfoil_name: str, base_dir: str) -> typing.Dict[str, typing.List
 
 
 if __name__ == "__main__":
-    name = "OptUnderwingFreeTransition"
-    my_folder = os.path.join(r"C:\Users\mlauer2\Documents\dissertation\data\MSESRuns", name)
-    export_mses_field_to_tecplot_ascii(
-        os.path.join(my_folder, f"{name}.dat"),
+    # name = "OptUnderwingFreeTransition"
+    # my_folder = os.path.join(r"C:\Users\mlauer2\Documents\dissertation\data\MSESRuns", name)
+    # export_mses_field_to_tecplot_ascii(
+    #     os.path.join(my_folder, f"{name}.dat"),
+    #     os.path.join(my_folder, f"field.{name}"),
+    #     os.path.join(my_folder, "mplot_grid_stats.log"),
+    #     os.path.join(my_folder, f"grid.{name}"),
+    #     os.path.join(my_folder, f"blade.{name}")
+    # )
+
+    name = "default_airfoil"
+    my_folder = os.path.join(r"C:\Users\mlauer2\AppData\Local\Temp", name)
+    export_geom_and_mses_field_to_paraview(
+        my_folder,
         os.path.join(my_folder, f"field.{name}"),
         os.path.join(my_folder, "mplot_grid_stats.log"),
         os.path.join(my_folder, f"grid.{name}"),

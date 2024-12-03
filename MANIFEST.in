@@ -17,6 +17,6 @@ include pymead/tests/opt_tests/*.json
 include pymead/tests/opt_tests/*.jmea
 include pymead/tests/gui_tests/*.txt
 include pymead/tests/gui_tests/*.json
-include pymead/tests/gui_tests/iso_prop/*
-include pymead/tests/gui_tests/iso_prop_test_0/*
-include pymead/tests/gui_tests/analysis_temp_iso_prop/ga_airfoil_3/*
+include pymead/tests/gui_tests/data/iso_prop/*
+include pymead/tests/gui_tests/data/iso_prop_test_0/*
+include pymead/tests/gui_tests/data/analysis_temp_iso_prop/ga_airfoil_3/*

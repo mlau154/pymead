@@ -14,35 +14,17 @@ class Bezier(ParametricCurve):
                  default_nt: int or None = None, name: str or None = None,
                  t_start: float = None, t_end: float = None, **kwargs):
         r"""
-        Computes the Bézier curve through the control points ``P`` according to
+        Computes the Bézier curve through the control points :math:`\mathbf{P}_i` according to
 
         .. math::
 
-            \vec{C}(t)=\sum_{i=0}^n \vec{P}_i B_{i,n}(t)
+            \mathbf{C}(t)=\sum_{i=0}^n \mathbf{P}_i B_{i,n}(t)
 
         where :math:`B_{i,n}(t)` is the Bernstein polynomial, given by
 
         .. math::
 
             B_{i,n}(t)={n \choose i} t^i (1-t)^{n-i}
-
-        Also included are first derivative, second derivative, and curvature information. These are given by
-
-        .. math::
-
-            \vec{C}'(t)=n \sum_{i=0}^{n-1} (\vec{P}_{i+1} - \vec{P}_i) B_{i,n-1}(t)
-
-        .. math::
-
-            \vec{C}''(t)=n(n-1) \sum_{i=0}^{n-2} (\vec{P}_{i+2}-2\vec{P}_{i+1}+\vec{P}_i) B_{i,n-2}(t)
-
-        .. math::
-
-            \kappa(t)=\frac{C'_x(t) C''_y(t) - C'_y(t) C''_x(t)}{[(C'_x)^2(t) + (C'_y)^2(t)]^{3/2}}
-
-        Here, the :math:`'` and :math:`''` superscripts are the first and second derivatives with respect to
-        :math:`x` and :math:`y`, not the parameter :math:`t`. The result of :math:`\vec{C}''(t)`, for example,
-        is a vector with two components, :math:`C''_x(t)` and :math:`C''_y(t)`.
 
         .. _cubic-bezier:
         .. figure:: ../images/cubic_bezier_light.*
@@ -274,17 +256,36 @@ class Bezier(ParametricCurve):
 
     def evaluate(self, t: np.array or None = None, **kwargs):
         r"""
-        Evaluates the curve using an optionally specified parameter vector.
+        Evaluates the curve using an optionally specified parameter vector. Also included are first derivative,
+        second derivative, and curvature information. These are given by
+
+        .. math::
+
+            \mathbf{C}'(t)=n \sum_{i=0}^{n-1} (\mathbf{P}_{i+1} - \mathbf{P}_i) B_{i,n-1}(t)
+
+        .. math::
+
+            \mathbf{C}''(t)=n(n-1) \sum_{i=0}^{n-2} (\mathbf{P}_{i+2}-2\mathbf{P}_{i+1}+\mathbf{P}_i) B_{i,n-2}(t)
+
+        .. math::
+
+            \kappa(t)=\frac{C'_x(t) C''_y(t) - C'_y(t) C''_x(t)}{[(C'_x)^2(t) + (C'_y)^2(t)]^{3/2}}
+
+        Here, the :math:`'` and :math:`''` superscripts are the first and second derivatives with respect to
+        :math:`x` and :math:`y`, not the parameter :math:`t`. The result of :math:`\vec{C}''(t)`, for example,
+        is a vector with two components, :math:`C''_x(t)` and :math:`C''_y(t)`.
 
         Parameters
-        ==========
+        ----------
         t: np.ndarray or ``None``
             Optional direct specification of the parameter vector for the curve. Not specifying this value
             gives a linearly spaced parameter vector from ``t_start`` or ``t_end`` with the default size.
             Default: ``None``
+        kwargs
+            Additional keyword arguments to pass to ``ParametricCurve.generate_t_vec``
 
         Returns
-        =======
+        -------
         PCurveData
             Data class specifying the following information about the Bézier curve:
 
@@ -293,7 +294,7 @@ class Bezier(ParametricCurve):
                     C_x(t), C_y(t), C'_x(t), C'_y(t), C''_x(t), C''_y(t), \kappa(t)
 
             where the :math:`x` and :math:`y` subscripts represent the :math:`x` and :math:`y` components of the
-            vector-valued functions :math:`\vec{C}(t)`, :math:`\vec{C}'(t)`, and :math:`\vec{C}''(t)`.
+            vector-valued functions :math:`\mathbf{C}(t)`, :math:`\mathbf{C}'(t)`, and :math:`\mathbf{C}''(t)`.
         """
         # Generate the parameter vector
         if self.default_nt is not None:

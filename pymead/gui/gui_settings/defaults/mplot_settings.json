@@ -37,6 +37,11 @@
         "widget_type": "QCheckBox",
         "setChecked": 0
     },
+    "Paraview": {
+        "label": "Output Paraview ASCII",
+        "widget_type": "QCheckBox",
+        "setChecked": 0
+    },
     "CPK": {
         "label": "Output CPK",
         "widget_type": "QCheckBox",

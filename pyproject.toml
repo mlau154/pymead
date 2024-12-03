@@ -55,7 +55,8 @@ dependencies = [
     "psutil",
     "pytest>=7",
     "pytest-qt",
-    "pynput"
+    "pynput",
+    "triangle"
 ]
 dynamic = ["version"]
 

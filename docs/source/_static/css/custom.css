@@ -10,3 +10,7 @@ table.max-width-table {
     width: 500px;
     max-width: 100%;
 }
+
+.sd-tab-content figure.only-light, .sd-tab-content figure.only-dark {
+    margin-bottom: auto;
+}

@@ -15,11 +15,12 @@ class RBezier(ParametricCurve):
                  default_nt: int or None = None, name: str or None = None,
                  **kwargs):
         r"""
-        Computes the Bézier curve through the control points ``P`` according to
+        Creates a rational Bézier curve parametrized by the control points :math:`\mathbf{P}_i` and weights :math:`w_i`
+        according to
 
         .. math::
 
-            \vec{C}(t)=\sum_{i=0}^n \vec{P}_i B_{i,n}(t)
+            \mathbf{C}(t)=\frac{\sum_{i=0}^n B_{i,n}(t) w_i \mathbf{P}_i}{\sum_{i=0}^n B_{i,n}(t) w_i}
 
         where :math:`B_{i,n}(t)` is the Bernstein polynomial, given by
 
@@ -27,61 +28,21 @@ class RBezier(ParametricCurve):
 
             B_{i,n}(t)={n \choose i} t^i (1-t)^{n-i}
 
-        Also included are first derivative, second derivative, and curvature information. These are given by
-
-        .. math::
-
-            \vec{C}'(t)=n \sum_{i=0}^{n-1} (\vec{P}_{i+1} - \vec{P}_i) B_{i,n-1}(t)
-
-        .. math::
-
-            \vec{C}''(t)=n(n-1) \sum_{i=0}^{n-2} (\vec{P}_{i+2}-2\vec{P}_{i+1}+\vec{P}_i) B_{i,n-2}(t)
-
-        .. math::
-
-            \kappa(t)=\frac{C'_x(t) C''_y(t) - C'_y(t) C''_x(t)}{[(C'_x)^2(t) + (C'_y)^2(t)]^{3/2}}
-
-        Here, the :math:`'` and :math:`''` superscripts are the first and second derivatives with respect to
-        :math:`x` and :math:`y`, not the parameter :math:`t`. The result of :math:`\vec{C}''(t)`, for example,
-        is a vector with two components, :math:`C''_x(t)` and :math:`C''_y(t)`.
-
-        .. _cubic-bezier:
-        .. figure:: ../images/cubic_bezier_light.*
-            :class: only-light
-            :width: 600
-            :align: center
-
-            Cubic Bézier curve
-
-        .. figure:: ../images/cubic_bezier_dark.*
-            :class: only-dark
-            :width: 600
-            :align: center
-
-            Cubic Bézier curve
-
-        An example cubic Bézier curve (degree :math:`n=3`) is shown above. Note that the curve passes
-        through the first and last control points and has a local slope at :math:`P_0` equal to the slope of the
-        line passing through :math:`P_0` and :math:`P_1`. Similarly, the local slope at :math:`P_3` is equal to
-        the slope of the line passing through :math:`P_2` and :math:`P_3`. These properties of Bézier curves allow us to
-        easily enforce :math:`G^0` and :math:`G^1` continuity at Bézier curve "joints" (common endpoints of
-        connected Bézier curves).
+        The weights have the effect of "pulling" the curve toward their corresponding control points when their values
+        are increased.
 
         Parameters
         ----------
         point_sequence: PointSequence
             Sequence of points defining the control points for the Bézier curve
-
         name: str or ``None``
             Optional name for the curve. Default: ``None``
-
         t_start: float or ``None``
-            Optional starting parameter vector value for the Bézier curve. Not specifying this value automatically
-            gives a value of ``0.0``. Default: ``None``
-
+            Optional starting parameter vector value for the rational Bézier curve. Not specifying this value
+            automatically gives a value of ``0.0``. Default: ``None``
         t_end: float or ``None``
-            Optional ending parameter vector value for the Bézier curve. Not specifying this value automatically
-            gives a value of ``1.0``. Default: ``None``
+            Optional ending parameter vector value for the rational Bézier curve. Not specifying this value
+            automatically gives a value of ``1.0``. Default: ``None``
         """
         super().__init__(sub_container="bezier", **kwargs)
         self._point_sequence = None
@@ -328,14 +289,16 @@ class RBezier(ParametricCurve):
         Evaluates the curve using an optionally specified parameter vector.
 
         Parameters
-        ==========
+        ----------
         t: np.ndarray or ``None``
             Optional direct specification of the parameter vector for the curve. Not specifying this value
             gives a linearly spaced parameter vector from ``t_start`` or ``t_end`` with the default size.
             Default: ``None``
+        kwargs
+            Additional keyword arguments to pass to ``ParametricCurve.generate_t_vec``
 
         Returns
-        =======
+        -------
         PCurveData
             Data class specifying the following information about the Bézier curve:
 
@@ -344,7 +307,7 @@ class RBezier(ParametricCurve):
                     C_x(t), C_y(t), C'_x(t), C'_y(t), C''_x(t), C''_y(t), \kappa(t)
 
             where the :math:`x` and :math:`y` subscripts represent the :math:`x` and :math:`y` components of the
-            vector-valued functions :math:`\vec{C}(t)`, :math:`\vec{C}'(t)`, and :math:`\vec{C}''(t)`.
+            vector-valued functions :math:`\mathbf{C}(t)`, :math:`\mathbf{C}'(t)`, and :math:`\mathbf{C}''(t)`.
         """
         # Generate the parameter vector
         if self.default_nt is not None:
