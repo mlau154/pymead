@@ -126,6 +126,15 @@ class Chromosome:
         return self.param_dict
 
     def update_param_dict(self):
+
+        def _get_numerical_value_from_container(param: str):
+            containers_to_check = ["desvar", "params"]
+            for container in containers_to_check:
+                if param in self.geo_col.container()[container]:
+                    return self.geo_col.container()[container][param].value()
+            raise ValueError(f"Could not find setting parameter {param} in the params or "
+                             f"design variables containers")
+
         if self.param_dict["tool"] != "MSES":
             return
 
@@ -146,6 +155,23 @@ class Chromosome:
             for ad_idx, fpr_dv_list in enumerate(self.param_dict["mses_settings"]["PTRHIN-DesVar"]):
                 for fpr_idx, fpr_dv in enumerate(fpr_dv_list):
                     self.param_dict["mses_settings"]["PTRHIN-DesVar"][ad_idx][fpr_idx] = self.geo_col.container()["desvar"][fpr_dv].value()
+
+        # Update the angle of attack from the updated design variable values if necessary
+        alfa = self.param_dict["mses_settings"]["ALFAIN"]
+        # This block converts a dictionary representation of the alfa parameter to a float
+        # or a list (the latter only in the case of a multipoint optimization)
+        if isinstance(alfa, dict) and alfa["param"]:
+            if isinstance(alfa["param"], str):
+                self.param_dict["mses_settings"]["ALFAIN"] = _get_numerical_value_from_container(alfa["param"])
+            elif isinstance(alfa["param"], list):
+                if len(alfa["param"]) > 1:
+                    self.param_dict["mses_settings"]["ALFAIN"] = [
+                        _get_numerical_value_from_container(p) for p in alfa["param"]
+                    ]
+                elif len(alfa["param"]) == 1 and alfa["param"][0]:
+                    self.param_dict["mses_settings"]["ALFAIN"] = _get_numerical_value_from_container(alfa["param"][0])
+                else:
+                    self.param_dict["mses_settings"]["ALFAIN"] = alfa["value"]
 
     def chk_self_intersection(self) -> bool:
         """
