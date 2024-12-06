@@ -17,7 +17,7 @@ from PyQt6.QtCore import pyqtSlot, QStandardPaths
 from PyQt6.QtGui import QFont
 from PyQt6.QtWidgets import (QWidget, QGridLayout, QLabel, QPushButton, QCheckBox, QTabWidget, QSpinBox,
                              QDoubleSpinBox, QComboBox, QDialog, QVBoxLayout, QSizeGrip, QDialogButtonBox, QMessageBox,
-                             QFormLayout, QRadioButton, QGroupBox, QSizePolicy, QColorDialog, QListWidget)
+                             QFormLayout, QRadioButton, QGroupBox, QSizePolicy, QColorDialog, QListWidget, QHBoxLayout)
 from qframelesswindow import FramelessDialog
 
 from pymead import GUI_DEFAULTS_DIR, q_settings, GUI_DIALOG_WIDGETS_DIR, TargetPathNotFoundError
@@ -513,6 +513,138 @@ class PymeadLabeledScientificDoubleSpinBox(QObject):
             if self.push is not None:
                 self.push.hide()
 
+
+class PymeadLabeledDoubleSpinSelector(QWidget):
+
+    sigValueChanged = pyqtSignal(float)
+
+    def __init__(self, geo_col: GeometryCollection, parent=None,
+                 label: str = "", tool_tip: str = "", minimum: float = None,
+                 maximum: float = None,
+                 value: float = None,
+                 decimals: int = None, single_step: float = None,
+                 read_only: bool = None):
+        self.geo_col = geo_col
+        self._default_value = value
+        self.label = QLabel(label)
+        self.widget = QWidget()
+        self.spin = QDoubleSpinBox()
+        self.spin.setMinimumWidth(170)
+        self.line = QLineEdit()
+        self.line.setReadOnly(True)  # Should always be read-only; only editable by pressing the "plus" button
+        self.line.hide()  # Hidden by default unless one or more params/dvs are selected by pressing the "plus" button
+        self.lay = QHBoxLayout()
+        self.lay.setContentsMargins(0, 0, 0, 0)  # Get rid of the padding around the layout
+        self.lay.addWidget(self.spin)
+        self.lay.addWidget(self.line)
+        self.widget.setLayout(self.lay)
+        self.label.setToolTip(tool_tip)
+        self.widget.setToolTip(tool_tip)
+        if minimum is not None:
+            self.spin.setMinimum(minimum)
+        if maximum is not None:
+            self.spin.setMaximum(maximum)
+        if decimals is not None:
+            self.spin.setDecimals(decimals)
+        if value is not None:
+            self.spin.setValue(value)
+        if single_step is not None:
+            self.spin.setSingleStep(single_step)
+        if read_only is not None:
+            self.spin.setReadOnly(read_only)
+        self.push = QPushButton("+")
+        self.push.setMaximumWidth(30)
+
+        super().__init__(parent=parent)
+        self.spin.valueChanged.connect(self.sigValueChanged)
+        self.push.clicked.connect(self.openSelector)
+
+    def _getFloatFromDVOrParam(self, dv_or_param_name: str) -> float:
+        if dv_or_param_name in self.geo_col.container()["desvar"].keys():
+            return self.geo_col.container()["desvar"][dv_or_param_name].value()
+        elif dv_or_param_name in self.geo_col.container()["params"].keys():
+            return self.geo_col.container()["params"][dv_or_param_name].value()
+        else:
+            raise ValueError(f"Could not find selected key {dv_or_param_name} in the desvar or params containers")
+
+    def setValue(self, value: float or dict):  # Float kept only for backwards compatibility
+        if isinstance(value, dict) and value["param"]:
+            if isinstance(value["param"], str):
+                value["value"] = self._getFloatFromDVOrParam(value["param"])
+                self.line.setText(value["param"])
+            elif isinstance(value["param"], list):
+                if len(value["param"]) > 0 and value["param"][0]:
+                    value["value"] = self._getFloatFromDVOrParam(value["param"][0])
+                else:
+                    value["value"] = self._default_value
+                self.line.setText(",".join(value["param"]))
+            self.line.show()
+            self.spin.setReadOnly(True)
+        else:
+            self.spin.setReadOnly(False)
+            self.line.clear()
+            self.line.hide()
+        if isinstance(value, dict):
+            self.spin.setValue(value["value"])
+        else:
+            self.spin.setValue(value)
+
+    def value(self) -> dict:
+        value = {"value": self.spin.value(), "param": None}
+        line_split = self.line.text().split(",")
+        if len(line_split) == 1 and line_split[0]:
+            value["param"] = line_split[0]
+        elif len(line_split) > 1:
+            value["param"] = line_split
+        return value
+
+    def setReadOnly(self, read_only: bool):
+        self.spin.setReadOnly(read_only)
+
+    def setActive(self, active: bool):
+        self.spin.setReadOnly(not active)
+
+    def setShown(self, shown: bool):
+        if shown:
+            self.label.show()
+            self.spin.show()
+            self.line.show()
+            self.push.show()
+        else:
+            self.label.hide()
+            self.spin.hide()
+            self.line.hide()
+            self.push.hide()
+
+    def openSelector(self):
+        """
+        Opens a selection widget that allows the user to safely set the list of design variables or parameters.
+        """
+        initial_items = self.line.text().split(",")
+        if len(initial_items[0]) == 0:
+            initial_items = None
+        dialog = DesVarParamListSelectionDialog(
+            window_title="DV/Param Selector", geo_col=self.geo_col, parent=self,
+            initial_items=initial_items
+        )
+        # old_dialog_value = dialog.value()
+        if dialog.exec():
+            new_dialog_value = dialog.value()
+            self.setValue({"value": 0.0, "param": new_dialog_value})
+            # for dv_name in old_dialog_value["param"]:
+            #     if dv_name in new_dialog_value:
+            #         continue
+            #     if dv_name in self.geo_col.container()["desvar"]:
+            #         self.geo_col.container()["desvar"][dv_name].assignable = True
+            #     elif dv_name in self.geo_col.container()["params"]:
+            #         self.geo_col.container()["params"][dv_name].assignable = True
+            # for dv_name in new_dialog_value:
+            #     if dv_name in old_dialog_value:
+            #         continue
+            #     if dv_name in self.geo_col.container()["desvar"]:
+            #         self.geo_col.container()["desvar"][dv_name].assignable = False
+            #     elif dv_name in self.geo_col.container()["params"]:
+            #         self.geo_col.container()["params"][dv_name].assignable = False
 
 class PymeadLabeledLineEdit(QObject):
 
@@ -1316,6 +1448,84 @@ class DesVarListSelectionDialog(PymeadDialog):
         return buttonBox
 
 
+class DesVarParamListSelectionWidget(PymeadDialogWidget2):
+    def __init__(self, geo_col: GeometryCollection, initial_items: list = None, parent=None):
+        self.geo_col = geo_col
+        initial_items = [] if initial_items is None else initial_items
+        super().__init__(parent=parent, initial_items=initial_items)
+
+    def initializeWidgets(self, *args, **kwargs):
+        self.widget_dict = {
+            "main_list": QListWidget(self),
+            "selected_list": QListWidget(self),
+            "add_button": QPushButton("Add >>", self),
+            "remove_button": QPushButton("<< Remove", self)
+        }
+
+        items_to_add = [k for k in self.geo_col.container()["desvar"].keys() if k not in kwargs["initial_items"]]
+        items_to_add.extend([k for k in self.geo_col.container()["params"].keys() if k not in kwargs["initial_items"]])
+        self.widget_dict["main_list"].addItems(items_to_add)
+        self.widget_dict["selected_list"].addItems(kwargs["initial_items"])
+        self.widget_dict["main_list"].setSelectionMode(QListWidget.SelectionMode.MultiSelection)
+        self.widget_dict["selected_list"].setSelectionMode(QListWidget.SelectionMode.MultiSelection)
+
+    def addWidgets(self, *args, **kwargs):
+        self.lay.addWidget(self.widget_dict["main_list"], 0, 0, 4, 1)
+        self.lay.addWidget(self.widget_dict["add_button"], 0, 1, 1, 1)
+        self.lay.addWidget(self.widget_dict["remove_button"], 1, 1, 1, 1)
+        self.lay.addWidget(self.widget_dict["selected_list"], 0, 2, 4, 1)
+
+    def establishWidgetConnections(self):
+        self.widget_dict["add_button"].clicked.connect(self.onAddPressed)
+        self.widget_dict["remove_button"].clicked.connect(self.onRemovePressed)
+
+    def onAddPressed(self):
+        selected_items = self.widget_dict["main_list"].selectedItems()
+        for item in selected_items:
+            self.widget_dict["selected_list"].addItem(
+                self.widget_dict["main_list"].takeItem(self.widget_dict["main_list"].row(item))
+            )
+
+    def onRemovePressed(self):
+        selected_items = self.widget_dict["selected_list"].selectedItems()
+        for item in selected_items:
+            self.widget_dict["main_list"].addItem(
+                self.widget_dict["selected_list"].takeItem(self.widget_dict["selected_list"].row(item))
+            )
+
+    def value(self) -> list:
+        selected_list = self.widget_dict["selected_list"]
+        return [selected_list.item(i).text() for i in range(selected_list.count())]
+
+    def setValue(self, items: list):
+        available_list = self.widget_dict["main_list"]
+        available_items = [available_list.item(i).text() for i in range(available_list.count())]
+        selected_list = self.widget_dict["selected_list"]
+        selected_list.clear()
+        for item in items:
+            # Only move the item to the list on the right if it was found in the available list (on the left)
+            if item not in available_items:
+                continue
+
+            selected_list.addItem(item)
+
+
+class DesVarParamListSelectionDialog(PymeadDialog):
+    def __init__(self, window_title: str, geo_col: GeometryCollection, initial_items: list = None, parent=None):
+        theme = geo_col.gui_obj.themes[geo_col.gui_obj.current_theme]
+        widget = DesVarParamListSelectionWidget(geo_col=geo_col, initial_items=initial_items)
+        super().__init__(parent=parent, window_title=window_title, widget=widget, theme=theme,
+                         minimum_width=400, minimum_height=500)
+
+    def create_button_box(self):
+        buttonBox = QDialogButtonBox(
+            QDialogButtonBox.StandardButton.Save | QDialogButtonBox.StandardButton.Cancel, self
+        )
+        buttonBox.accepted.connect(self.accept)
+        buttonBox.rejected.connect(self.reject)
+        return buttonBox
+
+
 class ADWidget(QTabWidget):
 
     ADChanged = pyqtSignal()
@@ -2002,8 +2212,10 @@ class MSESDialogWidget2(PymeadDialogWidget2):
                                             single_step=1.0, value=287.05),
             "spec_alfa_Cl": PymeadLabeledComboBox(label="Specify Alpha/Cl", items=["Specify Angle of Attack",
                                                                                    "Specify Lift Coefficient"]),
-            "ALFAIN": PymeadLabeledDoubleSpinBox(label="Angle of Attack (deg)", minimum=-np.inf, maximum=np.inf,
-                                                 decimals=16, value=0.0, single_step=1.0, read_only=False),
+            "ALFAIN": PymeadLabeledDoubleSpinSelector(self.geo_col, parent=self,
+                                                      label="Angle of Attack (deg)", minimum=-np.inf,
+                                                      maximum=np.inf,
+                                                      decimals=16, value=0.0, single_step=1.0, read_only=False),
             "CLIFIN": PymeadLabeledDoubleSpinBox(label="Lift Coefficient", minimum=-np.inf, maximum=np.inf, decimals=16,
                                                  value=0.0, single_step=0.1, read_only=True),
             "ISMOM": PymeadLabeledComboBox(label="Isentropic/Momentum", tool_tip="The set of MSES equations used to"

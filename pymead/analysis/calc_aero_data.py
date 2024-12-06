@@ -704,26 +704,26 @@ def update_xfoil_settings_from_stencil(xfoil_settings: dict, stencil: typing.Lis
 
 def update_mses_settings_from_stencil(mses_settings: dict, stencil: typing.List[dict], idx: int):
     """
-    Updates the MSES settings dictionary from a given multipoint stencil and multipoint index
+    Updates the MSES settings dictionary from a given multipoint stencil and multipoint index.
 
     Parameters
-    ==========
+    ----------
     mses_settings: dict
-      MSES settings dictionary
+        MSES settings dictionary
 
     stencil: typing.List[dict]
-      A list of dictionaries describing the multipoint stencil, where each entry in the list is a dictionary
-      representing a different stencil variable (Mach number, lift coefficient, etc.) and contains values for the
-      variable name, index (used only in the case of transition location and actuator disk variables), and stencil
-      point values (e.g., ``stencil_var["points"]`` may look something like ``[0.65, 0.70, 0.75]`` for Mach number)
+        A list of dictionaries describing the multipoint stencil, where each entry in the list is a dictionary
+        representing a different stencil variable (Mach number, lift coefficient, etc.) and contains values for the
+        variable name, index (used only in the case of transition location and actuator disk variables), and stencil
+        point values (e.g., ``stencil_var["points"]`` may look something like ``[0.65, 0.70, 0.75]`` for Mach number)
 
     idx: int
-      Index within the multipoint stencil used to update the MSES settings dictionary
+        Index within the multipoint stencil used to update the MSES settings dictionary
 
     Returns
-    =======
+    -------
     dict
-      The modified MSES settings dictionary
+        The modified MSES settings dictionary
     """
     for stencil_var in stencil:
         if isinstance(mses_settings[stencil_var['variable']], list):
@@ -742,6 +742,10 @@ def update_mses_settings_from_stencil(mses_settings: dict, stencil: typing.List[
         if len(fpr_dv_list) == 0:
             continue
         mses_settings["PTRHIN"][ad_idx] = fpr_dv_list[idx]
+
+    # Update the angle of attack if the angle of attack is a list
+    if isinstance(mses_settings["ALFAIN"], list):
+        mses_settings["ALFAIN"] = mses_settings["ALFAIN"][idx]
 
     return mses_settings
 
@@ -1029,13 +1033,21 @@ def calculate_aero_data(conn: multiprocessing.connection.Connection or None,
         # Multipoint Loop
         for i in range(mset_mplot_loop_iterations):
 
+            updated_mses_settings = None
             if stencil is not None:
-                mses_settings = update_mses_settings_from_stencil(mses_settings=mses_settings, stencil=stencil, idx=i)
+                # Need to deepcopy the updated MSES settings because the MSES settings made update each time through
+                # the stencil point loop
+                updated_mses_settings = deepcopy(update_mses_settings_from_stencil(
+                    mses_settings=mses_settings, stencil=stencil, idx=i
+                ))
 
             if mset_success:
                 t_start = time.perf_counter()
-                converged, mses_log = run_mses(airfoil_name, airfoil_coord_dir, mses_settings,
-                                               airfoil_name_order=airfoil_name_order, conn=conn)
+                converged, mses_log = run_mses(
+                    airfoil_name, airfoil_coord_dir,
+                    mses_settings if updated_mses_settings is None else updated_mses_settings,
+                    airfoil_name_order=airfoil_name_order, conn=conn
+                )
                 t_end = time.perf_counter()
                 send_over_pipe(("message", f"MSES completed in {t_end-t_start:.2f} seconds"))
             if mset_success and converged:
@@ -2103,7 +2115,8 @@ def write_mses_file(name: str, base_folder: str, mses_settings: dict or MSESSett
                 else:
                     f.write(f'3 4 5 7 11 12\n3 4 {global_constraint_target} 7 11 12\n')
 
-                f.write(f"{F['MACHIN']} {F['CLIFIN']} {F['ALFAIN']}\n")
+                f.write(f"{F['MACHIN']} {F['CLIFIN']} "
+                        f"{F['ALFAIN']['value'] if isinstance(F['ALFAIN'], dict) else F['ALFAIN']}\n")
                 f.write(f"{int(F['ISMOM'])} {int(F['IFFBC'])}\n")
                 f.write(f"{F['REYNIN']} {F['ACRIT']}\n")
 
