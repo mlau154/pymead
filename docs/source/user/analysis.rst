@@ -1,3 +1,5 @@
+.. _aero-analysis:
+
 Aerodynamic Analysis
 ####################
 
