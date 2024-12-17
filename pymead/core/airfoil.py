@@ -1054,22 +1054,25 @@ class Airfoil(PymeadObj):
 
         return new_param_vec_list
 
-    def plot(self, show: bool = True, save_file: str or None = None, ax: plt.Axes or None = None):
+    def plot(self, ax: plt.Axes or None = None, show: bool = True, save_file: str or None = None, **plt_kwargs):
         """
         Plots the airfoil to a ``matplotlib`` figure.
 
         Parameters
         ----------
-        show: bool
-            Whether to immediately show the airfoil plot. Default: ``True``
-
-        save_file: str or None
-            Name of the file to save. If ``None``, the airfoil image will not be saved to file. Default: ``None``
-
         ax: plt.Axes or None
-            Matplotlib Axes object on which the airfoil will be plotted. Default: ``None``
+            Matplotlib Axes object on which the airfoil will be plotted. If specified, this method will only
+            plot the airfoil curves and ignore the subsequent functionality. Default: ``None``
+        show: bool
+            Whether to immediately show the airfoil plot. Ignored if ``ax`` is not ``None``. Default: ``True``
+        save_file: str or None
+            Name of the file to save. If ``None``, the airfoil image will not be saved to file.
+            Ignored if ``ax`` is not ``None``. Default: ``None``
+        plt_kwargs
+            Additional keyword arguments to pass to ``matplotlib.pyplot.plot``
         """
-        if ax is not None:
+        ax_specified = ax is not None
+        if ax_specified:
             fig = ax.figure
         else:
             fig, ax = plt.subplots(figsize=(10, 2))
@@ -1077,7 +1080,10 @@ class Airfoil(PymeadObj):
         # Plot the curves
         for curve in self.curves:
             curve_data = curve.evaluate()
-            ax.plot(curve_data.xy[:, 0], curve_data.xy[:, 1], color="steelblue")
+            ax.plot(curve_data.xy[:, 0], curve_data.xy[:, 1], **plt_kwargs)
+
+        if ax_specified:
+            return
 
         # Plot settings
         ax.set_aspect("equal")
