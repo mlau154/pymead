@@ -1540,8 +1540,8 @@ def run_mses(name: str, base_folder: str, mses_settings: dict or MSESSettings, a
                     decoded_line = line.decode("utf-8")
                     if "Converged" in decoded_line:
                         converged = True
-                    if "Convergence failed." in decoded_line:
-                        raise ConvergenceFailedError
+                    # if "Convergence failed." in decoded_line:
+                    #     raise ConvergenceFailedError
                     f.write(line)
                     if "rms(dR):" in decoded_line:
                         decoded_line_split = decoded_line.split()
