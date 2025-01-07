@@ -155,8 +155,18 @@ class Param(PymeadObj):
 
         def get_airfoils_to_update(_curves_to_update):
             _airfoils_to_update = []
+            # Account for blunt trailing edges
+            curve_list_copy = _curves_to_update.copy()
+            for curve in curve_list_copy:
+                for point in curve.points():
+                    for sub_curve in point.curves:
+                        if sub_curve in _curves_to_update:
+                            continue
+                        _curves_to_update.append(sub_curve)
             for curve in _curves_to_update:
-                if curve.airfoil is not None and curve.airfoil not in _airfoils_to_update:
+                if curve.airfoil is None:
+                    continue
+                if curve.airfoil not in _airfoils_to_update:
                     _airfoils_to_update.append(curve.airfoil)
             return _airfoils_to_update
 
