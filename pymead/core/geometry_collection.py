@@ -733,6 +733,31 @@ class GeometryCollection(DualRep):
                 elif geo_obj.y() is tool:
                     geo_obj.set_y(target)
 
+    @staticmethod
+    def _is_promotion_allowed(param: Param) -> bool:
+        """
+        Whether promotion to design variable is allowed for a parameter
+
+        Parameters
+        ----------
+        param: Param
+            Parameter to check
+
+        Returns
+        -------
+        bool
+            Whether promotion is allowed
+        """
+        if param.point is not None and len(param.point.geo_cons) > 0 and not param.point.root:
+            # Allow promotion in the case that all the point's constraint are symmetry constraints and the
+            # parameter's point is not the target point of the symmetry constraints
+            if all([isinstance(geo_con, SymmetryConstraint) for geo_con in param.point.geo_cons]) and not any([
+                param.point is geo_con.p4 for geo_con in param.point.geo_cons
+            ]):
+                return True
+            return False
+        return True
+
     def promote_param_to_desvar(self, param: Param or str, lower: float or None = None, upper: float or None = None):
         """
         Promotes a parameter to a design variable by adding bounds. The ``Param`` will be removed from the 'params'
@@ -758,7 +783,7 @@ class GeometryCollection(DualRep):
         """
         param = param if isinstance(param, Param) else self.container()["params"][param]
 
-        if param.point is not None and len(param.point.geo_cons) > 0 and not param.point.root:
+        if not self._is_promotion_allowed(param):
             raise ValueError(f"Promotion of {param.name()} to a design variable is not allowed because the "
                              f"parent point ({param.point.name()}) contains direct constraints to one or "
                              f"more other points and is not the root of a constraint cluster. "
