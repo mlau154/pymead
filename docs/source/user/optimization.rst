@@ -136,18 +136,88 @@ Information about the **XFOIL**, **MSET**, **MSES**, and **MPLOT** tabs can be f
            * - Temp. Analysis Dir. Name
              - Name of the base directory for all XFOIL/MSES analysis data which gets overridden every generation
 
-
     .. tab-item:: Constraints/Termination
 
         **Constraints/Termination**
 
-        Settings for a variety of geometric constraints and algorithm termination settings
+        Settings for a variety of geometric constraints and algorithm termination settings. Note that at least
+        one airfoil must be loaded into the GUI for the airfoil-specific constraints to display.
+
+        .. list-table::
+           :widths: 20 80
+           :header-rows: 1
+           :class: max-width-table
+
+           * - Option
+             - Description
+           * - Minimum Thickness
+             - Minimum value of the maximum thickness for the airfoil measured perpendicular from the chord line.
+               If the "Non-Dimensional" option is selected, the specified thickness value applies to a version of the
+               airfoil scaled to a chord length of one unit.
+           * - Min. Radius of Curvature
+             - Any location along the airfoil surfaces with a radius of curvature below this value will violate the
+               constraint. If the "Non-Dimensional" option is selected, the specified minimum radius of curvature
+               value applies to the radius of curvature distribution scaled by the airfoil chord.
+           * - Thickness Distribution
+             - A ``.txt``, ``.dat``, or ``.csv`` file used to describe the array of thickness constraints. The file
+               should contain two columns of values, separated by a space or comma, that describe the
+               :math:`x`-locations of the thickness constraints (or :math:`x/c` if the "Non-Dimensional" option is
+               selected) and the thickness values of the thickness constraints (or :math:`t/c` if the
+               "Non-Dimensional" option is selected
+           * - Minimum Area
+             - Minimum allowable area enclosed by the airfoil (or :math:`A/c^2` if the "Non-Dimensional" option
+               is selected)
+           * - Internal Geometry
+             - Polyline of :math:`x`-:math:`y` locations representing the convex hull of a geometry that must "fit"
+               inside of the airfoil. The file should be a ``.txt``, ``.dat``, or ``.csv`` file describing the
+               :math:`x`-:math:`y` coordinates of the polyline, which may be closed or open depending on preference.
+               As an example, a file containing
+
+               .. code-block::
+
+                  0.3 0.05
+                  0.5 0.05
+                  0.5 -0.05
+                  0.3 -0.05
+                  0.3 0.05
+
+               can be used to ensure that a rectangle with width :math:`0.2`, height :math:`0.1`, and centered at
+               :math:`(0.4,0.0)` is enclosed by the airfoil.
+           * - Function Tolerance
+             - Change in objective function value used to determine convergence
+           * - Constraint Violation Tol.
+             - Change in constraint value used to determine feasibility
+           * - Parameter Tolerance
+             - Change in design variable value used to determine convergence
+           * - Num. Prev. Gens. to Check
+             - Size of the sliding window of generations used to compute convergence
+           * - Maximum Generations
+             - If the optimization exceeds this number of genetic algorithm generations, the optimization will
+               terminate regardless of whether convergence has been reached.
+           * - Maximum Function Calls
+             - If the optimization calls XFOIL or MSES more than this many times, the optimization will
+               terminate regardless of whether convergence has been reached.
 
     .. tab-item:: Multi-Point Optimization
 
         **Multi-Point Optimization**
 
         Setup for a multi-point stencil
+
+        .. list-table::
+           :widths: 20 80
+           :header-rows: 1
+           :class: max-width-table
+
+           * - Option
+             - Description
+           * - Multi-Point Active?
+             - Use this as a switch to turn multi-point optimization on or off.
+           * - Multi-Point Stencil
+             - File whose structure is documented directly inside of the GUI
+           * - Design Point Index
+             - Index, starting from ``0``, of the design point inside the stencil. This value is only used to determine
+               which set of output XFOIL/MSES data to plot live during optimization.
 
 
 .. _obj-functions:
