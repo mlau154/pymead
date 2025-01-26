@@ -46,13 +46,34 @@ Information about the **XFOIL**, **MSET**, **MSES**, and **MPLOT** tabs can be f
                displayed optimization settings dialog to the warm start optimization. No other changes to settings
                will be applied.
            * - MEA File
-             - The geometry collection (``.jmea`` file)
+             - The geometry collection (``.jmea`` file) to use as a baseline for the optimization. Note that the
+               file chosen here will be loaded into the GUI. While running an optimization with this option empty
+               will correctly use the last saved state of the ``.jmea`` file currently loaded into the GUI, it is
+               normally recommended to fill in this line so that a reference to the ``.jmea`` file used will be stored
+               in the saved optimization settings.
+           * - Batch Mode Active?
+             - Whether to run the list of optimization files provided in the "Batch Settings Files" option
+           * - Batch Settings Files
+             - Runs a list of ``.json`` optimization settings files. This option is experimental and is not
+               guaranteed to run correctly.
 
     .. tab-item:: Genetic Algorithm
 
         **Genetic Algorithm**
 
         Parameters specific to the ``pymoo`` implementation of the genetic algorithm
+
+        .. list-table::
+           :widths: 20 80
+           :header-rows: 1
+           :class: max-width-table
+
+           * - Option
+             - Description
+           * - CFD Tool
+             - The analysis tool to be used during the optimization run
+           * - Objective Functions
+             - The aerodynamic functions to be minimized (separated by commas if there are more than one).
 
     .. tab-item:: Constraints/Termination
 
