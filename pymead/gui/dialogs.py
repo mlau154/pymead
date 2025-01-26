@@ -62,6 +62,10 @@ IFFBC_ITEMS = [
 ISMOM_CONVERSION = {item: idx + 1 for idx, item in enumerate(ISMOM_ITEMS)}
 IFFBC_CONVERSION = {item: idx + 1 for idx, item in enumerate(IFFBC_ITEMS)}
 
+VALIDATION_SUCCESS = "rgba(16,201,87,50)"
+VALIDATION_FAILURE = "rgba(176,25,25,50)"
+VALIDATION_DEFAULT = ""
+
 
 def convert_dialog_to_mset_settings(dialog_input: dict):
     mset_settings = deepcopy(dialog_input)
@@ -3074,6 +3078,7 @@ class GeneticAlgorithmDialogWidget(PymeadDialogWidget2):
                          "to hold the temporary XFOIL or MSES analysis files"
             )
         }
+        self.num_processors_changed(self.widget_dict["num_processors"].value())
 
     def establishWidgetConnections(self):
         self.widget_dict["max_sampling_width"].push.clicked.connect(self.visualize_sampling)
@@ -3082,6 +3087,7 @@ class GeneticAlgorithmDialogWidget(PymeadDialogWidget2):
         )
         self.widget_dict["J"].sigValueChanged.connect(self.objectives_changed)
         self.widget_dict["G"].sigValueChanged.connect(self.constraints_changed)
+        self.widget_dict["num_processors"].sigValueChanged.connect(self.num_processors_changed)
         self.widget_dict["tool"].sigValueChanged.connect(self.update_objectives_and_constraints)
         self.multi_point_dialog_widget.widget_dict["multi_point_active"]["widget"].stateChanged.connect(
             self.update_objectives_and_constraints
@@ -3135,13 +3141,13 @@ class GeneticAlgorithmDialogWidget(PymeadDialogWidget2):
             objective = Objective(obj_func_str)
             self.gui_obj.objectives.append(objective)
             if text == '':
-                widget.setStyleSheet("QLineEdit {background-color: rgba(176,25,25,50)}")
+                widget.setStyleSheet(f"QLineEdit {{background-color: {VALIDATION_FAILURE}}}")
                 return
             try:
                 objective.update(template)
-                widget.setStyleSheet("QLineEdit {background-color: rgba(16,201,87,50)}")
+                widget.setStyleSheet(f"QLineEdit {{background-color: {VALIDATION_SUCCESS}}}")
             except FunctionCompileError:
-                widget.setStyleSheet("QLineEdit {background-color: rgba(176,25,25,50)}")
+                widget.setStyleSheet(f"QLineEdit {{background-color: {VALIDATION_FAILURE}}}")
                 return
 
     def constraints_changed(self, text: str):
@@ -3154,10 +3160,17 @@ class GeneticAlgorithmDialogWidget(PymeadDialogWidget2):
                 self.gui_obj.constraints.append(constraint)
                 try:
                     constraint.update(template)
-                    widget.setStyleSheet("QLineEdit {background-color: rgba(16,201,87,50)}")
+                    widget.setStyleSheet(f"QLineEdit {{background-color: {VALIDATION_SUCCESS}}}")
                 except FunctionCompileError:
-                    widget.setStyleSheet("QLineEdit {background-color: rgba(176,25,25,50)}")
+                    widget.setStyleSheet(f"QLineEdit {{background-color: {VALIDATION_FAILURE}}}")
                     return
+
+    def num_processors_changed(self, value: int):
+        widget = self.widget_dict["num_processors"].widget
+        if value <= os.cpu_count():
+            widget.setStyleSheet(f"QSpinBox {{background-color: {VALIDATION_DEFAULT}}}")
+        else:
+            widget.setStyleSheet(f"QSpinBox {{background-color: {VALIDATION_FAILURE}}}")
 
     @staticmethod
     def convert_text_array_to_dict(multi_line_text: str):
@@ -4540,6 +4553,10 @@ def convert_opt_settings_to_param_dict(opt_settings: dict, n_var: int) -> dict:
         raise ValueError('MSES suite executable \'mses\' not found on system path')
     if param_dict["tool"] == "MSES" and shutil.which('mplot') is None:
         raise ValueError('MPLOT suite executable \'mplot\' not found on system path')
+
+    if param_dict["num_processors"] > os.cpu_count():
+        raise ValueError(f"Number of processors specified ({param_dict['num_processors']}) is greater than "
+                         f"the number of logical processors available on this machine ({os.cpu_count()})")
 
     # TODO: reimplement this logic
     # norm_val_list = geo_col.extract_design_variable_values(bounds_normalized=True)
