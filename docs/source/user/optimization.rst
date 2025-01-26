@@ -125,6 +125,16 @@ Information about the **XFOIL**, **MSET**, **MSES**, and **MPLOT** tabs can be f
              - Number of logical threads to be used for analyzing airfoil geometries in parallel. The maximum
                number is that given by ``os.cpu_count()``. Note that for a CPU with six dual-threaded cores,
                this value can be set up to ``12``.
+           * - State Save Frequency
+             - How often to save the state of the optimization. If ``1``, the optimization data will be saved
+               after every generation.
+           * - Opt. Root Directory
+             - The base location for the optimization folders. Most information will be stored in
+               ``<Opt. Root Directory>/<Opt. Directory Name>``.
+           * - Opt. Directory Name
+             - Sub-directory where the optimization data will be stored
+           * - Temp. Analysis Dir. Name
+             - Name of the base directory for all XFOIL/MSES analysis data which gets overridden every generation
 
 
     .. tab-item:: Constraints/Termination
