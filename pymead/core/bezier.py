@@ -2,6 +2,7 @@ import typing
 
 import numpy as np
 from scipy.optimize import fsolve
+from rust_nurbs import *
 
 from pymead.core.parametric_curve import ParametricCurve, PCurveData
 from pymead.core.point import PointSequence, Point
@@ -241,20 +242,10 @@ class Bezier(ParametricCurve):
             kwargs["nt"] = self.default_nt
         t = ParametricCurve.generate_t_vec(**kwargs) if t is None else t
 
-        # Number of control points, curve degree, control point array
-        n_ctrl_points = len(self.point_sequence())
-        degree = n_ctrl_points - 1
-        P = self.point_sequence().as_array()
-
         # Evaluate the curve
-        x, y = np.zeros(t.shape), np.zeros(t.shape)
-        for i in range(n_ctrl_points):
-            # Calculate the x- and y-coordinates of the Bézier curve given the input vector t
-            x += P[i, 0] * self.bernstein_poly(degree, i, t)
-            y += P[i, 1] * self.bernstein_poly(degree, i, t)
-        return np.column_stack((x, y))
+        return np.array(bezier_curve_eval_tvec(self.point_sequence().as_array(), t))
 
-    def evaluate(self, t: np.array or None = None, **kwargs):
+    def evaluate(self, t: np.array or None = None, **kwargs) -> PCurveData:
         r"""
         Evaluates the curve using an optionally specified parameter vector. Also included are first derivative,
         second derivative, and curvature information. These are given by
@@ -302,27 +293,18 @@ class Bezier(ParametricCurve):
         t = ParametricCurve.generate_t_vec(**kwargs) if t is None else t
 
         # Number of control points, curve degree, control point array
-        n_ctrl_points = len(self.point_sequence())
-        degree = n_ctrl_points - 1
         P = self.point_sequence().as_array()
 
         # Evaluate the curve
-        x, y = np.zeros(t.shape), np.zeros(t.shape)
-        for i in range(n_ctrl_points):
-            # Calculate the x- and y-coordinates of the Bézier curve given the input vector t
-            x += P[i, 0] * self.bernstein_poly(degree, i, t)
-            y += P[i, 1] * self.bernstein_poly(degree, i, t)
-        xy = np.column_stack((x, y))
+        xy = np.array(bezier_curve_eval_tvec(P, t))
 
         # Calculate the first derivative
-        first_deriv = self.derivative(t=t, order=1)
-        xp = first_deriv[:, 0]
-        yp = first_deriv[:, 1]
+        xpyp = np.array(bezier_curve_dcdt_tvec(P, t))
+        xp, yp = xpyp[:, 0], xpyp[:, 1]
 
         # Calculate the second derivative
-        second_deriv = self.derivative(t=t, order=2)
-        xpp = second_deriv[:, 0]
-        ypp = second_deriv[:, 1]
+        xppypp = np.array(bezier_curve_d2cdt2_tvec(P, t))
+        xpp, ypp = xppypp[:, 0], xppypp[:, 1]
 
         # Combine the derivative x and y data
         xpyp = np.column_stack((xp, yp))
@@ -414,27 +396,3 @@ class Bezier(ParametricCurve):
 
     def get_dict_rep(self):
         return {"points": [pt.name() for pt in self.point_sequence().points()], "default_nt": self.default_nt}
-
-
-def main():
-    # import matplotlib.pyplot as plt
-    bez = Bezier(PointSequence.generate_from_array(np.array([[0.0, 0.0], [0.0, 0.2], [0.2, 0.3], [0.7, 0.1], [1.0, 0.0]])))
-    # hodo = bez.hodograph()
-    # hodo2 = hodo.hodograph()
-    # fig, ax = plt.subplots()
-    bez_data = bez.evaluate()
-    print(f"{bez_data.xpyp = }")
-    print(f"{bez_data.xppypp = }")
-    # hodo_data = hodo.evaluate()
-    # hodo2_data = hodo2.evaluate()
-    # bez_data.plot(ax)
-    # hodo_data.plot(ax)
-    # hodo2_data.plot(ax)
-    # ax.plot(bez.get_control_point_array()[:, 0], bez.get_control_point_array()[:, 1], ls=":", color="grey", marker="s")
-    # ax.plot(hodo.get_control_point_array()[:, 0], hodo.get_control_point_array()[:, 1], ls="-.", color="grey", marker="d")
-    # ax.plot(hodo2.get_control_point_array()[:, 0], hodo2.get_control_point_array()[:, 1], ls=":", color="black", marker="+")
-    # plt.show()
-
-
-if __name__ == "__main__":
-    main()
