@@ -73,7 +73,59 @@ Information about the **XFOIL**, **MSET**, **MSES**, and **MPLOT** tabs can be f
            * - CFD Tool
              - The analysis tool to be used during the optimization run
            * - Objective Functions
-             - The aerodynamic functions to be minimized (separated by commas if there are more than one).
+             - The aerodynamic functions to be minimized (separated by commas if there are more than one). Available
+               functions depend on the CFD tool selected and are referenced with a leading dollar sign ($). See
+               :ref:`obj-functions` for a list of available functions. Note that the functions must be indexed
+               if multipoint optimization is active. For example, for an even weighting of drag coefficient
+               across two multipoint stencil points, use ``0.5 * $Cd[0] + 0.5 * $Cd[1]``. Note that
+               ``$Cd[0] + $Cd[1]$`` is equivalent from an optimization perspective, but requiring that the weights
+               sum to one allows the objective function to more intuitively represent the average drag coefficient
+               across stencil points.
+           * - Aerodynamic Constraints
+             - Similar to "Objective Functions." Negative constraint values are feasible. As an example, use
+               ``-($Cm + 0.1)`` to enforce :math:`C_m \geq -0.1` for a single-point optimization, or
+               ``-($Cm[0] + 0.10),-($Cm[1] + 0.12)`` to enforce :math:`C_m \geq -0.10` and :math:`C_m \geq -0.12` for the
+               first two points in a multipoint optimization, respectively. To enforce a lift coefficient constraint,
+               it is recommended to implicitly enforce this constraint by setting the lift coefficient value instead
+               of angle of attack in the XFOIL or MSES settings tab, as this generally gives better results since it
+               automatically enforces the lift coefficient value during the analysis.
+           * - Population Size
+             - Number of airfoils or airfoil systems required to be converged during each generation. This number
+               should generally be increased with increasing number of design variables
+           * - Number of Offspring
+             - The maximum number of airfoils or airfoil systems allowed to be analyzed during each generation. If this
+               number is reached during a given generation, the optimization will terminate due to too many
+               infeasible solutions. This number should generally be much larger than the population size to allow
+               for some self-intersecting geometries or unconverged XFOIL/MSES solutions to occur before determining
+               that the optimization should be terminated. Because the airfoil systems are generated lazily
+               in the parallel-processing scheme (i.e., not generated before each generation begins), setting this
+               value to a large number does not incur a significant computational time penalty.
+           * - Max. Sampling Width
+             - The amount in bounds-normalized space that each design variable is allowed to be perturbed during
+               the sampling stage. For example, a design variable with bounds :math:`[2.0,3.0]` and an initial value
+               of :math:`2.3` can be set to any value in the range :math:`[2.2,2.4]` if the maximum sampling width
+               is set to :math:`0.1`. This is done to avoid producing too many "poor" geometries during the sampling
+               stage, especially if the design variables are given wide bounds. For design variable sets with tight
+               bounds, this value should be set to a larger value (e.g., ``0.3`` or ``0.4``) to allow maximum
+               diversity in the sampling generation.
+           * - :math:`\eta` (crossover)
+             - Crossover constant determining the width of the sampling distribution when performing the crossover
+               step for each generation. Larger values allow for larger perturbations in design variable values.
+               See `this page <https://pymoo.org/operators/crossover.html#Simulated-Binary-Crossover-(SBX)>`_ for more
+               details.
+           * - :math:`\eta` (mutation)
+             - Mutation constant determining the width of the sampling distribution when performing the random mutation
+               step for each generation. Larger values allow for larger perturbations in design variable values.
+               See `this page <https://pymoo.org/operators/mutation.html#Polynomial-Mutation-(PM)>`_ for more
+               details.
+           * - Random Seed
+             - Psuedo-random number generator seed to use such that the same results are obtained every time the
+               optimization is run with identical settings.
+           * - Number of Processors
+             - Number of logical threads to be used for analyzing airfoil geometries in parallel. The maximum
+               number is that given by ``os.cpu_count()``. Note that for a CPU with six dual-threaded cores,
+               this value can be set up to ``12``.
+
 
     .. tab-item:: Constraints/Termination
 
@@ -86,3 +138,30 @@ Information about the **XFOIL**, **MSET**, **MSES**, and **MPLOT** tabs can be f
         **Multi-Point Optimization**
 
         Setup for a multi-point stencil
+
+
+.. _obj-functions:
+
+Available Objective/Constraint Functions
+========================================
+
+XFOIL
+-----
+- ``$Cd`` (drag coefficient)
+- ``$Cl`` (lift coefficient)
+- ``$alf`` (angle of attack, degrees)
+- ``$Cm`` (pitching moment coefficient)
+- ``$Cdf`` (friction drag coefficient)
+- ``$Cdp`` (pressure drag coefficient)
+
+MSES
+----
+Same as XFOIL, with the addition of
+
+- ``$Cdv`` (viscous drag coefficient, equivalent to ``$Cd - $Cdw - $Cdh``)
+- ``$Cdw`` (wave drag coefficient)
+- ``$Cdh`` (actuator disk "drag" coefficient; generally negative if the actuator disk fan pressure ratio
+  is greater than ``1.0``)
+- ``$CPK`` (mechanical flow power coefficient; only available if the "Output CPK" option is selected in
+  the MPLOT settings)
+
