@@ -3079,6 +3079,7 @@ class GeneticAlgorithmDialogWidget(PymeadDialogWidget2):
             )
         }
         self.num_processors_changed(self.widget_dict["num_processors"].value())
+        self.root_dir_changed(self.widget_dict["root_dir"].value())
 
     def establishWidgetConnections(self):
         self.widget_dict["max_sampling_width"].push.clicked.connect(self.visualize_sampling)
@@ -3088,6 +3089,7 @@ class GeneticAlgorithmDialogWidget(PymeadDialogWidget2):
         self.widget_dict["J"].sigValueChanged.connect(self.objectives_changed)
         self.widget_dict["G"].sigValueChanged.connect(self.constraints_changed)
         self.widget_dict["num_processors"].sigValueChanged.connect(self.num_processors_changed)
+        self.widget_dict["root_dir"].sigValueChanged.connect(self.root_dir_changed)
         self.widget_dict["tool"].sigValueChanged.connect(self.update_objectives_and_constraints)
         self.multi_point_dialog_widget.widget_dict["multi_point_active"]["widget"].stateChanged.connect(
             self.update_objectives_and_constraints
@@ -3171,6 +3173,16 @@ class GeneticAlgorithmDialogWidget(PymeadDialogWidget2):
             widget.setStyleSheet(f"QSpinBox {{background-color: {VALIDATION_DEFAULT}}}")
         else:
             widget.setStyleSheet(f"QSpinBox {{background-color: {VALIDATION_FAILURE}}}")
+
+    def root_dir_changed(self, value: str):
+        widget = self.widget_dict["root_dir"].widget
+        if len(value) == 0:
+            widget.setStyleSheet(f"QLineEdit {{background-color: {VALIDATION_FAILURE}}}")
+            return
+        if not os.path.exists(value):
+            widget.setStyleSheet(f"QLineEdit {{background-color: {VALIDATION_FAILURE}}}")
+            return
+        widget.setStyleSheet(f"QLineEdit {{background-color: {VALIDATION_SUCCESS}}}")
 
     @staticmethod
     def convert_text_array_to_dict(multi_line_text: str):
