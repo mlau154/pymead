@@ -181,7 +181,7 @@ Information about the **XFOIL**, **MSET**, **MSES**, and **MPLOT** tabs can be f
                   0.3 -0.05
                   0.3 0.05
 
-               can be used to ensure that a rectangle with width :math:`0.2`, height :math:`0.1`, and centered at
+               can be used to ensure that a rectangle with width :math:`0.2`, height :math:`0.1`, and center
                :math:`(0.4,0.0)` is enclosed by the airfoil.
            * - Function Tolerance
              - Change in objective function value used to determine convergence
