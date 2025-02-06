@@ -3,6 +3,9 @@ import typing
 import numpy as np
 import pyqtgraph as pg
 from PyQt6.QtCore import pyqtSignal
+from pymead.core.param import ParamSequence
+
+from pymead.core.bspline import BSpline
 
 from pymead.core.bezier import Bezier
 from pymead.core.ferguson import Ferguson
@@ -24,6 +27,7 @@ class HoverableCurve(pg.PlotCurveItem):
     sigCurveNotHovered = pyqtSignal(object, object)
     sigRemove = pyqtSignal(object)
     sigBezierAdded = pyqtSignal(object)
+    sigBSplineAdded = pyqtSignal(object)
     sigFergusonAdded = pyqtSignal(object)
     sigLineAdded = pyqtSignal(object)
     sigPolyLineAdded = pyqtSignal(object)
@@ -42,7 +46,7 @@ class HoverableCurve(pg.PlotCurveItem):
         kwargs
             Keyword arguments which are passed to ``pyqtgraph.PlotCurveItem``
         """
-        implemented_curve_types = ["Bezier", "LineSegment", "PolyLine", "Ferguson"]
+        implemented_curve_types = ["Bezier", "LineSegment", "PolyLine", "Ferguson", "BSpline"]
         if curve_type not in implemented_curve_types:
             raise NotImplementedError(f"Curve type {curve_type} either incorrectly labeled or not yet implemented."
                                       f"Currently implemented curve types: {implemented_curve_types}.")
@@ -69,7 +73,7 @@ class HoverableCurve(pg.PlotCurveItem):
     def clickEvent(self, ev):
         self.sigCurveClicked.emit(self, ev)
 
-    def updateCurveData(self, data: np.ndarray):
+    def updateCurveData(self, data: np.ndarray, knots: np.ndarray = None):
         """
         Updates the data in the curve from a ``numpy`` array.
 
@@ -78,19 +82,31 @@ class HoverableCurve(pg.PlotCurveItem):
         data: np.ndarray
             Two-column array, where the two columns represent the :math:`x` and :math:`y` values of a sequence of points
             that describes the curve. In the case of splines, these points are the control points.
+        knots: np.ndarray
+            Optional knot vector (only required for B-splines)
 
         Returns
-        =======
+        -------
         PCurveData
             Parameter vector and "xy" ``PointSequence`` describing the parametric curve
         """
         point_sequence = PointSequence.generate_from_array(data)
+        knot_sequence = ParamSequence.generate_from_array(knots) if knots is not None else None
         if self.curve_type == "Bezier":
             if self.parametric_curve is None:
                 self.parametric_curve = Bezier(point_sequence)
                 self.sigBezierAdded.emit(self.parametric_curve)
             else:
                 self.parametric_curve.set_point_sequence(point_sequence)
+        elif self.curve_type == "BSpline":
+            if knot_sequence is None:
+                raise ValueError("Must set knots to update B-spline data")
+            if self.parametric_curve is None:
+                self.parametric_curve = BSpline(point_sequence, knot_sequence)
+                self.sigBSplineAdded.emit(self.parametric_curve)
+            else:
+                self.parametric_curve.set_point_sequence(point_sequence)
+                self.parametric_curve.set_knot_sequence(knot_sequence)
         elif self.curve_type == "Ferguson":
             if self.parametric_curve is None:
                 self.parametric_curve = Ferguson(point_sequence)

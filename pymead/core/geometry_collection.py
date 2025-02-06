@@ -6,6 +6,8 @@ import sys
 import typing
 from copy import copy
 
+from pymead.core.bspline import BSpline
+
 from pymead import EXAMPLES_DIR
 from pymead.core.ferguson import Ferguson
 from pymead.core.param_graph import ParamGraph
@@ -18,7 +20,7 @@ from pymead.core.mea import MEA
 from pymead.core.parametric_curve import ParametricCurve
 from pymead.core.pymead_obj import DualRep, PymeadObj
 from pymead.core.line import LineSegment, PolyLine, ReferencePolyline
-from pymead.core.param import Param, LengthParam, AngleParam, DesVar, LengthDesVar, AngleDesVar
+from pymead.core.param import Param, LengthParam, AngleParam, DesVar, LengthDesVar, AngleDesVar, ParamSequence
 from pymead.core.point import Point, PointSequence
 from pymead.core.transformation import Transformation3D
 from pymead.plugins.IGES.curves import BezierIGES
@@ -42,6 +44,7 @@ class GeometryCollection(DualRep):
             "lines": {},
             "polylines": {},
             "bezier": {},
+            "bsplines": {},
             "ferguson": {},
             "airfoils": {},
             "mea": {},
@@ -448,7 +451,7 @@ class GeometryCollection(DualRep):
                 self.param_graph.remove_node(pymead_obj)
 
         elif isinstance(pymead_obj, Bezier) or isinstance(pymead_obj, LineSegment) or isinstance(
-                pymead_obj, PolyLine) or isinstance(pymead_obj, Ferguson):
+                pymead_obj, PolyLine) or isinstance(pymead_obj, Ferguson) or isinstance(pymead_obj, BSpline):
             # Remove all the references to this curve in each of the curve's points
             for pt in pymead_obj.point_sequence().points():
                 if pymead_obj in pt.curves:
@@ -617,6 +620,16 @@ class GeometryCollection(DualRep):
         bezier = Bezier(point_sequence=point_sequence, default_nt=default_nt, name=name, t_start=t_start, t_end=t_end)
 
         return self.add_pymead_obj_by_ref(bezier, assign_unique_name=assign_unique_name)
+
+    def add_bspline(self, point_sequence: PointSequence or typing.List[Point],
+                    knot_sequence: ParamSequence or typing.List[Param],
+                    default_nt: int or None = None,
+                    name: str or None = None,
+                    t_start: float = None, t_end: float = None, assign_unique_name: bool = True):
+        bspline = BSpline(point_sequence=point_sequence, knot_sequence=knot_sequence, default_nt=default_nt,
+                          name=name, t_start=t_start, t_end=t_end)
+
+        return self.add_pymead_obj_by_ref(bspline, assign_unique_name=assign_unique_name)
 
     def add_ferguson(self, point_sequence: PointSequence or typing.List[Point],
                      default_nt: int or None = None, name: str or None = None,
@@ -1111,6 +1124,20 @@ class GeometryCollection(DualRep):
                 name=name, assign_unique_name=False,
                 default_nt=bezier_dict["default_nt"] if "default_nt" in bezier_dict else None
             )
+        if "bsplines" in d:
+            for name, bspline_dict in d["bsplines"].items():
+                knots = []
+                for knot_name in bspline_dict["knots"]:
+                    try:
+                        knots.append(geo_col.container()["params"][knot_name])
+                    except KeyError:
+                        knots.append(geo_col.container()["desvar"][knot_name])
+                geo_col.add_bspline(point_sequence=PointSequence(
+                    points=[geo_col.container()["points"][k] for k in bspline_dict["points"]]),
+                    knot_sequence=ParamSequence(knots),
+                    name=name, assign_unique_name=False,
+                    default_nt=bspline_dict["default_nt"] if "default_nt" in bspline_dict else None
+                )
         if "ferguson" in d:
             for name, ferguson_dict in d["ferguson"].items():
                 geo_col.add_ferguson(point_sequence=PointSequence(
@@ -1134,6 +1161,8 @@ class GeometryCollection(DualRep):
                     geocon_dict[k] = geo_col.container()["polylines"][v]
                 elif v in d["bezier"].keys():
                     geocon_dict[k] = geo_col.container()["bezier"][v]
+                elif "bsplines" in d and v in d["bsplines"].keys():
+                    geocon_dict[k] = geo_col.container()["bsplines"][v]
                 elif "ferguson" in d and v in d["ferguson"].keys():
                     geocon_dict[k] = geo_col.container()["ferguson"][v]
                 else:

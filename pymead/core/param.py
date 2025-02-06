@@ -411,7 +411,7 @@ class Param(PymeadObj):
             raise EquationCompileError(str(e))
 
     def get_dict_rep(self):
-        return {"value": float(self.value()) if self.dtype == "float" else int(self.value()),
+        return {"value": float(self.value()) if "float" in self.dtype else int(self.value()),
                 "lower": self.lower(), "upper": self.upper(),
                 "unit_type": None, "enabled": self.enabled(), "equation_str": self.equation_str}
 

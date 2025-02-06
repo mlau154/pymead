@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from enum import Enum
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -59,6 +60,11 @@ class PCurveData:
 
     def approximate_arc_length(self):
         return np.sum(np.hypot(self.xy[1:, 0] - self.xy[:-1, 0], self.xy[1:, 1] - self.xy[:-1, 1]))
+
+
+class ParametricCurveEndpoint(Enum):
+    Start = 0
+    End = 1
 
 
 class ParametricCurve(PymeadObj, ABC):

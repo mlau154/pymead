@@ -1,11 +1,11 @@
 import typing
 
 import numpy as np
+from rust_nurbs import *
+
 from pymead.core.param import Param, ParamSequence
-
 from pymead.core.point import PointSequence, Point
-
-from pymead.core.parametric_curve import ParametricCurve, PCurveData
+from pymead.core.parametric_curve import ParametricCurve, PCurveData, ParametricCurveEndpoint
 
 
 class BSpline(ParametricCurve):
@@ -14,13 +14,15 @@ class BSpline(ParametricCurve):
                  point_sequence: PointSequence or typing.List[Point],
                  knot_sequence: ParamSequence or typing.List[Param],
                  default_nt: int or None = None,
+                 name: str or None = None,
+                 t_start: float = None,
+                 t_end: float = None,
                  **kwargs):
         """
         Non-uniform rational B-spline (NURBS) curve evaluation class
         """
-        super().__init__(sub_container="bspline", **kwargs)
+        super().__init__(sub_container="bsplines", **kwargs)
         assert len(knot_sequence) >= len(point_sequence) + 1
-        self.degree = len(knot_sequence) - len(point_sequence) - 1
         self.default_nt = default_nt
         self._point_sequence = None
         self._knot_sequence = None
@@ -28,8 +30,43 @@ class BSpline(ParametricCurve):
         knot_sequence = ParamSequence(knot_sequence) if isinstance(knot_sequence, list) else knot_sequence
         self.set_point_sequence(point_sequence)
         self.set_knot_sequence(knot_sequence)
-        self.weights = np.ones(len(self.point_sequence()))
-        self.possible_spans, self.possible_span_indices = self._get_possible_spans()
+        self.t_start = t_start
+        self.t_end = t_end
+        name = "BSpline-1" if name is None else name
+        self.set_name(name)
+        self.curve_connections = []
+        self._add_references()
+
+    def _add_references(self):
+        for idx, point in enumerate(self.point_sequence().points()):
+            # If any curves are found at the start point, add their pointers as curve connections
+            if idx == 0:
+                for curve in point.curves:
+                    if not curve.reference:  # Do not include reference curves
+                        self.curve_connections.append(curve)
+
+            # If any other curves are found at the end point, add their pointers as curve connections
+            elif idx == len(self.point_sequence()) - 1:
+                for curve in point.curves:
+                    if not curve.reference:  # Do not include reference curves
+                        self.curve_connections.append(curve)
+
+            # Add the object reference to each point in the curve
+            if self not in point.curves:
+                point.curves.append(self)
+
+    def set_name(self, name: str):
+        super().set_name(name)
+        for knot_idx, knot in enumerate(self.knot_sequence().params()):
+            knot.set_name(f"{self.name()}.knot-{knot_idx}")
+
+    @property
+    def degree(self) -> int:
+        return len(self.knot_sequence()) - len(self.point_sequence()) - 1
+
+    @property
+    def weights(self) -> np.ndarray:
+        return np.ones(len(self.point_sequence()))
 
     def point_sequence(self):
         return self._point_sequence
@@ -63,7 +100,6 @@ class BSpline(ParametricCurve):
 
     def insert_point(self, idx: int, point: Point):
         self.point_sequence().insert_point(idx, point)
-        self.degree += 1
         if self not in point.curves:
             point.curves.append(self)
         if self.canvas_item is not None:
@@ -93,20 +129,33 @@ class BSpline(ParametricCurve):
         if self.canvas_item is not None:
             self.canvas_item.sigRemove.emit(self.canvas_item)
 
-    def is_clamped(self) -> bool:
+    def is_clamped(self, loc: ParametricCurveEndpoint) -> bool:
         """
         Determines whether the knot sequence of the B-spline is clamped. A knot sequence
-        is clamped when the first :math:`p+1` knots are equal to 0 and the last :math:`p+1` knots
-        are equal to 1.
+        is clamped when the first :math:`p+1` knots are equal and the last :math:`p+1` knots
+        are equal.
+
+        Parameters
+        ----------
+        loc: ParametricCurveEndpoint
+            Specifies whether to check if the curve is clamped at the start or end
 
         Returns
         -------
         bool
             Whether the B-spline has a clamped knot sequence
         """
-        return all([ti.value() == 0.0 for ti in self.knots()[:self.degree + 1]]) and all(
-            [ti.value() == 1.0 for ti in self.knots()[len(self.knot_sequence()) - self.degree - 1:]]
-        )
+        q = self.degree
+        knots = self.knot_sequence().as_array()
+        if loc == ParametricCurveEndpoint.Start:
+            start_knot = knots[0]
+            if np.all(np.isclose(knots[:(q + 1)], start_knot)):
+                return True
+            return False
+        end_knot = knots[-1]
+        if np.all(np.isclose(knots[-(q + 1):], end_knot)):
+            return True
+        return False
 
     def hodograph(self) -> "BSpline":
         P = self.get_control_point_array()
@@ -130,14 +179,14 @@ class BSpline(ParametricCurve):
         Calculates an arbitrary-order derivative of the Bézier curve.
 
         Parameters
-        ==========
+        ----------
         t: np.ndarray
             The parameter vector
         order: int
             The derivative order. For example, ``order=2`` returns the second derivative.
 
         Returns
-        =======
+        -------
         np.ndarray
             An array of ``shape=(N,2)`` where ``N`` is the number of evaluated points specified by the :math:`t` vector.
             The columns represent :math:`C^{(m)}_x(t)` and :math:`C^{(m)}_y(t)`, where :math:`m` is the
@@ -151,34 +200,29 @@ class BSpline(ParametricCurve):
 
     def evaluate_xy(self, t: np.array or None = None, **kwargs) -> np.ndarray:
         """
-        Evaluate the NURBS curve at parameter t
+        Evaluate the B-spline curve at parameter t
         """
         # Generate the parameter vector
         if self.default_nt is not None:
             kwargs["nt"] = self.default_nt
         t = ParametricCurve.generate_t_vec(**kwargs) if t is None else t
 
-        xy = np.zeros(shape=(len(t), 2))
-        for idx, t_val in enumerate(t):
-            B = self._basis_functions(t_val, self.degree)
-            point = np.dot(B, self.get_control_point_array())
-            xy[idx, 0] = point[0]
-            xy[idx, 1] = point[1]
-        return xy
+        # Evaluate the curve
+        return np.array(bspline_curve_eval_tvec(self.point_sequence().as_array(), self.knot_sequence().as_array(), t))
 
     def evaluate(self, t: np.array or None = None, **kwargs):
         r"""
         Evaluates the curve using an optionally specified parameter vector.
 
         Parameters
-        ==========
+        ----------
         t: np.ndarray or ``None``
             Optional direct specification of the parameter vector for the curve. Not specifying this value
             gives a linearly spaced parameter vector from ``t_start`` or ``t_end`` with the default size.
             Default: ``None``
 
         Returns
-        =======
+        -------
         PCurveData
             Data class specifying the following information about the Bézier curve:
 
@@ -194,22 +238,20 @@ class BSpline(ParametricCurve):
             kwargs["nt"] = self.default_nt
         t = ParametricCurve.generate_t_vec(**kwargs) if t is None else t
 
-        xy = np.zeros(shape=(len(t), 2))
-        for idx, t_val in enumerate(t):
-            B = self._basis_functions(t_val, self.degree)
-            point = np.dot(B, self.get_control_point_array())
-            xy[idx, 0] = point[0]
-            xy[idx, 1] = point[1]
+        # Number of control points, curve degree, control point array
+        P = self.point_sequence().as_array()
+        k = self.knot_sequence().as_array()
+
+        # Evaluate the curve
+        xy = np.array(bspline_curve_eval_tvec(P, k, t))
 
         # Calculate the first derivative
-        first_deriv = self.derivative(t=t, order=1)
-        xp = first_deriv[:, 0]
-        yp = first_deriv[:, 1]
+        xpyp = np.array(bspline_curve_dcdt_tvec(P, k, t))
+        xp, yp = xpyp[:, 0], xpyp[:, 1]
 
         # Calculate the second derivative
-        second_deriv = self.derivative(t=t, order=2)
-        xpp = second_deriv[:, 0]
-        ypp = second_deriv[:, 1]
+        xppypp = np.array(bspline_curve_d2cdt2_tvec(P, k, t))
+        xpp, ypp = xppypp[:, 0], xppypp[:, 1]
 
         # Combine the derivative x and y data
         xpyp = np.column_stack((xp, yp))
@@ -225,54 +267,6 @@ class BSpline(ParametricCurve):
             R = np.true_divide(1, k)
 
         return PCurveData(t=t, xy=xy, xpyp=xpyp, xppypp=xppypp, k=k, R=R)
-
-    def _get_possible_spans(self) -> (np.ndarray, np.ndarray):
-        possible_span_indices = np.array([], dtype=int)
-        possible_spans = []
-        knot_vector = self.get_knot_vector()
-        for knot_idx, (knot_1, knot_2) in enumerate(zip(knot_vector[:-1], knot_vector[1:])):
-            if knot_1 == knot_2:
-                continue
-            possible_span_indices = np.append(possible_span_indices, knot_idx)
-            possible_spans.append([knot_1, knot_2])
-        return np.array(possible_spans), possible_span_indices
-
-    def _cox_de_boor(self, t: float, i: int, p: int) -> float:
-        if p == 0:
-            return 1.0 if i in self.possible_span_indices and self._find_span(t) == i else 0.0
-        else:
-            with np.errstate(divide="ignore", invalid="ignore"):
-                knot_vector = self.get_knot_vector()
-                f = (t - knot_vector[i]) / (knot_vector[i + p] - knot_vector[i])
-                g = (knot_vector[i + p + 1] - t) / (knot_vector[i + p + 1] - knot_vector[i + 1])
-                if np.isinf(f) or np.isnan(f):
-                    f = 0.0
-                if np.isinf(g) or np.isnan(g):
-                    g = 0.0
-                if f == 0.0 and g == 0.0:
-                    return 0.0
-                elif f != 0.0 and g == 0.0:
-                    return f * self._cox_de_boor(t, i, p - 1)
-                elif f == 0.0 and g != 0.0:
-                    return g * self._cox_de_boor(t, i + 1, p - 1)
-                else:
-                    return f * self._cox_de_boor(t, i, p - 1) + g * self._cox_de_boor(t, i + 1, p - 1)
-
-    def _basis_functions(self, t: float, p: int):
-        """
-        Compute the non-zero basis functions at parameter t
-        """
-        return np.array([self._cox_de_boor(t, i, p) for i in range(len(self.points()))])
-
-    def _find_span(self, t: float):
-        """
-        Find the knot span index
-        """
-        for knot_span, knot_span_idx in zip(self.possible_spans, self.possible_span_indices):
-            if knot_span[0] <= t < knot_span[1]:
-                return knot_span_idx
-        if t == self.possible_spans[-1][1]:
-            return self.possible_span_indices[-1]
 
     def get_dict_rep(self) -> dict:
         return {

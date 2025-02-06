@@ -1337,21 +1337,21 @@ class GCS(networkx.DiGraph):
             """
             p_g2.request_move(p_g1.x().value(), p_g1.y().value(), force=True)
 
-        if constraint.curve_type_1 == "Bezier" and constraint.curve_type_2 == "LineSegment":
+        if constraint.curve_type_1 in ("Bezier", "BSpline") and constraint.curve_type_2 == "LineSegment":
             solve_for_single_curve_zero_curvature(constraint.g1_point_curve_1, constraint.g2_point_curve_1)
             return constraint.child_nodes
 
-        if constraint.curve_type_2 == "Bezier" and constraint.curve_type_1 == "LineSegment":
+        if constraint.curve_type_2 in ("Bezier", "BSpline") and constraint.curve_type_1 == "LineSegment":
             solve_for_single_curve_zero_curvature(constraint.g1_point_curve_2, constraint.g2_point_curve_2)
             return constraint.child_nodes
 
-        if constraint.curve_type_1 == "Bezier":
+        if constraint.curve_type_1 in ("Bezier", "BSpline"):
             if constraint.is_solving_allowed(constraint.g2_point_curve_1):
                 solve_for_single_bezier(constraint.g1_point_curve_1, constraint.g2_point_curve_1, constraint.curve_1.degree)
             else:
                 R1 = ROCurvatureConstraint.calculate_curvature_data(constraint.curve_joint).R1
                 constraint.param().set_value(R1, force=True)
-        if constraint.curve_type_2 == "Bezier":
+        if constraint.curve_type_2 in ("Bezier", "BSpline"):
             if constraint.is_solving_allowed(constraint.g2_point_curve_2):
                 solve_for_single_bezier(constraint.g1_point_curve_2, constraint.g2_point_curve_2, constraint.curve_2.degree)
             else:

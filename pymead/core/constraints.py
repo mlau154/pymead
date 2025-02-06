@@ -4,6 +4,7 @@ from abc import abstractmethod
 
 import numpy as np
 
+from parametric_curve import ParametricCurveEndpoint
 from pymead.core.bezier import Bezier
 from pymead.core.constraint_equations import measure_rel_angle3, measure_point_line_distance_unsigned
 from pymead.core.line import PolyLine
@@ -287,9 +288,17 @@ class ROCurvatureConstraint(GeoCon):
         self.curve_type_1 = self.curve_1.__class__.__name__
         self.curve_type_2 = self.curve_2.__class__.__name__
 
-        if self.curve_type_1 == "Bezier":
+        if self.curve_type_1 in ("Bezier", "BSpline"):
             curve_joint_index_curve_1 = self.curve_1.point_sequence().points().index(curve_joint)
             self.curve_joint_index_curve_1 = -1 if curve_joint_index_curve_1 != 0 else 0
+            if (self.curve_joint_index_curve_1 == 0 and self.curve_type_1 == "BSpline" and
+                    not self.curve_1.is_clamped(ParametricCurveEndpoint.Start)):
+                raise ValueError(f"Curve {self.curve_1} is not clamped at the start. "
+                                 f"Curvature constraints can only be applied to clamped curves.")
+            elif (self.curve_joint_index_curve_1 == 0 and self.curve_type_1 == "BSpline" and
+                    not self.curve_1.is_clamped(ParametricCurveEndpoint.Start)):
+                raise ValueError(f"Curve {self.curve_1} is not clamped at the start. "
+                                 f"Curvature constraints can only be applied to clamped curves.")
             self.g2_point_index_curve_1 = 2 if self.curve_joint_index_curve_1 == 0 else -3
             self.g1_point_index_curve_1 = 1 if self.g2_point_index_curve_1 == 2 else -2
             self.g1_point_curve_1 = self.curve_1.point_sequence().points()[self.g1_point_index_curve_1]
@@ -299,9 +308,13 @@ class ROCurvatureConstraint(GeoCon):
              self.g2_point_index_curve_1, self.g1_point_index_curve_1,
              self.g1_point_curve_1, self.g2_point_curve_1) = None, None, None, None, None, None
 
-        if self.curve_type_2 == "Bezier":
+        if self.curve_type_2 in ("Bezier", "BSpline"):
             curve_joint_index_curve_2 = self.curve_2.point_sequence().points().index(curve_joint)
             self.curve_joint_index_curve_2 = -1 if curve_joint_index_curve_2 != 0 else 0
+            if (self.curve_joint_index_curve_2 == 0 and self.curve_type_1 == "BSpline" and
+                    not self.curve_1.is_clamped(ParametricCurveEndpoint.Start)):
+                raise ValueError(f"Curve {self.curve_1} is not clamped at the start. "
+                                 f"Curvature constraints can only be applied to clamped curves.")
             self.g2_point_index_curve_2 = 2 if self.curve_joint_index_curve_2 == 0 else -3
             self.g1_point_index_curve_2 = 1 if self.g2_point_index_curve_2 == 2 else -2
             self.g1_point_curve_2 = self.curve_2.point_sequence().points()[self.g1_point_index_curve_2]
@@ -318,9 +331,9 @@ class ROCurvatureConstraint(GeoCon):
             points.append(point)
 
         secondary_params = []
-        if self.curve_type_1 == "Bezier":
+        if self.curve_type_1 in ("Bezier", "BSpline"):
             secondary_params.append(Param(self.curve_1.degree, "n"))
-        if self.curve_type_2 == "Bezier":
+        if self.curve_type_2 in ("Bezier", "BSpline"):
             secondary_params.append(Param(self.curve_2.degree, "n"))
 
         if self.curve_type_1 == "PolyLine" and self.curve_type_2 == "PolyLine":
@@ -328,7 +341,7 @@ class ROCurvatureConstraint(GeoCon):
 
         if self.curve_type_1 == "LineSegment" or self.curve_type_2 == "LineSegment":
             param = None
-        elif self.curve_type_1 == "PolyLine" or (self.curve_type_1 == "Bezier" and (
+        elif self.curve_type_1 == "PolyLine" or (self.curve_type_1 in ("Bezier", "BSpline") and (
                 self.curve_1.t_start is not None or self.curve_1.t_end is not None)):
             data = self.curve_1.evaluate()
             if (np.isclose(data.xy[0, 0], self.curve_joint.x().value()) and
@@ -338,7 +351,7 @@ class ROCurvatureConstraint(GeoCon):
                 R = data.R[-1]
 
             param = LengthParam(value=R, name="ROC-1", enabled=False, geo_col=geo_col) if not isinstance(value, Param) else value
-        elif self.curve_type_2 == "PolyLine" or (self.curve_type_2 == "Bezier" and (
+        elif self.curve_type_2 == "PolyLine" or (self.curve_type_2 in ("Bezier", "BSpline") and (
                 self.curve_2.t_start is not None or self.curve_2.t_end is not None)):
             data = self.curve_2.evaluate()
             if (np.isclose(data.xy[0, 0], self.curve_joint.x().value()) and
@@ -373,7 +386,7 @@ class ROCurvatureConstraint(GeoCon):
         Lt2, Lc2, n2, theta2, phi2, psi2, R2 = None, None, None, None, None, None, None
 
         curve_1 = curve_joint.curves[0]
-        if curve_1.__class__.__name__ == "Bezier":
+        if curve_1.__class__.__name__ in ("Bezier", "BSpline"):
             curve_joint_index_curve_1 = curve_1.point_sequence().points().index(curve_joint)
             curve_joint_index_curve_1 = -1 if curve_joint_index_curve_1 != 0 else 0
             g2_point_index_curve_1 = 2 if curve_joint_index_curve_1 == 0 else -3
@@ -392,7 +405,7 @@ class ROCurvatureConstraint(GeoCon):
             R1 = np.inf
 
         curve_2 = curve_joint.curves[1]
-        if curve_2.__class__.__name__ == "Bezier":
+        if curve_2.__class__.__name__ in ("Bezier", "BSpline"):
             curve_joint_index_curve_2 = curve_2.point_sequence().points().index(curve_joint)
             curve_joint_index_curve_2 = -1 if curve_joint_index_curve_2 != 0 else 0
             g2_point_index_curve_2 = 2 if curve_joint_index_curve_2 == 0 else -3

@@ -7,6 +7,7 @@ from functools import partial
 from PyQt6 import QtWidgets
 from PyQt6.QtCore import QEventLoop
 from PyQt6.QtWidgets import QApplication
+from pymead.core.param import ParamSequence
 
 from pymead import q_settings, GUI_SETTINGS_DIR
 from pymead.core.airfoil import Airfoil, ClosureError, BranchError
@@ -75,13 +76,13 @@ class AirfoilCanvas(pg.PlotWidget):
             pymead_obj.canvas_item.hide()
 
     def showAllPymeadObjs(self):
-        sub_containers = ("points", "bezier", "ferguson", "lines", "airfoils", "geocon", "polylines", "reference")
+        sub_containers = ("points", "bezier", "bsplines", "ferguson", "lines", "airfoils", "geocon", "polylines", "reference")
         for sub_container in sub_containers:
             self.showPymeadObjs(sub_container)
         return {sub_container: True for sub_container in sub_containers}
 
     def hideAllPymeadObjs(self):
-        sub_containers = ("points", "bezier", "ferguson", "lines", "airfoils", "geocon", "polylines", "reference")
+        sub_containers = ("points", "bezier", "bsplines", "ferguson", "lines", "airfoils", "geocon", "polylines", "reference")
         for sub_container in sub_containers:
             self.hidePymeadObjs(sub_container)
         return {sub_container: False for sub_container in sub_containers}
@@ -312,6 +313,62 @@ class AirfoilCanvas(pg.PlotWidget):
     @runSelectionEventLoop(drawing_object="Beziers", starting_message="Select the first Bezier control point",
                            enter_callback=drawBezierNoEvent)
     def drawBeziers(self):
+        if len(self.geo_col.selected_objects["points"]) < 2:
+            msg = f"Choose at least 2 points to define a curve"
+            self.sigStatusBarUpdate.emit(msg, 2000)
+            return
+
+    @undoRedoAction
+    def drawBSplineNoEvent(self):
+        if len(self.geo_col.selected_objects["points"]) < 2:
+            msg = f"Choose at least 2 points to define a curve"
+            self.sigStatusBarUpdate.emit(msg, 2000)
+            return
+
+        degree = 3
+
+        point_sequence = PointSequence([pt for pt in self.geo_col.selected_objects["points"]])
+        if len(point_sequence) < degree + 1:
+            self.gui_obj.disp_message_box(f"At least {degree + 1} points are required to "
+                                          f"generate a B-Spline of degree {degree}")
+            return
+        knot_array = np.linspace(0.0, 1.0, 2 + len(point_sequence) - (degree + 1))
+
+        knot_sequence = ParamSequence.generate_from_array(np.array([0.0] * degree + knot_array.tolist() + [1.0] * degree))
+        bspline = self.geo_col.add_bspline(point_sequence=point_sequence, knot_sequence=knot_sequence)
+        for knot_idx, knot in enumerate(knot_sequence.params()):
+            knot.set_name(f"{bspline.name()}.knot-{knot_idx}")
+            self.geo_col.add_pymead_obj_by_ref(knot, assign_unique_name=False)
+
+        self.clearSelectedObjects()
+        self.sigStatusBarUpdate.emit("Select the first B-spline control point of the next curve", 0)
+
+    @undoRedoAction
+    @runSelectionEventLoop(drawing_object="BSpline", starting_message="Select the first B-spline control point")
+    def drawBSpline(self):
+        if len(self.geo_col.selected_objects["points"]) < 2:
+            msg = f"Choose at least 2 points to define a curve"
+            self.sigStatusBarUpdate.emit(msg, 2000)
+            return
+
+        degree = 3
+
+        point_sequence = PointSequence([pt for pt in self.geo_col.selected_objects["points"]])
+        if len(point_sequence) < degree + 1:
+            self.gui_obj.disp_message_box(f"At least {degree + 1} points are required to "
+                                          f"generate a B-Spline of degree {degree}")
+            return
+        knot_array = np.linspace(0.0, 1.0, 2 + len(point_sequence) - (degree + 1))
+
+        knot_sequence = ParamSequence.generate_from_array(np.array([0.0] * degree + knot_array.tolist() + [1.0] * degree))
+        bspline = self.geo_col.add_bspline(point_sequence=point_sequence, knot_sequence=knot_sequence)
+        for knot_idx, knot in enumerate(knot_sequence.params()):
+            knot.set_name(f"{bspline.name()}.knot-{knot_idx}")
+            self.geo_col.add_pymead_obj_by_ref(knot, assign_unique_name=False)
+
+    @runSelectionEventLoop(drawing_object="BSplines", starting_message="Select the first B-spline control point",
+                           enter_callback=drawBSplineNoEvent)
+    def drawBSplines(self):
         if len(self.geo_col.selected_objects["points"]) < 2:
             msg = f"Choose at least 2 points to define a curve"
             self.sigStatusBarUpdate.emit(msg, 2000)
@@ -666,6 +723,18 @@ class AirfoilCanvas(pg.PlotWidget):
                    f"{len(self.geo_col.selected_objects['points'])} "
                    f"(degree: {degree}). Press 'Enter' to generate the curve.")
             self.sigStatusBarUpdate.emit(msg, 0)
+        elif self.drawing_object == "BSpline":
+            self.geo_col.select_object(point_item.point)
+            n_ctrl_pts = len(self.geo_col.selected_objects["points"])
+            msg = (f"Added control point to curve. Number of control points: "
+                   f"{len(self.geo_col.selected_objects['points'])}. Press 'Enter' to generate the curve.")
+            self.sigStatusBarUpdate.emit(msg, 0)
+        elif self.drawing_object == "BSplines":
+            self.geo_col.select_object(point_item.point)
+            n_ctrl_pts = len(self.geo_col.selected_objects["points"])
+            msg = (f"Added control point to curve. Number of control points: "
+                   f"{len(self.geo_col.selected_objects['points'])}. Press 'Enter' to generate the curve.")
+            self.sigStatusBarUpdate.emit(msg, 0)
         elif self.drawing_object in ["Ferguson", "Fergusons"]:
             self.geo_col.select_object(point_item.point)
             if len(self.geo_col.selected_objects["points"]) == 1:
@@ -955,6 +1024,7 @@ class AirfoilCanvas(pg.PlotWidget):
 
         drawPointAction = create_geometry_menu.addAction("Insert Point")
         drawBezierCurveThroughPointsAction = create_geometry_menu.addAction("Bezier Curve Through Points")
+        drawBSplineCurveThroughPointsAction = create_geometry_menu.addAction("B-Spline Curve Through Points")
         drawFergusonCurveThroughPointsAction = create_geometry_menu.addAction("Ferguson Curve Through Points")
         drawLineSegmentThroughPointsAction = create_geometry_menu.addAction("Line Segment Through Points")
         generateAirfoilAction = create_geometry_menu.addAction("Generate Airfoil")
@@ -974,6 +1044,8 @@ class AirfoilCanvas(pg.PlotWidget):
             self.drawPoint(x=[view_pos.x()], y=[view_pos.y()])
         elif res == drawBezierCurveThroughPointsAction:
             self.drawBezier()
+        elif res == drawBSplineCurveThroughPointsAction:
+            self.drawBSpline()
         elif res == drawFergusonCurveThroughPointsAction:
             self.drawFerguson()
         elif res == drawLineSegmentThroughPointsAction:

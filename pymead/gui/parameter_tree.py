@@ -206,15 +206,11 @@ class Completer(QCompleter):
     def pathFromIndex(self, index):
         path = QCompleter.pathFromIndex(self, index)
 
-        print(f"At the start, {path = }")
-
         lst = str(self.widget().text()).split('$')
 
         if len(lst) > 1:
             # path = "$".join(lst[:-1]) + path
             path = "$" + path
-
-        print(f"{lst = }, {path = }, {self.widget().text() = }")
 
         return path
 
@@ -222,7 +218,6 @@ class Completer(QCompleter):
     def splitPath(self, path):
         for ch in [" ", "+", " - ", "*", "/", "(", "$"]:
             path = str(path.split(ch)[-1])
-            print(f"{path = }")
         return [path]
 
 
@@ -833,6 +828,7 @@ class ParameterTree(QTreeWidget):
             "points": "Points",
             "lines": "Lines",
             "bezier": "Bézier Curves",
+            "bsplines": "B-Spline Curves",
             "ferguson": "Ferguson Curves",
             "airfoils": "Airfoils",
             "polylines": "Polylines",
