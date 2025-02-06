@@ -4,7 +4,7 @@ from abc import abstractmethod
 
 import numpy as np
 
-from parametric_curve import ParametricCurveEndpoint
+from pymead.core.parametric_curve import ParametricCurveEndpoint
 from pymead.core.bezier import Bezier
 from pymead.core.constraint_equations import measure_rel_angle3, measure_point_line_distance_unsigned
 from pymead.core.line import PolyLine
