@@ -337,7 +337,7 @@ class AirfoilCanvas(pg.PlotWidget):
         knot_sequence = ParamSequence.generate_from_array(np.array([0.0] * degree + knot_array.tolist() + [1.0] * degree))
         bspline = self.geo_col.add_bspline(point_sequence=point_sequence, knot_sequence=knot_sequence)
         for knot_idx, knot in enumerate(knot_sequence.params()):
-            knot.set_name(f"{bspline.name()}.knot-{knot_idx}")
+            knot.set_name(f"{bspline.name()}.knot_{knot_idx}")
             self.geo_col.add_pymead_obj_by_ref(knot, assign_unique_name=False)
 
         self.clearSelectedObjects()
@@ -363,7 +363,7 @@ class AirfoilCanvas(pg.PlotWidget):
         knot_sequence = ParamSequence.generate_from_array(np.array([0.0] * degree + knot_array.tolist() + [1.0] * degree))
         bspline = self.geo_col.add_bspline(point_sequence=point_sequence, knot_sequence=knot_sequence)
         for knot_idx, knot in enumerate(knot_sequence.params()):
-            knot.set_name(f"{bspline.name()}.knot-{knot_idx}")
+            knot.set_name(f"{bspline.name()}.knot_{knot_idx}")
             self.geo_col.add_pymead_obj_by_ref(knot, assign_unique_name=False)
 
     @runSelectionEventLoop(drawing_object="BSplines", starting_message="Select the first B-spline control point",

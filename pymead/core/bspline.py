@@ -58,7 +58,7 @@ class BSpline(ParametricCurve):
     def set_name(self, name: str):
         super().set_name(name)
         for knot_idx, knot in enumerate(self.knot_sequence().params()):
-            knot.set_name(f"{self.name()}.knot-{knot_idx}")
+            knot._name = f"{self.name()}.knot_{knot_idx}"
 
     @property
     def degree(self) -> int:
