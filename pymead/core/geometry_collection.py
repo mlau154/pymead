@@ -25,7 +25,7 @@ from pymead.core.point import Point, PointSequence
 from pymead.core.transformation import Transformation3D
 from pymead.plugins.IGES.curves import BezierIGES
 from pymead.plugins.IGES.iges_generator import IGESGenerator
-from pymead.utils.read_write_files import load_data
+from pymead.utils.read_write_files import load_data, save_data
 from pymead.version import __version__
 
 
@@ -1189,6 +1189,17 @@ class GeometryCollection(DualRep):
                 continue
             airfoil.relative_points.append(point)
         return geo_col
+
+    def save_to_file(self, jmea_file: str):
+        """
+        Saves the ``GeometryCollection`` to a ``.jmea`` file.
+
+        Parameters
+        ----------
+        jmea_file: str
+            Name of the file including the ``.jmea`` extension
+        """
+        save_data(self.get_dict_rep(), jmea_file)
 
     @classmethod
     def load_file(cls, jmea_file: str, **kwargs):
