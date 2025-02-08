@@ -54,7 +54,10 @@ class ValueSpin(QDoubleSpinBox):
         self.pymead_obj = param
         self.setMaximumWidth(130)
         self.setDecimals(8)
-        self.setSingleStep(0.01)
+        if isinstance(param, AngleParam) and param.geo_col.units.current_angle_unit() == "deg":
+            self.setSingleStep(1.0)
+        else:
+            self.setSingleStep(0.01)
         if isinstance(param, LengthParam) or isinstance(param, AngleParam):
             self.setSuffix(f" {param.unit()}")
         self.param = param

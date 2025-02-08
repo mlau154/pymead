@@ -639,7 +639,7 @@ class AngleParam(Param):
 
         if self.unit() is None:
             self.set_unit()
-        if self.__class__ == "AngleParam":  # Do not include this restriction for angle design variables
+        if self.__class__.__name__ == "AngleParam":  # Do not include this restriction for angle design variables
             new_value = self.geo_col.units.convert_angle_to_base(value, self.unit())
             zero_to_2pi_value = new_value % (2 * np.pi)
             new_value = self.geo_col.units.convert_angle_from_base(zero_to_2pi_value, self.unit())
