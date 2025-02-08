@@ -1322,6 +1322,8 @@ class GeometryCollection(DualRep):
             switch_unit_for_param(desvar)
 
         for point in self.container()["points"].values():
+            if point.rotation_handle:
+                continue
             switch_unit_for_point(point)
 
         for poly in self.container()["polylines"].values():

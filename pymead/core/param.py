@@ -227,7 +227,7 @@ class Param(PymeadObj):
                 self.at_boundary = False
 
             if self.rotation_handle is not None:
-                rotate_cluster(self._value)
+                rotate_cluster(self)
 
             if self.at_boundary:
                 return
@@ -639,9 +639,12 @@ class AngleParam(Param):
 
         if self.unit() is None:
             self.set_unit()
-        new_value = self.geo_col.units.convert_angle_to_base(value, self.unit())
-        zero_to_2pi_value = new_value % (2 * np.pi)
-        new_value = self.geo_col.units.convert_angle_from_base(zero_to_2pi_value, self.unit())
+        if self.__class__ == "AngleParam":  # Do not include this restriction for angle design variables
+            new_value = self.geo_col.units.convert_angle_to_base(value, self.unit())
+            zero_to_2pi_value = new_value % (2 * np.pi)
+            new_value = self.geo_col.units.convert_angle_from_base(zero_to_2pi_value, self.unit())
+        else:
+            new_value = value
 
         return super().set_value(new_value, bounds_normalized=bounds_normalized, force=force,
                                  param_graph_update=param_graph_update, from_request_move=from_request_move)

@@ -1,4 +1,5 @@
 import networkx
+
 from pymead.core.param import LengthDesVar
 
 from pymead.core.constraints import *
@@ -133,8 +134,16 @@ class GCS(networkx.DiGraph):
         if v.rotation_param is not None:
             param = v.rotation_param
         else:
-            param = self.geo_col.add_param(value=u.measure_angle(v), name="ClusterAngle-1", unit_type="angle", root=u,
-                                           rotation_handle=v)
+            param = self.geo_col.add_param(
+                value=self.geo_col.units.convert_angle_from_base(
+                    u.measure_angle(v),
+                    unit=self.geo_col.units.current_angle_unit()
+                ),
+                name="ClusterAngle-1",
+                unit_type="angle",
+                root=u,
+                rotation_handle=v
+            )
         self.cluster_angle_params[u] = param
         param.gcs = self
 
@@ -1184,7 +1193,7 @@ class GCS(networkx.DiGraph):
                        rotation_handle: Point,
                        new_rotation_handle_x: float = None,
                        new_rotation_handle_y: float = None,
-                       new_rotation_angle: float = None) -> (typing.List[Point], Point):
+                       new_rotation_angle: float or AngleParam = None) -> (typing.List[Point], Point):
         """
         Rotates the constraint cluster defined by the input rotation handle by either the angle specified
         by ``new_rotation_angle`` or by the angle difference specified by the angle between the cluster root and
@@ -1208,6 +1217,10 @@ class GCS(networkx.DiGraph):
         typing.List[Point], Point
             List of points solved after rotating the constraint cluster and the root point of the constraint cluster
         """
+        if new_rotation_angle is not None and isinstance(new_rotation_angle, AngleParam):
+            new_rotation_angle = self.geo_col.units.convert_angle_to_base(
+                new_rotation_angle.value(), self.geo_col.units.current_angle_unit()
+            )
         x_and_y_specified = new_rotation_handle_x is not None and new_rotation_handle_y is not None
         if not (x_and_y_specified or new_rotation_angle is not None) and not (
                 x_and_y_specified and new_rotation_angle is not None):
