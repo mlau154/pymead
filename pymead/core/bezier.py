@@ -1,11 +1,14 @@
 import typing
 
 import numpy as np
+from matplotlib import pyplot as plt
 from scipy.optimize import fsolve
 from rust_nurbs import *
 
 from pymead.core.parametric_curve import ParametricCurve, PCurveData
 from pymead.core.point import PointSequence, Point
+from pymead.post.fonts_and_colors import font
+from pymead.post.plot_formatters import format_axis_scientific
 from pymead.utils.nchoosek import nchoosek
 
 
@@ -393,6 +396,51 @@ class Bezier(ParametricCurve):
                 self.geo_col.add_bezier(point_sequence=bez_1_point_seq, name="BezSplit"),
                 self.geo_col.add_bezier(point_sequence=bez_2_point_seq, name="BezSplit")
             )
+
+    def plot(self, ax: plt.Axes or None = None, nt: int = 100,
+             show: bool = True, save_file: str or None = None, **plt_kwargs):
+        """
+        Plots the airfoil to a ``matplotlib`` figure.
+
+        Parameters
+        ----------
+        ax: plt.Axes or None
+            Matplotlib Axes object on which the curve will be plotted. If specified, this method will only.
+            If ``None``, a new figure will be created. Default: ``None``
+        nt: int
+            Number of parametric values to evaluate along the curve. Default: 100
+        show: bool
+            Whether to immediately show the curve plot. Ignored if ``ax`` is not ``None``. Default: ``True``
+        save_file: str or None
+            Name of the file to save. If ``None``, the curve image will not be saved to file.
+            Ignored if ``ax`` is not ``None``. Default: ``None``
+        plt_kwargs
+            Additional keyword arguments to pass to ``matplotlib.pyplot.plot``
+        """
+        ax_specified = ax is not None
+        if ax_specified:
+            fig = ax.figure
+        else:
+            fig, ax = plt.subplots(figsize=(10, 2))
+
+        # Plot the curves
+        curve_data = self.evaluate_xy(np.linspace(0.0, 1.0, nt))
+        ax.plot(curve_data[:, 0], curve_data[:, 1], **plt_kwargs)
+
+        if ax_specified:
+            return
+
+        # Plot settings
+        ax.set_aspect("equal")
+        ax.set_xlabel("x", fontdict=font)
+        ax.set_ylabel("y", fontdict=font)
+        format_axis_scientific(ax=ax)
+
+        # Save and/or show
+        if save_file is not None:
+            fig.savefig(save_file, bbox_inches="tight")
+        if show:
+            plt.show()
 
     def get_dict_rep(self):
         return {"points": [pt.name() for pt in self.point_sequence().points()], "default_nt": self.default_nt}
