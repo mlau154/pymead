@@ -194,5 +194,21 @@ class Ferguson(ParametricCurve):
 
         return PCurveData(t=t, xy=xy, xpyp=xpyp, xppypp=xppypp, k=k, R=R)
 
+    def evaluate_xy(self, t: np.array or None = None, **kwargs):
+        # Generate the parameter vector
+        if self.default_nt is not None:
+            kwargs["nt"] = self.default_nt
+        t = ParametricCurve.generate_t_vec(**kwargs) if t is None else t
+
+        # Evaluate the curve
+        A, B, TA, TB = self._get_points_and_tangents()
+        K0 = A.as_array()
+        K1 = TA.as_array()
+        K2 = (3.0 * (B - A) - 2.0 * TA - TB).as_array()
+        K3 = (2.0 * (A - B) + TA + TB).as_array()
+        xy = np.outer(t**3, K3) + np.outer(t**2, K2) + np.outer(t, K1) + np.outer(np.ones(t.shape), K0)
+
+        return xy
+
     def get_dict_rep(self):
         return {"points": [pt.name() for pt in self.point_sequence().points()], "default_nt": self.default_nt}
