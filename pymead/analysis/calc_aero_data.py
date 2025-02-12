@@ -963,8 +963,18 @@ def calculate_aero_data(conn: multiprocessing.connection.Connection or None,
 
         converged = False
         mses_log, mplot_log = None, None
-        mset_success, mset_log, airfoil_name_order = run_mset(
-            airfoil_name, airfoil_coord_dir, mset_settings, coords=coords, mea=mea, mea_airfoil_names=mea_airfoil_names)
+        try:
+            mset_success, mset_log, airfoil_name_order = run_mset(
+                airfoil_name,
+                airfoil_coord_dir,
+                mset_settings,
+                coords=coords,
+                mea=mea,
+                mea_airfoil_names=mea_airfoil_names
+            )
+        except ValueError as e:
+            send_over_pipe(("error", str(e)))
+            return
 
         send_over_pipe(("message", f"MSET success"))
 
@@ -1958,10 +1968,30 @@ def write_blade_file(name: str, base_dir: str, grid_bounds: typing.List[float], 
         Absolute path to the generated MSES blade file and a list of the airfoil names found in the MEA, ordered
         by vertical position (descending order)
     """
-
     # Set the default grid bounds value
     if grid_bounds is None:
         grid_bounds = [-5.0, 5.0, -5.0, 5.0]
+    if len(grid_bounds) != 4:
+        raise ValueError("Grid bounds list must have length 4 (x_min, x_max, y_min, y_max)")
+
+    # Verify that the grid bounds contain all the airfoils
+    for airfoil_idx, airfoil_coords in enumerate(coords):
+        min_x = np.min(airfoil_coords[:, 0])
+        if min_x < grid_bounds[0]:
+            raise ValueError(f"Minimum x-coordinate of airfoil at index {airfoil_idx} ({min_x:.3f}) is less than "
+                             f"the x-coordinate of the left grid boundary ({grid_bounds[0]:.3f})")
+        max_x = np.max(airfoil_coords[:, 0])
+        if max_x > grid_bounds[1]:
+            raise ValueError(f"Maximum x-coordinate of airfoil at index {airfoil_idx} ({max_x:.3f}) is greater than"
+                             f" the x-coordinate of the right grid boundary ({grid_bounds[1]:.3f})")
+        min_y = np.min(airfoil_coords[:, 1])
+        if min_y < grid_bounds[2]:
+            raise ValueError(f"Minimum y-coordinate of airfoil at index {airfoil_idx} ({min_y:.3f}) is less than "
+                             f"the y-coordinate of the bottom grid boundary ({grid_bounds[2]:.3f})")
+        max_y = np.max(airfoil_coords[:, 1])
+        if max_y > grid_bounds[3]:
+            raise ValueError(f"Maximum y-coordinate of airfoil at index {airfoil_idx} ({max_y:.3f}) is greater than"
+                             f" the y-coordinate of the top grid boundary ({grid_bounds[3]:.3f})")
 
     # Write the header (line 1: airfoil name, line 2: grid bounds values separated by spaces)
     header = name + "\n" + " ".join([str(gb) for gb in grid_bounds])

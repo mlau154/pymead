@@ -33,8 +33,7 @@ class MEA(PymeadObj):
     def get_coords_list(self, max_airfoil_points: int = None, curvature_exp: float = 2.0):
         mea_coords_list = [
             airfoil.get_coords_selig_format(max_airfoil_points, curvature_exp) for airfoil in self.airfoils]
-        max_y = [np.max(coords[:, 1]) for coords in mea_coords_list]
-        airfoil_order = np.argsort(max_y)[::-1]
+        airfoil_order = self.get_airfoil_order()
         return [mea_coords_list[a_idx] for a_idx in airfoil_order]
 
     def get_coords_list_chord_relative(self, max_airfoil_points: int = None,
@@ -52,6 +51,13 @@ class MEA(PymeadObj):
 
         return [transformation.transform(coords) for coords in coords_list], transformation_kwargs
 
+    def get_airfoil_order(self) -> np.ndarray:
+        le_y_vals = []
+        for airfoil in self.airfoils:
+            le_y_vals.append(airfoil.leading_edge.y().value())
+        airfoil_order = np.argsort(np.array(le_y_vals))[::-1]
+        return airfoil_order
+
     def write_mses_blade_file(self,
                               airfoil_sys_name: str,
                               blade_file_dir: str,
@@ -60,25 +66,39 @@ class MEA(PymeadObj):
                               max_airfoil_points: int = None, curvature_exp: float = 2.0) -> (str, typing.List[str]):
 
         # Get the MEA coordinates list if not provided
-        if mea_coords_list is None:
-            mea_coords_list, transformation_kwargs = self.get_coords_list_chord_relative(
-                max_airfoil_points=max_airfoil_points, curvature_exp=curvature_exp)
-            save_data(transformation_kwargs, os.path.join(blade_file_dir, "transformation.json"))
+        mea_coords_list = self.get_coords_list(max_airfoil_points=max_airfoil_points, curvature_exp=curvature_exp) \
+            if mea_coords_list is None else mea_coords_list
 
         # Set the default grid bounds value
         if grid_bounds is None:
             grid_bounds = [-5.0, 5.0, -5.0, 5.0]
+        if len(grid_bounds) != 4:
+            raise ValueError("Grid bounds list must have length 4 (x_min, x_max, y_min, y_max)")
+
+        # Verify that the grid bounds contain all the airfoils
+        for airfoil_idx, airfoil_coords in enumerate(mea_coords_list):
+            min_x = np.min(airfoil_coords[:, 0])
+            if min_x < grid_bounds[0]:
+                raise ValueError(f"Minimum x-coordinate of airfoil at index {airfoil_idx} ({min_x:.3f}) is less than "
+                                 f"the x-coordinate of the left grid boundary ({grid_bounds[0]:.3f})")
+            max_x = np.max(airfoil_coords[:, 0])
+            if max_x > grid_bounds[1]:
+                raise ValueError(f"Maximum x-coordinate of airfoil at index {airfoil_idx} ({max_x:.3f}) is greater than"
+                                 f" the x-coordinate of the right grid boundary ({grid_bounds[1]:.3f})")
+            min_y = np.min(airfoil_coords[:, 1])
+            if min_y < grid_bounds[2]:
+                raise ValueError(f"Minimum y-coordinate of airfoil at index {airfoil_idx} ({min_y:.3f}) is less than "
+                                 f"the y-coordinate of the bottom grid boundary ({grid_bounds[2]:.3f})")
+            max_y = np.max(airfoil_coords[:, 1])
+            if max_y > grid_bounds[3]:
+                raise ValueError(f"Maximum y-coordinate of airfoil at index {airfoil_idx} ({max_y:.3f}) is greater than"
+                                 f" the y-coordinate of the top grid boundary ({grid_bounds[3]:.3f})")
 
         # Write the header (line 1: airfoil name, line 2: grid bounds values separated by spaces)
         header = airfoil_sys_name + "\n" + " ".join([str(gb) for gb in grid_bounds])
 
         # Determine the correct ordering for the airfoils. MSES expects airfoils to be ordered from top to bottom
-        # max_y = [np.max(coords[:, 1]) for coords in mea_coords_list]
-        # airfoil_order = np.argsort(max_y)[::-1]
-        le_y_vals = []
-        for airfoil in self.airfoils:
-            le_y_vals.append(airfoil.leading_edge.y().value())
-        airfoil_order = np.argsort(np.array(le_y_vals))[::-1]
+        airfoil_order = self.get_airfoil_order()
 
         # Loop through the airfoils in the correct order
         mea_coords = None
@@ -117,10 +137,10 @@ class MEA(PymeadObj):
         iges_generator = IGESGenerator(entities_flattened)
         iges_generator.generate(file_name)
 
-    def get_max_x_extent(self):
-        coords_list, _ = self.get_coords_list_chord_relative()
+    def get_max_x_extent(self) -> typing.List[float]:
+        coords_list = self.get_coords_list()
         max_x_list = [max(coords[:, 0]) for coords in coords_list]
-        return max(max_x_list)
+        return max_x_list
 
     def get_dict_rep(self):
         return {"airfoils": [a.name() for a in self.airfoils]}

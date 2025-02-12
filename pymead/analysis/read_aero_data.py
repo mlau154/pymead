@@ -206,9 +206,10 @@ def read_forces_from_mses(search_file: str):
                     "Cdv": float(element_line[0].split()[5]),
                     "Cm": float(element_line[1].split()[2]),
                     "Cdf": float(element_line[1].split()[5]),
-                    "top_xtr": float(element_line[2].split()[3]),
-                    "bot_xtr": float(element_line[2].split()[7]),
                 }
+                if len(element_line) > 2:
+                    forces[f"Element-{idx + 1}"]["top_xtr"] = float(element_line[2].split()[3])
+                    forces[f"Element-{idx + 1}"]["bot_xtr"] = float(element_line[2].split()[7])
     except:
         forces = {'Cl': 0.0, 'Cd': 1000.0, 'Cm': 1000.0, 'alf': 0.0, 'Cdv': 1000.0, 'Cdw': 1000.0,
                   'Cdf': 1000.0, 'Cdp': 1000.0, 'Cdh': 1000.0, 'CPK': 1000.0, "mh / rho V": 0.0}
