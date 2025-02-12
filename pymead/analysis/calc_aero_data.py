@@ -1552,12 +1552,24 @@ def run_mses(name: str, base_folder: str, mses_settings: dict or MSESSettings, a
                     elif "rms(dA):" in decoded_line:
                         decoded_line_split = decoded_line.split()
                         rms_dA = decoded_line_split[decoded_line_split.index("rms(dA):") + 1]
+                        if not mses_settings["viscous_flag"]:  # No dV (viscous) residual if viscosity is deactivated
+                            send_over_pipe(
+                                ("message", f"Iteration {iteration}: rms(dR) = {rms_dR}, rms(dA) = {rms_dA}")
+                            )
+                            send_over_pipe(
+                                ("mses_residual", (int(iteration), float(rms_dR), float(rms_dA)))
+                            )
                     elif "rms(dV):" in decoded_line:
                         decoded_line_split = decoded_line.split()
                         rms_dV = decoded_line_split[decoded_line_split.index("rms(dV):") + 1]
-                        send_over_pipe(("message", f"Iteration {iteration}: rms(dR) = {rms_dR}, rms(dA) = {rms_dA}, "
-                                                   f"rms(dV) = {rms_dV}"))
-                        send_over_pipe(("mses_residual", (int(iteration), float(rms_dR), float(rms_dA), float(rms_dV))))
+                        if mses_settings["viscous_flag"]:
+                            send_over_pipe(
+                                ("message", f"Iteration {iteration}: rms(dR) = {rms_dR}, rms(dA) = {rms_dA}, "
+                                            f"rms(dV) = {rms_dV}")
+                            )
+                            send_over_pipe(
+                                ("mses_residual", (int(iteration), float(rms_dR), float(rms_dA), float(rms_dV)))
+                            )
             outs, errs = process.communicate(timeout=mses_settings['timeout'])
 
             if conn is None:

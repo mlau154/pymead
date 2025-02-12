@@ -1919,7 +1919,9 @@ class GUI(FramelessMainWindow):
             new_iteration = data[0]
             new_rms_dR = data[1]
             new_rms_dA = data[2]
-            new_rms_dV = data[3]
+            new_rms_dV = None
+            if len(data) > 3:
+                new_rms_dV = data[3]
 
             # If running MPOLAR and an angle of attack fails, MSES will start over at a previous iteration.
             # In this case, we need to delete the existing data from that iteration onward
@@ -1927,13 +1929,18 @@ class GUI(FramelessMainWindow):
                 prev_iteration_idx = [arr[0] for arr in self.residual_data].index(new_iteration)
                 del self.residual_data[prev_iteration_idx:]
 
-            self.residual_data.append([new_iteration, new_rms_dR, new_rms_dA, new_rms_dV])
+            if new_rms_dV is None:
+                self.residual_data.append([new_iteration, new_rms_dR, new_rms_dA])
+            else:
+                self.residual_data.append([new_iteration, new_rms_dR, new_rms_dA, new_rms_dV])
+
             self.residual_graph.plot_items[0].setData([arr[0] for arr in self.residual_data],
                                                       [arr[1] for arr in self.residual_data])
             self.residual_graph.plot_items[1].setData([arr[0] for arr in self.residual_data],
                                                       [arr[2] for arr in self.residual_data])
-            self.residual_graph.plot_items[2].setData([arr[0] for arr in self.residual_data],
-                                                      [arr[3] for arr in self.residual_data])
+            if new_rms_dV is not None:
+                self.residual_graph.plot_items[2].setData([arr[0] for arr in self.residual_data],
+                                                          [arr[3] for arr in self.residual_data])
             self.residual_graph.set_legend_label_format(self.themes[self.current_theme])
         elif status == "clear_polar_plots":
             if self.polar_graph_collection is not None:
