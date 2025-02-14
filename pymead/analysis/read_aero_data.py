@@ -178,6 +178,8 @@ def read_forces_from_mses(search_file: str):
         vw_line = vw_line.split('=')
         forces['Cdv'] = float(vw_line[-2].split()[0])
         forces['Cdw'] = float(vw_line[-1].split()[0])
+        if ad_line is None and forces["Cdw"] < -1e-5:
+            raise ValueError("Negative wave drag calculated!")
 
         # Find the friction drag and pressure drag coefficients in the drag breakdown (these two values should add to Cd)
         fp_line = fp_line.split('=')
