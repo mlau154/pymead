@@ -969,7 +969,6 @@ class GUI(FramelessMainWindow):
         field_file = os.path.join(analysis_dir, f'field.{os.path.split(analysis_dir)[-1]}')
         grid_stats_file = os.path.join(analysis_dir, 'mplot_grid_stats.log')
         grid_file = os.path.join(analysis_dir, f'grid.{os.path.split(analysis_dir)[-1]}')
-        transformation_file = os.path.join(analysis_dir, "transformation.json")
         if not os.path.exists(field_file):
             self.disp_message_box(message=f"Field file {field_file} not found", message_mode='error')
             return
@@ -983,18 +982,6 @@ class GUI(FramelessMainWindow):
         field = read_field_from_mses(field_file)
         grid_stats = read_grid_stats_from_mses(grid_stats_file)
         x_grid, y_grid = read_streamline_grid_from_mses(grid_file, grid_stats)
-        try:
-            transformation = load_data(transformation_file)
-            x_grid = [x_grid_section / transformation["sx"][0] /
-                      self.geo_col.units.convert_length_from_base(1, transformation["length_unit"]) *
-                      self.geo_col.units.convert_length_from_base(1, self.geo_col.units.current_length_unit()) for
-                      x_grid_section in x_grid]
-            y_grid = [y_grid_section / transformation["sy"][0] /
-                      self.geo_col.units.convert_length_from_base(1, transformation["length_unit"]) *
-                      self.geo_col.units.convert_length_from_base(1, self.geo_col.units.current_length_unit()) for
-                      y_grid_section in y_grid]
-        except OSError:
-            pass
         flow_var = field[flow_var_idx[inputs['flow_variable']]]
 
         edgecolors = None
@@ -1522,7 +1509,8 @@ class GUI(FramelessMainWindow):
         def display_success():
             # Calculate L/D if necessary
             if "L/D" not in aero_data.keys():
-                aero_data["L/D"] = np.true_divide(aero_data["Cl"], aero_data["Cd"])
+                with np.errstate(divide="ignore", invalid="ignore"):
+                    aero_data["L/D"] = np.true_divide(aero_data["Cl"], aero_data["Cd"])
 
             # Compute the output analysis directory
             analysis_dir_full_path = os.path.abspath(
@@ -1638,13 +1626,16 @@ class GUI(FramelessMainWindow):
 
         # Get the maximum physical extent of the airfoil system in the x-direction (used to prevent showing
         # off-body pressure recovery)
-        x_max = mea.get_max_x_extent()
+        x_max_list = mea.get_max_x_extent()
+        side_x_max_list = []
+        for x_max in x_max_list:
+            side_x_max_list.extend([x_max, x_max])
 
         # Plot the Cp distribution for each airfoil side
         name = (f"[{self.n_analyses}] M ({mea.name()}, \u03b1 = {aero_data['alf']:.1f}\u00b0, "
                 f"Re = {mses_settings['REYNIN']:.1E}, Ma = {mses_settings['MACHIN']:.2f})")
 
-        for side_idx, side in enumerate(aero_data["BL"]):
+        for side_idx, (side, side_x_max) in enumerate(zip(aero_data["BL"], side_x_max_list)):
             extra_opts = dict(name=name) if side_idx == 0 else {}
             pg_plot_handle = self.analysis_graph.v.plot(
                 pen=pg.mkPen(color=self.pen(self.n_converged_analyses)[0],
@@ -1652,7 +1643,7 @@ class GUI(FramelessMainWindow):
             )
             x = side["x"] if isinstance(side["x"], np.ndarray) else np.array(side["x"])
             Cp = side["Cp"] if isinstance(side["Cp"], np.ndarray) else np.array(side["Cp"])
-            pg_plot_handle.setData(x[np.where(x <= x_max)[0]], Cp[np.where(x <= x_max)[0]])
+            pg_plot_handle.setData(x[np.where(x <= side_x_max)[0]], Cp[np.where(x <= side_x_max)[0]])
             self.analysis_graph.set_legend_label_format(self.themes[self.current_theme])
 
     def display_resources(self):
@@ -1919,7 +1910,9 @@ class GUI(FramelessMainWindow):
             new_iteration = data[0]
             new_rms_dR = data[1]
             new_rms_dA = data[2]
-            new_rms_dV = data[3]
+            new_rms_dV = None
+            if len(data) > 3:
+                new_rms_dV = data[3]
 
             # If running MPOLAR and an angle of attack fails, MSES will start over at a previous iteration.
             # In this case, we need to delete the existing data from that iteration onward
@@ -1927,13 +1920,18 @@ class GUI(FramelessMainWindow):
                 prev_iteration_idx = [arr[0] for arr in self.residual_data].index(new_iteration)
                 del self.residual_data[prev_iteration_idx:]
 
-            self.residual_data.append([new_iteration, new_rms_dR, new_rms_dA, new_rms_dV])
+            if new_rms_dV is None:
+                self.residual_data.append([new_iteration, new_rms_dR, new_rms_dA])
+            else:
+                self.residual_data.append([new_iteration, new_rms_dR, new_rms_dA, new_rms_dV])
+
             self.residual_graph.plot_items[0].setData([arr[0] for arr in self.residual_data],
                                                       [arr[1] for arr in self.residual_data])
             self.residual_graph.plot_items[1].setData([arr[0] for arr in self.residual_data],
                                                       [arr[2] for arr in self.residual_data])
-            self.residual_graph.plot_items[2].setData([arr[0] for arr in self.residual_data],
-                                                      [arr[3] for arr in self.residual_data])
+            if new_rms_dV is not None:
+                self.residual_graph.plot_items[2].setData([arr[0] for arr in self.residual_data],
+                                                          [arr[3] for arr in self.residual_data])
             self.residual_graph.set_legend_label_format(self.themes[self.current_theme])
         elif status == "clear_polar_plots":
             if self.polar_graph_collection is not None:
