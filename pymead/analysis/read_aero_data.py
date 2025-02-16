@@ -168,6 +168,8 @@ def read_forces_from_mses(search_file: str):
             'Cd': float(split_line[5]),  # CD = VALUE
             'Cm': float(split_line[8])  # CM = VALUE
         }
+        if ad_line is None and forces["Cd"] < -1e-5:
+            raise ValueError("Negative drag calculated!")
 
         # Find the angle of attack
         alpha_line = alpha_line.split('=')
@@ -178,13 +180,21 @@ def read_forces_from_mses(search_file: str):
         vw_line = vw_line.split('=')
         forces['Cdv'] = float(vw_line[-2].split()[0])
         forces['Cdw'] = float(vw_line[-1].split()[0])
-        if ad_line is None and forces["Cdw"] < -1e-5:
-            raise ValueError("Negative wave drag calculated!")
+        if ad_line is None:
+            if forces["Cdw"] < -1e-5:
+                raise ValueError("Negative wave drag calculated!")
+            if forces["Cdv"] < -1e-5:
+                raise ValueError("Negative viscous drag calculated!")
 
         # Find the friction drag and pressure drag coefficients in the drag breakdown (these two values should add to Cd)
         fp_line = fp_line.split('=')
         forces['Cdf'] = float(fp_line[-2].split()[0])
         forces['Cdp'] = float(fp_line[-1].split()[0])
+        if ad_line is None:
+            if forces["Cdf"] < -1e-5:
+                raise ValueError("Negative friction drag calculated!")
+            if forces["Cdp"] < -1e-5:
+                raise ValueError("Negative pressure drag calculated!")
 
         # Find the "drag" due to the actuator disk:
         if ad_line is not None:
