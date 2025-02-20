@@ -247,6 +247,14 @@ class Param(PymeadObj):
                 if not from_request_move:
                     self.gcs.update_canvas_items(list(set(points_solved)))
 
+            if self.bspline is not None:
+                self.bspline.update()
+                airfoils_to_update = get_airfoils_to_update([self.bspline])
+                for airfoil in airfoils_to_update:
+                    airfoil.update_coords()
+                    if airfoil.canvas_item is not None:
+                        airfoil.canvas_item.generatePicture()
+
             if self.param_graph is not None and not param_graph_update and self in self.param_graph.nodes:
                 for node in networkx.dfs_preorder_nodes(self.param_graph, source=self):
                     if not node.equation_str:
