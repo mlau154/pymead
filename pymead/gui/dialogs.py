@@ -3939,6 +3939,34 @@ class AirfoilMatchingDialog(PymeadDialog):
         return {"tool_airfoil": self.inputs[0].value(), "target_airfoil": target_airfoil}
 
 
+class BSplineDegreeDialogWidget(PymeadDialogWidget2):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+
+    def initializeWidgets(self, *args, **kwargs):
+        self.widget_dict = {
+            "degree": PymeadLabeledSpinBox(
+                label="Degree",
+                tool_tip="Degree of the B-spline basis functions",
+                minimum=2,
+                maximum=67,
+                value=3
+            )
+        }
+
+
+class BSplineDegreeDialog(PymeadDialog):
+    def __init__(self, parent, theme: dict):
+        widget = BSplineDegreeDialogWidget()
+        super().__init__(
+            parent,
+            window_title="Select Basis Function Degree",
+            widget=widget,
+            theme=theme,
+            minimum_width=300
+        )
+
+
 class LoadPointsDialog(PymeadDialog):
     def __init__(self, parent, theme: dict):
         widget = QWidget()

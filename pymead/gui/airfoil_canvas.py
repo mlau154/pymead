@@ -18,7 +18,7 @@ from pymead.core.parametric_curve import ParametricCurve
 from pymead.core.point import PointSequence
 from pymead.gui.constraint_items import *
 from pymead.gui.dialogs import (PlotExportDialog, WebAirfoilDialog, SplitPolylineDialog, AirfoilDialog,
-                                MakeAirfoilRelativeDialog)
+                                MakeAirfoilRelativeDialog, BSplineDegreeDialog)
 from pymead.gui.draggable_point import DraggablePoint
 from pymead.gui.hoverable_curve import HoverableCurve
 from pymead.gui.polygon_item import PolygonItem
@@ -325,7 +325,11 @@ class AirfoilCanvas(pg.PlotWidget):
             self.sigStatusBarUpdate.emit(msg, 2000)
             return
 
-        degree = 3
+        self.dialog = BSplineDegreeDialog(parent=self, theme=self.gui_obj.themes[self.gui_obj.current_theme])
+        if self.dialog.exec():
+            degree = self.dialog.value()["degree"]
+        else:
+            return
 
         point_sequence = PointSequence([pt for pt in self.geo_col.selected_objects["points"]])
         if len(point_sequence) < degree + 1:
@@ -351,7 +355,11 @@ class AirfoilCanvas(pg.PlotWidget):
             self.sigStatusBarUpdate.emit(msg, 2000)
             return
 
-        degree = 3
+        self.dialog = BSplineDegreeDialog(parent=self, theme=self.gui_obj.themes[self.gui_obj.current_theme])
+        if self.dialog.exec():
+            degree = self.dialog.value()["degree"]
+        else:
+            return
 
         point_sequence = PointSequence([pt for pt in self.geo_col.selected_objects["points"]])
         if len(point_sequence) < degree + 1:
