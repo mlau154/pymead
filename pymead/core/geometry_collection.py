@@ -452,6 +452,11 @@ class GeometryCollection(DualRep):
 
         elif isinstance(pymead_obj, Bezier) or isinstance(pymead_obj, LineSegment) or isinstance(
                 pymead_obj, PolyLine) or isinstance(pymead_obj, Ferguson) or isinstance(pymead_obj, BSpline):
+            # Remove all the knot parameters if this is a B-spline
+            if isinstance(pymead_obj, BSpline):
+                for knot in pymead_obj.knots():
+                    self.remove_pymead_obj(knot)
+
             # Remove all the references to this curve in each of the curve's points
             for pt in pymead_obj.point_sequence().points():
                 if pymead_obj in pt.curves:
