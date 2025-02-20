@@ -450,12 +450,20 @@ class GeometryCollection(DualRep):
             if pymead_obj in self.param_graph.nodes:
                 self.param_graph.remove_node(pymead_obj)
 
+            if pymead_obj.bspline:
+                self.remove_pymead_obj(pymead_obj.bspline)
+
         elif isinstance(pymead_obj, Bezier) or isinstance(pymead_obj, LineSegment) or isinstance(
                 pymead_obj, PolyLine) or isinstance(pymead_obj, Ferguson) or isinstance(pymead_obj, BSpline):
             # Remove all the knot parameters if this is a B-spline
             if isinstance(pymead_obj, BSpline):
                 for knot in pymead_obj.knots():
-                    self.remove_pymead_obj(knot)
+                    # Remove the item from the geometry collection subcontainer
+                    self.remove_from_subcontainer(knot)
+
+                    # Remove the tree item if it exists
+                    if self.tree is not None:
+                        self.tree.removePymeadTreeItem(knot)
 
             # Remove all the references to this curve in each of the curve's points
             for pt in pymead_obj.point_sequence().points():

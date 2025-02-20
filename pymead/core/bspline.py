@@ -58,6 +58,9 @@ class BSpline(ParametricCurve):
             if self not in point.curves:
                 point.curves.append(self)
 
+        for knot in self.knots():
+            knot.bspline = self
+
     def set_name(self, name: str):
         super().set_name(name)
         for knot_idx, knot in enumerate(self.knot_sequence().params()):

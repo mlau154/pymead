@@ -20,7 +20,7 @@ class Param(PymeadObj):
 
     def __init__(self, value: float or int, name: str, lower: float or None = None, upper: float or None = None,
                  sub_container: str = "params", setting_from_geo_col: bool = False, point=None, root=None,
-                 rotation_handle=None, enabled: bool = True, equation_str: str = None, geo_col=None):
+                 rotation_handle=None, enabled: bool = True, equation_str: str = None, geo_col=None, bspline=None):
         """
         Parameters
         ==========
@@ -44,6 +44,7 @@ class Param(PymeadObj):
         self._upper = None
         self._enabled = None
         self.at_boundary = False
+        self.bspline = bspline
         self.point = point
         self.root = root
         self.set_enabled(enabled)
@@ -711,7 +712,8 @@ class DesVar(Param):
     """
     def __init__(self, value: float, name: str, lower: float or None = None, upper: float or None = None,
                  sub_container: str = "desvar", setting_from_geo_col: bool = False, point=None, root=None,
-                 rotation_handle=None, enabled: bool = True, equation_str: str = None, assignable: bool = True):
+                 rotation_handle=None, enabled: bool = True, equation_str: str = None, assignable: bool = True,
+                 bspline=None):
         """
         Parameters
         ----------
@@ -739,7 +741,8 @@ class DesVar(Param):
 
         super().__init__(value=value, name=name, lower=lower, upper=upper, sub_container=sub_container,
                          setting_from_geo_col=setting_from_geo_col, point=point, root=root,
-                         rotation_handle=rotation_handle, enabled=enabled, equation_str=equation_str)
+                         rotation_handle=rotation_handle, enabled=enabled, equation_str=equation_str,
+                         bspline=bspline)
 
         self.assignable = assignable
 
