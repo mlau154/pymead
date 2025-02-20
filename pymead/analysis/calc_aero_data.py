@@ -149,7 +149,7 @@ class XFOILSettings:
 class AirfoilMSETMeshingParameters:
     def __init__(self,
                  dsLE_dsAvg: float = 0.35,
-                 dsTE_dsAvg: float = 0.35,
+                 dsTE_dsAvg: float = 0.80,
                  curvature_exp: float = 1.3,
                  U_s_smax_min: float = 1.0,
                  U_s_smax_max: float = 1.0,
@@ -963,6 +963,8 @@ def calculate_aero_data(conn: multiprocessing.connection.Connection or None,
 
         converged = False
         mses_log, mplot_log = None, None
+        mea_airfoil_names = [airfoil.name() for airfoil in mea.airfoils] \
+            if mea_airfoil_names is None else mea_airfoil_names
         try:
             mset_success, mset_log, airfoil_name_order = run_mset(
                 airfoil_name,
@@ -1160,7 +1162,7 @@ def calculate_aero_data(conn: multiprocessing.connection.Connection or None,
                     aero_data[k].append(v)
 
         send_over_pipe(
-            ("mses_analysis_complete", (aero_data, mset_settings, mses_settings, mplot_settings, mset_settings["mea"]))
+            ("mses_analysis_complete", (aero_data, mset_settings, mses_settings, mplot_settings, mea.name()))
         )
 
         if save_aero_data:

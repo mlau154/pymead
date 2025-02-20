@@ -11,4 +11,5 @@ API
     pymead.core
     pymead.optimization
     pymead.plugins
+    pymead.tutorials
     pymead.utils

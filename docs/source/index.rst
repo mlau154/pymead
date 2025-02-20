@@ -24,11 +24,13 @@ How to Use Pymead
 Application-Programming Interface (API) written in Python (see the "Architecture"
 section for more details). For those less familiar with Python and those mainly seeking
 to use the built-in features of `pymead`, the GUI is the main recommended method of use.
+A user guide for the GUI can be found by clicking into the "GUI" tabs of the :ref:`User Guide` section.
 
 For those desiring to extend `pymead`'s functionality, the API can be used. Even for users of the
 API, an easy starting point may be to create an airfoil system with the GUI, save the
 airfoil system, and load the airfoil system into the API using the ``set_from_dict_rep`` class method in
-a ``GeometryCollection`` object.
+a ``GeometryCollection`` object. Basic tutorials for the API are available in the :ref:`User Guide` section,
+and advanced tutorials are available in the `tutorials` subpackage in the :ref:`API` section.
 
 
 Bug Squashing

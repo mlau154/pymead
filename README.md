@@ -46,9 +46,8 @@ This facilitates aerodynamic analysis, parametric sweeps, and even shape optimiz
 *pymead* has both an application programming interface (API) and a graphical user interface (GUI), either of which
 can be used to define airfoil geometries from basic geometries (like points, lines, and curves), implement
 geometric constraints, perform analysis using wrappers for XFOIL and MSES, match existing airfoils with Bézier curves,
-and even execute aerodynamic or aeropropulsive shape optimization studies. See the documentation site under
-development for [GUI tutorials](https://pymead.readthedocs.io/en/latest/gui.html) and 
-[API tutorials](https://pymead.readthedocs.io/en/latest/tutorials.html).
+and even execute aerodynamic or aeropropulsive shape optimization studies. Check out the 
+[User Guide](https://pymead.readthedocs.io/en/latest/user.html) to learn how to use these features.
 
 <p align="center">
 <img src="https://raw.githubusercontent.com/mlau154/pymead/dev/docs/source/images/n0012_analysis_xfoil_light.gif" alt="XFOIL analysis of the NACA 0012 airfoil" width="700">

@@ -150,7 +150,7 @@ class PolyLine(ParametricCurve):
         le = self._add_le()
         te = self._add_te()
         blunt_trailing_edge = self._add_trailing_edge_lines(te)
-        self._add_airfoil(le, te, blunt_trailing_edge=blunt_trailing_edge)
+        return self._add_airfoil(le, te, blunt_trailing_edge=blunt_trailing_edge)
 
     def _add_le(self):
         coords_dist_from_origin = np.hypot(self.coords[:, 0], self.coords[:, 1])
@@ -178,11 +178,18 @@ class PolyLine(ParametricCurve):
 
     def _add_airfoil(self, le: Point, te: Point, blunt_trailing_edge: bool):
         if blunt_trailing_edge:
-            self.geo_col.add_airfoil(le, te,
-                                     upper_surf_end=self.point_sequence().points()[0],
-                                     lower_surf_end=self.point_sequence().points()[-1])
-        else:
-            self.geo_col.add_airfoil(le, te, upper_surf_end=te, lower_surf_end=te)
+            return self.geo_col.add_airfoil(
+                le,
+                te,
+                upper_surf_end=self.point_sequence().points()[0],
+                lower_surf_end=self.point_sequence().points()[-1]
+            )
+        return self.geo_col.add_airfoil(
+            le,
+            te,
+            upper_surf_end=te,
+            lower_surf_end=te
+        )
 
     def _get_default_name(self):
         if self.source_type == self.AirfoilTools:
