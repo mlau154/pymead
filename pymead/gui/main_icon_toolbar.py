@@ -83,6 +83,9 @@ class MainIconToolbar(QToolBar):
     def on_draw_ferguson_pressed(self):
         self.parent.airfoil_canvas.drawFergusons()
 
+    def on_draw_bspline_pressed(self):
+        self.parent.airfoil_canvas.drawBSplines()
+
     def on_generate_airfoil_pressed(self):
         self.parent.airfoil_canvas.generateAirfoil()
 

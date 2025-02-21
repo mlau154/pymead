@@ -37,6 +37,12 @@
     "checkable": false,
     "function": "on_draw_ferguson_pressed"
   },
+  "draw-bsplines": {
+    "icon": "bspline_dark.svg",
+    "status_tip": "Draw B-spline curves",
+    "checkable": false,
+    "function": "on_draw_bspline_pressed"
+  },
   "generate-airfoil": {
     "icon": "airfoil_dark.svg",
     "status_tip": "Generate airfoil",
