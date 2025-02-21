@@ -33,6 +33,7 @@ class BSpline(ParametricCurve):
         knot_sequence = ParamSequence(knot_sequence) if isinstance(knot_sequence, list) else knot_sequence
         self.set_point_sequence(point_sequence)
         self.set_knot_sequence(knot_sequence)
+        self.disable_clamped_knots()
         self.t_start = t_start
         self.t_end = t_end
         name = "BSpline-1" if name is None else name
@@ -60,6 +61,11 @@ class BSpline(ParametricCurve):
 
         for knot in self.knots():
             knot.bspline = self
+
+    def disable_clamped_knots(self):
+        for knot_idx, knot in enumerate(self.knots()):
+            if knot_idx <= self.degree or knot_idx >= len(self.knot_sequence()) - self.degree - 1:
+                knot.set_enabled(False)
 
     def set_name(self, name: str):
         super().set_name(name)

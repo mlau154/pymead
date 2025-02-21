@@ -1163,6 +1163,7 @@ class AirfoilCanvas(pg.PlotWidget):
             Qt.Key.Key_L: self.drawLines,
             Qt.Key.Key_B: self.drawBeziers,
             Qt.Key.Key_G: self.drawFergusons,
+            Qt.Key.Key_N: self.drawBSplines,
             Qt.Key.Key_F: self.generateAirfoil,
             Qt.Key.Key_W: self.generateWebAirfoil,
             Qt.Key.Key_M: self.generateMEA,

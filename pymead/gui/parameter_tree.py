@@ -13,6 +13,7 @@ from pymead.core.parametric_curve import INTERMEDIATE_NT
 
 from pymead.core.airfoil import Airfoil
 from pymead.core.bezier import Bezier
+from pymead.core.bspline import BSpline
 from pymead.core.constraints import *
 from pymead.core.geometry_collection import GeometryCollection
 from pymead.core.line import LineSegment, PolyLine, ReferencePolyline
@@ -504,6 +505,61 @@ class FergusonButton(TreeButton):
     def onSpinChange(self, new_val: int):
         self.ferguson.default_nt = new_val
         self.ferguson.update()
+
+
+class BSplineButton(TreeButton):
+
+    def __init__(self, bspline: BSpline, tree, top_level: bool = False):
+        self.bspline = bspline
+        super().__init__(pymead_obj=bspline, tree=tree, top_level=top_level)
+
+    def modifyDialogInternals(self, dialog: QDialog, layout: QGridLayout) -> None:
+        # Add name widget
+        name_label = QLabel("Name", self)
+        name_edit = NameEdit(self, self.bspline, self.tree)
+        name_edit.textChanged.connect(self.onNameChange)
+        layout.addWidget(name_label, 1, 0)
+        layout.addWidget(name_edit, 1, 1)
+
+        # Add default nt widget
+        nt_label = QLabel("Evaluated Points", self)
+        nt_spin = QSpinBox(self)
+        nt_spin.setMinimum(2)
+        nt_spin.setMaximum(100000)
+        nt_spin.setValue(INTERMEDIATE_NT if self.bspline.default_nt is None else self.bspline.default_nt)
+        nt_spin.valueChanged.connect(self.onSpinChange)
+        layout.addWidget(nt_label, 2, 0)
+        layout.addWidget(nt_spin, 2, 1)
+
+        # Add the point buttons
+        for point in self.bspline.point_sequence().points():
+            point_button = PointButton(point, self.tree)
+            point_button.sigNameChanged.connect(self.onPointNameChange)
+            layout.addWidget(point_button, layout.rowCount(), 0)
+
+        # Add the knot buttons
+        for knot_idx, knot in enumerate(self.bspline.knots()):
+            knot_button = ParamButton(knot, self.tree)
+            knot_button.sigNameChanged.connect(self.onKnotNameChange)
+            layout.addWidget(knot_button, layout.rowCount(), 0)
+
+    def onPointNameChange(self, name: str, point: Point):
+        if point.tree_item is not None:
+            self.tree.itemWidget(point.tree_item, 0).setText(name)
+
+    def onKnotNameChange(self, name: str, knot: Param):
+        if knot.tree_item is not None:
+            self.tree.itemWidget(knot.tree_item, 0).setText(name)
+
+    def enterEvent(self, a0):
+        self.bspline.canvas_item.setItemStyle("hovered")
+
+    def leaveEvent(self, a0):
+        self.bspline.canvas_item.setItemStyle("default")
+
+    def onSpinChange(self, new_val: int):
+        self.bspline.default_nt = new_val
+        self.bspline.update()
 
 
 class LineSegmentButton(TreeButton):
