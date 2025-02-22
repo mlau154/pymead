@@ -3,6 +3,7 @@ import typing
 import numpy as np
 import pyqtgraph as pg
 from matplotlib import pyplot as plt
+from pymead.core.transformation import Transformation2D
 
 from pymead.core.point import PointSequence, Point
 from pymead.core.parametric_curve import ParametricCurve, PCurveData
@@ -102,7 +103,9 @@ class PolyLine(ParametricCurve):
 
     def __init__(self, source: str, coords: np.ndarray = None, start: int or float = None, end: int or float = None,
                  point_sequence: PointSequence = None, name: str or None = None, num_header_rows: int = 0,
-                 delimiter: str or None = None, **kwargs):
+                 delimiter: str or None = None, scale: float = 1.0, rotation_rad: float = 0.0,
+                 translation_x: float = 0.0, translation_y: float = 0.0,
+                 **kwargs):
 
         super().__init__(sub_container="polylines", **kwargs)
         self._point_sequence = None
@@ -116,6 +119,10 @@ class PolyLine(ParametricCurve):
         self.coords = self._get_coord_slice()
         point_sequence = self._extract_point_sequence_from_coords() if point_sequence is None else point_sequence
         self.set_point_sequence(point_sequence)
+        self.scale = scale
+        self.rotation_rad = rotation_rad
+        self.translation_x = translation_x
+        self.translation_y = translation_y
         name = self._get_default_name() if name is None else name
         self.set_name(name)
         self._add_references()
@@ -270,6 +277,17 @@ class PolyLine(ParametricCurve):
 
     def evaluate(self, t: np.ndarray or None = None, **kwargs):
         xy = self.coords
+        if self.scale != 1.0 or self.translation_x != 0.0 or self.translation_y != 0.0 or self.rotation_rad != 0.0:
+            transformation = Transformation2D(
+                tx=[self.translation_x],
+                ty=[self.translation_y],
+                r=[self.rotation_rad],
+                sx=[self.scale],
+                sy=[self.scale],
+                order="r,s,t",
+                rotation_units="rad"
+            )
+            xy = transformation.transform(xy)
         t = np.linspace(0.0, 1.0, xy.shape[0])
         xp = np.gradient(xy[:, 0], t)
         yp = np.gradient(xy[:, 1], t)
