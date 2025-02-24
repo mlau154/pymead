@@ -13,7 +13,7 @@ jobs:
       matrix:
         python-version: ["3.10", "3.11", "3.12", "3.13"]
     env:
-      DISPLAY: ':99.0'
+      DISPLAY: ':99.0'  # Environmental display variable used by X server
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -22,23 +22,25 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       - name: Install dependencies
-        run: |  # libegl1 needed for Qt import
+        run: |
           python -m pip install --upgrade pip
           sudo apt-get update
           sudo apt-get install libegl1-mesa-dev
           sudo apt-get install -y xvfb xorg-dev
-          sudo apt install libxkbcommon-x11-0
-          sudo apt install libxcb-icccm4
-          sudo apt install libxcb-image0
-          sudo apt install libxcb-keysyms1
-          sudo apt install libxcb-randr0
-          sudo apt install libxcb-render-util0
-          sudo apt install libxcb-xinerama0
-          sudo apt install libxcb-xfixes0
-          sudo apt install x11-utils
+          sudo apt-get install libxkbcommon-x11-0
+          sudo apt-get install libxcb-icccm4
+          sudo apt-get install libxcb-image0
+          sudo apt-get install libxcb-keysyms1
+          sudo apt-get install libxcb-randr0
+          sudo apt-get install libxcb-render-util0
+          sudo apt-get install libxcb-xinerama0
+          sudo apt-get install libxcb-xfixes0
           sudo apt-get install libxcb-cursor0
-          /sbin/start-stop-daemon --start --quiet --pidfile /tmp/custom_xvfb_99.pid --make-pidfile --background --exec /usr/bin/Xvfb -- :99 -screen 0 1920x1200x24 -ac +extension GLX
+          sudo apt-get install x11-utils
           pip install .[dev]
-
+      - name: Start X server
+        run: |
+          /sbin/start-stop-daemon --start --quiet --pidfile /tmp/custom_xvfb_99.pid --make-pidfile --background \
+          --exec /usr/bin/Xvfb -- :99 -screen 0 1920x1080x24 -ac +extension GLX
       - name: Run tests
-        run: pytest pymead/tests  # xvfb-run for headless X server (used in GUI tests)
+        run: pytest pymead/tests
