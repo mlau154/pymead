@@ -27,7 +27,14 @@ jobs:
           python -m pip install --upgrade pip
           sudo apt-get update
           sudo apt-get install libegl1-mesa-dev
+          sudo apt-get install -y xvfb xorg-dev
           pip install .[dev]
+
+      - name: Start Xvfb
+        run: Xvfb :99 -screen 0 1920x1080x24 &
+
+      - name: Set DISPLAY
+        run: export DISPLAY=:99
 
       - name: Run tests
         run: pytest pymead/tests
