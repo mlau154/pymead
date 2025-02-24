@@ -17,19 +17,26 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
-
       - name: Install dependencies
         run: |  # libegl1 needed for Qt import
           python -m pip install --upgrade pip
           sudo apt-get update
           sudo apt-get install libegl1-mesa-dev
           sudo apt-get install -y xvfb xorg-dev
-          sudo apt install libxkbcommon-x11-0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-randr0 libxcb-render-util0 libxcb-xinerama0 libxcb-xfixes0 x11-utils
+          sudo apt install libxkbcommon-x11-0
+          sudo apt install libxcb-icccm4
+          sudo apt install libxcb-image0
+          sudo apt install libxcb-keysyms1
+          sudo apt install libxcb-randr0
+          sudo apt install libxcb-render-util0
+          sudo apt install libxcb-xinerama0
+          sudo apt install libxcb-xfixes0
+          sudo apt install x11-utils
+          sudo apt-get install xcb-cursor0
           /sbin/start-stop-daemon --start --quiet --pidfile /tmp/custom_xvfb_99.pid --make-pidfile --background --exec /usr/bin/Xvfb -- :99 -screen 0 1920x1200x24 -ac +extension GLX
           pip install .[dev]
 
