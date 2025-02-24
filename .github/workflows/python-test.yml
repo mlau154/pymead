@@ -23,11 +23,12 @@ jobs:
           python-version: ${{ matrix.python-version }}
 
       - name: Install dependencies
-        run: |
+        run: |  # libegl1 needed for Qt import
           python -m pip install --upgrade pip
           sudo apt-get update
           sudo apt-get install libegl1-mesa-dev
+          sudo apt-get install -y xvfb xorg-dev
           pip install .[dev]
 
       - name: Run tests
-        run: xvfb-run ytest pymead/tests
+        run: xvfb-run ytest pymead/tests  # xvfb-run for headless X server (used in GUI tests)
