@@ -27,10 +27,7 @@ jobs:
           python -m pip install --upgrade pip
           sudo apt-get update
           sudo apt-get install libegl1-mesa-dev
-          sudo apt-get install -y xvfb xorg-dev
           pip install .[dev]
 
       - name: Run tests
-        uses: coactions/setup-xvfb@v1
-        with:
-          run: pytest pymead/tests
+        run: xvfb-run ytest pymead/tests
