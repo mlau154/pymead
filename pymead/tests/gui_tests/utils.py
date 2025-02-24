@@ -66,13 +66,9 @@ def perform_action_on_dialog(dialog_trigger: typing.Callable,
 
 @pytest.fixture
 def app(qtbot):
-    print(f"Creating GUI...")
     gui = GUI(bypass_vercheck=True, bypass_exit_save_dialog=True)
-    print(f"Showing GUI...")
     gui.show()
-    print("Adding GUI widget to Qt-Bot...")
     qtbot.addWidget(gui)
-    print("Completed GUI generation")
     return gui
 
 
