@@ -38,12 +38,12 @@ jobs:
           sudo apt-get install libxcb-cursor0
           sudo apt-get install x11-utils
           pip install .[dev]
-      - name: Download and extract XFOIL
+      - name: Download, extract, compile, and install XFOIL
         run: |
           curl -o xfoil6.99.tgz "https://web.mit.edu/drela/Public/web/xfoil/xfoil6.99.tgz"
           tar -xvzf xfoil6.99.tgz
           cd Xfoil/plotlib
-          make
+          make -f config.make.gfortranDP
           cd ../..
           cd Xfoil/bin
           sed -i 's/-fdefault-real-8/-fdefault-real-8 -fallow-argument-mismatch/g' Makefile
