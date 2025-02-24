@@ -38,7 +38,7 @@ def test_thickness_check():
     opt_settings["Genetic Algorithm"]["root_dir"] = os.path.join(TEST_DIR, "opt_tests", "test_opt")
 
     param_dict = convert_opt_settings_to_param_dict(opt_settings, n_var=len(geo_col_dict["desvar"]),
-                                                    bypass_exe_check=True)
+                                                    bypass_exe_check=True, bypass_num_proc_check=True)
     chromosome = Chromosome(
         geo_col_dict=deepcopy(geo_col_dict),
         param_dict=param_dict,
@@ -66,7 +66,7 @@ def test_thickness_at_points_check():
     opt_settings["Genetic Algorithm"]["root_dir"] = os.path.join(TEST_DIR, "opt_tests", "test_opt")
 
     param_dict = convert_opt_settings_to_param_dict(opt_settings, n_var=len(geo_col_dict["desvar"]),
-                                                    bypass_exe_check=True)
+                                                    bypass_exe_check=True, bypass_num_proc_check=True)
     chromosome = Chromosome(
         geo_col_dict=deepcopy(geo_col_dict),
         param_dict=param_dict,
@@ -102,7 +102,7 @@ def test_chromosome_eval_fitness_with_invalid_max_thickness():
     opt_settings["Genetic Algorithm"]["root_dir"] = os.path.join(TEST_DIR, "opt_tests", "test_opt")
 
     param_dict = convert_opt_settings_to_param_dict(opt_settings, n_var=len(geo_col_dict["desvar"]),
-                                                    bypass_exe_check=True)
+                                                    bypass_exe_check=True, bypass_num_proc_check=True)
     chromosome = Chromosome(
         geo_col_dict=deepcopy(geo_col_dict),
         param_dict=param_dict,
@@ -123,7 +123,7 @@ def test_eval_pop_fitness_with_invalid_max_thickness():
     opt_settings["Genetic Algorithm"]["root_dir"] = os.path.join(TEST_DIR, "opt_tests", "test_opt")
 
     param_dict = convert_opt_settings_to_param_dict(opt_settings, n_var=len(geo_col_dict["desvar"]),
-                                                    bypass_exe_check=True)
+                                                    bypass_exe_check=True, bypass_num_proc_check=True)
     chromosome = Chromosome(
         geo_col_dict=deepcopy(geo_col_dict),
         param_dict=param_dict,
@@ -148,7 +148,7 @@ def test_chromosome_generate_with_invalid_max_thickness_scaled_airfoil():
     opt_settings["Genetic Algorithm"]["root_dir"] = os.path.join(TEST_DIR, "opt_tests", "test_opt")
 
     param_dict = convert_opt_settings_to_param_dict(opt_settings, n_var=len(geo_col_dict["desvar"]),
-                                                    bypass_exe_check=True)
+                                                    bypass_exe_check=True, bypass_num_proc_check=True)
     chromosome = Chromosome(
         geo_col_dict=deepcopy(geo_col_dict),
         param_dict=param_dict,
@@ -170,7 +170,7 @@ def test_chromosome_generate_internal_geometry_nondimensional():
     opt_settings["Genetic Algorithm"]["root_dir"] = os.path.join(TEST_DIR, "opt_tests", "test_opt")
 
     param_dict = convert_opt_settings_to_param_dict(opt_settings, n_var=len(geo_col_dict["desvar"]),
-                                                    bypass_exe_check=True)
+                                                    bypass_exe_check=True, bypass_num_proc_check=True)
     param_dict["constraints"]["Airfoil-1"]["internal_geometry"] = [
         small_internal_geometry,
         True, "Rotate/Translate/Scale w/ Airfoil, Eval. Before Aerodynamic Evaluation"
@@ -220,7 +220,7 @@ def test_chromosome_generate_internal_geometry_dimensional():
     opt_settings["Genetic Algorithm"]["root_dir"] = os.path.join(TEST_DIR, "opt_tests", "test_opt")
 
     param_dict = convert_opt_settings_to_param_dict(opt_settings, n_var=len(geo_col_dict["desvar"]),
-                                                    bypass_exe_check=True)
+                                                    bypass_exe_check=True, bypass_num_proc_check=True)
     param_dict["constraints"]["Airfoil-1"]["internal_geometry"] = [
         np.array([[0.1, 0.01], [0.5, 0.01], [0.5, -0.01], [0.1, -0.01], [0.1, 0.01]]),
         True, "Rotate/Translate w/ Airfoil, Eval. Before Aerodynamic Evaluation"

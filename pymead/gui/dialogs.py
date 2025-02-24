@@ -4532,7 +4532,8 @@ class SettingsDialog(PymeadDialog):
                          minimum_width=256, minimum_height=210)
 
 
-def convert_opt_settings_to_param_dict(opt_settings: dict, n_var: int, bypass_exe_check: bool = False) -> dict:
+def convert_opt_settings_to_param_dict(opt_settings: dict, n_var: int, bypass_exe_check: bool = False,
+                                       bypass_num_proc_check: bool = False) -> dict:
     param_dict = {'tool': opt_settings['Genetic Algorithm']['tool'],
                   'algorithm_save_frequency': opt_settings['Genetic Algorithm']['algorithm_save_frequency'],
                   'n_obj': len(opt_settings['Genetic Algorithm']['J'].split(',')),
@@ -4595,7 +4596,7 @@ def convert_opt_settings_to_param_dict(opt_settings: dict, n_var: int, bypass_ex
         if param_dict["tool"] == "MSES" and shutil.which('mplot') is None:
             raise ValueError('MPLOT suite executable \'mplot\' not found on system path')
 
-    if param_dict["num_processors"] > os.cpu_count():
+    if not bypass_num_proc_check and param_dict["num_processors"] > os.cpu_count():
         raise ValueError(f"Number of processors specified ({param_dict['num_processors']}) is greater than "
                          f"the number of logical processors available on this machine ({os.cpu_count()})")
 
