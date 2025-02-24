@@ -12,6 +12,13 @@ from pymead import EXAMPLES_DIR, TEST_DIR
 from pymead.utils.read_write_files import load_data
 
 
+def make_root_dir_for_test_opt(opt_settings: dict):
+    root_dir = os.path.join(TEST_DIR, "opt_tests", "test_opt")
+    if not os.path.exists(root_dir):
+        os.mkdir(root_dir)
+    opt_settings["Genetic Algorithm"]["root_dir"] = root_dir
+
+
 def scale_points(geo_col: GeometryCollection, scale_factor: float):
     for point in geo_col.container()["points"].values():
         x, y = point.x().value(), point.y().value()
@@ -35,7 +42,7 @@ def translate_points(geo_col: GeometryCollection, tx: float, ty: float):
 def test_thickness_check():
     geo_col_dict = load_data(os.path.join(EXAMPLES_DIR, "basic_airfoil_sharp_dv.jmea"))
     opt_settings = load_data(os.path.join(TEST_DIR, "opt_tests", "test_airfoil_thickness_settings.json"))
-    opt_settings["Genetic Algorithm"]["root_dir"] = os.path.join(TEST_DIR, "opt_tests", "test_opt")
+    make_root_dir_for_test_opt(opt_settings)
 
     param_dict = convert_opt_settings_to_param_dict(opt_settings, n_var=len(geo_col_dict["desvar"]),
                                                     bypass_exe_check=True, bypass_num_proc_check=True)
@@ -63,7 +70,7 @@ def test_thickness_check():
 def test_thickness_at_points_check():
     geo_col_dict = load_data(os.path.join(TEST_DIR, "opt_tests", "opt_test_airfoil_1.jmea"))
     opt_settings = load_data(os.path.join(TEST_DIR, "opt_tests", "test_airfoil_thickness_settings.json"))
-    opt_settings["Genetic Algorithm"]["root_dir"] = os.path.join(TEST_DIR, "opt_tests", "test_opt")
+    make_root_dir_for_test_opt(opt_settings)
 
     param_dict = convert_opt_settings_to_param_dict(opt_settings, n_var=len(geo_col_dict["desvar"]),
                                                     bypass_exe_check=True, bypass_num_proc_check=True)
@@ -99,7 +106,7 @@ def test_thickness_at_points_check():
 def test_chromosome_eval_fitness_with_invalid_max_thickness():
     geo_col_dict = load_data(os.path.join(EXAMPLES_DIR, "basic_airfoil_sharp_dv.jmea"))
     opt_settings = load_data(os.path.join(TEST_DIR, "opt_tests", "test_airfoil_thickness_settings.json"))
-    opt_settings["Genetic Algorithm"]["root_dir"] = os.path.join(TEST_DIR, "opt_tests", "test_opt")
+    make_root_dir_for_test_opt(opt_settings)
 
     param_dict = convert_opt_settings_to_param_dict(opt_settings, n_var=len(geo_col_dict["desvar"]),
                                                     bypass_exe_check=True, bypass_num_proc_check=True)
@@ -120,7 +127,7 @@ def test_chromosome_eval_fitness_with_invalid_max_thickness():
 def test_eval_pop_fitness_with_invalid_max_thickness():
     geo_col_dict = load_data(os.path.join(EXAMPLES_DIR, "basic_airfoil_sharp_dv.jmea"))
     opt_settings = load_data(os.path.join(TEST_DIR, "opt_tests", "test_airfoil_thickness_settings.json"))
-    opt_settings["Genetic Algorithm"]["root_dir"] = os.path.join(TEST_DIR, "opt_tests", "test_opt")
+    make_root_dir_for_test_opt(opt_settings)
 
     param_dict = convert_opt_settings_to_param_dict(opt_settings, n_var=len(geo_col_dict["desvar"]),
                                                     bypass_exe_check=True, bypass_num_proc_check=True)
@@ -145,7 +152,7 @@ def test_chromosome_generate_with_invalid_max_thickness_scaled_airfoil():
     scale_points(geo_col, scale_factor)
     geo_col_dict = geo_col.get_dict_rep()
     opt_settings = load_data(os.path.join(TEST_DIR, "opt_tests", "test_airfoil_thickness_settings.json"))
-    opt_settings["Genetic Algorithm"]["root_dir"] = os.path.join(TEST_DIR, "opt_tests", "test_opt")
+    make_root_dir_for_test_opt(opt_settings)
 
     param_dict = convert_opt_settings_to_param_dict(opt_settings, n_var=len(geo_col_dict["desvar"]),
                                                     bypass_exe_check=True, bypass_num_proc_check=True)
@@ -167,7 +174,7 @@ def test_chromosome_generate_internal_geometry_nondimensional():
     small_internal_geometry = np.array([[0.1, 0.01], [0.5, 0.01], [0.5, -0.01], [0.1, -0.01], [0.1, 0.01]])
     large_internal_geometry = np.array([[0.1, 0.2], [0.5, 0.2], [0.5, -0.2], [0.1, -0.2], [0.1, 0.2]])
     opt_settings = load_data(os.path.join(TEST_DIR, "opt_tests", "test_internal_geometry_settings.json"))
-    opt_settings["Genetic Algorithm"]["root_dir"] = os.path.join(TEST_DIR, "opt_tests", "test_opt")
+    make_root_dir_for_test_opt(opt_settings)
 
     param_dict = convert_opt_settings_to_param_dict(opt_settings, n_var=len(geo_col_dict["desvar"]),
                                                     bypass_exe_check=True, bypass_num_proc_check=True)
