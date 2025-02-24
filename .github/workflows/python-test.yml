@@ -43,7 +43,7 @@ jobs:
           curl -o xfoil6.99.tgz "https://web.mit.edu/drela/Public/web/xfoil/xfoil6.99.tgz"
           tar -xvzf xfoil6.99.tgz
           cd Xfoil/bin
-          sed -i 's/-fdefault-real-8/-fdefault-real-8' -fallow-argument-mismatch Makefile
+          sed -i 's/-fdefault-real-8/-fdefault-real-8 -fallow-argument-mismatch/g' Makefile
           make
           cd ../..
           export PATH="$(pwd)/Xfoil/bin/:$PATH"
