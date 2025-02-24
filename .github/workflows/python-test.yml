@@ -31,4 +31,4 @@ jobs:
           pip install .[dev]
 
       - name: Run tests
-        run: xvfb-run pytest pymead/tests  # xvfb-run for headless X server (used in GUI tests)
+        run: xvfb-run -a --server-args="-screen 0 1920x1080x24" pytest pymead/tests  # xvfb-run for headless X server (used in GUI tests)
