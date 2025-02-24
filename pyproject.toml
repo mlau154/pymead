@@ -79,8 +79,7 @@ dev = [
     "pytest-qt",
     "pynput",
     "triangle",
-    "rust-nurbs>=0.24",
-    "tox"
+    "rust-nurbs>=0.24"
 ]
 
 [project.urls]

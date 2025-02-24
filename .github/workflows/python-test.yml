@@ -28,4 +28,4 @@ jobs:
           pip install .[dev]
 
       - name: Run tests
-        run: tox run
+        run: pytest pymead/tests
