@@ -42,7 +42,8 @@ jobs:
         run: |
           curl -o xfoil6.99.tgz "https://web.mit.edu/drela/Public/web/xfoil/xfoil6.99.tgz"
           tar -xvzf xfoil6.99.tgz
-          export PATH="./Xfoil/bin/:$PATH"
+          make -f Xfoil/bin/Makefile
+          export PATH="$(pwd)/Xfoil/bin/:$PATH"
       - name: Start X server
         run: |
           /sbin/start-stop-daemon --start --quiet --pidfile /tmp/custom_xvfb_99.pid --make-pidfile --background \
