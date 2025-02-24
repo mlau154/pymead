@@ -43,7 +43,7 @@ jobs:
           curl -o xfoil6.99.tgz "https://web.mit.edu/drela/Public/web/xfoil/xfoil6.99.tgz"
           tar -xvzf xfoil6.99.tgz
           cd Xfoil/bin
-          make
+          make -fallow-argument-mismatch
           cd ../..
           export PATH="$(pwd)/Xfoil/bin/:$PATH"
       - name: Start X server
