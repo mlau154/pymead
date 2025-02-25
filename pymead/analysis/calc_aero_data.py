@@ -1367,22 +1367,20 @@ def run_xfoil(xfoil_settings: dict or XFOILSettings, coords: np.ndarray, export_
                     line1, line2 = read_aero_data_from_xfoil(xfoil_log, aero_data)
                     if line1 is not None:
                         convert_xfoil_string_to_aero_data(line1, line2, aero_data)
-                        print(f"{analysis_dir = }")
-                        for root, dirs, files in os.walk(analysis_dir):
-                            for analysis_file in files:
-                                print(f"{analysis_file = }")
                         if export_Cp:
-                            aero_data['Cp'] = read_Cp_from_file_xfoil(
-                                os.path.join(analysis_dir, f"{airfoil_name}_Cp.dat")
-                            )
+                            cp_file = os.path.join(analysis_dir, f"{airfoil_name}_Cp.dat")
+                            if not os.path.exists(cp_file):  # Temp fix for Linux-compiled XFOIL
+                                cp_file = os.path.join(analysis_dir, ":00.bl")
+                            aero_data['Cp'] = read_Cp_from_file_xfoil(cp_file)
             else:
                 if not aero_data["timed_out"] and aero_data["converged"]:
                     aero_data["Cl"], aero_data["Cm"], aero_data["alf"] = calculate_Cl_alfa_xfoil_inviscid(
                         airfoil_name=airfoil_name, base_dir=analysis_dir)
                     if export_Cp:
-                        aero_data["Cp"] = read_Cp_from_file_xfoil(
-                            os.path.join(analysis_dir, f"{airfoil_name}_Cp.dat")
-                        )
+                        cp_file = os.path.join(analysis_dir, f"{airfoil_name}_Cp.dat")
+                        if not os.path.exists(cp_file):  # Temp fix for Linux-compiled XFOIL
+                            cp_file = os.path.join(analysis_dir, ":00.bl")
+                        aero_data["Cp"] = read_Cp_from_file_xfoil(cp_file)
 
     return aero_data, xfoil_log
 

@@ -27,7 +27,6 @@ def read_Cp_from_file_xfoil(fname: str):
     """
     y_in_header = False
     header_line_idx = None
-    print(f"In read Cp from file XFOIL, {fname = }")
     with open(fname, "r") as f:
         for idx, line in enumerate(f):
             if "Cp" not in line:
