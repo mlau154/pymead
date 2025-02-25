@@ -1367,6 +1367,8 @@ def run_xfoil(xfoil_settings: dict or XFOILSettings, coords: np.ndarray, export_
                     line1, line2 = read_aero_data_from_xfoil(xfoil_log, aero_data)
                     if line1 is not None:
                         convert_xfoil_string_to_aero_data(line1, line2, aero_data)
+                        print(f"{analysis_dir = }")
+                        print(f"{aero_data = }")
                         if export_Cp:
                             aero_data['Cp'] = read_Cp_from_file_xfoil(
                                 os.path.join(analysis_dir, f"{airfoil_name}_Cp.dat")

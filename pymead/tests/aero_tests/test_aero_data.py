@@ -66,8 +66,6 @@ class CalcAeroData(unittest.TestCase):
 
     def test_calculate_aero_data_inviscid(self):
         base_dir = os.path.join(TEST_DIR, "aero_tests")
-        if not os.path.exists(base_dir):
-            os.mkdir(base_dir)
         xfoil_settings = XFOILSettings(
             base_dir=base_dir,
             airfoil_name="xfoil_test",
