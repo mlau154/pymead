@@ -43,7 +43,9 @@ jobs:
           curl -o xfoil6.99.tgz "https://web.mit.edu/drela/Public/web/xfoil/xfoil6.99.tgz"
           tar -xvzf xfoil6.99.tgz
           cd Xfoil/plotlib
-          make -f config.make.gfortranDP
+          rm config.make
+          cp config.make.gfortranDP config.make
+          make
           cd ../..
           cd Xfoil/bin
           sed -i 's/BINDIR =/#BINDIR =/g' Makefile
