@@ -3,14 +3,11 @@ import shutil
 import time
 import warnings
 
-import pytest
-
+from pymead import TEST_DIR
 from pymead.tests.gui_tests.utils import app
 from pymead.utils.read_write_files import load_data
-from pymead import TEST_DIR
 
 
-# @pytest.mark.skip(reason="Not working in GitHub Actions")
 def test_xfoil_evaluate(app):
     # Make sure that XFOIL is found on the system path. Print a warning if is not.
     if shutil.which("xfoil") is None:
@@ -31,11 +28,9 @@ def test_xfoil_evaluate(app):
         dialog.accept()
 
     # Load the basic airfoil with sharp trailing edge example
-    print(f"Loading the basic airfoil...")
     app.load_example_basic_airfoil_sharp()
 
     # Run the dialog non-modal and feed it the values loaded into the "mses_settings" variable
-    print(f"Running the viscous analysis...")
     aero_data = app.single_airfoil_viscous_analysis(dialog_test_action=dialog_test_action)
 
     # Ensure that the drag value computed is correct
@@ -46,7 +41,6 @@ def test_xfoil_evaluate(app):
         shutil.rmtree(analysis_path)
 
 
-# @pytest.mark.skip(reason="Not working in GitHub Actions")
 def test_mses_evaluate(app):
     """
     Ensures that direct MSES analysis from the GUI is working properly.
