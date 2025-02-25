@@ -1195,16 +1195,29 @@ def calculate_Cl_integral_form(x: np.ndarray, y: np.ndarray, Cp: np.ndarray, alf
     return Cl, Cm
 
 
-def read_alfa_from_xfoil_cp_file(xfoil_cp_file: str):
+def read_alfa_from_xfoil_cp_file(xfoil_cp_file: str) -> float:
     with open(xfoil_cp_file, "r") as f:
         lines = f.readlines()
-    print(f"{lines = }")
     return float(lines[1].split()[2])
+
+
+def read_alfa_from_xfoil_log_file(xfoil_log_file: str) -> float:
+    with open(xfoil_log_file, "r") as f:
+        lines = f.readlines()
+    for line in reversed(lines):
+        if "a = " not in line:
+            continue
+        return float(line.split()[2])
+    raise ValueError("Failed to read angle of attack from XFOIL log")
 
 
 def calculate_Cl_alfa_xfoil_inviscid(airfoil_name: str, base_dir: str):
     cp_file = os.path.join(base_dir, f"{airfoil_name}_Cp.dat")
-    alfa = read_alfa_from_xfoil_cp_file(cp_file)
+    log_file = os.path.join(base_dir, "xfoil.log")
+    try:
+        alfa = read_alfa_from_xfoil_cp_file(cp_file)
+    except IndexError:
+        alfa = read_alfa_from_xfoil_log_file(log_file)
     data = np.loadtxt(cp_file, skiprows=3)
     x, y, Cp = data[:, 0], data[:, 1], data[:, 2]
     Cl, Cm = calculate_Cl_integral_form(x, y, Cp, np.deg2rad(alfa))
