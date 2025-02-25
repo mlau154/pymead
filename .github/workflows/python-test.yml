@@ -49,7 +49,6 @@ jobs:
           cd Xfoil/bin
           sed -i 's/BINDIR =/#BINDIR =/g' Makefile
           sed -i 's/##BINDIR/BINDIR/g' Makefile
-          sed -i 's/#
           sed -i 's/-fdefault-real-8/-fdefault-real-8 -fallow-argument-mismatch/g' Makefile
           make
           cd ../..
