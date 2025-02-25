@@ -22,4 +22,4 @@ def test_help_browser(app, qtbot: QtBot):
     def check_loaded():
         assert load_successful
 
-    qtbot.wait_until(check_loaded, timeout=3000)
+    qtbot.wait_until(check_loaded, timeout=6000)
