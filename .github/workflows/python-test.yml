@@ -37,6 +37,8 @@ jobs:
           sudo apt-get install libxcb-xfixes0
           sudo apt-get install libxcb-cursor0
           sudo apt-get install x11-utils
+          sudo apt-get install xorg-fonts-75dpi
+          sudo apt-get install xorg-fonts-100dpi
           pip install .[dev]
       - name: Download, extract, and compile XFOIL
         run: |
