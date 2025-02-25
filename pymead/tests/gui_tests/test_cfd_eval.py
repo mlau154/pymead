@@ -10,7 +10,7 @@ from pymead.utils.read_write_files import load_data
 from pymead import TEST_DIR
 
 
-@pytest.mark.skip(reason="Not working in GitHub Actions")
+# @pytest.mark.skip(reason="Not working in GitHub Actions")
 def test_xfoil_evaluate(app):
     # Make sure that XFOIL is found on the system path. Print a warning if is not.
     if shutil.which("xfoil") is None:
@@ -46,7 +46,7 @@ def test_xfoil_evaluate(app):
         shutil.rmtree(analysis_path)
 
 
-@pytest.mark.skip(reason="Not working in GitHub Actions")
+# @pytest.mark.skip(reason="Not working in GitHub Actions")
 def test_mses_evaluate(app):
     """
     Ensures that direct MSES analysis from the GUI is working properly.

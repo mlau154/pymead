@@ -38,7 +38,7 @@ class CalcAeroData(unittest.TestCase):
         except DependencyNotFoundError as e:
             warnings.warn(str(e))
         except ValueError as e:
-            warnings.warn(str(e))
+            warnings.warn(str(e) + ". Skipping aerodynamic coefficient value checks.")
 
     def test_calculate_aero_data_viscous(self):
         base_dir = os.path.join(TEST_DIR, "aero_tests")
@@ -66,7 +66,7 @@ class CalcAeroData(unittest.TestCase):
             self.assertAlmostEqual(aero_data["Cm"], 0.0015, places=3)
             self.assertAlmostEqual(aero_data["L/D"], 57.1306, places=0)
         except DependencyNotFoundError as e:
-            warnings.warn(str(e))
+            warnings.warn(str(e) + ". Skipping aerodynamic coefficient value checks.")
 
     def test_calculate_aero_data_inviscid(self):
         base_dir = os.path.join(TEST_DIR, "aero_tests")
@@ -92,7 +92,7 @@ class CalcAeroData(unittest.TestCase):
         except DependencyNotFoundError as e:
             warnings.warn(str(e))
         except ValueError as e:
-            warnings.warn(str(e))
+            warnings.warn(str(e) + ". Skipping aerodynamic coefficient value checks.")
 
     def test_run_mpolar(self):
         geo_col = GeometryCollection.set_from_dict_rep(
