@@ -18,8 +18,6 @@ def test_xfoil_evaluate(app):
     base_dir = os.path.join(TEST_DIR, "gui_tests")
     airfoil_name = "test_sharp_xfoil"
     analysis_path = os.path.join(base_dir, airfoil_name)
-    if not os.path.exists(analysis_path):
-        os.mkdir(analysis_path)
 
     def dialog_test_action(dialog):
         """Test action to apply to the dialog. Simply set the value of the dialog and accept."""
@@ -29,10 +27,12 @@ def test_xfoil_evaluate(app):
         dialog.w.widget_dict["airfoil_name"]["widget"].setText(airfoil_name)
         dialog.accept()
 
-    # Load the isolated propulsor example
+    # Load the basic airfoil with sharp trailing edge example
+    print(f"Loading the basic airfoil...")
     app.load_example_basic_airfoil_sharp()
 
     # Run the dialog non-modal and feed it the values loaded into the "mses_settings" variable
+    print(f"Running the viscous analysis...")
     aero_data = app.single_airfoil_viscous_analysis(dialog_test_action=dialog_test_action)
 
     # Ensure that the drag value computed is correct
