@@ -38,7 +38,7 @@ jobs:
           sudo apt-get install libxcb-cursor0
           sudo apt-get install x11-utils
           pip install .[dev]
-      - name: Download, extract, compile, and install XFOIL
+      - name: Download, extract, and compile XFOIL
         run: |
           curl -o xfoil6.99.tgz "https://web.mit.edu/drela/Public/web/xfoil/xfoil6.99.tgz"
           tar -xvzf xfoil6.99.tgz
@@ -48,11 +48,11 @@ jobs:
           cd ../..
           cd Xfoil/bin
           sed -i 's/BINDIR =/#BINDIR =/g' Makefile
-          sed -i 's/##BINDIR/BINDIR/g' Makefile
+          sed -i 's|##BINDIR = .|BINDIR = ..|g' Makefile
           sed -i 's/-fdefault-real-8/-fdefault-real-8 -fallow-argument-mismatch/g' Makefile
           make
           cd ../..
-          export PATH="$(pwd)/Xfoil/bin/:$PATH"
+          export PATH="$(pwd)/Xfoil/:$PATH"
       - name: Start X server
         run: |
           /sbin/start-stop-daemon --start --quiet --pidfile /tmp/custom_xvfb_99.pid --make-pidfile --background \
