@@ -1205,7 +1205,6 @@ def read_alfa_from_xfoil_log_file(xfoil_log_file: str) -> float:
     with open(xfoil_log_file, "r") as f:
         lines = f.readlines()
     for line in reversed(lines):
-        print(f"{line = }")
         if "a = " not in line:
             continue
         return float(line.split()[2])
@@ -1292,7 +1291,7 @@ def run_xfoil(xfoil_settings: dict or XFOILSettings, coords: np.ndarray, export_
         if save_attempts > max_save_attempts:
             raise ValueError("Exceeded the maximum number of allowed coordinate file save attempts")
         try:
-            np.savetxt(f, coords, header="x_airfoil")
+            np.savetxt(f, coords)
             break
         except OSError:
             time.sleep(0.01)

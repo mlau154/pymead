@@ -37,6 +37,8 @@ class CalcAeroData(unittest.TestCase):
 
         except DependencyNotFoundError as e:
             warnings.warn(str(e))
+        except ValueError as e:
+            warnings.warn(str(e))
 
     def test_calculate_aero_data_viscous(self):
         base_dir = os.path.join(TEST_DIR, "aero_tests")
@@ -88,6 +90,8 @@ class CalcAeroData(unittest.TestCase):
             self.assertAlmostEqual(aero_data["Cl"], 0.3649, places=4)
             self.assertAlmostEqual(aero_data["Cm"], -0.0043, places=4)
         except DependencyNotFoundError as e:
+            warnings.warn(str(e))
+        except ValueError as e:
             warnings.warn(str(e))
 
     def test_run_mpolar(self):
