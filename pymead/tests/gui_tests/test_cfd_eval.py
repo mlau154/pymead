@@ -18,6 +18,8 @@ def test_xfoil_evaluate(app):
     base_dir = os.path.join(TEST_DIR, "gui_tests")
     airfoil_name = "test_sharp_xfoil"
     analysis_path = os.path.join(base_dir, airfoil_name)
+    if not os.path.exists(analysis_path):
+        os.mkdir(analysis_path)
 
     def dialog_test_action(dialog):
         """Test action to apply to the dialog. Simply set the value of the dialog and accept."""

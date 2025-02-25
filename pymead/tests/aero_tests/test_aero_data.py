@@ -13,8 +13,11 @@ from pymead import TEST_DIR, EXAMPLES_DIR, DependencyNotFoundError
 class CalcAeroData(unittest.TestCase):
 
     def test_run_xfoil_inviscid(self):
+        base_dir = os.path.join(TEST_DIR, "aero_tests")
+        if not os.path.exists(base_dir):
+            os.mkdir(base_dir)
         xfoil_settings = XFOILSettings(
-            base_dir=os.path.join(TEST_DIR, "aero_tests"),
+            base_dir=base_dir,
             airfoil_name="xfoil_test",
             mode=0,
             alfa=3.0,
@@ -34,8 +37,11 @@ class CalcAeroData(unittest.TestCase):
             print(f"Warning: {str(e)}")
 
     def test_calculate_aero_data_viscous(self):
+        base_dir = os.path.join(TEST_DIR, "aero_tests")
+        if not os.path.exists(base_dir):
+            os.mkdir(base_dir)
         xfoil_settings = XFOILSettings(
-            base_dir=os.path.join(TEST_DIR, "aero_tests"),
+            base_dir=base_dir,
             airfoil_name="calculate_aero_data_viscous_test",
             Re=2213243.6863567195832729,
             mode=0,
@@ -59,8 +65,11 @@ class CalcAeroData(unittest.TestCase):
             print(f"Warning: {str(e)}")
 
     def test_calculate_aero_data_inviscid(self):
+        base_dir = os.path.join(TEST_DIR, "aero_tests")
+        if not os.path.exists(base_dir):
+            os.mkdir(base_dir)
         xfoil_settings = XFOILSettings(
-            base_dir=os.path.join(TEST_DIR, "aero_tests"),
+            base_dir=base_dir,
             airfoil_name="xfoil_test",
             mode=0,
             alfa=3.0,
