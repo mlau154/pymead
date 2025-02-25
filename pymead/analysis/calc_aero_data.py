@@ -1205,6 +1205,7 @@ def read_alfa_from_xfoil_log_file(xfoil_log_file: str) -> float:
     with open(xfoil_log_file, "r") as f:
         lines = f.readlines()
     for line in reversed(lines):
+        print(f"{line = }")
         if "a = " not in line:
             continue
         return float(line.split()[2])
