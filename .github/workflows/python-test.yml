@@ -53,6 +53,10 @@ jobs:
           make
           cd ../..
           export PATH="$(pwd)/Xfoil/:$PATH"
+          cd Xfoil
+          ls
+          echo $PATH
+          cd ..
       - name: Start X server
         run: |
           /sbin/start-stop-daemon --start --quiet --pidfile /tmp/custom_xvfb_99.pid --make-pidfile --background \
