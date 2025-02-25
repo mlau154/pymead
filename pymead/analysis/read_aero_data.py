@@ -29,6 +29,7 @@ def read_Cp_from_file_xfoil(fname: str):
     header_line_idx = None
     with open(fname, "r") as f:
         for idx, line in enumerate(f):
+            print(f"{idx = }, {line = }")
             if "Cp" not in line:
                 continue
             header_line_idx = idx
@@ -892,12 +893,12 @@ if __name__ == "__main__":
     #     os.path.join(my_folder, f"blade.{name}")
     # )
 
-    name = "default_airfoil"
-    my_folder = os.path.join(r"C:\Users\mlauer2\AppData\Local\Temp", name)
+    blade_name = "default_airfoil"
+    my_folder = os.path.join(r"C:\Users\mlauer2\AppData\Local\Temp", blade_name)
     export_geom_and_mses_field_to_paraview(
         my_folder,
-        os.path.join(my_folder, f"field.{name}"),
+        os.path.join(my_folder, f"field.{blade_name}"),
         os.path.join(my_folder, "mplot_grid_stats.log"),
-        os.path.join(my_folder, f"grid.{name}"),
-        os.path.join(my_folder, f"blade.{name}")
+        os.path.join(my_folder, f"grid.{blade_name}"),
+        os.path.join(my_folder, f"blade.{blade_name}")
     )

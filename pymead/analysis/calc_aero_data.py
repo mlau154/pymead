@@ -1198,11 +1198,14 @@ def calculate_Cl_integral_form(x: np.ndarray, y: np.ndarray, Cp: np.ndarray, alf
 def read_alfa_from_xfoil_cp_file(xfoil_cp_file: str):
     with open(xfoil_cp_file, "r") as f:
         lines = f.readlines()
+    print(f"{lines = }")
     return float(lines[1].split()[2])
 
 
 def calculate_Cl_alfa_xfoil_inviscid(airfoil_name: str, base_dir: str):
     cp_file = os.path.join(base_dir, f"{airfoil_name}_Cp.dat")
+    if not os.path.exists(cp_file):
+        cp_file = os.path.join(base_dir, ":00.bl")
     alfa = read_alfa_from_xfoil_cp_file(cp_file)
     data = np.loadtxt(cp_file, skiprows=3)
     x, y, Cp = data[:, 0], data[:, 1], data[:, 2]
