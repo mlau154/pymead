@@ -1365,6 +1365,10 @@ def run_xfoil(xfoil_settings: dict or XFOILSettings, coords: np.ndarray, export_
             aero_data['timed_out'] = True
             aero_data['converged'] = False
         finally:
+            with open(xfoil_log, "r") as log:
+                lines = log.readlines()
+            for line in lines:
+                print(f"xfoil log line = {line}")
             if xfoil_settings["visc"]:
                 if not aero_data['timed_out'] and aero_data["converged"]:
                     line1, line2 = read_aero_data_from_xfoil(xfoil_log, aero_data)

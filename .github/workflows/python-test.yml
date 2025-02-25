@@ -43,8 +43,7 @@ jobs:
           curl -o xfoil6.99.tgz "https://web.mit.edu/drela/Public/web/xfoil/xfoil6.99.tgz"
           tar -xvzf xfoil6.99.tgz
           cd Xfoil/plotlib
-          sed -i 's/libPlt_gSP.a/libPlt_gDP.a/g' config.make
-          make
+          make -f config.make.gfortranDP
           cd ../..
           cd Xfoil/bin
           sed -i 's/BINDIR =/#BINDIR =/g' Makefile
