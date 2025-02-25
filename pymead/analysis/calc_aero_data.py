@@ -1292,7 +1292,7 @@ def run_xfoil(xfoil_settings: dict or XFOILSettings, coords: np.ndarray, export_
         if save_attempts > max_save_attempts:
             raise ValueError("Exceeded the maximum number of allowed coordinate file save attempts")
         try:
-            np.savetxt(f, coords)
+            np.savetxt(f, coords, header="x_airfoil")
             break
         except OSError:
             time.sleep(0.01)

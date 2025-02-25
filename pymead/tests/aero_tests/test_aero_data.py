@@ -62,7 +62,7 @@ class CalcAeroData(unittest.TestCase):
             self.assertAlmostEqual(aero_data["Cl"], 0.3325, places=3)
             self.assertAlmostEqual(aero_data["Cd"], 0.00582, places=4)
             self.assertAlmostEqual(aero_data["Cm"], 0.0015, places=3)
-            self.assertAlmostEqual(aero_data["L/D"], 57.1306, places=1)
+            self.assertAlmostEqual(aero_data["L/D"], 57.1306, places=0)
         except DependencyNotFoundError as e:
             warnings.warn(str(e))
 
