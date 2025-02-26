@@ -40,7 +40,7 @@ def convert_ps_to_pdf(conversion_dir: str, input_file_name: str, output_file_nam
 def convert_pdf_to_svg(conversion_dir: str, input_file_name: str, output_file_name: str, timeout=10.0):
     if shutil.which('mutool'):
         proc = sp.Popen(['mutool', 'convert', '-o', output_file_name, input_file_name], stdout=sp.PIPE, stderr=sp.PIPE,
-                        cwd=conversion_dir, shell=True)
+                        cwd=conversion_dir, shell=False)
         log_file_name = 'mutool.log'
         log_file = os.path.join(conversion_dir, log_file_name)
         mutool_complete = False
