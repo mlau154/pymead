@@ -84,4 +84,4 @@ jobs:
       - uses: actions/upload-artifact@v4  # Upload the tarball to the GitHub actions workflow
         with:
           name: pymead-macos-tarball
-          path: /home/runner/work/pymead/pymead/install/*.tar.gz
+          path: /Users/runner/work/pymead/pymead/install/*.tar.gz
