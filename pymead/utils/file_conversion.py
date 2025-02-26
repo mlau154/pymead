@@ -73,10 +73,6 @@ def convert_ps_to_svg(conversion_dir: str, input_file_name: str, intermediate_pd
                       output_file_name: str, timeout=10.0):
     ps2pdf_complete, ps2pdf_log_file = convert_ps_to_pdf(conversion_dir, input_file_name, intermediate_pdf_file_name,
                                                          timeout=timeout)
-    with open(ps2pdf_log_file, "r") as plfile:
-        lines = plfile.readlines()
-    for line in lines:
-        print(f"ps2pdf log {line = }")
     if ps2pdf_complete:
         mutool_complete, mutool_log_file = convert_pdf_to_svg(conversion_dir, intermediate_pdf_file_name,
                                                               output_file_name, timeout=timeout)
