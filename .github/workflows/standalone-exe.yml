@@ -27,17 +27,13 @@ jobs:
 #          $targetNugetExe = "$rootPath\nuget.exe"
 #          Invoke-WebRequest $sourceNugetExe -OutFile $targetNugetExe
 #          Set-Alias nuget $targetNugetExe -Scope Global -Verbose
+      - name: Install winget
+        uses: Cyberboss/install-winget@v1
+        with:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          wget_release_id: latest
       - name: Install WinGet and InnoSetup
-        run: |
-          $progressPreference = 'silentlyContinue'
-          Write-Host "Installing WinGet PowerShell module from PSGallery..."
-          Install-Module -Name Microsoft.WinGet.Client -Scope AllUsers -Force -Repository PSGallery -Verbose | Out-Null
-          Write-Host "Using Repair-WinGetPackageManager cmdlet to bootstrap WinGet..."
-          cd "C:\Program Files\PowerShell\Modules\Microsoft.WinGet.Client\1.10.320"
-          ls
-          Repair-WinGetPackageManager -AllUsers -Verbose
-          Write-Host "Done."
-          winget install --accept-package-agreements --accept-source-agreements innosetup
+        run: winget install --accept-package-agreements --accept-source-agreements innosetup
       - name: Install Pyinstaller
         run: pip install pyinstaller
       - name: Install pymead
