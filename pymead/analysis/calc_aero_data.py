@@ -1339,7 +1339,7 @@ def run_xfoil(xfoil_settings: dict or XFOILSettings, coords: np.ndarray, export_
             for idx, alf in enumerate(alpha):
                 xfoil_input_list.append(f"alfa {alf}")
         else:
-            xfoil_input_list.extend(["Pacc", "polar.dat", "", f"ASeq {alpha[0]}, {alpha[0]} 0.0", "Pacc"])
+            xfoil_input_list.extend(["Pacc", "polar.dat", "", f"ASeq {alpha[0]} {alpha[0]} 0.0", "Pacc"])
     elif Cl is not None:
         if not isinstance(Cl, list):
             Cl = [Cl]
@@ -1347,7 +1347,7 @@ def run_xfoil(xfoil_settings: dict or XFOILSettings, coords: np.ndarray, export_
             for idx, Cl_ in enumerate(Cl):
                 xfoil_input_list.append(f"Cl {Cl_}")
         else:
-            xfoil_input_list.extend(["Pacc", "polar.dat", "", f"CSeq {Cl[0]}, {Cl[0]} 0.0", "Pacc"])
+            xfoil_input_list.extend(["Pacc", "polar.dat", "", f"CSeq {Cl[0]} {Cl[0]} 0.0", "Pacc"])
     elif CLI is not None:
         if not isinstance(CLI, list):
             CLI = [CLI]
@@ -1355,7 +1355,7 @@ def run_xfoil(xfoil_settings: dict or XFOILSettings, coords: np.ndarray, export_
             for idx, CLI_ in enumerate(CLI):
                 xfoil_input_list.append(f"CLI {CLI_}")
         else:
-            xfoil_input_list.extend(["Pacc", "polar.dat", "", f"CSeq {Cl[0]}, {Cl[0]} 0.0", "Pacc"])
+            xfoil_input_list.extend(["Pacc", "polar.dat", "", f"CSeq {Cl[0]} {Cl[0]} 0.0", "Pacc"])
     else:
         raise ValueError('At least one of alpha, Cl, or CLI must be set for XFOIL analysis.')
 
