@@ -1216,7 +1216,6 @@ def read_forces_from_xfoil_polar_file(polar_file: str) -> dict:
         lines = f.readlines()
     data = {}
     for line_idx, line in enumerate(lines):
-        print(f"{line_idx = }, {line = }")
         if "alpha" in line:
             data_idx = line_idx + 2
             break
@@ -1363,7 +1362,6 @@ def run_xfoil(xfoil_settings: dict or XFOILSettings, coords: np.ndarray, export_
         xfoil_input_list.append('cpwr ' + f"{airfoil_name}_Cp.dat")
     xfoil_input_list.append('')
     xfoil_input_list.append('quit')
-    print(f"{xfoil_input_list = }")
     write_input_file(xfoil_input_file, xfoil_input_list)
     xfoil_log = os.path.join(analysis_dir, 'xfoil.log')
     with open(xfoil_input_file, 'r') as g:
@@ -1411,16 +1409,15 @@ def run_xfoil(xfoil_settings: dict or XFOILSettings, coords: np.ndarray, export_
                             cp_file = os.path.join(analysis_dir, f"{airfoil_name}_Cp.dat")
                             aero_data['Cp'] = read_Cp_from_file_xfoil(cp_file)
             else:
+                with open(xfoil_log, "r") as fff:
+                    lines = fff.readlines()
+                for line in lines:
+                    print(f"xfoil log line: {line}")
                 if not aero_data["timed_out"] and aero_data["converged"]:
                     aero_data["Cl"], aero_data["Cm"], aero_data["alf"] = calculate_Cl_alfa_xfoil_inviscid(analysis_dir)
                     if export_Cp:
                         cp_file = os.path.join(analysis_dir, f"{airfoil_name}_Cp.dat")
                         aero_data["Cp"] = read_Cp_from_file_xfoil(cp_file)
-
-    with open(xfoil_log, "r") as f:
-        lines = f.readlines()
-    for line in lines:
-        print(f"xfoil log line: {line}")
 
     return aero_data, xfoil_log
 
