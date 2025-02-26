@@ -2,9 +2,9 @@ name: Python Tests
 
 on:
   push:
-    branches: [ master, dev ]
+    branches: [ master ]
   pull_request:
-    branches: [ master, dev ]
+    branches: [ master ]
 
 jobs:
   build:
@@ -43,7 +43,8 @@ jobs:
           sudo apt-get install mupdf
           sudo apt-get install mupdf-tools
           sudo apt-get install ghostscript
-          pip install .[dev]
+      - name: Install Python package
+        run: pip install .[dev]
       - name: Download, extract, and compile XFOIL
         run: |
           curl -o xfoil6.99.tgz "https://web.mit.edu/drela/Public/web/xfoil/xfoil6.99.tgz"
