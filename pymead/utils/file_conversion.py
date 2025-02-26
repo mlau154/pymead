@@ -7,7 +7,7 @@ from pymead import DependencyNotFoundError
 
 def convert_ps_to_pdf(conversion_dir: str, input_file_name: str, output_file_name: str, timeout=10.0):
     if shutil.which('ps2pdf'):
-        proc = sp.Popen(['ps2pdf', input_file_name, output_file_name], stdout=sp.PIPE, stderr=sp.PIPE,
+        proc = sp.Popen(['ps2pdfwr', input_file_name, output_file_name], stdout=sp.PIPE, stderr=sp.PIPE,
                         cwd=conversion_dir, shell=True)
         log_file_name = 'ps2pdf.log'
         log_file = os.path.join(conversion_dir, log_file_name)
@@ -73,15 +73,15 @@ def convert_ps_to_svg(conversion_dir: str, input_file_name: str, intermediate_pd
                       output_file_name: str, timeout=10.0):
     ps2pdf_complete, ps2pdf_log_file = convert_ps_to_pdf(conversion_dir, input_file_name, intermediate_pdf_file_name,
                                                          timeout=timeout)
+    with open(ps2pdf_log_file, "r") as plfile:
+        lines = plfile.readlines()
+    for line in lines:
+        print(f"ps2pdf log {line = }")
     if ps2pdf_complete:
         mutool_complete, mutool_log_file = convert_pdf_to_svg(conversion_dir, intermediate_pdf_file_name,
                                                               output_file_name, timeout=timeout)
         if mutool_complete:
             split_path = os.path.splitext(output_file_name)
-            with open(ps2pdf_log_file, "r") as plfile:
-                lines = plfile.readlines()
-            for line in lines:
-                print(f"ps2pdf log {line = }")
             os.replace(os.path.join(conversion_dir, f"{split_path[0]}1{split_path[-1]}"),
                        os.path.join(conversion_dir, output_file_name))
             return True, {'ps2pdf': ps2pdf_log_file, 'mutool': mutool_log_file}

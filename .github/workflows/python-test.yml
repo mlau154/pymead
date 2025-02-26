@@ -43,7 +43,6 @@ jobs:
           sudo apt-get install mupdf
           sudo apt-get install mupdf-tools
           sudo apt-get install ghostscript
-          sudo apt-get install libgs-dev
           pip install .[dev]
       - name: Download, extract, and compile XFOIL
         run: |
