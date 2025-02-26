@@ -1161,7 +1161,7 @@ class GCS(networkx.DiGraph):
         return points_solved
 
     def translate_cluster(self, root: Point, dx: float, dy: float) -> typing.List[Point]:
-        """
+        r"""
         Translate the constraint cluster (defined by the root point) by a given :math:`\Delta x` and :math:`\Delta y`.
 
         Parameters
