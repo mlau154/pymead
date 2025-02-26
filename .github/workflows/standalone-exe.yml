@@ -31,8 +31,9 @@ jobs:
         run: |
           $progressPreference = 'silentlyContinue'
           Write-Host "Installing WinGet PowerShell module from PSGallery..."
-          Install-Module -Name Microsoft.WinGet.Client -Force -Repository PSGallery | Out-Null
+          Install-Module -Name Microsoft.WinGet.Client -Scope AllUsers -Force -Repository PSGallery | Out-Null
           Write-Host "Using Repair-WinGetPackageManager cmdlet to bootstrap WinGet..."
+          Repair-WinGetPackageManager -Scope AllUsers
           Write-Host "Done."
       - name: Install Innosetup
         run: |
