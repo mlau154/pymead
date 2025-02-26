@@ -1221,7 +1221,6 @@ def read_forces_from_xfoil_polar_file(polar_file: str) -> dict:
             break
     else:
         raise ValueError("Failed to detect force coefficients from polar file")
-    print(f"{lines[data_idx] = }")
     aero_vals = lines[data_idx].split()
     data["alfa"] = float(aero_vals[0])
     data["Cl"] = float(aero_vals[1])
@@ -1409,10 +1408,6 @@ def run_xfoil(xfoil_settings: dict or XFOILSettings, coords: np.ndarray, export_
                             cp_file = os.path.join(analysis_dir, f"{airfoil_name}_Cp.dat")
                             aero_data['Cp'] = read_Cp_from_file_xfoil(cp_file)
             else:
-                with open(xfoil_log, "r") as fff:
-                    lines = fff.readlines()
-                for line in lines:
-                    print(f"xfoil log line: {line}")
                 if not aero_data["timed_out"] and aero_data["converged"]:
                     aero_data["Cl"], aero_data["Cm"], aero_data["alf"] = calculate_Cl_alfa_xfoil_inviscid(analysis_dir)
                     if export_Cp:
