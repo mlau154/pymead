@@ -85,3 +85,5 @@ jobs:
         with:
           name: pymead-macos-tarball
           path: /Users/runner/work/pymead/pymead/install/*.tar.gz
+          follow-symlinks: false
+          if-no-files-found: error
