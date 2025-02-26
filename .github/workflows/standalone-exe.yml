@@ -29,9 +29,7 @@ jobs:
 #          Set-Alias nuget $targetNugetExe -Scope Global -Verbose
       - name: Install winget
         uses: Cyberboss/install-winget@v1
-        with:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          wget_release_id: latest
+
       - name: Install WinGet and InnoSetup
         run: winget install --accept-package-agreements --accept-source-agreements innosetup
       - name: Install Pyinstaller
