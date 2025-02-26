@@ -19,18 +19,10 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
-#      - name: Install NuGet
-#        run: |
-#          [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
-#          Register-PackageSource -Name "NuGet" -Location "https://api.nuget.org/v3/index.json" -ProviderName NuGet
-#          $sourceNugetExe = "https://dist.nuget.org/win-x86-commandline/latest/nuget.exe"
-#          $targetNugetExe = "$rootPath\nuget.exe"
-#          Invoke-WebRequest $sourceNugetExe -OutFile $targetNugetExe
-#          Set-Alias nuget $targetNugetExe -Scope Global -Verbose
       - name: Install winget
         uses: Cyberboss/install-winget@v1
       - name: InnoSetup
-        run: winget install --accept-package-agreements --accept-source-agreements --locale "en-US" innosetup
+        run: winget install innosetup --accept-package-agreements --accept-source-agreements
       - name: Install Pyinstaller
         run: pip install pyinstaller
       - name: Install pymead
