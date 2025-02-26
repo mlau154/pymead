@@ -1216,6 +1216,7 @@ def read_forces_from_xfoil_polar_file(polar_file: str) -> dict:
         lines = f.readlines()
     data = {}
     for line_idx, line in enumerate(lines):
+        print(f"{line_idx = }, {line = }")
         if "alpha" in line:
             data_idx = line_idx + 2
             break
