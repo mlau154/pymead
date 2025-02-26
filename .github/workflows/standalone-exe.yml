@@ -19,6 +19,12 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
+      - name: Install NuGet
+        run: |
+          $sourceNugetExe = "https://dist.nuget.org/win-x86-commandline/latest/nuget.exe"
+          $targetNugetExe = "$rootPath\nuget.exe"
+          Invoke-WebRequest $sourceNugetExe -OutFile $targetNugetExe
+          Set-Alias nuget $targetNugetExe -Scope Global -Verbose
       - name: Install WinGet
         run: |
           $progressPreference = 'silentlyContinue'
