@@ -7,7 +7,7 @@ on:
     branches: [ master, dev ]
 
 jobs:
-  build:
+  windows-build:
     runs-on: windows-latest
     strategy:
       matrix:
@@ -21,7 +21,7 @@ jobs:
           python-version: ${{ matrix.python-version }}
       - name: Install winget
         uses: Cyberboss/install-winget@v1
-      - name: InnoSetup
+      - name: Install InnoSetup
         run: |
           winget source update --verbose-logs
           winget install --source winget jrsoftware.innosetup --accept-package-agreements --accept-source-agreements
@@ -33,7 +33,31 @@ jobs:
         run: |
           cd install
           python -m install
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4  # Upload the setup executable to the GitHub actions workflow
         with:
           name: pymead-setup-exe
           path: D:\a\pymead\pymead\install\pymeadsetup*
+  linux-build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [ "3.13" ]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install Pyinstaller
+        run: pip install pyinstaller
+      - name: Install pymead
+        run: pip install .
+      - name: Generate tarball
+        run: |
+          cd install
+          python -m install
+#      - uses: actions/upload-artifact@v4  # Upload the tarball to the GitHub actions workflow
+#        with:
+#          name: pymead-setup-exe
+#          path: \home\runner\pymead\pymead\install\*.tar.gz
