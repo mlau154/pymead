@@ -78,6 +78,9 @@ def convert_ps_to_svg(conversion_dir: str, input_file_name: str, intermediate_pd
                                                               output_file_name, timeout=timeout)
         if mutool_complete:
             split_path = os.path.splitext(output_file_name)
+            for root, dirs, files in os.walk(conversion_dir):
+                for file in files:
+                    print(f"{file = }")
             os.replace(os.path.join(conversion_dir, f"{split_path[0]}1{split_path[-1]}"),
                        os.path.join(conversion_dir, output_file_name))
             return True, {'ps2pdf': ps2pdf_log_file, 'mutool': mutool_log_file}
