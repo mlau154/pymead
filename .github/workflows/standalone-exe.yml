@@ -27,15 +27,14 @@ jobs:
 #          $targetNugetExe = "$rootPath\nuget.exe"
 #          Invoke-WebRequest $sourceNugetExe -OutFile $targetNugetExe
 #          Set-Alias nuget $targetNugetExe -Scope Global -Verbose
-      - name: Install WinGet
+      - name: Install WinGet and InnoSetup
         run: |
           $progressPreference = 'silentlyContinue'
           Write-Host "Installing WinGet PowerShell module from PSGallery..."
           Install-Module -Name Microsoft.WinGet.Client -Scope AllUsers -Force -Repository PSGallery | Out-Null
           Write-Host "Using Repair-WinGetPackageManager cmdlet to bootstrap WinGet..."
+          Repair-WinGetPackageManager
           Write-Host "Done."
-      - name: Install Innosetup
-        run: |
           winget install --accept-package-agreements --accept-source-agreements innosetup
       - name: Install Pyinstaller
         run: pip install pyinstaller
