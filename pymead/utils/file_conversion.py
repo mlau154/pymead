@@ -59,6 +59,10 @@ def convert_pdf_to_svg(conversion_dir: str, input_file_name: str, output_file_na
                 f.write(outs)
                 f.write('\nErrors:\n'.encode('utf-8'))
                 f.write(errs)
+        with open(log_file, "r") as fff:
+            lines = fff.readlines()
+        for line in lines:
+            print(f"pdf to svg line = {line}")
     else:
         raise DependencyNotFoundError(
             "MuPDF mutool executable not found on system path. See "
