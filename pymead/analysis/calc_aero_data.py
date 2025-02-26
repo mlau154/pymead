@@ -1222,6 +1222,8 @@ def read_forces_from_xfoil_polar_file(polar_file: str) -> dict:
             break
     else:
         raise ValueError("Failed to detect force coefficients from polar file")
+    for line_idx, line in enumerate(lines):
+        print(f"{line_idx = }, {line = }")
     print(f"{lines[data_idx] = }")
     aero_vals = lines[data_idx].split()
     data["alfa"] = float(aero_vals[0])
