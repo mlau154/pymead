@@ -19,9 +19,19 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
-      - name: Install dependencies
+      - name: Install WinGet
+        run: |
+          $progressPreference = 'silentlyContinue'
+          Write-Host "Installing WinGet PowerShell module from PSGallery..."
+          Install-PackageProvider -Name NuGet -Force | Out-Null
+          Install-Module -Name Microsoft.WinGet.Client -Force -Repository PSGallery | Out-Null
+          Write-Host "Using Repair-WinGetPackageManager cmdlet to bootstrap WinGet..."
+          Repair-WinGetPackageManager
+          Write-Host "Done."
+      - name: Install Innosetup
         run: |
           winget install --accept-package-agreements --accept-source-agreements innosetup
+      - name: Install Pyinstaller
           pip install pyinstaller
       - name: Install pymead
         run: pip install .
