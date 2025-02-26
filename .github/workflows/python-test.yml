@@ -40,6 +40,7 @@ jobs:
           sudo apt-get install xfonts-base
           sudo apt-get install xfonts-75dpi
           sudo apt-get install xfonts-100dpi
+          sudo apt-get install mupdf
           pip install .[dev]
       - name: Download, extract, and compile XFOIL
         run: |
