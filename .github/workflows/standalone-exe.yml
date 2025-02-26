@@ -24,8 +24,8 @@ jobs:
       - name: Install dependencies
         run: |
           pip install pyinstaller
-          pip install .
+#          pip install .
       - name: Generate executable
         run: |
-          cd ..
-          echo %cd%
+          echo $PWD
+          ls
