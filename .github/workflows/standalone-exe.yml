@@ -33,3 +33,7 @@ jobs:
         run: |
           cd install
           python -m install
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pymead-setup-exe
+          path: D:\a\pymead\pymead\install\pymeadsetup*
