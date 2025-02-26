@@ -12,8 +12,6 @@ jobs:
     strategy:
       matrix:
         python-version: ["3.13"]
-    env:
-      DISPLAY: ':99.0'  # Environmental display variable used by X server
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -21,11 +19,12 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
-      - name: Install dependencies
-        run: |
-          pip install pyinstaller
+#      - name: Install dependencies
+#        run: |
+#          pip install pyinstaller
 #          pip install .
       - name: Generate executable
         run: |
+          cd install
           echo $PWD
           ls
