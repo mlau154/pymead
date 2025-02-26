@@ -23,7 +23,8 @@ jobs:
         uses: Cyberboss/install-winget@v1
       - name: InnoSetup
         run: |
-          Add-AppPackage -path "https://cdn.winget.microsoft.com/cache/source.msix."
+          winget source update --verbose-logs
+          winget source upgrade --all --verbose-logs
           winget install innosetup --accept-package-agreements --accept-source-agreements
       - name: Install Pyinstaller
         run: pip install pyinstaller
