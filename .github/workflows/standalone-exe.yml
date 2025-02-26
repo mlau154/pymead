@@ -24,7 +24,7 @@ jobs:
       - name: InnoSetup
         run: |
           winget source update --verbose-logs
-          winget install --source winget innosetup --accept-package-agreements --accept-source-agreements
+          winget install --source winget jrsoftware.innosetup --accept-package-agreements --accept-source-agreements
       - name: Install Pyinstaller
         run: pip install pyinstaller
       - name: Install pymead
