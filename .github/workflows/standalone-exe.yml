@@ -21,6 +21,8 @@ jobs:
           python-version: ${{ matrix.python-version }}
       - name: Install NuGet
         run: |
+          [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+          Register-PackageSource -Name "NuGet" -Location "https://api.nuget.org/v3/index.json" -ProviderName NuGet
           $sourceNugetExe = "https://dist.nuget.org/win-x86-commandline/latest/nuget.exe"
           $targetNugetExe = "$rootPath\nuget.exe"
           Invoke-WebRequest $sourceNugetExe -OutFile $targetNugetExe
