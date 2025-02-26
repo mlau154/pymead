@@ -1363,6 +1363,7 @@ def run_xfoil(xfoil_settings: dict or XFOILSettings, coords: np.ndarray, export_
         xfoil_input_list.append('cpwr ' + f"{airfoil_name}_Cp.dat")
     xfoil_input_list.append('')
     xfoil_input_list.append('quit')
+    print(f"{xfoil_input_list = }")
     write_input_file(xfoil_input_file, xfoil_input_list)
     xfoil_log = os.path.join(analysis_dir, 'xfoil.log')
     with open(xfoil_input_file, 'r') as g:
