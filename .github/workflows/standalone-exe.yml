@@ -33,6 +33,8 @@ jobs:
           Write-Host "Installing WinGet PowerShell module from PSGallery..."
           Install-Module -Name Microsoft.WinGet.Client -Scope AllUsers -Force -Repository PSGallery -Verbose | Out-Null
           Write-Host "Using Repair-WinGetPackageManager cmdlet to bootstrap WinGet..."
+          cd "C:\Program Files\PowerShell\Modules\Microsoft.WinGet.Client\1.10.320"
+          ls
           Repair-WinGetPackageManager -AllUsers -Verbose
           Write-Host "Done."
           winget install --accept-package-agreements --accept-source-agreements innosetup
