@@ -1211,17 +1211,29 @@ def read_alfa_from_xfoil_log_file(xfoil_log_file: str) -> float:
     raise ValueError("Failed to read angle of attack from XFOIL log")
 
 
-def calculate_Cl_alfa_xfoil_inviscid(airfoil_name: str, base_dir: str):
-    cp_file = os.path.join(base_dir, f"{airfoil_name}_Cp.dat")
-    log_file = os.path.join(base_dir, "xfoil.log")
-    try:
-        alfa = read_alfa_from_xfoil_cp_file(cp_file)
-    except IndexError:
-        alfa = read_alfa_from_xfoil_log_file(log_file)
-    data = np.loadtxt(cp_file, skiprows=3)
-    x, y, Cp = data[:, 0], data[:, 1], data[:, 2]
-    Cl, Cm = calculate_Cl_integral_form(x, y, Cp, np.deg2rad(alfa))
-    return Cl, Cm, alfa
+def read_forces_from_xfoil_polar_file(polar_file: str) -> dict:
+    with open(polar_file, "r") as f:
+        lines = f.readlines()
+    data = {}
+    for line_idx, line in enumerate(lines):
+        if "alpha" in line:
+            data_idx = line_idx + 2
+            break
+    else:
+        raise ValueError("Failed to detect force coefficients from polar file")
+    aero_vals = lines[data_idx].split()
+    data["alfa"] = float(aero_vals[0])
+    data["Cl"] = float(aero_vals[1])
+    data["Cd"] = float(aero_vals[2])
+    data["Cdp"] = float(aero_vals[3])
+    data["Cm"] = float(aero_vals[4])
+    return data
+
+
+def calculate_Cl_alfa_xfoil_inviscid(analysis_dir: str):
+    polar_file = os.path.join(analysis_dir, "polar.dat")
+    aero_data = read_forces_from_xfoil_polar_file(polar_file)
+    return aero_data["Cl"], aero_data["Cm"], aero_data["alfa"]
 
 
 def run_xfoil(xfoil_settings: dict or XFOILSettings, coords: np.ndarray, export_Cp: bool = True) -> (dict, str):
@@ -1316,21 +1328,32 @@ def run_xfoil(xfoil_settings: dict or XFOILSettings, coords: np.ndarray, export_
         Cl = xfoil_settings["Cl"]
     elif xfoil_settings["prescribe"] == "Inviscid Cl":
         CLI = xfoil_settings["CLI"]
+    if os.path.exists(os.path.join(analysis_dir, "polar.dat")):
+        os.remove(os.path.join(analysis_dir, "polar.dat"))
     if alpha is not None:
         if not isinstance(alpha, list):
             alpha = [alpha]
-        for idx, alf in enumerate(alpha):
-            xfoil_input_list.append(f"alfa {alf}")
+        if xfoil_settings["visc"]:
+            for idx, alf in enumerate(alpha):
+                xfoil_input_list.append(f"alfa {alf}")
+        else:
+            xfoil_input_list.extend(["Pacc", "polar.dat", "", f"ASeq {alpha[0]}, {alpha[0]} 0.0", "Pacc"])
     elif Cl is not None:
         if not isinstance(Cl, list):
             Cl = [Cl]
-        for idx, Cl_ in enumerate(Cl):
-            xfoil_input_list.append(f"Cl {Cl_}")
+        if xfoil_settings["visc"]:
+            for idx, Cl_ in enumerate(Cl):
+                xfoil_input_list.append(f"Cl {Cl_}")
+        else:
+            xfoil_input_list.extend(["Pacc", "polar.dat", "", f"CSeq {Cl[0]}, {Cl[0]} 0.0", "Pacc"])
     elif CLI is not None:
         if not isinstance(CLI, list):
             CLI = [CLI]
-        for idx, CLI_ in enumerate(CLI):
-            xfoil_input_list.append(f"CLI {CLI_}")
+        if xfoil_settings["visc"]:
+            for idx, CLI_ in enumerate(CLI):
+                xfoil_input_list.append(f"CLI {CLI_}")
+        else:
+            xfoil_input_list.extend(["Pacc", "polar.dat", "", f"CSeq {Cl[0]}, {Cl[0]} 0.0", "Pacc"])
     else:
         raise ValueError('At least one of alpha, Cl, or CLI must be set for XFOIL analysis.')
 
@@ -1386,8 +1409,7 @@ def run_xfoil(xfoil_settings: dict or XFOILSettings, coords: np.ndarray, export_
                             aero_data['Cp'] = read_Cp_from_file_xfoil(cp_file)
             else:
                 if not aero_data["timed_out"] and aero_data["converged"]:
-                    aero_data["Cl"], aero_data["Cm"], aero_data["alf"] = calculate_Cl_alfa_xfoil_inviscid(
-                        airfoil_name=airfoil_name, base_dir=analysis_dir)
+                    aero_data["Cl"], aero_data["Cm"], aero_data["alf"] = calculate_Cl_alfa_xfoil_inviscid(analysis_dir)
                     if export_Cp:
                         cp_file = os.path.join(analysis_dir, f"{airfoil_name}_Cp.dat")
                         aero_data["Cp"] = read_Cp_from_file_xfoil(cp_file)
