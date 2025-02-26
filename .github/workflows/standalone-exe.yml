@@ -29,9 +29,8 @@ jobs:
 #          Set-Alias nuget $targetNugetExe -Scope Global -Verbose
       - name: Install winget
         uses: Cyberboss/install-winget@v1
-
-      - name: Install WinGet and InnoSetup
-        run: winget install --accept-package-agreements --accept-source-agreements innosetup
+      - name: InnoSetup
+        run: winget install --accept-package-agreements --accept-source-agreements --locale "en-US" innosetup
       - name: Install Pyinstaller
         run: pip install pyinstaller
       - name: Install pymead
