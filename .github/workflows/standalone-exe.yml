@@ -31,7 +31,7 @@ jobs:
         run: |
           $progressPreference = 'silentlyContinue'
           Write-Host "Installing WinGet PowerShell module from PSGallery..."
-          Install-Module -Name Microsoft.WinGet.Client -Scope AllUsers -Force -Repository PSGallery | Out-Null
+          Install-Module -Name Microsoft.WinGet.Client -Scope AllUsers -Force -Repository PSGallery -Verbose | Out-Null
           Write-Host "Using Repair-WinGetPackageManager cmdlet to bootstrap WinGet..."
           Repair-WinGetPackageManager -AllUsers -Verbose
           Write-Host "Done."
