@@ -7,8 +7,8 @@ from pymead import DependencyNotFoundError
 
 def convert_ps_to_pdf(conversion_dir: str, input_file_name: str, output_file_name: str, timeout=10.0):
     if shutil.which('ps2pdf'):
-        proc = sp.Popen(['ps2pdfwr', input_file_name, output_file_name], stdout=sp.PIPE, stderr=sp.PIPE,
-                        cwd=conversion_dir, shell=True)
+        proc = sp.Popen(['ps2pdf', input_file_name, output_file_name], stdout=sp.PIPE, stderr=sp.PIPE,
+                        cwd=conversion_dir, shell=False)
         log_file_name = 'ps2pdf.log'
         log_file = os.path.join(conversion_dir, log_file_name)
         ps2pdf_complete = False
