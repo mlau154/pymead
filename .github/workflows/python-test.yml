@@ -45,7 +45,7 @@ jobs:
           sudo apt-get install mupdf-tools
           sudo apt-get install ghostscript
       - name: Install Python package
-        run: uv pip install .[dev]
+        run: uv pip install .[dev] --system
       - name: Download, extract, and compile XFOIL
         run: |
           curl -o xfoil6.99.tgz "https://web.mit.edu/drela/Public/web/xfoil/xfoil6.99.tgz"

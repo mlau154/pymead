@@ -30,7 +30,7 @@ jobs:
       - name: Install uv
         run: pip install uv
       - name: Install pymead
-        run: uv pip install .
+        run: uv pip install . --system
       - name: Generate executable
         run: |
           cd install
