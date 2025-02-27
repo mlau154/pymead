@@ -2,9 +2,9 @@ name: Python Tests
 
 on:
   push:
-    branches: [ master ]
+    branches: [ master, dev ]
   pull_request:
-    branches: [ master ]
+    branches: [ master, dev ]
 
 jobs:
   test:
@@ -24,6 +24,7 @@ jobs:
       - name: Install dependencies
         run: |  # xfonts libraries needed for XFOIL to run properly
           python -m pip install --upgrade pip
+          pip install uv
           sudo apt-get update
           sudo apt-get install libegl1-mesa-dev
           sudo apt-get install -y xvfb xorg-dev
@@ -44,7 +45,7 @@ jobs:
           sudo apt-get install mupdf-tools
           sudo apt-get install ghostscript
       - name: Install Python package
-        run: pip install .[dev]
+        run: uv tool install .[dev]
       - name: Download, extract, and compile XFOIL
         run: |
           curl -o xfoil6.99.tgz "https://web.mit.edu/drela/Public/web/xfoil/xfoil6.99.tgz"

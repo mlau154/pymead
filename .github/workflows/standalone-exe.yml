@@ -4,7 +4,7 @@ on:
   push:
     branches: [ master, dev ]
   pull_request:
-    branches: [ master, dev ]
+    branches: [ master ]
 
 jobs:
   windows-build:
@@ -27,8 +27,10 @@ jobs:
           winget install --source winget jrsoftware.innosetup --accept-package-agreements --accept-source-agreements
       - name: Install Pyinstaller
         run: pip install pyinstaller
+      - name: Install uv
+        run: pip install uv
       - name: Install pymead
-        run: pip install .
+        run: uv tool install .
       - name: Generate executable
         run: |
           cd install
@@ -37,53 +39,53 @@ jobs:
         with:
           name: pymead-setup-exe
           path: D:\a\pymead\pymead\install\pymeadsetup*
-  linux-build:
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        python-version: [ "3.10" ]
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v5
-        with:
-          python-version: ${{ matrix.python-version }}
-      - name: Install Pyinstaller
-        run: pip install pyinstaller
-      - name: Install pymead
-        run: pip install .
-      - name: Generate tarball
-        run: |
-          cd install
-          python -m install
-      - uses: actions/upload-artifact@v4  # Upload the tarball to the GitHub actions workflow
-        with:
-          name: pymead-linux-tarball
-          path: /home/runner/work/pymead/pymead/install/*.tar.gz
-  macos-build:
-    runs-on: macos-latest
-    strategy:
-      matrix:
-        python-version: [ "3.13" ]
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v5
-        with:
-          python-version: ${{ matrix.python-version }}
-      - name: Install Pyinstaller
-        run: pip install pyinstaller
-      - name: Install pymead
-        run: pip install .
-      - name: Generate tarball
-        run: |
-          cd install
-          python -m install
-      - uses: eXhumer/upload-artifact@0b7d5f5684d3f642f978d2faad9ade64f5b4dd57  # Upload the tarball to the GitHub actions workflow
-        with:
-          name: pymead-macos-tarball
-          path: /Users/runner/work/pymead/pymead/install/*.tar.gz
-          follow-symlinks: false
-          if-no-files-found: error
+#  linux-build:
+#    runs-on: ubuntu-latest
+#    strategy:
+#      matrix:
+#        python-version: [ "3.10" ]
+#    steps:
+#      - name: Checkout code
+#        uses: actions/checkout@v4
+#      - name: Set up Python ${{ matrix.python-version }}
+#        uses: actions/setup-python@v5
+#        with:
+#          python-version: ${{ matrix.python-version }}
+#      - name: Install Pyinstaller
+#        run: pip install pyinstaller
+#      - name: Install pymead
+#        run: pip install .
+#      - name: Generate tarball
+#        run: |
+#          cd install
+#          python -m install
+#      - uses: actions/upload-artifact@v4  # Upload the tarball to the GitHub actions workflow
+#        with:
+#          name: pymead-linux-tarball
+#          path: /home/runner/work/pymead/pymead/install/*.tar.gz
+#  macos-build:
+#    runs-on: macos-latest
+#    strategy:
+#      matrix:
+#        python-version: [ "3.13" ]
+#    steps:
+#      - name: Checkout code
+#        uses: actions/checkout@v4
+#      - name: Set up Python ${{ matrix.python-version }}
+#        uses: actions/setup-python@v5
+#        with:
+#          python-version: ${{ matrix.python-version }}
+#      - name: Install Pyinstaller
+#        run: pip install pyinstaller
+#      - name: Install pymead
+#        run: pip install .
+#      - name: Generate tarball
+#        run: |
+#          cd install
+#          python -m install
+#      - uses: eXhumer/upload-artifact@0b7d5f5684d3f642f978d2faad9ade64f5b4dd57  # Upload the tarball to the GitHub actions workflow
+#        with:
+#          name: pymead-macos-tarball
+#          path: /Users/runner/work/pymead/pymead/install/*.tar.gz
+#          follow-symlinks: false
+#          if-no-files-found: error
