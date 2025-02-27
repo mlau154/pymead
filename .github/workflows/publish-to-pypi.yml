@@ -1,5 +1,7 @@
 name: Publish Python 🐍 distribution 📦 to PyPI and TestPyPI
 
+# Publishes to TestPyPi on any push, and publishes to GitHub release and PyPi on tag push
+
 on: push
 
 jobs:
