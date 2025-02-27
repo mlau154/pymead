@@ -69,4 +69,4 @@ jobs:
       - name: Run tests
         run: |
           export PATH="/home/runner/work/pymead/pymead/Xfoil:$PATH"
-          pytest -s pymead/tests
+          uv run pytest -s pymead/tests
