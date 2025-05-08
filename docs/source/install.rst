@@ -10,11 +10,11 @@ There are several easy ways to install pymead.
 - :ref:`Method 1<method-1>` is for users interested in
   designing, analyzing, and optimizing airfoils or airfoil systems, but not for those
   interested in using the pymead classes and functions in Python code.
-- Methods :ref:`2<method-2>` & :ref:`3<method-3>`
+- Methods :ref:`2<method-2>`, :ref:`3<method-3>`, and :ref:`4<method-4>`
   are designed for users interested in using the
   various pymead classes and functions in their Python code and/or using the GUI
   to develop airfoil systems.
-- :ref:`Method 4<method-4>` is for those who wish to use the bleeding-edge version of pymead or for
+- :ref:`Method 5<method-5>` is for those who wish to use the bleeding-edge version of pymead or for
   advanced users who wish to extend
   and/or develop pymead in addition to using both the GUI and API.
 
@@ -44,23 +44,35 @@ following the table.
      - |cross|
      - |cross|
    * - :ref:`2<method-2>`
-     - :ref:`pip<method-2>`
+     - :ref:`uv<method-2>`
      - |check|
      - |check|
      - |cross|
      - |cross|
    * - :ref:`3<method-3>`
-     - :ref:`IDE + pip<method-3>`
+     - :ref:`pip<method-3>`
      - |check|
      - |check|
      - |cross|
      - |cross|
    * - :ref:`4<method-4>`
-     - :ref:`Git<method-4>`
+     - :ref:`IDE + pip<method-4>`
+     - |check|
+     - |check|
+     - |cross|
+     - |cross|
+   * - :ref:`5<method-5>`
+     - :ref:`Git<method-5>`
      - |check|
      - |check|
      - |check|
      - |check|
+
+
+.. important::
+
+    For any of the install methods which give access to the API (methods 2-5),
+    you must have a valid installation of Python version ``>=3.10``.
 
 
 .. _method-1:
@@ -126,31 +138,45 @@ For users merely wishing to use pymead rather than develop pymead, this is the r
         these to run.
 
 
+
 .. _method-2:
 
-Method 2: ``pip`` (GUI + API)
------------------------------
-Use ``pip`` to install the latest stable version of pymead into the environment from the
-`Python Package Index (PyPi) <https://pypi.org/project/pymead/>`_:
+Method 2: ``uv`` (GUI + API) -- Recommended
+-------------------------------------------
+Use ``uv`` to install the latest stable version of pymead into the environment from the
+`Python Package Index (PyPi) <https://pypi.org/project/pymead/>`_. For API usage,
+this method is recommended over `Method 3<method-3>` because it is much faster and
+uses less storage space. This tool can be installed with a simple ``pip install uv`` or
+through the standalone installer as outlined `here <https://docs.astral.sh/uv/#installation>`_.
+
+Create a virtual environment and install the API and GUI:
+
+.. tab-set::
+
+    .. tab-item:: Windows
+
+        .. code-block::
+
+            uv venv
+            .venv\Scripts\activate
+            uv pip install pymead
+
+    .. tab-item:: Linux
+
+        .. code-block::
+
+            uv venv
+            source .venv/bin/activate
+            uv pip install pymead
+
+
+Alternatively, if the API is not needed, the terminal-based GUI command can be installed
+with
 
 .. code-block::
 
-  pip install pymead
+    uv tool install pymead
 
-.. important:: At the moment, you must have a Python version ``>=3.10`` to install pymead using pip.
-
-This method automatically installs all required dependencies that are not yet installed. It also
-allows the user to easily update pymead if desired when a new version is available. To update pymead, use
-
-.. code-block::
-
-  pip install pymead --upgrade
-
-The pymead GUI can then be started from any directory by running the following command in the terminal:
-
-.. code-block::
-
-  pymead-gui
 
 The API is centered primarily around the ``GeometryCollection`` class. After instantiating this class, geometric
 objects and parameters/design variables can be added using the methods starting with ``add_`` (e.g., ``add_point()``).
@@ -169,15 +195,40 @@ script or in a Python console:
 
 .. _method-3:
 
-Method 3: IDE (GUI + API)
+Method 3: ``pip`` (GUI + API)
+-----------------------------
+Use ``pip`` to install the latest stable version of pymead into the environment from the
+`Python Package Index (PyPi) <https://pypi.org/project/pymead/>`_:
+
+.. code-block::
+
+  pip install pymead
+
+This method automatically installs all required dependencies that are not yet installed. It also
+allows the user to easily update pymead if desired when a new version is available. To update pymead, use
+
+.. code-block::
+
+  pip install pymead --upgrade
+
+The pymead GUI can then be started from any directory by running the following command in the terminal:
+
+.. code-block::
+
+  pymead-gui
+
+
+.. _method-4:
+
+Method 4: IDE (GUI + API)
 -------------------------
 Some IDEs, like `PyCharm <https://www.jetbrains.com/pycharm/>`_, have a plugin for ``pip``. In PyCharm,
 simply search for and install "pymead" in the "Python Packages" tab. Follow similar steps as Method 2 for
 accessing the GUI and the API.
 
-.. _method-4:
+.. _method-5:
 
-Method 4: Local Install (DEV: GUI+API)
+Method 5: Local Install (DEV: GUI+API)
 -----------------------------------------
 This method is recommended for those wishing to use the latest development version of pymead or for those who
 desire to contribute to pymead in any capacity.
@@ -232,7 +283,7 @@ Required
 --------
 
 Each of the following dependencies are required to use pymead. All packages listed in this section are automatically
-installed when using Methods 1, 2, or 3 above. If using Method 4, the line ``pip install .`` installs these
+installed when using Methods 1-4 above. If using Method 5, the line ``pip install .`` installs these
 dependencies.
 
 - `scipy <https://scipy.org/>`_: Used for airfoil matching
