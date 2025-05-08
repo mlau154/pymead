@@ -57,4 +57,27 @@ html_css_files = [
 
 html_logo = "_static/pymead-logo.png"
 
+# Custom PyPI logo file
+html_js_files = [
+   "pypi-icon.js"
+]
+
+# Icon links
+html_theme_options = {
+    "icon_links": [
+        {
+            "name": "GitHub",
+            "url": "https://github.com/mlau154/pymead",
+            "icon": "fa-brands fa-square-github",
+            "type": "fontawesome"
+        },
+        {
+            "name": "PyPI",
+            "url": "https://pypi.org/project/pymead/",
+            "icon": "fa-custom fa-pypi",
+            "type": "fontawesome"
+        }
+    ]
+}
+
 autosectionlabel_prefix_document = False
