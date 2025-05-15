@@ -2135,7 +2135,10 @@ class MSETDialogWidget(PymeadDialogWidget2):
             new_inputs = load_data(load_file)
             for k, v in new_inputs.items():
                 override_inputs[k] = v
-            get_parent(self, 3).setWindowTitle(f"Optimization Setup - {os.path.split(load_file)[-1]}")
+            current_window_title = get_parent(self, 3).windowTitle()
+            window_title_split = current_window_title.split(" - ")
+            new_base_window_title = window_title_split[0]
+            get_parent(self, 3).setWindowTitle(f"{new_base_window_title} - {os.path.split(load_file)[-1]}")
             get_parent(self, 2).setValue(override_inputs)  # Overrides the inputs for the whole PymeadDialogVTabWidget
             get_parent(self, 2).setStatusTip(f"Loaded {load_file}")
 
