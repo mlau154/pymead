@@ -4,6 +4,22 @@ from pymead.plugins.IGES.entity import Entity
 from pymead.plugins.IGES.iges_param import IGESParam
 
 
+class LineIGES(Entity):
+    """
+    IGES IGESEntity #110
+    """
+    def __init__(self, start_point: np.ndarray, end_point: np.ndarray):
+        parameter_data = [
+            IGESParam(start_point[0], "real"),
+            IGESParam(start_point[1], "real"),
+            IGESParam(start_point[2], "real"),
+            IGESParam(end_point[0], "real"),
+            IGESParam(end_point[1], "real"),
+            IGESParam(end_point[2], "real")
+        ]
+        super().__init__(110, parameter_data)
+
+
 class RationalBSplineIGES(Entity):
     """
     IGES Entity #126

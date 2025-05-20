@@ -23,7 +23,7 @@ from pymead.core.line import LineSegment, PolyLine, ReferencePolyline
 from pymead.core.param import Param, LengthParam, AngleParam, DesVar, LengthDesVar, AngleDesVar, ParamSequence
 from pymead.core.point import Point, PointSequence
 from pymead.core.transformation import Transformation3D
-from pymead.plugins.IGES.curves import BezierIGES
+from pymead.plugins.IGES.curves import BezierIGES, LineIGES
 from pymead.plugins.IGES.iges_generator import IGESGenerator
 from pymead.utils.read_write_files import load_data, save_data
 from pymead.version import __version__
@@ -1388,6 +1388,7 @@ class GeometryCollection(DualRep):
 
         # Grab the control points for each Bézier curve in the geometry collection
         control_point_list = [curve.point_sequence().as_array() for curve in self.container()["bezier"].values()]
+        line_point_list = [curve.point_sequence().as_array() for curve in self.container()["lines"].values()]
 
         # Create the transformation object
         translation = [0., 0., 0.] if translation is None else translation
@@ -1406,14 +1407,21 @@ class GeometryCollection(DualRep):
             cp = np.insert(cp, 1, 0, axis=1)
             cp_list_3d.append(cp)
 
+        line_point_list_3d = []
+        for point in line_point_list:
+            point = np.insert(point, 1, 0, axis=1)
+            line_point_list_3d.append(point)
+
         # Transform the points
         transformed_cp_list = [transform_3d.transform(P) for P in cp_list_3d]
+        transformed_line_point_list = [transform_3d.transform(P) for P in line_point_list_3d]
 
         # Create the list of IGES Bezier objects
         bez_IGES_list = [BezierIGES(P) for P in transformed_cp_list]
+        line_IGES_list = [LineIGES(start_point=P[0, :], end_point=P[1, :]) for P in transformed_line_point_list]
 
         # Generate the IGES file
-        iges_generator = IGESGenerator(bez_IGES_list)
+        iges_generator = IGESGenerator(bez_IGES_list + line_IGES_list)
         iges_generator.generate(full_file)
 
         return full_file

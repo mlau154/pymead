@@ -209,6 +209,19 @@ class GeoColTests(unittest.TestCase):
         self.assertNotIn("Point-3", self.geo_col.get_name_list("points"))
         self.assertIn("Point-4", self.geo_col.get_name_list("points"))
 
+    @staticmethod
+    def test_write_to_iges():
+        local_geo_col = GeometryCollection.load_example("basic_airfoil_blunt")
+        base_dir = tempfile.gettempdir()
+        file_name = "basic_airfoil_blunt_test.iges"
+        full_file = os.path.join(base_dir, file_name)
+        local_geo_col.write_to_iges(
+            base_dir=base_dir,
+            file_name=file_name
+        )
+        if os.path.exists(full_file):
+            os.remove(full_file)
+
 
 class ParamTests(unittest.TestCase):
     def test_dict_gen(self):
