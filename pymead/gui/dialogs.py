@@ -3587,6 +3587,12 @@ class OptimizationDialogVTabWidget(PymeadDialogVTabWidget):
         self.objectives = None
         self.constraints = None
 
+    def setValue(self, new_inputs):
+        super().setValue(new_inputs)
+        # Make sure that the objectives and constraints get updated again after the multipoint/multi-geom tables
+        # are completely set up
+        self.w_dict["Genetic Algorithm"].update_objectives_and_constraints()
+
 
 class OptimizationSetupDialog(PymeadDialog):
     def __init__(self, parent, geo_col: GeometryCollection, theme: dict, grid: bool, settings_override: dict = None):
