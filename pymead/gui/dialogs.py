@@ -3142,6 +3142,7 @@ class GeneticAlgorithmDialogWidget(PymeadDialogWidget2):
         widget = self.widget_dict["J"].widget
         template = self.get_template()
         self.gui_obj.objectives.clear()
+        any_constraint_failed = False
         for obj_func_str in text.split(','):
             objective = Objective(obj_func_str)
             self.gui_obj.objectives.append(objective)
@@ -3150,25 +3151,28 @@ class GeneticAlgorithmDialogWidget(PymeadDialogWidget2):
                 return
             try:
                 objective.update(template)
-                widget.setStyleSheet(f"QLineEdit {{background-color: {VALIDATION_SUCCESS}}}")
+                if not any_constraint_failed:
+                    widget.setStyleSheet(f"QLineEdit {{background-color: {VALIDATION_SUCCESS}}}")
             except FunctionCompileError:
                 widget.setStyleSheet(f"QLineEdit {{background-color: {VALIDATION_FAILURE}}}")
-                return
+                any_constraint_failed = True
 
     def constraints_changed(self, text: str):
         widget = self.widget_dict["G"].widget
         template = self.get_template()
         self.gui_obj.constraints.clear()
+        any_constraint_failed = False
         for constraint_func_str in text.split(','):
             if len(constraint_func_str) > 0:
                 constraint = Constraint(constraint_func_str)
                 self.gui_obj.constraints.append(constraint)
                 try:
                     constraint.update(template)
-                    widget.setStyleSheet(f"QLineEdit {{background-color: {VALIDATION_SUCCESS}}}")
+                    if not any_constraint_failed:
+                        widget.setStyleSheet(f"QLineEdit {{background-color: {VALIDATION_SUCCESS}}}")
                 except FunctionCompileError:
                     widget.setStyleSheet(f"QLineEdit {{background-color: {VALIDATION_FAILURE}}}")
-                    return
+                    any_constraint_failed = True
 
     def num_processors_changed(self, value: int):
         widget = self.widget_dict["num_processors"].widget
