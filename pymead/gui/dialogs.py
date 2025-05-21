@@ -1073,7 +1073,7 @@ class PymeadDialog(FramelessDialog):
                     stop: 0.6 {theme['background-color']})""")
 
     def setValue(self, new_inputs):
-        self.w.setValue(new_values=new_inputs)
+        self.w.setValue(new_inputs)
 
     def value(self):
         return self.w.value()
