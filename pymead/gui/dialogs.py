@@ -3156,7 +3156,7 @@ class GeneticAlgorithmDialogWidget(PymeadDialogWidget2):
                 return
 
     def constraints_changed(self, text: str):
-        widget = self.widget_dict["J"].widget
+        widget = self.widget_dict["G"].widget
         template = self.get_template()
         self.gui_obj.constraints.clear()
         for constraint_func_str in text.split(','):
