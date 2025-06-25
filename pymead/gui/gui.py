@@ -1204,7 +1204,9 @@ class GUI(FramelessMainWindow):
 
         self.dialog = PanelDialog(self, theme=self.themes[self.current_theme], settings_override=self.panel_settings)
 
-        if (dialog_test_action is not None and not dialog_test_action(self.dialog)) or self.dialog.exec():
+        if not plot_cp:
+            alpha_add = 0.0
+        elif (dialog_test_action is not None and not dialog_test_action(self.dialog)) or self.dialog.exec():
             alpha_add = self.dialog.value()["alfa"]
             self.panel_settings = self.dialog.value()
         else:

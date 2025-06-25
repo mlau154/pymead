@@ -35,6 +35,7 @@ classifiers = [
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.12"
 ]
 dependencies = [
@@ -50,36 +51,19 @@ dependencies = [
     "python-benedict",
     "pandas",
     "pymoo==0.5.0",
-    "numba",
     "networkx",
     "psutil",
     "triangle",
-    "rust-nurbs>=0.24"
+    "rust-nurbs>=0.24",
+    "lsv-panel"
 ]
 dynamic = ["version"]
 
 [project.optional-dependencies]
 dev = [
-    "scipy",
-    "numpy",
-    "shapely>=2.0",
-    "matplotlib",
-    "requests>=2.31",
-    "PyQt6",
-    "PyQt6-WebEngine",
-    "PyQt6-Frameless-Window",
-    "pyqtgraph",
-    "python-benedict",
-    "pandas",
-    "pymoo==0.5.0",
-    "numba",
-    "networkx",
-    "psutil",
     "pytest>=7",
     "pytest-qt",
     "pynput",
-    "triangle",
-    "rust-nurbs>=0.24"
 ]
 
 [project.urls]
