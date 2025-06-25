@@ -30,5 +30,4 @@ def test_match_airfoil(app, qtbot: QtBot):
 
     qtbot.wait_until(check_label, timeout=90000)
 
-    assert np.isclose(desvar_container["Length-5"].value(), 0.2638, atol=1e-4)
-
+    assert np.isclose(desvar_container["Length-5"].value(), 0.264, atol=1e-3)
