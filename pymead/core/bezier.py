@@ -326,14 +326,14 @@ class Bezier(ParametricCurve):
 
     def compute_t_corresponding_to_x(self, x_seek: float, t0: float = 0.5):
         def bez_root_find_func(t):
-            point = self.evaluate_xy(t[0])[0]
+            point = self.evaluate_xy(t)[0]
             return np.array([point[0] - x_seek])
 
         return fsolve(bez_root_find_func, x0=np.array([t0]))[0]
 
     def compute_t_corresponding_to_y(self, y_seek: float, t0: float = 0.5):
         def bez_root_find_func(t):
-            point = self.evaluate_xy(t[0])[0]
+            point = self.evaluate_xy(t)[0]
             return np.array([point[1] - y_seek])
 
         return fsolve(bez_root_find_func, x0=np.array([t0]))[0]

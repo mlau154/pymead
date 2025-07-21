@@ -1,4 +1,5 @@
 import os
+import pytest
 import tempfile
 import unittest
 
@@ -237,6 +238,32 @@ class ParamTests(unittest.TestCase):
         self.assertEqual(desvar_dict["value"], 0.5)
         self.assertEqual(desvar_dict["lower"], 0.1)
         self.assertEqual(desvar_dict["upper"], 0.9)
+
+
+class BezierTests(unittest.TestCase):
+    def test_compute_t_corresponding_to_x(self):
+        points = np.array([
+            [0.0, 0.0],
+            [1.0, 2.0],
+            [3.0, 2.0],
+            [4.0, 0.0]
+        ])
+        point_sequence = PointSequence.generate_from_array(points)
+        bez = Bezier(point_sequence)
+        t = bez.compute_t_corresponding_to_x(2.0)
+        assert t == pytest.approx(0.5)
+        
+    def test_split(self): 
+        points = np.array([
+            [0.0, 0.0],
+            [1.0, 2.0],
+            [3.0, 2.0],
+            [4.0, 0.0]
+        ])
+        point_sequence = PointSequence.generate_from_array(points)
+        bez = Bezier(point_sequence)
+        split_beziers = bez.split(0.5)
+        assert len(split_beziers) == 2
 
 
 class AirfoilTests(unittest.TestCase):
