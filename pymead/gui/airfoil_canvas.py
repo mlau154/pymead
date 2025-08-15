@@ -953,7 +953,7 @@ class AirfoilCanvas(pg.PlotWidget):
     def removeCurve(self, curve):
         self.geo_col.remove_pymead_obj(curve)
 
-    def exportPlot(self):
+    def exportPlot(self, theme: dict):
         color_bar_data = self.color_bar_data
         current_min_level, current_max_level = None, None
         if color_bar_data is not None:
@@ -967,6 +967,9 @@ class AirfoilCanvas(pg.PlotWidget):
         if dialog.exec():
             # Get the inputs from the dialog
             inputs = dialog.value()
+
+            self.plot.setLabel(axis="bottom", text=f"x/c")
+            self.plot.setLabel(axis="left", text=f"y/c")
 
             # Create the pyqtgraph ImageExporter object from the airfoil canvas
             exporter = pg.exporters.ImageExporter(self.plot)
@@ -992,6 +995,9 @@ class AirfoilCanvas(pg.PlotWidget):
 
             # Export the image
             exporter.export(file_path)
+
+            # Return the axis labels to their original state
+            self.setAxisLabels(theme=theme)
 
             # Display success message
             self.gui_obj.disp_message_box(f"Plot saved to {file_path}", message_mode="info")
@@ -1082,7 +1088,7 @@ class AirfoilCanvas(pg.PlotWidget):
         elif res == splitPolyAction and curve is not None:
             self.splitPoly(curve)
         elif res == exportPlotAction:
-            self.exportPlot()
+            self.exportPlot(theme=self.gui_obj.themes[self.gui_obj.current_theme])
         elif res == makeAirfoilAbsoluteAction:
             self.makeAbsolute()
         elif res == makeAirfoilRelativeAction:

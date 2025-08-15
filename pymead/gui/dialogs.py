@@ -4302,8 +4302,7 @@ class PlotExportDialogWidget(PymeadDialogWidget2):
                                                        current_item=get_setting("axis-label-font-family")),
             "label_font_size": PymeadLabeledSpinBox(label="Label Point Size", minimum=1, maximum=100,
                                                     value=get_setting("axis-label-point-size")),
-
-
+            "non_dimensional": PymeadLabeledCheckbox(label="Non-Dim. Axis Labels", initial_state=0)
         }
         if self.current_min_level is not None and self.current_max_level is not None:
             self.widget_dict["min_level"] = PymeadLabeledDoubleSpinBox(
