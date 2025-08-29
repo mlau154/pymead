@@ -1,4 +1,3 @@
-import typing
 from copy import deepcopy
 
 import matplotlib.pyplot as plt
@@ -25,29 +24,23 @@ class Airfoil(PymeadObj):
     are stored in the ``coords`` attribute and can be updated using the ``update_coords`` method.
     """
     def __init__(self, leading_edge: Point, trailing_edge: Point,
-                 upper_surf_end: Point = None, lower_surf_end: Point = None, name: str or None = None):
+                 upper_surf_end: Point = None, lower_surf_end: Point = None, name: str | None = None):
         r"""
-
         Parameters
         ----------
         leading_edge: Point
             The airfoil's leading edge point (usually at :math:`(0,0)` for a typical single airfoil configuration)
-
         trailing_edge: Point
             The airfoil's trailing edge point (usually at :math:`(1,0)` for a typical single airfoil configuration)
-
         upper_surf_end: Point
             Optional specification of the upper surface endpoint (the first point in the Selig file format).
             If this point is not specified, the trailing edge point is used instead. Default: ``None``
-
         lower_surf_end: Point
             Optional specification of the lower surface endpoint (the last point in the Selig file format).
             If this point is not specified, the trailing edge point is used instead. Default: ``None``
-
         name: str
             Optional name for the airfoil. If ``None``, a default name is used. Default: ``None``
         """
-
         super().__init__(sub_container="airfoils")
 
         # Point inputs
@@ -76,13 +69,13 @@ class Airfoil(PymeadObj):
 
         self.coords = self.get_coords_selig_format()
 
-    def add_relative_points(self, points: typing.List[Point]):
+    def add_relative_points(self, points: list[Point]):
         """
         Marks a list of control points tied to an airfoil as airfoil-relative
 
         Parameters
         ----------
-        points: typing.List[Point]
+        points: list[Point]
             List of airfoil points to mark as airfoil-relative
         """
         points_not_added = []
@@ -99,13 +92,13 @@ class Airfoil(PymeadObj):
             raise ValueError(f"Points {points_not_added} not made airfoil-relative because they are a part of "
                              f"one or more geometric constraints")
 
-    def remove_relative_points(self, points: typing.List[Point]):
+    def remove_relative_points(self, points: list[Point]):
         """
         Removes the relative assignment of a list of points in an airfoil.
 
         Parameters
         ----------
-        points: typing.List[Point]
+        points: list[Point]
             List of airfoil points to mark as non-airfoil-relative
         """
         for point in points:
@@ -115,13 +108,13 @@ class Airfoil(PymeadObj):
             point.relative_airfoil = None
             point.relative_airfoil_name = None
 
-    def update_relative_points(self, original_geo_col_point_values: typing.Dict[str, np.ndarray]):
+    def update_relative_points(self, original_geo_col_point_values: dict[str, np.ndarray]):
         """
         Updates the airfoil-coordinate-system-relative points that are part of this airfoil.
 
         Parameters
         ----------
-        original_geo_col_point_values: typing.Dict[str, np.ndarray]
+        original_geo_col_point_values: dict[str, np.ndarray]
             Dictionary of all point values in the geometry collection, where each key in the dictionary corresponds
             to the name of the point and each value is a ``numpy`` array of the form ``np.array([x, y])``
         """
@@ -256,11 +249,9 @@ class Airfoil(PymeadObj):
         max_airfoil_points: int
             Optional value specifying the maximum number of airfoil points. If this value is left as ``None``,
             no downsampling will be performed. Default: ``None``
-
         curvature_exp: float
             Optional value specifying the curvature exponent used in the ``downsample`` method. If
             ``max_airfoil_points`` is left as ``None``, this value will be ignored. Default: 2
-
         n_points_per_curve: int
             Number of points to evaluate for each Bézier curve. Default: 150
 
@@ -268,7 +259,6 @@ class Airfoil(PymeadObj):
         -------
         np.ndarray
             Coordinate array (size :math:`N \times 2`)
-
         """
         if max_airfoil_points is not None:
             t_vec_list = self.downsample(max_airfoil_points=max_airfoil_points, curvature_exp=curvature_exp)
@@ -292,10 +282,6 @@ class Airfoil(PymeadObj):
     def update_coords(self):
         """
         Updates the coordinates of the airfoil, and passes this data to the canvas item if it exists.
-
-        Returns
-        -------
-
         """
         self.coords = self.get_coords_selig_format()
         if self.canvas_item is not None:
@@ -308,14 +294,14 @@ class Airfoil(PymeadObj):
         text file (usually a :code:`.txt` or :code:`.dat` file extension).
 
         Parameters
-        ==========
+        ----------
         file_name: str
             Full path to the coordinate file save location
         """
         coords = self.get_coords_selig_format()
         np.savetxt(file_name, coords)
 
-    def measure_chord(self):
+    def measure_chord(self) -> float:
         """
         Measures the chord length
 
@@ -323,11 +309,10 @@ class Airfoil(PymeadObj):
         -------
         float
             The airfoil's current chord length
-
         """
         return self.leading_edge.measure_distance(self.trailing_edge)
 
-    def measure_alpha(self):
+    def measure_alpha(self) -> float:
         """
         Measures the angle of attack in radians
 
@@ -335,7 +320,6 @@ class Airfoil(PymeadObj):
         -------
         float
             The airfoil's current angle of attack
-
         """
         return -self.leading_edge.measure_angle(self.trailing_edge)
 
@@ -350,11 +334,9 @@ class Airfoil(PymeadObj):
         coords: np.ndarray or None
             Optional Selig format airfoil coordinates (only specified if computational speed is important).
             If the coordinates are not specified, they are calculated.
-
         max_airfoil_points: int
             Optional value specifying the maximum number of airfoil points. If this value is left as ``None``,
             no downsampling will be performed. Default: ``None``
-
         curvature_exp: float
             Optional value specifying the curvature exponent used in the ``downsample`` method. If
             ``max_airfoil_points`` is left as ``None``, this value will be ignored. Default: 2
@@ -393,11 +375,9 @@ class Airfoil(PymeadObj):
         coords: np.ndarray or None
             Optional Selig format airfoil coordinates (only specified if computational speed is important).
             If the coordinates are not specified, they are calculated.
-
         max_airfoil_points: int
             Optional value specifying the maximum number of airfoil points. If this value is left as ``None``,
             no downsampling will be performed. Default: ``None``
-
         curvature_exp: float
             Optional value specifying the curvature exponent used in the ``downsample`` method. If
             ``max_airfoil_points`` is left as ``None``, this value will be ignored. Default: 2
@@ -446,7 +426,8 @@ class Airfoil(PymeadObj):
         return airfoil_polygon.area
 
     def check_self_intersection(self) -> bool:
-        """Determines whether the airfoil intersects itself using the `is_simple()` function of the
+        """
+        Determines whether the airfoil intersects itself using the `is_simple()` function of the
         `shapely <https://shapely.readthedocs.io/en/stable/manual.html>`_ library.
 
         Returns
@@ -470,7 +451,6 @@ class Airfoil(PymeadObj):
         -------
         float:
             The minimum radius of curvature
-
         """
         R_abs_min = min([np.abs(curve.evaluate().R).min() for curve in self.curves])
         if not chord_relative:
@@ -509,7 +489,7 @@ class Airfoil(PymeadObj):
             "xy": self.curves[R_abs_curve_idx].evaluate().xy[R_abs_min_coord_idx]
         }
 
-    def compute_thickness(self, airfoil_frame_relative: bool = False, n_lines: int = 201) -> typing.Dict[str, float]:
+    def compute_thickness(self, airfoil_frame_relative: bool = False, n_lines: int = 201) -> dict[str, float]:
         r"""Calculates the thickness distribution and maximum thickness of the airfoil.
 
         Parameters
@@ -517,7 +497,6 @@ class Airfoil(PymeadObj):
         airfoil_frame_relative: bool
             Whether to compute the thickness distribution in the airfoil-relative frame. If ``True``, the thickness
             based on a chord-relative scaling will be returned. Default: ``False``
-
         n_lines: int
             Describes the number of lines evenly spaced along the chordline produced to determine the thickness
             distribution. Default: 201
@@ -560,7 +539,7 @@ class Airfoil(PymeadObj):
                 "t_max_x/c_loc": x_c_loc
             }
 
-    def visualize_max_thickness(self):
+    def visualize_max_thickness(self) -> dict:
         """
         Gets airfoil data necessary to visualize the maximum thickness.
 
@@ -611,11 +590,9 @@ class Airfoil(PymeadObj):
         x_arr: float or list or np.ndarray
             The :math:`x` (or :math:`x/c` if ``airfoil_frame_relative==True``)
             locations at which to evaluate the thickness
-
         airfoil_frame_relative: bool
             Whether to compute the area in the airfoil-relative frame. If ``True``, the thickness
             based on a chord-relative scaling will be returned. Default: ``False``
-
         vertical_check: bool
             Whether to compute the thickness vertically from the chordline (rather than perpendicular).
             This value is ignored unless``airfoil_frame_relative==False``.
@@ -792,21 +769,19 @@ class Airfoil(PymeadObj):
 
     def compute_camber_at_points(self, x_over_c: np.ndarray, airfoil_frame_relative: bool = False,
                                  start_y_over_c: float = -1.0, end_y_over_c: float = 1.0) -> np.ndarray:
-        """Calculates the thickness (t/c) at a set of x-locations (x/c)
+        """
+        Calculates the thickness (t/c) at a set of x-locations (x/c)
 
         Parameters
         ----------
         x_over_c: float or list or np.ndarray
             The :math:`x/c` locations at which to evaluate the camber
-
         airfoil_frame_relative: bool
             Whether to compute the area in the airfoil-relative frame. If ``True``, the thickness
             based on a chord-relative scaling will be returned. Default: ``False``
-
         start_y_over_c: float
             The :math:`y/c` location to draw the first point in a line whose intersection with the airfoil is checked.
             May need to decrease this value for unusually thick airfoils
-
         end_y_over_c: float
             The :math:`y/c` location to draw the last point in a line whose intersection with the airfoil is checked.
             May need to increase this value for unusually thick airfoils
@@ -837,7 +812,6 @@ class Airfoil(PymeadObj):
         point: np.ndarray or list
             The point to test. Should be either a 1-D ``ndarray`` of the format ``array([<x_val>,<y_val>])`` or
             a list of the format ``[<x_val>,<y_val>]``
-
         airfoil_frame_relative: bool
             Whether to check for point containment in the airfoil-relative frame. If ``True``, the airfoil
             will be scaled by the chord, de-rotated, and the leading edge moved to :math:`(0,0)` before
@@ -854,7 +828,7 @@ class Airfoil(PymeadObj):
         )
         return airfoil_polygon.contains(Point(point[0], point[1]))
 
-    def contains_line_string(self, points: np.ndarray or list, airfoil_frame_relative: bool = False,
+    def contains_line_string(self, points: np.ndarray | list, airfoil_frame_relative: bool = False,
                              rotate_with_airfoil: bool = True, translate_with_airfoil: bool = True,
                              scale_with_airfoil: bool = True) -> bool:
         """
@@ -864,19 +838,15 @@ class Airfoil(PymeadObj):
         ----------
         points: np.ndarray or list
             Should be a 2-D array or list of the form ``[[<x_val_1>, <y_val_1>], [<x_val_2>, <y_val_2>], ...]``
-
         airfoil_frame_relative: bool
             Whether to run the enclosure test with the line string defined in the airfoil-relative frame.
             Default: ``False``
-
         rotate_with_airfoil: bool
             Whether to rotate the line string by the opposite of the airfoil's angle of attack before running the
             test. Default: ``True``
-
         translate_with_airfoil: bool
             Whether to translate the line string by a displacement equal to the airfoil's leading edge location
             before running the test. Default: ``True``
-
         scale_with_airfoil: bool
             Whether to scale the line string by the airfoil's chord before running the test. Default: ``True``
 
@@ -914,7 +884,7 @@ class Airfoil(PymeadObj):
         line_string = LineString(points)
         return airfoil_polygon.contains(line_string)
 
-    def visualize_contains_line_string(self, points: np.ndarray or list, airfoil_frame_relative: bool = False,
+    def visualize_contains_line_string(self, points: np.ndarray | list, airfoil_frame_relative: bool = False,
                                        rotate_with_airfoil: bool = True, translate_with_airfoil: bool = True,
                                        scale_with_airfoil: bool = True) -> dict:
         """
@@ -980,7 +950,7 @@ class Airfoil(PymeadObj):
             "xy_polyline": points
         }
 
-    def downsample(self, max_airfoil_points: int, curvature_exp: float = 2.0):
+    def downsample(self, max_airfoil_points: int, curvature_exp: float = 2.0) -> list[np.ndarray]:
         r"""
         Downsamples the airfoil coordinates based on a curvature exponent. This method works by evaluating each
         Bézier curve using a set number of points (150) and then calculating
@@ -994,7 +964,6 @@ class Airfoil(PymeadObj):
         ----------
         max_airfoil_points: int
             Maximum number of points in the airfoil (the actual number in the final airfoil may be slightly less)
-
         curvature_exp: float
             Curvature exponent used to scale the radius of curvature. Values close to 0 place high emphasis on
             curvature, while values close to :math:`\infty` place low emphasis on curvature (creating nearly
@@ -1054,7 +1023,7 @@ class Airfoil(PymeadObj):
 
         return new_param_vec_list
 
-    def plot(self, ax: plt.Axes or None = None, show: bool = True, save_file: str or None = None, **plt_kwargs):
+    def plot(self, ax: plt.Axes | None = None, show: bool = True, save_file: str | None = None, **plt_kwargs):
         """
         Plots the airfoil to a ``matplotlib`` figure.
 
@@ -1097,9 +1066,13 @@ class Airfoil(PymeadObj):
         if show:
             plt.show()
 
-    def get_dict_rep(self):
-        return {"leading_edge": self.leading_edge.name(), "trailing_edge": self.trailing_edge.name(),
-                "upper_surf_end": self.upper_surf_end.name(), "lower_surf_end": self.lower_surf_end.name()}
+    def get_dict_rep(self) -> dict:
+        return {
+            "leading_edge": self.leading_edge.name(), 
+            "trailing_edge": self.trailing_edge.name(),
+            "upper_surf_end": self.upper_surf_end.name(), 
+            "lower_surf_end": self.lower_surf_end.name()
+        }
 
 
 class BranchError(Exception):
